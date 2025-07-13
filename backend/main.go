@@ -96,6 +96,7 @@ func main() {
 	r.HandleFunc("/admin", adminHandler)
 	r.HandleFunc("/storage", storagePageHandler)
 	r.HandleFunc("/iso", isoPageHandler)
+	r.HandleFunc("/vmbr", vmbrPageHandler)
 	r.HandleFunc("/health", healthHandler)
 
 	// API handlers
@@ -103,8 +104,10 @@ func main() {
 	r.HandleFunc("/api/tags/", tagsHandler)
 	r.HandleFunc("/api/storage", storageHandler)
 	r.HandleFunc("/api/iso/all", allIsosHandler)
+	r.HandleFunc("/api/vmbr/all", allVmbrsHandler)
 	r.HandleFunc("/api/settings", settingsHandler)
 	r.HandleFunc("/api/iso/settings", updateIsoSettingsHandler)
+	r.HandleFunc("/api/vmbr/settings", updateVmbrSettingsHandler)
 
 	// Configure server
 	srv := &http.Server{
@@ -267,6 +270,12 @@ func isoPageHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("path", r.URL.Path).Msg("Request received for iso page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "iso.html", data)
+}
+
+func vmbrPageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("path", r.URL.Path).Msg("Request received for vmbr page")
+	data := make(map[string]interface{})
+	renderTemplate(w, r, "vmbr.html", data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

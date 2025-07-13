@@ -117,3 +117,37 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "ISO settings updated successfully.")
 }
+
+// updateVmbrSettingsHandler handles POST requests to update the VMBRs list in settings.
+func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		VMBRs []string `json:"vmbrs"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	settings, err := readSettings()
+	if err != nil {
+		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
+		return
+	}
+
+	settings.VMBRs = payload.VMBRs
+
+	if err := writeSettings(settings); err != nil {
+		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "VMBR settings updated successfully.")
+}

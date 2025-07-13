@@ -1,0 +1,97 @@
+{{define "vmbr.html"}}
+<section class="section">
+    <div class="container">
+        <h2 class="title is-4">VMBR Management</h2>
+
+        <table id="vmbr-table" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Enabled</th>
+                    <th>Node</th>
+                    <th>VMBR Name</th>
+                </tr>
+            </thead>
+            <tbody id="vmbr-table-body">
+                <!-- VMBRs will be loaded here -->
+            </tbody>
+        </table>
+
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const vmbrTableBody = document.getElementById('vmbr-table-body');
+
+    let savedVmbrs = [];
+    fetch('/api/settings')
+        .then(response => response.json())
+        .then(settings => {
+            savedVmbrs = settings.vmbrs || [];
+            return fetch('/api/vmbr/all');
+        })
+        .then(response => response.json())
+        .then(data => {
+            vmbrTableBody.innerHTML = '';
+            if (data.vmbrs && data.vmbrs.length > 0) {
+                data.vmbrs.forEach(vmbr => {
+                    let row = vmbrTableBody.insertRow();
+                    let enabledCell = row.insertCell(0);
+                    let nodeCell = row.insertCell(1);
+                    let nameCell = row.insertCell(2);
+
+                    let checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'vmbr-checkbox';
+                    checkbox.dataset.name = vmbr.name;
+                    if (savedVmbrs.includes(vmbr.name)) {
+                        checkbox.checked = true;
+                    }
+                    enabledCell.appendChild(checkbox);
+
+                    nodeCell.textContent = vmbr.node;
+                    nameCell.textContent = vmbr.name;
+                });
+            } else {
+                let row = vmbrTableBody.insertRow();
+                let cell = row.insertCell(0);
+                cell.colSpan = 3;
+                cell.textContent = 'No VMBRs found on any node.';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            vmbrTableBody.innerHTML = '<tr><td colspan="3">Error fetching data. See console for details.</td></tr>';
+        });
+
+    function saveVmbrSelections() {
+        const selectedVmbrs = [];
+        document.querySelectorAll('.vmbr-checkbox:checked').forEach(checkbox => {
+            selectedVmbrs.push(checkbox.dataset.name);
+        });
+
+        fetch('/api/vmbr/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ vmbrs: selectedVmbrs })
+        })
+        .then(response => {
+            if (!response.ok) {
+                console.error('Failed to save VMBR selections.');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving VMBRs:', error);
+        });
+    }
+
+    vmbrTableBody.addEventListener('change', function(event) {
+        if (event.target.matches('.vmbr-checkbox')) {
+            saveVmbrSelections();
+        }
+    });
+});
+</script>
+{{end}}
