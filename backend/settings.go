@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sync"
 )
@@ -62,4 +64,56 @@ func writeSettings(settings *AppSettings) error {
 	}
 
 	return os.WriteFile(settingsFile, bytes, 0644)
+}
+
+// settingsHandler handles GET requests to read the entire settings file.
+func settingsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", http.MethodGet)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	settings, err := readSettings()
+	if err != nil {
+		http.Error(w, "Failed to read settings", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(settings)
+}
+
+// updateIsoSettingsHandler handles POST requests to update the ISOs list in settings.
+func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		ISOs []string `json:"isos"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	settings, err := readSettings()
+	if err != nil {
+		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
+		return
+	}
+
+	settings.ISOs = payload.ISOs
+
+	if err := writeSettings(settings); err != nil {
+		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "ISO settings updated successfully.")
 }

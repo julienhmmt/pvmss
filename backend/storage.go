@@ -15,6 +15,7 @@ type Storage struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`
 	Content string `json:"content"`
+	Nodes   string `json:"nodes"`
 }
 
 // storageHandler routes the requests to the appropriate handler.
@@ -27,8 +28,8 @@ func storageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getStoragesHandler handles fetching all storages.
-func getStoragesHandler(w http.ResponseWriter, r *http.Request) {
+// getStorages is a helper function to fetch and parse storages from Proxmox.
+func getStorages() ([]Storage, error) {
 	apiURL := os.Getenv("PROXMOX_URL")
 	apiTokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
 	apiTokenSecret := os.Getenv("PROXMOX_API_TOKEN_VALUE")
@@ -37,15 +38,13 @@ func getStoragesHandler(w http.ResponseWriter, r *http.Request) {
 	client, err := proxmox.NewClient(apiURL, apiTokenID, apiTokenSecret, insecure)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create proxmox client")
-		http.Error(w, "Failed to connect to Proxmox API", http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	storagesResult, err := proxmox.GetStorages(client)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get storage list")
-		http.Error(w, "Failed to retrieve storages from Proxmox", http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	var allStorages []Storage
@@ -53,14 +52,28 @@ func getStoragesHandler(w http.ResponseWriter, r *http.Request) {
 		if data, ok := storagesMap["data"].([]interface{}); ok {
 			for _, item := range data {
 				if storageItem, ok := item.(map[string]interface{}); ok {
-					allStorages = append(allStorages, Storage{
+					storage := Storage{
 						Name:    storageItem["storage"].(string),
 						Type:    storageItem["type"].(string),
 						Content: storageItem["content"].(string),
-					})
+					}
+					if nodes, ok := storageItem["nodes"].(string); ok {
+						storage.Nodes = nodes
+					}
+					allStorages = append(allStorages, storage)
 				}
 			}
 		}
+	}
+	return allStorages, nil
+}
+
+// getStoragesHandler handles fetching all storages.
+func getStoragesHandler(w http.ResponseWriter, r *http.Request) {
+	allStorages, err := getStorages()
+	if err != nil {
+		http.Error(w, "Failed to retrieve storages from Proxmox", http.StatusInternalServerError)
+		return
 	}
 
 	// Filter for storages that can store virtual machine disks ('images' or 'rootdir')

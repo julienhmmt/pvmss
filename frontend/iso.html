@@ -1,0 +1,116 @@
+{{define "iso.html"}}
+<section class="section">
+    <div class="container">
+        <h2 class="title is-4">ISO Management</h2>
+
+        <!-- ISOs Table -->
+        <table id="iso-table" class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Enabled</th>
+                    <th>Storage</th>
+                    <th>ISO Name</th>
+                    <th>Size (GB)</th>
+                </tr>
+            </thead>
+            <tbody id="iso-table-body">
+                <!-- ISOs will be loaded here -->
+            </tbody>
+        </table>
+
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isoTableBody = document.getElementById('iso-table-body');
+    const saveButton = document.getElementById('save-button');
+
+    // Fetch the current settings to pre-check the saved ISOs
+    let savedIsos = [];
+    fetch('/api/settings')
+        .then(response => response.json())
+        .then(settings => {
+            savedIsos = settings.isos || [];
+            // Now fetch all ISOs
+            return fetch('/api/iso/all');
+        })
+        .then(response => response.json())
+        .then(data => {
+            isoTableBody.innerHTML = ''; // Clear any previous content
+            if (data.isos && data.isos.length > 0) {
+                data.isos.forEach(iso => {
+                    let row = isoTableBody.insertRow();
+                    // Correctly order the cells to match the header
+                    let enabledCell = row.insertCell(0);
+                    let storageCell = row.insertCell(1);
+                    let nameCell = row.insertCell(2);
+                    let sizeCell = row.insertCell(3);
+
+                    let checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'iso-checkbox';
+                    checkbox.dataset.volid = iso.volid;
+                    // Check the box if this ISO is in the saved settings
+                    if (savedIsos.includes(iso.volid)) {
+                        checkbox.checked = true;
+                    }
+                    enabledCell.appendChild(checkbox);
+
+                    storageCell.textContent = iso.storage;
+                    nameCell.textContent = iso.name;
+                    sizeCell.textContent = formatBytes(iso.size);
+                });
+            } else {
+                let row = isoTableBody.insertRow();
+                let cell = row.insertCell(0);
+                cell.colSpan = 4;
+                cell.textContent = 'No ISO images found on any compatible storage.';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            isoTableBody.innerHTML = '<tr><td colspan="4">Error fetching data. See console for details.</td></tr>';
+        });
+
+    function saveIsoSelections() {
+        const selectedIsos = [];
+        document.querySelectorAll('.iso-checkbox:checked').forEach(checkbox => {
+            selectedIsos.push(checkbox.dataset.volid);
+        });
+
+        fetch('/api/iso/settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ isos: selectedIsos })
+        })
+        .then(response => {
+            if (!response.ok) {
+                console.error('Failed to save ISO selections.');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving ISOs:', error);
+        });
+    }
+
+    // Add event listener to the table body for delegation
+    isoTableBody.addEventListener('change', function(event) {
+        if (event.target.matches('.iso-checkbox')) {
+            saveIsoSelections();
+        }
+    });
+
+    function formatBytes(bytes, decimals = 2) {
+        if (!bytes || bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+});
+</script>
+{{end}}

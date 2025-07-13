@@ -95,12 +95,16 @@ func main() {
 	r.HandleFunc("/search", searchHandler)
 	r.HandleFunc("/admin", adminHandler)
 	r.HandleFunc("/storage", storagePageHandler)
+	r.HandleFunc("/iso", isoPageHandler)
 	r.HandleFunc("/health", healthHandler)
 
 	// API handlers
 	r.HandleFunc("/api/tags", tagsHandler)
 	r.HandleFunc("/api/tags/", tagsHandler)
 	r.HandleFunc("/api/storage", storageHandler)
+	r.HandleFunc("/api/iso/all", allIsosHandler)
+	r.HandleFunc("/api/settings", settingsHandler)
+	r.HandleFunc("/api/iso/settings", updateIsoSettingsHandler)
 
 	// Configure server
 	srv := &http.Server{
@@ -257,6 +261,12 @@ func storagePageHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("path", r.URL.Path).Msg("Request received for storage page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "storage.html", data)
+}
+
+func isoPageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("path", r.URL.Path).Msg("Request received for iso page")
+	data := make(map[string]interface{})
+	renderTemplate(w, r, "iso.html", data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
