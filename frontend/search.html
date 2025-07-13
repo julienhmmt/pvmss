@@ -46,7 +46,7 @@
                     <td>{{.name}}</td>
                     <td>
                         {{if eq .status "running"}}
-                        <span class="tag is-success">{{.status}}</span>
+                        <span class="tag is-primary">{{.status}}</span>
                         {{else if eq .status "stopped"}}
                         <span class="tag is-light">{{.status}}</span>
                         {{else}}
@@ -60,7 +60,7 @@
                         {{formatMemory .maxmem}}
                     </td>
                     <td>
-                        <a href="/vm-details?vmid={{printf "%.0f" .vmid}}&lang={{$.Lang}}" class="button is-info is-small">{{$.SearchVMDetailsButton}}</a>
+                        <a href="/vm-details?vmid={{printf "%.0f" .vmid}}&lang={{$.Lang}}" class="button is-primary is-small">{{$.SearchVMDetailsButton}}</a>
                     </td>
                 </tr>
                 {{end}}

@@ -10,7 +10,7 @@
         <input id="tag-input" class="input" type="text" placeholder="New tag">
     </div>
     <div class="control">
-        <a id="add-tag-btn" class="button is-info">{{.AdminTagsAddButton}}</a>
+        <a id="add-tag-btn" class="button is-primary">{{.AdminTagsAddButton}}</a>
     </div>
 </div>
 
@@ -27,7 +27,7 @@
                     tagsList.innerHTML = '';
                     data.tags.forEach(tag => {
                         const tagElement = document.createElement('span');
-                        tagElement.className = 'tag is-medium is-info mr-2';
+                        tagElement.className = 'tag is-medium is-primary mr-2';
                         tagElement.textContent = tag;
 
                         if (tag !== 'PVMSS') {

@@ -30,17 +30,17 @@
                     </td>
                     <td>
                         {{$cpu_percent := mul .cpu 100.0}}
-                        <progress class="progress {{if lt $cpu_percent 70.0}}is-success{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
+                        <progress class="progress {{if lt $cpu_percent 70.0}}is-primary{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
                         {{printf "%.0f%%" $cpu_percent}} ({{printf "%.2f" .cpu}} / {{.maxcpu}})
                     </td>
                     <td>
                         {{$mem_percent := mul (div .mem .maxmem) 100.0}}
-                        <progress class="progress {{if lt $mem_percent 70.0}}is-success{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100"></progress>
+                        <progress class="progress {{if lt $mem_percent 70.0}}is-primary{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100"></progress>
                         {{printf "%.0f%%" $mem_percent}} ({{.mem | humanBytes}} / {{.maxmem | humanBytes}})
                     </td>
                     <td>
                         {{$disk_percent := mul (div .disk .maxdisk) 100.0}}
-                        <progress class="progress {{if lt $disk_percent 70.0}}is-success{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100"></progress>
+                        <progress class="progress {{if lt $disk_percent 70.0}}is-primary{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100"></progress>
                         {{printf "%.0f%%" $disk_percent}} ({{.disk | humanBytes}} / {{.maxdisk | humanBytes}})
                     </td>
                 </tr>

@@ -30,8 +30,25 @@ body .hero.is-primary,
     border-color: transparent;
 }
 
+.button.is-primary {
+    background-color: var(--primary);
+    border-color: transparent;
+    color: #ffffff;
+}
+
 .button.is-primary:hover,
 .button.is-primary:focus {
     background-color: var(--primary-hover);
     border-color: transparent;
+    color: #ffffff;
+}
+
+.tag.is-primary {
+    background-color: var(--primary);
+    color: #ffffff;
+}
+
+.notification.is-primary {
+    background-color: var(--primary);
+    color: #ffffff;
 }
