@@ -32,21 +32,26 @@ other = "Machines virtuelles"
 NoNodes = "Aucun nœud à afficher."
 
 [Nodes.Header]
+CPUUsage = "Utilisation CPU"
+DiskUsage = "Utilisation disque (rootfs)"
+MemoryUsage = "Utilisation mémoire"
 Node = "Nœud"
 Status = "Statut"
-CPUUsage = "Utilisation CPU"
-MemoryUsage = "Utilisation mémoire"
-DiskUsage = "Utilisation disque (rootfs)"
 
 [Nodes.Status]
-Online = "En ligne"
 Offline = "Hors ligne"
+Online = "En ligne"
 
-[Search.Results]
-other = "Résultats de la recherche"
-
-[Search.YouSearchedFor]
-other = "Vous avez recherché :"
+[Search]
+Title = "Rechercher une VM"
+VMID = "ID de la VM"
+Name = "Nom"
+Results = "Résultats de la recherche"
+YouSearchedFor = "Vous avez recherché :"
+NoResults = "Aucune VM ne correspond à vos critères de recherche."
+Status = "Statut"
+CPUs = "CPU (Sockets/Cœurs)"
+Memory = "Mémoire vive"
 
 [Subtitle]
 other = "Votre portail autonome pour vos machines virtuelles dans Proxmox."

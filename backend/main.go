@@ -76,12 +76,13 @@ func main() {
 			}
 			return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
 		},
+		"formatMemory": formatMemory,
 	}
 
-	var parseErr error
-	templates, parseErr = template.New("").Funcs(funcMap).ParseGlob("../frontend/*.html")
-	if parseErr != nil {
-		log.Fatal().Err(parseErr).Msg("Failed to parse templates")
+	var err error
+	templates, err = template.New("layout.html").Funcs(funcMap).ParseGlob("../frontend/*.html")
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to parse templates")
 	}
 
 	// Get port from environment
@@ -135,6 +136,25 @@ func main() {
 	log.Info().Msg("Server exiting")
 }
 
+func formatMemory(mem interface{}) string {
+	if mem == nil {
+		return "N/A"
+	}
+	memFloat, ok := mem.(float64)
+	if !ok {
+		return "N/A"
+	}
+
+	memBytes := int64(memFloat)
+	memMB := memBytes / 1024 / 1024
+
+	if memMB > 1024 {
+		memGB := float64(memBytes) / 1024 / 1024 / 1024
+		return fmt.Sprintf("%.1f GB", memGB)
+	}
+	return fmt.Sprintf("%d MB", memMB)
+}
+
 func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
 	// Determine language from query param, cookie, or header
 	lang := r.URL.Query().Get("lang")
@@ -172,6 +192,12 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 	data["NavbarHome"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
 	data["NavbarSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
 	data["NavbarVMs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
+	data["SearchTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Title"})
+	data["SearchVMID"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.VMID"})
+	data["SearchName"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Name"})
+	data["SearchStatus"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Status"})
+	data["SearchCPUs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.CPUs"})
+	data["SearchMemory"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Memory"})
 	data["SearchResults"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Results"})
 	data["SearchYouSearchedFor"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.YouSearchedFor"})
 	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
@@ -217,10 +243,40 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("path", r.URL.Path).Msg("Request received for search")
-	query := r.URL.Query().Get("q")
-	data := map[string]interface{}{
-		"Query": query,
+	data := make(map[string]interface{})
+
+	if r.Method == http.MethodPost {
+		r.ParseForm()
+		vmid := r.FormValue("vmid")
+		name := r.FormValue("name")
+
+		log.Info().Str("vmid", vmid).Str("name", name).Msg("Processing search request")
+
+		apiURL := os.Getenv("PROXMOX_URL")
+		apiTokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
+		apiTokenSecret := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+		insecure := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
+
+		client, err := proxmox.NewClient(apiURL, apiTokenID, apiTokenSecret, insecure)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create proxmox client")
+			data["Error"] = "Failed to connect to Proxmox API"
+		} else {
+			results, err := searchVM(client, vmid, name)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to search for VM")
+				data["Error"] = "Failed to retrieve VM information from Proxmox"
+			} else {
+				data["Results"] = results
+				if vmid != "" {
+					data["Query"] = vmid
+				} else {
+					data["Query"] = name
+				}
+			}
+		}
 	}
+
 	renderTemplate(w, r, "search.html", data)
 }
 
@@ -238,12 +294,17 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error().Err(err).Msg("Failed to create proxmox client")
 		data["Error"] = "Failed to connect to Proxmox API"
 	} else {
-		nodes, err := proxmox.GetNodes(client)
+		nodesResult, err := proxmox.GetNodes(client)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get node list")
 			data["Error"] = "Failed to retrieve nodes from Proxmox"
 		} else {
-			data["Nodes"] = nodes
+			if nodesMap, ok := nodesResult.(map[string]interface{}); ok {
+				data["Nodes"] = nodesMap["data"]
+			} else {
+				log.Error().Msg("Failed to assert nodes to map[string]interface{}")
+				data["Error"] = "Failed to process node data from Proxmox"
+			}
 		}
 	}
 

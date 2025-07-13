@@ -1,13 +1,72 @@
 {{define "search.html"}}
 <section class="section">
     <div class="container">
-        <h1 class="title">{{.SearchResults}}</h1>
-        <h2 class="subtitle">
-            {{.SearchYouSearchedFor}} <strong>{{.Query}}</strong>
-        </h2>
-        <p>
-            (Search functionality is not yet connected to the backend.)
-        </p>
+        <h1 class="title">{{.SearchTitle}}</h1>
+        <form action="/search?lang={{.Lang}}" method="POST">
+            <div class="field">
+                <label class="label" for="vmid">{{.SearchVMID}}</label>
+                <div class="control">
+                    <input class="input" type="text" id="vmid" name="vmid" placeholder="e.g. 100">
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="label" for="name">{{.SearchName}}</label>
+                <div class="control">
+                    <input class="input" type="text" id="name" name="name" placeholder="e.g. my-vm">
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="control">
+                    <button type="submit" class="button is-primary">{{.ButtonSearchVM}}</button>
+                </div>
+            </div>
+        </form>
+
+        {{if .Query}}
+        <hr>
+        <h2 class="subtitle">{{.YouSearchedFor}} {{.Query}}</h2>
+        {{if .Results}}
+        <table class="table is-bordered is-striped is-narrow is-hoverable is-fullwidth">
+            <thead>
+                <tr>
+                    <th>{{.SearchVMID}}</th>
+                    <th>{{.SearchName}}</th>
+                    <th>{{.SearchStatus}}</th>
+                    <th>{{.SearchCPUs}}</th>
+                    <th>{{.SearchMemory}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Results}}
+                <tr>
+                    <td>{{printf "%.0f" .vmid}}</td>
+                    <td>{{.name}}</td>
+                    <td>{{.status}}</td>
+                    <td>
+                        {{if .cpus}}{{.sockets}}s / {{.cpus}}c{{else}}N/A{{end}}
+                    </td>
+                    <td>
+                        {{formatMemory .maxmem}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <div class="notification is-warning">
+            {{.NoResults}}
+        </div>
+        {{end}}
+        {{end}}
+
+        {{if .Error}}
+        <hr>
+        <div class="notification is-danger">
+            {{.Error}}
+        </div>
+        {{end}}
     </div>
 </section>
 {{end}}

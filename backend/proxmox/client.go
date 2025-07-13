@@ -6,15 +6,19 @@ import (
 	px "github.com/Telmate/proxmox-api-go/proxmox"
 )
 
-func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool) (*px.Client, error) {
+type Client struct {
+	*px.Client
+}
+
+func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool) (*Client, error) {
 	tlsConfig := &tls.Config{InsecureSkipVerify: insecureSkipVerify}
 
-	client, err := px.NewClient(apiURL, nil, "", tlsConfig, "", 300)
+	pxClient, err := px.NewClient(apiURL, nil, "", tlsConfig, "", 300)
 	if err != nil {
 		return nil, err
 	}
 
-	client.SetAPIToken(apiTokenID, apiTokenSecret)
+	pxClient.SetAPIToken(apiTokenID, apiTokenSecret)
 
-	return client, nil
+	return &Client{pxClient}, nil
 }

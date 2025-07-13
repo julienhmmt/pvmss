@@ -32,21 +32,26 @@ other = "Virtual machines"
 NoNodes = "No nodes to display."
 
 [Nodes.Header]
+CPUUsage = "CPU Usage"
+DiskUsage = "Disk Usage (rootfs)"
+MemoryUsage = "Memory Usage"
 Node = "Node"
 Status = "Status"
-CPUUsage = "CPU Usage"
-MemoryUsage = "Memory Usage"
-DiskUsage = "Disk Usage (rootfs)"
 
 [Nodes.Status]
-Online = "Online"
 Offline = "Offline"
+Online = "Online"
 
-[Search.Results]
-other = "Search Results"
-
-[Search.YouSearchedFor]
-other = "You searched for:"
+[Search]
+CPUs = "CPU (Sockets/Cores)"
+Memory = "Memory"
+Name = "Name"
+NoResults = "No VMs found matching your criteria."
+Results = "Search results"
+Status = "Status"
+Title = "Search for a VM"
+VMID = "VM ID"
+YouSearchedFor = "You searched for:"
 
 [Subtitle]
 other = "Your self-service portal for Proxmox virtual machines."

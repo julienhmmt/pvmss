@@ -29,19 +29,9 @@
                 <a class="navbar-item" href="/vms?lang={{.Lang}}">
                     {{.NavbarVMs}}
                 </a>
-                <div class="navbar-item">
-                    <form action="/search" method="GET" class="field has-addons">
-                        <div class="control">
-                            <input type="hidden" name="lang" value="{{.Lang}}">
-                            <input class="input is-small" type="text" name="q" placeholder="{{.NavbarSearchVM}}" value="{{.Query}}">
-                        </div>
-                        <div class="control">
-                            <button type="submit" class="button is-primary is-small">
-                                {{.ButtonSearchVM}}
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                <a class="navbar-item" href="/search?lang={{.Lang}}">
+                    {{.NavbarSearchVM}}
+                </a>
             </div>
             <div class="navbar-end">
                 <div class="navbar-item">
