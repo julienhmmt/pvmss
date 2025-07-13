@@ -1,3 +1,9 @@
+[Admin.Nodes]
+other = "PVE Nodes"
+
+[Admin.Page]
+other = "Administration page PVMSS"
+
 [Body]
 other = "Here you will be able to manage your virtual machines."
 
@@ -21,6 +27,20 @@ other = "Search a VM"
 
 [Navbar.VMs]
 other = "Virtual machines"
+
+[Nodes]
+NoNodes = "No nodes to display."
+
+[Nodes.Header]
+Node = "Node"
+Status = "Status"
+CPUUsage = "CPU Usage"
+MemoryUsage = "Memory Usage"
+DiskUsage = "Disk Usage (rootfs)"
+
+[Nodes.Status]
+Online = "Online"
+Offline = "Offline"
 
 [Search.Results]
 other = "Search Results"

@@ -1,0 +1,56 @@
+{{define "nodes.html"}}
+<div class="container">
+    <h2 class="subtitle">{{.AdminNodes}}</h2>
+
+    {{if .Error}}
+        <div class="notification is-danger">
+            {{.Error}}
+        </div>
+    {{else if .Nodes}}
+        <table class="table is-striped is-fullwidth">
+            <thead>
+                <tr>
+                    <th>{{.NodesHeaderNode}}</th>
+                    <th>{{.NodesHeaderStatus}}</th>
+                    <th>{{.NodesHeaderCPUUsage}}</th>
+                    <th>{{.NodesHeaderMemoryUsage}}</th>
+                    <th>{{.NodesHeaderDiskUsage}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Nodes}}
+                <tr>
+                    <td>{{.node}}</td>
+                    <td>
+                        {{if eq .status "online"}}
+                            <span class="tag is-success">{{$.NodesStatusOnline}}</span>
+                        {{else}}
+                            <span class="tag is-danger">{{$.NodesStatusOffline}}</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        {{$cpu_percent := mul .cpu 100.0}}
+                        <progress class="progress {{if lt $cpu_percent 70.0}}is-success{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
+                        {{printf "%.0f%%" $cpu_percent}} ({{printf "%.2f" .cpu}} / {{.maxcpu}})
+                    </td>
+                    <td>
+                        {{$mem_percent := mul (div .mem .maxmem) 100.0}}
+                        <progress class="progress {{if lt $mem_percent 70.0}}is-success{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100"></progress>
+                        {{printf "%.0f%%" $mem_percent}} ({{.mem | humanBytes}} / {{.maxmem | humanBytes}})
+                    </td>
+                    <td>
+                        {{$disk_percent := mul (div .disk .maxdisk) 100.0}}
+                        <progress class="progress {{if lt $disk_percent 70.0}}is-success{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100"></progress>
+                        {{printf "%.0f%%" $disk_percent}} ({{.disk | humanBytes}} / {{.maxdisk | humanBytes}})
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    {{else}}
+        <div class="notification">
+            {{.NodesNoNodes}}
+        </div>
+    {{end}}
+</div>
+{{end}}

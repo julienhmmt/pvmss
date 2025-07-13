@@ -13,8 +13,12 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/rs/zerolog"
+	"fmt"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/text/language"
+
+	"github.com/joho/godotenv"
+	"pvmss/backend/proxmox"
 )
 
 var (
@@ -23,6 +27,18 @@ var (
 )
 
 func main() {
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Warn().Msg("Error loading .env file, relying on environment variables")
+	}
+
+	// Log the loaded Proxmox URL to verify it's loaded correctly
+	proxmoxURL := os.Getenv("PROXMOX_URL")
+	if proxmoxURL == "" {
+		log.Warn().Msg("PROXMOX_URL is not set")
+	} else {
+		log.Info().Str("PROXMOX_URL", proxmoxURL).Msg("Proxmox URL loaded")
+	}
+
 	// Initialize logger
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	log.Logger = log.Output(zerolog.ConsoleWriter{
@@ -37,10 +53,35 @@ func main() {
 	bundle.MustLoadMessageFile("i18n/active.fr.toml")
 
 	// Parse templates
-	var err error
-	templates, err = template.ParseGlob("../frontend/*.html")
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to parse templates")
+	funcMap := template.FuncMap{
+		"div": func(a, b float64) float64 {
+			if b == 0 {
+				return 0
+			}
+			return a / b
+		},
+		"mul": func(a, b float64) float64 {
+			return a * b
+		},
+		"humanBytes": func(b float64) string {
+			bytes := int64(b)
+			const unit = 1024
+			if bytes < unit {
+				return fmt.Sprintf("%d B", bytes)
+			}
+			div, exp := int64(unit), 0
+			for n := bytes / unit; n >= unit; n /= unit {
+				div *= unit
+				exp++
+			}
+			return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
+		},
+	}
+
+	var parseErr error
+	templates, parseErr = template.New("").Funcs(funcMap).ParseGlob("../frontend/*.html")
+	if parseErr != nil {
+		log.Fatal().Err(parseErr).Msg("Failed to parse templates")
 	}
 
 	// Get port from environment
@@ -60,6 +101,7 @@ func main() {
 	// Handlers
 	r.HandleFunc("/", indexHandler)
 	r.HandleFunc("/search", searchHandler)
+	r.HandleFunc("/admin", adminHandler)
 	r.HandleFunc("/health", healthHandler)
 
 	// Configure server
@@ -119,19 +161,31 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 
 	localizer := i18n.NewLocalizer(bundle, lang)
 
-	data["Title"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
-	data["Header"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Header"})
-	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
+	data["AdminNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Nodes"})
+	data["AdminPage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Page"})
 	data["Body"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Body"})
-	data["Footer"] = template.HTML(localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Footer"}))
-	data["NavbarHome"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
-	data["NavbarVMs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
-	data["NavbarSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
 	data["ButtonSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Button.Search"})
+	data["Footer"] = template.HTML(localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Footer"}))
+	data["Header"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Header"})
+	data["Lang"] = lang
+	data["NavbarAdmin"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Admin"})
+	data["NavbarHome"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
+	data["NavbarSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
+	data["NavbarVMs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
 	data["SearchResults"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Results"})
 	data["SearchYouSearchedFor"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.YouSearchedFor"})
-	data["NavbarAdmin"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Admin"})
-	data["Lang"] = lang
+	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
+	data["Title"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
+
+	// Nodes page
+	data["NodesNoNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.NoNodes"})
+	data["NodesHeaderNode"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Header.Node"})
+	data["NodesHeaderStatus"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Header.Status"})
+	data["NodesHeaderCPUUsage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Header.CPUUsage"})
+	data["NodesHeaderMemoryUsage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Header.MemoryUsage"})
+	data["NodesHeaderDiskUsage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Header.DiskUsage"})
+	data["NodesStatusOnline"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Status.Online"})
+	data["NodesStatusOffline"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Status.Offline"})
 
 	// Render the specific page template to a buffer
 	buf := new(bytes.Buffer)
@@ -168,6 +222,32 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		"Query": query,
 	}
 	renderTemplate(w, r, "search.html", data)
+}
+
+func adminHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("path", r.URL.Path).Msg("Request received for admin")
+	data := make(map[string]interface{})
+
+	apiURL := os.Getenv("PROXMOX_URL")
+	apiTokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
+	apiTokenSecret := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+	insecure := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
+
+	client, err := proxmox.NewClient(apiURL, apiTokenID, apiTokenSecret, insecure)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create proxmox client")
+		data["Error"] = "Failed to connect to Proxmox API"
+	} else {
+		nodes, err := proxmox.GetNodes(client)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get node list")
+			data["Error"] = "Failed to retrieve nodes from Proxmox"
+		} else {
+			data["Nodes"] = nodes
+		}
+	}
+
+	renderTemplate(w, r, "admin.html", data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

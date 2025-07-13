@@ -1,3 +1,9 @@
+[Admin.Nodes]
+other = "Noeuds PVE"
+
+[Admin.Page]
+other = "Page d'administration de PVMSS"
+
 [Body]
 other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
 
@@ -21,6 +27,20 @@ other = "Rechercher une VM"
 
 [Navbar.VMs]
 other = "Machines virtuelles"
+
+[Nodes]
+NoNodes = "Aucun nœud à afficher."
+
+[Nodes.Header]
+Node = "Nœud"
+Status = "Statut"
+CPUUsage = "Utilisation CPU"
+MemoryUsage = "Utilisation mémoire"
+DiskUsage = "Utilisation disque (rootfs)"
+
+[Nodes.Status]
+Online = "En ligne"
+Offline = "Hors ligne"
 
 [Search.Results]
 other = "Résultats de la recherche"
