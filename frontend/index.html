@@ -1,98 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}}</title>
-    <link rel="stylesheet" href="css/bulma.min.css">
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-
-    <nav class="navbar" role="navigation" aria-label="main navigation">
-        <div class="navbar-brand">
-            <a class="navbar-item" href="/?lang={{.Lang}}">
-                <strong>PVMSS</strong>
-            </a>
-
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-            </a>
-        </div>
-
-        <div id="navbarBasicExample" class="navbar-menu">
-            <div class="navbar-start">
-                <a class="navbar-item" href="/?lang={{.Lang}}">
-                    {{.NavbarHome}}
-                </a>
-
-                <a class="navbar-item" href="/vms?lang={{.Lang}}">
-                    {{.NavbarVMs}}
-                </a>
-
-                <a class="navbar-item" href="/search?lang={{.Lang}}">
-                    {{.NavbarSearchVM}}
-                </a>
-            </div>
-
-            <div class="navbar-end">
-                <div class="navbar-item">
-                    <div class="buttons">
-                        <a href="/?lang=en" class="button is-light">EN</a>
-                        <a href="/?lang=fr" class="button is-light">FR</a>
-                        <a class="button is-primary">
-                            <strong>{{.NavbarAdmin}}</strong>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <section class="hero is-primary is-bold">
-        <div class="hero-body">
-            <div class="container">
-                <h1 class="title">
-                    {{.Header}}
-                </h1>
-                <h2 class="subtitle">
-                    {{.Subtitle}}
-                </h2>
-            </div>
-        </div>
-    </section>
-
-    <section class="section">
+{{define "index.html"}}
+<section class="hero is-primary is-bold">
+    <div class="hero-body">
         <div class="container">
-            <p>{{.Body}}</p>
+            <h1 class="title">
+                {{.Header}}
+            </h1>
+            <h2 class="subtitle">
+                {{.Subtitle}}
+            </h2>
         </div>
-    </section>
+    </div>
+</section>
 
-    <footer class="footer">
-        <div class="content has-text-centered">
-            <p>
-                {{.Footer}}
-            </p>
-        </div>
-    </footer>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
-            if ($navbarBurgers.length > 0) {
-                $navbarBurgers.forEach( el => {
-                    el.addEventListener('click', () => {
-                        const target = el.dataset.target;
-                        const $target = document.getElementById(target);
-                        el.classList.toggle('is-active');
-                        $target.classList.toggle('is-active');
-                    });
-                });
-            }
-        });
-    </script>
-
-</body>
-</html>
+<section class="section">
+    <div class="container">
+        <p>{{.Body}}</p>
+    </div>
+</section>
+{{end}}

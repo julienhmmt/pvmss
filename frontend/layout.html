@@ -1,0 +1,91 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/css/bulma.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/?lang={{.Lang}}">
+                <strong>PVMSS</strong>
+            </a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+        </div>
+        <div id="navbarBasicExample" class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="/?lang={{.Lang}}">
+                    {{.NavbarHome}}
+                </a>
+                <a class="navbar-item" href="/vms?lang={{.Lang}}">
+                    {{.NavbarVMs}}
+                </a>
+                <div class="navbar-item">
+                    <form action="/search" method="GET" class="field has-addons">
+                        <div class="control">
+                            <input type="hidden" name="lang" value="{{.Lang}}">
+                            <input class="input is-small" type="text" name="q" placeholder="{{.NavbarSearchVM}}" value="{{.Query}}">
+                        </div>
+                        <div class="control">
+                            <button type="submit" class="button is-primary is-small">
+                                {{.ButtonSearchVM}}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <div class="buttons">
+                        <a href="/?lang=en" class="button is-light">EN</a>
+                        <a href="/?lang=fr" class="button is-light">FR</a>
+                        <a class="button is-primary">
+                            <strong>{{.NavbarAdmin}}</strong>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page specific content will be injected here -->
+    {{.Content}}
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="content has-text-centered">
+            <p>
+                {{.Footer}}
+            </p>
+        </div>
+    </footer>
+
+    <!-- Burger menu script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+            if ($navbarBurgers.length > 0) {
+                $navbarBurgers.forEach( el => {
+                    el.addEventListener('click', () => {
+                        const target = el.dataset.target;
+                        const $target = document.getElementById(target);
+                        el.classList.toggle('is-active');
+                        $target.classList.toggle('is-active');
+                    });
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>
+{{end}}

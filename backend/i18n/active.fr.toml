@@ -1,5 +1,8 @@
 [Body]
-other = "Here you will be able to manage your virtual machines."
+other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
+
+[Button.Search]
+other = "Rechercher"
 
 [Footer]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
@@ -18,6 +21,12 @@ other = "Rechercher une VM"
 
 [Navbar.VMs]
 other = "Machines virtuelles"
+
+[Search.Results]
+other = "Résultats de la recherche"
+
+[Search.YouSearchedFor]
+other = "Vous avez recherché :"
 
 [Subtitle]
 other = "Votre portail autonome pour vos machines virtuelles dans Proxmox."

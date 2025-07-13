@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"html/template"
 	"net/http"
@@ -16,6 +17,11 @@ import (
 	"golang.org/x/text/language"
 )
 
+var (
+	templates *template.Template
+	bundle    *i18n.Bundle
+)
+
 func main() {
 	// Initialize logger
 	zerolog.TimeFieldFormat = time.RFC3339Nano
@@ -25,10 +31,17 @@ func main() {
 	})
 
 	// Initialize i18n
-	bundle := i18n.NewBundle(language.English)
+	bundle = i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 	bundle.MustLoadMessageFile("i18n/active.en.toml")
 	bundle.MustLoadMessageFile("i18n/active.fr.toml")
+
+	// Parse templates
+	var err error
+	templates, err = template.ParseGlob("../frontend/*.html")
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to parse templates")
+	}
 
 	// Get port from environment
 	port := os.Getenv("PORT")
@@ -44,77 +57,10 @@ func main() {
 	fs := http.FileServer(http.Dir("../frontend/css"))
 	r.Handle("/css/", http.StripPrefix("/css/", fs))
 
-	// Root handler
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Info().Str("path", r.URL.Path).Msg("Request received")
-
-		// Determine language from query param, cookie, or header
-		lang := r.URL.Query().Get("lang")
-		if lang != "" {
-			// Set cookie if lang is from query param
-			http.SetCookie(w, &http.Cookie{
-				Name:    "pvmss_lang",
-				Value:   lang,
-				Path:    "/",
-				Expires: time.Now().Add(365 * 24 * time.Hour),
-			})
-		} else {
-			// Try to get lang from cookie
-			cookie, err := r.Cookie("pvmss_lang")
-			if err == nil {
-				lang = cookie.Value
-			}
-		}
-
-		// Fallback to header if no other lang source is found
-		if lang == "" {
-			lang = r.Header.Get("Accept-Language")
-		}
-
-		localizer := i18n.NewLocalizer(bundle, lang)
-
-		// Localize messages
-		title := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
-		header := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Header"})
-		subtitle := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
-		body := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Body"})
-		footer := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Footer"})
-		navbarHome := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
-		navbarVMs := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
-		navbarSearchVM := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
-		navbarAdmin := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Admin"})
-
-		// Parse and execute template
-		tmpl, err := template.ParseFiles("../frontend/index.html")
-		if err != nil {
-			http.Error(w, "Could not parse template", http.StatusInternalServerError)
-			log.Error().Err(err).Msg("Template parsing error")
-			return
-		}
-
-		data := map[string]interface{}{
-			"Title":        title,
-			"Header":       header,
-			"Subtitle":     subtitle,
-			"Body":         body,
-			"Footer":       template.HTML(footer),
-			"NavbarHome":   navbarHome,
-			"NavbarVMs":    navbarVMs,
-			"NavbarSearchVM": navbarSearchVM,
-			"NavbarAdmin":  navbarAdmin,
-			"Lang":         lang,
-		}
-
-		if err := tmpl.Execute(w, data); err != nil {
-			http.Error(w, "Could not execute template", http.StatusInternalServerError)
-			log.Error().Err(err).Msg("Template execution error")
-		}
-	})
-
-	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	// Handlers
+	r.HandleFunc("/", indexHandler)
+	r.HandleFunc("/search", searchHandler)
+	r.HandleFunc("/health", healthHandler)
 
 	// Configure server
 	srv := &http.Server{
@@ -145,4 +91,86 @@ func main() {
 	}
 
 	log.Info().Msg("Server exiting")
+}
+
+func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
+	// Determine language from query param, cookie, or header
+	lang := r.URL.Query().Get("lang")
+	if lang != "" {
+		// Set cookie if lang is from query param
+		http.SetCookie(w, &http.Cookie{
+			Name:    "pvmss_lang",
+			Value:   lang,
+			Path:    "/",
+			Expires: time.Now().Add(365 * 24 * time.Hour),
+		})
+	} else {
+		// Try to get lang from cookie
+		cookie, err := r.Cookie("pvmss_lang")
+		if err == nil {
+			lang = cookie.Value
+		}
+	}
+
+	// Fallback to header if no other lang source is found
+	if lang == "" {
+		lang = r.Header.Get("Accept-Language")
+	}
+
+	localizer := i18n.NewLocalizer(bundle, lang)
+
+	data["Title"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
+	data["Header"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Header"})
+	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
+	data["Body"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Body"})
+	data["Footer"] = template.HTML(localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Footer"}))
+	data["NavbarHome"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
+	data["NavbarVMs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
+	data["NavbarSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
+	data["ButtonSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Button.Search"})
+	data["SearchResults"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Results"})
+	data["SearchYouSearchedFor"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.YouSearchedFor"})
+	data["NavbarAdmin"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Admin"})
+	data["Lang"] = lang
+
+	// Render the specific page template to a buffer
+	buf := new(bytes.Buffer)
+	if err := templates.ExecuteTemplate(buf, name, data); err != nil {
+		log.Error().Err(err).Msgf("Error executing page template: %s", name)
+		http.Error(w, "Could not execute page template", http.StatusInternalServerError)
+		return
+	}
+
+	// Add the rendered content to the data map
+	data["Content"] = template.HTML(buf.String())
+
+	// Render the main layout with the page content
+	if err := templates.ExecuteTemplate(w, "layout", data); err != nil {
+		log.Error().Err(err).Msg("Error executing layout template")
+		http.Error(w, "Could not execute layout template", http.StatusInternalServerError)
+	}
+}
+
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("path", r.URL.Path).Msg("Request received for index")
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	data := make(map[string]interface{})
+	renderTemplate(w, r, "index.html", data)
+}
+
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("path", r.URL.Path).Msg("Request received for search")
+	query := r.URL.Query().Get("q")
+	data := map[string]interface{}{
+		"Query": query,
+	}
+	renderTemplate(w, r, "search.html", data)
+}
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
