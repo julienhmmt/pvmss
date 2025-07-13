@@ -1,0 +1,76 @@
+{{define "tags.html"}}
+<h2 class="title is-4">Tags</h2>
+<div id="tags-list" class="mb-4"></div>
+
+<div class="field has-addons">
+    <div class="control">
+        <input id="tag-input" class="input" type="text" placeholder="New tag">
+    </div>
+    <div class="control">
+        <a id="add-tag-btn" class="button is-info">Add</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tagsList = document.getElementById('tags-list');
+        const tagInput = document.getElementById('tag-input');
+        const addTagBtn = document.getElementById('add-tag-btn');
+
+        function fetchTags() {
+            fetch('/api/tags')
+                .then(response => response.json())
+                .then(data => {
+                    tagsList.innerHTML = '';
+                    data.tags.forEach(tag => {
+                        const tagElement = document.createElement('span');
+                        tagElement.className = 'tag is-medium is-info mr-2';
+                        tagElement.textContent = tag;
+
+                        if (tag !== 'PVMSS') {
+                            const deleteButton = document.createElement('button');
+                            deleteButton.className = 'delete is-small';
+                            deleteButton.onclick = () => deleteTag(tag);
+                            tagElement.appendChild(deleteButton);
+                        }
+                        
+                        tagsList.appendChild(tagElement);
+                    });
+                });
+        }
+
+        function addTag() {
+            const tag = tagInput.value.trim();
+            if (tag) {
+                fetch('/api/tags', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: tag })
+                }).then(() => {
+                    tagInput.value = '';
+                    fetchTags();
+                });
+            }
+        }
+
+        function deleteTag(tag) {
+            fetch(`/api/tags/${tag}`, {
+                method: 'DELETE'
+            }).then(() => {
+                fetchTags();
+            });
+        }
+
+        addTagBtn.addEventListener('click', addTag);
+        tagInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                addTag();
+            }
+        });
+
+        fetchTags();
+    });
+</script>
+{{end}}

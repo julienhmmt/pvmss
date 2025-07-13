@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"html/template"
 	"net/http"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/rs/zerolog"
-	"fmt"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/text/language"
 
@@ -104,6 +104,10 @@ func main() {
 	r.HandleFunc("/search", searchHandler)
 	r.HandleFunc("/admin", adminHandler)
 	r.HandleFunc("/health", healthHandler)
+
+	// API handlers
+	r.HandleFunc("/api/tags", tagsHandler)
+	r.HandleFunc("/api/tags/", tagsHandler)
 
 	// Configure server
 	srv := &http.Server{

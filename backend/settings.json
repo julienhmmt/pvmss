@@ -1,8 +1,19 @@
 {
-    "tags": ["pvmss"],
-    "ram": {"min":512,"max":8192},
-    "cpu": {"min":1,"max":4},
-    "sockets": {"min":1,"max":1},
+    "tags": [
+        "pvmss"
+    ],
+    "ram": {
+        "min": 512,
+        "max": 8192
+    },
+    "cpu": {
+        "min": 1,
+        "max": 4
+    },
+    "sockets": {
+        "min": 1,
+        "max": 1
+    },
     "isos": [],
     "vmbrs": []
 }
