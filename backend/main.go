@@ -203,6 +203,13 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
 	data["Title"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
 
+	// Create dynamic language URLs
+	q := r.URL.Query()
+	q.Set("lang", "en")
+	data["LangEN"] = "?" + q.Encode()
+	q.Set("lang", "fr")
+	data["LangFR"] = "?" + q.Encode()
+
 	// Nodes page
 	data["NodesNoNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.NoNodes"})
 	data["NodesHeaderNode"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Header.Node"})
