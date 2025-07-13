@@ -1,0 +1,14 @@
+/* Custom Variables */
+:root {
+    --primary: #FF8000;
+    --primary-hover: #e67300; 
+    --background: #f7f7f7;
+    --text: #363636;
+    --section-bg: #ffffff;
+    --border: #dbdbdb;
+    --navbar-bg: #ffffff;
+    --menu-bg: #2d3748;
+    --menu-text: #e2e8f0;
+    --menu-hover: rgba(255, 255, 255, 0.08);
+    --card-bg: #ffffff;
+}
