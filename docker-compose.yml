@@ -4,7 +4,7 @@ services:
     build:
       context: backend
       dockerfile: Dockerfile
-      target: builder  # Build only the builder stage for development
+      target: builder
     restart: unless-stopped
     environment:
       - LOG_LEVEL=debug # or 'info'
@@ -12,10 +12,10 @@ services:
     ports:
       - "50000:50000"
     volumes:
-      - ./backend:/app
-      - pvmss-go-mod:/go/pkg/mod  # Cache Go modules
-    working_dir: /app
-    command: sh -c "go run main.go"  # Auto-reload for development
+      - ./:/app
+      - pvmss-go-mod:/go/pkg/mod
+    working_dir: /app/backend
+    command: sh -c "go run main.go"
     networks:
       - pvmss-network
     healthcheck:

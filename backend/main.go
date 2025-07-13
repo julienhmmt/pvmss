@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"html/template"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/BurntSushi/toml"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/text/language"
 )
 
 func main() {
@@ -20,6 +24,11 @@ func main() {
 		TimeFormat: "2006-01-02 15:04:05",
 	})
 
+	// Initialize i18n
+	bundle := i18n.NewBundle(language.English)
+	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
+	bundle.MustLoadMessageFile("i18n/active.en.toml")
+
 	// Get port from environment
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -29,10 +38,46 @@ func main() {
 
 	// Create router
 	r := http.NewServeMux()
+
+	// Serve static files
+	fs := http.FileServer(http.Dir("../frontend/css"))
+	r.Handle("/css/", http.StripPrefix("/css/", fs))
+
+	// Root handler
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Info().Str("path", r.URL.Path).Msg("Request received")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("PVMSS Backend is running"))
+
+		// Set up localizer
+		lang := r.Header.Get("Accept-Language")
+		localizer := i18n.NewLocalizer(bundle, lang)
+
+		// Localize messages
+		title := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
+		header := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Header"})
+		subtitle := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
+		body := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Body"})
+		footer := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Footer"})
+
+		// Parse and execute template
+		tmpl, err := template.ParseFiles("../frontend/index.html")
+		if err != nil {
+			http.Error(w, "Could not parse template", http.StatusInternalServerError)
+			log.Error().Err(err).Msg("Template parsing error")
+			return
+		}
+
+		data := map[string]string{
+			"Title":    title,
+			"Header":   header,
+			"Subtitle": subtitle,
+			"Body":     body,
+			"Footer":   footer,
+		}
+
+		if err := tmpl.Execute(w, data); err != nil {
+			http.Error(w, "Could not execute template", http.StatusInternalServerError)
+			log.Error().Err(err).Msg("Template execution error")
+		}
 	})
 
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

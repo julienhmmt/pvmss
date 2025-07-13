@@ -1,0 +1,14 @@
+[Title]
+other = "PVMSS - Proxmox VM Self-Service"
+
+[Header]
+other = "Welcome to PVMSS"
+
+[Subtitle]
+other = "Your self-service portal for Proxmox virtual machines."
+
+[Body]
+other = "Here you will be able to manage your virtual machines."
+
+[Footer]
+other = "Created with ❤️ on Go 1.24+ and Bulma."
