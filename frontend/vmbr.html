@@ -1,27 +1,22 @@
 {{define "vmbr.html"}}
-<section class="section">
-    <div class="container">
-        <h2 class="title is-4">{{.AdminVMBRTitle}}</h2>
+<h2 class="title is-4">{{.AdminVMBRTitle}}</h2>
 
-        <div class="notification is-light">
-            {{.AdminVMBRDescription}}
-        </div>
+<div class="notification is-light">
+    {{.AdminVMBRDescription}}
+</div>
 
-        <table id="vmbr-table" class="table table-striped">
-            <thead>
-                <tr>
-                    <th>{{.AdminVMBRHeaderEnabled}}</th>
-                    <th>{{.AdminVMBRHeaderNode}}</th>
-                    <th>{{.AdminVMBRHeaderName}}</th>
-                </tr>
-            </thead>
-            <tbody id="vmbr-table-body">
-                <!-- VMBRs will be loaded here -->
-            </tbody>
-        </table>
-
-    </div>
-</section>
+<table id="vmbr-table" class="table table-striped">
+    <thead>
+        <tr>
+            <th>{{.AdminVMBRHeaderEnabled}}</th>
+            <th>{{.AdminVMBRHeaderNode}}</th>
+            <th>{{.AdminVMBRHeaderName}}</th>
+        </tr>
+    </thead>
+    <tbody id="vmbr-table-body">
+        <!-- VMBRs will be loaded here -->
+    </tbody>
+</table>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
