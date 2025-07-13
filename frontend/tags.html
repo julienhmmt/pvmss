@@ -1,5 +1,8 @@
 {{define "tags.html"}}
-<h2 class="title is-4">Tags</h2>
+<h2 class="title is-4">{{.AdminTagsTitle}}</h2>
+<div class="notification is-light">
+    {{.AdminTagsDescription}}
+</div>
 <div id="tags-list" class="mb-4"></div>
 
 <div class="field has-addons">
@@ -7,7 +10,7 @@
         <input id="tag-input" class="input" type="text" placeholder="New tag">
     </div>
     <div class="control">
-        <a id="add-tag-btn" class="button is-info">Add</a>
+        <a id="add-tag-btn" class="button is-info">{{.AdminTagsAddButton}}</a>
     </div>
 </div>
 

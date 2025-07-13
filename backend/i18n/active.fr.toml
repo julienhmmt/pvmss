@@ -1,62 +1,101 @@
-[Admin.Nodes]
-other = "Noeuds PVE"
+["Admin.Nodes"]
+other = "Nœuds PVE"
 
-[Admin.Page]
+["Admin.Page"]
 other = "Page d'administration de PVMSS"
 
-[Body]
+["Admin.Tags.Title"]
+other = "Gestion des tags"
+
+["Admin.Tags.Description"]
+other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
+
+["Admin.Tags.AddButton"]
+other = "Ajouter"
+
+["Body"]
 other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
 
-[Button.Search]
+["Button.Search"]
 other = "Rechercher"
 
-[Footer]
+["Footer"]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
 
-[Header]
+["Header"]
 other = "Proxmox VM Self-Service"
 
-[Navbar.Admin]
+["Navbar.Admin"]
 other = "Administration"
 
-[Navbar.Home]
+["Navbar.Home"]
 other = "Accueil"
 
-[Navbar.SearchVM]
+["Navbar.SearchVM"]
 other = "Rechercher une VM"
 
-[Navbar.VMs]
+["Navbar.VMs"]
 other = "Machines virtuelles"
 
-[Nodes]
-NoNodes = "Aucun nœud à afficher."
+["Nodes.NoNodes"]
+other = "Aucun nœud à afficher."
 
-[Nodes.Header]
-CPUUsage = "Utilisation CPU"
-DiskUsage = "Utilisation disque (rootfs)"
-MemoryUsage = "Utilisation mémoire"
-Node = "Nœud"
-Status = "Statut"
+["Nodes.Header.CPUUsage"]
+other = "Utilisation CPU"
 
-[Nodes.Status]
-Offline = "Hors ligne"
-Online = "En ligne"
+["Nodes.Header.DiskUsage"]
+other = "Utilisation disque (rootfs)"
 
-[Search]
-ActionsHeader = "Actions"
-CPUs = "CPU (Sockets/Cœurs)"
-Memory = "Mémoire vive"
-Name = "Nom"
-NoResults = "Aucune VM ne correspond à vos critères de recherche."
-Results = "Résultats de la recherche"
-Status = "Statut"
-Title = "Rechercher une VM"
-VMDetailsButton = "Détails de la VM"
-VMID = "ID de la VM"
-YouSearchedFor = "Vous avez recherché :"
+["Nodes.Header.MemoryUsage"]
+other = "Utilisation mémoire"
 
-[Subtitle]
-other = "Votre portail autonome pour vos machines virtuelles dans Proxmox."
+["Nodes.Header.Node"]
+other = "Nœud"
 
-[Title]
+["Nodes.Header.Status"]
+other = "Statut"
+
+["Nodes.Status.Offline"]
+other = "Hors ligne"
+
+["Nodes.Status.Online"]
+other = "En ligne"
+
+["Search.ActionsHeader"]
+other = "Actions"
+
+["Search.CPUs"]
+other = "CPU (Sockets/Cœurs)"
+
+["Search.Memory"]
+other = "Mémoire"
+
+["Search.Name"]
+other = "Nom"
+
+["Search.NoResults"]
+other = "Aucune VM ne correspond à vos critères."
+
+["Search.Results"]
+other = "Résultats de la recherche"
+
+["Search.Status"]
+other = "Statut"
+
+["Search.Title"]
+other = "Rechercher une VM"
+
+["Search.VMDetailsButton"]
+other = "Détails de la VM"
+
+["Search.VMID"]
+other = "ID de la VM"
+
+["Search.YouSearchedFor"]
+other = "Vous avez recherché :"
+
+["Subtitle"]
+other = "Votre portail libre-service pour les machines virtuelles Proxmox."
+
+["Title"]
 other = "PVMSS - Proxmox VM Self-Service"

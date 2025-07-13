@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -49,8 +50,15 @@ func addTagHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tagName := strings.TrimSpace(reqBody.Name)
-	if tagName == "" {
-		http.Error(w, "Tag name cannot be empty", http.StatusBadRequest)
+	if len(tagName) < 3 || len(tagName) > 24 {
+		http.Error(w, "Tag must be between 3 and 24 characters", http.StatusBadRequest)
+		return
+	}
+
+	// Regex to allow only alphanumeric characters
+	isValid, _ := regexp.MatchString(`^[a-zA-Z0-9]+$`, tagName)
+	if !isValid {
+		http.Error(w, "Tag can only contain alphanumeric characters", http.StatusBadRequest)
 		return
 	}
 

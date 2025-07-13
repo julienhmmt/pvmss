@@ -1,62 +1,101 @@
-[Admin.Nodes]
+["Admin.Nodes"]
 other = "PVE Nodes"
 
-[Admin.Page]
+["Admin.Page"]
 other = "Administration page PVMSS"
 
-[Body]
+["Admin.Tags.Title"]
+other = "Tags Management"
+
+["Admin.Tags.Description"]
+other = "Manage tags for your virtual machines. Tags must be between 3 and 24 characters, and can only contain alphanumeric characters."
+
+["Admin.Tags.AddButton"]
+other = "Add"
+
+["Body"]
 other = "Here you will be able to manage your virtual machines."
 
-[Button.Search]
+["Button.Search"]
 other = "Search"
 
-[Footer]
+["Footer"]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Created with <span style="color: #e25555;">&#9829;</span> on Go 1.24+ and Bulma.'
 
-[Header]
+["Header"]
 other = "Proxmox VM Self-Service"
 
-[Navbar.Admin]
+["Navbar.Admin"]
 other = "Administration"
 
-[Navbar.Home]
+["Navbar.Home"]
 other = "Home"
 
-[Navbar.SearchVM]
+["Navbar.SearchVM"]
 other = "Search a VM"
 
-[Navbar.VMs]
+["Navbar.VMs"]
 other = "Virtual machines"
 
-[Nodes]
-NoNodes = "No nodes to display."
+["Nodes.NoNodes"]
+other = "No nodes to display."
 
-[Nodes.Header]
-CPUUsage = "CPU Usage"
-DiskUsage = "Disk Usage (rootfs)"
-MemoryUsage = "Memory Usage"
-Node = "Node"
-Status = "Status"
+["Nodes.Header.CPUUsage"]
+other = "CPU Usage"
 
-[Nodes.Status]
-Offline = "Offline"
-Online = "Online"
+["Nodes.Header.DiskUsage"]
+other = "Disk Usage (rootfs)"
 
-[Search]
-ActionsHeader = "Actions"
-CPUs = "CPU (Sockets/Cores)"
-Memory = "Memory"
-Name = "Name"
-NoResults = "No VMs found matching your criteria."
-Results = "Search results"
-Status = "Status"
-Title = "Search for a VM"
-VMDetailsButton = "VM details"
-VMID = "VM ID"
-YouSearchedFor = "You searched for:"
+["Nodes.Header.MemoryUsage"]
+other = "Memory Usage"
 
-[Subtitle]
+["Nodes.Header.Node"]
+other = "Node"
+
+["Nodes.Header.Status"]
+other = "Status"
+
+["Nodes.Status.Offline"]
+other = "Offline"
+
+["Nodes.Status.Online"]
+other = "Online"
+
+["Search.ActionsHeader"]
+other = "Actions"
+
+["Search.CPUs"]
+other = "CPU (Sockets/Cores)"
+
+["Search.Memory"]
+other = "Memory"
+
+["Search.Name"]
+other = "Name"
+
+["Search.NoResults"]
+other = "No VMs found matching your criteria."
+
+["Search.Results"]
+other = "Search results"
+
+["Search.Status"]
+other = "Status"
+
+["Search.Title"]
+other = "Search for a VM"
+
+["Search.VMDetailsButton"]
+other = "VM details"
+
+["Search.VMID"]
+other = "VM ID"
+
+["Search.YouSearchedFor"]
+other = "You searched for:"
+
+["Subtitle"]
 other = "Your self-service portal for Proxmox virtual machines."
 
-[Title]
+["Title"]
 other = "PVMSS - Proxmox VM Self-Service"
