@@ -1,23 +1,26 @@
-[Title]
-other = "PVMSS - Proxmox VM Self-Service"
-
-[Header]
-other = "Proxmox VM Self-Service"
-
-[Subtitle]
-other = "Votre portail autonome pour vos machines virtuelles dans Proxmox."
-
 [Body]
 other = "Here you will be able to manage your virtual machines."
 
 [Footer]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
 
+[Header]
+other = "Proxmox VM Self-Service"
+
+[Navbar.Admin]
+other = "Administration"
+
 [Navbar.Home]
 other = "Accueil"
+
+[Navbar.SearchVM]
+other = "Rechercher une VM"
 
 [Navbar.VMs]
 other = "Machines virtuelles"
 
-[Navbar.Admin]
-other = "Administration"
+[Subtitle]
+other = "Votre portail autonome pour vos machines virtuelles dans Proxmox."
+
+[Title]
+other = "PVMSS - Proxmox VM Self-Service"

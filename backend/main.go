@@ -81,6 +81,7 @@ func main() {
 		footer := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Footer"})
 		navbarHome := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
 		navbarVMs := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
+		navbarSearchVM := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
 		navbarAdmin := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Admin"})
 
 		// Parse and execute template
@@ -99,6 +100,7 @@ func main() {
 			"Footer":       template.HTML(footer),
 			"NavbarHome":   navbarHome,
 			"NavbarVMs":    navbarVMs,
+			"NavbarSearchVM": navbarSearchVM,
 			"NavbarAdmin":  navbarAdmin,
 			"Lang":         lang,
 		}
