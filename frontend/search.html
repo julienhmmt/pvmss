@@ -28,7 +28,7 @@
         <hr>
         <h2 class="subtitle">{{.YouSearchedFor}} {{.Query}}</h2>
         {{if .Results}}
-        <table class="table is-bordered is-striped is-narrow is-hoverable is-fullwidth">
+                <table class="table is-bordered is-striped is-narrow is-hoverable is-fullwidth">
             <thead>
                 <tr>
                     <th>{{.SearchVMID}}</th>
@@ -36,6 +36,7 @@
                     <th>{{.SearchStatus}}</th>
                     <th>{{.SearchCPUs}}</th>
                     <th>{{.SearchMemory}}</th>
+                    <th>{{.SearchActionsHeader}}</th>
                 </tr>
             </thead>
             <tbody>
@@ -43,12 +44,23 @@
                 <tr>
                     <td>{{printf "%.0f" .vmid}}</td>
                     <td>{{.name}}</td>
-                    <td>{{.status}}</td>
+                    <td>
+                        {{if eq .status "running"}}
+                        <span class="tag is-success">{{.status}}</span>
+                        {{else if eq .status "stopped"}}
+                        <span class="tag is-light">{{.status}}</span>
+                        {{else}}
+                        <span class="tag is-warning">{{.status}}</span>
+                        {{end}}
+                    </td>
                     <td>
                         {{if .cpus}}{{.sockets}}s / {{.cpus}}c{{else}}N/A{{end}}
                     </td>
                     <td>
                         {{formatMemory .maxmem}}
+                    </td>
+                    <td>
+                        <a href="/vm-details?vmid={{printf "%.0f" .vmid}}&lang={{$.Lang}}" class="button is-info is-small">{{$.SearchVMDetailsButton}}</a>
                     </td>
                 </tr>
                 {{end}}

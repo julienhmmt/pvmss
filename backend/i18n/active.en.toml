@@ -43,6 +43,7 @@ Offline = "Offline"
 Online = "Online"
 
 [Search]
+ActionsHeader = "Actions"
 CPUs = "CPU (Sockets/Cores)"
 Memory = "Memory"
 Name = "Name"
@@ -50,6 +51,7 @@ NoResults = "No VMs found matching your criteria."
 Results = "Search results"
 Status = "Status"
 Title = "Search for a VM"
+VMDetailsButton = "VM details"
 VMID = "VM ID"
 YouSearchedFor = "You searched for:"
 

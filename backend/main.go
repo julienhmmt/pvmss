@@ -200,6 +200,8 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 	data["SearchMemory"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Memory"})
 	data["SearchResults"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Results"})
 	data["SearchYouSearchedFor"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.YouSearchedFor"})
+	data["SearchActionsHeader"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.ActionsHeader"})
+	data["SearchVMDetailsButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.VMDetailsButton"})
 	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
 	data["Title"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
 
