@@ -67,6 +67,9 @@ other = "Node"
 ["Admin.VMBR.Header.Name"]
 other = "VMBR Name"
 
+["Admin.VMBR.Header.Description"]
+other = "Description"
+
 ["Admin.VMBR.NoVMBRs"]
 other = "No VMBRs found on any node."
 

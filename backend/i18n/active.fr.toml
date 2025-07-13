@@ -67,6 +67,9 @@ other = "Nœud"
 ["Admin.VMBR.Header.Name"]
 other = "Nom du VMBR"
 
+["Admin.VMBR.Header.Description"]
+other = "Description"
+
 ["Admin.VMBR.NoVMBRs"]
 other = "Aucun VMBR trouvé sur aucun nœud."
 

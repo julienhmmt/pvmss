@@ -66,6 +66,7 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["AdminVMBRHeaderEnabled"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Header.Enabled"})
 	data["AdminVMBRHeaderNode"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Header.Node"})
 	data["AdminVMBRHeaderName"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Header.Name"})
+	data["AdminVMBRHeaderDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Header.Description"})
 	data["AdminVMBRNoVMBRs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.NoVMBRs"})
 	data["AdminVMBRError"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Error"})
 	data["Body"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Body"})

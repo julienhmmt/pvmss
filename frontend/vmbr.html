@@ -11,6 +11,7 @@
             <th>{{.AdminVMBRHeaderEnabled}}</th>
             <th>{{.AdminVMBRHeaderNode}}</th>
             <th>{{.AdminVMBRHeaderName}}</th>
+            <th>{{.AdminVMBRHeaderDescription}}</th>
         </tr>
     </thead>
     <tbody id="vmbr-table-body">
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     let enabledCell = row.insertCell(0);
                     let nodeCell = row.insertCell(1);
                     let nameCell = row.insertCell(2);
+                    let descriptionCell = row.insertCell(3);
 
                     let checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
@@ -50,6 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     nodeCell.textContent = vmbr.node;
                     nameCell.textContent = vmbr.name;
+                    descriptionCell.textContent = vmbr.description;
                 });
             } else {
                 let row = vmbrTableBody.insertRow();

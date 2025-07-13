@@ -12,8 +12,9 @@ import (
 // VMBRInfo holds information about a Proxmox network bridge.
 
 type VMBRInfo struct {
-	Name string `json:"name"`
-	Node string `json:"node"`
+	Name        string `json:"name"`
+	Node        string `json:"node"`
+	Description string `json:"description"`
 }
 
 // allVmbrsHandler fetches all VMBRs from all nodes.
@@ -53,9 +54,17 @@ func allVmbrsHandler(w http.ResponseWriter, r *http.Request) {
 					if ntype, ok := netItem["type"].(string); ok && ntype == "bridge" {
 						iface := netItem["iface"].(string)
 						if !uniqueVMBRs[iface] {
+							description := "N/A"
+							if comment, ok := netItem["comment"].(string); ok {
+								description = comment
+							} else if comment, ok := netItem["comments"].(string); ok {
+								description = comment
+							}
+
 							vmbr := VMBRInfo{
-								Name: iface,
-								Node: node,
+								Name:        iface,
+								Node:        node,
+								Description: description,
 							}
 							allVMBRs = append(allVMBRs, vmbr)
 							uniqueVMBRs[iface] = true
