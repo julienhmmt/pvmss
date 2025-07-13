@@ -94,11 +94,13 @@ func main() {
 	r.HandleFunc("/", indexHandler)
 	r.HandleFunc("/search", searchHandler)
 	r.HandleFunc("/admin", adminHandler)
+	r.HandleFunc("/storage", storagePageHandler)
 	r.HandleFunc("/health", healthHandler)
 
 	// API handlers
 	r.HandleFunc("/api/tags", tagsHandler)
 	r.HandleFunc("/api/tags/", tagsHandler)
+	r.HandleFunc("/api/storage", storageHandler)
 
 	// Configure server
 	srv := &http.Server{
@@ -249,6 +251,12 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, r, "admin.html", data)
+}
+
+func storagePageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("path", r.URL.Path).Msg("Request received for storage page")
+	data := make(map[string]interface{})
+	renderTemplate(w, r, "storage.html", data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
