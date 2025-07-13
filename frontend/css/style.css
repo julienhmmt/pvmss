@@ -1,7 +1,7 @@
 /* Custom Variables */
 :root {
     --primary: #FF8000;
-    --primary-hover: #e67300; 
+    --primary-hover: #e67300;
     --background: #f7f7f7;
     --text: #363636;
     --section-bg: #ffffff;
@@ -11,4 +11,27 @@
     --menu-text: #e2e8f0;
     --menu-hover: rgba(255, 255, 255, 0.08);
     --card-bg: #ffffff;
+}
+
+/* Bulma Overrides */
+body .hero.is-primary,
+.hero.is-primary.is-bold {
+    background-color: var(--primary);
+    background-image: none;
+}
+
+.hero.is-primary .title,
+.hero.is-primary .subtitle {
+    color: #ffffff;
+}
+
+.button.is-primary {
+    background-color: var(--primary);
+    border-color: transparent;
+}
+
+.button.is-primary:hover,
+.button.is-primary:focus {
+    background-color: var(--primary-hover);
+    border-color: transparent;
 }

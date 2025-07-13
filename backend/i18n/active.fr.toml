@@ -2,7 +2,7 @@
 other = "PVMSS - Proxmox VM Self-Service"
 
 [Header]
-other = "Bienvenue dans l'application PVMSS"
+other = "Proxmox VM Self-Service"
 
 [Subtitle]
 other = "Votre portail autonome pour vos machines virtuelles dans Proxmox."
@@ -11,4 +11,13 @@ other = "Votre portail autonome pour vos machines virtuelles dans Proxmox."
 other = "Here you will be able to manage your virtual machines."
 
 [Footer]
-other = "Créé avec ❤️ en Go 1.24+ et Bulma."
+other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
+
+[Navbar.Home]
+other = "Accueil"
+
+[Navbar.VMs]
+other = "Machines virtuelles"
+
+[Navbar.Admin]
+other = "Administration"

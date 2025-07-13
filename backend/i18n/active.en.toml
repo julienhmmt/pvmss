@@ -2,7 +2,7 @@
 other = "PVMSS - Proxmox VM Self-Service"
 
 [Header]
-other = "Welcome to PVMSS"
+other = "Proxmox VM Self-Service"
 
 [Subtitle]
 other = "Your self-service portal for Proxmox virtual machines."
@@ -11,4 +11,13 @@ other = "Your self-service portal for Proxmox virtual machines."
 other = "Here you will be able to manage your virtual machines."
 
 [Footer]
-other = "Created with ❤️ on Go 1.24+ and Bulma."
+other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Created with <span style="color: #e25555;">&#9829;</span> on Go 1.24+ and Bulma.'
+
+[Navbar.Home]
+other = "Home"
+
+[Navbar.VMs]
+other = "Virtual machines"
+
+[Navbar.Admin]
+other = "Administration"

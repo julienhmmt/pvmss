@@ -57,6 +57,9 @@ func main() {
 		subtitle := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
 		body := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Body"})
 		footer := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Footer"})
+		navbarHome := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
+		navbarVMs := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
+		navbarAdmin := localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Admin"})
 
 		// Parse and execute template
 		tmpl, err := template.ParseFiles("../frontend/index.html")
@@ -66,12 +69,15 @@ func main() {
 			return
 		}
 
-		data := map[string]string{
-			"Title":    title,
-			"Header":   header,
-			"Subtitle": subtitle,
-			"Body":     body,
-			"Footer":   footer,
+		data := map[string]interface{}{
+			"Title":        title,
+			"Header":       header,
+			"Subtitle":     subtitle,
+			"Body":         body,
+			"Footer":       template.HTML(footer),
+			"NavbarHome":   navbarHome,
+			"NavbarVMs":    navbarVMs,
+			"NavbarAdmin":  navbarAdmin,
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {
