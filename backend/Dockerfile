@@ -24,8 +24,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM alpine:3.22
 
 # Install CA certificates and timezone data with pinned versions
-RUN apk --no-cache upgrade && \
-    apk --no-cache add \
+RUN apk --no-cache add \
     ca-certificates=20241121-r2 \
     tzdata=2025b-r0 && \
     addgroup -g 1000 -S pvmssuser && \
