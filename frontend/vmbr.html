@@ -1,14 +1,18 @@
 {{define "vmbr.html"}}
 <section class="section">
     <div class="container">
-        <h2 class="title is-4">VMBR Management</h2>
+        <h2 class="title is-4">{{.AdminVMBRTitle}}</h2>
+
+        <div class="notification is-light">
+            {{.AdminVMBRDescription}}
+        </div>
 
         <table id="vmbr-table" class="table table-striped">
             <thead>
                 <tr>
-                    <th>Enabled</th>
-                    <th>Node</th>
-                    <th>VMBR Name</th>
+                    <th>{{.AdminVMBRHeaderEnabled}}</th>
+                    <th>{{.AdminVMBRHeaderNode}}</th>
+                    <th>{{.AdminVMBRHeaderName}}</th>
                 </tr>
             </thead>
             <tbody id="vmbr-table-body">
@@ -56,12 +60,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 let row = vmbrTableBody.insertRow();
                 let cell = row.insertCell(0);
                 cell.colSpan = 3;
-                cell.textContent = 'No VMBRs found on any node.';
+                cell.textContent = '{{.AdminVMBRNoVMBRs}}';
             }
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            vmbrTableBody.innerHTML = '<tr><td colspan="3">Error fetching data. See console for details.</td></tr>';
+            vmbrTableBody.innerHTML = '<tr><td colspan="3">{{.AdminVMBRError}}</td></tr>';
         });
 
     function saveVmbrSelections() {

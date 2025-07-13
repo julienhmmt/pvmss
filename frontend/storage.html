@@ -1,7 +1,7 @@
 {{define "storage.html"}}
-<h2 class="title is-4">Storage Management</h2>
+<h2 class="title is-4">{{.AdminStorageTitle}}</h2>
 <div class="notification is-light">
-    Here you can see all available storages on your Proxmox host that can be used for virtual machines.
+    {{.AdminStorageDescription}}
 </div>
 <div id="storage-list" class="mb-4"></div>
 
@@ -21,9 +21,9 @@
                         const thead = document.createElement('thead');
                         thead.innerHTML = `
                             <tr>
-                                <th>Name</th>
-                                <th>Type</th>
-                                <th>Content</th>
+                                <th>{{.AdminStorageHeaderName}}</th>
+                                <th>{{.AdminStorageHeaderType}}</th>
+                                <th>{{.AdminStorageHeaderContent}}</th>
                             </tr>
                         `;
                         table.appendChild(thead);
@@ -42,12 +42,12 @@
 
                         storageList.appendChild(table);
                     } else {
-                        storageList.innerHTML = '<p>No storages found that can be used for virtual machines.</p>';
+                        storageList.innerHTML = '<p>{{.AdminStorageNoStorages}}</p>';
                     }
                 })
                 .catch(error => {
                     console.error('Error fetching storages:', error);
-                    storageList.innerHTML = '<p>Error fetching storages. Please check the backend logs.</p>';
+                    storageList.innerHTML = '<p>{{.AdminStorageError}}</p>';
                 });
         }
 

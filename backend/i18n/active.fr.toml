@@ -1,8 +1,47 @@
+["Admin.ISO.Title"]
+other = "Gestion des ISOs"
+
+["Admin.ISO.Description"]
+other = "Ici, vous pouvez gérer quelles images ISO sont disponibles pour les utilisateurs lors de la création d'une nouvelle machine virtuelle."
+
+["Admin.ISO.Header.Enabled"]
+other = "Activé"
+
+["Admin.ISO.Header.Storage"]
+other = "Stockage"
+
+["Admin.ISO.Header.Name"]
+other = "Nom de l'ISO"
+
+["Admin.ISO.Header.Size"]
+other = "Taille (Go)"
+
 ["Admin.Nodes"]
 other = "Nœuds PVE"
 
 ["Admin.Page"]
 other = "Page d'administration de PVMSS"
+
+["Admin.Storage.Title"]
+other = "Gestion des stockages"
+
+["Admin.Storage.Description"]
+other = "Ici, vous pouvez voir tous les stockages disponibles sur votre hôte Proxmox qui peuvent être utilisés pour les machines virtuelles."
+
+["Admin.Storage.Header.Name"]
+other = "Nom"
+
+["Admin.Storage.Header.Type"]
+other = "Type"
+
+["Admin.Storage.Header.Content"]
+other = "Contenu"
+
+["Admin.Storage.NoStorages"]
+other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
+
+["Admin.Storage.Error"]
+other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
 
 ["Admin.Tags.Title"]
 other = "Gestion des tags"
@@ -12,6 +51,27 @@ other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir
 
 ["Admin.Tags.AddButton"]
 other = "Ajouter"
+
+["Admin.VMBR.Title"]
+other = "Gestion des VMBRs"
+
+["Admin.VMBR.Description"]
+other = "Ici, vous pouvez gérer quels VMBRs (ponts de réseau virtuels) sont disponibles pour les utilisateurs lors de la création d'une nouvelle machine virtuelle."
+
+["Admin.VMBR.Header.Enabled"]
+other = "Activé"
+
+["Admin.VMBR.Header.Node"]
+other = "Nœud"
+
+["Admin.VMBR.Header.Name"]
+other = "Nom du VMBR"
+
+["Admin.VMBR.NoVMBRs"]
+other = "Aucun VMBR trouvé sur aucun nœud."
+
+["Admin.VMBR.Error"]
+other = "Erreur lors de la récupération des données. Voir la console pour les détails."
 
 ["Body"]
 other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."

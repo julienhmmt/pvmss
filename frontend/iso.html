@@ -1,16 +1,20 @@
 {{define "iso.html"}}
 <section class="section">
     <div class="container">
-        <h2 class="title is-4">ISO Management</h2>
+        <h2 class="title is-4">{{.AdminISOTitle}}</h2>
+
+        <div class="notification is-light">
+            {{.AdminISODescription}}
+        </div>
 
         <!-- ISOs Table -->
         <table id="iso-table" class="table table-striped">
             <thead>
                 <tr>
-                    <th>Enabled</th>
-                    <th>Storage</th>
-                    <th>ISO Name</th>
-                    <th>Size (GB)</th>
+                    <th>{{.AdminISOHeaderEnabled}}</th>
+                    <th>{{.AdminISOHeaderStorage}}</th>
+                    <th>{{.AdminISOHeaderName}}</th>
+                    <th>{{.AdminISOHeaderSize}}</th>
                 </tr>
             </thead>
             <tbody id="iso-table-body">
