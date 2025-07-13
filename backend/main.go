@@ -28,6 +28,7 @@ func main() {
 	bundle := i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 	bundle.MustLoadMessageFile("i18n/active.en.toml")
+	bundle.MustLoadMessageFile("i18n/active.fr.toml")
 
 	// Get port from environment
 	port := os.Getenv("PORT")
@@ -47,8 +48,29 @@ func main() {
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Info().Str("path", r.URL.Path).Msg("Request received")
 
-		// Set up localizer
-		lang := r.Header.Get("Accept-Language")
+		// Determine language from query param, cookie, or header
+		lang := r.URL.Query().Get("lang")
+		if lang != "" {
+			// Set cookie if lang is from query param
+			http.SetCookie(w, &http.Cookie{
+				Name:    "pvmss_lang",
+				Value:   lang,
+				Path:    "/",
+				Expires: time.Now().Add(365 * 24 * time.Hour),
+			})
+		} else {
+			// Try to get lang from cookie
+			cookie, err := r.Cookie("pvmss_lang")
+			if err == nil {
+				lang = cookie.Value
+			}
+		}
+
+		// Fallback to header if no other lang source is found
+		if lang == "" {
+			lang = r.Header.Get("Accept-Language")
+		}
+
 		localizer := i18n.NewLocalizer(bundle, lang)
 
 		// Localize messages
@@ -78,6 +100,7 @@ func main() {
 			"NavbarHome":   navbarHome,
 			"NavbarVMs":    navbarVMs,
 			"NavbarAdmin":  navbarAdmin,
+			"Lang":         lang,
 		}
 
 		if err := tmpl.Execute(w, data); err != nil {

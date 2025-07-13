@@ -11,7 +11,7 @@
 
     <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
-            <a class="navbar-item" href="/">
+            <a class="navbar-item" href="/?lang={{.Lang}}">
                 <strong>PVMSS</strong>
             </a>
 
@@ -24,11 +24,11 @@
 
         <div id="navbarBasicExample" class="navbar-menu">
             <div class="navbar-start">
-                <a class="navbar-item" href="/">
+                <a class="navbar-item" href="/?lang={{.Lang}}">
                     {{.NavbarHome}}
                 </a>
 
-                <a class="navbar-item" href="/vms">
+                <a class="navbar-item" href="/vms?lang={{.Lang}}">
                     {{.NavbarVMs}}
                 </a>
             </div>
@@ -36,6 +36,8 @@
             <div class="navbar-end">
                 <div class="navbar-item">
                     <div class="buttons">
+                        <a href="/?lang=en" class="button is-light">EN</a>
+                        <a href="/?lang=fr" class="button is-light">FR</a>
                         <a class="button is-primary">
                             <strong>{{.NavbarAdmin}}</strong>
                         </a>
