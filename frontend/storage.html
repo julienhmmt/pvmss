@@ -7,6 +7,10 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Check if this component has already been initialized
+        if (window.storageInitialized) return;
+        window.storageInitialized = true;
+        
         const storageList = document.getElementById('storage-list');
 
         function fetchStorages() {

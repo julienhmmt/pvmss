@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"pvmss/backend/proxmox"
@@ -65,9 +67,12 @@ func updateLimitsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Try to get actual node details if possible
 	if apiURL != "" && apiTokenID != "" && apiTokenSecret != "" {
-		client, err := proxmox.NewClient(apiURL, apiTokenID, apiTokenSecret, insecure)
+		client, err := proxmox.NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret, insecure)
 		if err == nil {
-			nodeDetails, err := proxmox.GetNodeDetails(client, payload.Node)
+			// Create context with timeout for API request
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			defer cancel()
+			nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, client, payload.Node)
 			if err == nil {
 				// Successfully got node details
 				maxCPU = nodeDetails.MaxCPU

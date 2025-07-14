@@ -1,14 +1,18 @@
 {{define "admin.html"}}
-<section class="section">
-    <div class="container">
-        <h1 class="title">{{.AdminPage}}</h1>
-        <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{.NavbarAdminDocs}}</a>
+{{if .Content}}
+    {{.Content}}
+{{else}}
+    <section class="section">
+        <div class="container">
+            <h1 class="title">{{.AdminPage}}</h1>
+            <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{.NavbarAdminDocs}}</a>
             {{template "nodes.html" .}}
             {{template "tags.html" .}}
             {{template "storage.html" .}}
             {{template "iso.html" .}}
             {{template "vmbr.html" .}}
             {{template "limits.html" .}}
-    </div>
-</section>
+        </div>
+    </section>
+{{end}}
 {{end}}

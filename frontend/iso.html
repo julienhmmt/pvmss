@@ -1,29 +1,23 @@
 {{define "iso.html"}}
-<h2 class="title is-4">{{.AdminISOTitle}}</h2>
+<div class="container">
+    <h2 class="title is-4">{{.AdminISOTitle}}</h2>
 
-<div class="notification is-light">
-    {{.AdminISODescription}}
+    <div class="notification is-light">
+        {{.AdminISODescription}}
+    </div>
+
+    <div id="iso-container" class="mb-4">
+        <!-- ISO content will be loaded here -->
+    </div>
 </div>
-
-<!-- ISOs Table -->
-<table id="iso-table" class="table table-striped">
-    <thead>
-        <tr>
-            <th>{{.AdminISOHeaderEnabled}}</th>
-            <th>{{.AdminISOHeaderStorage}}</th>
-            <th>{{.AdminISOHeaderName}}</th>
-            <th>{{.AdminISOHeaderSize}}</th>
-        </tr>
-    </thead>
-    <tbody id="iso-table-body">
-        <!-- ISOs will be loaded here -->
-    </tbody>
-</table>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const isoTableBody = document.getElementById('iso-table-body');
-    const saveButton = document.getElementById('save-button');
+    // Check if this component has already been initialized
+    if (window.isoInitialized) return;
+    window.isoInitialized = true;
+    
+    const isoContainer = document.getElementById('iso-container');
 
     // Fetch the current settings to pre-check the saved ISOs
     let savedIsos = [];
@@ -36,17 +30,32 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            isoTableBody.innerHTML = ''; // Clear any previous content
+            isoContainer.innerHTML = ''; // Clear any previous content
             if (data.isos && data.isos.length > 0) {
+                // Create table element
+                const table = document.createElement('table');
+                table.className = 'table is-fullwidth is-striped';
+                
+                // Create table header
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>{{.AdminISOHeaderEnabled}}</th>
+                        <th>{{.AdminISOHeaderStorage}}</th>
+                        <th>{{.AdminISOHeaderName}}</th>
+                        <th>{{.AdminISOHeaderSize}}</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                // Create table body
+                const tbody = document.createElement('tbody');
                 data.isos.forEach(iso => {
-                    let row = isoTableBody.insertRow();
-                    // Correctly order the cells to match the header
-                    let enabledCell = row.insertCell(0);
-                    let storageCell = row.insertCell(1);
-                    let nameCell = row.insertCell(2);
-                    let sizeCell = row.insertCell(3);
-
-                    let checkbox = document.createElement('input');
+                    const row = document.createElement('tr');
+                    
+                    // Enabled cell with checkbox
+                    const enabledCell = document.createElement('td');
+                    const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.className = 'iso-checkbox';
                     checkbox.dataset.volid = iso.volid;
@@ -55,21 +64,34 @@ document.addEventListener('DOMContentLoaded', function() {
                         checkbox.checked = true;
                     }
                     enabledCell.appendChild(checkbox);
-
+                    row.appendChild(enabledCell);
+                    
+                    // Storage cell
+                    const storageCell = document.createElement('td');
                     storageCell.textContent = iso.storage;
+                    row.appendChild(storageCell);
+                    
+                    // Name cell
+                    const nameCell = document.createElement('td');
                     nameCell.textContent = iso.name;
+                    row.appendChild(nameCell);
+                    
+                    // Size cell
+                    const sizeCell = document.createElement('td');
                     sizeCell.textContent = formatBytes(iso.size);
+                    row.appendChild(sizeCell);
+                    
+                    tbody.appendChild(row);
                 });
+                table.appendChild(tbody);
+                isoContainer.appendChild(table);
             } else {
-                let row = isoTableBody.insertRow();
-                let cell = row.insertCell(0);
-                cell.colSpan = 4;
-                cell.textContent = 'No ISO images found on any compatible storage.';
+                isoContainer.innerHTML = '<div class="notification is-warning">No ISO images found on any compatible storage.</div>';
             }
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            isoTableBody.innerHTML = '<tr><td colspan="4">Error fetching data. See console for details.</td></tr>';
+            isoContainer.innerHTML = '<div class="notification is-danger">{{.AdminISOError}}</div>';
         });
 
     function saveIsoSelections() {
@@ -95,8 +117,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add event listener to the table body for delegation
-    isoTableBody.addEventListener('change', function(event) {
+    // Add event listener to the container for delegation
+    isoContainer.addEventListener('change', function(event) {
         if (event.target.matches('.iso-checkbox')) {
             saveIsoSelections();
         }

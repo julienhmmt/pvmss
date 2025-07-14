@@ -1,27 +1,23 @@
 {{define "vmbr.html"}}
-<h2 class="title is-4">{{.AdminVMBRTitle}}</h2>
+<div class="container">
+    <h2 class="title is-4">{{.AdminVMBRTitle}}</h2>
 
-<div class="notification is-light">
-    {{.AdminVMBRDescription}}
+    <div class="notification is-light">
+        {{.AdminVMBRDescription}}
+    </div>
+
+    <div id="vmbr-container" class="mb-4">
+        <!-- VMBR content will be loaded here -->
+    </div>
 </div>
-
-<table id="vmbr-table" class="table table-striped">
-    <thead>
-        <tr>
-            <th>{{.AdminVMBRHeaderEnabled}}</th>
-            <th>{{.AdminVMBRHeaderNode}}</th>
-            <th>{{.AdminVMBRHeaderName}}</th>
-            <th>{{.AdminVMBRHeaderDescription}}</th>
-        </tr>
-    </thead>
-    <tbody id="vmbr-table-body">
-        <!-- VMBRs will be loaded here -->
-    </tbody>
-</table>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const vmbrTableBody = document.getElementById('vmbr-table-body');
+    // Check if this component has already been initialized
+    if (window.vmbrInitialized) return;
+    window.vmbrInitialized = true;
+    
+    const vmbrContainer = document.getElementById('vmbr-container');
 
     let savedVmbrs = [];
     fetch('/api/settings')
@@ -32,16 +28,32 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            vmbrTableBody.innerHTML = '';
+            vmbrContainer.innerHTML = ''; // Clear any previous content
             if (data.vmbrs && data.vmbrs.length > 0) {
+                // Create table element
+                const table = document.createElement('table');
+                table.className = 'table is-fullwidth is-striped';
+                
+                // Create table header
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>{{.AdminVMBRHeaderEnabled}}</th>
+                        <th>{{.AdminVMBRHeaderNode}}</th>
+                        <th>{{.AdminVMBRHeaderName}}</th>
+                        <th>{{.AdminVMBRHeaderDescription}}</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                // Create table body
+                const tbody = document.createElement('tbody');
                 data.vmbrs.forEach(vmbr => {
-                    let row = vmbrTableBody.insertRow();
-                    let enabledCell = row.insertCell(0);
-                    let nodeCell = row.insertCell(1);
-                    let nameCell = row.insertCell(2);
-                    let descriptionCell = row.insertCell(3);
-
-                    let checkbox = document.createElement('input');
+                    const row = document.createElement('tr');
+                    
+                    // Enabled cell with checkbox
+                    const enabledCell = document.createElement('td');
+                    const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
                     checkbox.className = 'vmbr-checkbox';
                     checkbox.dataset.name = vmbr.name;
@@ -49,21 +61,34 @@ document.addEventListener('DOMContentLoaded', function() {
                         checkbox.checked = true;
                     }
                     enabledCell.appendChild(checkbox);
-
+                    row.appendChild(enabledCell);
+                    
+                    // Node cell
+                    const nodeCell = document.createElement('td');
                     nodeCell.textContent = vmbr.node;
+                    row.appendChild(nodeCell);
+                    
+                    // Name cell
+                    const nameCell = document.createElement('td');
                     nameCell.textContent = vmbr.name;
+                    row.appendChild(nameCell);
+                    
+                    // Description cell
+                    const descriptionCell = document.createElement('td');
                     descriptionCell.textContent = vmbr.description;
+                    row.appendChild(descriptionCell);
+                    
+                    tbody.appendChild(row);
                 });
+                table.appendChild(tbody);
+                vmbrContainer.appendChild(table);
             } else {
-                let row = vmbrTableBody.insertRow();
-                let cell = row.insertCell(0);
-                cell.colSpan = 3;
-                cell.textContent = '{{.AdminVMBRNoVMBRs}}';
+                vmbrContainer.innerHTML = '<div class="notification is-warning">{{.AdminVMBRNoVMBRs}}</div>';
             }
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            vmbrTableBody.innerHTML = '<tr><td colspan="3">{{.AdminVMBRError}}</td></tr>';
+            vmbrContainer.innerHTML = '<div class="notification is-danger">{{.AdminVMBRError}}</div>';
         });
 
     function saveVmbrSelections() {
@@ -89,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    vmbrTableBody.addEventListener('change', function(event) {
+    vmbrContainer.addEventListener('change', function(event) {
         if (event.target.matches('.vmbr-checkbox')) {
             saveVmbrSelections();
         }

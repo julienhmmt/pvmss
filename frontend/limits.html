@@ -1,10 +1,11 @@
 {{define "limits.html"}}
-<h2 class="title is-4">{{.AdminLimitsTitle}}</h2>
-<div class="notification is-light">
-    {{.AdminLimitsDescription}}
-</div>
+<div class="container">
+    <h2 class="title is-4">{{.AdminLimitsTitle}}</h2>
+    <div class="notification is-light">
+        {{.AdminLimitsDescription}}
+    </div>
 
-<div id="limits-container">
+    <div id="limits-container" class="mb-4">
     {{range .NodeDetails}}
     <div class="card mb-5" id="node-{{.Node}}">
         <header class="card-header">
@@ -85,6 +86,10 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if this component has already been initialized
+    if (window.limitsInitialized) return;
+    window.limitsInitialized = true;
+    
     const i18n = {
         saveSuccess: '{{$.AdminLimitsSaveSuccess}}',
         saveFailed: '{{$.AdminLimitsSaveFailed}}',
@@ -159,4 +164,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+</div>
 {{end}}

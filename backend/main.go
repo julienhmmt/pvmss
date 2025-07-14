@@ -12,42 +12,74 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alexedwards/scs/v2"
+	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-
-	"github.com/joho/godotenv"
-	"pvmss/backend/proxmox"
 	"golang.org/x/crypto/bcrypt"
-	"github.com/alexedwards/scs/v2"
+
+	"pvmss/backend/proxmox"
 )
 
-var templates *template.Template
-var sessionManager *scs.SessionManager
+// Application globals
+var (
+	templates      *template.Template
+	sessionManager *scs.SessionManager
+	proxmoxClient  *proxmox.Client
+)
 
-func main() {
-	if err := godotenv.Load("../.env"); err != nil {
-		log.Warn().Msg("Error loading .env file, relying on environment variables")
-	}
+// Helper functions for server initialization and management
 
-	// Log the loaded Proxmox URL to verify it's loaded correctly
-	proxmoxURL := os.Getenv("PROXMOX_URL")
-	if proxmoxURL == "" {
-		log.Warn().Msg("PROXMOX_URL is not set")
-	} else {
-		log.Info().Str("PROXMOX_URL", proxmoxURL).Msg("Proxmox URL loaded")
-	}
-
-	// Initialize logger
+// initLogger configures the zerolog logger
+func initLogger() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	log.Logger = log.Output(zerolog.ConsoleWriter{
 		Out:        os.Stdout,
 		TimeFormat: "2006-01-02 15:04:05",
 	})
+}
 
-	// Initialize i18n
-	initI18n()
+// validateEnvironment checks for required environment variables
+func validateEnvironment() error {
+	requiredVars := []string{
+		"PROXMOX_URL",
+		"PROXMOX_API_TOKEN_NAME",
+		"PROXMOX_API_TOKEN_VALUE",
+	}
 
-	// Parse templates
+	for _, v := range requiredVars {
+		if os.Getenv(v) == "" {
+			return fmt.Errorf("required environment variable %s is not set", v)
+		}
+	}
+
+	// Log the loaded Proxmox URL to verify it's loaded correctly
+	proxmoxURL := os.Getenv("PROXMOX_URL")
+	log.Info().Str("PROXMOX_URL", proxmoxURL).Msg("Proxmox URL loaded")
+
+	return nil
+}
+
+// initProxmoxClient creates and configures the Proxmox API client
+func initProxmoxClient() (*proxmox.Client, error) {
+	proxmoxURL := os.Getenv("PROXMOX_URL")
+	proxmoxAPITokenName := os.Getenv("PROXMOX_API_TOKEN_NAME")
+	proxmoxAPITokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+	proxmoxVerifySSL := os.Getenv("PROXMOX_VERIFY_SSL") != "false"
+
+	// Create client with a 10-second timeout
+	return proxmox.NewClientWithOptions(
+		proxmoxURL,
+		proxmoxAPITokenName,
+		proxmoxAPITokenValue,
+		!proxmoxVerifySSL,
+		proxmox.WithTimeout(10*time.Second),
+	)
+}
+
+// initTemplates initializes the HTML templates with custom functions
+func initTemplates() error {
+	// Define template functions
 	funcMap := template.FuncMap{
 		"div": func(a, b float64) float64 {
 			if b == 0 {
@@ -89,20 +121,17 @@ func main() {
 
 	var err error
 	templates, err = template.New("layout.html").Funcs(funcMap).ParseGlob("../frontend/*.html")
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to parse templates")
-	}
+	return err
+}
 
+// setupServer configures the HTTP server with routes and middleware
+func setupServer(ctx context.Context) *http.Server {
 	// Get port from environment
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "50000"
 		log.Info().Msgf("Using default port: %s", port)
 	}
-
-	// Initialize session manager
-	sessionManager = scs.New()
-	sessionManager.Lifetime = 24 * time.Hour
 
 	// Create router
 	r := http.NewServeMux()
@@ -141,35 +170,86 @@ func main() {
 	r.HandleFunc("/api/vmbr/settings", updateVmbrSettingsHandler)
 	r.HandleFunc("/api/limits", limitsHandler)
 
-	// Configure server
-	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: sessionManager.LoadAndSave(r),
+	// Configure server with timeouts
+	return &http.Server{
+		Addr:         ":" + port,
+		Handler:      sessionManager.LoadAndSave(r),
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
+}
 
-	// Graceful shutdown
-	go func() {
-		log.Info().Str("port", port).Msg("Starting server...")
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal().Err(err).Msg("Server failed to start")
-		}
-	}()
+// startServer starts the HTTP server
+func startServer(srv *http.Server) {
+	log.Info().Str("addr", srv.Addr).Msg("Starting server...")
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal().Err(err).Msg("Server failed to start")
+	}
+}
 
-	// Wait for interrupt signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Info().Msg("Shutting down server...")
-
-	// Graceful shutdown with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+func main() {
+	// Setup context with cancellation for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	// Initialize logger first for proper error reporting
+	initLogger()
+
+	// Load environment variables
+	if err := godotenv.Load("../.env"); err != nil {
+		log.Warn().Msg("Error loading .env file, relying on environment variables")
+	}
+
+	// Validate required environment variables
+	if err := validateEnvironment(); err != nil {
+		log.Fatal().Err(err).Msg("Environment validation failed")
+	}
+
+	// Initialize Proxmox client
+	var err error
+	proxmoxClient, err = initProxmoxClient()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize Proxmox client")
+	}
+
+	// Initialize i18n
+	initI18n()
+
+	// Initialize templates
+	if err := initTemplates(); err != nil {
+		log.Fatal().Err(err).Msg("Failed to initialize templates")
+	}
+
+	// Initialize session manager
+	sessionManager = scs.New()
+	sessionManager.Lifetime = 24 * time.Hour
+	
+	// Setup HTTP server with proper timeouts and handlers
+	server := setupServer(ctx)
+
+	// Start server in a goroutine
+	go startServer(server)
+
+	// Wait for termination signal
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	<-sigCh
+
+	// Cancel context to signal shutdown to all components
+	cancel()
+	log.Info().Msg("Graceful shutdown initiated")
+
+	// Allow time for cleanup operations
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	// Perform any additional cleanup if needed
+	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Error().Err(err).Msg("Server forced to shutdown")
 	}
 
-	log.Info().Msg("Server exiting")
+	log.Info().Msg("Server exited gracefully")
 }
 
 func formatMemory(mem interface{}) string {
@@ -238,28 +318,71 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 		log.Info().Str("vmid", vmid).Str("name", name).Msg("Processing search request")
 
-		apiURL := os.Getenv("PROXMOX_URL")
-		apiTokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
-		apiTokenSecret := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-		insecure := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
+		// Use the global proxmox client
+		if proxmoxClient == nil {
+			log.Error().Msg("Proxmox client not initialized")
+			http.Error(w, "Server configuration error", http.StatusInternalServerError)
+			return
+		}
 
-		client, err := proxmox.NewClient(apiURL, apiTokenID, apiTokenSecret, insecure)
+		// Create context with timeout for API requests
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
+		// Fetch node names with context
+		nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to create proxmox client")
-			data["Error"] = "Failed to connect to Proxmox API"
-		} else {
-			results, err := searchVM(client, vmid, name)
+			log.Error().Err(err).Msg("Failed to get node names")
+			http.Error(w, "Failed to get node names", http.StatusInternalServerError)
+			return
+		}
+
+		// Fetch node details with context
+		nodeDetailsList := make([]*proxmox.NodeDetails, 0)
+		nodesList := make([]map[string]interface{}, 0)
+		for _, nodeName := range nodeNames {
+			nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to search for VM")
-				data["Error"] = "Failed to retrieve VM information from Proxmox"
-			} else {
-				data["Results"] = results
-				if vmid != "" {
-					data["Query"] = vmid
-				} else {
-					data["Query"] = name
-				}
+				log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
+				continue
 			}
+			nodeDetailsList = append(nodeDetailsList, nodeDetails)
+
+			// Create a map for the Nodes template - convert int64 to float64 for template compatibility
+			nodeMap := map[string]interface{}{
+				"node":     nodeDetails.Node,
+				"status":   "online",
+				"cpu":      nodeDetails.CPU,
+				"maxcpu":   float64(nodeDetails.MaxCPU),
+				"mem":      float64(nodeDetails.Memory),
+				"maxmem":   float64(nodeDetails.MaxMemory),
+				"disk":     float64(nodeDetails.Disk),
+				"maxdisk":  float64(nodeDetails.MaxDisk),
+			}
+			nodesList = append(nodesList, nodeMap)
+		}
+
+		// Fetch VMs with context
+		vms, err := proxmox.GetVMsWithContext(ctx, proxmoxClient)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get VMs")
+			http.Error(w, "Failed to get VMs", http.StatusInternalServerError)
+			return
+		}
+
+		// Filter VMs by name or ID
+		var results []map[string]interface{}
+		for _, vm := range vms {
+			if vm["name"].(string) == name || vm["vmid"].(string) == vmid {
+				results = append(results, vm)
+			}
+		}
+
+		data["Results"] = results
+		if vmid != "" {
+			data["Query"] = vmid
+		} else {
+			data["Query"] = name
 		}
 	}
 
@@ -267,7 +390,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func adminHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("path", r.URL.Path).Msg("Request received for admin")
+	log.Info().Str("path", r.URL.Path).Msg("Request received for admin page")
 	data := make(map[string]interface{})
 
 	// Read settings first, to pass them to the template even if proxmox fails
@@ -280,21 +403,20 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	data["Settings"] = settings
 
-	apiURL := os.Getenv("PROXMOX_URL")
-	apiTokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
-	apiTokenSecret := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-	insecure := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
-
-	client, err := proxmox.NewClient(apiURL, apiTokenID, apiTokenSecret, insecure)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create proxmox client")
-		data["Error"] = "Failed to connect to Proxmox API"
+	// Use the global proxmox client
+	if proxmoxClient == nil {
+		log.Error().Msg("Proxmox client not initialized")
+		data["Error"] = "Server configuration error"
 		renderTemplate(w, r, "admin.html", data)
 		return
 	}
 
-	// Fetch all node details
-	nodeNames, err := proxmox.GetNodeNames(client)
+	// Create context with timeout for API requests
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	// Fetch node names with context
+	nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get node names")
 		data["Error"] = "Failed to retrieve node list from Proxmox"
@@ -304,38 +426,45 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Info().Int("count", len(nodeNames)).Msg("Processing nodes for admin page")
 
+	// Fetch node details with context
 	nodeDetailsList := make([]*proxmox.NodeDetails, 0)
 	nodesList := make([]map[string]interface{}, 0)
 	for _, nodeName := range nodeNames {
-		details, err := proxmox.GetNodeDetails(client, nodeName)
+		nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
 		if err != nil {
-			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get details for node")
-			continue // Skip nodes that fail
+			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
+			continue
 		}
-		nodeDetailsList = append(nodeDetailsList, details)
-		
+		nodeDetailsList = append(nodeDetailsList, nodeDetails)
+
 		// Create a map for the Nodes template - convert int64 to float64 for template compatibility
 		nodeMap := map[string]interface{}{
-			"node": details.Node,
-			"status": "online",
-			"cpu": details.CPU,
-			"maxcpu": float64(details.MaxCPU),
-			"mem": float64(details.Memory),
-			"maxmem": float64(details.MaxMemory),
-			"disk": float64(details.Disk),
-			"maxdisk": float64(details.MaxDisk),
+			"node":    nodeDetails.Node,
+			"status":  "online",
+			"cpu":     nodeDetails.CPU,
+			"maxcpu":  float64(nodeDetails.MaxCPU),
+			"mem":     float64(nodeDetails.Memory),
+			"maxmem":  float64(nodeDetails.MaxMemory),
+			"disk":    float64(nodeDetails.Disk),
+			"maxdisk": float64(nodeDetails.MaxDisk),
 		}
 		nodesList = append(nodesList, nodeMap)
 	}
 	data["NodeDetails"] = nodeDetailsList
 	data["Nodes"] = nodesList
 
+	data["NodeDetails"] = nodeDetailsList
+	data["Nodes"] = nodesList
+
 	// Also fetch other necessary data for the admin page
-	storagesResult, err := proxmox.GetStorages(client)
+	storagesResult, err := proxmox.GetStorages(proxmoxClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get storages")
 	}
 	data["Storages"] = storagesResult
+	
+	// Localize the page (rendering will happen at the end of the function)
+	localizePage(w, r, data)
 
 	// Fetch all ISOs from all storages on all nodes
 	allISOs := make([]map[string]interface{}, 0)
@@ -346,7 +475,10 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 					if storageMap, ok := storage.(map[string]interface{}); ok {
 						if contentType, ok := storageMap["content"].(string); ok && strings.Contains(contentType, "iso") {
 							storageName := storageMap["storage"].(string)
-							isos, err := proxmox.GetISOList(client, nodeName, storageName)
+							// Create context with timeout for ISO API requests
+							isoCtx, isoCancel := context.WithTimeout(r.Context(), 5*time.Second)
+							defer isoCancel()
+							isos, err := proxmox.GetISOListWithContext(isoCtx, proxmoxClient, nodeName, storageName)
 							if err != nil {
 								log.Error().Err(err).Str("node", nodeName).Str("storage", storageName).Msg("Failed to get ISOs")
 								continue
@@ -368,7 +500,10 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	allVMBRs := make([]map[string]interface{}, 0)
 	for _, nodeName := range nodeNames {
-		vmbrs, err := proxmox.GetVMBRs(client, nodeName)
+		// Create context with timeout for VMBR API requests
+		vmbrCtx, vmbrCancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer vmbrCancel()
+		vmbrs, err := proxmox.GetVMBRsWithContext(vmbrCtx, proxmoxClient, nodeName)
 		if err != nil {
 			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs")
 			continue

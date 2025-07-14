@@ -16,6 +16,10 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Check if this component has already been initialized
+        if (window.tagsInitialized) return;
+        window.tagsInitialized = true;
+        
         const tagsList = document.getElementById('tags-list');
         const tagInput = document.getElementById('tag-input');
         const addTagBtn = document.getElementById('add-tag-btn');
