@@ -15,130 +15,102 @@ type NodeDetails struct {
 	Status    string  `json:"status"`
 	CPU       float64 `json:"cpu"`
 	MaxCPU    int     `json:"maxcpu"`
-	Memory    int64   `json:"memory"`
-	MaxMemory int64   `json:"maxmemory"`
-	Disk      int64   `json:"disk"`
-	MaxDisk   int64   `json:"maxdisk"`
+	Sockets   int     `json:"sockets"`
+	Memory    float64 `json:"memory"`
+	MaxMemory float64 `json:"maxmemory"`
+	Disk      float64 `json:"disk"`
+	MaxDisk   float64 `json:"maxdisk"`
 	Uptime    int64   `json:"uptime,omitempty"`
 }
 
-// NodeResponse represents the API response structure for node status
-type NodeResponse struct {
+// NodeStatus represents the full API response structure for node status
+type NodeStatus struct {
 	Data struct {
-		Node  string             `json:"node"`
-		CPU   float64            `json:"cpu"`
-		CPUs  float64            `json:"cpus"`
-		Uptime int64             `json:"uptime,omitempty"`
-		Memory map[string]float64 `json:"memory"`
-		Rootfs map[string]float64 `json:"rootfs"`
+		CPU     float64 `json:"cpu"`
+		Uptime  int64   `json:"uptime"`
+		CPUInfo struct {
+			Cores   int `json:"cores"`
+			Sockets int `json:"sockets"`
+			Cpus    int `json:"cpus"`
+		} `json:"cpuinfo"`
+		Memory struct {
+			Total int64 `json:"total"`
+			Used  int64 `json:"used"`
+		} `json:"memory"`
+		RootFS struct {
+			Total int64 `json:"total"`
+			Used  int64 `json:"used"`
+		} `json:"rootfs"`
 	} `json:"data"`
 }
 
 // GetNodeDetails retrieves the hardware details for a specific node with context support.
 func GetNodeDetails(client *Client, nodeName string) (*NodeDetails, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	return GetNodeDetailsWithContext(ctx, client, nodeName)
 }
 
-// GetNodeDetailsWithContext retrieves the hardware details for a specific node using the provided context.
+// GetNodeDetailsWithContext retrieves the hardware details for a specific node with context support.
 func GetNodeDetailsWithContext(ctx context.Context, client *Client, nodeName string) (*NodeDetails, error) {
-	if nodeName == "" {
-		return nil, fmt.Errorf("node name cannot be empty")
-	}
-
-	// We'll use our custom implementation with context support
-	log.Debug().Str("node", nodeName).Msg("Getting node details")
-
-	// Use our custom implementation with context support
+	// Get node status from Proxmox API
 	status, err := client.GetWithContext(ctx, fmt.Sprintf("/nodes/%s/status", nodeName))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get status for node %s: %w", nodeName, err)
+		return nil, fmt.Errorf("failed to get node status for %s: %w", nodeName, err)
 	}
 
-	// Parse the response into a structured format
-	var nodeResp NodeResponse
-	respBytes, err := json.Marshal(status)
+	// Log the raw response for debugging
+	rawResponse, _ := json.Marshal(status)
+	log.Debug().RawJSON("raw_api_response", rawResponse).Msg("Raw Proxmox API response for node status")
+
+	// Marshal the map to JSON bytes
+	jsonBytes, err := json.Marshal(status)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal node status data: %w", err)
+		return nil, fmt.Errorf("failed to marshal node status: %w", err)
 	}
 
-	if err := json.Unmarshal(respBytes, &nodeResp); err != nil {
-		// Fallback to manual extraction if structured parsing fails
-		log.Debug().Err(err).Msg("Failed to unmarshal node response, falling back to manual extraction")
-		return extractNodeDetailsManually(status, nodeName)
+	// Unmarshal into our NodeStatus struct
+	var nodeStatus NodeStatus
+	if err := json.Unmarshal(jsonBytes, &nodeStatus); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal node status: %w", err)
 	}
 
-	// Create and populate the node details
+	// Map to our internal NodeDetails struct
 	details := &NodeDetails{
-		Node:      nodeResp.Data.Node,
-		Status:    "online", // Default status
-		CPU:       nodeResp.Data.CPU,
-		MaxCPU:    int(nodeResp.Data.CPUs),
-		Memory:    int64(nodeResp.Data.Memory["used"]),
-		MaxMemory: int64(nodeResp.Data.Memory["total"]),
-		Disk:      int64(nodeResp.Data.Rootfs["used"]),
-		MaxDisk:   int64(nodeResp.Data.Rootfs["total"]),
-		Uptime:    nodeResp.Data.Uptime,
+		Node:      nodeName,
+		Status:    "online",
+		CPU:       nodeStatus.Data.CPU,
+		Sockets:   nodeStatus.Data.CPUInfo.Sockets,
+		Memory:    float64(nodeStatus.Data.Memory.Used),
+		MaxMemory: float64(nodeStatus.Data.Memory.Total),
+		Disk:      float64(nodeStatus.Data.RootFS.Used),
+		MaxDisk:   float64(nodeStatus.Data.RootFS.Total),
+		Uptime:    nodeStatus.Data.Uptime,
 	}
 
-	// If node name is empty, use the provided one
-	if details.Node == "" {
-		details.Node = nodeName
-	}
-
-	return details, nil
-}
-
-// extractNodeDetailsManually extracts node details from the raw API response map.
-func extractNodeDetailsManually(status map[string]interface{}, nodeName string) (*NodeDetails, error) {
-	// The result is a map. We need to extract the data.
-	data, ok := status["data"].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("failed to parse node status data for node %s", nodeName)
-	}
-
-	details := &NodeDetails{}
-
-	if node, ok := data["node"].(string); ok {
-		details.Node = node
+	// Use the logical core count from cpuinfo.cpus
+	if nodeStatus.Data.CPUInfo.Cpus > 0 {
+		details.MaxCPU = nodeStatus.Data.CPUInfo.Cpus
 	} else {
-		// Fallback to the provided nodeName if not in the response
-		details.Node = nodeName
+		// Fallback for older Proxmox versions or unexpected API responses
+		details.MaxCPU = nodeStatus.Data.CPUInfo.Cores * nodeStatus.Data.CPUInfo.Sockets
 	}
 
-	if cpus, ok := data["cpus"].(float64); ok {
-		details.MaxCPU = int(cpus)
+	// If sockets are not reported, default to 1
+	if details.Sockets == 0 {
+		details.Sockets = 1
 	}
 
-	if mem, ok := data["memory"].(map[string]interface{}); ok {
-		if total, ok := mem["total"].(float64); ok {
-			details.MaxMemory = int64(total)
-		}
-		if used, ok := mem["used"].(float64); ok {
-			details.Memory = int64(used)
-		}
-	}
-
-	if disk, ok := data["rootfs"].(map[string]interface{}); ok {
-		if total, ok := disk["total"].(float64); ok {
-			details.MaxDisk = int64(total)
-		}
-		if used, ok := disk["used"].(float64); ok {
-			details.Disk = int64(used)
-		}
-	}
-	
-	// Default to online status
-	details.Status = "online"
-	if cpu, ok := data["cpu"].(float64); ok {
-		details.CPU = cpu
-	}
-
-	if uptime, ok := data["uptime"].(float64); ok {
-		details.Uptime = int64(uptime)
-	}
+	// Log the final computed details that will be sent to the frontend
+	log.Info().
+		Str("node", details.Node).
+		Int("sockets", details.Sockets).
+		Int("final_max_cpu", details.MaxCPU).
+		Float64("final_memory_bytes", details.Memory).
+		Float64("final_max_memory_bytes", details.MaxMemory).
+		Float64("final_disk_bytes", details.Disk).
+		Float64("final_max_disk_bytes", details.MaxDisk).
+		Msg("Final computed node details")
 
 	return details, nil
 }

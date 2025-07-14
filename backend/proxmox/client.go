@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -20,15 +21,35 @@ type Client struct {
 	ApiUrl     string
 	AuthToken  string
 	Timeout    time.Duration
+	cache      map[string]*CacheEntry
+	cacheTTL   time.Duration
+	mux        sync.RWMutex
 }
 
 // ClientOption defines functional options for configuring the Client.
 type ClientOption func(*Client)
 
+// CacheEntry represents a cached API response
+type CacheEntry struct {
+	Data      []byte
+	Timestamp time.Time
+	TTL       time.Duration
+}
+
 // WithTimeout sets a custom timeout for API requests.
 func WithTimeout(timeout time.Duration) ClientOption {
 	return func(c *Client) {
 		c.Timeout = timeout
+	}
+}
+
+// WithCache enables response caching with a specific TTL.
+func WithCache(ttl time.Duration) ClientOption {
+	return func(c *Client) {
+		if ttl > 0 {
+			c.cache = make(map[string]*CacheEntry)
+			c.cacheTTL = ttl
+		}
 	}
 }
 
@@ -43,9 +64,13 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 		return nil, fmt.Errorf("apiURL, apiTokenID, and apiTokenSecret are required")
 	}
 
-	// Set up TLS configuration
+	// Set up TLS configuration with connection pooling
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+		MaxIdleConns:       10,
+		IdleConnTimeout:    30 * time.Second,
+		DisableCompression: false,
+		MaxConnsPerHost:    5,
 	}
 	httpClient := &http.Client{Transport: tr}
 
@@ -59,13 +84,15 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 	pxClient.SetAPIToken(apiTokenID, apiTokenSecret)
 	authToken := fmt.Sprintf("%s=%s", apiTokenID, apiTokenSecret)
 
-	// Create our client wrapper
+	// Create our client wrapper with default cache
 	client := &Client{
 		Client:     pxClient,
 		HttpClient: httpClient,
 		ApiUrl:     apiURL,
 		AuthToken:  authToken,
 		Timeout:    10 * time.Second, // Default timeout
+		cache:      make(map[string]*CacheEntry), // Default cache
+		cacheTTL:   2 * time.Minute, // Default TTL: 2 minutes
 	}
 
 	// Apply any provided options
@@ -86,35 +113,45 @@ func (c *Client) Get(path string) (map[string]interface{}, error) {
 
 // GetWithContext performs a direct GET request to the Proxmox API with the provided context.
 func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]interface{}, error) {
-	url := c.ApiUrl + path
-	
-	// Create request with context
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+	// Try to get from cache first if caching is enabled
+	if c.cache != nil {
+		c.mux.RLock()
+		cacheEntry, found := c.cache[path]
+		c.mux.RUnlock()
+		
+		if found && time.Since(cacheEntry.Timestamp) < c.cacheTTL {
+			log.Debug().Str("path", path).Msg("Using cached response")
+			var result map[string]interface{}
+			if err := json.Unmarshal(cacheEntry.Data, &result); err == nil {
+				return result, nil
+			} else {
+				log.Warn().Str("path", path).Err(err).Msg("Failed to unmarshal cached data")
+				// If unmarshaling fails, proceed to make a fresh request
+			}
+		}
 	}
 
-	// Set authorization header
-	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
-
-	// Execute the request
-	log.Debug().Str("url", url).Msg("Making API request to Proxmox")
-	resp, err := c.HttpClient.Do(req)
+	// Not in cache, make the request
+	rawData, err := c.GetRawWithContext(ctx, path)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// Check for non-200 status codes
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned non-200 status: %d - %s", resp.StatusCode, string(body))
+		return nil, err
 	}
 
 	// Parse the response
 	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(rawData, &result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Cache the raw response if caching is enabled
+	if c.cache != nil {
+		c.mux.Lock()
+		c.cache[path] = &CacheEntry{
+			Data:      rawData,
+			Timestamp: time.Now(),
+		}
+		c.mux.Unlock()
+		log.Debug().Str("path", path).Msg("Cached API response")
 	}
 
 	return result, nil
@@ -122,7 +159,20 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 
 // GetRawWithContext performs a direct GET request to the Proxmox API and returns the raw response body.
 func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, error) {
+	// Try to get from cache first if caching is enabled
+	if c.cache != nil {
+		c.mux.RLock()
+		cacheEntry, found := c.cache[path]
+		c.mux.RUnlock()
+		
+		if found && time.Since(cacheEntry.Timestamp) < c.cacheTTL {
+			log.Debug().Str("path", path).Msg("Using cached raw response")
+			return cacheEntry.Data, nil
+		}
+	}
+
 	url := c.ApiUrl + path
+	log.Debug().Str("url", url).Msg("Making API request to Proxmox")
 	
 	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -147,5 +197,41 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	}
 
 	// Read the response body
-	return io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	// Cache the response if caching is enabled
+	if c.cache != nil {
+		c.mux.Lock()
+		c.cache[path] = &CacheEntry{
+			Data:      data,
+			Timestamp: time.Now(),
+		}
+		c.mux.Unlock()
+		log.Debug().Str("path", path).Msg("Cached raw API response")
+	}
+
+	return data, nil
+}
+
+// InvalidateCache invalidates all cached responses or a specific path
+func (c *Client) InvalidateCache(path string) {
+	if c.cache == nil {
+		return
+	}
+
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	
+	if path == "" {
+		// Invalidate all cache
+		c.cache = make(map[string]*CacheEntry)
+		log.Debug().Msg("Invalidated entire API cache")
+	} else {
+		// Invalidate specific path
+		delete(c.cache, path)
+		log.Debug().Str("path", path).Msg("Invalidated specific API cache entry")
+	}
 }

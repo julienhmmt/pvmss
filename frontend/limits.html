@@ -13,7 +13,7 @@
         </header>
         <div class="card-content">
             <div class="content">
-                <p><strong>{{$.AdminLimitsAvailableSockets}}:</strong> {{.MaxCPU}} | <strong>{{$.AdminLimitsAvailableCores}}:</strong> {{.MaxCPU}} | <strong>{{$.AdminLimitsAvailableMemory}}:</strong> {{.MaxMemory | humanBytes}}</p>
+                <p><strong>{{$.AdminLimitsAvailableSockets}}:</strong> {{if .Sockets}}{{.Sockets}}{{else}}1{{end}} | <strong>{{$.AdminLimitsAvailableCores}}:</strong> {{.MaxCPU}} | <strong>{{$.AdminLimitsAvailableMemory}}:</strong> {{.MaxMemory | humanBytes}}</p>
                 <hr>
                 <div class="columns">
                     <!-- Sockets -->
@@ -23,7 +23,7 @@
                             <div class="field-body">
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="sockets-min-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Min}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
+                                        <input class="input" type="number" id="sockets-min-{{.Node}}" min="1" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Min}}{{else}}1{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
                                     </p>
                                 </div>
                                 <div class="field">
@@ -41,7 +41,7 @@
                             <div class="field-body">
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="cores-min-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Min}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
+                                        <input class="input" type="number" id="cores-min-{{.Node}}" min="1" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Min}}{{else}}1{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
                                     </p>
                                 </div>
                                 <div class="field">
@@ -85,81 +85,81 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if this component has already been initialized
+// Limits management script with automatic saving on input change
+document.addEventListener('DOMContentLoaded', function () {
     if (window.limitsInitialized) return;
     window.limitsInitialized = true;
-    
+
     const i18n = {
         saveSuccess: '{{$.AdminLimitsSaveSuccess}}',
         saveFailed: '{{$.AdminLimitsSaveFailed}}',
         errorOccurred: '{{$.AdminLimitsErrorOccurred}}'
     };
 
-    document.querySelectorAll('.save-limits-btn').forEach(button => {
-        button.addEventListener('click', function(event) {
-            event.preventDefault();
-            const nodeName = this.dataset.node;
+    // Utility to collect values for a node and enforce minimums
+    function collectLimits(nodeName) {
+        const socketsMin = Math.max(1, parseInt(document.getElementById(`sockets-min-${nodeName}`).value) || 1);
+        const coresMin = Math.max(1, parseInt(document.getElementById(`cores-min-${nodeName}`).value) || 1);
+        return {
+            node: nodeName,
+            sockets: {
+                min: socketsMin,
+                max: parseInt(document.getElementById(`sockets-max-${nodeName}`).value) || socketsMin
+            },
+            cores: {
+                min: coresMin,
+                max: parseInt(document.getElementById(`cores-max-${nodeName}`).value) || coresMin
+            },
+            ram: {
+                min: parseInt(document.getElementById(`ram-min-${nodeName}`).value) || 0,
+                max: parseInt(document.getElementById(`ram-max-${nodeName}`).value) || 0
+            }
+        };
+    }
 
-            const limits = {
-                node: nodeName,
-                sockets: {
-                    min: parseInt(document.getElementById(`sockets-min-${nodeName}`).value) || 0,
-                    max: parseInt(document.getElementById(`sockets-max-${nodeName}`).value) || 0
-                },
-                cores: {
-                    min: parseInt(document.getElementById(`cores-min-${nodeName}`).value) || 0,
-                    max: parseInt(document.getElementById(`cores-max-${nodeName}`).value) || 0
-                },
-                ram: {
-                    min: parseInt(document.getElementById(`ram-min-${nodeName}`).value) || 0,
-                    max: parseInt(document.getElementById(`ram-max-${nodeName}`).value) || 0
-                }
-            };
+    // Save limits to backend and give feedback
+    function saveLimits(nodeName) {
+        const limits = collectLimits(nodeName);
+        fetch('/api/limits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(limits)
+        }).then(response => {
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+        }).then(data => {
+            if (data.limits) {
+                // Reflect any server-side adjustments
+                ['sockets', 'cores', 'ram'].forEach(key => {
+                    if (data.limits[key]) {
+                        document.getElementById(`${key}-min-${nodeName}`).value = data.limits[key].min;
+                        document.getElementById(`${key}-max-${nodeName}`).value = data.limits[key].max;
+                    }
+                });
+            }
+            if (data.validationMessages && data.validationMessages.length) {
+                console.warn('Validation:', data.validationMessages.join('\n'));
+            }
+            console.info(i18n.saveSuccess.replace('{{.NodeName}}', nodeName));
+        }).catch(err => {
+            console.error('Save failed', err);
+            alert(i18n.saveFailed.replace('{{.NodeName}}', nodeName));
+        });
+    }
 
-            fetch('/api/limits', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(limits)
-            }).then(response => {
-                if (response.ok) {
-                    return response.json();
-                } else {
-                    throw new Error('Failed to save limits');
-                }
-            }).then(data => {
-                // Check if there were validation messages
-                if (data.validationMessages && data.validationMessages.length > 0) {
-                    // Create a message with all validation notices
-                    const validationMsg = data.validationMessages.join('\n');
-                    alert(i18n.saveSuccess.replace('{{.NodeName}}', nodeName) + '\n\n' + 
-                          'Note: Some values were adjusted:\n' + validationMsg);
-                } else {
-                    // Simple success message
-                    alert(i18n.saveSuccess.replace('{{.NodeName}}', nodeName));
-                }
-                
-                // Update the form fields with the adjusted values if provided
-                if (data.limits) {
-                    if (data.limits.sockets) {
-                        document.getElementById(`sockets-min-${nodeName}`).value = data.limits.sockets.min;
-                        document.getElementById(`sockets-max-${nodeName}`).value = data.limits.sockets.max;
-                    }
-                    if (data.limits.cores) {
-                        document.getElementById(`cores-min-${nodeName}`).value = data.limits.cores.min;
-                        document.getElementById(`cores-max-${nodeName}`).value = data.limits.cores.max;
-                    }
-                    if (data.limits.ram) {
-                        document.getElementById(`ram-min-${nodeName}`).value = data.limits.ram.min;
-                        document.getElementById(`ram-max-${nodeName}`).value = data.limits.ram.max;
-                    }
-                }
-            }).catch(error => {
-                console.error('Error saving limits:', error);
-                alert(i18n.saveFailed.replace('{{.NodeName}}', nodeName));
-            });
+    // Manual save button (still present)
+    document.querySelectorAll('.save-limits-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            saveLimits(btn.dataset.node);
+        });
+    });
+
+    // Automatic save on any input change within a node card
+    document.querySelectorAll('.card[id^="node-"]').forEach(card => {
+        const nodeName = card.id.replace('node-', '');
+        card.querySelectorAll('input').forEach(inp => {
+            inp.addEventListener('change', () => saveLimits(nodeName));
         });
     });
 });

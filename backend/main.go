@@ -427,34 +427,17 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Int("count", len(nodeNames)).Msg("Processing nodes for admin page")
 
 	// Fetch node details with context
-	nodeDetailsList := make([]*proxmox.NodeDetails, 0)
-	nodesList := make([]map[string]interface{}, 0)
+	nodeDetailsList := make([]proxmox.NodeDetails, 0)
 	for _, nodeName := range nodeNames {
 		nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
 		if err != nil {
 			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
 			continue
 		}
-		nodeDetailsList = append(nodeDetailsList, nodeDetails)
-
-		// Create a map for the Nodes template - convert int64 to float64 for template compatibility
-		nodeMap := map[string]interface{}{
-			"node":    nodeDetails.Node,
-			"status":  "online",
-			"cpu":     nodeDetails.CPU,
-			"maxcpu":  float64(nodeDetails.MaxCPU),
-			"mem":     float64(nodeDetails.Memory),
-			"maxmem":  float64(nodeDetails.MaxMemory),
-			"disk":    float64(nodeDetails.Disk),
-			"maxdisk": float64(nodeDetails.MaxDisk),
-		}
-		nodesList = append(nodesList, nodeMap)
+		// Use the concrete struct, not a pointer
+		nodeDetailsList = append(nodeDetailsList, *nodeDetails)
 	}
 	data["NodeDetails"] = nodeDetailsList
-	data["Nodes"] = nodesList
-
-	data["NodeDetails"] = nodeDetailsList
-	data["Nodes"] = nodesList
 
 	// Also fetch other necessary data for the admin page
 	storagesResult, err := proxmox.GetStorages(proxmoxClient)

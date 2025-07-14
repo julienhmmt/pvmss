@@ -1,12 +1,12 @@
 {{define "nodes.html"}}
 <div class="container">
-    <h2 class="subtitle">{{.AdminNodes}}</h2>
+    <h2 class="title is-4">{{.AdminNodes}}</h2>
 
     {{if .Error}}
         <div class="notification is-danger">
             {{.Error}}
         </div>
-    {{else if .Nodes}}
+    {{else if .NodeDetails}}
         <table class="table is-striped is-fullwidth">
             <thead>
                 <tr>
@@ -18,30 +18,26 @@
                 </tr>
             </thead>
             <tbody>
-                {{range .Nodes}}
+                {{range .NodeDetails}}
                 <tr>
-                    <td>{{.node}}</td>
+                    <td>{{.Node}}</td>
                     <td>
-                        {{if eq .status "online"}}
-                            <span class="tag is-success">{{$.NodesStatusOnline}}</span>
-                        {{else}}
-                            <span class="tag is-danger">{{$.NodesStatusOffline}}</span>
-                        {{end}}
+                        <span class="tag is-success">{{$.NodesStatusOnline}}</span>
                     </td>
                     <td>
-                        {{$cpu_percent := mul .cpu 100.0}}
+                        {{$cpu_percent := mul .CPU 100.0}}
                         <progress class="progress {{if lt $cpu_percent 70.0}}is-primary{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
-                        {{printf "%.0f%%" $cpu_percent}} ({{printf "%.2f" .cpu}} / {{.maxcpu}})
+                        {{printf "%.0f%%" $cpu_percent}} ({{printf "%.2f" .CPU}} / {{.MaxCPU}})
                     </td>
                     <td>
-                        {{$mem_percent := mul (div .mem .maxmem) 100.0}}
+                        {{$mem_percent := mul (div .Memory .MaxMemory) 100.0}}
                         <progress class="progress {{if lt $mem_percent 70.0}}is-primary{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100"></progress>
-                        {{printf "%.0f%%" $mem_percent}} ({{.mem | humanBytes}} / {{.maxmem | humanBytes}})
+                        {{printf "%.0f%%" $mem_percent}} ({{.Memory | humanBytes}} / {{.MaxMemory | humanBytes}})
                     </td>
                     <td>
-                        {{$disk_percent := mul (div .disk .maxdisk) 100.0}}
+                        {{$disk_percent := mul (div .Disk .MaxDisk) 100.0}}
                         <progress class="progress {{if lt $disk_percent 70.0}}is-primary{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100"></progress>
-                        {{printf "%.0f%%" $disk_percent}} ({{.disk | humanBytes}} / {{.maxdisk | humanBytes}})
+                        {{printf "%.0f%%" $disk_percent}} ({{.Disk | humanBytes}} / {{.MaxDisk | humanBytes}})
                     </td>
                 </tr>
                 {{end}}
