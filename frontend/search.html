@@ -6,14 +6,14 @@
             <div class="field">
                 <label class="label" for="vmid">{{.SearchVMID}}</label>
                 <div class="control">
-                    <input class="input" type="text" id="vmid" name="vmid" placeholder="e.g. 100">
+                    <input class="input" type="number" id="vmid" name="vmid" placeholder="{{.PlaceholderVMID}}" pattern="[0-9]{1,10}" title="{{.TitleVMID}}" oninput="this.value=this.value.slice(0,10)">
                 </div>
             </div>
 
             <div class="field">
                 <label class="label" for="name">{{.SearchName}}</label>
                 <div class="control">
-                    <input class="input" type="text" id="name" name="name" placeholder="e.g. my-vm">
+                    <input class="input" type="text" id="name" name="name" placeholder="{{.PlaceholderName}}">
                 </div>
             </div>
 
@@ -46,11 +46,11 @@
                     <td>{{.name}}</td>
                     <td>
                         {{if eq .status "running"}}
-                        <span class="tag is-primary">{{.status}}</span>
+                        <span class="tag is-success">{{.status}}</span>
                         {{else if eq .status "stopped"}}
-                        <span class="tag is-light">{{.status}}</span>
-                        {{else}}
                         <span class="tag is-warning">{{.status}}</span>
+                        {{else}}
+                        <span class="tag is-light">{{.status}}</span>
                         {{end}}
                     </td>
                     <td>

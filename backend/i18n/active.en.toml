@@ -82,6 +82,15 @@ other = "Here you will be able to manage your virtual machines."
 ["Button.Search"]
 other = "Search"
 
+["Search.PlaceholderVMID"]
+other = "e.g. 100"
+
+["Search.TitleVMID"]
+other = "Please enter a VM ID with 1 to 10 digits."
+
+["Search.PlaceholderName"]
+other = "e.g. my-vm"
+
 ["Footer"]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Created with <span style="color: #e25555;">&#9829;</span> on Go 1.24+ and Bulma.'
 

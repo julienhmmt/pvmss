@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -326,6 +327,17 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		vmid := r.FormValue("vmid")
 		name := r.FormValue("name")
 
+		// Validate VMID format on the backend
+		if vmid != "" {
+			match, _ := regexp.MatchString(`^[0-9]{1,10}$`, vmid)
+			if !match {
+				log.Warn().Str("vmid", vmid).Msg("Invalid VMID format received")
+				data["Error"] = "Invalid VM ID: Please use 1 to 10 digits."
+				renderTemplate(w, r, "search.html", data)
+				return
+			}
+		}
+
 		log.Info().Str("vmid", vmid).Str("name", name).Msg("Processing search request")
 
 		// Use the global proxmox client
@@ -371,21 +383,12 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 			log.Debug().Str("node", nodeName).Msg("Node details appended to list")
 		}
 
-		// Fetch VMs with context
-		vms, err := proxmox.GetVMsWithContext(ctx, proxmoxClient)
+		// Use the robust searchVM function to find matching VMs
+		results, err := searchVM(proxmoxClient, vmid, name)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to get VMs")
-			http.Error(w, "Failed to get VMs", http.StatusInternalServerError)
+			log.Error().Err(err).Msg("Failed to execute VM search")
+			http.Error(w, "Error searching for VMs", http.StatusInternalServerError)
 			return
-		}
-
-		// Filter VMs by name or ID
-		var results []map[string]interface{}
-		for _, vm := range vms {
-			if vm["name"].(string) == name || vm["vmid"].(string) == vmid {
-				results = append(results, vm)
-			log.Debug().Str("vmid", vm["vmid"].(string)).Str("name", vm["name"].(string)).Msg("VM matched filter and appended to results")
-			}
 		}
 
 		data["Results"] = results

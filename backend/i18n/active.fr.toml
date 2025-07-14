@@ -82,6 +82,15 @@ other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans
 ["Button.Search"]
 other = "Rechercher"
 
+["Search.PlaceholderVMID"]
+other = "ex. 100"
+
+["Search.TitleVMID"]
+other = "Veuillez saisir un ID de VM de 1 à 10 chiffres."
+
+["Search.PlaceholderName"]
+other = "ex. ma-vm"
+
 ["Footer"]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
 

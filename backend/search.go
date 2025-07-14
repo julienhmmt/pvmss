@@ -10,6 +10,24 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// getStringValue safely retrieves a string from a map, handling both string and float64 types.
+func getStringValue(vmMap map[string]interface{}, key string) (string, bool) {
+	rawValue, present := vmMap[key]
+	if !present {
+		return "", false
+	}
+
+	switch value := rawValue.(type) {
+	case string:
+		return value, true
+	case float64:
+		return fmt.Sprintf("%.0f", value), true
+	default:
+		// Not a string or float64, so we can't treat it as a searchable string
+		return "", false
+	}
+}
+
 func searchVM(client *proxmox.Client, vmid, name string) (interface{}, error) {
 	log.Debug().Msg("Entering searchVM function")
 
@@ -36,20 +54,20 @@ func searchVM(client *proxmox.Client, vmid, name string) (interface{}, error) {
 		}
 
 		// Filter by tag: must contain "pvmss"
-		tags, ok := vmMap["tags"].(string)
-		if !ok || !strings.Contains(tags, "pvmss") {
+		tagsStr, ok := getStringValue(vmMap, "tags")
+		if !ok || !strings.Contains(tagsStr, "pvmss") {
 			continue
 		}
 
 		// Perform search
 		if vmid != "" {
-			vmIDStr := fmt.Sprintf("%.0f", vmMap["vmid"])
-			if strings.Contains(vmIDStr, vmid) {
+			vmIDStr, ok := getStringValue(vmMap, "vmid")
+			if ok && strings.Contains(vmIDStr, vmid) {
 				results = append(results, vmMap)
 			}
 		} else if name != "" {
-			vmName, ok := vmMap["name"].(string)
-			if ok && strings.Contains(vmName, name) {
+			vmNameStr, ok := getStringValue(vmMap, "name")
+			if ok && strings.Contains(vmNameStr, name) {
 				results = append(results, vmMap)
 			}
 		}
