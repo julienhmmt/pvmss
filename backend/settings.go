@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
+
+	"github.com/rs/zerolog/log"
 )
 
 const settingsFile = "settings.json"
@@ -80,6 +82,7 @@ func writeSettings(settings *AppSettings) error {
 
 // settingsHandler handles GET requests to read the entire settings file.
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "settingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Settings handler invoked")
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -98,6 +101,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 
 // updateIsoSettingsHandler handles POST requests to update the ISOs list in settings.
 func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "updateIsoSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update ISO settings handler invoked")
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -109,12 +113,15 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		log.Error().Err(err).Msg("Failed to decode ISO update payload")
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	log.Debug().Interface("payload", payload).Msg("Received ISO update payload")
 
 	settings, err := readSettings()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to read settings for ISO update")
 		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
 		return
 	}
@@ -122,6 +129,7 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	settings.ISOs = payload.ISOs
 
 	if err := writeSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Failed to write updated ISO settings")
 		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
 		return
 	}
@@ -132,6 +140,7 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 // updateVmbrSettingsHandler handles POST requests to update the VMBRs list in settings.
 func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "updateVmbrSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update VMBR settings handler invoked")
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -143,12 +152,15 @@ func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		log.Error().Err(err).Msg("Failed to decode VMBR update payload")
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	log.Debug().Interface("payload", payload).Msg("Received VMBR update payload")
 
 	settings, err := readSettings()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to read settings for VMBR update")
 		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
 		return
 	}
@@ -156,6 +168,7 @@ func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	settings.VMBRs = payload.VMBRs
 
 	if err := writeSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Failed to write updated VMBR settings")
 		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
 		return
 	}

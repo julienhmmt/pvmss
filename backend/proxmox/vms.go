@@ -21,11 +21,13 @@ type VMInfo struct {
 
 // GetVMsWithContext retrieves all VMs from Proxmox using the provided context
 func GetVMsWithContext(ctx context.Context, client *Client) ([]map[string]interface{}, error) {
+	log.Info().Msg("Fetching all VMs from Proxmox")
 	log.Debug().Msg("Getting VM list with context")
 	
 	// Get all nodes first
 	nodes, err := GetNodeNamesWithContext(ctx, client)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to get node list while fetching VMs")
 		return nil, fmt.Errorf("failed to get node list: %w", err)
 	}
 	
@@ -33,6 +35,7 @@ func GetVMsWithContext(ctx context.Context, client *Client) ([]map[string]interf
 	vms := make([]map[string]interface{}, 0)
 	
 	for _, node := range nodes {
+		log.Info().Str("node", node).Msg("Fetching VMs for node")
 		nodeVMs, err := GetVMsForNodeWithContext(ctx, client, node)
 		if err != nil {
 			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMs for node")
@@ -50,12 +53,14 @@ func GetVMsForNodeWithContext(ctx context.Context, client *Client, nodeName stri
 	
 	response, err := client.GetWithContext(ctx, path)
 	if err != nil {
+		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get VMs for node from Proxmox API")
 		return nil, fmt.Errorf("failed to get VMs for node %s: %w", nodeName, err)
 	}
 	
 	// Extract data from response
 	data, ok := response["data"].([]interface{})
 	if !ok {
+		log.Error().Str("node", nodeName).Msg("Unexpected response format for VMs on node")
 		return nil, fmt.Errorf("unexpected response format for VMs on node %s", nodeName)
 	}
 	
@@ -76,6 +81,7 @@ func GetVMsForNodeWithContext(ctx context.Context, client *Client, nodeName stri
 func GetVmList(c *Client, ctx context.Context) (map[string]interface{}, error) {
 	vms, err := GetVMsWithContext(ctx, c)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to get VMs in GetVmList")
 		return nil, err
 	}
 	
@@ -83,5 +89,6 @@ func GetVmList(c *Client, ctx context.Context) (map[string]interface{}, error) {
 		"data": vms,
 	}
 	
+	log.Info().Int("vm_count", len(vms)).Msg("Returning VM list result")
 	return result, nil
 }

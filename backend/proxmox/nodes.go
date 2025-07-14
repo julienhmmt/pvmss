@@ -53,9 +53,12 @@ func GetNodeDetails(client *Client, nodeName string) (*NodeDetails, error) {
 
 // GetNodeDetailsWithContext retrieves the hardware details for a specific node with context support.
 func GetNodeDetailsWithContext(ctx context.Context, client *Client, nodeName string) (*NodeDetails, error) {
+	log.Info().Str("node", nodeName).Msg("Fetching node details")
+
 	// Get node status from Proxmox API
 	status, err := client.GetWithContext(ctx, fmt.Sprintf("/nodes/%s/status", nodeName))
 	if err != nil {
+		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node status from Proxmox API")
 		return nil, fmt.Errorf("failed to get node status for %s: %w", nodeName, err)
 	}
 
@@ -66,12 +69,14 @@ func GetNodeDetailsWithContext(ctx context.Context, client *Client, nodeName str
 	// Marshal the map to JSON bytes
 	jsonBytes, err := json.Marshal(status)
 	if err != nil {
+		log.Error().Err(err).Str("node", nodeName).Msg("Failed to marshal node status to JSON")
 		return nil, fmt.Errorf("failed to marshal node status: %w", err)
 	}
 
 	// Unmarshal into our NodeStatus struct
 	var nodeStatus NodeStatus
 	if err := json.Unmarshal(jsonBytes, &nodeStatus); err != nil {
+		log.Error().Err(err).Str("node", nodeName).Msg("Failed to unmarshal node status JSON")
 		return nil, fmt.Errorf("failed to unmarshal node status: %w", err)
 	}
 
@@ -125,12 +130,15 @@ func GetNodeNames(client *Client) ([]string, error) {
 
 // GetNodeNamesWithContext retrieves all node names from Proxmox using the provided context.
 func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, error) {
+	log.Info().Msg("Fetching node names")
+
 	// Using our custom implementation with context support
 	log.Debug().Msg("Getting node names")
 
 	// Use the generic Get method to fetch the list of all nodes.
 	nodeList, err := client.GetWithContext(ctx, "/nodes")
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to get node list from Proxmox API")
 		return nil, fmt.Errorf("failed to get node list: %w", err)
 	}
 
@@ -161,12 +169,15 @@ func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, err
 
 // GetNodeStatus checks if a node is online and returns its status.
 func GetNodeStatus(client *Client, nodeName string) (string, error) {
+	log.Info().Str("node", nodeName).Msg("Checking node status")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Try to get node details
 	_, err := client.GetWithContext(ctx, fmt.Sprintf("/nodes/%s/status", nodeName))
 	if err != nil {
+		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node status in GetNodeStatus")
 		return "offline", nil
 	}
 

@@ -28,8 +28,6 @@ var (
 	proxmoxClient  *proxmox.Client
 )
 
-// Helper functions for server initialization and management
-
 // initLogger configures the zerolog logger
 func initLogger() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
@@ -37,6 +35,16 @@ func initLogger() {
 		Out:        os.Stdout,
 		TimeFormat: "2006-01-02 15:04:05",
 	})
+
+	level := os.Getenv("LOG_LEVEL")
+	switch strings.ToLower(level) {
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	case "info", "":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
 }
 
 // validateEnvironment checks for required environment variables
@@ -298,6 +306,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "indexHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	log.Info().Str("path", r.URL.Path).Msg("Request received for index")
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -308,6 +317,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "searchHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	log.Info().Str("path", r.URL.Path).Msg("Request received for search")
 	data := make(map[string]interface{})
 
@@ -358,6 +368,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 				"maxdisk": float64(nodeDetails.MaxDisk),
 			}
 			nodesList = append(nodesList, nodeMap)
+			log.Debug().Str("node", nodeName).Msg("Node details appended to list")
 		}
 
 		// Fetch VMs with context
@@ -373,6 +384,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		for _, vm := range vms {
 			if vm["name"].(string) == name || vm["vmid"].(string) == vmid {
 				results = append(results, vm)
+			log.Debug().Str("vmid", vm["vmid"].(string)).Str("name", vm["name"].(string)).Msg("VM matched filter and appended to results")
 			}
 		}
 
@@ -388,6 +400,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func adminHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "adminHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	log.Info().Str("path", r.URL.Path).Msg("Request received for admin page")
 	data := make(map[string]interface{})
 
@@ -506,29 +519,34 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func storagePageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "storagePageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	log.Info().Str("path", r.URL.Path).Msg("Request received for storage page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "storage.html", data)
 }
 
 func isoPageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "isoPageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	log.Info().Str("path", r.URL.Path).Msg("Request received for iso page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "iso.html", data)
 }
 
 func vmbrPageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "vmbrPageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	log.Info().Str("path", r.URL.Path).Msg("Request received for vmbr page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "vmbr.html", data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "healthHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "loginHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	if r.Method == http.MethodPost {
 		password := r.FormValue("password")
 		adminPasswordHash := os.Getenv("ADMIN_PASSWORD_HASH")
@@ -556,6 +574,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "logoutHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	sessionManager.Destroy(r.Context())
 	http.Redirect(w, r, "/login", http.StatusFound)
 }

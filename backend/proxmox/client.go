@@ -61,6 +61,7 @@ func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify boo
 // NewClientWithOptions creates a new Proxmox API client with the given options.
 func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
 	if apiURL == "" || apiTokenID == "" || apiTokenSecret == "" {
+		log.Error().Str("apiURL", apiURL).Str("apiTokenID", apiTokenID).Msg("Missing required Proxmox API credentials")
 		return nil, fmt.Errorf("apiURL, apiTokenID, and apiTokenSecret are required")
 	}
 
@@ -77,6 +78,7 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 	// Create the underlying Proxmox client
 	pxClient, err := px.NewClient(apiURL, httpClient, "", nil, "", 300)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create Proxmox client")
 		return nil, fmt.Errorf("failed to create Proxmox client: %w", err)
 	}
 
@@ -108,6 +110,7 @@ func (c *Client) Get(path string) (map[string]interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.Timeout)
 	defer cancel()
 
+	log.Info().Str("path", path).Msg("Performing GET request to Proxmox API")
 	return c.GetWithContext(ctx, path)
 }
 
@@ -134,12 +137,14 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 	// Not in cache, make the request
 	rawData, err := c.GetRawWithContext(ctx, path)
 	if err != nil {
+		log.Error().Err(err).Str("path", path).Msg("Failed to get raw API response")
 		return nil, err
 	}
 
 	// Parse the response
 	var result map[string]interface{}
 	if err := json.Unmarshal(rawData, &result); err != nil {
+		log.Error().Err(err).Str("path", path).Msg("Failed to decode API response")
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
@@ -172,11 +177,12 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	}
 
 	url := c.ApiUrl + path
-	log.Debug().Str("url", url).Msg("Making API request to Proxmox")
+	log.Info().Str("url", url).Msg("Making API request to Proxmox")
 	
 	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
+		log.Error().Err(err).Str("url", url).Msg("Failed to create HTTP request for Proxmox API")
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -186,6 +192,7 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	// Execute the request
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
+		log.Error().Err(err).Str("url", url).Msg("HTTP request to Proxmox API failed")
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -193,12 +200,14 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	// Check for non-200 status codes
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		log.Error().Int("status", resp.StatusCode).Str("url", url).Msg("Proxmox API returned non-200 status")
 		return nil, fmt.Errorf("API returned non-200 status: %d - %s", resp.StatusCode, string(body))
 	}
 
 	// Read the response body
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
+		log.Error().Err(err).Str("url", url).Msg("Failed to read response body from Proxmox API")
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 

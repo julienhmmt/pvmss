@@ -20,6 +20,7 @@ type Storage struct {
 
 // storageHandler routes the requests to the appropriate handler.
 func storageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "storageHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Storage handler invoked")
 	switch r.Method {
 	case http.MethodGet:
 		getStoragesHandler(w, r)
@@ -70,6 +71,7 @@ func getStorages() ([]Storage, error) {
 
 // getStoragesHandler handles fetching all storages.
 func getStoragesHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "getStoragesHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Fetching all storages")
 	allStorages, err := getStorages()
 	if err != nil {
 		http.Error(w, "Failed to retrieve storages from Proxmox", http.StatusInternalServerError)
@@ -83,6 +85,7 @@ func getStoragesHandler(w http.ResponseWriter, r *http.Request) {
 			vmStorages = append(vmStorages, s)
 		}
 	}
+	log.Debug().Int("total", len(allStorages)).Int("vmEligible", len(vmStorages)).Msg("Filtered storages for VM eligibility")
 
 	log.Info().Msgf("Found %d storages, %d can be used for VMs", len(allStorages), len(vmStorages))
 

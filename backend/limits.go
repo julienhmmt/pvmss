@@ -22,6 +22,7 @@ func max(a, b int) int {
 
 // limitsHandler routes the requests to the appropriate handler based on the HTTP method.
 func limitsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "limitsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Limits handler invoked")
 	switch r.Method {
 	case http.MethodGet:
 		getLimitsHandler(w, r)
@@ -200,6 +201,7 @@ func updateLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	log.Debug().Interface("payload", payload).Msg("Received limits update payload")
 
 	// Validate the node parameter
 	if payload.Node == "" {
