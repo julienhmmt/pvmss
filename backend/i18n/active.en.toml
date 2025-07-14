@@ -106,6 +106,12 @@ other = "Search a VM"
 ["Navbar.VMs"]
 other = "Virtual machines"
 
+["NavbarAdminDocs"]
+other = "Admin Documentation"
+
+["NavbarUserDocs"]
+other = "User Documentation"
+
 ["Nodes.NoNodes"]
 other = "No nodes to display."
 

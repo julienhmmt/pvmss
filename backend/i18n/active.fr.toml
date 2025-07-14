@@ -106,6 +106,12 @@ other = "Rechercher une VM"
 ["Navbar.VMs"]
 other = "Machines virtuelles"
 
+["NavbarAdminDocs"]
+other = "Documentation d'administration"
+
+["NavbarUserDocs"]
+other = "Documentation utilisateur"
+
 ["Nodes.NoNodes"]
 other = "Aucun nœud à afficher."
 

@@ -103,6 +103,10 @@ func main() {
 	r.HandleFunc("/login", loginHandler)
 	r.HandleFunc("/logout", logoutHandler)
 
+	// Documentation routes
+	r.HandleFunc("/docs/admin", serveDocHandler("admin"))
+	r.HandleFunc("/docs/user", serveDocHandler("user"))
+
 	authedRoutes := http.NewServeMux()
 	authedRoutes.HandleFunc("/admin", adminHandler)
 
@@ -173,26 +177,29 @@ func formatMemory(mem interface{}) string {
 }
 
 func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-	data["IsAuthenticated"] = sessionManager.GetBool(r.Context(), "authenticated")
+    // Inject authentication flag
+    data["IsAuthenticated"] = sessionManager.GetBool(r.Context(), "authenticated")
 
-	localizePage(w, r, data)
+    // Apply translations and other localization helpers
+    localizePage(w, r, data)
 
-	// Render the specific page template to a buffer
-	buf := new(bytes.Buffer)
-	if err := templates.ExecuteTemplate(buf, name, data); err != nil {
-		log.Error().Err(err).Msgf("Error executing page template: %s", name)
-		http.Error(w, "Could not execute page template", http.StatusInternalServerError)
-		return
-	}
+    // If a template name is supplied, render it and store the result in the Content field.
+    // When name is empty we assume the caller already populated data["Content"].
+    if name != "" {
+        buf := new(bytes.Buffer)
+        if err := templates.ExecuteTemplate(buf, name, data); err != nil {
+            log.Error().Err(err).Msgf("Error executing page template: %s", name)
+            http.Error(w, "Could not execute page template", http.StatusInternalServerError)
+            return
+        }
+        data["Content"] = template.HTML(buf.String())
+    }
 
-	// Add the rendered content to the data map
-	data["Content"] = template.HTML(buf.String())
-
-	// Render the main layout with the page content
-	if err := templates.ExecuteTemplate(w, "layout", data); err != nil {
-		log.Error().Err(err).Msg("Error executing layout template")
-		http.Error(w, "Could not execute layout template", http.StatusInternalServerError)
-	}
+    // Render the main layout which wraps whatever is present in data["Content"]
+    if err := templates.ExecuteTemplate(w, "layout", data); err != nil {
+        log.Error().Err(err).Msg("Error executing layout template")
+        http.Error(w, "Could not execute layout template", http.StatusInternalServerError)
+    }
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {

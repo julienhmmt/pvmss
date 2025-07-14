@@ -3,10 +3,10 @@ module pvmss/backend
 go 1.24.4
 
 require (
-	code.gitea.io/gitea v1.24.2
 	github.com/BurntSushi/toml v1.5.0
 	github.com/Telmate/proxmox-api-go v0.0.0-20250713212551-8d167c3c9fad
 	github.com/alexedwards/scs/v2 v2.9.0
+	github.com/gomarkdown/markdown v0.0.0-20250311123330-531bef5e742b
 	github.com/joho/godotenv v1.5.1
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/rs/zerolog v1.34.0
@@ -15,7 +15,10 @@ require (
 )
 
 require (
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/spf13/cobra v1.9.1 // indirect
+	github.com/spf13/pflag v1.0.6 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 )

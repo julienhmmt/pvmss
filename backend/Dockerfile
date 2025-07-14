@@ -37,6 +37,8 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder --chown=pvmssuser:pvmssuser /pvmss-backend .
+# Copy docs from builder
+COPY --from=builder --chown=pvmssuser:pvmssuser /app/docs ./docs
 
 # Switch to non-root user
 USER pvmssuser

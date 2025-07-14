@@ -81,6 +81,8 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["NavbarHome"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
 	data["NavbarSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
 	data["NavbarVMs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
+	data["NavbarAdminDocs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "NavbarAdminDocs"})
+	data["NavbarUserDocs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "NavbarUserDocs"})
 	data["SearchTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Title"})
 	data["SearchVMID"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.VMID"})
 	data["SearchName"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.Name"})
