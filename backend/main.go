@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -57,13 +58,26 @@ func main() {
 		"mul": func(a, b float64) float64 {
 			return a * b
 		},
-		"humanBytes": func(b float64) string {
-			bytes := int64(b)
+		"humanBytes": func(b interface{}) string {
+			var bytes uint64
+			switch v := b.(type) {
+			case float64:
+				bytes = uint64(v)
+			case uint64:
+				bytes = v
+			case int:
+				bytes = uint64(v)
+			case int64:
+				bytes = uint64(v)
+			default:
+				return "N/A"
+			}
+
 			const unit = 1024
 			if bytes < unit {
 				return fmt.Sprintf("%d B", bytes)
 			}
-			div, exp := int64(unit), 0
+			div, exp := uint64(unit), 0
 			for n := bytes / unit; n >= unit; n /= unit {
 				div *= unit
 				exp++
@@ -125,6 +139,7 @@ func main() {
 	r.HandleFunc("/api/settings", settingsHandler)
 	r.HandleFunc("/api/iso/settings", updateIsoSettingsHandler)
 	r.HandleFunc("/api/vmbr/settings", updateVmbrSettingsHandler)
+	r.HandleFunc("/api/limits", limitsHandler)
 
 	// Configure server
 	srv := &http.Server{
@@ -255,6 +270,16 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("path", r.URL.Path).Msg("Request received for admin")
 	data := make(map[string]interface{})
 
+	// Read settings first, to pass them to the template even if proxmox fails
+	settings, err := readSettings()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read settings")
+		data["Error"] = "Failed to read application settings."
+		renderTemplate(w, r, "admin.html", data)
+		return
+	}
+	data["Settings"] = settings
+
 	apiURL := os.Getenv("PROXMOX_URL")
 	apiTokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
 	apiTokenSecret := os.Getenv("PROXMOX_API_TOKEN_VALUE")
@@ -264,20 +289,102 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create proxmox client")
 		data["Error"] = "Failed to connect to Proxmox API"
-	} else {
-		nodesResult, err := proxmox.GetNodes(client)
+		renderTemplate(w, r, "admin.html", data)
+		return
+	}
+
+	// Fetch all node details
+	nodeNames, err := proxmox.GetNodeNames(client)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get node names")
+		data["Error"] = "Failed to retrieve node list from Proxmox"
+		renderTemplate(w, r, "admin.html", data)
+		return
+	}
+
+	log.Info().Int("count", len(nodeNames)).Msg("Processing nodes for admin page")
+
+	nodeDetailsList := make([]*proxmox.NodeDetails, 0)
+	nodesList := make([]map[string]interface{}, 0)
+	for _, nodeName := range nodeNames {
+		details, err := proxmox.GetNodeDetails(client, nodeName)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to get node list")
-			data["Error"] = "Failed to retrieve nodes from Proxmox"
-		} else {
-			if nodesMap, ok := nodesResult.(map[string]interface{}); ok {
-				data["Nodes"] = nodesMap["data"]
-			} else {
-				log.Error().Msg("Failed to assert nodes to map[string]interface{}")
-				data["Error"] = "Failed to process node data from Proxmox"
+			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get details for node")
+			continue // Skip nodes that fail
+		}
+		nodeDetailsList = append(nodeDetailsList, details)
+		
+		// Create a map for the Nodes template - convert int64 to float64 for template compatibility
+		nodeMap := map[string]interface{}{
+			"node": details.Node,
+			"status": "online",
+			"cpu": details.CPU,
+			"maxcpu": float64(details.MaxCPU),
+			"mem": float64(details.Memory),
+			"maxmem": float64(details.MaxMemory),
+			"disk": float64(details.Disk),
+			"maxdisk": float64(details.MaxDisk),
+		}
+		nodesList = append(nodesList, nodeMap)
+	}
+	data["NodeDetails"] = nodeDetailsList
+	data["Nodes"] = nodesList
+
+	// Also fetch other necessary data for the admin page
+	storagesResult, err := proxmox.GetStorages(client)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get storages")
+	}
+	data["Storages"] = storagesResult
+
+	// Fetch all ISOs from all storages on all nodes
+	allISOs := make([]map[string]interface{}, 0)
+	if storagesMap, ok := storagesResult.(map[string]interface{}); ok {
+		if storagesData, ok := storagesMap["data"].([]interface{}); ok {
+			for _, nodeName := range nodeNames {
+				for _, storage := range storagesData {
+					if storageMap, ok := storage.(map[string]interface{}); ok {
+						if contentType, ok := storageMap["content"].(string); ok && strings.Contains(contentType, "iso") {
+							storageName := storageMap["storage"].(string)
+							isos, err := proxmox.GetISOList(client, nodeName, storageName)
+							if err != nil {
+								log.Error().Err(err).Str("node", nodeName).Str("storage", storageName).Msg("Failed to get ISOs")
+								continue
+							}
+							if isoData, ok := isos["data"].([]interface{}); ok {
+								for _, iso := range isoData {
+									if isoMap, ok := iso.(map[string]interface{}); ok {
+										allISOs = append(allISOs, isoMap)
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
+	data["ISOs"] = allISOs
+
+	allVMBRs := make([]map[string]interface{}, 0)
+	for _, nodeName := range nodeNames {
+		vmbrs, err := proxmox.GetVMBRs(client, nodeName)
+		if err != nil {
+			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs")
+			continue
+		}
+		if vmbrData, ok := vmbrs["data"].([]interface{}); ok {
+			for _, vmbr := range vmbrData {
+				if vmbrMap, ok := vmbr.(map[string]interface{}); ok {
+					vmbrMap["node"] = nodeName
+					allVMBRs = append(allVMBRs, vmbrMap)
+				}
+			}
+		}
+	}
+	data["VMBRs"] = allVMBRs
+
+	data["Tags"] = settings.Tags
 
 	renderTemplate(w, r, "admin.html", data)
 }

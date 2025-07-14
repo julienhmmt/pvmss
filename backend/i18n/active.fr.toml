@@ -183,3 +183,57 @@ other = "Mot de passe :"
 
 ["Login.Button"]
 other = "Connexion"
+
+["Admin.Limits.Title"]
+other = "Limites des Ressources des Nœuds"
+
+["Admin.Limits.Description"]
+other = "Définissez les ressources minimales et maximales qui peuvent être allouées aux machines virtuelles sur chaque nœud."
+
+["Admin.Limits.SaveButton"]
+other = "Enregistrer"
+
+["Admin.Limits.SaveSuccess"]
+other = "Paramètres enregistrés pour le nœud {{.NodeName}}"
+
+["Admin.Limits.SaveFailed"]
+other = "Échec de l'enregistrement des paramètres pour le nœud {{.NodeName}}"
+
+["Admin.Limits.NoNodes"]
+other = "Aucun nœud trouvé. Veuillez vous assurer que votre connexion Proxmox est correctement configurée."
+
+["Admin.Limits.ErrorOccurred"]
+other = "Une erreur est survenue lors de l'enregistrement des paramètres."
+
+["Admin.Limits.NodeLabel"]
+other = "Nœud :"
+
+["Admin.Limits.AvailableSockets"]
+other = "Sockets disponibles"
+
+["Admin.Limits.AvailableCores"]
+other = "Cœurs disponibles"
+
+["Admin.Limits.AvailableMemory"]
+other = "Mémoire disponible"
+
+["Admin.Limits.Sockets"]
+other = "Sockets"
+
+["Admin.Limits.Cores"]
+other = "Cœurs"
+
+["Admin.Limits.MemoryGB"]
+other = "Mémoire (Go)"
+
+["Admin.Limits.MinPlaceholder"]
+other = "Min"
+
+["Admin.Limits.MaxPlaceholder"]
+other = "Max"
+
+["Admin.Limits.MinGBPlaceholder"]
+other = "Min Go"
+
+["Admin.Limits.MaxGBPlaceholder"]
+other = "Max Go"

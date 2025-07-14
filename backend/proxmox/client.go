@@ -13,6 +13,7 @@ import (
 type Client struct {
 	*px.Client
 	HttpClient *http.Client
+	ApiUrl     string
 	AuthToken  string
 }
 
@@ -23,19 +24,18 @@ func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify boo
 	}
 	httpClient := &http.Client{Transport: tr}
 
-	// We still use the library's client for other potential calls, but we'll use our own for GET.
 	pxClient, err := px.NewClient(apiURL, httpClient, "", nil, "", 300)
 	if err != nil {
 		return nil, err
 	}
 
 	authToken := fmt.Sprintf("%s=%s", apiTokenID, apiTokenSecret)
-	pxClient.SetAPIToken(apiTokenID, apiTokenSecret) // Set for library calls
+	pxClient.SetAPIToken(apiTokenID, apiTokenSecret)
 
-	return &Client{pxClient, httpClient, authToken}, nil
+	return &Client{pxClient, httpClient, apiURL, authToken}, nil
 }
 
-// Get performs a direct, manual GET request to the Proxmox API, bypassing the library entirely.
+// Get performs a direct GET request to the Proxmox API.
 func (c *Client) Get(path string) (map[string]interface{}, error) {
 	url := c.ApiUrl + path
 	req, err := http.NewRequest("GET", url, nil)

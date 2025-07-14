@@ -13,14 +13,22 @@ const settingsFile = "settings.json"
 
 var settingsMutex = &sync.Mutex{}
 
+// NodeLimits defines the resource limits for a node.
+type NodeLimits struct {
+	Sockets MinMax `json:"sockets"`
+	Cores   MinMax `json:"cores"`
+	RAM     MinMax `json:"ram"`
+}
+
 // AppSettings defines the structure for the settings file.
 type AppSettings struct {
-	Tags    []string `json:"tags"`
-	RAM     MinMax   `json:"ram"`
-	CPU     MinMax   `json:"cpu"`
-	Sockets MinMax   `json:"sockets"`
-	ISOs    []string `json:"isos"`
-	VMBRs   []string `json:"vmbrs"`
+	Tags    []string              `json:"tags"`
+	RAM     MinMax                `json:"ram"`
+	CPU     MinMax                `json:"cpu"`
+	Sockets MinMax                `json:"sockets"`
+	ISOs    []string              `json:"isos"`
+	VMBRs   []string              `json:"vmbrs"`
+	Limits  map[string]NodeLimits `json:"limits"`
 }
 
 // MinMax defines a min/max value pair.
@@ -48,6 +56,10 @@ func readSettings() (*AppSettings, error) {
 	var settings AppSettings
 	if err := json.Unmarshal(bytes, &settings); err != nil {
 		return nil, err
+	}
+
+	if settings.Limits == nil {
+		settings.Limits = make(map[string]NodeLimits)
 	}
 
 	return &settings, nil

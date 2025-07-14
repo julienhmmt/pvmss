@@ -1,0 +1,162 @@
+{{define "limits.html"}}
+<h2 class="title is-4">{{.AdminLimitsTitle}}</h2>
+<div class="notification is-light">
+    {{.AdminLimitsDescription}}
+</div>
+
+<div id="limits-container">
+    {{range .NodeDetails}}
+    <div class="card mb-5" id="node-{{.Node}}">
+        <header class="card-header">
+            <p class="card-header-title">{{$.AdminLimitsNodeLabel}} {{.Node}}</p>
+        </header>
+        <div class="card-content">
+            <div class="content">
+                <p><strong>{{$.AdminLimitsAvailableSockets}}:</strong> {{.MaxCPU}} | <strong>{{$.AdminLimitsAvailableCores}}:</strong> {{.MaxCPU}} | <strong>{{$.AdminLimitsAvailableMemory}}:</strong> {{.MaxMemory | humanBytes}}</p>
+                <hr>
+                <div class="columns">
+                    <!-- Sockets -->
+                    <div class="column">
+                        <label class="label">{{$.AdminLimitsSockets}}</label>
+                        <div class="field is-horizontal">
+                            <div class="field-body">
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" id="sockets-min-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Min}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" id="sockets-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Max}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMaxPlaceholder}}">
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Cores -->
+                    <div class="column">
+                        <label class="label">{{$.AdminLimitsCores}}</label>
+                        <div class="field is-horizontal">
+                            <div class="field-body">
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" id="cores-min-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Min}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" id="cores-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Max}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMaxPlaceholder}}">
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Memory (RAM) in GB -->
+                    <div class="column">
+                        <label class="label">{{$.AdminLimitsMemoryGB}}</label>
+                        <div class="field is-horizontal">
+                            <div class="field-body">
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" id="ram-min-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Min}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMinGBPlaceholder}}">
+                                    </p>
+                                </div>
+                                <div class="field">
+                                    <p class="control">
+                                        <input class="input" type="number" id="ram-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Max}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMaxGBPlaceholder}}">
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="card-footer">
+            <a href="#" class="card-footer-item save-limits-btn" data-node="{{.Node}}">{{$.AdminLimitsSaveButton}}</a>
+        </footer>
+    </div>
+    {{else}}
+    <div class="notification is-warning">
+        {{$.AdminLimitsNoNodes}}
+    </div>
+    {{end}}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const i18n = {
+        saveSuccess: '{{$.AdminLimitsSaveSuccess}}',
+        saveFailed: '{{$.AdminLimitsSaveFailed}}',
+        errorOccurred: '{{$.AdminLimitsErrorOccurred}}'
+    };
+
+    document.querySelectorAll('.save-limits-btn').forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            const nodeName = this.dataset.node;
+
+            const limits = {
+                node: nodeName,
+                sockets: {
+                    min: parseInt(document.getElementById(`sockets-min-${nodeName}`).value) || 0,
+                    max: parseInt(document.getElementById(`sockets-max-${nodeName}`).value) || 0
+                },
+                cores: {
+                    min: parseInt(document.getElementById(`cores-min-${nodeName}`).value) || 0,
+                    max: parseInt(document.getElementById(`cores-max-${nodeName}`).value) || 0
+                },
+                ram: {
+                    min: parseInt(document.getElementById(`ram-min-${nodeName}`).value) || 0,
+                    max: parseInt(document.getElementById(`ram-max-${nodeName}`).value) || 0
+                }
+            };
+
+            fetch('/api/limits', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(limits)
+            }).then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Failed to save limits');
+                }
+            }).then(data => {
+                // Check if there were validation messages
+                if (data.validationMessages && data.validationMessages.length > 0) {
+                    // Create a message with all validation notices
+                    const validationMsg = data.validationMessages.join('\n');
+                    alert(i18n.saveSuccess.replace('{{.NodeName}}', nodeName) + '\n\n' + 
+                          'Note: Some values were adjusted:\n' + validationMsg);
+                } else {
+                    // Simple success message
+                    alert(i18n.saveSuccess.replace('{{.NodeName}}', nodeName));
+                }
+                
+                // Update the form fields with the adjusted values if provided
+                if (data.limits) {
+                    if (data.limits.sockets) {
+                        document.getElementById(`sockets-min-${nodeName}`).value = data.limits.sockets.min;
+                        document.getElementById(`sockets-max-${nodeName}`).value = data.limits.sockets.max;
+                    }
+                    if (data.limits.cores) {
+                        document.getElementById(`cores-min-${nodeName}`).value = data.limits.cores.min;
+                        document.getElementById(`cores-max-${nodeName}`).value = data.limits.cores.max;
+                    }
+                    if (data.limits.ram) {
+                        document.getElementById(`ram-min-${nodeName}`).value = data.limits.ram.min;
+                        document.getElementById(`ram-max-${nodeName}`).value = data.limits.ram.max;
+                    }
+                }
+            }).catch(error => {
+                console.error('Error saving limits:', error);
+                alert(i18n.saveFailed.replace('{{.NodeName}}', nodeName));
+            });
+        });
+    });
+});
+</script>
+{{end}}
