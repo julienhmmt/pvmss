@@ -224,7 +224,7 @@ func main() {
 	// Initialize session manager
 	sessionManager = scs.New()
 	sessionManager.Lifetime = 24 * time.Hour
-	
+
 	// Setup HTTP server with proper timeouts and handlers
 	server := setupServer(ctx)
 
@@ -272,29 +272,29 @@ func formatMemory(mem interface{}) string {
 }
 
 func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-    // Inject authentication flag
-    data["IsAuthenticated"] = sessionManager.GetBool(r.Context(), "authenticated")
+	// Inject authentication flag
+	data["IsAuthenticated"] = sessionManager.GetBool(r.Context(), "authenticated")
 
-    // Apply translations and other localization helpers
-    localizePage(w, r, data)
+	// Apply translations and other localization helpers
+	localizePage(w, r, data)
 
-    // If a template name is supplied, render it and store the result in the Content field.
-    // When name is empty we assume the caller already populated data["Content"].
-    if name != "" {
-        buf := new(bytes.Buffer)
-        if err := templates.ExecuteTemplate(buf, name, data); err != nil {
-            log.Error().Err(err).Msgf("Error executing page template: %s", name)
-            http.Error(w, "Could not execute page template", http.StatusInternalServerError)
-            return
-        }
-        data["Content"] = template.HTML(buf.String())
-    }
+	// If a template name is supplied, render it and store the result in the Content field.
+	// When name is empty we assume the caller already populated data["Content"].
+	if name != "" {
+		buf := new(bytes.Buffer)
+		if err := templates.ExecuteTemplate(buf, name, data); err != nil {
+			log.Error().Err(err).Msgf("Error executing page template: %s", name)
+			http.Error(w, "Could not execute page template", http.StatusInternalServerError)
+			return
+		}
+		data["Content"] = template.HTML(buf.String())
+	}
 
-    // Render the main layout which wraps whatever is present in data["Content"]
-    if err := templates.ExecuteTemplate(w, "layout", data); err != nil {
-        log.Error().Err(err).Msg("Error executing layout template")
-        http.Error(w, "Could not execute layout template", http.StatusInternalServerError)
-    }
+	// Render the main layout which wraps whatever is present in data["Content"]
+	if err := templates.ExecuteTemplate(w, "layout", data); err != nil {
+		log.Error().Err(err).Msg("Error executing layout template")
+		http.Error(w, "Could not execute layout template", http.StatusInternalServerError)
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -338,7 +338,6 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Fetch node details with context
-		nodeDetailsList := make([]*proxmox.NodeDetails, 0)
 		nodesList := make([]map[string]interface{}, 0)
 		for _, nodeName := range nodeNames {
 			nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
@@ -346,18 +345,17 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 				log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
 				continue
 			}
-			nodeDetailsList = append(nodeDetailsList, nodeDetails)
 
 			// Create a map for the Nodes template - convert int64 to float64 for template compatibility
 			nodeMap := map[string]interface{}{
-				"node":     nodeDetails.Node,
-				"status":   "online",
-				"cpu":      nodeDetails.CPU,
-				"maxcpu":   float64(nodeDetails.MaxCPU),
-				"mem":      float64(nodeDetails.Memory),
-				"maxmem":   float64(nodeDetails.MaxMemory),
-				"disk":     float64(nodeDetails.Disk),
-				"maxdisk":  float64(nodeDetails.MaxDisk),
+				"node":    nodeDetails.Node,
+				"status":  "online",
+				"cpu":     nodeDetails.CPU,
+				"maxcpu":  float64(nodeDetails.MaxCPU),
+				"mem":     float64(nodeDetails.Memory),
+				"maxmem":  float64(nodeDetails.MaxMemory),
+				"disk":    float64(nodeDetails.Disk),
+				"maxdisk": float64(nodeDetails.MaxDisk),
 			}
 			nodesList = append(nodesList, nodeMap)
 		}
@@ -445,7 +443,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		log.Error().Err(err).Msg("Failed to get storages")
 	}
 	data["Storages"] = storagesResult
-	
+
 	// Localize the page (rendering will happen at the end of the function)
 	localizePage(w, r, data)
 

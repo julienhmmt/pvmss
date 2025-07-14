@@ -226,6 +226,10 @@ func updateLimitsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get node capacity constraints - either from cache or from Proxmox API
 	// Optionally get the node details to validate against real capacity
 	nodeCapacities, err := getNodeCapacities(r.Context(), payload.Node)
+	if err != nil {
+		// Log the error but proceed with default capacities
+		log.Warn().Err(err).Str("node", payload.Node).Msg("Failed to get node capacity, proceeding with defaults")
+	}
 	validationMessages := validateAndAdjustLimits(&payload, nodeCapacities)
 
 	// Update limits in settings
