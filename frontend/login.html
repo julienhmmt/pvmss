@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{.LoginTitle}}</title>
+    <link rel="stylesheet" href="/css/bulma.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <div class="columns is-centered">
+                <div class="column is-one-third">
+                    <div class="box">
+                        <h1 class="title has-text-centered">{{.LoginTitle}}</h1>
+
+                        {{if .Error}}
+                        <div class="notification is-danger">
+                            {{.Error}}
+                        </div>
+                        {{end}}
+
+                        <form method="post" action="/login">
+                            <div class="field">
+                                <label class="label" for="password">{{.LoginPasswordLabel}}</label>
+                                <div class="control">
+                                    <input class="input" type="password" id="password" name="password" required>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <div class="control">
+                                    <button class="button is-primary is-fullwidth" type="submit">{{.LoginButton}}</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+</html>

@@ -38,9 +38,18 @@
                     <div class="buttons">
                         <a href="{{.LangEN}}" class="button is-light">EN</a>
                         <a href="{{.LangFR}}" class="button is-light">FR</a>
+                        {{if .IsAuthenticated}}
                         <a href="/admin?lang={{.Lang}}" class="button is-primary">
                             <strong>{{.NavbarAdmin}}</strong>
                         </a>
+                        <a href="/logout" class="button is-light">
+                            {{.NavbarLogout}}
+                        </a>
+                        {{else}}
+                        <a href="/login" class="button is-primary">
+                            <strong>{{.NavbarAdmin}}</strong>
+                        </a>
+                        {{end}}
                     </div>
                 </div>
             </div>

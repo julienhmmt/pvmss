@@ -16,9 +16,12 @@ import (
 
 	"github.com/joho/godotenv"
 	"pvmss/backend/proxmox"
+	"golang.org/x/crypto/bcrypt"
+	"github.com/alexedwards/scs/v2"
 )
 
 var templates *template.Template
+var sessionManager *scs.SessionManager
 
 func main() {
 	if err := godotenv.Load("../.env"); err != nil {
@@ -83,6 +86,10 @@ func main() {
 		log.Info().Msgf("Using default port: %s", port)
 	}
 
+	// Initialize session manager
+	sessionManager = scs.New()
+	sessionManager.Lifetime = 24 * time.Hour
+
 	// Create router
 	r := http.NewServeMux()
 
@@ -93,7 +100,13 @@ func main() {
 	// Handlers
 	r.HandleFunc("/", indexHandler)
 	r.HandleFunc("/search", searchHandler)
-	r.HandleFunc("/admin", adminHandler)
+	r.HandleFunc("/login", loginHandler)
+	r.HandleFunc("/logout", logoutHandler)
+
+	authedRoutes := http.NewServeMux()
+	authedRoutes.HandleFunc("/admin", adminHandler)
+
+	r.Handle("/admin", authMiddleware(authedRoutes))
 	r.HandleFunc("/storage", storagePageHandler)
 	r.HandleFunc("/iso", isoPageHandler)
 	r.HandleFunc("/vmbr", vmbrPageHandler)
@@ -112,7 +125,7 @@ func main() {
 	// Configure server
 	srv := &http.Server{
 		Addr:    ":" + port,
-		Handler: r,
+		Handler: sessionManager.LoadAndSave(r),
 	}
 
 	// Graceful shutdown
@@ -160,6 +173,8 @@ func formatMemory(mem interface{}) string {
 }
 
 func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
+	data["IsAuthenticated"] = sessionManager.GetBool(r.Context(), "authenticated")
+
 	localizePage(w, r, data)
 
 	// Render the specific page template to a buffer
@@ -281,4 +296,47 @@ func vmbrPageHandler(w http.ResponseWriter, r *http.Request) {
 func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		password := r.FormValue("password")
+		adminPasswordHash := os.Getenv("ADMIN_PASSWORD_HASH")
+
+		if adminPasswordHash == "" {
+			log.Error().Msg("ADMIN_PASSWORD_HASH is not set")
+			data := map[string]interface{}{"Error": "Server configuration error"}
+			renderTemplate(w, r, "login.html", data)
+			return
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(adminPasswordHash), []byte(password)); err == nil {
+			sessionManager.Put(r.Context(), "authenticated", true)
+			http.Redirect(w, r, "/admin", http.StatusFound)
+			return
+		} else {
+			log.Warn().Msg("Failed login attempt")
+			data := map[string]interface{}{"Error": "Invalid password"}
+			renderTemplate(w, r, "login.html", data)
+			return
+		}
+	}
+
+	renderTemplate(w, r, "login.html", make(map[string]interface{}))
+}
+
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	sessionManager.Destroy(r.Context())
+	http.Redirect(w, r, "/login", http.StatusFound)
+}
+
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !sessionManager.GetBool(r.Context(), "authenticated") {
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }

@@ -43,6 +43,7 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 
 	localizer := i18n.NewLocalizer(bundle, lang)
 
+	// Admin page
 	data["AdminNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Nodes"})
 	data["AdminPage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Page"})
 	data["AdminTagsTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Tags.Title"})
@@ -75,6 +76,8 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["Header"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Header"})
 	data["Lang"] = lang
 	data["NavbarAdmin"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Admin"})
+	data["NavbarLogin"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Login"})
+	data["NavbarLogout"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Logout"})
 	data["NavbarHome"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.Home"})
 	data["NavbarSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.SearchVM"})
 	data["NavbarVMs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Navbar.VMs"})
@@ -90,6 +93,11 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["SearchVMDetailsButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.VMDetailsButton"})
 	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
 	data["Title"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
+
+	// Login page
+	data["LoginTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Login.Title"})
+	data["LoginPasswordLabel"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Login.PasswordLabel"})
+	data["LoginButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Login.Button"})
 
 	// Nodes page
 	data["NodesNoNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.NoNodes"})

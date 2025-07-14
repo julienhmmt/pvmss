@@ -91,6 +91,12 @@ other = "Proxmox VM Self-Service"
 ["Navbar.Admin"]
 other = "Administration"
 
+["Navbar.Login"]
+other = "Connexion"
+
+["Navbar.Logout"]
+other = "Déconnexion"
+
 ["Navbar.Home"]
 other = "Accueil"
 
@@ -162,3 +168,12 @@ other = "Votre portail libre-service pour les machines virtuelles Proxmox."
 
 ["Title"]
 other = "PVMSS - Proxmox VM Self-Service"
+
+["Login.Title"]
+other = "Connexion au panneau administrateur"
+
+["Login.PasswordLabel"]
+other = "Mot de passe :"
+
+["Login.Button"]
+other = "Connexion"

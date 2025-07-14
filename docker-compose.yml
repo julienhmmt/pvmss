@@ -6,9 +6,8 @@ services:
       dockerfile: Dockerfile
       target: builder
     restart: unless-stopped
-    environment:
-      - LOG_LEVEL=debug # or 'info'
-      - PORT=50000
+    env_file:
+      - .env
     ports:
       - "50000:50000"
     volumes:
