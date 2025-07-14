@@ -52,3 +52,7 @@ body .hero.is-primary,
     background-color: var(--primary);
     color: #ffffff;
 }
+
+.navbar-burger {
+    color: var(--primary);
+}
