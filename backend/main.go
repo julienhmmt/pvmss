@@ -181,6 +181,7 @@ func setupServer(ctx context.Context) *http.Server {
 	r.HandleFunc("/api/iso/settings", updateIsoSettingsHandler)
 	r.HandleFunc("/api/vmbr/settings", updateVmbrSettingsHandler)
 	r.HandleFunc("/api/limits", limitsHandler)
+	r.HandleFunc("/create-vm", createVmHandler)
 
 	// Configure server with timeouts
 	return &http.Server{

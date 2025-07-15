@@ -113,7 +113,7 @@ other = "Home"
 other = "Search a VM"
 
 ["Navbar.VMs"]
-other = "Virtual machines"
+other = "Create a virtual machine"
 
 ["NavbarAdminDocs"]
 other = "Admin Documentation"
@@ -303,3 +303,33 @@ other = "Action successful!"
 
 ["VMDetails.Action.Failed"]
 other = "Action failed: {{.Error}}"
+
+["CreateVM.Title"]
+other = "Create Virtual Machine"
+
+["CreateVM.Header"]
+other = "Create New Virtual Machine"
+
+["CreateVM.VMID"]
+other = "VM ID"
+
+["CreateVM.VMID.Help"]
+other = "The next available VM ID is automatically assigned."
+
+["CreateVM.Name"]
+other = "VM Name"
+
+["CreateVM.Description"]
+other = "Description (Markdown supported)"
+
+["CreateVM.Cores"]
+other = "CPU Cores"
+
+["CreateVM.Memory"]
+other = "Memory (RAM in GB)"
+
+["CreateVM.Disk"]
+other = "Disk Size (GB)"
+
+["CreateVM.Button"]
+other = "Create VM"

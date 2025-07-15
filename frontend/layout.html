@@ -1,6 +1,6 @@
 {{define "layout"}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{.Lang}}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,8 +9,8 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-
-    <nav class="navbar" role="navigation" aria-label="main navigation">
+    <!-- Navigation bar -->
+    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
         <div class="navbar-brand">
             <a class="navbar-item" href="/?lang={{.Lang}}">
                 <strong>PVMSS</strong>
@@ -21,12 +21,13 @@
                 <span aria-hidden="true"></span>
             </a>
         </div>
+
         <div id="navbarBasicExample" class="navbar-menu">
             <div class="navbar-start">
                 <a class="navbar-item" href="/?lang={{.Lang}}">
                     {{.NavbarHome}}
                 </a>
-                <a class="navbar-item" href="/vms?lang={{.Lang}}">
+                <a class="navbar-item" href="/create-vm">
                     {{.NavbarVMs}}
                 </a>
                 <a class="navbar-item" href="/search?lang={{.Lang}}">
@@ -36,6 +37,7 @@
                     {{.NavbarUserDocs}}
                 </a>
             </div>
+
             <div class="navbar-end">
                 <div class="navbar-item">
                     <div class="buttons">

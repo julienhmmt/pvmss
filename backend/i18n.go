@@ -159,6 +159,18 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["NodesStatusOnline"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Status.Online"})
 	data["NodesStatusOffline"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Nodes.Status.Offline"})
 
+	// Create VM page
+	data["CreateVMTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Title"})
+	data["CreateVMHeader"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Header"})
+	data["CreateVMVMID"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.VMID"})
+	data["CreateVMVMIDHelp"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.VMID.Help"})
+	data["CreateVMName"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Name"})
+	data["CreateVMDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Description"})
+	data["CreateVMCores"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Cores"})
+	data["CreateVMMemory"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Memory"})
+	data["CreateVMDisk"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Disk"})
+	data["CreateVMButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "CreateVM.Button"})
+
 	q := r.URL.Query()
 	q.Set("lang", "en")
 	data["LangEN"] = "?" + q.Encode()

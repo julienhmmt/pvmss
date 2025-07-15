@@ -113,7 +113,7 @@ other = "Accueil"
 other = "Rechercher une VM"
 
 ["Navbar.VMs"]
-other = "Machines virtuelles"
+other = "Créer une machine virtuelle"
 
 ["NavbarAdminDocs"]
 other = "Documentation d'administration"
@@ -303,3 +303,33 @@ other = "Échec de l'action : {{.Error}}"
 
 ["VMDetails.Action.Refresh"]
 other = "Rafraîchir"
+
+["CreateVM.Title"]
+other = "Créer une machine virtuelle"
+
+["CreateVM.Header"]
+other = "Créer une nouvelle machine virtuelle"
+
+["CreateVM.VMID"]
+other = "ID de la VM"
+
+["CreateVM.VMID.Help"]
+other = "Le prochain ID de VM disponible est attribué automatiquement."
+
+["CreateVM.Name"]
+other = "Nom de la VM"
+
+["CreateVM.Description"]
+other = "Description (Markdown supporté)"
+
+["CreateVM.Cores"]
+other = "Cœurs CPU"
+
+["CreateVM.Memory"]
+other = "Mémoire (RAM en Go)"
+
+["CreateVM.Disk"]
+other = "Taille du disque (Go)"
+
+["CreateVM.Button"]
+other = "Créer la VM"

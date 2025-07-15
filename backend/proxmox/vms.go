@@ -92,3 +92,23 @@ func GetVmList(c *Client, ctx context.Context) (map[string]interface{}, error) {
 	log.Info().Int("vm_count", len(vms)).Msg("Returning VM list result")
 	return result, nil
 }
+
+// GetNextVMID calculates the next available VMID.
+func GetNextVMID(ctx context.Context, client *Client) (int, error) {
+	vms, err := GetVMsWithContext(ctx, client)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get VMs to calculate next VMID: %w", err)
+	}
+
+	highestVMID := 0
+	for _, vm := range vms {
+		if vmidFloat, ok := vm["vmid"].(float64); ok {
+			vmid := int(vmidFloat)
+			if vmid > highestVMID {
+				highestVMID = vmid
+			}
+		}
+	}
+
+	return highestVMID + 1, nil
+}
