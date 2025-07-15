@@ -45,7 +45,33 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 
 	// Search page
 	data["NoResults"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.NoResults"})
-
+	
+	// VM Creation page
+	data["CreateVMTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.Title"})
+	data["NoISOsMessage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.NoISOs"})
+	data["NoBridgesMessage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.NoBridges"})
+	data["TagsTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.Tags"})
+	data["TagsHelp"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.TagsHelp"})
+	data["VMName"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.VMName"})
+	data["VMNamePlaceholder"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.VMNamePlaceholder"})
+	data["VMNameHelp"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.VMNameHelp"})
+	data["Description"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.Description"})
+	data["DescriptionPlaceholder"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.DescriptionPlaceholder"})
+	data["VMID"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.VMID"})
+	data["VMIDPlaceholder"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.VMIDPlaceholder"})
+	data["CPUSockets"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.CPUSockets"})
+	data["CPUCores"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.CPUCores"})
+	data["Memory"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.Memory"})
+	data["Storage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.Storage"})
+	data["ISO"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.ISO"})
+	data["SelectISO"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.SelectISO"})
+	data["Network"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.Network"})
+	data["SelectNetwork"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.SelectNetwork"})
+	data["CreateButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.CreateButton"})
+	data["ResetButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Create.ResetButton"})
+	data["BridgeDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Bridge.Description"})
+	data["DefaultBridge"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Bridge.Default"})
+	
 	// Admin page
 	data["AdminNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Nodes"})
 	data["AdminPage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Page"})

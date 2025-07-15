@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -86,8 +88,70 @@ func initProxmoxClient() (*proxmox.Client, error) {
 	)
 }
 
+// Settings holds the application settings
+type Settings struct {
+	Tags  []string `json:"tags"`
+	RAM   struct {
+		Min int `json:"min"`
+		Max int `json:"max"`
+	} `json:"ram"`
+	CPU struct {
+		Min int `json:"min"`
+		Max int `json:"max"`
+	} `json:"cpu"`
+	Sockets struct {
+		Min int `json:"min"`
+		Max int `json:"max"`
+	} `json:"sockets"`
+	ISOs  []string `json:"isos"`
+	VMBRs []string `json:"vmbrs"`
+}
+
+var appSettings Settings
+
+// getTranslations returns a map of translations for the given language
+func getTranslations(lang string) map[string]string {
+	translations := map[string]map[string]string{
+		"en": {
+			"CreateVMTitle":    "Create New Virtual Machine",
+			"NoISOsMessage":    "No ISO images available. Please contact an administrator.",
+			"NoBridgesMessage": "No network bridges available. Please contact an administrator.",
+		},
+		"fr": {
+			"CreateVMTitle":    "Créer une nouvelle machine virtuelle",
+			"NoISOsMessage":    "Aucune image ISO disponible. Veuillez contacter un administrateur.",
+			"NoBridgesMessage": "Aucun pont réseau disponible. Veuillez contacter un administrateur.",
+		},
+		// Add more languages as needed
+	}
+
+	// Default to English if the requested language is not available
+	if _, exists := translations[lang]; !exists {
+		lang = "en"
+	}
+
+	return translations[lang]
+}
+
+// loadSettings loads the application settings from settings.json
+func loadSettings() error {
+	file, err := os.Open("settings.json")
+	if err != nil {
+		return fmt.Errorf("error opening settings file: %w", err)
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&appSettings)
+	if err != nil {
+		return fmt.Errorf("error decoding settings: %w", err)
+	}
+
+	return nil
+}
+
 // initTemplates initializes the HTML templates with custom functions
-func initTemplates() error {
+func initTemplates() (*template.Template, error) {
 	// Define template functions
 	funcMap := template.FuncMap{
 		"div": func(a, b float64) float64 {
@@ -98,6 +162,23 @@ func initTemplates() error {
 		},
 		"mul": func(a, b float64) float64 {
 			return a * b
+		},
+		"until": func(n int) []int {
+			var arr []int
+			for i := 0; i < n; i++ {
+				arr = append(arr, i)
+			}
+			return arr
+		},
+		"contains":  strings.Contains,
+		"splitList": strings.Split,
+		"sub":      func(a, b int) int { return a - b },
+		"add":      func(a, b int) int { return a + b },
+		"sort":     func(s []string) []string {
+			sorted := make([]string, len(s))
+			copy(sorted, s)
+			sort.Strings(sorted)
+			return sorted
 		},
 		"humanBytes": func(b interface{}) string {
 			var bytes uint64
@@ -128,9 +209,19 @@ func initTemplates() error {
 		"formatMemory": formatMemory,
 	}
 
-	var err error
-	templates, err = template.New("layout.html").Funcs(funcMap).ParseGlob("../frontend/*.html")
-	return err
+	// Create a new template with the layout file first
+	tmpl := template.New("layout.html").Funcs(funcMap)
+	
+	// Parse all HTML templates in the frontend directory
+	tmpl, err := tmpl.ParseGlob("../frontend/*.html")
+	if err != nil {
+		return nil, fmt.Errorf("error parsing templates: %w", err)
+	}
+	
+	// Store the parsed templates in the global variable
+	templates = tmpl
+	
+	return tmpl, nil
 }
 
 // setupServer configures the HTTP server with routes and middleware
@@ -230,9 +321,11 @@ func main() {
 	initI18n()
 
 	// Initialize templates
-	if err := initTemplates(); err != nil {
+	tmpl, err := initTemplates()
+	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to initialize templates")
 	}
+	templates = tmpl
 
 	// Initialize session manager
 	sessionManager = scs.New()
@@ -407,19 +500,20 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func createVmHandler(w http.ResponseWriter, r *http.Request) {
-    tmpl, err := template.New("create_vm.html").Funcs(template.FuncMap{
-    }).ParseFiles("../frontend/create_vm.html")
+    err := loadSettings()
     if err != nil {
-        http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+        http.Error(w, "Error loading settings: "+err.Error(), http.StatusInternalServerError)
         return
     }
 
-    // Execute the template
-    err = tmpl.Execute(w, nil)
-    if err != nil {
-        http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
-        return
+    // Prepare template data with translations
+    data := map[string]interface{}{
+        "AvailableISOs":    appSettings.ISOs,
+        "AvailableBridges": appSettings.VMBRs,
+        "AvailableTags":    appSettings.Tags,
     }
+
+    renderTemplate(w, r, "create_vm.html", data)
 }
 
 func adminHandler(w http.ResponseWriter, r *http.Request) {

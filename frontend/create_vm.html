@@ -1,0 +1,196 @@
+{{define "create_vm.html"}}
+<div class="container">
+    <h2 class="title is-4">{{.CreateVMTitle}}</h2>
+    
+    <form method="POST" action="/api/vm/create" class="box">
+        <!-- VM Name -->
+        <div class="field">
+            <label class="label">{{.VMName}}</label>
+            <div class="control">
+                <input class="input" type="text" name="name" placeholder="{{.VMNamePlaceholder}}" required>
+            </div>
+            <p class="help">{{.VMNameHelp}}</p>
+        </div>
+
+        <!-- Description -->
+        <div class="field">
+            <label class="label">{{.Description}}</label>
+            <div class="control">
+                <textarea class="textarea" name="description" placeholder="{{.DescriptionPlaceholder}}" rows="2"></textarea>
+            </div>
+        </div>
+
+        <!-- VM ID -->
+        <div class="field">
+            <label class="label">{{.VMID}}</label>
+            <div class="control">
+                <input class="input" type="number" name="vmid" min="100" max="999999999" placeholder="{{.VMIDPlaceholder}}">
+            </div>
+        </div>
+
+        <!-- CPU Configuration -->
+        <div class="columns">
+            <div class="column">
+                <div class="field">
+                    <label class="label">{{.CPUSockets}}</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="sockets" required>
+                                {{range $i := until 5}}
+                                <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="column">
+                <div class="field">
+                    <label class="label">{{.CPUCores}}</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="cores" required>
+                                {{range $i := until 9}}
+                                <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                {{end}}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memory -->
+        <div class="field">
+            <label class="label">{{.Memory}}</label>
+            <div class="control">
+                <input class="input" type="number" name="memory" min="512" value="2048" required>
+            </div>
+        </div>
+
+        <!-- Storage -->
+        <div class="field">
+            <label class="label">{{.Storage}}</label>
+            <div class="control">
+                <input class="input" type="number" name="storage" min="10" value="32" required>
+            </div>
+        </div>
+
+        <!-- ISO Image -->
+        <div class="field">
+            <label class="label">{{.ISO}}</label>
+            {{if .AvailableISOs}}
+            <div class="control">
+                <div class="select is-fullwidth">
+                    <select name="iso" class="is-hovered" required>
+                        <option value="">{{.SelectISO}}</option>
+                        {{range sort .AvailableISOs}}
+                        <option value="{{.}}" title="{{.}}">{{.}}</option>
+                        {{end}}
+                    </select>
+                </div>
+            </div>
+            {{else}}
+            <div class="notification is-warning">
+                {{.NoISOsMessage}}
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Tags -->
+        <div class="field">
+            <label class="label">{{.TagsTitle}}</label>
+            <div class="control">
+                <div class="tags are-medium">
+                    {{range .AvailableTags}}
+                    <span class="tag is-primary is-light">
+                        <label class="checkbox">
+                            <input type="checkbox" name="tags" value="{{.}}" 
+                                {{if eq . "pvmss"}}checked disabled{{end}}>
+                            <span class="ml-1">{{.}}</span>
+                            {{if eq . "pvmss"}}
+                            <input type="hidden" name="tags" value="pvmss">
+                            {{end}}
+                        </label>
+                    </span>
+                    {{end}}
+                </div>
+            </div>
+            <p class="help">{{.TagsHelp}}</p>
+        </div>
+
+        <!-- Network -->
+        <div class="field">
+            <label class="label">{{.Network}} <span class="has-text-grey is-size-7">({{.Optional}})</span></label>
+            {{if .AvailableBridges}}
+            <div class="control">
+                <div class="select is-fullwidth">
+                    <select name="bridge" class="is-hovered">
+                        <option value="">{{.NoNetwork}}</option>
+                        {{range $index, $bridge := .AvailableBridges}}
+                        <option value="{{$bridge}}" {{if eq $index 0}}selected{{end}}>{{$bridge}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <p class="help">{{.NetworkHelp}}</p>
+            </div>
+            {{else}}
+            <div class="notification is-warning">
+                {{.NoBridgesMessage}} {{.NetworkHelp}}
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Form Actions -->
+        <div class="field is-grouped mt-5">
+            <div class="control">
+                <button type="submit" class="button is-primary">
+                    <span>{{.CreateButton}}</span>
+                </button>
+            </div>
+            <div class="control">
+                <button type="reset" class="button is-light">
+                    <span>{{.ResetButton}}</span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+/* Custom styles for better form appearance */
+.select:not(.is-multiple):not(.is-loading)::after {
+    border-color: #485fc7;
+}
+
+.select select option {
+    padding: 0.5em 1em;
+}
+
+.tag {
+    margin-bottom: 0.5rem;
+    margin-right: 0.5rem;
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.field:not(:last-child) {
+    margin-bottom: 1.5rem;
+}
+
+/* Make the select dropdowns more visible on hover */
+.select select:hover {
+    border-color: #b5b5b5;
+}
+
+/* Style for the PVMSS tag to indicate it's required */
+tag.is-primary.is-light input[disabled] + span {
+    opacity: 1;
+    font-weight: 600;
+    color: #296fa8;
+}
+</style>
+{{end}}

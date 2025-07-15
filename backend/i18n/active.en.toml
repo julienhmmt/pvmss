@@ -1,14 +1,9 @@
-["Admin.ISO.Title"]
-other = "ISO Management"
-
+# Admin Section
 ["Admin.ISO.Description"]
 other = "Here you can manage which ISO images are available for users to select when creating a new virtual machine."
 
 ["Admin.ISO.Header.Enabled"]
 other = "Enabled"
-
-["Admin.ISO.Header.Storage"]
-other = "Storage"
 
 ["Admin.ISO.Header.Name"]
 other = "ISO Name"
@@ -16,17 +11,81 @@ other = "ISO Name"
 ["Admin.ISO.Header.Size"]
 other = "Size (GB)"
 
+["Admin.ISO.Header.Storage"]
+other = "Storage"
+
+["Admin.ISO.Title"]
+other = "ISO Management"
+
+
+["Admin.Limits.Title"]
+other = "Node Resource Limits"
+
+["Admin.Limits.Description"]
+other = "Set the minimum and maximum resources that can be allocated to virtual machines on each node."
+
+["Admin.Limits.SaveButton"]
+other = "Save"
+
+["Admin.Limits.SaveSuccess"]
+other = "Settings saved for node {{.NodeName}}"
+
+["Admin.Limits.SaveFailed"]
+other = "Failed to save settings for node {{.NodeName}}"
+
+["Admin.Limits.NoNodes"]
+other = "No nodes found. Please ensure your Proxmox connection is configured correctly."
+
+["Admin.Limits.ErrorOccurred"]
+other = "An error occurred while saving settings."
+
+["Admin.Limits.NodeLabel"]
+other = "Node:"
+
+["Admin.Limits.AvailableSockets"]
+other = "Available Sockets"
+
+["Admin.Limits.AvailableCores"]
+other = "Available Cores"
+
+["Admin.Limits.AvailableMemory"]
+other = "Available Memory"
+
+["Admin.Limits.Sockets"]
+other = "Sockets"
+
+["Admin.Limits.Cores"]
+other = "Cores"
+
+["Admin.Limits.MemoryGB"]
+other = "Memory (GB)"
+
+["Admin.Limits.MinPlaceholder"]
+other = "Min"
+
+["Admin.Limits.MaxPlaceholder"]
+other = "Max"
+
+["Admin.Limits.MinGBPlaceholder"]
+other = "Min GB"
+
+["Admin.Limits.MaxGBPlaceholder"]
+other = "Max GB"
+
 ["Admin.Nodes"]
 other = "PVE Nodes"
 
 ["Admin.Page"]
 other = "Administration page PVMSS"
 
-["Admin.Storage.Title"]
-other = "Storage Management"
-
 ["Admin.Storage.Description"]
 other = "Here you can see all available storages on your Proxmox host that can be used for virtual machines."
+
+["Admin.Storage.Error"]
+other = "Error fetching storages. Please check the backend logs."
+
+["Admin.Storage.Header.Content"]
+other = "Content"
 
 ["Admin.Storage.Header.Name"]
 other = "Name"
@@ -34,62 +93,51 @@ other = "Name"
 ["Admin.Storage.Header.Type"]
 other = "Type"
 
-["Admin.Storage.Header.Content"]
-other = "Content"
-
 ["Admin.Storage.NoStorages"]
 other = "No storages found that can be used for virtual machines."
 
-["Admin.Storage.Error"]
-other = "Error fetching storages. Please check the backend logs."
-
-["Admin.Tags.Title"]
-other = "Tags Management"
-
-["Admin.Tags.Description"]
-other = "Manage tags for your virtual machines. Tags must be between 3 and 24 characters, and can only contain alphanumeric characters."
+["Admin.Storage.Title"]
+other = "Storage Management"
 
 ["Admin.Tags.AddButton"]
 other = "Add"
 
-["Admin.VMBR.Title"]
-other = "VMBR Management"
+["Admin.Tags.Description"]
+other = "Manage tags for your virtual machines. Tags must be between 3 and 24 characters, and can only contain alphanumeric characters."
+
+["Admin.Tags.Title"]
+other = "Tags Management"
 
 ["Admin.VMBR.Description"]
 other = "Here you can manage which VMBRs (Virtual Network Bridges) are available for users to select when creating a new virtual machine."
 
-["Admin.VMBR.Header.Enabled"]
-other = "Enabled"
-
-["Admin.VMBR.Header.Node"]
-other = "Node"
-
-["Admin.VMBR.Header.Name"]
-other = "VMBR Name"
+["Admin.VMBR.Error"]
+other = "Error fetching data. See console for details."
 
 ["Admin.VMBR.Header.Description"]
 other = "Description"
 
+["Admin.VMBR.Header.Enabled"]
+other = "Enabled"
+
+["Admin.VMBR.Header.Name"]
+other = "VMBR Name"
+
+["Admin.VMBR.Header.Node"]
+other = "Node"
+
 ["Admin.VMBR.NoVMBRs"]
 other = "No VMBRs found on any node."
 
-["Admin.VMBR.Error"]
-other = "Error fetching data. See console for details."
+["Admin.VMBR.Title"]
+other = "VMBR Management"
 
+# General UI
 ["Body"]
 other = "Here you will be able to manage your virtual machines."
 
 ["Button.Search"]
 other = "Search"
-
-["Search.PlaceholderVMID"]
-other = "e.g. 100"
-
-["Search.TitleVMID"]
-other = "Please enter a VM ID with 1 to 10 digits."
-
-["Search.PlaceholderName"]
-other = "e.g. my-vm"
 
 ["Footer"]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Created with <span style="color: #e25555;">&#9829;</span> on Go 1.24+ and Bulma.'
@@ -100,26 +148,121 @@ other = "Proxmox VM Self-Service"
 ["Navbar.Admin"]
 other = "Administration"
 
+["NavbarAdminDocs"]
+other = "Admin Documentation"
+
+["Navbar.Home"]
+other = "Home"
+
 ["Navbar.Login"]
 other = "Login"
 
 ["Navbar.Logout"]
 other = "Logout"
 
-["Navbar.Home"]
-other = "Home"
-
 ["Navbar.SearchVM"]
 other = "Search a VM"
+
+["NavbarUserDocs"]
+other = "User Documentation"
 
 ["Navbar.VMs"]
 other = "Create a virtual machine"
 
-["NavbarAdminDocs"]
-other = "Admin Documentation"
+# Search
+["Search.PlaceholderName"]
+other = "e.g. my-vm"
 
-["NavbarUserDocs"]
-other = "User Documentation"
+["Search.PlaceholderVMID"]
+other = "e.g. 100"
+
+["Search.TitleVMID"]
+other = "Please enter a VM ID with 1 to 10 digits."
+
+# VM Creation
+["VM.Bridge.Default"]
+other = "Default bridge"
+
+["VM.Bridge.Description"]
+other = "Bridge for virtual machine network"
+
+["VM.Create.CPUCores"]
+other = "Cores per Socket"
+
+["VM.Create.CPUSockets"]
+other = "CPU Sockets"
+
+["VM.Create.CreateButton"]
+other = "Create VM"
+
+["VM.Create.Description"]
+other = "Description"
+
+["VM.Create.DescriptionPlaceholder"]
+other = "Enter a description (markdown supported)"
+
+["VM.Create.ISO"]
+other = "ISO Image"
+
+["VM.Create.Memory"]
+other = "Memory (MB)"
+
+["VM.Create.Network"]
+other = "Network Bridge"
+
+["VM.Create.NoBridges"]
+other = "No network bridges available. Please contact an administrator."
+
+["VM.Create.NoISOs"]
+other = "No ISO images available. Please contact an administrator."
+
+["VM.Create.ResetButton"]
+other = "Reset"
+
+["VM.Create.SelectISO"]
+other = "Select an ISO"
+
+["VM.Create.SelectNetwork"]
+other = "Select a network bridge"
+
+["VM.Create.Storage"]
+other = "Storage (GB)"
+
+["VM.Create.Tags"]
+other = "Tags"
+
+["VM.Create.TagsHelp"]
+other = "Select one or more tags (PVMSS is required)"
+
+["VM.Create.Title"]
+other = "Create New Virtual Machine"
+
+["VM.Create.VMID"]
+other = "VM ID (Optional)"
+
+["VM.Create.VMIDPlaceholder"]
+other = "Auto-assigned if empty"
+
+["VM.Create.VMName"]
+other = "VM Name"
+
+["VM.Create.VMNameHelp"]
+other = "A unique name for your virtual machine"
+
+["VM.Create.VMNamePlaceholder"]
+other = "e.g., my-vm-01"
+
+["VM.NetworkHelp"]
+other = "Select a network bridge or leave disconnected"
+
+["VM.NoBridges"]
+other = "No network bridges available."
+
+["VM.NoNetwork"]
+other = "No network (disconnected)"
+
+["VM.Optional"]
+other = "Optional"
 
 ["Nodes.NoNodes"]
 other = "No nodes to display."
@@ -192,60 +335,6 @@ other = "Password:"
 
 ["Login.Button"]
 other = "Login"
-
-["Admin.Limits.Title"]
-other = "Node Resource Limits"
-
-["Admin.Limits.Description"]
-other = "Set the minimum and maximum resources that can be allocated to virtual machines on each node."
-
-["Admin.Limits.SaveButton"]
-other = "Save"
-
-["Admin.Limits.SaveSuccess"]
-other = "Settings saved for node {{.NodeName}}"
-
-["Admin.Limits.SaveFailed"]
-other = "Failed to save settings for node {{.NodeName}}"
-
-["Admin.Limits.NoNodes"]
-other = "No nodes found. Please ensure your Proxmox connection is configured correctly."
-
-["Admin.Limits.ErrorOccurred"]
-other = "An error occurred while saving settings."
-
-["Admin.Limits.NodeLabel"]
-other = "Node:"
-
-["Admin.Limits.AvailableSockets"]
-other = "Available Sockets"
-
-["Admin.Limits.AvailableCores"]
-other = "Available Cores"
-
-["Admin.Limits.AvailableMemory"]
-other = "Available Memory"
-
-["Admin.Limits.Sockets"]
-other = "Sockets"
-
-["Admin.Limits.Cores"]
-other = "Cores"
-
-["Admin.Limits.MemoryGB"]
-other = "Memory (GB)"
-
-["Admin.Limits.MinPlaceholder"]
-other = "Min"
-
-["Admin.Limits.MaxPlaceholder"]
-other = "Max"
-
-["Admin.Limits.MinGBPlaceholder"]
-other = "Min GB"
-
-["Admin.Limits.MaxGBPlaceholder"]
-other = "Max GB"
 
 ["VMDetails.Name"]
 other = "Name"

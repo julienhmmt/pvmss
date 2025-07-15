@@ -1,14 +1,9 @@
-["Admin.ISO.Title"]
-other = "Gestion des ISOs"
-
+# Admin Section
 ["Admin.ISO.Description"]
 other = "Ici, vous pouvez gérer quelles images ISO sont disponibles pour les utilisateurs lors de la création d'une nouvelle machine virtuelle."
 
 ["Admin.ISO.Header.Enabled"]
 other = "Activé"
-
-["Admin.ISO.Header.Storage"]
-other = "Stockage"
 
 ["Admin.ISO.Header.Name"]
 other = "Nom de l'ISO"
@@ -16,17 +11,26 @@ other = "Nom de l'ISO"
 ["Admin.ISO.Header.Size"]
 other = "Taille (Go)"
 
+["Admin.ISO.Header.Storage"]
+other = "Stockage"
+
+["Admin.ISO.Title"]
+other = "Gestion des ISOs"
+
 ["Admin.Nodes"]
 other = "Nœuds PVE"
 
 ["Admin.Page"]
 other = "Page d'administration de PVMSS"
 
-["Admin.Storage.Title"]
-other = "Gestion des stockages"
-
 ["Admin.Storage.Description"]
 other = "Ici, vous pouvez voir tous les stockages disponibles sur votre hôte Proxmox qui peuvent être utilisés pour les machines virtuelles."
+
+["Admin.Storage.Error"]
+other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
+
+["Admin.Storage.Header.Content"]
+other = "Contenu"
 
 ["Admin.Storage.Header.Name"]
 other = "Nom"
@@ -34,62 +38,51 @@ other = "Nom"
 ["Admin.Storage.Header.Type"]
 other = "Type"
 
-["Admin.Storage.Header.Content"]
-other = "Contenu"
-
 ["Admin.Storage.NoStorages"]
 other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
 
-["Admin.Storage.Error"]
-other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
-
-["Admin.Tags.Title"]
-other = "Gestion des tags"
-
-["Admin.Tags.Description"]
-other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
+["Admin.Storage.Title"]
+other = "Gestion des stockages"
 
 ["Admin.Tags.AddButton"]
 other = "Ajouter"
 
-["Admin.VMBR.Title"]
-other = "Gestion des VMBRs"
+["Admin.Tags.Description"]
+other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
+
+["Admin.Tags.Title"]
+other = "Gestion des tags"
 
 ["Admin.VMBR.Description"]
 other = "Ici, vous pouvez gérer quels VMBRs (ponts de réseau virtuels) sont disponibles pour les utilisateurs lors de la création d'une nouvelle machine virtuelle."
 
-["Admin.VMBR.Header.Enabled"]
-other = "Activé"
-
-["Admin.VMBR.Header.Node"]
-other = "Nœud"
-
-["Admin.VMBR.Header.Name"]
-other = "Nom du VMBR"
+["Admin.VMBR.Error"]
+other = "Erreur lors de la récupération des données. Voir la console pour les détails."
 
 ["Admin.VMBR.Header.Description"]
 other = "Description"
 
+["Admin.VMBR.Header.Enabled"]
+other = "Activé"
+
+["Admin.VMBR.Header.Name"]
+other = "Nom du VMBR"
+
+["Admin.VMBR.Header.Node"]
+other = "Nœud"
+
 ["Admin.VMBR.NoVMBRs"]
 other = "Aucun VMBR trouvé sur aucun nœud."
 
-["Admin.VMBR.Error"]
-other = "Erreur lors de la récupération des données. Voir la console pour les détails."
+["Admin.VMBR.Title"]
+other = "Gestion des VMBRs"
 
+# General UI
 ["Body"]
 other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
 
 ["Button.Search"]
 other = "Rechercher"
-
-["Search.PlaceholderVMID"]
-other = "ex. 100"
-
-["Search.TitleVMID"]
-other = "Veuillez saisir un ID de VM de 1 à 10 chiffres."
-
-["Search.PlaceholderName"]
-other = "ex. ma-vm"
 
 ["Footer"]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
@@ -100,17 +93,112 @@ other = "Proxmox VM Self-Service"
 ["Navbar.Admin"]
 other = "Administration"
 
+["Navbar.Home"]
+other = "Accueil"
+
 ["Navbar.Login"]
 other = "Connexion"
 
 ["Navbar.Logout"]
 other = "Déconnexion"
 
-["Navbar.Home"]
-other = "Accueil"
-
 ["Navbar.SearchVM"]
 other = "Rechercher une VM"
+
+# Search
+["Search.PlaceholderName"]
+other = "ex. ma-vm"
+
+["Search.PlaceholderVMID"]
+other = "ex. 100"
+
+["Search.TitleVMID"]
+other = "Veuillez saisir un ID de VM de 1 à 10 chiffres."
+
+# VM Creation
+["VM.Bridge.Default"]
+other = "Pont par défaut"
+
+["VM.Bridge.Description"]
+other = "Pont pour le réseau de la machine virtuelle"
+
+["VM.Create.CPUCores"]
+other = "Cœurs par socket"
+
+["VM.Create.CPUSockets"]
+other = "Sockets CPU"
+
+["VM.Create.CreateButton"]
+other = "Créer la VM"
+
+["VM.Create.Description"]
+other = "Description"
+
+["VM.Create.DescriptionPlaceholder"]
+other = "Entrez une description (markdown supporté)"
+
+["VM.Create.ISO"]
+other = "Image ISO"
+
+["VM.Create.Memory"]
+other = "Mémoire (Mo)"
+
+["VM.Create.Network"]
+other = "Pont réseau"
+
+["VM.Create.NoBridges"]
+other = "Aucun pont réseau disponible. Veuillez contacter un administrateur."
+
+["VM.Create.NoISOs"]
+other = "Aucune image ISO disponible. Veuillez contacter un administrateur."
+
+["VM.Create.ResetButton"]
+other = "Réinitialiser"
+
+["VM.Create.SelectISO"]
+other = "Sélectionnez une ISO"
+
+["VM.Create.SelectNetwork"]
+other = "Sélectionnez un pont réseau"
+
+["VM.Create.Storage"]
+other = "Stockage (Go)"
+
+["VM.Create.Tags"]
+other = "Étiquettes"
+
+["VM.Create.TagsHelp"]
+other = "Sélectionnez une ou plusieurs étiquettes (PVMSS est obligatoire)"
+
+["VM.Create.Title"]
+other = "Créer une nouvelle machine virtuelle"
+
+["VM.Create.VMID"]
+other = "ID VM (Optionnel)"
+
+["VM.Create.VMIDPlaceholder"]
+other = "Auto-attribué si vide"
+
+["VM.Create.VMName"]
+other = "Nom de la VM"
+
+["VM.Create.VMNameHelp"]
+other = "Un nom unique pour votre machine virtuelle"
+
+["VM.Create.VMNamePlaceholder"]
+other = "ex. ma-vm-01"
+
+["VM.NetworkHelp"]
+other = "Sélectionnez un pont réseau ou laissez déconnecté"
+
+["VM.NoBridges"]
+other = "Aucun pont réseau disponible."
+
+["VM.NoNetwork"]
+other = "Aucun réseau (déconnecté)"
+
+["VM.Optional"]
+other = "Optionnel"
 
 ["Navbar.VMs"]
 other = "Créer une machine virtuelle"
