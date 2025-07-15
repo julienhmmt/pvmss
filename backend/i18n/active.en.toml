@@ -291,3 +291,15 @@ other = "Stop"
 
 ["VMDetails.Action.Reset"]
 other = "Reset"
+
+["VMDetails.Action.Refresh"]
+other = "Refresh"
+
+["VMDetails.Action.Processing"]
+other = "Processing..."
+
+["VMDetails.Action.Success"]
+other = "Action successful!"
+
+["VMDetails.Action.Failed"]
+other = "Action failed: {{.Error}}"

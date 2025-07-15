@@ -291,3 +291,15 @@ other = "Arrêter"
 
 ["VMDetails.Action.Reset"]
 other = "Réinitialiser"
+
+["VMDetails.Action.Processing"]
+other = "Traitement en cours..."
+
+["VMDetails.Action.Success"]
+other = "Action réussie !"
+
+["VMDetails.Action.Failed"]
+other = "Échec de l'action : {{.Error}}"
+
+["VMDetails.Action.Refresh"]
+other = "Rafraîchir"

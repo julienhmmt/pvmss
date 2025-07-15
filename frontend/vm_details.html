@@ -45,26 +45,37 @@
             </table>
         </div>
 
-        <!-- VM Action Buttons -->
-        <div class="buttons is-centered mt-4" id="vm-action-buttons">
-            <button class="button is-success is-light" data-action="start">
+    </div>
+    <!-- Refresh Button -->
+    <div class="has-text-centered mb-4">
+        <button class="button is-info is-light" id="refresh-btn">
+            <span>{{.VMDetailsActionRefresh}}</span>
+        </button>
+    </div>
+    <!-- VM Action Buttons -->
+    <div class="buttons is-centered mt-4" id="vm-action-buttons">
+            <button class="button is-success is-light" data-action="start" {{if eq .Status "running"}}disabled{{end}}>
                 <span>{{.VMDetailsActionStart}}</span>
             </button>
             <button class="button is-warning is-light" data-action="reboot" disabled>
                 <span>{{.VMDetailsActionReboot}}</span>
             </button>
-            <button class="button is-danger is-light" data-action="shutdown">
+            <button class="button is-danger is-light" data-action="shutdown" {{if ne .Status "running"}}disabled{{end}}>
                 <span>{{.VMDetailsActionShutdown}}</span>
             </button>
-            <button class="button is-danger is-light" data-action="stop">
+            <button class="button is-danger is-light" data-action="stop" {{if ne .Status "running"}}disabled{{end}}>
                 <span>{{.VMDetailsActionStop}}</span>
             </button>
-            <button class="button is-danger is-light" data-action="reset">
+            <button class="button is-danger is-light" data-action="reset" {{if ne .Status "running"}}disabled{{end}}>
                 <span>{{.VMDetailsActionReset}}</span>
             </button>
         </div>
         <div id="vm-action-feedback" class="has-text-centered mt-2"></div>
         <script>
+        // Localized feedback messages
+        const msgProcessing = '{{.VMDetailsActionProcessing}}';
+        const msgSuccess = '{{.VMDetailsActionSuccess}}';
+        const msgFailed = '{{.VMDetailsActionFailed}}';
         document.addEventListener('DOMContentLoaded', function() {
             const buttons = document.querySelectorAll('#vm-action-buttons button[data-action]');
             const feedback = document.getElementById('vm-action-feedback');
@@ -77,10 +88,14 @@
                 if (type === 'error') feedback.classList.add('has-text-danger');
                 if (type === 'loading') feedback.classList.add('has-text-info');
             }
+            // Refresh button handler
+            document.getElementById('refresh-btn').addEventListener('click', function() {
+                window.location.reload();
+            });
             buttons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const action = btn.getAttribute('data-action');
-                    setFeedback('Processing...', 'loading');
+                    setFeedback(msgProcessing, 'loading');
                     buttons.forEach(b => b.disabled = true);
                     fetch('/vm/action', {
                         method: 'POST',
@@ -92,12 +107,12 @@
                         return res.text().then(t => { throw new Error(t); });
                     })
                     .then(() => {
-                        setFeedback('Action successful!', 'success');
+                        setFeedback(msgSuccess, 'success');
                         setTimeout(() => feedback.textContent = '', 3000);
                         // Optionally: reload status here
                     })
                     .catch(err => {
-                        setFeedback('Action failed: ' + err.message, 'error');
+                        setFeedback(msgFailed.replace('{{.Error}}', err.message), 'error');
                     })
                     .finally(() => {
                         buttons.forEach(b => b.disabled = false);

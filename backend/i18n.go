@@ -136,6 +136,10 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["VMDetailsActionShutdown"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Shutdown"})
 	data["VMDetailsActionStop"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Stop"})
 	data["VMDetailsActionReset"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Reset"})
+	data["VMDetailsActionProcessing"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Processing"})
+	data["VMDetailsActionSuccess"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Success"})
+	data["VMDetailsActionFailed"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Failed"})
+	data["VMDetailsActionRefresh"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Refresh"})
 
 	// Login page
 	data["LoginTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Login.Title"})
