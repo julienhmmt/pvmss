@@ -54,7 +54,13 @@
                         {{end}}
                     </td>
                     <td>
-                        {{if .cpus}}{{.sockets}}s / {{.cpus}}c{{else}}N/A{{end}}
+                        {{if and .sockets .cores}}
+                            {{.sockets}} socket(s) / {{.cores}} core(s)
+                            <br>
+                            <span style="font-size: 0.85em; color: #888;">
+                                Total: {{mul .sockets .cores}} cores
+                            </span>
+                        {{else}}N/A{{end}}
                     </td>
                     <td>
                         {{formatMemory .maxmem}}

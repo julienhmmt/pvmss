@@ -60,16 +60,40 @@ func searchVM(client *proxmox.Client, vmid, name string) (interface{}, error) {
 		}
 
 		// Perform search
+		match := false
 		if vmid != "" {
 			vmIDStr, ok := getStringValue(vmMap, "vmid")
 			if ok && strings.Contains(vmIDStr, vmid) {
-				results = append(results, vmMap)
+				match = true
 			}
 		} else if name != "" {
 			vmNameStr, ok := getStringValue(vmMap, "name")
 			if ok && strings.Contains(vmNameStr, name) {
-				results = append(results, vmMap)
+				match = true
 			}
+		}
+
+		if match {
+			// Fetch sockets and cores from VM config
+			vmidStr, ok := getStringValue(vmMap, "vmid")
+			if ok {
+				node, _ := getStringValue(vmMap, "node")
+				if node != "" && vmidStr != "" {
+					configPath := "/nodes/" + node + "/qemu/" + vmidStr + "/config"
+					cfg, err := client.GetWithContext(ctx, configPath)
+					if err == nil {
+						if cfgData, ok := cfg["data"].(map[string]interface{}); ok {
+							if sockets, sok := cfgData["sockets"]; sok {
+								vmMap["sockets"] = sockets
+							}
+							if cores, cok := cfgData["cores"]; cok {
+								vmMap["cores"] = cores
+							}
+						}
+					}
+				}
+			}
+			results = append(results, vmMap)
 		}
 	}
 
