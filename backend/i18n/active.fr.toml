@@ -276,3 +276,18 @@ other = "Description"
 
 ["VMDetails.BackToSearch"]
 other = "Retour à la recherche"
+
+["VMDetails.Action.Start"]
+other = "Démarrer"
+
+["VMDetails.Action.Reboot"]
+other = "Redémarrer"
+
+["VMDetails.Action.Shutdown"]
+other = "Éteindre"
+
+["VMDetails.Action.Stop"]
+other = "Arrêter"
+
+["VMDetails.Action.Reset"]
+other = "Réinitialiser"

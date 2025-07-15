@@ -44,6 +44,26 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- VM Action Buttons -->
+        <div class="buttons is-centered mt-4">
+            <button class="button is-success is-light">
+                <span>{{.VMDetailsActionStart}}</span>
+            </button>
+            <button class="button is-warning is-light">
+                <span>{{.VMDetailsActionReboot}}</span>
+            </button>
+            <button class="button is-danger is-light">
+                <span>{{.VMDetailsActionShutdown}}</span>
+            </button>
+            <button class="button is-danger is-light">
+                <span>{{.VMDetailsActionStop}}</span>
+            </button>
+            <button class="button is-danger is-light">
+                <span>{{.VMDetailsActionReset}}</span>
+            </button>
+        </div>
+
         <a href="/search" class="button is-light">{{.BackToSearch}}</a>
     </div>
 </section>
