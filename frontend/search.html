@@ -68,7 +68,7 @@
         </table>
         {{else}}
         {{if .NoResults}}
-        <div class="notification is-warning">
+        <div class="notification is-warning is-light">
             {{.NoResults}}
         </div>
         {{end}}
@@ -77,7 +77,7 @@
 
         {{if .Error}}
         <hr>
-        <div class="notification is-danger">
+        <div class="notification is-danger is-light">
             {{.Error}}
         </div>
         {{end}}
