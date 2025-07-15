@@ -21,19 +21,29 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	action := r.FormValue("action")
 	vmid := r.FormValue("vmid")
 	node := r.FormValue("node")
-	if action == "" || vmid == "" || node == "" {
-		http.Error(w, "Missing parameters", http.StatusBadRequest)
+	log.Info().Str("handler", "vmActionHandler").Str("action", action).Str("vmid", vmid).Str("node", node).Msg("Received VM action request")
+	missing := []string{}
+	if action == "" { missing = append(missing, "action") }
+	if vmid == "" { missing = append(missing, "vmid") }
+	if node == "" { missing = append(missing, "node") }
+	if len(missing) > 0 {
+		errMsg := "Missing parameters: " + strings.Join(missing, ", ")
+		log.Error().Str("handler", "vmActionHandler").Msg(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
+		return
+	}
+
+	var id int
+	var err error
+	id, err = strconv.Atoi(vmid)
+	if err != nil {
+		errMsg := "Invalid VMID, must be integer: " + vmid
+		log.Error().Str("handler", "vmActionHandler").Str("vmid", vmid).Msg(errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
-	var err error
-	id, err := strconv.Atoi(vmid)
-	if err != nil {
-		log.Error().Err(err).Msg("Invalid VMID, must be integer")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
 	ref := proxmox.NewVmRef(proxmox.GuestID(id))
 	switch action {
 	case "start":
@@ -44,8 +54,11 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 		_, err = proxmoxClient.ShutdownVm(ctx, ref)
 	case "reset":
 		_, err = proxmoxClient.ResetVm(ctx, ref)
+	case "reboot":
+		_, err = proxmoxClient.RebootVm(ctx, ref)
+		return
 	default:
-		http.Error(w, "Unknown action", http.StatusBadRequest)
+		http.Error(w, "Unknown action: "+action, http.StatusBadRequest)
 		return
 	}
 	if err != nil {
@@ -62,7 +75,7 @@ func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	vmid := r.URL.Query().Get("vmid")
 	node := r.URL.Query().Get("node")
 	lang := r.URL.Query().Get("lang")
-	data := map[string]interface{}{"Lang": lang}
+	data := map[string]interface{}{"Lang": lang, "Node": node}
 
 	if vmid == "" || node == "" {
 		http.Error(w, "Missing vmid or node parameter", http.StatusBadRequest)
