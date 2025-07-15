@@ -9,7 +9,53 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/Telmate/proxmox-api-go/proxmox"
 )
+
+// vmActionHandler handles VM actions: start, stop, shutdown, reset
+func vmActionHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+		return
+	}
+	action := r.FormValue("action")
+	vmid := r.FormValue("vmid")
+	node := r.FormValue("node")
+	if action == "" || vmid == "" || node == "" {
+		http.Error(w, "Missing parameters", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	var err error
+	id, err := strconv.Atoi(vmid)
+	if err != nil {
+		log.Error().Err(err).Msg("Invalid VMID, must be integer")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	ref := proxmox.NewVmRef(proxmox.GuestID(id))
+	switch action {
+	case "start":
+		_, err = proxmoxClient.StartVm(ctx, ref)
+	case "stop":
+		_, err = proxmoxClient.StopVm(ctx, ref)
+	case "shutdown":
+		_, err = proxmoxClient.ShutdownVm(ctx, ref)
+	case "reset":
+		_, err = proxmoxClient.ResetVm(ctx, ref)
+	default:
+		http.Error(w, "Unknown action", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		log.Error().Err(err).Str("action", action).Str("node", node).Str("vmid", vmid).Msg("VM action failed")
+		http.Error(w, "VM action failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
 
 // vmDetailsHandler serves the VM details page
 func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {

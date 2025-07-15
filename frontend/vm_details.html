@@ -46,23 +46,66 @@
         </div>
 
         <!-- VM Action Buttons -->
-        <div class="buttons is-centered mt-4">
-            <button class="button is-success is-light">
+        <div class="buttons is-centered mt-4" id="vm-action-buttons">
+            <button class="button is-success is-light" data-action="start">
                 <span>{{.VMDetailsActionStart}}</span>
             </button>
-            <button class="button is-warning is-light">
+            <button class="button is-warning is-light" data-action="reboot" disabled>
                 <span>{{.VMDetailsActionReboot}}</span>
             </button>
-            <button class="button is-danger is-light">
+            <button class="button is-danger is-light" data-action="shutdown">
                 <span>{{.VMDetailsActionShutdown}}</span>
             </button>
-            <button class="button is-danger is-light">
+            <button class="button is-danger is-light" data-action="stop">
                 <span>{{.VMDetailsActionStop}}</span>
             </button>
-            <button class="button is-danger is-light">
+            <button class="button is-danger is-light" data-action="reset">
                 <span>{{.VMDetailsActionReset}}</span>
             </button>
         </div>
+        <div id="vm-action-feedback" class="has-text-centered mt-2"></div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const buttons = document.querySelectorAll('#vm-action-buttons button[data-action]');
+            const feedback = document.getElementById('vm-action-feedback');
+            const vmid = '{{.VMID}}';
+            const node = '{{.Node}}';
+            function setFeedback(msg, type) {
+                feedback.textContent = msg;
+                feedback.className = 'has-text-centered mt-2';
+                if (type === 'success') feedback.classList.add('has-text-success');
+                if (type === 'error') feedback.classList.add('has-text-danger');
+                if (type === 'loading') feedback.classList.add('has-text-info');
+            }
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const action = btn.getAttribute('data-action');
+                    setFeedback('Processing...', 'loading');
+                    buttons.forEach(b => b.disabled = true);
+                    fetch('/vm/action', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: `action=${encodeURIComponent(action)}&vmid=${encodeURIComponent(vmid)}&node=${encodeURIComponent(node)}`
+                    })
+                    .then(res => {
+                        if (res.ok) return res.text();
+                        return res.text().then(t => { throw new Error(t); });
+                    })
+                    .then(() => {
+                        setFeedback('Action successful!', 'success');
+                        setTimeout(() => feedback.textContent = '', 3000);
+                        // Optionally: reload status here
+                    })
+                    .catch(err => {
+                        setFeedback('Action failed: ' + err.message, 'error');
+                    })
+                    .finally(() => {
+                        buttons.forEach(b => b.disabled = false);
+                    });
+                });
+            });
+        });
+        </script>
 
         <a href="/search" class="button is-light">{{.BackToSearch}}</a>
     </div>
