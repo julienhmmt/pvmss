@@ -147,26 +147,46 @@ func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	// Sockets & Cores
 	data["Sockets"] = cfg["sockets"]
 	data["Cores"] = cfg["cores"]
-	// RAM (configured)
-	if mem, ok := cfg["memory"].(float64); ok {
-		data["RAM"] = formatMemory(mem * 1024 * 1024) // Proxmox reports in MB
+	// RAM (actual usage and total)
+	ramUsed := float64(0)
+	ramTotal := float64(0)
+	if v, ok := st["mem"].(float64); ok {
+		ramUsed = v
 	}
-	// Disks (count and total size)
-	diskCount := 0
+	if v, ok := st["maxmem"].(float64); ok {
+		ramTotal = v
+	}
+	if ramTotal > 0 {
+		data["RAM"] = fmt.Sprintf("%s / %s", formatMemory(ramUsed), formatMemory(ramTotal))
+	} else if mem, ok := cfg["memory"].(float64); ok {
+		// fallback: only configured
+		data["RAM"] = formatMemory(mem * 1024 * 1024)
+	} else {
+		data["RAM"] = "-"
+	}
+
+	// Disk (actual usage and total)
+	diskUsed := float64(0)
 	diskTotal := float64(0)
-	for k, v := range cfg {
+	if v, ok := st["disk"].(float64); ok {
+		diskUsed = v
+	}
+	if v, ok := st["maxdisk"].(float64); ok {
+		diskTotal = v
+	}
+	if diskTotal > 0 {
+		data["DiskTotalSize"] = fmt.Sprintf("%s / %s", formatMemory(diskUsed), formatMemory(diskTotal))
+	} else {
+		data["DiskTotalSize"] = "-"
+	}
+	// Optionally, count disks from config (not always reliable)
+	diskCount := 0
+	for k := range cfg {
 		if len(k) > 4 && k[:4] == "virt" {
 			diskCount++
-			if disk, ok := v.(string); ok {
-				// Try to parse size from disk string, e.g. "local-lvm:vm-100-disk-0,size=32G"
-				if parts := parseDiskSize(disk); parts != 0 {
-					diskTotal += float64(parts)
-				}
-			}
 		}
 	}
 	data["DiskCount"] = diskCount
-	data["DiskTotalSize"] = fmt.Sprintf("%.1f GB", diskTotal)
 	// Network bridges
 	netBridges := ""
 	for k, v := range cfg {
