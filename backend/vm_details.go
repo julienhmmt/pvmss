@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,6 +14,27 @@ import (
 )
 
 // vmActionHandler handles VM actions: start, stop, shutdown, reset
+// apiVmStatusHandler returns the latest status of a VM (no cache)
+func apiVmStatusHandler(w http.ResponseWriter, r *http.Request) {
+	vmid := r.URL.Query().Get("vmid")
+	node := r.URL.Query().Get("node")
+	if vmid == "" || node == "" {
+		http.Error(w, "Missing vmid or node parameter", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	statusPath := fmt.Sprintf("/nodes/%s/qemu/%s/status/current", node, vmid)
+	proxmoxClient.InvalidateCache(statusPath)
+	status, err := proxmoxClient.GetWithContext(ctx, statusPath)
+	if err != nil {
+		http.Error(w, "Failed to fetch status: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
+}
+
 func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
@@ -61,6 +83,10 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unknown action: "+action, http.StatusBadRequest)
 		return
 	}
+	// Invalidate cache for this VM status after any action
+	statusPath := fmt.Sprintf("/nodes/%s/qemu/%s/status/current", node, vmid)
+	proxmoxClient.InvalidateCache(statusPath)
+
 	if err != nil {
 		log.Error().Err(err).Str("action", action).Str("node", node).Str("vmid", vmid).Msg("VM action failed")
 		http.Error(w, "VM action failed: "+err.Error(), http.StatusInternalServerError)

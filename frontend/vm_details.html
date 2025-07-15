@@ -15,7 +15,11 @@
                     </tr>
                     <tr>
                         <th>{{.DetailLabelStatus}}</th>
-                        <td>{{.Status}}</td>
+                        <td>
+                            <span id="vm-status-badge" class="tag is-medium {{if eq .Status "running"}}is-success{{else if eq .Status "stopped"}}is-danger{{else}}is-light{{end}}">
+                                <span id="vm-status-text">{{.Status}}</span>
+                            </span>
+                        </td>
                     </tr>
                     <tr>
                         <th>{{.DetailLabelUptime}}</th>
@@ -46,31 +50,34 @@
         </div>
 
     </div>
+
     <!-- Refresh Button -->
-    <div class="has-text-centered mb-4">
-        <button class="button is-info is-light" id="refresh-btn">
+    <div class="is-flex is-justify-content-center mb-4" style="margin-top: 1.5rem;">
+        <button class="button is-info is-light" id="refresh-btn" style="min-width: 170px; box-shadow: 0 2px 8px #e3e9f6; border-radius: 8px; display: flex; align-items: center; gap: 0.5em;">
             <span>{{.VMDetailsActionRefresh}}</span>
         </button>
     </div>
+
     <!-- VM Action Buttons -->
     <div class="buttons is-centered mt-4" id="vm-action-buttons">
-            <button class="button is-success is-light" data-action="start" {{if eq .Status "running"}}disabled{{end}}>
-                <span>{{.VMDetailsActionStart}}</span>
-            </button>
-            <button class="button is-warning is-light" data-action="reboot" disabled>
-                <span>{{.VMDetailsActionReboot}}</span>
-            </button>
-            <button class="button is-danger is-light" data-action="shutdown" {{if ne .Status "running"}}disabled{{end}}>
-                <span>{{.VMDetailsActionShutdown}}</span>
-            </button>
-            <button class="button is-danger is-light" data-action="stop" {{if ne .Status "running"}}disabled{{end}}>
-                <span>{{.VMDetailsActionStop}}</span>
-            </button>
-            <button class="button is-danger is-light" data-action="reset" {{if ne .Status "running"}}disabled{{end}}>
-                <span>{{.VMDetailsActionReset}}</span>
-            </button>
-        </div>
-        <div id="vm-action-feedback" class="has-text-centered mt-2"></div>
+        <button class="button is-success is-light" data-action="start">
+            <span>{{.VMDetailsActionStart}}</span>
+        </button>
+        <button class="button is-warning is-light" data-action="reboot">
+            <span>{{.VMDetailsActionReboot}}</span>
+        </button>
+        <button class="button is-danger is-light" data-action="shutdown">
+            <span>{{.VMDetailsActionShutdown}}</span>
+        </button>
+        <button class="button is-danger is-light" data-action="stop">
+            <span>{{.VMDetailsActionStop}}</span>
+        </button>
+        <button class="button is-danger is-light" data-action="reset">
+            <span>{{.VMDetailsActionReset}}</span>
+        </button>
+    </div>
+
+    <div id="vm-action-feedback" class="has-text-centered mt-2"></div>
         <script>
         // Localized feedback messages
         const msgProcessing = '{{.VMDetailsActionProcessing}}';
@@ -81,6 +88,11 @@
             const feedback = document.getElementById('vm-action-feedback');
             const vmid = '{{.VMID}}';
             const node = '{{.Node}}';
+            const statusBadge = document.getElementById('vm-status-badge');
+            const statusText = document.getElementById('vm-status-text');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const refreshSpinner = document.getElementById('refresh-spinner');
+
             function setFeedback(msg, type) {
                 feedback.textContent = msg;
                 feedback.className = 'has-text-centered mt-2';
@@ -88,10 +100,49 @@
                 if (type === 'error') feedback.classList.add('has-text-danger');
                 if (type === 'loading') feedback.classList.add('has-text-info');
             }
+
+            function setStatusBadge(status) {
+                statusText.textContent = status;
+                statusBadge.className = 'tag is-medium';
+                if (status === 'running') statusBadge.classList.add('is-success');
+                else if (status === 'stopped') statusBadge.classList.add('is-danger');
+                else statusBadge.classList.add('is-light');
+            }
+
+            function setActionButtons(status) {
+                buttons.forEach(btn => {
+                    const action = btn.getAttribute('data-action');
+                    if (action === 'start') btn.disabled = (status === 'running');
+                    else if (["stop","shutdown","reset","reboot"].includes(action)) btn.disabled = (status !== 'running');
+                });
+            }
+
+            function fetchStatus(updateUI = true) {
+                fetch(`/api/vm/status?vmid=${encodeURIComponent(vmid)}&node=${encodeURIComponent(node)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const status = (data.data && data.data.status) || data.status || 'unknown';
+                        if (updateUI) {
+                            setStatusBadge(status);
+                            setActionButtons(status);
+                        }
+                    });
+            }
+
+            // Initial status fetch (in case page is stale)
+            fetchStatus();
+
             // Refresh button handler
-            document.getElementById('refresh-btn').addEventListener('click', function() {
-                window.location.reload();
+            refreshBtn.addEventListener('click', function() {
+                refreshSpinner.style.display = '';
+                setFeedback(msgProcessing, 'loading');
+                fetchStatus();
+                setTimeout(() => {
+                    refreshSpinner.style.display = 'none';
+                    setFeedback('', '');
+                }, 1000);
             });
+
             buttons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const action = btn.getAttribute('data-action');
@@ -109,13 +160,14 @@
                     .then(() => {
                         setFeedback(msgSuccess, 'success');
                         setTimeout(() => feedback.textContent = '', 3000);
-                        // Optionally: reload status here
+                        // Refresh status after action
+                        setTimeout(fetchStatus, 1000);
                     })
                     .catch(err => {
                         setFeedback(msgFailed.replace('{{.Error}}', err.message), 'error');
                     })
                     .finally(() => {
-                        buttons.forEach(b => b.disabled = false);
+                        setTimeout(() => setActionButtons(statusText.textContent), 1200);
                     });
                 });
             });
@@ -123,6 +175,7 @@
         </script>
 
         <a href="/search" class="button is-light">{{.BackToSearch}}</a>
+
     </div>
 </section>
 {{end}}

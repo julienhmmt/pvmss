@@ -156,6 +156,7 @@ func setupServer(ctx context.Context) *http.Server {
 	r.HandleFunc("/logout", logoutHandler)
 	r.HandleFunc("/vm/details", vmDetailsHandler)
 	r.HandleFunc("/vm/action", vmActionHandler)
+	r.HandleFunc("/api/vm/status", apiVmStatusHandler)
 
 	// Documentation routes
 	r.HandleFunc("/docs/admin", serveDocHandler("admin"))
