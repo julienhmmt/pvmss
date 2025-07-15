@@ -246,3 +246,33 @@ other = "Min GB"
 
 ["Admin.Limits.MaxGBPlaceholder"]
 other = "Max GB"
+
+["VMDetails.Name"]
+other = "Name"
+
+["VMDetails.ID"]
+other = "VMID"
+
+["VMDetails.Status"]
+other = "Status"
+
+["VMDetails.Uptime"]
+other = "Uptime"
+
+["VMDetails.CPU"]
+other = "CPU(s)"
+
+["VMDetails.RAM"]
+other = "RAM"
+
+["VMDetails.Disks"]
+other = "Disk"
+
+["VMDetails.Network"]
+other = "Network card"
+
+["VMDetails.Description"]
+other = "Description"
+
+["VMDetails.BackToSearch"]
+other = "Back to search"

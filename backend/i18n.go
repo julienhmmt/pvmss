@@ -119,6 +119,16 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["SearchVMDetailsButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.VMDetailsButton"})
 	data["Subtitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Subtitle"})
 	data["Title"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Title"})
+	data["DetailLabelName"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Name"})
+	data["DetailLabelID"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.ID"})
+	data["DetailLabelStatus"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Status"})
+	data["DetailLabelUptime"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Uptime"})
+	data["DetailLabelCPU"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.CPU"})
+	data["DetailLabelRAM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.RAM"})
+	data["DetailLabelDisk"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Disks"})
+	data["DetailLabelNetwork"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Network"})
+	data["DetailLabelDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Description"})
+	data["BackToSearch"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.BackToSearch"})
 
 	// Login page
 	data["LoginTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Login.Title"})

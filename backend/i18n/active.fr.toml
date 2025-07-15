@@ -246,3 +246,33 @@ other = "Min Go"
 
 ["Admin.Limits.MaxGBPlaceholder"]
 other = "Max Go"
+
+["VMDetails.Name"]
+other = "Nom de la VM"
+
+["VMDetails.ID"]
+other = "VMID"
+
+["VMDetails.Status"]
+other = "Statut"
+
+["VMDetails.Uptime"]
+other = "Durée de fonctionnement"
+
+["VMDetails.CPU"]
+other = "Processeur(s)"
+
+["VMDetails.RAM"]
+other = "Mémoire vive"
+
+["VMDetails.Disks"]
+other = "Disque virtuel"
+
+["VMDetails.Network"]
+other = "Carte réseau"
+
+["VMDetails.Description"]
+other = "Description"
+
+["VMDetails.BackToSearch"]
+other = "Retour à la recherche"

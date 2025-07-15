@@ -1,0 +1,50 @@
+{{define "vm_details.html"}}
+<section class="section">
+    <div class="container">
+        <h1 class="title">{{.VMName}} (ID: {{.VMID}})</h1>
+        <div class="box">
+            <table class="table is-fullwidth">
+                <tbody>
+                    <tr>
+                        <th>{{.DetailLabelName}}</th>
+                        <td>{{.VMName}}</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelID}}</th>
+                        <td>{{.VMID}}</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelStatus}}</th>
+                        <td>{{.Status}}</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelUptime}}</th>
+                        <td>{{.Uptime}}</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelCPU}}</th>
+                        <td>{{.Sockets}} sockets / {{.Cores}} cores</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelRAM}}</th>
+                        <td>{{.RAM}}</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelDisk}}</th>
+                        <td>{{.DiskCount}} ({{.DiskTotalSize}})</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelNetwork}}</th>
+                        <td>{{.NetworkBridges}}</td>
+                    </tr>
+                    <tr>
+                        <th>{{.DetailLabelDescription}}</th>
+                        <td>{{.Description}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <a href="/search" class="button is-light">{{.BackToSearch}}</a>
+    </div>
+</section>
+{{end}}

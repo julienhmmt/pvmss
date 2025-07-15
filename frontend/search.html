@@ -60,7 +60,7 @@
                         {{formatMemory .maxmem}}
                     </td>
                     <td>
-                        <a href="/vm-details?vmid={{printf "%.0f" .vmid}}&lang={{$.Lang}}" class="button is-primary is-small">{{$.SearchVMDetailsButton}}</a>
+                        <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$.Lang}}" class="button is-primary is-small">{{$.SearchVMDetailsButton}}</a>
                     </td>
                 </tr>
                 {{end}}
