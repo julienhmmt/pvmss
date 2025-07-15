@@ -156,6 +156,7 @@ func setupServer(ctx context.Context) *http.Server {
 	r.HandleFunc("/logout", logoutHandler)
 	r.HandleFunc("/vm/details", vmDetailsHandler)
 	r.HandleFunc("/vm/action", vmActionHandler)
+	r.HandleFunc("/create-vm", createVmHandler)
 	r.HandleFunc("/api/vm/status", apiVmStatusHandler)
 
 	// Documentation routes
@@ -181,7 +182,6 @@ func setupServer(ctx context.Context) *http.Server {
 	r.HandleFunc("/api/iso/settings", updateIsoSettingsHandler)
 	r.HandleFunc("/api/vmbr/settings", updateVmbrSettingsHandler)
 	r.HandleFunc("/api/limits", limitsHandler)
-	r.HandleFunc("/create-vm", createVmHandler)
 
 	// Configure server with timeouts
 	return &http.Server{
@@ -404,6 +404,22 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, r, "search.html", data)
+}
+
+func createVmHandler(w http.ResponseWriter, r *http.Request) {
+    tmpl, err := template.New("create_vm.html").Funcs(template.FuncMap{
+    }).ParseFiles("../frontend/create_vm.html")
+    if err != nil {
+        http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Execute the template
+    err = tmpl.Execute(w, nil)
+    if err != nil {
+        http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
 }
 
 func adminHandler(w http.ResponseWriter, r *http.Request) {
