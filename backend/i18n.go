@@ -43,6 +43,9 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 
 	localizer := i18n.NewLocalizer(bundle, lang)
 
+	// Search page
+	data["NoResults"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Search.NoResults"})
+
 	// Admin page
 	data["AdminNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Nodes"})
 	data["AdminPage"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Page"})

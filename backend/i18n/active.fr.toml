@@ -158,7 +158,7 @@ other = "Mémoire"
 other = "Nom"
 
 ["Search.NoResults"]
-other = "Aucune VM ne correspond à vos critères."
+other = "Aucune machine virtuelle correspondant à vos critères."
 
 ["Search.Results"]
 other = "Résultats de la recherche"

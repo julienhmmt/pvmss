@@ -67,9 +67,11 @@
             </tbody>
         </table>
         {{else}}
+        {{if .NoResults}}
         <div class="notification is-warning">
             {{.NoResults}}
         </div>
+        {{end}}
         {{end}}
         {{end}}
 
