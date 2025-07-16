@@ -234,6 +234,70 @@ other = "Tags"
 ["VM.Create.TagsHelp"]
 other = "Select one or more tags (PVMSS is required)"
 
+# VM Resource Limits
+["Limits.Title"]
+other = "VM Resource Limits"
+
+["Limits.Description"]
+other = "Configure the minimum and maximum resources that can be allocated to virtual machines"
+
+["Limits.NodeLabel"]
+other = "Node:"
+
+["Limits.Sockets"]
+other = "Sockets"
+
+["Limits.Cores"]
+other = "Cores per Socket"
+
+["Limits.Memory"]
+other = "Memory (GB)"
+
+["Limits.Disk"]
+other = "Disk Space (GB)"
+
+["Limits.Min"]
+other = "Min"
+
+["Limits.Max"]
+other = "Max"
+
+["Limits.SaveButton"]
+other = "Save Settings"
+
+["Limits.ResetButton"]
+other = "Reset"
+
+["Limits.SaveSuccess"]
+other = "Settings saved successfully"
+
+["Limits.SaveError"]
+other = "Failed to save settings"
+
+["Limits.GB"]
+other = "GB"
+
+["Limits.NoNodes"]
+other = "No nodes are available to configure limits. Please check your Proxmox connection and node status."
+
+["Limits.Validation.MinMax"]
+other = "Maximum value must be greater than or equal to the minimum value."
+
+["Limits.Validation.Required"]
+other = "This field is required"
+
+["VM.Limits.MaxSocketsHelp"]
+other = "Maximum number of CPU sockets per VM"
+
+["VM.Limits.MaxCoresHelp"]
+other = "Maximum number of CPU cores per VM"
+
+["VM.Limits.MaxRAMHelp"]
+other = "Maximum amount of RAM per VM (in GB)"
+
+["VM.Limits.MaxDiskHelp"]
+other = "Maximum disk space per VM (in GB)"
+
 ["VM.Create.Title"]
 other = "Create New Virtual Machine"
 
@@ -242,6 +306,19 @@ other = "VM ID (Optional)"
 
 ["VM.Create.VMIDPlaceholder"]
 other = "Auto-assigned if empty"
+
+# Common terms used across multiple pages
+["Common.Reset"]
+other = "Reset"
+
+["Common.Save"]
+other = "Save"
+
+["Common.Cancel"]
+other = "Cancel"
+
+["Common.Error"]
+other = "An error occurred"
 
 ["VM.Create.VMName"]
 other = "VM Name"

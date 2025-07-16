@@ -273,6 +273,7 @@ func setupServer(ctx context.Context) *http.Server {
 	r.HandleFunc("/api/iso/settings", updateIsoSettingsHandler)
 	r.HandleFunc("/api/vmbr/settings", updateVmbrSettingsHandler)
 	r.HandleFunc("/api/limits", limitsHandler)
+	r.HandleFunc("/limits", limitsPageHandler)
 
 	// Configure server with timeouts
 	return &http.Server{
@@ -654,6 +655,66 @@ func vmbrPageHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("path", r.URL.Path).Msg("Request received for vmbr page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "vmbr.html", data)
+}
+
+// limitsPageHandler handles requests to the VM limits configuration page
+func limitsPageHandler(w http.ResponseWriter, r *http.Request) {
+	log.Info().Str("handler", "limitsPageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
+	
+	// Read settings
+	settings, err := readSettings()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to read settings")
+		http.Error(w, "Failed to read application settings", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare template data
+	data := map[string]interface{}{
+		"Settings": settings,
+	}
+
+	// Get node details
+	nodeDetails, err := getNodeDetailsFromCacheOrAPI(r.Context(), settings)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to get node details, will use existing limits only")
+	} else {
+		// For any new nodes discovered, create default limits
+		for _, node := range nodeDetails {
+			if _, exists := settings.Limits[node.Node]; !exists {
+				maxCPU := node.MaxCPU
+				maxMemoryGB := int(node.MaxMemory / (1024 * 1024 * 1024))
+				
+				settings.Limits[node.Node] = NodeLimits{
+					Sockets: MinMax{Min: 1, Max: maxCPU},
+					Cores:   MinMax{Min: 1, Max: maxCPU},
+					RAM:     MinMax{Min: 1, Max: maxMemoryGB},
+					Disk:    MinMax{Min: 10, Max: 100}, // Default disk limits: 10GB min, 100GB max
+				}
+			}
+		}
+	}
+
+	// Ensure VM limits exist in settings
+	if _, exists := settings.Limits["vm"]; !exists {
+		settings.Limits["vm"] = NodeLimits{
+			Sockets: MinMax{Min: 1, Max: 1},
+			Cores:   MinMax{Min: 1, Max: 2},
+			RAM:     MinMax{Min: 512, Max: 1048},
+			Disk:    MinMax{Min: 8, Max: 32},
+		}
+	}
+
+	// Ensure reasonable defaults
+	ensureReasonableLimits(settings.Limits)
+
+	// Add VM limits to template data
+	data["VMLimits"] = settings.Limits["vm"]
+
+	// Debug: Log the VM limits being sent to the template
+	log.Info().Interface("vm_limits", settings.Limits["vm"]).Msg("Sending VM limits to template")
+
+	renderTemplate(w, r, "vm_limits.html", data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {

@@ -105,6 +105,15 @@ other = "Déconnexion"
 ["Navbar.SearchVM"]
 other = "Rechercher une VM"
 
+["Navbar.VMs"]
+other = "Créer une machine virtuelle"
+
+["NavbarAdminDocs"]
+other = "Documentation d'administration"
+
+["NavbarUserDocs"]
+other = "Documentation utilisateur"
+
 # Search
 ["Search.PlaceholderName"]
 other = "ex. ma-vm"
@@ -168,7 +177,7 @@ other = "Stockage (Go)"
 other = "Étiquettes"
 
 ["VM.Create.TagsHelp"]
-other = "Sélectionnez une ou plusieurs étiquettes (PVMSS est obligatoire)"
+other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
 
 ["VM.Create.Title"]
 other = "Créer une nouvelle machine virtuelle"
@@ -200,17 +209,88 @@ other = "Aucun réseau (déconnecté)"
 ["VM.Optional"]
 other = "Optionnel"
 
-["Navbar.VMs"]
-other = "Créer une machine virtuelle"
+# Limites des ressources des VM
+["Limits.Title"]
+other = "Limites des ressources des VM"
 
-["NavbarAdminDocs"]
-other = "Documentation d'administration"
+["Limits.Description"]
+other = "Configurez les ressources minimales et maximales pouvant être allouées aux machines virtuelles"
 
-["NavbarUserDocs"]
-other = "Documentation utilisateur"
+["Limits.NodeLabel"]
+other = "Nœud :"
+
+["Limits.Sockets"]
+other = "Sockets"
+
+["Limits.Cores"]
+other = "Cœurs par socket"
+
+["Limits.Memory"]
+other = "Mémoire (Go)"
+
+["Limits.Disk"]
+other = "Espace disque (Go)"
+
+["Limits.Min"]
+other = "Min"
+
+["Limits.Max"]
+other = "Max"
+
+["Limits.GB"]
+other = "Go"
+
+["Limits.SaveButton"]
+other = "Enregistrer les paramètres"
+
+["Limits.ResetButton"]
+other = "Réinitialiser"
+
+["Limits.SaveSuccess"]
+other = "Paramètres enregistrés avec succès"
+
+["Limits.SaveError"]
+other = "Échec de l'enregistrement des paramètres"
+
+["Limits.NoNodes"]
+other = "Aucun nœud n'est disponible pour configurer les limites. Veuillez vérifier votre connexion Proxmox et l'état des nœuds."
+
+["Limits.Validation.MinMax"]
+other = "La valeur maximale doit être supérieure ou égale à la valeur minimale."
+
+["Limits.Validation.Required"]
+other = "Ce champ est obligatoire"
+
+# Termes communs utilisés sur plusieurs pages
+["Common.Reset"]
+other = "Réinitialiser"
+
+["Common.Save"]
+other = "Enregistrer"
+
+["Common.Cancel"]
+other = "Annuler"
+
+["Common.Error"]
+other = "Une erreur est survenue"
+
+["VM.Limits.MaxSocketsHelp"]
+other = "Nombre maximum de sockets CPU par VM"
+
+["VM.Limits.MaxCoresHelp"]
+other = "Nombre maximum de cœurs CPU par VM"
+
+["VM.Limits.MaxRAMHelp"]
+other = "Quantité maximale de RAM par VM (en Go)"
+
+["VM.Limits.MaxDiskHelp"]
+other = "Espace disque maximal par VM (en Go)"
 
 ["Nodes.NoNodes"]
 other = "Aucun nœud à afficher."
+
+["Nodes.Title"]
+other = "Nœuds"
 
 ["Nodes.Header.CPUUsage"]
 other = "Utilisation CPU"

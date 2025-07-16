@@ -20,14 +20,20 @@ type NodeLimits struct {
 	Sockets MinMax `json:"sockets"`
 	Cores   MinMax `json:"cores"`
 	RAM     MinMax `json:"ram"`
+	Disk    MinMax `json:"disk"`
+}
+
+// VMLimits defines the default VM resource limits
+type VMLimits struct {
+	Sockets MinMax `json:"sockets"`
+	Cores   MinMax `json:"cores"`
+	RAM     MinMax `json:"ram"`
+	Disk    MinMax `json:"disk"`
 }
 
 // AppSettings defines the structure for the settings file.
 type AppSettings struct {
 	Tags    []string              `json:"tags"`
-	RAM     MinMax                `json:"ram"`
-	CPU     MinMax                `json:"cpu"`
-	Sockets MinMax                `json:"sockets"`
 	ISOs    []string              `json:"isos"`
 	VMBRs   []string              `json:"vmbrs"`
 	Limits  map[string]NodeLimits `json:"limits"`

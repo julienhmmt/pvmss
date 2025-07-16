@@ -2,6 +2,7 @@ package main
 
 import (
 	"html/template"
+	"log"
 	"net/http"
 	"time"
 
@@ -16,8 +17,25 @@ var bundle *i18n.Bundle
 func initI18n() {
 	bundle = i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
-	bundle.MustLoadMessageFile("i18n/active.en.toml")
-	bundle.MustLoadMessageFile("i18n/active.fr.toml")
+	
+	// Load English translations
+	if _, err := bundle.LoadMessageFile("i18n/active.en.toml"); err != nil {
+		log.Printf("Error loading English translations: %v", err)
+	}
+
+	// Load French translations
+	if _, err := bundle.LoadMessageFile("i18n/active.fr.toml"); err != nil {
+		log.Printf("Error loading French translations: %v", err)
+	}
+
+	// Verify specific keys
+	frLocalizer := i18n.NewLocalizer(bundle, "fr")
+	_, err := frLocalizer.Localize(&i18n.LocalizeConfig{
+		MessageID: "Limits.Disk",
+	})
+	if err != nil {
+		log.Printf("Error loading 'Limits.Disk' in French: %v", err)
+	}
 }
 
 // localizePage populates the data map with localized strings.
@@ -98,27 +116,25 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["AdminVMBRHeaderName"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Header.Name"})
 	data["AdminVMBRHeaderDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Header.Description"})
 	data["AdminVMBRNoVMBRs"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.NoVMBRs"})
-	data["AdminVMBRError"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.VMBR.Error"})
 
-	// Admin Limits section
-	data["AdminLimitsTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.Title"})
-	data["AdminLimitsDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.Description"})
-	data["AdminLimitsNodeLabel"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.NodeLabel"})
-	data["AdminLimitsAvailableSockets"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.AvailableSockets"})
-	data["AdminLimitsAvailableCores"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.AvailableCores"})
-	data["AdminLimitsAvailableMemory"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.AvailableMemory"})
-	data["AdminLimitsSockets"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.Sockets"})
-	data["AdminLimitsCores"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.Cores"})
-	data["AdminLimitsMemoryGB"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.MemoryGB"})
-	data["AdminLimitsMinPlaceholder"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.MinPlaceholder"})
-	data["AdminLimitsMaxPlaceholder"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.MaxPlaceholder"})
-	data["AdminLimitsMinGBPlaceholder"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.MinGBPlaceholder"})
-	data["AdminLimitsMaxGBPlaceholder"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.MaxGBPlaceholder"})
-	data["AdminLimitsSaveButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.SaveButton"})
-	data["AdminLimitsNoNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.NoNodes"})
-	data["AdminLimitsSaveSuccess"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.SaveSuccess"})
-	data["AdminLimitsSaveFailed"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.SaveFailed"})
-	data["AdminLimitsErrorOccurred"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Admin.Limits.ErrorOccurred"})
+	// VM Limits page
+	data["LimitsTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Title"})
+	data["LimitsDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Description"})
+	data["LimitsNodeLabel"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.NodeLabel"})
+	data["LimitsSockets"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Sockets"})
+	data["LimitsCores"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Cores"})
+	data["LimitsMemory"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Memory"})
+	data["LimitsDisk"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Disk"})
+	data["LimitsMin"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Min"})
+	data["LimitsMax"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Max"})
+	data["LimitsGB"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.GB"})
+	data["LimitsSaveButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.SaveButton"})
+	data["LimitsResetButton"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Common.Reset"})
+	data["LimitsSaveSuccess"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.SaveSuccess"})
+	data["LimitsSaveError"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.SaveError"})
+	data["LimitsValidationMinMax"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Validation.MinMax"})
+	data["LimitsValidationRequired"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Validation.Required"})
+	data["LimitsNoNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.NoNodes"})
 
 	data["Body"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Body"})
 	data["ButtonSearchVM"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Button.Search"})
