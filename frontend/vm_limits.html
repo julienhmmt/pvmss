@@ -1,14 +1,15 @@
 {{define "vm_limits.html"}}
 <div class="container">
-    <h2 class="title is-4">{{.LimitsTitle}}</h2>
-    <div class="notification is-light"></div>
-    <p class="subtitle">{{.LimitsDescription}}</p>
+    <h2 class="title is-4">{{.VMLimitsTitle}}</h2>
+    <div class="notification is-light">
+        {{.VMLimitsDescription}}
+    </div>
 
     <form id="limits-form" method="post">
         <div class="card mb-5">
             <header class="card-header">
                 <p class="card-header-title">
-                    <span>{{.LimitsVMDefaults}}</span>
+                    <span>{{.VMLimitsVMDefaults}}</span>
                 </p>
             </header>
             <div class="card-content">
@@ -16,7 +17,7 @@
                     <!-- Sockets -->
                     <div class="field">
                         <label class="label">
-                            <span>{{.LimitsSockets}}</span>
+                            <span>{{.VMLimitsSockets}}</span>
                         </label>
                         <div class="field is-grouped">
                             <div class="control is-expanded">
@@ -33,16 +34,16 @@
                     <!-- Cores -->
                     <div class="field">
                         <label class="label">
-                            <span>{{.LimitsCores}}</span>
+                            <span>{{.VMLimitsCores}}</span>
                         </label>
                         <div class="field is-grouped">
                             <div class="control is-expanded">
                                 <input class="input" type="number" name="cores_min" value="1" min="1" required>
-                                <p class="help">{{.LimitsMin}}</p>
+                                <p class="help">{{.VMLimitsMin}}</p>
                             </div>
                             <div class="control is-expanded">
                                 <input class="input" type="number" name="cores_max" value="{{.VMLimits.Cores.Max}}" min="1" required>
-                                <p class="help">{{.LimitsMax}}</p>
+                                <p class="help">{{.VMLimitsMax}}</p>
                             </div>
                         </div>
                     </div>
@@ -50,16 +51,16 @@
                     <!-- RAM -->
                     <div class="field">
                         <label class="label">
-                            <span>{{.LimitsMemory}} ({{.LimitsGB}})</span>
+                            <span>{{.VMLimitsMemory}} ({{.VMLimitsGB}})</span>
                         </label>
                         <div class="field is-grouped">
                             <div class="control is-expanded">
                                 <input class="input" type="number" name="ram_min" value="{{.VMLimits.RAM.Min}}" min="1" required>
-                                <p class="help">{{.LimitsMin}}</p>
+                                <p class="help">{{.VMLimitsMin}}</p>
                             </div>
                             <div class="control is-expanded">
                                 <input class="input" type="number" name="ram_max" value="{{.VMLimits.RAM.Max}}" min="1" required>
-                                <p class="help">{{.LimitsMax}}</p>
+                                <p class="help">{{.VMLimitsMax}}</p>
                             </div>
                         </div>
                     </div>
@@ -67,16 +68,16 @@
                     <!-- Disk -->
                     <div class="field">
                         <label class="label">
-                            <span>{{.LimitsDisk}} ({{.LimitsGB}})</span>
+                            <span>{{.VMLimitsDisk}} ({{.VMLimitsGB}})</span>
                         </label>
                         <div class="field is-grouped">
                             <div class="control is-expanded">
                                 <input class="input" type="number" name="disk_min" value="{{.VMLimits.Disk.Min}}" min="1" required>
-                                <p class="help">{{.LimitsMin}}</p>
+                                <p class="help">{{.VMLimitsMin}}</p>
                             </div>
                             <div class="control is-expanded">
                                 <input class="input" type="number" name="disk_max" value="{{.VMLimits.Disk.Max}}" min="1" required>
-                                <p class="help">{{.LimitsMax}}</p>
+                                <p class="help">{{.VMLimitsMax}}</p>
                             </div>
                         </div>
                     </div>
@@ -86,7 +87,7 @@
 
         <div class="field is-grouped">
             <div class="control">
-                <button type="submit" class="button is-primary">{{.LimitsSaveButton}}</button>
+                <button type="submit" class="button is-primary">{{.VMLimitsSaveButton}}</button>
             </div>
         </div>
     </form>

@@ -17,59 +17,59 @@ other = "Storage"
 ["Admin.ISO.Title"]
 other = "ISO Management"
 
-
-["Admin.Limits.Title"]
+# Nodes limits
+["Nodes.Limits.Title"]
 other = "Node Resource Limits"
 
-["Admin.Limits.Description"]
+["Nodes.Limits.Description"]
 other = "Set the minimum and maximum resources that can be allocated to virtual machines on each node."
 
-["Admin.Limits.SaveButton"]
+["Nodes.Limits.SaveButton"]
 other = "Save"
 
-["Admin.Limits.SaveSuccess"]
+["Nodes.Limits.SaveSuccess"]
 other = "Settings saved for node {{.NodeName}}"
 
-["Admin.Limits.SaveFailed"]
+["Nodes.Limits.SaveFailed"]
 other = "Failed to save settings for node {{.NodeName}}"
 
-["Admin.Limits.NoNodes"]
+["Nodes.Limits.NoNodes"]
 other = "No nodes found. Please ensure your Proxmox connection is configured correctly."
 
-["Admin.Limits.ErrorOccurred"]
+["Nodes.Limits.ErrorOccurred"]
 other = "An error occurred while saving settings."
 
-["Admin.Limits.NodeLabel"]
+["Nodes.Limits.NodeLabel"]
 other = "Node:"
 
-["Admin.Limits.AvailableSockets"]
+["Nodes.Limits.AvailableSockets"]
 other = "Available Sockets"
 
-["Admin.Limits.AvailableCores"]
+["Nodes.Limits.AvailableCores"]
 other = "Available Cores"
 
-["Admin.Limits.AvailableMemory"]
+["Nodes.Limits.AvailableMemory"]
 other = "Available Memory"
 
-["Admin.Limits.Sockets"]
+["Nodes.Limits.Sockets"]
 other = "Sockets"
 
-["Admin.Limits.Cores"]
+["Nodes.Limits.Cores"]
 other = "Cores"
 
-["Admin.Limits.MemoryGB"]
+["Nodes.Limits.MemoryGB"]
 other = "Memory (GB)"
 
-["Admin.Limits.MinPlaceholder"]
+["Nodes.Limits.MinPlaceholder"]
 other = "Min"
 
-["Admin.Limits.MaxPlaceholder"]
+["Nodes.Limits.MaxPlaceholder"]
 other = "Max"
 
-["Admin.Limits.MinGBPlaceholder"]
+["Nodes.Limits.MinGBPlaceholder"]
 other = "Min GB"
 
-["Admin.Limits.MaxGBPlaceholder"]
+["Nodes.Limits.MaxGBPlaceholder"]
 other = "Max GB"
 
 ["Admin.Nodes"]

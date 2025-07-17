@@ -361,58 +361,59 @@ other = "Mot de passe :"
 ["Login.Button"]
 other = "Connexion"
 
-["Admin.Limits.Title"]
-other = "Limites des Ressources des Nœuds"
+# Limites des nœuds
+["Nodes.Limits.Title"]
+other = "Limites des ressources des nœuds"
 
-["Admin.Limits.Description"]
+["Nodes.Limits.Description"]
 other = "Définissez les ressources minimales et maximales qui peuvent être allouées aux machines virtuelles sur chaque nœud."
 
-["Admin.Limits.SaveButton"]
+["Nodes.Limits.SaveButton"]
 other = "Enregistrer"
 
-["Admin.Limits.SaveSuccess"]
+["Nodes.Limits.SaveSuccess"]
 other = "Paramètres enregistrés pour le nœud {{.NodeName}}"
 
-["Admin.Limits.SaveFailed"]
+["Nodes.Limits.SaveFailed"]
 other = "Échec de l'enregistrement des paramètres pour le nœud {{.NodeName}}"
 
-["Admin.Limits.NoNodes"]
+["Nodes.Limits.NoNodes"]
 other = "Aucun nœud trouvé. Veuillez vous assurer que votre connexion Proxmox est correctement configurée."
 
-["Admin.Limits.ErrorOccurred"]
+["Nodes.Limits.ErrorOccurred"]
 other = "Une erreur est survenue lors de l'enregistrement des paramètres."
 
-["Admin.Limits.NodeLabel"]
+["Nodes.Limits.NodeLabel"]
 other = "Nœud :"
 
-["Admin.Limits.AvailableSockets"]
+["Nodes.Limits.AvailableSockets"]
 other = "Sockets disponibles"
 
-["Admin.Limits.AvailableCores"]
+["Nodes.Limits.AvailableCores"]
 other = "Cœurs disponibles"
 
-["Admin.Limits.AvailableMemory"]
+["Nodes.Limits.AvailableMemory"]
 other = "Mémoire disponible"
 
-["Admin.Limits.Sockets"]
+["Nodes.Limits.Sockets"]
 other = "Sockets"
 
-["Admin.Limits.Cores"]
+["Nodes.Limits.Cores"]
 other = "Cœurs"
 
-["Admin.Limits.MemoryGB"]
+["Nodes.Limits.MemoryGB"]
 other = "Mémoire (Go)"
 
-["Admin.Limits.MinPlaceholder"]
+["Nodes.Limits.MinPlaceholder"]
 other = "Min"
 
-["Admin.Limits.MaxPlaceholder"]
+["Nodes.Limits.MaxPlaceholder"]
 other = "Max"
 
-["Admin.Limits.MinGBPlaceholder"]
+["Nodes.Limits.MinGBPlaceholder"]
 other = "Min Go"
 
-["Admin.Limits.MaxGBPlaceholder"]
+["Nodes.Limits.MaxGBPlaceholder"]
 other = "Max Go"
 
 ["VMDetails.Name"]

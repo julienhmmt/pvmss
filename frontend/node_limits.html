@@ -1,34 +1,34 @@
 {{define "node_limits.html"}}
 <div class="container">
-    <h2 class="title is-4">{{.AdminLimitsTitle}}</h2>
+    <h2 class="title is-4">{{.NodesLimitsTitle}}</h2>
     <div class="notification is-light">
-        {{.AdminLimitsDescription}}
+        {{.NodesLimitsDescription}}
     </div>
 
     <div id="limits-container" class="mb-4">
     {{range .NodeDetails}}
     <div class="card mb-5" id="node-{{.Node}}">
         <header class="card-header">
-            <p class="card-header-title">{{$.AdminLimitsNodeLabel}} {{.Node}}</p>
+            <p class="card-header-title">{{$.NodesLimitsNodeLabel}} {{.Node}}</p>
         </header>
         <div class="card-content">
             <div class="content">
-                <p><strong>{{$.AdminLimitsAvailableSockets}}:</strong> {{if .Sockets}}{{.Sockets}}{{else}}1{{end}} | <strong>{{$.AdminLimitsAvailableCores}}:</strong> {{.MaxCPU}} | <strong>{{$.AdminLimitsAvailableMemory}}:</strong> {{.MaxMemory | humanBytes}}</p>
+                <p><strong>{{$.NodesLimitsSockets}}:</strong> {{if .Sockets}}{{.Sockets}}{{else}}1{{end}} | <strong>{{$.NodesLimitsCores}}:</strong> {{.MaxCPU}} | <strong>{{$.NodesLimitsMemory}}:</strong> {{.MaxMemory | humanBytes}}</p>
                 <hr>
                 <div class="columns">
                     <!-- Sockets -->
                     <div class="column">
-                        <label class="label">{{$.AdminLimitsSockets}}</label>
+                        <label class="label">{{$.NodesLimitsSockets}}</label>
                         <div class="field is-horizontal">
                             <div class="field-body">
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="sockets-min-{{.Node}}" min="1" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Min}}{{else}}1{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
+                                        <input class="input" type="number" id="sockets-min-{{.Node}}" min="1" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Min}}{{else}}1{{end}}" placeholder="{{$.NodesLimitsMin}}">
                                     </p>
                                 </div>
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="sockets-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Max}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMaxPlaceholder}}">
+                                        <input class="input" type="number" id="sockets-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Max}}{{else}}0{{end}}" placeholder="{{$.NodesLimitsMax}}">
                                     </p>
                                 </div>
                             </div>
@@ -36,17 +36,17 @@
                     </div>
                     <!-- Cores -->
                     <div class="column">
-                        <label class="label">{{$.AdminLimitsCores}}</label>
+                        <label class="label">{{$.NodesLimitsCores}}</label>
                         <div class="field is-horizontal">
                             <div class="field-body">
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="cores-min-{{.Node}}" min="1" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Min}}{{else}}1{{end}}" placeholder="{{$.AdminLimitsMinPlaceholder}}">
+                                        <input class="input" type="number" id="cores-min-{{.Node}}" min="1" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Min}}{{else}}1{{end}}" placeholder="{{$.NodesLimitsMin}}">
                                     </p>
                                 </div>
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="cores-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Max}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMaxPlaceholder}}">
+                                        <input class="input" type="number" id="cores-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Max}}{{else}}0{{end}}" placeholder="{{$.NodesLimitsMax}}">
                                     </p>
                                 </div>
                             </div>
@@ -54,17 +54,17 @@
                     </div>
                     <!-- Memory (RAM) in GB -->
                     <div class="column">
-                        <label class="label">{{$.AdminLimitsMemoryGB}}</label>
+                        <label class="label">{{$.NodesLimitsMemory}} ({{$.NodesLimitsGB}})</label>
                         <div class="field is-horizontal">
                             <div class="field-body">
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="ram-min-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Min}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMinGBPlaceholder}}">
+                                        <input class="input" type="number" id="ram-min-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Min}}{{else}}0{{end}}" placeholder="{{$.NodesLimitsMin}}">
                                     </p>
                                 </div>
                                 <div class="field">
                                     <p class="control">
-                                        <input class="input" type="number" id="ram-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Max}}{{else}}0{{end}}" placeholder="{{$.AdminLimitsMaxGBPlaceholder}}">
+                                        <input class="input" type="number" id="ram-max-{{.Node}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Max}}{{else}}0{{end}}" placeholder="{{$.NodesLimitsMax}}">
                                     </p>
                                 </div>
                             </div>
@@ -74,12 +74,12 @@
             </div>
         </div>
         <footer class="card-footer">
-            <a href="#" class="card-footer-item save-limits-btn" data-node="{{.Node}}">{{$.AdminLimitsSaveButton}}</a>
+            <a href="#" class="card-footer-item save-limits-btn" data-node="{{.Node}}">{{$.NodesLimitsSaveButton}}</a>
         </footer>
     </div>
     {{else}}
     <div class="notification is-warning">
-        {{$.AdminLimitsNoNodes}}
+        {{$.NodesLimitsNoNodes}}
     </div>
     {{end}}
 </div>
@@ -91,9 +91,9 @@ document.addEventListener('DOMContentLoaded', function () {
     window.limitsInitialized = true;
 
     const i18n = {
-        saveSuccess: '{{$.AdminLimitsSaveSuccess}}',
-        saveFailed: '{{$.AdminLimitsSaveFailed}}',
-        errorOccurred: '{{$.AdminLimitsErrorOccurred}}'
+        saveSuccess: '{{$.NodesLimitsSaveSuccess}}',
+        saveFailed: '{{$.NodesLimitsSaveError}}',
+        errorOccurred: '{{$.NodesLimitsSaveError}}'
     };
 
     // Utility to collect values for a node and enforce minimums
