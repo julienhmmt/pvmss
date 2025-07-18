@@ -15,28 +15,34 @@ const settingsFile = "settings.json"
 
 var settingsMutex = &sync.Mutex{}
 
-// NodeLimits defines the resource limits for a node.
-type NodeLimits struct {
+// NodeLimit defines the resource limits for a node.
+type NodeLimit struct {
+	Sockets MinMax `json:"sockets"`
+	Cores   MinMax `json:"cores"`
+	RAM     MinMax `json:"ram"`
+}
+
+// VMLimit defines the default VM resource limits.
+type VMLimit struct {
 	Sockets MinMax `json:"sockets"`
 	Cores   MinMax `json:"cores"`
 	RAM     MinMax `json:"ram"`
 	Disk    MinMax `json:"disk"`
 }
 
-// VMLimits defines the default VM resource limits
-type VMLimits struct {
-	Sockets MinMax `json:"sockets"`
-	Cores   MinMax `json:"cores"`
-	RAM     MinMax `json:"ram"`
-	Disk    MinMax `json:"disk"`
+// IsDefined checks if the VMLimit has been populated with data.
+func (v VMLimit) IsDefined() bool {
+	// A simple check to see if the struct is likely to contain real data.
+	// If Sockets.Min is set, we assume the rest of the data is intentional.
+	return v.Sockets.Min > 0
 }
 
 // AppSettings defines the structure for the settings file.
 type AppSettings struct {
-	Tags    []string              `json:"tags"`
-	ISOs    []string              `json:"isos"`
-	VMBRs   []string              `json:"vmbrs"`
-	Limits  map[string]NodeLimits `json:"limits"`
+	Tags   []string                  `json:"tags"`
+	ISOs   []string                  `json:"isos"`
+	VMBRs  []string                  `json:"vmbrs"`
+	Limits map[string]interface{}    `json:"limits"` // Map with both NodeLimit and VMLimit
 }
 
 // MinMax defines a min/max value pair.
@@ -67,7 +73,17 @@ func readSettings() (*AppSettings, error) {
 	}
 
 	if settings.Limits == nil {
-		settings.Limits = make(map[string]NodeLimits)
+		settings.Limits = make(map[string]interface{})
+	}
+	
+	// Ensure VM limits exists
+	if _, exists := settings.Limits["vm"]; !exists {
+		settings.Limits["vm"] = VMLimit{
+			Sockets: MinMax{Min: 1, Max: 1},
+			Cores:   MinMax{Min: 1, Max: 2},
+			RAM:     MinMax{Min: 1, Max: 4},
+			Disk:    MinMax{Min: 1, Max: 10},
+		}
 	}
 
 	return &settings, nil

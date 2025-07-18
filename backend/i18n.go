@@ -199,6 +199,23 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["VMDetailsActionSuccess"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Success"})
 	data["VMDetailsActionFailed"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Failed"})
 	data["VMDetailsActionRefresh"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VMDetails.Action.Refresh"})
+	
+	// Resource Limits (unified interface)
+	data["LimitsTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Title"})
+	data["LimitsDescription"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Description"})
+	data["VMLimitsTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "VM.Limits.Title"})
+	data["LimitsNodeLabel"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.NodeLabel"})
+	data["LimitsSockets"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Sockets"})
+	data["LimitsCores"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Cores"})
+	data["LimitsMemory"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Memory"})
+	data["LimitsDisk"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Disk"})
+	data["LimitsMin"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Min"})
+	data["LimitsMax"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Max"})
+	data["LimitsNoNodes"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.NoNodes"})
+	data["LimitsSaving"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Saving"})
+	data["LimitsSaved"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Saved"})
+	data["LimitsError"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.Error"})
+	data["ResetToDefaults"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Limits.ResetToDefaults"})
 
 	// Login page
 	data["LoginTitle"] = localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "Login.Title"})

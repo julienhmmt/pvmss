@@ -246,14 +246,59 @@ other = "Enregistrer les paramètres"
 ["Limits.ResetButton"]
 other = "Réinitialiser"
 
+["Limits.ResetToDefaultsButton"]
+other = "Rétablir les valeurs par défaut"
+
 ["Limits.SaveSuccess"]
-other = "Paramètres enregistrés avec succès"
+other = "Limites enregistrées avec succès"
 
 ["Limits.SaveError"]
-other = "Échec de l'enregistrement des paramètres"
+other = "Erreur lors de l'enregistrement des limites"
+
+["Limits.Saving"]
+other = "Enregistrement..."
+
+["Limits.Saved"]
+other = "✓ Enregistré"
+
+["Limits.Error"]
+other = "Erreur"
+
+["Limits.ValidationInProgress"]
+other = "Validation en cours..."
+
+["Limits.ValidationSuccess"]
+other = "Validation réussie"
+
+["Limits.ValidationMinMax"]
+other = "La valeur minimale doit être inférieure ou égale à la valeur maximale"
+
+["Limits.ValidationPositive"]
+other = "La valeur doit être un nombre positif"
+
+["Limits.ValidationPositiveRequired"]
+other = "Les valeurs doivent être positives ou nulles"
+
+["Limits.NetworkError"]
+other = "Une erreur réseau s'est produite. Veuillez réessayer"
+
+["Limits.DefaultsRestored"]
+other = "Valeurs par défaut restaurées avec succès"
+
+["Limits.ResetToDefaults"]
+other = "Réinitialiser"
+
+["Limits.VMSection"]
+other = "Limites de ressources par défaut des VMs"
+
+["Limits.NodeSection"]
+other = "Limites de ressources des nœuds"
 
 ["Limits.NoNodes"]
 other = "Aucun nœud n'est disponible pour configurer les limites. Veuillez vérifier votre connexion Proxmox et l'état des nœuds."
+
+["VM.Limits.Title"]
+other = "Limites par défaut des VMs"
 
 ["Limits.Validation.MinMax"]
 other = "La valeur maximale doit être supérieure ou égale à la valeur minimale."

@@ -1,0 +1,218 @@
+{{define "resource_limits.html"}}
+<div class="container">
+    <div class="columns is-vcentered">
+        <div class="column">
+            <h2 class="title is-4">{{.LimitsTitle}}</h2>
+        </div>
+        <div class="column is-narrow">
+            <button class="button is-light reset-defaults-btn" data-entity-id="vm">{{.Limits.ResetToDefaults}}</button>
+        </div>
+    </div>
+    <div class="notification is-light">
+        {{.LimitsDescription}}
+    </div>
+
+    <!-- VM Limits Section -->
+    <div class="card mb-5" id="vm-limits">
+        <header class="card-header">
+            <p class="card-header-title">
+                <span class="mr-auto">{{.VMLimitsTitle}}</span>
+                <button class="button is-small is-light reset-defaults-btn" data-entity-id="vm">{{.ResetToDefaults}}</button>
+            </p>
+        </header>
+        <div class="card-content">
+            <div class="content">
+                <form class="limits-form" data-entity-id="vm">
+                    <div class="columns is-multiline node-limits-container" data-entity-id="vm">
+                        <!-- Sockets -->
+                        <div class="column is-3">
+                            <label class="label">
+                                <span>{{.LimitsSockets}}</span>
+                            </label>
+                            <div class="field is-grouped">
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="sockets-min" id="sockets-min-vm" value="{{(index .Settings.Limits "vm").Sockets.Min}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeSocketsMax}}{{else}}8{{end}}" required>
+                                    <p class="help">{{.LimitsMin}}</p>
+                                </div>
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="sockets-max" id="sockets-max-vm" value="{{(index .Settings.Limits "vm").Sockets.Max}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeSocketsMax}}{{else}}8{{end}}" required>
+                                    <p class="help">{{.LimitsMax}}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cores -->
+                        <div class="column is-3">
+                            <label class="label">
+                                <span>{{.LimitsCores}}</span>
+                            </label>
+                            <div class="field is-grouped">
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="cores-min" id="cores-min-vm" value="{{(index .Settings.Limits "vm").Cores.Min}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeCoresMax}}{{else}}32{{end}}" required>
+                                    <p class="help">{{.LimitsMin}}</p>
+                                </div>
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="cores-max" id="cores-max-vm" value="{{(index .Settings.Limits "vm").Cores.Max}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeCoresMax}}{{else}}32{{end}}" required>
+                                    <p class="help">{{.LimitsMax}}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RAM -->
+                        <div class="column is-3">
+                            <label class="label">
+                                <span>{{.LimitsMemory}}</span>
+                            </label>
+                            <div class="field is-grouped">
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="ram-min" id="ram-min-vm" value="{{(index .Settings.Limits "vm").RAM.Min}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeMemoryMaxGB}}{{else}}128{{end}}" required>
+                                    <p class="help">{{.LimitsMin}}</p>
+                                </div>
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="ram-max" id="ram-max-vm" value="{{(index .Settings.Limits "vm").RAM.Max}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeMemoryMaxGB}}{{else}}128{{end}}" required>
+                                    <p class="help">{{.LimitsMax}}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Disk -->
+                        <div class="column is-3">
+                            <label class="label">
+                                <span>{{.LimitsDisk}}</span>
+                            </label>
+                            <div class="field is-grouped">
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="disk-min" id="disk-min-vm" value="{{(index .Settings.Limits "vm").Disk.Min}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeDiskMaxGB}}{{else}}1000{{end}}" required>
+                                    <p class="help">{{.LimitsMin}}</p>
+                                </div>
+                                <div class="control is-expanded">
+                                    <input class="input" type="number" name="disk-max" id="disk-max-vm" value="{{(index .Settings.Limits "vm").Disk.Max}}" min="1" max="{{if gt (len .NodeDetails) 0}}{{index .NodeDetails 0 | nodeDiskMaxGB}}{{else}}1000{{end}}" required>
+                                    <p class="help">{{.LimitsMax}}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field is-grouped is-grouped-right mt-3">
+                        <div class="control">
+                            <button type="button" class="button is-primary save-limits-btn" data-entity-id="vm">{{.Save}}</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <footer class="card-footer">
+            <div class="card-footer-item">
+                <span class="status-indicator is-size-7" data-entity="vm"></span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Node Limits Section -->
+    <div id="node-limits-container" class="mb-4">
+        {{range .NodeDetails}}
+        <div class="card mb-5" id="node-{{.Node}}">
+            <header class="card-header">
+                <p class="card-header-title">
+                    <span class="mr-auto">{{$.LimitsNodeLabel}} {{.Node}}</span>
+                    <button class="button is-small is-light reset-defaults-btn" data-entity-id="{{.Node}}">{{$.ResetToDefaults}}</button>
+                </p>
+            </header>
+            <div class="card-content">
+                <div class="content">
+                    <p><strong>{{$.LimitsSockets}}:</strong> {{if .Sockets}}{{.Sockets}}{{else}}1{{end}} | <strong>{{$.LimitsCores}}:</strong> {{.MaxCPU}} | <strong>{{$.LimitsMemory}}:</strong> {{.MaxMemory | humanBytes}}</p>
+                    <hr>
+                    <form class="limits-form" data-entity-id="{{.Node}}">
+                        <div class="columns node-limits-container" data-entity-id="{{.Node}}">
+                            <!-- Sockets -->
+                            <div class="column is-4">
+                                <label class="label">{{$.LimitsSockets}}</label>
+                                <div class="field is-horizontal">
+                                    <div class="field-body">
+                                        <div class="field">
+                                            <p class="control">
+                                                <input class="input" type="number" name="sockets-min" id="sockets-min-{{.Node}}" min="1" max="{{.Sockets}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Min}}{{else}}1{{end}}" placeholder="{{$.LimitsMin}}">
+                                            </p>
+                                        </div>
+                                        <div class="field">
+                                            <p class="control">
+                                                <input class="input" type="number" name="sockets-max" id="sockets-max-{{.Node}}" min="1" max="{{.Sockets}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Sockets.Max}}{{else}}{{.Sockets}}{{end}}" placeholder="{{$.LimitsMax}}">
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Cores -->
+                            <div class="column is-4">
+                                <label class="label">{{$.LimitsCores}}</label>
+                                <div class="field is-horizontal">
+                                    <div class="field-body">
+                                        <div class="field">
+                                            <p class="control">
+                                                <input class="input" type="number" name="cores-min" id="cores-min-{{.Node}}" min="1" max="{{.MaxCPU}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Min}}{{else}}1{{end}}" placeholder="{{$.LimitsMin}}">
+                                            </p>
+                                        </div>
+                                        <div class="field">
+                                            <p class="control">
+                                                <input class="input" type="number" name="cores-max" id="cores-max-{{.Node}}" min="1" max="{{.MaxCPU}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).Cores.Max}}{{else}}{{.MaxCPU}}{{end}}" placeholder="{{$.LimitsMax}}">
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Memory (RAM) in GB -->
+                            <div class="column is-4">
+                                <label class="label">{{$.LimitsMemory}}</label>
+                                <div class="field is-horizontal">
+                                    <div class="field-body">
+                                        <div class="field">
+                                            <p class="control">
+                                                <input class="input" type="number" name="ram-min" id="ram-min-{{.Node}}" min="1" max="{{.MaxMemory | div 1073741824}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Min}}{{else}}1{{end}}" placeholder="{{$.LimitsMin}}">
+                                            </p>
+                                        </div>
+                                        <div class="field">
+                                            <p class="control">
+                                                <input class="input" type="number" name="ram-max" id="ram-max-{{.Node}}" min="1" max="{{.MaxMemory | div 1073741824}}" value="{{if index $.Settings.Limits .Node}}{{(index $.Settings.Limits .Node).RAM.Max}}{{else}}{{.MaxMemory | div 1073741824 | int}}{{end}}" placeholder="{{$.LimitsMax}}">
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="field is-grouped is-grouped-right mt-3">
+                            <div class="control">
+                                <button type="button" class="button is-primary save-limits-btn" data-entity-id="{{.Node}}">{{$.Save}}</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <footer class="card-footer">
+                <div class="card-footer-item">
+                    <span class="status-indicator is-size-7" data-entity="{{.Node}}"></span>
+                </div>
+            </footer>
+        </div>
+        {{else}}
+        <div class="notification is-warning">
+            {{$.LimitsNoNodes}}
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<!-- Messages for JS translations -->
+{{range $key, $value := .I18n}}
+<span id="i18n-{{$key}}" style="display:none">{{$value}}</span>
+{{end}}
+
+<span id="i18n-saving" style="display:none">{{.Saving}}</span>
+<span id="i18n-saved" style="display:none">{{.Saved}}</span>
+<span id="i18n-error" style="display:none">{{.Error}}</span>
+<span id="i18n-validation" style="display:none">{{.ValidationError}}</span>
+<span id="i18n-min-exceeds-max" style="display:none">{{.MinExceedsMax}}</span>
+<span id="i18n-positive-required" class="is-hidden">{{.Limits.ValidationPositiveRequired}}</span>
+<span id="i18n-defaults-restored" class="is-hidden">{{.Limits.DefaultsRestored}}</span>
+
+<!-- Include external JavaScript file -->
+<script src="/css/limits.js"></script>
+{{end}}

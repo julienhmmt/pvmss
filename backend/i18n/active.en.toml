@@ -239,7 +239,7 @@ other = "Select one or more tags (PVMSS is required)"
 other = "VM Resource Limits"
 
 ["Limits.Description"]
-other = "Configure the minimum and maximum resources that can be allocated to virtual machines"
+other = "Set the minimum and maximum resources that can be allocated to virtual machines."
 
 ["Limits.NodeLabel"]
 other = "Node:"
@@ -248,13 +248,13 @@ other = "Node:"
 other = "Sockets"
 
 ["Limits.Cores"]
-other = "Cores per Socket"
+other = "Cores"
 
 ["Limits.Memory"]
-other = "Memory (GB)"
+other = "Memory"
 
 ["Limits.Disk"]
-other = "Disk Space (GB)"
+other = "Disk"
 
 ["Limits.Min"]
 other = "Min"
@@ -263,22 +263,64 @@ other = "Min"
 other = "Max"
 
 ["Limits.SaveButton"]
-other = "Save Settings"
+other = "Save"
 
 ["Limits.ResetButton"]
 other = "Reset"
 
+["Limits.ResetToDefaultsButton"]
+other = "Reset to Defaults"
+
 ["Limits.SaveSuccess"]
-other = "Settings saved successfully"
+other = "Limits saved successfully"
 
 ["Limits.SaveError"]
-other = "Failed to save settings"
+other = "Error saving limits"
+
+["Limits.Saving"]
+other = "Saving..."
+
+["Limits.Saved"]
+other = "Saved"
+
+["Limits.Error"]
+other = "Error"
 
 ["Limits.GB"]
 other = "GB"
 
+["Limits.ValidationInProgress"]
+other = "Validating..."
+
+["Limits.ValidationSuccess"]
+other = "Validation passed"
+
+["Limits.ValidationMinMax"]
+other = "Minimum value must be less than or equal to maximum value"
+
+["Limits.ValidationPositive"]
+other = "Value must be a positive number"
+
+["Limits.NetworkError"]
+other = "Network error occurred. Please try again"
+
+["Limits.DefaultsRestored"]
+other = "Default values restored"
+
+["Limits.VMSection"]
+other = "Default VM Resource Limits"
+
+["Limits.ResetToDefaults"]
+other = "Reset to Defaults"
+
+["Limits.NodeSection"]
+other = "Node Resource Limits"
+
 ["Limits.NoNodes"]
 other = "No nodes are available to configure limits. Please check your Proxmox connection and node status."
+
+["VM.Limits.Title"]
+other = "VM Default Limits"
 
 ["Limits.Validation.MinMax"]
 other = "Maximum value must be greater than or equal to the minimum value."
