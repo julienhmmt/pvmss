@@ -9,11 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/Telmate/proxmox-api-go/proxmox"
+	"pvmss/backend/logger"
 )
 
-// vmActionHandler handles VM actions: start, stop, shutdown, reset
 // apiVmStatusHandler returns the latest status of a VM (no cache)
 func apiVmStatusHandler(w http.ResponseWriter, r *http.Request) {
 	vmid := r.URL.Query().Get("vmid")
@@ -35,6 +34,7 @@ func apiVmStatusHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(status)
 }
 
+// vmActionHandler handles VM actions: start, stop, shutdown, reset
 func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
@@ -43,14 +43,27 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	action := r.FormValue("action")
 	vmid := r.FormValue("vmid")
 	node := r.FormValue("node")
-	log.Info().Str("handler", "vmActionHandler").Str("action", action).Str("vmid", vmid).Str("node", node).Msg("Received VM action request")
+	logger.Get().Info().
+		Str("handler", "vmActionHandler").
+		Str("action", action).
+		Str("vmid", vmid).
+		Str("node", node).
+		Msg("Received VM action request")
 	missing := []string{}
-	if action == "" { missing = append(missing, "action") }
-	if vmid == "" { missing = append(missing, "vmid") }
-	if node == "" { missing = append(missing, "node") }
+	if action == "" {
+		missing = append(missing, "action")
+	}
+	if vmid == "" {
+		missing = append(missing, "vmid")
+	}
+	if node == "" {
+		missing = append(missing, "node")
+	}
 	if len(missing) > 0 {
 		errMsg := "Missing parameters: " + strings.Join(missing, ", ")
-		log.Error().Str("handler", "vmActionHandler").Msg(errMsg)
+		logger.Get().Error().
+			Str("handler", "vmActionHandler").
+			Msg(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
@@ -60,7 +73,10 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	id, err = strconv.Atoi(vmid)
 	if err != nil {
 		errMsg := "Invalid VMID, must be integer: " + vmid
-		log.Error().Str("handler", "vmActionHandler").Str("vmid", vmid).Msg(errMsg)
+		logger.Get().Error().
+			Str("handler", "vmActionHandler").
+			Str("vmid", vmid).
+			Msg(errMsg)
 		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
@@ -88,7 +104,12 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	proxmoxClient.InvalidateCache(statusPath)
 
 	if err != nil {
-		log.Error().Err(err).Str("action", action).Str("node", node).Str("vmid", vmid).Msg("VM action failed")
+		logger.Get().Error().
+			Err(err).
+			Str("action", action).
+			Str("node", node).
+			Str("vmid", vmid).
+			Msg("VM action failed")
 		http.Error(w, "VM action failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -115,25 +136,52 @@ func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	configPath := fmt.Sprintf("/nodes/%s/qemu/%s/config", node, vmid)
 	config, err := proxmoxClient.GetWithContext(ctx, configPath)
 	if err != nil {
-		log.Error().Err(err).Str("node", node).Str("vmid", vmid).Msg("Failed to get VM config")
+		logger.Get().Error().
+			Err(err).
+			Str("node", node).
+			Str("vmid", vmid).
+			Msg("Failed to get VM config")
 		data["Error"] = "Failed to fetch VM config."
 		renderTemplate(w, r, "vm_details.html", data)
 		return
 	}
-	
+
 	// Fetch VM status
 	statusPath := fmt.Sprintf("/nodes/%s/qemu/%s/status/current", node, vmid)
 	status, err := proxmoxClient.GetWithContext(ctx, statusPath)
 	if err != nil {
-		log.Error().Err(err).Str("node", node).Str("vmid", vmid).Msg("Failed to get VM status")
+		logger.Get().Error().
+			Err(err).
+			Str("node", node).
+			Str("vmid", vmid).
+			Msg("Failed to get VM status")
 		data["Error"] = "Failed to fetch VM status."
 		renderTemplate(w, r, "vm_details.html", data)
 		return
 	}
 
 	// Extract details
-	cfg := config["data"].(map[string]interface{})
-	st := status["data"].(map[string]interface{})
+	cfg, cfgOk := config["data"].(map[string]interface{})
+	if !cfgOk {
+		logger.Get().Error().
+			Str("node", node).
+			Str("vmid", vmid).
+			Msg("Invalid VM config format")
+		data["Error"] = "Failed to parse VM configuration format."
+		renderTemplate(w, r, "vm_details.html", data)
+		return
+	}
+
+	st, stOk := status["data"].(map[string]interface{})
+	if !stOk {
+		logger.Get().Error().
+			Str("node", node).
+			Str("vmid", vmid).
+			Msg("Invalid VM status format")
+		data["Error"] = "Failed to parse VM status format."
+		renderTemplate(w, r, "vm_details.html", data)
+		return
+	}
 
 	// VM Name & ID
 	data["VMName"] = cfg["name"]

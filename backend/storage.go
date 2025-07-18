@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -31,40 +31,58 @@ func storageHandler(w http.ResponseWriter, r *http.Request) {
 
 // getStorages is a helper function to fetch and parse storages from Proxmox.
 func getStorages() ([]Storage, error) {
-	apiURL := os.Getenv("PROXMOX_URL")
-	apiTokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
-	apiTokenSecret := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-	insecure := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
-
-	client, err := proxmox.NewClient(apiURL, apiTokenID, apiTokenSecret, insecure)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create proxmox client")
-		return nil, err
+	// Use the global proxmox client
+	if proxmoxClient == nil {
+		log.Error().Msg("Proxmox client not initialized")
+		return nil, fmt.Errorf("proxmox client not initialized")
 	}
 
-	storagesResult, err := proxmox.GetStorages(client)
+	storagesResult, err := proxmox.GetStorages(proxmoxClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get storage list")
 		return nil, err
 	}
 
 	var allStorages []Storage
-	if storagesMap, ok := storagesResult.(map[string]interface{}); ok {
-		if data, ok := storagesMap["data"].([]interface{}); ok {
-			for _, item := range data {
-				if storageItem, ok := item.(map[string]interface{}); ok {
-					storage := Storage{
-						Name:    storageItem["storage"].(string),
-						Type:    storageItem["type"].(string),
-						Content: storageItem["content"].(string),
-					}
-					if nodes, ok := storageItem["nodes"].(string); ok {
-						storage.Nodes = nodes
-					}
-					allStorages = append(allStorages, storage)
-				}
-			}
+	storagesMap, mapOk := storagesResult.(map[string]interface{})
+	if !mapOk {
+		log.Error().Interface("result", storagesResult).Msg("Invalid storages result format")
+		return nil, fmt.Errorf("invalid storages result format")
+	}
+	
+	data, dataOk := storagesMap["data"].([]interface{})
+	if !dataOk {
+		log.Error().Interface("storagesMap", storagesMap).Msg("Invalid storages data format")
+		return nil, fmt.Errorf("invalid storages data format")
+	}
+	
+	for _, item := range data {
+		storageItem, itemOk := item.(map[string]interface{})
+		if !itemOk {
+			log.Debug().Interface("item", item).Msg("Storage item is not a valid map, skipping")
+			continue
 		}
+		
+		// Récupérer les propriétés de stockage avec gestion des erreurs de type
+		storageName, nameOk := storageItem["storage"].(string)
+		storageType, typeOk := storageItem["type"].(string)
+		storageContent, contentOk := storageItem["content"].(string)
+		
+		if !nameOk || !typeOk || !contentOk {
+			log.Debug().Interface("storageItem", storageItem).Msg("Storage item missing required fields, skipping")
+			continue
+		}
+		
+		storage := Storage{
+			Name:    storageName,
+			Type:    storageType,
+			Content: storageContent,
+		}
+		
+		if nodes, ok := storageItem["nodes"].(string); ok {
+			storage.Nodes = nodes
+		}
+		allStorages = append(allStorages, storage)
 	}
 	return allStorages, nil
 }
@@ -87,7 +105,7 @@ func getStoragesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug().Int("total", len(allStorages)).Int("vmEligible", len(vmStorages)).Msg("Filtered storages for VM eligibility")
 
-	log.Info().Msgf("Found %d storages, %d can be used for VMs", len(allStorages), len(vmStorages))
+	log.Info().Int("total", len(allStorages)).Int("vmCount", len(vmStorages)).Msg("Storage filtering completed")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {

@@ -17,10 +17,9 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/joho/godotenv"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/bcrypt"
 
+	"pvmss/backend/logger"
 	"pvmss/backend/proxmox"
 )
 
@@ -31,23 +30,13 @@ var (
 	proxmoxClient  *proxmox.Client
 )
 
-// initLogger configures the zerolog logger
+// initLogger initializes the logger with the configured log level
 func initLogger() {
-	zerolog.TimeFieldFormat = time.RFC3339Nano
-	log.Logger = log.Output(zerolog.ConsoleWriter{
-		Out:        os.Stdout,
-		TimeFormat: "2006-01-02 15:04:05",
-	})
-
 	level := os.Getenv("LOG_LEVEL")
-	switch strings.ToLower(level) {
-	case "debug":
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case "info", "":
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	default:
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if level == "" {
+		level = "info" // default to info level if not set
 	}
+	logger.Init(level)
 }
 
 // validateEnvironment checks for required environment variables
@@ -64,9 +53,12 @@ func validateEnvironment() error {
 		}
 	}
 
-	// Log the loaded Proxmox URL to verify it's loaded correctly
 	proxmoxURL := os.Getenv("PROXMOX_URL")
-	log.Info().Str("PROXMOX_URL", proxmoxURL).Msg("Proxmox URL loaded")
+	if proxmoxURL == "" {
+		return fmt.Errorf("PROXMOX_URL environment variable is required")
+	}
+
+	logger.Get().Info().Str("PROXMOX_URL", proxmoxURL).Msg("Proxmox URL loaded")
 
 	return nil
 }
@@ -76,16 +68,28 @@ func initProxmoxClient() (*proxmox.Client, error) {
 	proxmoxURL := os.Getenv("PROXMOX_URL")
 	proxmoxAPITokenName := os.Getenv("PROXMOX_API_TOKEN_NAME")
 	proxmoxAPITokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-	proxmoxVerifySSL := os.Getenv("PROXMOX_VERIFY_SSL") != "false"
+	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
-	// Create client with a 10-second timeout
-	return proxmox.NewClientWithOptions(
+	logger.Get().Info().
+		Str("url", proxmoxURL).
+		Str("tokenName", proxmoxAPITokenName).
+		Bool("insecureSkipVerify", insecureSkipVerify).
+		Msg("Initializing Proxmox API client")
+
+	client, err := proxmox.NewClientWithOptions(
 		proxmoxURL,
 		proxmoxAPITokenName,
 		proxmoxAPITokenValue,
-		!proxmoxVerifySSL,
-		proxmox.WithTimeout(10*time.Second),
+		insecureSkipVerify,
 	)
+
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to initialize Proxmox client")
+		return nil, err
+	}
+
+	logger.Get().Info().Msg("Proxmox client initialized successfully")
+	return client, nil
 }
 
 // Settings holds the application settings
@@ -230,7 +234,7 @@ func setupServer(ctx context.Context) *http.Server {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "50000"
-		log.Info().Msgf("Using default port: %s", port)
+		logger.Get().Info().Str("port", port).Msg("Using default port")
 	}
 
 	// Create router
@@ -286,9 +290,9 @@ func setupServer(ctx context.Context) *http.Server {
 
 // startServer starts the HTTP server
 func startServer(srv *http.Server) {
-	log.Info().Str("addr", srv.Addr).Msg("Starting server...")
+	logger.Get().Info().Str("addr", srv.Addr).Msg("Starting server...")
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal().Err(err).Msg("Server failed to start")
+		logger.Get().Fatal().Err(err).Msg("Server failed to start")
 	}
 }
 
@@ -302,19 +306,19 @@ func main() {
 
 	// Load environment variables
 	if err := godotenv.Load("../.env"); err != nil {
-		log.Warn().Msg("Error loading .env file, relying on environment variables")
+		logger.Get().Warn().Msg("Error loading .env file, relying on environment variables")
 	}
 
 	// Validate required environment variables
 	if err := validateEnvironment(); err != nil {
-		log.Fatal().Err(err).Msg("Environment validation failed")
+		logger.Get().Fatal().Err(err).Msg("Environment validation failed")
 	}
 
 	// Initialize Proxmox client
 	var err error
 	proxmoxClient, err = initProxmoxClient()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize Proxmox client")
+		logger.Get().Fatal().Err(err).Msg("Failed to initialize Proxmox client")
 	}
 
 	// Initialize i18n
@@ -323,7 +327,7 @@ func main() {
 	// Initialize templates
 	tmpl, err := initTemplates()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to initialize templates")
+		logger.Get().Fatal().Err(err).Msg("Failed to initialize templates")
 	}
 	templates = tmpl
 
@@ -344,7 +348,7 @@ func main() {
 
 	// Cancel context to signal shutdown to all components
 	cancel()
-	log.Info().Msg("Graceful shutdown initiated")
+	logger.Get().Info().Msg("Graceful shutdown initiated")
 
 	// Allow time for cleanup operations
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -352,10 +356,10 @@ func main() {
 
 	// Perform any additional cleanup if needed
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Error().Err(err).Msg("Server forced to shutdown")
+		logger.Get().Error().Err(err).Msg("Server forced to shutdown")
 	}
 
-	log.Info().Msg("Server exited gracefully")
+	logger.Get().Info().Msg("Server exited gracefully")
 }
 
 func formatMemory(mem interface{}) string {
@@ -389,7 +393,7 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 	if name != "" {
 		buf := new(bytes.Buffer)
 		if err := templates.ExecuteTemplate(buf, name, data); err != nil {
-			log.Error().Err(err).Msgf("Error executing page template: %s", name)
+			logger.Get().Error().Err(err).Str("template", name).Msg("Error executing page template")
 			http.Error(w, "Could not execute page template", http.StatusInternalServerError)
 			return
 		}
@@ -398,14 +402,21 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 
 	// Render the main layout which wraps whatever is present in data["Content"]
 	if err := templates.ExecuteTemplate(w, "layout", data); err != nil {
-		log.Error().Err(err).Msg("Error executing layout template")
+		logger.Get().Error().Err(err).Msg("Error executing layout template")
 		http.Error(w, "Could not execute layout template", http.StatusInternalServerError)
 	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "indexHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
-	log.Info().Str("path", r.URL.Path).Msg("Request received for index")
+	logger.Get().Info().
+		Str("handler", "indexHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote", r.RemoteAddr).
+		Msg("Request received")
+	logger.Get().Info().
+		Str("path", r.URL.Path).
+		Msg("Request received for index")
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
@@ -415,8 +426,15 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "searchHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
-	log.Info().Str("path", r.URL.Path).Msg("Request received for search")
+	logger.Get().Info().
+		Str("handler", "searchHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote", r.RemoteAddr).
+		Msg("Request received")
+	logger.Get().Info().
+		Str("path", r.URL.Path).
+		Msg("Request received for search")
 	data := make(map[string]interface{})
 
 	if r.Method == http.MethodPost {
@@ -428,18 +446,23 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		if vmid != "" {
 			match, _ := regexp.MatchString(`^[0-9]{1,10}$`, vmid)
 			if !match {
-				log.Warn().Str("vmid", vmid).Msg("Invalid VMID format received")
+				logger.Get().Warn().
+					Str("vmid", vmid).
+					Msg("Invalid VMID format received")
 				data["Error"] = "Invalid VM ID: Please use 1 to 10 digits."
 				renderTemplate(w, r, "search.html", data)
 				return
 			}
 		}
 
-		log.Info().Str("vmid", vmid).Str("name", name).Msg("Processing search request")
+		logger.Get().Info().
+			Str("vmid", vmid).
+			Str("name", name).
+			Msg("Processing search request")
 
 		// Use the global proxmox client
 		if proxmoxClient == nil {
-			log.Error().Msg("Proxmox client not initialized")
+			logger.Get().Error().Msg("Proxmox client not initialized")
 			http.Error(w, "Server configuration error", http.StatusInternalServerError)
 			return
 		}
@@ -451,7 +474,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// Fetch node names with context
 		nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to get node names")
+			logger.Get().Error().Err(err).Msg("Failed to get node names")
 			http.Error(w, "Failed to get node names", http.StatusInternalServerError)
 			return
 		}
@@ -461,7 +484,10 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		for _, nodeName := range nodeNames {
 			nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
 			if err != nil {
-				log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
+				logger.Get().Error().
+					Err(err).
+					Str("node", nodeName).
+					Msg("Failed to get node details")
 				continue
 			}
 
@@ -477,13 +503,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 				"maxdisk": float64(nodeDetails.MaxDisk),
 			}
 			nodesList = append(nodesList, nodeMap)
-			log.Debug().Str("node", nodeName).Msg("Node details appended to list")
+			logger.Get().Debug().Str("node", nodeName).Msg("Node details appended to list")
 		}
 
 		// Use the robust searchVM function to find matching VMs
 		results, err := searchVM(proxmoxClient, vmid, name)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to execute VM search")
+			logger.Get().Error().Err(err).Msg("Failed to execute VM search")
 			http.Error(w, "Error searching for VMs", http.StatusInternalServerError)
 			return
 		}
@@ -517,14 +543,23 @@ func createVmHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func adminHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "adminHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
-	log.Info().Str("path", r.URL.Path).Msg("Request received for admin page")
+	logger.Get().Info().
+		Str("handler", "adminHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote", r.RemoteAddr).
+		Msg("Request received")
+	logger.Get().Info().
+		Str("path", r.URL.Path).
+		Msg("Request received for admin page")
 	data := make(map[string]interface{})
 
 	// Read settings first, to pass them to the template even if proxmox fails
 	settings, err := readSettings()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to read settings")
+		logger.Get().Error().
+			Err(err).
+			Msg("Failed to read settings")
 		data["Error"] = "Failed to read application settings."
 		renderTemplate(w, r, "admin.html", data)
 		return
@@ -533,7 +568,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Use the global proxmox client
 	if proxmoxClient == nil {
-		log.Error().Msg("Proxmox client not initialized")
+		logger.Get().Error().Msg("Proxmox client not initialized")
 		data["Error"] = "Server configuration error"
 		renderTemplate(w, r, "admin.html", data)
 		return
@@ -546,20 +581,27 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	// Fetch node names with context
 	nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get node names")
+		logger.Get().Error().
+			Err(err).
+			Msg("Failed to get node names")
 		data["Error"] = "Failed to retrieve node list from Proxmox"
 		renderTemplate(w, r, "admin.html", data)
 		return
 	}
 
-	log.Info().Int("count", len(nodeNames)).Msg("Processing nodes for admin page")
+	logger.Get().Info().
+		Int("count", len(nodeNames)).
+		Msg("Processing nodes for admin page")
 
 	// Fetch node details with context
 	nodeDetailsList := make([]proxmox.NodeDetails, 0)
 	for _, nodeName := range nodeNames {
 		nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
 		if err != nil {
-			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
+			logger.Get().Error().
+				Err(err).
+				Str("node", nodeName).
+				Msg("Failed to get node details")
 			continue
 		}
 		// Use the concrete struct, not a pointer
@@ -570,7 +612,9 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 	// Also fetch other necessary data for the admin page
 	storagesResult, err := proxmox.GetStorages(proxmoxClient)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get storages")
+		logger.Get().Error().
+			Err(err).
+			Msg("Failed to get storages")
 	}
 	data["Storages"] = storagesResult
 
@@ -591,7 +635,11 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 							defer isoCancel()
 							isos, err := proxmox.GetISOListWithContext(isoCtx, proxmoxClient, nodeName, storageName)
 							if err != nil {
-								log.Error().Err(err).Str("node", nodeName).Str("storage", storageName).Msg("Failed to get ISOs")
+								logger.Get().Error().
+									Err(err).
+									Str("node", nodeName).
+									Str("storage", storageName).
+									Msg("Failed to get ISOs")
 								continue
 							}
 							if isoData, ok := isos["data"].([]interface{}); ok {
@@ -616,7 +664,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 		defer vmbrCancel()
 		vmbrs, err := proxmox.GetVMBRsWithContext(vmbrCtx, proxmoxClient, nodeName)
 		if err != nil {
-			log.Error().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs")
+			logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs")
 			continue
 		}
 		if vmbrData, ok := vmbrs["data"].([]interface{}); ok {
@@ -636,40 +684,40 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func storagePageHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "storagePageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
-	log.Info().Str("path", r.URL.Path).Msg("Request received for storage page")
+	logger.Get().Info().Str("handler", "storagePageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
+	logger.Get().Info().Str("path", r.URL.Path).Msg("Request received for storage page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "storage.html", data)
 }
 
 func isoPageHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "isoPageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
-	log.Info().Str("path", r.URL.Path).Msg("Request received for iso page")
+	logger.Get().Info().Str("handler", "isoPageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
+	logger.Get().Info().Str("path", r.URL.Path).Msg("Request received for iso page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "iso.html", data)
 }
 
 func vmbrPageHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "vmbrPageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
-	log.Info().Str("path", r.URL.Path).Msg("Request received for vmbr page")
+	logger.Get().Info().Str("handler", "vmbrPageHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
+	logger.Get().Info().Str("path", r.URL.Path).Msg("Request received for vmbr page")
 	data := make(map[string]interface{})
 	renderTemplate(w, r, "vmbr.html", data)
 }
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "healthHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
+	logger.Get().Info().Str("handler", "healthHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "loginHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
+	logger.Get().Info().Str("handler", "loginHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	if r.Method == http.MethodPost {
 		password := r.FormValue("password")
 		adminPasswordHash := os.Getenv("ADMIN_PASSWORD_HASH")
 
 		if adminPasswordHash == "" {
-			log.Error().Msg("ADMIN_PASSWORD_HASH is not set")
+			logger.Get().Error().Msg("ADMIN_PASSWORD_HASH is not set")
 			data := map[string]interface{}{"Error": "Server configuration error"}
 			renderTemplate(w, r, "login.html", data)
 			return
@@ -680,7 +728,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin", http.StatusFound)
 			return
 		} else {
-			log.Warn().Msg("Failed login attempt")
+			logger.Get().Warn().Msg("Failed login attempt")
 			data := map[string]interface{}{"Error": "Invalid password"}
 			renderTemplate(w, r, "login.html", data)
 			return
@@ -691,7 +739,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "logoutHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
+	logger.Get().Info().Str("handler", "logoutHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	sessionManager.Destroy(r.Context())
 	http.Redirect(w, r, "/login", http.StatusFound)
 }

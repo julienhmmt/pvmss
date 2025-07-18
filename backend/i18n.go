@@ -2,12 +2,12 @@ package main
 
 import (
 	"html/template"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/text/language"
 )
 
@@ -20,12 +20,12 @@ func initI18n() {
 	
 	// Load English translations
 	if _, err := bundle.LoadMessageFile("i18n/active.en.toml"); err != nil {
-		log.Printf("Error loading English translations: %v", err)
+		log.Error().Err(err).Msg("Error loading English translations")
 	}
 
 	// Load French translations
 	if _, err := bundle.LoadMessageFile("i18n/active.fr.toml"); err != nil {
-		log.Printf("Error loading French translations: %v", err)
+		log.Error().Err(err).Msg("Error loading French translations")
 	}
 
 	// Verify specific keys
@@ -34,7 +34,7 @@ func initI18n() {
 		MessageID: "Limits.Disk",
 	})
 	if err != nil {
-		log.Printf("Error loading 'Limits.Disk' in French: %v", err)
+		log.Error().Err(err).Msg("Error loading 'Limits.Disk' in French")
 	}
 }
 

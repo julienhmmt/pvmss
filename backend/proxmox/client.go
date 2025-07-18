@@ -12,6 +12,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 	px "github.com/Telmate/proxmox-api-go/proxmox"
+
+	"pvmss/backend/logger"
 )
 
 // Client is a wrapper around the Proxmox API client.
@@ -123,13 +125,12 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 		c.mux.RUnlock()
 		
 		if found && time.Since(cacheEntry.Timestamp) < c.cacheTTL {
-			log.Debug().Str("path", path).Msg("Using cached response")
+			logger.Get().Debug().Str("path", path).Msg("Using cached response")
 			var result map[string]interface{}
 			if err := json.Unmarshal(cacheEntry.Data, &result); err == nil {
 				return result, nil
 			} else {
-				log.Warn().Str("path", path).Err(err).Msg("Failed to unmarshal cached data")
-				// If unmarshaling fails, proceed to make a fresh request
+				logger.Get().Warn().Str("path", path).Err(err).Msg("Failed to unmarshal cached data")
 			}
 		}
 	}
@@ -137,14 +138,14 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 	// Not in cache, make the request
 	rawData, err := c.GetRawWithContext(ctx, path)
 	if err != nil {
-		log.Error().Err(err).Str("path", path).Msg("Failed to get raw API response")
+		logger.Get().Error().Err(err).Str("path", path).Msg("Error in Proxmox API request")
 		return nil, err
 	}
 
 	// Parse the response
 	var result map[string]interface{}
 	if err := json.Unmarshal(rawData, &result); err != nil {
-		log.Error().Err(err).Str("path", path).Msg("Failed to decode API response")
+		logger.Get().Error().Err(err).Str("path", path).Msg("Failed to decode API response")
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
@@ -156,7 +157,7 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 			Timestamp: time.Now(),
 		}
 		c.mux.Unlock()
-		log.Debug().Str("path", path).Msg("Cached API response")
+		logger.Get().Debug().Str("path", path).Msg("Fetching from Proxmox API")
 	}
 
 	return result, nil
@@ -171,18 +172,18 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 		c.mux.RUnlock()
 		
 		if found && time.Since(cacheEntry.Timestamp) < c.cacheTTL {
-			log.Debug().Str("path", path).Msg("Using cached raw response")
+			logger.Get().Debug().Str("path", path).Msg("Using cached raw response")
 			return cacheEntry.Data, nil
 		}
 	}
 
 	url := c.ApiUrl + path
-	log.Info().Str("url", url).Msg("Making API request to Proxmox")
+	logger.Get().Info().Str("url", url).Msg("Making API request to Proxmox")
 	
 	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Error().Err(err).Str("url", url).Msg("Failed to create HTTP request for Proxmox API")
+		logger.Get().Error().Err(err).Str("url", url).Msg("Failed to create HTTP request for Proxmox API")
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -192,7 +193,7 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	// Execute the request
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
-		log.Error().Err(err).Str("url", url).Msg("HTTP request to Proxmox API failed")
+		logger.Get().Error().Err(err).Str("url", url).Msg("HTTP request to Proxmox API failed")
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -200,14 +201,14 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	// Check for non-200 status codes
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		log.Error().Int("status", resp.StatusCode).Str("url", url).Msg("Proxmox API returned non-200 status")
+		logger.Get().Error().Int("status", resp.StatusCode).Str("url", url).Msg("Proxmox API returned non-200 status")
 		return nil, fmt.Errorf("API returned non-200 status: %d - %s", resp.StatusCode, string(body))
 	}
 
 	// Read the response body
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error().Err(err).Str("url", url).Msg("Failed to read response body from Proxmox API")
+		logger.Get().Error().Err(err).Str("url", url).Msg("Failed to read response body from Proxmox API")
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
@@ -219,7 +220,7 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 			Timestamp: time.Now(),
 		}
 		c.mux.Unlock()
-		log.Debug().Str("path", path).Msg("Cached raw API response")
+		logger.Get().Debug().Str("path", path).Msg("Cached raw API response")
 	}
 
 	return data, nil
@@ -237,10 +238,10 @@ func (c *Client) InvalidateCache(path string) {
 	if path == "" {
 		// Invalidate all cache
 		c.cache = make(map[string]*CacheEntry)
-		log.Debug().Msg("Invalidated entire API cache")
+		logger.Get().Debug().Msg("Cache cleared")
 	} else {
 		// Invalidate specific path
 		delete(c.cache, path)
-		log.Debug().Str("path", path).Msg("Invalidated specific API cache entry")
+		logger.Get().Debug().Str("path", path).Msg("Cache entry invalidated")
 	}
 }
