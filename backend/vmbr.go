@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rs/zerolog/log"
-	"pvmss/backend/proxmox"
+	"pvmss/proxmox"
 )
 
 // VMBRInfo holds information about a Proxmox network bridge.

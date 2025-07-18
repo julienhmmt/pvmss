@@ -6,19 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sync"
-	"time"
 
-	"pvmss/backend/logger"
-	"pvmss/backend/proxmox"
-)
-
-// Cache for node details
-var (
-	nodeDetailsCache     []*proxmox.NodeDetails
-	nodeDetailsLastFetch time.Time
-	nodeDetailsCacheTTL  = 5 * time.Minute
-	nodeDetailsMutex     sync.RWMutex
+	"pvmss/logger"
+	"pvmss/proxmox"
 )
 
 // ResourceLimits defines the min and max values for a resource
@@ -133,7 +123,7 @@ func limitsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getLimitsHandler(w http.ResponseWriter, r *http.Request) {
+func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 	logger.Get().Info().Msg("Getting resource limits")
 	settings, err := readSettings()
 	if err != nil {
@@ -381,114 +371,4 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-
-// ensureLimitsInitialized initializes limits if they haven't been set
-func (s *AppSettings) ensureLimitsInitialized() {
-	if s.Limits == nil {
-		s.Limits = make(map[string]interface{})
-	}
-
-	// Initialize VM limits if not set
-	if _, exists := s.Limits["vm"]; !exists {
-		defLimits := defaultVMLimits()
-		vmLimit := map[string]interface{}{
-			"sockets": MinMax{Min: defLimits.Sockets.Min, Max: defLimits.Sockets.Max},
-			"cores":   MinMax{Min: defLimits.Cores.Min, Max: defLimits.Cores.Max},
-			"ram":     MinMax{Min: defLimits.RAM.Min, Max: defLimits.RAM.Max},
-			"disk":    MinMax{Min: defLimits.Disk.Min, Max: defLimits.Disk.Max},
-		}
-		s.Limits["vm"] = vmLimit
-		logger.Get().Debug().Msg("Initialized default VM limits")
-	}
-	
-	// Initialize node limits map if not set
-	nodes, nodesExist := s.Limits["nodes"].(map[string]interface{})
-	if !nodesExist {
-		s.Limits["nodes"] = make(map[string]interface{})
-		nodes = s.Limits["nodes"].(map[string]interface{})
-		logger.Get().Debug().Msg("Initialized node limits map")
-	}
-	
-	// Get nodes from Proxmox API
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	
-	nodeDetails, err := getNodeDetailsFromCacheOrAPI(ctx)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get node details when initializing limits")
-		return
-	}
-	
-	// Initialize limits for each node if not set
-	for _, node := range nodeDetails {
-		if _, exists := nodes[node.Node]; !exists {
-			defLimits := defaultNodeLimits(node)
-			nodeLimit := map[string]interface{}{
-				"sockets": MinMax{Min: defLimits.Sockets.Min, Max: defLimits.Sockets.Max},
-				"cores":   MinMax{Min: defLimits.Cores.Min, Max: defLimits.Cores.Max},
-				"ram":     MinMax{Min: defLimits.RAM.Min, Max: defLimits.RAM.Max},
-			}
-			nodes[node.Node] = nodeLimit
-			logger.Get().Debug().Str("node", node.Node).Msg("Initialized limits for node")
-		}
-	}
-	
-	// Remove limits for nodes that no longer exist
-	validNodes := make(map[string]bool)
-	for _, node := range nodeDetails {
-		validNodes[node.Node] = true
-	}
-	
-	for nodeName := range nodes {
-		if !validNodes[nodeName] {
-			delete(nodes, nodeName)
-			logger.Get().Debug().Str("node", nodeName).Msg("Removed limits for non-existent node")
-		}
-	}
-}
-
-func getNodeDetailsFromCacheOrAPI(ctx context.Context) ([]*proxmox.NodeDetails, error) {
-	// Check cache first
-	nodeDetailsMutex.RLock()
-	cached := nodeDetailsCache
-	lastFetch := nodeDetailsLastFetch
-	nodeDetailsMutex.RUnlock()
-
-	if cached != nil && time.Since(lastFetch) < nodeDetailsCacheTTL {
-		logger.Get().Debug().Msg("Using cached node details")
-		return cached, nil
-	}
-
-	logger.Get().Info().Msg("Fetching fresh node details from Proxmox")
-	
-	// Get node names first
-	nodeNames, err := proxmox.GetNodeNames(proxmoxClient)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to fetch node names from Proxmox")
-		return nil, fmt.Errorf("failed to fetch node names: %w", err)
-	}
-
-	// Get details for each node
-	var nodes []*proxmox.NodeDetails
-	for _, nodeName := range nodeNames {
-		nodeDetails, err := proxmox.GetNodeDetails(proxmoxClient, nodeName)
-		if err != nil {
-			logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to fetch details for node")
-			continue
-		}
-		nodes = append(nodes, nodeDetails)
-	}
-
-	if len(nodes) == 0 {
-		return nil, fmt.Errorf("no nodes found or failed to fetch any node details")
-	}
-
-	// Update cache
-	nodeDetailsMutex.Lock()
-	nodeDetailsCache = nodes
-	nodeDetailsLastFetch = time.Now()
-	nodeDetailsMutex.Unlock()
-
-	return nodes, nil
 }

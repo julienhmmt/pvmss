@@ -1,0 +1,34 @@
+# Ignore everything by default
+*
+
+# Allow files and directories
+!backend/
+!frontend/
+!go.mod
+!go.sum
+
+# But ignore git and other temporary files
+.git
+.gitignore
+.vscode
+.idea
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.DS_Store
+
+# Ignore build artifacts
+bin/
+dist/
+
+# Ignore local development files
+.env
+.env.local
+
+# Ignore IDE specific files
+.vscode/
+.idea/
+
+# Keep empty directories
+!.gitkeep

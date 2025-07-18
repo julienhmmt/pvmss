@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 	px "github.com/Telmate/proxmox-api-go/proxmox"
 
-	"pvmss/backend/logger"
+	"pvmss/logger"
 )
 
 // Client is a wrapper around the Proxmox API client.

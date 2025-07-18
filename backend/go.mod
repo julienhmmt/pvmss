@@ -1,4 +1,4 @@
-module pvmss/backend
+module pvmss
 
 go 1.24.4
 

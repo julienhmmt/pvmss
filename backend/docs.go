@@ -55,8 +55,3 @@ func serveDocHandler(docType string) http.HandlerFunc {
 		renderTemplate(w, r, "", data)
 	}
 }
-
-func registerDocRoutes() {
-	http.HandleFunc("/docs/admin", serveDocHandler("admin"))
-	http.HandleFunc("/docs/user", serveDocHandler("user"))
-}

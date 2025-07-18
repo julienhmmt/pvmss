@@ -9,8 +9,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -19,8 +22,8 @@ import (
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 
-	"pvmss/backend/logger"
-	"pvmss/backend/proxmox"
+	"pvmss/logger"
+	"pvmss/proxmox"
 )
 
 // Application globals
@@ -39,30 +42,6 @@ func initLogger() {
 	logger.Init(level)
 }
 
-// validateEnvironment checks for required environment variables
-func validateEnvironment() error {
-	requiredVars := []string{
-		"PROXMOX_URL",
-		"PROXMOX_API_TOKEN_NAME",
-		"PROXMOX_API_TOKEN_VALUE",
-	}
-
-	for _, v := range requiredVars {
-		if os.Getenv(v) == "" {
-			return fmt.Errorf("required environment variable %s is not set", v)
-		}
-	}
-
-	proxmoxURL := os.Getenv("PROXMOX_URL")
-	if proxmoxURL == "" {
-		return fmt.Errorf("PROXMOX_URL environment variable is required")
-	}
-
-	logger.Get().Info().Str("PROXMOX_URL", proxmoxURL).Msg("Proxmox URL loaded")
-
-	return nil
-}
-
 // initProxmoxClient creates and configures the Proxmox API client
 func initProxmoxClient() (*proxmox.Client, error) {
 	proxmoxURL := os.Getenv("PROXMOX_URL")
@@ -76,16 +55,20 @@ func initProxmoxClient() (*proxmox.Client, error) {
 		Bool("insecureSkipVerify", insecureSkipVerify).
 		Msg("Initializing Proxmox API client")
 
+	// NewClientWithOptions will validate the required parameters
 	client, err := proxmox.NewClientWithOptions(
 		proxmoxURL,
 		proxmoxAPITokenName,
 		proxmoxAPITokenValue,
 		insecureSkipVerify,
+		// Add any additional options here if needed
+		// proxmox.WithTimeout(30 * time.Second),
+		// proxmox.WithCache(5 * time.Minute),
 	)
 
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to initialize Proxmox client")
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize Proxmox client: %w", err)
 	}
 
 	logger.Get().Info().Msg("Proxmox client initialized successfully")
@@ -113,30 +96,6 @@ type Settings struct {
 
 var appSettings Settings
 
-// getTranslations returns a map of translations for the given language
-func getTranslations(lang string) map[string]string {
-	translations := map[string]map[string]string{
-		"en": {
-			"CreateVMTitle":    "Create New Virtual Machine",
-			"NoISOsMessage":    "No ISO images available. Please contact an administrator.",
-			"NoBridgesMessage": "No network bridges available. Please contact an administrator.",
-		},
-		"fr": {
-			"CreateVMTitle":    "Créer une nouvelle machine virtuelle",
-			"NoISOsMessage":    "Aucune image ISO disponible. Veuillez contacter un administrateur.",
-			"NoBridgesMessage": "Aucun pont réseau disponible. Veuillez contacter un administrateur.",
-		},
-		// Add more languages as needed
-	}
-
-	// Default to English if the requested language is not available
-	if _, exists := translations[lang]; !exists {
-		lang = "en"
-	}
-
-	return translations[lang]
-}
-
 // loadSettings loads the application settings from settings.json
 func loadSettings() error {
 	file, err := os.Open("settings.json")
@@ -158,6 +117,40 @@ func loadSettings() error {
 func initTemplates() (*template.Template, error) {
 	// Define template functions
 	funcMap := template.FuncMap{
+		// Conversion functions
+		"int": func(v interface{}) int {
+			switch v := v.(type) {
+			case int:
+				return v
+			case int8:
+				return int(v)
+			case int16:
+				return int(v)
+			case int32:
+				return int(v)
+			case int64:
+				return int(v)
+			case uint:
+				return int(v)
+			case uint8:
+				return int(v)
+			case uint16:
+				return int(v)
+			case uint32:
+				return int(v)
+			case uint64:
+				return int(v)
+			case float32:
+				return int(v)
+			case float64:
+				return int(v)
+			case string:
+				i, _ := strconv.Atoi(v)
+				return i
+			default:
+				return 0
+			}
+		},
 		"div": func(a, b float64) float64 {
 			if b == 0 {
 				return 0
@@ -168,6 +161,7 @@ func initTemplates() (*template.Template, error) {
 			return a * b
 		},
 		"until": func(n int) []int {
+			logger.Get().Debug().Int("until_n", n).Msg("Calling 'until' function")
 			var arr []int
 			for i := 0; i < n; i++ {
 				arr = append(arr, i)
@@ -175,7 +169,153 @@ func initTemplates() (*template.Template, error) {
 			return arr
 		},
 		"contains":  strings.Contains,
-		"splitList": strings.Split,
+		"hasPrefix": strings.HasPrefix,
+		"nodeSocketsMax": func(node interface{}) int {
+			// Default value if node is nil or doesn't have Sockets field
+			if node == nil {
+				return 1
+			}
+			
+			// Use reflection to safely get the Sockets field
+			nodeValue := reflect.ValueOf(node)
+			if nodeValue.Kind() == reflect.Ptr {
+				nodeValue = nodeValue.Elem()
+			}
+			
+			if nodeValue.Kind() == reflect.Struct {
+				socketsField := nodeValue.FieldByName("Sockets")
+				if socketsField.IsValid() && socketsField.Kind() == reflect.Int {
+					return int(socketsField.Int())
+				}
+			}
+			
+			return 8 // Default value if Sockets field not found
+		},
+		"nodeCoresMax": func(node interface{}) int {
+			// Default value if node is nil or doesn't have Cores field
+			if node == nil {
+				return 1
+			}
+			
+			// Use reflection to safely get the Cores field
+			nodeValue := reflect.ValueOf(node)
+			if nodeValue.Kind() == reflect.Ptr {
+				nodeValue = nodeValue.Elem()
+			}
+			
+			if nodeValue.Kind() == reflect.Struct {
+				// Try to get MaxCPU first, then Cores
+				coresField := nodeValue.FieldByName("MaxCPU")
+				if !coresField.IsValid() {
+					coresField = nodeValue.FieldByName("Cores")
+				}
+				
+				if coresField.IsValid() {
+					switch coresField.Kind() {
+					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+						return int(coresField.Int())
+					case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+						return int(coresField.Uint())
+					case reflect.Float32, reflect.Float64:
+						return int(coresField.Float())
+					}
+				}
+			}
+			
+			return 8 // Default value if Cores field not found
+		},
+		"nodeMemoryMaxGB": func(node interface{}) int64 {
+			// Default value if node is nil or doesn't have memory field
+			if node == nil {
+				return 8
+			}
+			
+			// Use reflection to safely get the memory field
+			nodeValue := reflect.ValueOf(node)
+			if nodeValue.Kind() == reflect.Ptr {
+				nodeValue = nodeValue.Elem()
+			}
+			
+			if nodeValue.Kind() == reflect.Struct {
+				// Try different possible field names for memory
+				memoryFields := []string{"MaxMem", "Memory", "MemTotal", "TotalMemory"}
+				
+				for _, fieldName := range memoryFields {
+					memField := nodeValue.FieldByName(fieldName)
+					if !memField.IsValid() {
+						continue
+					}
+					
+					// Convert to bytes if needed (assuming input might be in bytes, MB, etc.)
+					var bytes int64
+					switch memField.Kind() {
+					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+						bytes = memField.Int()
+					case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+						bytes = int64(memField.Uint())
+					case reflect.Float32, reflect.Float64:
+						bytes = int64(memField.Float())
+					default:
+						continue
+					}
+					
+					// Convert to GB (assuming input is in bytes)
+					// If the value is suspiciously small, assume it's already in GB
+					if bytes > 1024*1024*1024 { // > 1GB
+						return bytes / (1024 * 1024 * 1024) // Convert bytes to GB
+					}
+					return bytes // Already in GB
+				}
+			}
+			
+			return 8 // Default value if memory field not found
+		},
+		"nodeDiskMaxGB": func(node interface{}) int64 {
+			// Default value if node is nil or doesn't have disk field
+			if node == nil {
+				return 100 // Default to 100GB
+			}
+			
+			// Use reflection to safely get the disk field
+			nodeValue := reflect.ValueOf(node)
+			if nodeValue.Kind() == reflect.Ptr {
+				nodeValue = nodeValue.Elem()
+			}
+			
+			if nodeValue.Kind() == reflect.Struct {
+				// Try different possible field names for disk
+				diskFields := []string{"MaxDisk", "Disk", "DiskTotal", "TotalDisk", "Storage"}
+				
+				for _, fieldName := range diskFields {
+					diskField := nodeValue.FieldByName(fieldName)
+					if !diskField.IsValid() {
+						continue
+					}
+					
+					// Convert to bytes if needed (assuming input might be in bytes, MB, etc.)
+					var bytes int64
+					switch diskField.Kind() {
+					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+						bytes = diskField.Int()
+					case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+						bytes = int64(diskField.Uint())
+					case reflect.Float32, reflect.Float64:
+						bytes = int64(diskField.Float())
+					default:
+						continue
+					}
+					
+					// Convert to GB (assuming input is in bytes)
+					// If the value is suspiciously small, assume it's already in GB
+					if bytes > 1024*1024*1024 { // > 1GB
+						return bytes / (1024 * 1024 * 1024) // Convert bytes to GB
+					}
+					return bytes // Already in GB
+				}
+			}
+			
+			return 100 // Default value if disk field not found
+		},
 		"sub":      func(a, b int) int { return a - b },
 		"add":      func(a, b int) int { return a + b },
 		"sort":     func(s []string) []string {
@@ -213,13 +353,117 @@ func initTemplates() (*template.Template, error) {
 		"formatMemory": formatMemory,
 	}
 
-	// Create a new template with the layout file first
-	tmpl := template.New("layout.html").Funcs(funcMap)
+	// Log all registered functions for debugging
+	logger.Get().Info().Msg("Registering template functions:")
+	for name := range funcMap {
+		logger.Get().Info().Str("function", name).Msg(" - Registered function")
+	}
+
+	// Create a new template with a dummy name first
+	tmpl := template.New("")
 	
+	// Register all functions
+	tmpl = tmpl.Funcs(funcMap)
+	logger.Get().Info().Msg("Registered template functions")
+
 	// Parse all HTML templates in the frontend directory
-	tmpl, err := tmpl.ParseGlob("../frontend/*.html")
-	if err != nil {
-		return nil, fmt.Errorf("error parsing templates: %w", err)
+	templateDirs := []string{
+		"/app/frontend",  // For Docker container
+		"frontend",       // For local development
+		"../frontend",    // For local development (alternative)
+	}
+	
+	// First, try to load layout.html explicitly
+	layoutPaths := []string{
+		"/app/frontend/layout.html",
+		"frontend/layout.html",
+		"../frontend/layout.html",
+	}
+	
+	var layoutFile string
+	for _, path := range layoutPaths {
+		if _, err := os.Stat(path); err == nil {
+			layoutFile = path
+			break
+		}
+	}
+	
+	if layoutFile != "" {
+		logger.Get().Info().Str("file", layoutFile).Msg("Parsing layout template")
+		_, err := tmpl.ParseFiles(layoutFile)
+		if err != nil {
+			logger.Get().Error().Err(err).Str("file", layoutFile).Msg("Failed to parse layout template")
+		} else {
+			logger.Get().Info().Str("file", layoutFile).Msg("Successfully parsed layout template")
+		}
+	} else {
+		logger.Get().Warn().Msg("Could not find layout.html, continuing without it")
+	}
+	
+	// Now parse all other templates
+	var templateErr error
+	var foundTemplates bool
+	
+	for _, dir := range templateDirs {
+		// Check if directory exists
+		_, err := os.Stat(dir)
+		if os.IsNotExist(err) {
+			logger.Get().Debug().Str("dir", dir).Msg("Template directory does not exist")
+			continue
+		} else if err != nil {
+			logger.Get().Error().Err(err).Str("dir", dir).Msg("Error checking template directory")
+			continue
+		}
+		
+		// Get all HTML files in the directory
+		files, err := filepath.Glob(filepath.Join(dir, "*.html"))
+		if err != nil {
+			logger.Get().Error().Err(err).Str("dir", dir).Msg("Error listing template files")
+			continue
+		}
+		
+		if len(files) == 0 {
+			logger.Get().Warn().Str("dir", dir).Msg("No template files found in directory")
+			continue
+		}
+		
+		logger.Get().Info().Str("dir", dir).Int("files", len(files)).Msg("Found template files")
+		
+		// Parse all files except layout.html (already parsed)
+		var filesToParse []string
+		for _, file := range files {
+			if filepath.Base(file) != "layout.html" {
+				filesToParse = append(filesToParse, file)
+			}
+		}
+		
+		if len(filesToParse) > 0 {
+			logger.Get().Info().Strs("files", filesToParse).Msg("Parsing template files")
+			_, templateErr = tmpl.ParseFiles(filesToParse...)
+			if templateErr == nil {
+				foundTemplates = true
+				logger.Get().Info().Str("dir", dir).Msg("Successfully parsed templates from directory")
+				break
+			}
+			
+			logger.Get().
+				Error().
+				Err(templateErr).
+				Str("templateDir", dir).
+				Msg("Failed to parse templates from directory, trying next one")
+		}
+	}
+	
+	if !foundTemplates {
+		return nil, fmt.Errorf("failed to parse any template files from directories: %v", templateDirs)
+	}
+	
+	// Log all defined templates for debugging
+	logger.Get().Info().Msg("Defined templates:")
+	for _, t := range tmpl.Templates() {
+		if t.Name() != "" {
+			logger.Get().Info().Str("template", t.Name()).Msg(" - Defined template")
+		}
 	}
 	
 	// Store the parsed templates in the global variable
@@ -229,7 +473,7 @@ func initTemplates() (*template.Template, error) {
 }
 
 // setupServer configures the HTTP server with routes and middleware
-func setupServer(ctx context.Context) *http.Server {
+func setupServer() *http.Server {
 	// Get port from environment
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -241,11 +485,28 @@ func setupServer(ctx context.Context) *http.Server {
 	r := http.NewServeMux()
 
 	// Serve static files
-	fs := http.FileServer(http.Dir("../frontend/css"))
-	r.Handle("/css/", http.StripPrefix("/css/", fs))
+	r.Handle("/css/", http.StripPrefix("/css/", http.FileServer(http.Dir("frontend/css"))))
+	r.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("frontend/js"))))
+
+	// Serve HTML files directly from the frontend directory
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Check if the request is for a specific file
+		if r.URL.Path != "/" && r.URL.Path != "" && !strings.HasPrefix(r.URL.Path, "/api") {
+			// Try to serve the file directly
+			filePath := filepath.Join("frontend", r.URL.Path)
+			if _, err := os.Stat(filePath); err == nil {
+				http.ServeFile(w, r, filePath)
+				return
+			}
+			// If file not found, serve index.html for SPA routing
+			http.ServeFile(w, r, "frontend/index.html")
+		} else {
+			// Default to index handler
+			indexHandler(w, r)
+		}
+	})
 
 	// Handlers
-	r.HandleFunc("/", indexHandler)
 	r.HandleFunc("/search", searchHandler)
 	r.HandleFunc("/login", loginHandler)
 	r.HandleFunc("/logout", logoutHandler)
@@ -297,8 +558,7 @@ func startServer(srv *http.Server) {
 }
 
 func main() {
-	// Setup context with cancellation for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Initialize logger first for proper error reporting
@@ -307,11 +567,6 @@ func main() {
 	// Load environment variables
 	if err := godotenv.Load("../.env"); err != nil {
 		logger.Get().Warn().Msg("Error loading .env file, relying on environment variables")
-	}
-
-	// Validate required environment variables
-	if err := validateEnvironment(); err != nil {
-		logger.Get().Fatal().Err(err).Msg("Environment validation failed")
 	}
 
 	// Initialize Proxmox client
@@ -336,7 +591,7 @@ func main() {
 	sessionManager.Lifetime = 24 * time.Hour
 
 	// Setup HTTP server with proper timeouts and handlers
-	server := setupServer(ctx)
+	server := setupServer()
 
 	// Start server in a goroutine
 	go startServer(server)
@@ -515,6 +770,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		data["Results"] = results
+		data["Nodes"] = nodesList
 		if vmid != "" {
 			data["Query"] = vmid
 		} else {

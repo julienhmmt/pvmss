@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"pvmss/backend/proxmox"
+	"pvmss/proxmox"
 )
 
 // Storage represents a Proxmox storage.

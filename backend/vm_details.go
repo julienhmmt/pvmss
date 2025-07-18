@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Telmate/proxmox-api-go/proxmox"
-	"pvmss/backend/logger"
+	"pvmss/logger"
 )
 
 // apiVmStatusHandler returns the latest status of a VM (no cache)
@@ -94,7 +94,6 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 		_, err = proxmoxClient.ResetVm(ctx, ref)
 	case "reboot":
 		_, err = proxmoxClient.RebootVm(ctx, ref)
-		return
 	default:
 		http.Error(w, "Unknown action: "+action, http.StatusBadRequest)
 		return
@@ -265,23 +264,6 @@ func formatUptime(seconds int64) string {
 		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
 	}
 	return fmt.Sprintf("%dh %dm", hours, minutes)
-}
-
-// parseDiskSize extracts the size in GB from a Proxmox disk config string
-func parseDiskSize(disk string) int {
-	// e.g. "local-lvm:vm-100-disk-0,size=32G"
-	for _, part := range strings.Split(disk, ",") {
-		if strings.HasPrefix(part, "size=") {
-			sizeStr := strings.TrimPrefix(part, "size=")
-			if strings.HasSuffix(sizeStr, "G") {
-				sizeStr = strings.TrimSuffix(sizeStr, "G")
-				if val, err := strconv.Atoi(sizeStr); err == nil {
-					return val
-				}
-			}
-		}
-	}
-	return 0
 }
 
 // parseBridge extracts the bridge name from a Proxmox network config string

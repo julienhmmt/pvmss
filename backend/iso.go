@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"pvmss/backend/proxmox"
+	"pvmss/proxmox"
 )
 
 // ISOInfo holds combined information about an ISO file.
