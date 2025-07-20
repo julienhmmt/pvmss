@@ -37,12 +37,20 @@ func (v VMLimit) IsDefined() bool {
 	return v.Sockets.Min > 0
 }
 
+// ResourceLimits defines the resource limits structure
+type ResourceLimits struct {
+	Sockets MinMax  `json:"sockets"`
+	Cores   MinMax  `json:"cores"`
+	RAM     MinMax  `json:"ram"`
+	Disk    *MinMax `json:"disk,omitempty"` // Only for VM limits
+}
+
 // AppSettings defines the structure for the settings file.
 type AppSettings struct {
-	Tags   []string                  `json:"tags"`
-	ISOs   []string                  `json:"isos"`
-	VMBRs  []string                  `json:"vmbrs"`
-	Limits map[string]interface{}    `json:"limits"` // Map with both NodeLimit and VMLimit
+	Tags   []string `json:"tags"`
+	ISOs   []string `json:"isos"`
+	VMBRs  []string `json:"vmbrs"`
+	Limits map[string]interface{} `json:"limits"`
 }
 
 // MinMax defines a min/max value pair.
@@ -56,35 +64,65 @@ func readSettings() (*AppSettings, error) {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
 
+	logger := log.With().Logger()
+
+	logger.Debug().
+		Str("settings_file", settingsFile).
+		Msg("Reading settings from file")
+
 	file, err := os.Open(settingsFile)
 	if err != nil {
-		return nil, err
+		logger.Error().
+			Err(err).
+			Str("settings_file", settingsFile).
+			Msg("Failed to open settings file")
+		return nil, fmt.Errorf("failed to open settings file: %w", err)
 	}
 	defer file.Close()
 
 	bytes, err := io.ReadAll(file)
 	if err != nil {
-		return nil, err
+		logger.Error().
+			Err(err).
+			Str("settings_file", settingsFile).
+			Msg("Failed to read settings file")
+		return nil, fmt.Errorf("failed to read settings file: %w", err)
 	}
+
+	// Log the raw content read from the file
+	logger.Debug().
+		Str("settings_file", settingsFile).
+		Str("content", string(bytes)).
+		Msg("Read settings file content")
 
 	var settings AppSettings
 	if err := json.Unmarshal(bytes, &settings); err != nil {
-		return nil, err
+		logger.Error().
+			Err(err).
+			Str("settings_file", settingsFile).
+			Msg("Failed to unmarshal settings")
+		return nil, fmt.Errorf("failed to unmarshal settings: %w", err)
 	}
 
 	if settings.Limits == nil {
+		logger.Debug().Msg("Initializing empty limits map")
 		settings.Limits = make(map[string]interface{})
 	}
 	
 	// Ensure VM limits exists
 	if _, exists := settings.Limits["vm"]; !exists {
-		settings.Limits["vm"] = VMLimit{
-			Sockets: MinMax{Min: 1, Max: 1},
-			Cores:   MinMax{Min: 1, Max: 2},
-			RAM:     MinMax{Min: 1, Max: 4},
-			Disk:    MinMax{Min: 1, Max: 10},
+		logger.Debug().Msg("Initializing default VM limits")
+		settings.Limits["vm"] = map[string]interface{}{
+			"sockets": map[string]int{"min": 1, "max": 1},
+			"cores":   map[string]int{"min": 1, "max": 2},
+			"ram":     map[string]int{"min": 1, "max": 4},
+			"disk":    map[string]int{"min": 1, "max": 10},
 		}
 	}
+
+	logger.Debug().
+		Interface("settings", settings).
+		Msg("Successfully loaded settings")
 
 	return &settings, nil
 }
@@ -94,12 +132,31 @@ func writeSettings(settings *AppSettings) error {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
 
-	bytes, err := json.MarshalIndent(settings, "", "    ")
+	logger := log.With().Logger()
+
+	// Convert settings to JSON with indentation for readability
+	data, err := json.MarshalIndent(settings, "", "    ")
 	if err != nil {
-		return err
+		logger.Error().
+			Err(err).
+			Msg("Failed to marshal settings to JSON")
+		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
 
-	return os.WriteFile(settingsFile, bytes, 0644)
+	// Write directly to the settings file
+	if err := os.WriteFile(settingsFile, data, 0644); err != nil {
+		logger.Error().
+			Err(err).
+			Str("settings_file", settingsFile).
+			Msg("Failed to write settings file")
+		return fmt.Errorf("failed to write settings file: %w", err)
+	}
+
+	logger.Debug().
+		Str("settings_file", settingsFile).
+		Msg("Settings saved successfully")
+
+	return nil
 }
 
 // settingsHandler handles GET requests to read the entire settings file.

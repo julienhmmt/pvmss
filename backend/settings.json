@@ -1,19 +1,51 @@
 {
     "tags": [
-        "pvmss"
+        "pvmss",
+        "test",
+        "test2"
     ],
-    "ram": {
-        "min": 512,
-        "max": 8192
-    },
-    "cpu": {
-        "min": 1,
-        "max": 4
-    },
-    "sockets": {
-        "min": 1,
-        "max": 1
-    },
-    "isos": [],
-    "vmbrs": []
+    "isos": [
+        "local:iso/archlinux-2025.02.01-x86_64.iso",
+        "local:iso/nixos-24.11-gnome-x86_64-linux.iso",
+        "local:iso/tails-amd64-6.12.iso"
+    ],
+    "vmbrs": [
+        "vmbr0"
+    ],
+    "limits": {
+        "nodes": {
+            "miniquarium": {
+                "cores": {
+                    "max": 8,
+                    "min": 2
+                },
+                "ram": {
+                    "max": 32,
+                    "min": 2
+                },
+                "sockets": {
+                    "max": 1,
+                    "min": 1
+                }
+            }
+        },
+        "vm": {
+            "cores": {
+                "max": 2,
+                "min": 1
+            },
+            "disk": {
+                "max": 10,
+                "min": 1
+            },
+            "ram": {
+                "max": 4,
+                "min": 1
+            },
+            "sockets": {
+                "max": 1,
+                "min": 1
+            }
+        }
+    }
 }

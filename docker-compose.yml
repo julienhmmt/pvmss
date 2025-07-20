@@ -15,8 +15,7 @@ services:
       - TZ=Europe/Paris
     volumes:
       - pvmss_data:/app/data
-      # Mount only the settings file and data that might change
-      - ./backend/settings.json:/app/settings.json:ro
+      - ./backend/settings.json:/app/settings.json
     networks:
       - pvmss-network
     healthcheck:
