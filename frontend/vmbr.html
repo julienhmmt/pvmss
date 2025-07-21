@@ -1,9 +1,9 @@
 {{define "vmbr.html"}}
 <div class="container">
-    <h2 class="title is-4">{{.AdminVMBRTitle}}</h2>
+    <h2 class="title is-4">{{index . "Admin.VMBR.Title"}}</h2>
 
     <div class="notification is-light">
-        {{.AdminVMBRDescription}}
+        {{index . "Admin.VMBR.Description"}}
     </div>
 
     <div id="vmbr-container" class="mb-4">
@@ -38,10 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
-                        <th>{{.AdminVMBRHeaderEnabled}}</th>
-                        <th>{{.AdminVMBRHeaderNode}}</th>
-                        <th>{{.AdminVMBRHeaderName}}</th>
-                        <th>{{.AdminVMBRHeaderDescription}}</th>
+                        <th>{{index . "Admin.VMBR.Header.Enabled"}}</th>
+                        <th>{{index . "Admin.VMBR.Header.Node"}}</th>
+                        <th>{{index . "Admin.VMBR.Header.Name"}}</th>
+                        <th>{{index . "Admin.VMBR.Header.Description"}}</th>
                     </tr>
                 `;
                 table.appendChild(thead);
@@ -83,12 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 table.appendChild(tbody);
                 vmbrContainer.appendChild(table);
             } else {
-                vmbrContainer.innerHTML = '<div class="notification is-warning">{{.AdminVMBRNoVMBRs}}</div>';
+                vmbrContainer.innerHTML = '<div class="notification is-warning">{{index . "Admin.VMBR.NoVMBRs"}}</div>';
             }
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            vmbrContainer.innerHTML = '<div class="notification is-danger">{{.AdminVMBRError}}</div>';
+            vmbrContainer.innerHTML = '<div class="notification is-danger">{{index . "Admin.VMBR.Error"}}</div>';
         });
 
     function saveVmbrSelections() {

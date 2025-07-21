@@ -4,8 +4,8 @@
 {{else}}
     <section class="section">
         <div class="container">
-            <h1 class="title">{{.AdminPage}}</h1>
-            <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{.NavbarAdminDocs}}</a>
+            <h1 class="title">{{index . "Navbar.Admin"}}</h1>
+            <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{index . "Navbar.AdminDocs"}}</a>
             {{template "nodes.html" .}}
             {{template "tags.html" .}}
             {{template "storage.html" .}}

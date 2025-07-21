@@ -16,7 +16,9 @@ import (
 	"pvmss/logger"
 )
 
-// Client is a wrapper around the Proxmox API client.
+// Client is a custom wrapper around the standard Proxmox API client.
+// It enhances the base client with features like request timeouts, response caching,
+// and a simplified authentication mechanism using API tokens.
 type Client struct {
 	*px.Client
 	HttpClient *http.Client
@@ -28,24 +30,28 @@ type Client struct {
 	mux        sync.RWMutex
 }
 
-// ClientOption defines functional options for configuring the Client.
+// ClientOption defines a function signature for applying configuration options to the Client.
+// This pattern allows for flexible and clear client customization (e.g., setting a timeout or cache TTL).
 type ClientOption func(*Client)
 
-// CacheEntry represents a cached API response
+// CacheEntry represents a cached API response.
+// It stores the raw response data, the timestamp of when it was cached, and its Time-To-Live (TTL).
 type CacheEntry struct {
 	Data      []byte
 	Timestamp time.Time
 	TTL       time.Duration
 }
 
-// WithTimeout sets a custom timeout for API requests.
+// WithTimeout returns a ClientOption that sets a custom timeout for all API requests made by the client.
+// This overrides the default timeout.
 func WithTimeout(timeout time.Duration) ClientOption {
 	return func(c *Client) {
 		c.Timeout = timeout
 	}
 }
 
-// WithCache enables response caching with a specific TTL.
+// WithCache returns a ClientOption that enables response caching.
+// It initializes the cache map and sets a custom Time-To-Live (TTL) for all cached items.
 func WithCache(ttl time.Duration) ClientOption {
 	return func(c *Client) {
 		if ttl > 0 {
@@ -55,12 +61,15 @@ func WithCache(ttl time.Duration) ClientOption {
 	}
 }
 
-// NewClient creates a new Proxmox API client with default options.
+// NewClient creates a new Proxmox API client with default settings for timeout and caching.
+// It serves as a simplified constructor, calling NewClientWithOptions with default values.
 func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool) (*Client, error) {
 	return NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret, insecureSkipVerify)
 }
 
-// NewClientWithOptions creates a new Proxmox API client with the given options.
+// NewClientWithOptions constructs a new Proxmox API client, configures the underlying HTTP transport
+// with connection pooling and TLS settings, and applies any custom functional options provided.
+// It is the main constructor for creating a customized client instance.
 func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
 	if apiURL == "" || apiTokenID == "" || apiTokenSecret == "" {
 		log.Error().Str("apiURL", apiURL).Str("apiTokenID", apiTokenID).Msg("Missing required Proxmox API credentials")
@@ -107,7 +116,8 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 	return client, nil
 }
 
-// Get performs a direct GET request to the Proxmox API with context support.
+// Get performs a GET request to the Proxmox API using the client's default timeout.
+// It is a convenience wrapper around GetWithContext.
 func (c *Client) Get(path string) (map[string]interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.Timeout)
 	defer cancel()
@@ -116,7 +126,9 @@ func (c *Client) Get(path string) (map[string]interface{}, error) {
 	return c.GetWithContext(ctx, path)
 }
 
-// GetWithContext performs a direct GET request to the Proxmox API with the provided context.
+// GetWithContext performs a GET request to the Proxmox API, handling the entire request-response cycle.
+// It checks the cache for a valid response before making a live request.
+// If the response is not cached, it calls GetRawWithContext, unmarshals the JSON response, and caches it.
 func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]interface{}, error) {
 	// Try to get from cache first if caching is enabled
 	if c.cache != nil {
@@ -163,7 +175,9 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 	return result, nil
 }
 
-// GetRawWithContext performs a direct GET request to the Proxmox API and returns the raw response body.
+// GetRawWithContext is the core method for making GET requests.
+// It checks the cache first, and if a valid entry is not found, it constructs and executes an HTTP request
+// with the appropriate context and authorization headers, returning the raw response body.
 func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, error) {
 	// Try to get from cache first if caching is enabled
 	if c.cache != nil {
@@ -226,7 +240,9 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	return data, nil
 }
 
-// InvalidateCache invalidates all cached responses or a specific path
+// InvalidateCache removes entries from the client's response cache.
+// If a specific path is provided, only that entry is deleted.
+// If the path is empty, the entire cache is cleared.
 func (c *Client) InvalidateCache(path string) {
 	if c.cache == nil {
 		return

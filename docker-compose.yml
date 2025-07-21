@@ -16,8 +16,6 @@ services:
     volumes:
       - pvmss_data:/app/data
       - ./backend/settings.json:/app/settings.json
-    networks:
-      - pvmss-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:50000/health"]
       interval: 30s
@@ -29,10 +27,6 @@ services:
         limits:
           cpus: '2'
           memory: 1G
-
-networks:
-  pvmss-network:
-    driver: bridge
 
 volumes:
   pvmss_data:

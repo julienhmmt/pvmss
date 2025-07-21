@@ -6,15 +6,18 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"context"
+	"time"
 
 	"pvmss/logger"
+	"pvmss/proxmox"
 )
 
 // LimitsSettings represents the resource limits configuration for VMs and nodes.
 // It contains default limits for VMs and per-node specific limits.
 type LimitsSettings struct {
 	// VM contains the default resource limits for virtual machines
-	VM    ResourceLimits            `json:"vm"`
+	VM ResourceLimits `json:"vm"`
 
 	// Nodes contains node-specific resource limits, keyed by node name
 	Nodes map[string]ResourceLimits `json:"nodes,omitempty"`
@@ -30,7 +33,7 @@ func defaultVMLimits() ResourceLimits {
 	return ResourceLimits{
 		Sockets: MinMax{Min: 1, Max: 1},
 		Cores:   MinMax{Min: 1, Max: 2},
-		RAM:     MinMax{Min: 1, Max: 4}, // GB
+		RAM:     MinMax{Min: 1, Max: 4},   // GB
 		Disk:    &MinMax{Min: 1, Max: 16}, // GB
 	}
 }
@@ -46,106 +49,57 @@ func defaultNodeLimits() ResourceLimits {
 		Sockets: MinMax{Min: 1, Max: 1},
 		Cores:   MinMax{Min: 1, Max: 2},
 		RAM:     MinMax{Min: 1, Max: 4}, // GB
-		Disk:    nil, // Nodes don't have disk limits
+		Disk:    nil,                    // Nodes don't have disk limits
 	}
 }
 
-// resourceLimitsToMap converts a ResourceLimits struct to a map[string]interface{} for JSON serialization.
-// This is used when saving limits to the settings file.
-// The output format matches the expected structure in the frontend.
+// resourceLimitsToMap convertit ResourceLimits en map simple pour le frontend
 func resourceLimitsToMap(limits ResourceLimits) map[string]interface{} {
-	result := map[string]interface{}{
-		"sockets": map[string]int{
-			"min": limits.Sockets.Min,
-			"max": limits.Sockets.Max,
-		},
-		"cores": map[string]int{
-			"min": limits.Cores.Min,
-			"max": limits.Cores.Max,
-		},
-		"ram": map[string]int{
-			"min": limits.RAM.Min,
-			"max": limits.RAM.Max,
-		},
+	m := map[string]interface{}{
+		"sockets": map[string]int{"min": limits.Sockets.Min, "max": limits.Sockets.Max},
+		"cores":   map[string]int{"min": limits.Cores.Min,   "max": limits.Cores.Max},
+		"ram":     map[string]int{"min": limits.RAM.Min,     "max": limits.RAM.Max},
 	}
-
 	if limits.Disk != nil {
-		result["disk"] = map[string]int{
-			"min": limits.Disk.Min,
-			"max": limits.Disk.Max,
-		}
+		m["disk"] = map[string]int{"min": limits.Disk.Min, "max": limits.Disk.Max}
 	}
-
-	return result
+	return m
 }
 
-// convertToResourceLimits converts a raw map of limits (from JSON) to a properly typed ResourceLimits struct.
-// It handles type assertions and provides detailed error messages if the input format is invalid.
-// The function is lenient with the disk field, making it optional since nodes don't have disk limits.
-//
-// Parameters:
-//   - rawLimits: map containing the raw limit values from JSON (e.g., {"sockets": {"min":1, "max":2}})
-//
-// Returns:
-//   - ResourceLimits: The parsed and validated limits
-//   - error: Descriptive error if parsing fails
+// convertToResourceLimits : parse une map JSON en ResourceLimits simple
 func convertToResourceLimits(rawLimits map[string]interface{}) (ResourceLimits, error) {
-	logger := logger.Get()
-	logger.Debug().Interface("rawLimits", rawLimits).Msg("Converting raw limits to ResourceLimits")
-	
 	var limits ResourceLimits
+	var err error
 
-	// extractMinMax is a helper function that extracts MinMax values from a nested map.
-	// It handles type assertions and provides detailed error messages.
-	//
-	// Parameters:
-	//   - data: The parent map containing the MinMax values
-	//   - key: The key in the parent map that contains the MinMax values
-	//
-	// Returns:
-	//   - MinMax: The parsed MinMax values
-	//   - error: If the MinMax values are missing or invalid
-	extractMinMax := func(data map[string]interface{}, key string) (MinMax, error) {
-		if val, ok := data[key].(map[string]interface{}); ok {
-			min, minOk := val["min"].(float64)
-			max, maxOk := val["max"].(float64)
-			if minOk && maxOk {
-				return MinMax{Min: int(min), Max: int(max)}, nil
+	extract := func(key string) (MinMax, error) {
+		m, ok := rawLimits[key].(map[string]interface{})
+		if !ok {
+			return MinMax{}, fmt.Errorf("clé %s manquante ou invalide", key)
+		}
+		min, minOk := m["min"].(float64)
+		max, maxOk := m["max"].(float64)
+		if !minOk || !maxOk {
+			return MinMax{}, fmt.Errorf("min/max invalide pour %s", key)
+		}
+		return MinMax{Min: int(min), Max: int(max)}, nil
+	}
+
+	if limits.Sockets, err = extract("sockets"); err != nil {
+		return limits, err
+	}
+	if limits.Cores, err = extract("cores"); err != nil {
+		return limits, err
+	}
+	if limits.RAM, err = extract("ram"); err != nil {
+		return limits, err
+	}
+	if diskVal, ok := rawLimits["disk"]; ok {
+		if _, ok := diskVal.(map[string]interface{}); ok {
+			if mm, err := extract("disk"); err == nil {
+				limits.Disk = &mm
 			}
 		}
-		return MinMax{}, fmt.Errorf("invalid %s format", key)
 	}
-
-	// Extract Sockets
-	sockets, err := extractMinMax(rawLimits, "sockets")
-	if err != nil {
-		return limits, fmt.Errorf("invalid sockets: %v", err)
-	}
-	limits.Sockets = sockets
-
-	// Extract Cores
-	cores, err := extractMinMax(rawLimits, "cores")
-	if err != nil {
-		return limits, fmt.Errorf("invalid cores: %v", err)
-	}
-	limits.Cores = cores
-
-	// Extract RAM
-	ram, err := extractMinMax(rawLimits, "ram")
-	if err != nil {
-		return limits, fmt.Errorf("invalid RAM: %v", err)
-	}
-	limits.RAM = ram
-
-	// Extract Disk if it exists (for VMs)
-	if _, ok := rawLimits["disk"].(map[string]interface{}); ok {
-		disk, err := extractMinMax(rawLimits, "disk")
-		if err != nil {
-			return limits, fmt.Errorf("invalid disk: %v", err)
-		}
-		limits.Disk = &disk
-	}
-
 	return limits, nil
 }
 
@@ -163,7 +117,7 @@ func limitsHandler(w http.ResponseWriter, r *http.Request) {
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
 		Msg("Limits API handler invoked")
-	
+
 	switch r.Method {
 	case http.MethodGet:
 		getLimitsHandler(w, r)
@@ -201,7 +155,7 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 		logger.Debug().
 			Interface("raw_vm_limits", vmRaw).
 			Msg("Converting VM limits from raw format")
-			
+
 		vmLimits, err := convertToResourceLimits(vmRaw)
 		if err != nil {
 			logger.Error().
@@ -211,11 +165,11 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "Failed to process VM limits", http.StatusInternalServerError)
 			return
 		}
-		
+
 		logger.Debug().
 			Interface("converted_vm_limits", vmLimits).
 			Msg("Successfully converted VM limits")
-			
+
 		response["limits"].(map[string]interface{})["vm"] = vmLimits
 	} else {
 		logger.Warn().Msg("No VM limits found in settings")
@@ -226,7 +180,7 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 		logger.Debug().
 			Int("node_count", len(nodesRaw)).
 			Msg("Processing node limits")
-			
+
 		nodeLimits := make(map[string]ResourceLimits)
 		for nodeID, nodeRaw := range nodesRaw {
 			if nodeData, ok := nodeRaw.(map[string]interface{}); ok {
@@ -234,7 +188,7 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 					Str("node_id", nodeID).
 					Interface("raw_limits", nodeData).
 					Msg("Converting node limits")
-					
+
 				nodeLimit, err := convertToResourceLimits(nodeData)
 				if err != nil {
 					logger.Error().
@@ -244,12 +198,12 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 						Msg("Failed to convert node limits")
 					continue
 				}
-				
+
 				logger.Debug().
 					Str("node_id", nodeID).
 					Interface("converted_limits", nodeLimit).
 					Msg("Successfully converted node limits")
-					
+
 				nodeLimits[nodeID] = nodeLimit
 			} else {
 				logger.Warn().
@@ -258,11 +212,11 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 					Msg("Invalid node data format")
 			}
 		}
-		
+
 		logger.Debug().
 			Int("processed_nodes", len(nodeLimits)).
 			Msg("Finished processing node limits")
-			
+
 		response["limits"].(map[string]interface{})["nodes"] = nodeLimits
 	} else {
 		logger.Debug().Msg("No node limits found in settings")
@@ -282,7 +236,7 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	logger.Info().
 		Int("vm_limits_size", len(settings.Limits["vm"].(map[string]interface{}))).
 		Int("node_limits_count", len(settings.Limits["nodes"].(map[string]interface{}))).
@@ -291,28 +245,35 @@ func getLimitsHandler(w http.ResponseWriter, _ *http.Request) {
 
 // updateLimitsHandler handles POST requests to update resource limits.
 // It expects a JSON payload with the following structure:
-// {
-//   "entityId": "vm" or node name,
-//   "sockets": {"min": 1, "max": 2},
-//   "cores": {"min": 1, "max": 4},
-//   "ram": {"min": 1, "max": 8},
-//   "disk": {"min": 10, "max": 100}  // Optional, only for VMs
-// }
+//
+//	{
+//	  "entityId": "vm" or node name,
+//	  "sockets": {"min": 1, "max": 2},
+//	  "cores": {"min": 1, "max": 4},
+//	  "ram": {"min": 1, "max": 8},
+//	  "disk": {"min": 10, "max": 100}  // Optional, only for VMs
+//	}
 //
 // On success, it returns the updated limits in the response.
 // Returns 400 for invalid requests and 500 for server errors.
 func updateLimitsHandler(w http.ResponseWriter, r *http.Request) {
 	logger := logger.Get()
-	
-	var requestData struct {
-		EntityID string `json:"entityId"`
-		Sockets  MinMax  `json:"sockets"`
-		Cores    MinMax  `json:"cores"`
-		RAM      MinMax  `json:"ram"`
-		Disk     MinMax  `json:"disk"`
+	var err error
+	if r.Header.Get("Content-Type") != "application/json" {
+		http.Error(w, "Content-Type must be application/json", http.StatusBadRequest)
+		return
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+	var requestData struct {
+		EntityID string `json:"entityId"`
+		Sockets  MinMax `json:"sockets"`
+		Cores    MinMax `json:"cores"`
+		RAM      MinMax `json:"ram"`
+		Disk     MinMax `json:"disk"`
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&requestData)
+	if err != nil {
 		logger.Error().Err(err).Msg("Error decoding limits update request")
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
@@ -355,6 +316,51 @@ func updateLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		nodes[requestData.EntityID] = limitsMap
 	}
 
+	// Validation supplémentaire RAM/disk max (toujours en GB)
+	if requestData.RAM.Max < 1 {
+		http.Error(w, "RAM max doit être >= 1 GB", http.StatusBadRequest)
+		return
+	}
+	if requestData.EntityID == "vm" && requestData.Disk.Max < 1 {
+		http.Error(w, "Disk max doit être >= 1 GB", http.StatusBadRequest)
+		return
+	}
+	// Pour les nodes, valider contre la capacité réelle si disponible (en GB)
+	if requestData.EntityID != "vm" {
+		// On suppose que proxmoxClient est accessible globalement
+		if proxmoxClient == nil {
+			http.Error(w, "Proxmox client unavailable for node hardware validation", http.StatusInternalServerError)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, requestData.EntityID)
+		if err != nil {
+			logger.Error().Err(err).Str("node", requestData.EntityID).Msg("Failed to fetch node details for RAM validation")
+			http.Error(w, "Unable to validate node RAM: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		maxMemoryGB := int(nodeDetails.MaxMemory / 1073741824)
+		if maxMemoryGB < 1 {
+			maxMemoryGB = 1 // Fallback safety
+		}
+		if requestData.RAM.Max > maxMemoryGB {
+			http.Error(w, fmt.Sprintf("RAM max ne peut pas dépasser la RAM physique: %d GB", maxMemoryGB), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Forcer tous les min à 1 (sécurité backend)
+	forceMin1 := func(m map[string]interface{}, key string) {
+		if mm, ok := m[key].(map[string]interface{}); ok {
+			mm["min"] = 1
+		}
+	}
+	forceMin1(limitsMap, "sockets")
+	forceMin1(limitsMap, "cores")
+	forceMin1(limitsMap, "ram")
+	forceMin1(limitsMap, "disk") // disk peut ne pas exister pour les nodes
+
 	// Sauvegarder les paramètres
 	if err := writeSettings(settings); err != nil {
 		logger.Error().Err(err).Msg("Error saving settings")
@@ -367,20 +373,39 @@ func updateLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		Interface("limits", limitsMap).
 		Msg("Limits updated successfully")
 
-	// Répondre avec succès
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	// Préparer la réponse
+	response := map[string]interface{}{
 		"success": true,
 		"message": "Limits updated successfully",
 		"limits":  limitsMap,
-	})
+	}
+
+	// Encoder la réponse en JSON
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		logger.Error().Err(err).Msg("Error encoding JSON response")
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+		return
+	}
+
+	// Définir le Content-Type avant d'écrire le header
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	// Écrire le statut et les en-têtes
+	w.WriteHeader(http.StatusOK)
+
+	// Écrire le corps de la réponse
+	if _, err := w.Write(jsonResponse); err != nil {
+		logger.Error().Err(err).Msg("Error writing response")
+	}
 }
 
 // resetLimitsHandler handles PUT requests to reset resource limits to their default values.
 // It expects a JSON payload with the following structure:
-// {
-//   "entityId": "vm" or node name
-// }
+//
+//	{
+//	  "entityId": "vm" or node name
+//	}
 //
 // For VMs, it resets to defaultVMLimits().
 // For nodes, it resets to defaultNodeLimits().
@@ -401,7 +426,7 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 	// Log the raw request body for debugging
 	bodyBytes, _ := io.ReadAll(r.Body)
 	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // Restore body for decoding
-	
+
 	logger.Debug().
 		Str("raw_request_body", string(bodyBytes)).
 		Msg("Raw reset limits request body")
@@ -414,13 +439,13 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	logger.Debug().
 		Str("entity_id", requestData.EntityID).
 		Msg("Decoded reset limits request")
 
 	isVM := requestData.EntityID == "vm"
-	
+
 	logger.Debug().
 		Bool("is_vm", isVM).
 		Msg("Determined entity type")
@@ -434,7 +459,7 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read settings: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	logger.Debug().
 		Interface("current_settings_limits", settings.Limits).
 		Msg("Read current settings")
@@ -446,13 +471,13 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		// Reset VM limits to defaults
 		logger.Debug().Msg("Resetting VM limits to defaults")
 		defLimits := defaultVMLimits()
-		
+
 		logger.Debug().
 			Interface("default_vm_limits", defLimits).
 			Msg("Default VM limits generated")
-		
+
 		settings.Limits["vm"] = resourceLimitsToMap(defLimits)
-		
+
 		logger.Debug().
 			Interface("updated_vm_limits", settings.Limits["vm"]).
 			Msg("Updated VM limits in settings")
@@ -461,15 +486,15 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		logger.Debug().
 			Str("node", requestData.EntityID).
 			Msg("Resetting node limits to defaults")
-		
+
 		// Use default limits for node
 		defLimits := defaultNodeLimits()
-		
+
 		logger.Debug().
 			Interface("default_node_limits", defLimits).
 			Str("node", requestData.EntityID).
 			Msg("Default limits calculated for node")
-		
+
 		// Ensure nodes map exists in settings
 		nodes, ok := settings.Limits["nodes"].(map[string]interface{})
 		if !ok {
@@ -477,11 +502,11 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 			settings.Limits["nodes"] = make(map[string]interface{})
 			nodes = settings.Limits["nodes"].(map[string]interface{})
 		}
-		
+
 		// Convert limits to map and update node limits
 		nodeLimitsMap := resourceLimitsToMap(defLimits)
 		nodes[requestData.EntityID] = nodeLimitsMap
-		
+
 		logger.Debug().
 			Str("node", requestData.EntityID).
 			Interface("node_limits", nodeLimitsMap).
@@ -521,7 +546,7 @@ func resetLimitsHandler(w http.ResponseWriter, r *http.Request) {
 			limitsValue = nodes[requestData.EntityID]
 		}
 	}
-	
+
 	// Build the response with the updated limits
 	response := map[string]interface{}{
 		"success": true,

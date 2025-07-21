@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// VMInfo represents basic information about a VM
+// VMInfo is a simplified, application-specific struct that holds curated information about a Virtual Machine.
 type VMInfo struct {
 	VMID     string `json:"vmid"`
 	Name     string `json:"name"`
@@ -19,7 +19,8 @@ type VMInfo struct {
 	Template bool   `json:"template"`
 }
 
-// GetVMsWithContext retrieves all VMs from Proxmox using the provided context
+// GetVMsWithContext retrieves a comprehensive list of all VMs across all available Proxmox nodes.
+// It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeWithContext for each.
 func GetVMsWithContext(ctx context.Context, client *Client) ([]map[string]interface{}, error) {
 	log.Info().Msg("Fetching all VMs from Proxmox")
 	log.Debug().Msg("Getting VM list with context")
@@ -47,7 +48,8 @@ func GetVMsWithContext(ctx context.Context, client *Client) ([]map[string]interf
 	return vms, nil
 }
 
-// GetVMsForNodeWithContext retrieves VMs for a specific node using the provided context
+// GetVMsForNodeWithContext fetches all VMs located on a single, specified Proxmox node.
+// It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
 func GetVMsForNodeWithContext(ctx context.Context, client *Client, nodeName string) ([]map[string]interface{}, error) {
 	path := fmt.Sprintf("/nodes/%s/qemu", nodeName)
 	
@@ -77,7 +79,8 @@ func GetVMsForNodeWithContext(ctx context.Context, client *Client, nodeName stri
 	return vms, nil
 }
 
-// GetVmList is a backward compatibility wrapper for GetVMsWithContext
+// GetVmList is a backward compatibility wrapper. It calls GetVMsWithContext and then wraps
+// the resulting slice of VMs into a map with a "data" key to match an older, expected response structure.
 func GetVmList(c *Client, ctx context.Context) (map[string]interface{}, error) {
 	vms, err := GetVMsWithContext(ctx, c)
 	if err != nil {
@@ -93,7 +96,8 @@ func GetVmList(c *Client, ctx context.Context) (map[string]interface{}, error) {
 	return result, nil
 }
 
-// GetNextVMID calculates the next available VMID.
+// GetNextVMID determines the next available unique ID for a new VM.
+// It fetches all existing VMs, finds the highest current VMID, and returns that value incremented by one.
 func GetNextVMID(ctx context.Context, client *Client) (int, error) {
 	vms, err := GetVMsWithContext(ctx, client)
 	if err != nil {

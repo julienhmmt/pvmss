@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{.LoginTitle}}</title>
+    <title>{{index . "Login.Title"}}</title>
     <link rel="stylesheet" href="/css/bulma.min.css">
     <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -13,7 +13,7 @@
             <div class="columns is-centered">
                 <div class="column is-one-third">
                     <div class="box">
-                        <h1 class="title has-text-centered">{{.LoginTitle}}</h1>
+                        <h1 class="title has-text-centered">{{index . "Login.Title"}}</h1>
 
                         {{if .Error}}
                         <div class="notification is-danger">
@@ -23,7 +23,7 @@
 
                         <form method="post" action="/login">
                             <div class="field">
-                                <label class="label" for="password">{{.LoginPasswordLabel}}</label>
+                                <label class="label" for="password">{{index . "Login.PasswordLabel"}}</label>
                                 <div class="control">
                                     <input class="input" type="password" id="password" name="password" required>
                                 </div>
@@ -31,7 +31,7 @@
 
                             <div class="field">
                                 <div class="control">
-                                    <button class="button is-primary is-fullwidth" type="submit">{{.LoginButton}}</button>
+                                    <button class="button is-primary is-fullwidth" type="submit">{{index . "Login.Button"}}</button>
                                 </div>
                             </div>
                         </form>

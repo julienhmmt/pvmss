@@ -24,9 +24,12 @@ import (
 
 	"pvmss/logger"
 	"pvmss/proxmox"
+
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-// Application globals
+// Application-level globals for shared components.
+// These are initialized once at startup and used throughout the application.
 var (
 	templates      *template.Template
 	sessionManager *scs.SessionManager
@@ -42,7 +45,8 @@ func initLogger() {
 	logger.Init(level)
 }
 
-// initProxmoxClient creates and configures the Proxmox API client
+// initProxmoxClient creates and configures the Proxmox API client using environment variables.
+// It returns an initialized client or an error if the configuration is invalid.
 func initProxmoxClient() (*proxmox.Client, error) {
 	proxmoxURL := os.Getenv("PROXMOX_URL")
 	proxmoxAPITokenName := os.Getenv("PROXMOX_API_TOKEN_NAME")
@@ -75,10 +79,11 @@ func initProxmoxClient() (*proxmox.Client, error) {
 	return client, nil
 }
 
-// Settings holds the application settings
+// Settings defines the structure for application-specific configurations loaded from settings.json.
+// This includes constraints for VM creation like available tags, RAM, CPU, ISOs, and networks.
 type Settings struct {
-	Tags  []string `json:"tags"`
-	RAM   struct {
+	Tags []string `json:"tags"`
+	RAM  struct {
 		Min int `json:"min"`
 		Max int `json:"max"`
 	} `json:"ram"`
@@ -96,7 +101,8 @@ type Settings struct {
 
 var appSettings Settings
 
-// loadSettings loads the application settings from settings.json
+// loadSettings reads the application configuration from the `settings.json` file
+// and decodes it into the global `appSettings` variable.
 func loadSettings() error {
 	file, err := os.Open("settings.json")
 	if err != nil {
@@ -113,7 +119,8 @@ func loadSettings() error {
 	return nil
 }
 
-// initTemplates initializes the HTML templates with custom functions
+// initTemplates discovers, parses, and prepares all HTML templates for rendering.
+// It also registers a map of custom functions (funcMap) to be used within the templates.
 func initTemplates() (*template.Template, error) {
 	// Define template functions
 	funcMap := template.FuncMap{
@@ -170,25 +177,28 @@ func initTemplates() (*template.Template, error) {
 		},
 		"contains":  strings.Contains,
 		"hasPrefix": strings.HasPrefix,
+		"safe": func(s string) template.HTML {
+			return template.HTML(s)
+		},
 		"nodeSocketsMax": func(node interface{}) int {
 			// Default value if node is nil or doesn't have Sockets field
 			if node == nil {
 				return 1
 			}
-			
+
 			// Use reflection to safely get the Sockets field
 			nodeValue := reflect.ValueOf(node)
 			if nodeValue.Kind() == reflect.Ptr {
 				nodeValue = nodeValue.Elem()
 			}
-			
+
 			if nodeValue.Kind() == reflect.Struct {
 				socketsField := nodeValue.FieldByName("Sockets")
 				if socketsField.IsValid() && socketsField.Kind() == reflect.Int {
 					return int(socketsField.Int())
 				}
 			}
-			
+
 			return 8 // Default value if Sockets field not found
 		},
 		"nodeCoresMax": func(node interface{}) int {
@@ -196,20 +206,20 @@ func initTemplates() (*template.Template, error) {
 			if node == nil {
 				return 1
 			}
-			
+
 			// Use reflection to safely get the Cores field
 			nodeValue := reflect.ValueOf(node)
 			if nodeValue.Kind() == reflect.Ptr {
 				nodeValue = nodeValue.Elem()
 			}
-			
+
 			if nodeValue.Kind() == reflect.Struct {
 				// Try to get MaxCPU first, then Cores
 				coresField := nodeValue.FieldByName("MaxCPU")
 				if !coresField.IsValid() {
 					coresField = nodeValue.FieldByName("Cores")
 				}
-				
+
 				if coresField.IsValid() {
 					switch coresField.Kind() {
 					case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -221,7 +231,7 @@ func initTemplates() (*template.Template, error) {
 					}
 				}
 			}
-			
+
 			return 8 // Default value if Cores field not found
 		},
 		"nodeMemoryMaxGB": func(node interface{}) int64 {
@@ -229,23 +239,23 @@ func initTemplates() (*template.Template, error) {
 			if node == nil {
 				return 8
 			}
-			
+
 			// Use reflection to safely get the memory field
 			nodeValue := reflect.ValueOf(node)
 			if nodeValue.Kind() == reflect.Ptr {
 				nodeValue = nodeValue.Elem()
 			}
-			
+
 			if nodeValue.Kind() == reflect.Struct {
 				// Try different possible field names for memory
 				memoryFields := []string{"MaxMem", "Memory", "MemTotal", "TotalMemory"}
-				
+
 				for _, fieldName := range memoryFields {
 					memField := nodeValue.FieldByName(fieldName)
 					if !memField.IsValid() {
 						continue
 					}
-					
+
 					// Convert to bytes if needed (assuming input might be in bytes, MB, etc.)
 					var bytes int64
 					switch memField.Kind() {
@@ -258,7 +268,7 @@ func initTemplates() (*template.Template, error) {
 					default:
 						continue
 					}
-					
+
 					// Convert to GB (assuming input is in bytes)
 					// If the value is suspiciously small, assume it's already in GB
 					if bytes > 1024*1024*1024 { // > 1GB
@@ -267,7 +277,7 @@ func initTemplates() (*template.Template, error) {
 					return bytes // Already in GB
 				}
 			}
-			
+
 			return 8 // Default value if memory field not found
 		},
 		"nodeDiskMaxGB": func(node interface{}) int64 {
@@ -275,23 +285,23 @@ func initTemplates() (*template.Template, error) {
 			if node == nil {
 				return 100 // Default to 100GB
 			}
-			
+
 			// Use reflection to safely get the disk field
 			nodeValue := reflect.ValueOf(node)
 			if nodeValue.Kind() == reflect.Ptr {
 				nodeValue = nodeValue.Elem()
 			}
-			
+
 			if nodeValue.Kind() == reflect.Struct {
 				// Try different possible field names for disk
 				diskFields := []string{"MaxDisk", "Disk", "DiskTotal", "TotalDisk", "Storage"}
-				
+
 				for _, fieldName := range diskFields {
 					diskField := nodeValue.FieldByName(fieldName)
 					if !diskField.IsValid() {
 						continue
 					}
-					
+
 					// Convert to bytes if needed (assuming input might be in bytes, MB, etc.)
 					var bytes int64
 					switch diskField.Kind() {
@@ -304,7 +314,7 @@ func initTemplates() (*template.Template, error) {
 					default:
 						continue
 					}
-					
+
 					// Convert to GB (assuming input is in bytes)
 					// If the value is suspiciously small, assume it's already in GB
 					if bytes > 1024*1024*1024 { // > 1GB
@@ -313,12 +323,12 @@ func initTemplates() (*template.Template, error) {
 					return bytes // Already in GB
 				}
 			}
-			
+
 			return 100 // Default value if disk field not found
 		},
-		"sub":      func(a, b int) int { return a - b },
-		"add":      func(a, b int) int { return a + b },
-		"sort":     func(s []string) []string {
+		"sub": func(a, b int) int { return a - b },
+		"add": func(a, b int) int { return a + b },
+		"sort": func(s []string) []string {
 			sorted := make([]string, len(s))
 			copy(sorted, s)
 			sort.Strings(sorted)
@@ -361,25 +371,25 @@ func initTemplates() (*template.Template, error) {
 
 	// Create a new template with a dummy name first
 	tmpl := template.New("")
-	
+
 	// Register all functions
 	tmpl = tmpl.Funcs(funcMap)
 	logger.Get().Info().Msg("Registered template functions")
 
 	// Parse all HTML templates in the frontend directory
 	templateDirs := []string{
-		"/app/frontend",  // For Docker container
-		"frontend",       // For local development
-		"../frontend",    // For local development (alternative)
+		"/app/frontend", // For Docker container
+		"frontend",      // For local development
+		"../frontend",   // For local development (alternative)
 	}
-	
+
 	// First, try to load layout.html explicitly
 	layoutPaths := []string{
 		"/app/frontend/layout.html",
 		"frontend/layout.html",
 		"../frontend/layout.html",
 	}
-	
+
 	var layoutFile string
 	for _, path := range layoutPaths {
 		if _, err := os.Stat(path); err == nil {
@@ -387,7 +397,7 @@ func initTemplates() (*template.Template, error) {
 			break
 		}
 	}
-	
+
 	if layoutFile != "" {
 		logger.Get().Info().Str("file", layoutFile).Msg("Parsing layout template")
 		_, err := tmpl.ParseFiles(layoutFile)
@@ -399,11 +409,11 @@ func initTemplates() (*template.Template, error) {
 	} else {
 		logger.Get().Warn().Msg("Could not find layout.html, continuing without it")
 	}
-	
+
 	// Now parse all other templates
 	var templateErr error
 	var foundTemplates bool
-	
+
 	for _, dir := range templateDirs {
 		// Check if directory exists
 		_, err := os.Stat(dir)
@@ -414,21 +424,21 @@ func initTemplates() (*template.Template, error) {
 			logger.Get().Error().Err(err).Str("dir", dir).Msg("Error checking template directory")
 			continue
 		}
-		
+
 		// Get all HTML files in the directory
 		files, err := filepath.Glob(filepath.Join(dir, "*.html"))
 		if err != nil {
 			logger.Get().Error().Err(err).Str("dir", dir).Msg("Error listing template files")
 			continue
 		}
-		
+
 		if len(files) == 0 {
 			logger.Get().Warn().Str("dir", dir).Msg("No template files found in directory")
 			continue
 		}
-		
+
 		logger.Get().Info().Str("dir", dir).Int("files", len(files)).Msg("Found template files")
-		
+
 		// Parse all files except layout.html (already parsed)
 		var filesToParse []string
 		for _, file := range files {
@@ -436,7 +446,7 @@ func initTemplates() (*template.Template, error) {
 				filesToParse = append(filesToParse, file)
 			}
 		}
-		
+
 		if len(filesToParse) > 0 {
 			logger.Get().Info().Strs("files", filesToParse).Msg("Parsing template files")
 			_, templateErr = tmpl.ParseFiles(filesToParse...)
@@ -445,7 +455,7 @@ func initTemplates() (*template.Template, error) {
 				logger.Get().Info().Str("dir", dir).Msg("Successfully parsed templates from directory")
 				break
 			}
-			
+
 			logger.Get().
 				Error().
 				Err(templateErr).
@@ -453,11 +463,11 @@ func initTemplates() (*template.Template, error) {
 				Msg("Failed to parse templates from directory, trying next one")
 		}
 	}
-	
+
 	if !foundTemplates {
 		return nil, fmt.Errorf("failed to parse any template files from directories: %v", templateDirs)
 	}
-	
+
 	// Log all defined templates for debugging
 	logger.Get().Info().Msg("Defined templates:")
 	for _, t := range tmpl.Templates() {
@@ -465,14 +475,16 @@ func initTemplates() (*template.Template, error) {
 			logger.Get().Info().Str("template", t.Name()).Msg(" - Defined template")
 		}
 	}
-	
+
 	// Store the parsed templates in the global variable
 	templates = tmpl
-	
+
 	return tmpl, nil
 }
 
-// setupServer configures the HTTP server with routes and middleware
+// setupServer configures and returns a new HTTP server.
+// It sets up the router, registers all application routes (including static files and API endpoints),
+// and wraps the main handler with session management middleware.
 func setupServer() *http.Server {
 	// Get port from environment
 	port := os.Getenv("PORT")
@@ -549,7 +561,7 @@ func setupServer() *http.Server {
 	}
 }
 
-// startServer starts the HTTP server
+// startServer starts the provided HTTP server and logs a fatal error if it fails.
 func startServer(srv *http.Server) {
 	logger.Get().Info().Str("addr", srv.Addr).Msg("Starting server...")
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -557,6 +569,10 @@ func startServer(srv *http.Server) {
 	}
 }
 
+// main is the application's entry point.
+// It orchestrates the startup sequence: logger, environment variables, Proxmox client,
+// internationalization, templates, and session management. It then starts the HTTP server
+// and listens for OS signals to perform a graceful shutdown.
 func main() {
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -577,7 +593,7 @@ func main() {
 	}
 
 	// Initialize i18n
-	initI18n()
+	InitI18n()
 
 	// Initialize templates
 	tmpl, err := initTemplates()
@@ -617,6 +633,7 @@ func main() {
 	logger.Get().Info().Msg("Server exited gracefully")
 }
 
+// formatMemory is a helper function to convert a memory value (in bytes) into a human-readable string (MB or GB).
 func formatMemory(mem interface{}) string {
 	if mem == nil {
 		return "N/A"
@@ -636,32 +653,49 @@ func formatMemory(mem interface{}) string {
 	return fmt.Sprintf("%d MB", memMB)
 }
 
+// localize is a helper function to get a localized string for a given key.
+// It has been superseded by the `safeLocalize` function in `i18n.go` for most uses to prevent panics.
+func localize(r *http.Request, key string) string {
+	lang := getLanguage(r)
+	localizer := i18n.NewLocalizer(Bundle, lang)
+	return localizer.MustLocalize(&i18n.LocalizeConfig{
+		MessageID: key,
+	})
+}
+
+// renderTemplate handles the rendering of HTML pages.
+// It injects common data (like authentication status and language), localizes the page content,
+// executes the specified page template, and then embeds the result into the main layout template.
 func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-	// Inject authentication flag
+	// Inject authentication flag and language
 	data["IsAuthenticated"] = sessionManager.GetBool(r.Context(), "authenticated")
+	lang := getLanguage(r)
+	data["Lang"] = lang
+	data["LangEN"] = "/?lang=en"
+	data["LangFR"] = "/?lang=fr"
 
 	// Apply translations and other localization helpers
 	localizePage(w, r, data)
 
-	// If a template name is supplied, render it and store the result in the Content field.
-	// When name is empty we assume the caller already populated data["Content"].
-	if name != "" {
-		buf := new(bytes.Buffer)
-		if err := templates.ExecuteTemplate(buf, name, data); err != nil {
-			logger.Get().Error().Err(err).Str("template", name).Msg("Error executing page template")
-			http.Error(w, "Could not execute page template", http.StatusInternalServerError)
-			return
-		}
-		data["Content"] = template.HTML(buf.String())
+	buf := new(bytes.Buffer)
+	err := templates.ExecuteTemplate(buf, name, data)
+	if err != nil {
+		logger.Get().Error().Err(err).Str("template", name).Msg("Error executing page template")
+		http.Error(w, "Could not execute page template", http.StatusInternalServerError)
+		return
 	}
+	data["SafeContent"] = template.HTML(buf.String())
 
-	// Render the main layout which wraps whatever is present in data["Content"]
+	// Render the main layout which wraps the content
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if err := templates.ExecuteTemplate(w, "layout", data); err != nil {
 		logger.Get().Error().Err(err).Msg("Error executing layout template")
 		http.Error(w, "Could not execute layout template", http.StatusInternalServerError)
 	}
 }
 
+// indexHandler handles requests to the root ("/") path.
+// It serves the main landing page of the application.
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Info().
 		Str("handler", "indexHandler").
@@ -669,118 +703,124 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		Str("path", r.URL.Path).
 		Str("remote", r.RemoteAddr).
 		Msg("Request received")
-	logger.Get().Info().
-		Str("path", r.URL.Path).
-		Msg("Request received for index")
+
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
+
 	data := make(map[string]interface{})
+	data["Title"] = "PVMSS - " + localize(r, "Navbar.Home")
+
 	renderTemplate(w, r, "index.html", data)
 }
 
+// searchHandler handles VM search requests.
+// It processes POST requests containing search criteria (VMID or name),
+// fetches results from the Proxmox API, and renders the search results page.
 func searchHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Get().Info().
-		Str("handler", "searchHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote", r.RemoteAddr).
-		Msg("Request received")
-	logger.Get().Info().
-		Str("path", r.URL.Path).
-		Msg("Request received for search")
-	data := make(map[string]interface{})
+    logger.Get().Info().
+        Str("handler", "searchHandler").
+        Str("method", r.Method).
+        Str("path", r.URL.Path).
+        Str("remote", r.RemoteAddr).
+        Msg("Request received")
+    logger.Get().Info().
+        Str("path", r.URL.Path).
+        Msg("Request received for search")
+    data := make(map[string]interface{})
 
-	if r.Method == http.MethodPost {
-		r.ParseForm()
-		vmid := r.FormValue("vmid")
-		name := r.FormValue("name")
+    if r.Method == http.MethodPost {
+        r.ParseForm()
+        vmid := r.FormValue("vmid")
+        name := r.FormValue("name")
 
-		// Validate VMID format on the backend
-		if vmid != "" {
-			match, _ := regexp.MatchString(`^[0-9]{1,10}$`, vmid)
-			if !match {
-				logger.Get().Warn().
-					Str("vmid", vmid).
-					Msg("Invalid VMID format received")
-				data["Error"] = "Invalid VM ID: Please use 1 to 10 digits."
-				renderTemplate(w, r, "search.html", data)
-				return
-			}
-		}
+        // Validate VMID format on the backend
+        if vmid != "" {
+            match, _ := regexp.MatchString(`^[0-9]{1,10}$`, vmid)
+            if !match {
+                logger.Get().Warn().
+                    Str("vmid", vmid).
+                    Msg("Invalid VMID format received")
+                data["Error"] = "Invalid VM ID: Please use 1 to 10 digits."
+                renderTemplate(w, r, "search.html", data)
+                return
+            }
+        }
 
-		logger.Get().Info().
-			Str("vmid", vmid).
-			Str("name", name).
-			Msg("Processing search request")
+        logger.Get().Info().
+            Str("vmid", vmid).
+            Str("name", name).
+            Msg("Processing search request")
 
-		// Use the global proxmox client
-		if proxmoxClient == nil {
-			logger.Get().Error().Msg("Proxmox client not initialized")
-			http.Error(w, "Server configuration error", http.StatusInternalServerError)
-			return
-		}
+        // Use the global proxmox client
+        if proxmoxClient == nil {
+            logger.Get().Error().Msg("Proxmox client not initialized")
+            http.Error(w, "Server configuration error", http.StatusInternalServerError)
+            return
+        }
 
-		// Create context with timeout for API requests
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
+        // Create context with timeout for API requests
+        ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+        defer cancel()
 
-		// Fetch node names with context
-		nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
-		if err != nil {
-			logger.Get().Error().Err(err).Msg("Failed to get node names")
-			http.Error(w, "Failed to get node names", http.StatusInternalServerError)
-			return
-		}
+        // Fetch node names with context
+        nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
+        if err != nil {
+            logger.Get().Error().Err(err).Msg("Failed to get node names")
+            http.Error(w, "Failed to get node names", http.StatusInternalServerError)
+            return
+        }
 
-		// Fetch node details with context
-		nodesList := make([]map[string]interface{}, 0)
-		for _, nodeName := range nodeNames {
-			nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
-			if err != nil {
-				logger.Get().Error().
-					Err(err).
-					Str("node", nodeName).
-					Msg("Failed to get node details")
-				continue
-			}
+        // Fetch node details with context
+        nodesList := make([]map[string]interface{}, 0)
+        for _, nodeName := range nodeNames {
+            nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
+            if err != nil {
+                logger.Get().Error().
+                    Err(err).
+                    Str("node", nodeName).
+                    Msg("Failed to get node details")
+                continue
+            }
 
-			// Create a map for the Nodes template - convert int64 to float64 for template compatibility
-			nodeMap := map[string]interface{}{
-				"node":    nodeDetails.Node,
-				"status":  "online",
-				"cpu":     nodeDetails.CPU,
-				"maxcpu":  float64(nodeDetails.MaxCPU),
-				"mem":     float64(nodeDetails.Memory),
-				"maxmem":  float64(nodeDetails.MaxMemory),
-				"disk":    float64(nodeDetails.Disk),
-				"maxdisk": float64(nodeDetails.MaxDisk),
-			}
-			nodesList = append(nodesList, nodeMap)
-			logger.Get().Debug().Str("node", nodeName).Msg("Node details appended to list")
-		}
+            // Create a map for the Nodes template - convert int64 to float64 for template compatibility
+            nodeMap := map[string]interface{}{
+                "node":    nodeDetails.Node,
+                "status":  "online",
+                "cpu":     nodeDetails.CPU,
+                "maxcpu":  float64(nodeDetails.MaxCPU),
+                "mem":     float64(nodeDetails.Memory),
+                "maxmem":  float64(nodeDetails.MaxMemory),
+                "disk":    float64(nodeDetails.Disk),
+                "maxdisk": float64(nodeDetails.MaxDisk),
+            }
+            nodesList = append(nodesList, nodeMap)
+            logger.Get().Debug().Str("node", nodeName).Msg("Node details appended to list")
+        }
 
-		// Use the robust searchVM function to find matching VMs
-		results, err := searchVM(proxmoxClient, vmid, name)
-		if err != nil {
-			logger.Get().Error().Err(err).Msg("Failed to execute VM search")
-			http.Error(w, "Error searching for VMs", http.StatusInternalServerError)
-			return
-		}
+        // Use the robust searchVM function to find matching VMs
+        results, err := searchVM(proxmoxClient, vmid, name)
+        if err != nil {
+            logger.Get().Error().Err(err).Msg("Failed to execute VM search")
+            http.Error(w, "Error searching for VMs", http.StatusInternalServerError)
+            return
+        }
 
-		data["Results"] = results
-		data["Nodes"] = nodesList
-		if vmid != "" {
-			data["Query"] = vmid
-		} else {
-			data["Query"] = name
-		}
-	}
+        data["Results"] = results
+        data["Nodes"] = nodesList
+        if vmid != "" {
+            data["Query"] = vmid
+        } else {
+            data["Query"] = name
+        }
+    }
 
-	renderTemplate(w, r, "search.html", data)
+    renderTemplate(w, r, "search.html", data)
 }
 
+// createVmHandler handles the display of the VM creation page.
+// It loads application settings to provide the template with necessary data like available ISOs, networks, and tags.
 func createVmHandler(w http.ResponseWriter, r *http.Request) {
     err := loadSettings()
     if err != nil {
@@ -798,145 +838,150 @@ func createVmHandler(w http.ResponseWriter, r *http.Request) {
     renderTemplate(w, r, "create_vm.html", data)
 }
 
+// adminHandler renders the main administration page.
+// It fetches comprehensive data from both the Proxmox API (nodes, storage, ISOs, VMBRs)
+// and the local settings.json file to populate the template with all necessary configuration options.
 func adminHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Get().Info().
-		Str("handler", "adminHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote", r.RemoteAddr).
-		Msg("Request received")
-	logger.Get().Info().
-		Str("path", r.URL.Path).
-		Msg("Request received for admin page")
-	data := make(map[string]interface{})
+    logger.Get().Info().
+        Str("handler", "adminHandler").
+        Str("method", r.Method).
+        Str("path", r.URL.Path).
+        Str("remote", r.RemoteAddr).
+        Msg("Request received")
 
-	// Read settings first, to pass them to the template even if proxmox fails
-	settings, err := readSettings()
-	if err != nil {
-		logger.Get().Error().
-			Err(err).
-			Msg("Failed to read settings")
-		data["Error"] = "Failed to read application settings."
-		renderTemplate(w, r, "admin.html", data)
-		return
-	}
-	data["Settings"] = settings
+    data := make(map[string]interface{})
 
-	// Use the global proxmox client
-	if proxmoxClient == nil {
-		logger.Get().Error().Msg("Proxmox client not initialized")
-		data["Error"] = "Server configuration error"
-		renderTemplate(w, r, "admin.html", data)
-		return
-	}
+    // Read settings first, to pass them to the template even if proxmox fails
+    settings, err := readSettings()
+    if err != nil {
+        logger.Get().Error().
+            Err(err).
+            Msg("Failed to read settings")
+        data["Error"] = "Failed to read application settings."
+        renderTemplate(w, r, "admin.html", data)
+        return
+    }
+    data["Settings"] = settings
 
-	// Create context with timeout for API requests
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-	defer cancel()
+    // Use the global proxmox client
+    if proxmoxClient == nil {
+        logger.Get().Error().Msg("Proxmox client not initialized")
+        data["Error"] = "Server configuration error"
+        renderTemplate(w, r, "admin.html", data)
+        return
+    }
 
-	// Fetch node names with context
-	nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
-	if err != nil {
-		logger.Get().Error().
-			Err(err).
-			Msg("Failed to get node names")
-		data["Error"] = "Failed to retrieve node list from Proxmox"
-		renderTemplate(w, r, "admin.html", data)
-		return
-	}
+    // Create context with timeout for API requests
+    ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+    defer cancel()
 
-	logger.Get().Info().
-		Int("count", len(nodeNames)).
-		Msg("Processing nodes for admin page")
+    // Fetch node names with context
+    nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
+    if err != nil {
+        logger.Get().Error().
+            Err(err).
+            Msg("Failed to get node names")
+        data["Error"] = "Failed to retrieve node list from Proxmox"
+        renderTemplate(w, r, "admin.html", data)
+        return
+    }
 
-	// Fetch node details with context
-	nodeDetailsList := make([]proxmox.NodeDetails, 0)
-	for _, nodeName := range nodeNames {
-		nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
-		if err != nil {
-			logger.Get().Error().
-				Err(err).
-				Str("node", nodeName).
-				Msg("Failed to get node details")
-			continue
-		}
-		// Use the concrete struct, not a pointer
-		nodeDetailsList = append(nodeDetailsList, *nodeDetails)
-	}
-	data["NodeDetails"] = nodeDetailsList
+    logger.Get().Info().
+        Int("count", len(nodeNames)).
+        Msg("Processing nodes for admin page")
 
-	// Also fetch other necessary data for the admin page
-	storagesResult, err := proxmox.GetStorages(proxmoxClient)
-	if err != nil {
-		logger.Get().Error().
-			Err(err).
-			Msg("Failed to get storages")
-	}
-	data["Storages"] = storagesResult
+    // Fetch node details with context
+    nodeDetailsList := make([]proxmox.NodeDetails, 0)
+    for _, nodeName := range nodeNames {
+        nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, proxmoxClient, nodeName)
+        if err != nil {
+            logger.Get().Error().
+                Err(err).
+                Str("node", nodeName).
+                Msg("Failed to get node details")
+            continue
+        }
+        // Use the concrete struct, not a pointer
+        nodeDetailsList = append(nodeDetailsList, *nodeDetails)
+    }
+    data["NodeDetails"] = nodeDetailsList
+    // For debugging: log all node MaxMemory values
+    for _, nd := range nodeDetailsList {
+        logger.Get().Info().Str("node", nd.Node).Float64("MaxMemory", nd.MaxMemory).Msg("Node RAM for limits page")
+    }
 
-	// Localize the page (rendering will happen at the end of the function)
-	localizePage(w, r, data)
+    // Also fetch other necessary data for the admin page
+    storagesResult, err := proxmox.GetStorages(proxmoxClient)
+    if err != nil {
+        logger.Get().Error().
+            Err(err).
+            Msg("Failed to get storages")
+    }
+    data["Storages"] = storagesResult
 
-	// Fetch all ISOs from all storages on all nodes
-	allISOs := make([]map[string]interface{}, 0)
-	if storagesMap, ok := storagesResult.(map[string]interface{}); ok {
-		if storagesData, ok := storagesMap["data"].([]interface{}); ok {
-			for _, nodeName := range nodeNames {
-				for _, storage := range storagesData {
-					if storageMap, ok := storage.(map[string]interface{}); ok {
-						if contentType, ok := storageMap["content"].(string); ok && strings.Contains(contentType, "iso") {
-							storageName := storageMap["storage"].(string)
-							// Create context with timeout for ISO API requests
-							isoCtx, isoCancel := context.WithTimeout(r.Context(), 5*time.Second)
-							defer isoCancel()
-							isos, err := proxmox.GetISOListWithContext(isoCtx, proxmoxClient, nodeName, storageName)
-							if err != nil {
-								logger.Get().Error().
-									Err(err).
-									Str("node", nodeName).
-									Str("storage", storageName).
-									Msg("Failed to get ISOs")
-								continue
-							}
-							if isoData, ok := isos["data"].([]interface{}); ok {
-								for _, iso := range isoData {
-									if isoMap, ok := iso.(map[string]interface{}); ok {
-										allISOs = append(allISOs, isoMap)
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	data["ISOs"] = allISOs
+    // Localize the page (rendering will happen at the end of the function)
+    localizePage(w, r, data)
 
-	allVMBRs := make([]map[string]interface{}, 0)
-	for _, nodeName := range nodeNames {
-		// Create context with timeout for VMBR API requests
-		vmbrCtx, vmbrCancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer vmbrCancel()
-		vmbrs, err := proxmox.GetVMBRsWithContext(vmbrCtx, proxmoxClient, nodeName)
-		if err != nil {
-			logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs")
-			continue
-		}
-		if vmbrData, ok := vmbrs["data"].([]interface{}); ok {
-			for _, vmbr := range vmbrData {
-				if vmbrMap, ok := vmbr.(map[string]interface{}); ok {
-					vmbrMap["node"] = nodeName
-					allVMBRs = append(allVMBRs, vmbrMap)
-				}
-			}
-		}
-	}
-	data["VMBRs"] = allVMBRs
+    // Fetch all ISOs from all storages on all nodes
+    allISOs := make([]map[string]interface{}, 0)
+    if storagesMap, ok := storagesResult.(map[string]interface{}); ok {
+        if storagesData, ok := storagesMap["data"].([]interface{}); ok {
+            for _, nodeName := range nodeNames {
+                for _, storage := range storagesData {
+                    if storageMap, ok := storage.(map[string]interface{}); ok {
+                        if contentType, ok := storageMap["content"].(string); ok && strings.Contains(contentType, "iso") {
+                            storageName := storageMap["storage"].(string)
+                            // Create context with timeout for ISO API requests
+                            isoCtx, isoCancel := context.WithTimeout(r.Context(), 5*time.Second)
+                            defer isoCancel()
+                            isos, err := proxmox.GetISOListWithContext(isoCtx, proxmoxClient, nodeName, storageName)
+                            if err != nil {
+                                logger.Get().Error().
+                                    Err(err).
+                                    Str("node", nodeName).
+                                    Str("storage", storageName).
+                                    Msg("Failed to get ISOs")
+                                continue
+                            }
+                            if isoData, ok := isos["data"].([]interface{}); ok {
+                                for _, iso := range isoData {
+                                    if isoMap, ok := iso.(map[string]interface{}); ok {
+                                        allISOs = append(allISOs, isoMap)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    data["ISOs"] = allISOs
 
-	data["Tags"] = settings.Tags
+    allVMBRs := make([]map[string]interface{}, 0)
+    for _, nodeName := range nodeNames {
+        // Create context with timeout for VMBR API requests
+        vmbrCtx, vmbrCancel := context.WithTimeout(r.Context(), 5*time.Second)
+        defer vmbrCancel()
+        vmbrs, err := proxmox.GetVMBRsWithContext(vmbrCtx, proxmoxClient, nodeName)
+        if err != nil {
+            logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs")
+            continue
+        }
+        if vmbrData, ok := vmbrs["data"].([]interface{}); ok {
+            for _, vmbr := range vmbrData {
+                if vmbrMap, ok := vmbr.(map[string]interface{}); ok {
+                    vmbrMap["node"] = nodeName
+                    allVMBRs = append(allVMBRs, vmbrMap)
+                }
+            }
+        }
+    }
+    data["VMBRs"] = allVMBRs
 
-	renderTemplate(w, r, "admin.html", data)
+    data["Tags"] = settings.Tags
+
+    renderTemplate(w, r, "admin.html", data)
 }
 
 func storagePageHandler(w http.ResponseWriter, r *http.Request) {
@@ -966,6 +1011,10 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
+// loginHandler handles user authentication.
+// For GET requests, it displays the login page.
+// For POST requests, it validates the password against the stored bcrypt hash,
+// authenticates the session, and redirects to the admin page on success.
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Info().Str("handler", "loginHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	if r.Method == http.MethodPost {
@@ -994,6 +1043,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "login.html", make(map[string]interface{}))
 }
 
+// logoutHandler handles user logout.
+// It destroys the current session and redirects the user to the homepage.
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Info().Str("handler", "logoutHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	sessionManager.Destroy(r.Context())
@@ -1003,6 +1054,17 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 func authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !sessionManager.GetBool(r.Context(), "authenticated") {
+			// Si c'est une requête API, renvoyer une erreur 401 au lieu de rediriger
+			if strings.HasPrefix(r.URL.Path, "/api/") {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"success": false,
+					"error":   "Unauthorized",
+				})
+				return
+			}
+			// Pour les autres requêtes, rediriger vers la page de connexion
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}

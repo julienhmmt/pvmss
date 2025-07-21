@@ -9,7 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// NodeDetails contains detailed information about a Proxmox node.
+// NodeDetails is a simplified, application-specific struct that holds curated information about a Proxmox node,
+// such as its status, resource usage, and hardware specifications.
 type NodeDetails struct {
 	Node      string  `json:"node"`
 	Status    string  `json:"status"`
@@ -23,7 +24,8 @@ type NodeDetails struct {
 	Uptime    int64   `json:"uptime,omitempty"`
 }
 
-// NodeStatus represents the full API response structure for node status
+// NodeStatus represents the complex, nested structure of the raw JSON response from the Proxmox API's
+// `/nodes/{node}/status` endpoint. It is used for unmarshalling the direct API output.
 type NodeStatus struct {
 	Data struct {
 		CPU     float64 `json:"cpu"`
@@ -44,14 +46,17 @@ type NodeStatus struct {
 	} `json:"data"`
 }
 
-// GetNodeDetails retrieves the hardware details for a specific node with context support.
+// GetNodeDetails is a convenience function that retrieves hardware details for a specific node.
+// It calls GetNodeDetailsWithContext using a default timeout.
 func GetNodeDetails(client *Client, nodeName string) (*NodeDetails, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return GetNodeDetailsWithContext(ctx, client, nodeName)
 }
 
-// GetNodeDetailsWithContext retrieves the hardware details for a specific node with context support.
+// GetNodeDetailsWithContext fetches the status of a specific node from the Proxmox API using the provided context.
+// It then unmarshals the raw response into the NodeStatus struct and maps the relevant data
+// into the cleaner, application-friendly NodeDetails struct.
 func GetNodeDetailsWithContext(ctx context.Context, client *Client, nodeName string) (*NodeDetails, error) {
 	log.Info().Str("node", nodeName).Msg("Fetching node details")
 
@@ -120,7 +125,8 @@ func GetNodeDetailsWithContext(ctx context.Context, client *Client, nodeName str
 	return details, nil
 }
 
-// GetNodeNames retrieves all node names from Proxmox with context support.
+// GetNodeNames is a convenience function that retrieves the names of all available Proxmox nodes.
+// It calls GetNodeNamesWithContext using the client's default timeout.
 func GetNodeNames(client *Client) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
 	defer cancel()
@@ -128,7 +134,8 @@ func GetNodeNames(client *Client) ([]string, error) {
 	return GetNodeNamesWithContext(ctx, client)
 }
 
-// GetNodeNamesWithContext retrieves all node names from Proxmox using the provided context.
+// GetNodeNamesWithContext fetches the list of all configured nodes from the `/nodes` endpoint of the Proxmox API.
+// It parses the response to extract and return a simple slice of node names.
 func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, error) {
 	log.Info().Msg("Fetching node names")
 
@@ -167,7 +174,8 @@ func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, err
 	return nodeNames, nil
 }
 
-// GetNodeStatus checks if a node is online and returns its status.
+// GetNodeStatus provides a simple health check for a given node.
+// It attempts to fetch the node's status and returns 'online' on success or 'offline' on failure.
 func GetNodeStatus(client *Client, nodeName string) (string, error) {
 	log.Info().Str("node", nodeName).Msg("Checking node status")
 

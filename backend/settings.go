@@ -15,14 +15,16 @@ const settingsFile = "settings.json"
 
 var settingsMutex = &sync.Mutex{}
 
-// NodeLimit defines the resource limits for a node.
+// NodeLimit defines the resource limits (sockets, cores, RAM) for a specific Proxmox node.
+// These are typically read-only and reflect the node's hardware capabilities.
 type NodeLimit struct {
 	Sockets MinMax `json:"sockets"`
 	Cores   MinMax `json:"cores"`
 	RAM     MinMax `json:"ram"`
 }
 
-// VMLimit defines the default VM resource limits.
+// VMLimit defines the default resource limits for a new Virtual Machine.
+// These values are used to populate the VM creation form.
 type VMLimit struct {
 	Sockets MinMax `json:"sockets"`
 	Cores   MinMax `json:"cores"`
@@ -37,7 +39,8 @@ func (v VMLimit) IsDefined() bool {
 	return v.Sockets.Min > 0
 }
 
-// ResourceLimits defines the resource limits structure
+// ResourceLimits defines a generic structure for resource limitations, including sockets, cores, RAM, and disk.
+// The Disk field is optional to accommodate both node and VM limit types.
 type ResourceLimits struct {
 	Sockets MinMax  `json:"sockets"`
 	Cores   MinMax  `json:"cores"`
@@ -45,7 +48,8 @@ type ResourceLimits struct {
 	Disk    *MinMax `json:"disk,omitempty"` // Only for VM limits
 }
 
-// AppSettings defines the structure for the settings file.
+// AppSettings defines the main structure for the application's configuration file (settings.json).
+// It holds user-configurable lists for tags, ISOs, VMBRs, and resource limits.
 type AppSettings struct {
 	Tags   []string `json:"tags"`
 	ISOs   []string `json:"isos"`
@@ -59,7 +63,9 @@ type MinMax struct {
 	Max int `json:"max"`
 }
 
-// readSettings reads the settings from the JSON file.
+// readSettings reads the settings from settings.json, decodes the JSON into an AppSettings struct,
+// and applies default values for missing sections like VM limits to ensure application stability.
+// It uses a mutex to prevent race conditions during file access.
 func readSettings() (*AppSettings, error) {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
@@ -127,7 +133,9 @@ func readSettings() (*AppSettings, error) {
 	return &settings, nil
 }
 
-// writeSettings writes the settings to the JSON file.
+// writeSettings serializes the provided AppSettings struct into a well-formatted JSON string
+// and writes it to settings.json, overwriting the previous content.
+// It uses a mutex to ensure thread-safe file writing.
 func writeSettings(settings *AppSettings) error {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
@@ -159,7 +167,8 @@ func writeSettings(settings *AppSettings) error {
 	return nil
 }
 
-// settingsHandler handles GET requests to read the entire settings file.
+// settingsHandler is an HTTP endpoint that handles GET requests to retrieve the complete current application settings.
+// It reads the settings from disk and returns them as a JSON response.
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("handler", "settingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Settings handler invoked")
 	if r.Method != http.MethodGet {
@@ -178,7 +187,9 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(settings)
 }
 
-// updateIsoSettingsHandler handles POST requests to update the ISOs list in settings.
+// updateIsoSettingsHandler is an HTTP endpoint for updating the list of available ISO images.
+// It expects a POST request with a JSON payload containing the new list of ISOs
+// and saves the updated configuration to settings.json.
 func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("handler", "updateIsoSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update ISO settings handler invoked")
 	if r.Method != http.MethodPost {
@@ -217,7 +228,9 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "ISO settings updated successfully.")
 }
 
-// updateVmbrSettingsHandler handles POST requests to update the VMBRs list in settings.
+// updateVmbrSettingsHandler is an HTTP endpoint for updating the list of available network bridges (VMBRs).
+// It expects a POST request with a JSON payload containing the new list of VMBRs
+// and persists the changes to settings.json.
 func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("handler", "updateVmbrSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update VMBR settings handler invoked")
 	if r.Method != http.MethodPost {

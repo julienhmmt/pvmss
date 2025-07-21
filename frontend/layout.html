@@ -25,16 +25,16 @@
         <div id="navbarBasicExample" class="navbar-menu">
             <div class="navbar-start">
                 <a class="navbar-item" href="/?lang={{.Lang}}">
-                    {{.NavbarHome}}
+                    {{index . "Navbar.Home"}}
                 </a>
                 <a class="navbar-item" href="/create-vm">
-                    {{.NavbarVMs}}
+                    {{index . "Navbar.CreateVM"}}
                 </a>
                 <a class="navbar-item" href="/search?lang={{.Lang}}">
-                    {{.NavbarSearchVM}}
+                    {{index . "Navbar.SearchVM"}}
                 </a>
                 <a class="navbar-item" href="/docs/user?lang={{.Lang}}">
-                    {{.NavbarUserDocs}}
+                    {{index . "Navbar.UserDocs"}}
                 </a>
             </div>
 
@@ -45,14 +45,14 @@
                         <a href="{{.LangFR}}" class="button is-light">FR</a>
                         {{if .IsAuthenticated}}
                         <a href="/admin?lang={{.Lang}}" class="button is-primary">
-                            <strong>{{.NavbarAdmin}}</strong>
+                            <strong>{{index . "Navbar.Admin"}}</strong>
                         </a>
                         <a href="/logout" class="button is-light">
-                            {{.NavbarLogout}}
+                            {{index . "Navbar.Logout"}}
                         </a>
                         {{else}}
                         <a href="/login" class="button is-primary">
-                            <strong>{{.NavbarAdmin}}</strong>
+                            <strong>{{index . "Navbar.Admin"}}</strong>
                         </a>
                         {{end}}
                     </div>
@@ -62,13 +62,13 @@
     </nav>
 
     <!-- Page specific content will be injected here -->
-    {{.Content}}
+    {{.SafeContent}}
 
     <!-- Footer -->
     <footer class="footer">
         <div class="content has-text-centered">
             <p>
-                {{.Footer}}
+                {{index . "UI.Footer" | safe}}
             </p>
         </div>
     </footer>

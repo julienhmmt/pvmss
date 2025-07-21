@@ -1,9 +1,9 @@
 {{define "iso.html"}}
 <div class="container">
-    <h2 class="title is-4">{{.AdminISOTitle}}</h2>
+    <h2 class="title is-4">{{index . "Admin.ISO.Title"}}</h2>
 
     <div class="notification is-light">
-        {{.AdminISODescription}}
+        {{index . "Admin.ISO.Description"}}
     </div>
 
     <div id="iso-container" class="mb-4">
@@ -40,10 +40,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
-                        <th>{{.AdminISOHeaderEnabled}}</th>
-                        <th>{{.AdminISOHeaderStorage}}</th>
-                        <th>{{.AdminISOHeaderName}}</th>
-                        <th>{{.AdminISOHeaderSize}}</th>
+                        <th>{{index . "Admin.ISO.Header.Enabled"}}</th>
+                        <th>{{index . "Admin.ISO.Header.Storage"}}</th>
+                        <th>{{index . "Admin.ISO.Header.Name"}}</th>
+                        <th>{{index . "Admin.ISO.Header.Size"}}</th>
                     </tr>
                 `;
                 table.appendChild(thead);
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            isoContainer.innerHTML = '<div class="notification is-danger">{{.AdminISOError}}</div>';
+            isoContainer.innerHTML = '<div class="notification is-danger">{{index . "Admin.ISO.Error"}}</div>';
         });
 
     function saveIsoSelections() {

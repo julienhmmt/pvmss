@@ -1,22 +1,21 @@
 {{define "tags.html"}}
-<h2 class="title is-4">{{.AdminTagsTitle}}</h2>
+<h2 class="title is-4">{{index . "Admin.Tags.Title"}}</h2>
 <div class="notification is-light">
-    {{.AdminTagsDescription}}
+    {{index . "Admin.Tags.Description"}}
 </div>
 <div id="tags-list" class="mb-4"></div>
 
 <div class="field has-addons">
     <div class="control">
-        <input id="tag-input" class="input" type="text" placeholder="New tag">
+        <input id="tag-input" class="input" type="text" placeholder='{{index . "Admin.Tags.Placeholder.NewTag"}}'>
     </div>
     <div class="control">
-        <a id="add-tag-btn" class="button is-primary">{{.AdminTagsAddButton}}</a>
+        <a id="add-tag-btn" class="button is-primary">{{index . "Admin.Tags.AddButton"}}</a>
     </div>
 </div>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Check if this component has already been initialized
         if (window.tagsInitialized) return;
         window.tagsInitialized = true;
         
