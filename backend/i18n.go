@@ -143,7 +143,8 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 
 	localizer := i18n.NewLocalizer(Bundle, lang)
 
-	// Common
+	// Common Elements
+	data["Common.BackToSearch"] = safeLocalize(localizer, "Common.BackToSearch")
 	data["Common.Cancel"] = safeLocalize(localizer, "Common.Cancel")
 	data["Common.Error"] = safeLocalize(localizer, "Common.Error")
 	data["Common.Reset"] = safeLocalize(localizer, "Common.Reset")
@@ -232,7 +233,26 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["VM.Bridge.Description"] = safeLocalize(localizer, "VM.Bridge.Description")
 
 	// VM Details Page
+	// Labels
+	data["VMDetails.Label.Name"] = safeLocalize(localizer, "VMDetails.Label.Name")
+	data["VMDetails.Label.ID"] = safeLocalize(localizer, "VMDetails.Label.ID")
+	data["VMDetails.Label.Status"] = safeLocalize(localizer, "VMDetails.Label.Status")
+	data["VMDetails.Label.Uptime"] = safeLocalize(localizer, "VMDetails.Label.Uptime")
+	data["VMDetails.Label.CPU"] = safeLocalize(localizer, "VMDetails.Label.CPU")
+	data["VMDetails.Label.RAM"] = safeLocalize(localizer, "VMDetails.Label.RAM")
+	data["VMDetails.Label.Disk"] = safeLocalize(localizer, "VMDetails.Label.Disk")
+	data["VMDetails.Label.Network"] = safeLocalize(localizer, "VMDetails.Label.Network")
+	data["VMDetails.Label.Description"] = safeLocalize(localizer, "VMDetails.Label.Description")
+	// Actions
 	data["VMDetails.Action.Refresh"] = safeLocalize(localizer, "VMDetails.Action.Refresh")
+	data["VMDetails.Action.Start"] = safeLocalize(localizer, "VMDetails.Action.Start")
+	data["VMDetails.Action.Stop"] = safeLocalize(localizer, "VMDetails.Action.Stop")
+	data["VMDetails.Action.Shutdown"] = safeLocalize(localizer, "VMDetails.Action.Shutdown")
+	data["VMDetails.Action.Reboot"] = safeLocalize(localizer, "VMDetails.Action.Reboot")
+	data["VMDetails.Action.Reset"] = safeLocalize(localizer, "VMDetails.Action.Reset")
+	data["VMDetails.Action.Processing"] = safeLocalize(localizer, "VMDetails.Action.Processing")
+	data["VMDetails.Action.Success"] = safeLocalize(localizer, "VMDetails.Action.Success")
+	data["VMDetails.Action.Failed"] = safeLocalize(localizer, "VMDetails.Action.Failed")
 
 	// Admin - ISO Management
 	data["Admin.ISO.Title"] = safeLocalize(localizer, "Admin.ISO.Title")

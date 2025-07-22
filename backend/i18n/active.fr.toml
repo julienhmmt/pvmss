@@ -1,4 +1,6 @@
 # Common terms used across multiple pages
+["Common.BackToSearch"]
+other = "Retour à la recherche"
 ["Common.Cancel"]
 other = "Annuler"
 ["Common.Error"]
@@ -166,8 +168,42 @@ other = "Réinitialiser"
 other = "Pont pour le réseau de la machine virtuelle"
 
 # VM Details Page
+["VMDetails.Label.Name"]
+other = "Nom"
+["VMDetails.Label.ID"]
+other = "ID"
+["VMDetails.Label.Status"]
+other = "Statut"
+["VMDetails.Label.Uptime"]
+other = "Temps de fonctionnement"
+["VMDetails.Label.CPU"]
+other = "CPU"
+["VMDetails.Label.RAM"]
+other = "Mémoire"
+["VMDetails.Label.Disk"]
+other = "Disque"
+["VMDetails.Label.Network"]
+other = "Réseau"
+["VMDetails.Label.Description"]
+other = "Description"
 ["VMDetails.Action.Refresh"]
-other = "Rafraîchir"
+other = "Actualiser"
+["VMDetails.Action.Start"]
+other = "Démarrer"
+["VMDetails.Action.Stop"]
+other = "Arrêter"
+["VMDetails.Action.Shutdown"]
+other = "Éteindre"
+["VMDetails.Action.Reboot"]
+other = "Redémarrer"
+["VMDetails.Action.Reset"]
+other = "Reset"
+["VMDetails.Action.Processing"]
+other = "Traitement en cours..."
+["VMDetails.Action.Success"]
+other = "Action réussie"
+["VMDetails.Action.Failed"]
+other = "Échec de l'action: {{.Error}}"
 
 # Admin Pages
 

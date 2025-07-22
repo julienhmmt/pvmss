@@ -118,12 +118,21 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 
 // vmDetailsHandler serves the VM details page
 func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	vmid := r.URL.Query().Get("vmid")
-	node := r.URL.Query().Get("node")
+	vmid := validateInput(r.URL.Query().Get("vmid"), 10)
+	node := validateInput(r.URL.Query().Get("node"), 50)
 	lang := r.URL.Query().Get("lang")
 	data := map[string]interface{}{"Lang": lang, "Node": node}
 
+	logger.Get().Info().
+		Str("handler", "vmDetailsHandler").
+		Str("vmid", vmid).
+		Str("node", node).
+		Msg("VM details request")
+
 	if vmid == "" || node == "" {
+		logger.Get().Error().
+			Str("handler", "vmDetailsHandler").
+			Msg("Missing required parameters")
 		http.Error(w, "Missing vmid or node parameter", http.StatusBadRequest)
 		return
 	}

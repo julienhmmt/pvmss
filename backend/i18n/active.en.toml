@@ -1,4 +1,6 @@
 # Common terms used across multiple pages
+["Common.BackToSearch"]
+other = "Back to Search"
 ["Common.Cancel"]
 other = "Cancel"
 ["Common.Error"]
@@ -165,8 +167,42 @@ other = "Reset"
 other = "Bridge for virtual machine network"
 
 # VM Details Page
+["VMDetails.Label.Name"]
+other = "Name"
+["VMDetails.Label.ID"]
+other = "ID"
+["VMDetails.Label.Status"]
+other = "Status"
+["VMDetails.Label.Uptime"]
+other = "Uptime"
+["VMDetails.Label.CPU"]
+other = "CPU"
+["VMDetails.Label.RAM"]
+other = "Memory"
+["VMDetails.Label.Disk"]
+other = "Disk"
+["VMDetails.Label.Network"]
+other = "Network"
+["VMDetails.Label.Description"]
+other = "Description"
 ["VMDetails.Action.Refresh"]
 other = "Refresh"
+["VMDetails.Action.Start"]
+other = "Start"
+["VMDetails.Action.Stop"]
+other = "Stop"
+["VMDetails.Action.Shutdown"]
+other = "Shutdown"
+["VMDetails.Action.Reboot"]
+other = "Reboot"
+["VMDetails.Action.Reset"]
+other = "Reset"
+["VMDetails.Action.Processing"]
+other = "Processing..."
+["VMDetails.Action.Success"]
+other = "Action successful"
+["VMDetails.Action.Failed"]
+other = "Action failed: {{.Error}}"
 
 # Admin Pages
 

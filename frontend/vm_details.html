@@ -6,15 +6,15 @@
             <table class="table is-fullwidth">
                 <tbody>
                     <tr>
-                        <th>{{index . "VM.Details.Label.Name"}}</th>
+                        <th>{{index . "VMDetails.Label.Name"}}</th>
                         <td>{{.VMName}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.ID"}}</th>
+                        <th>{{index . "VMDetails.Label.ID"}}</th>
                         <td>{{.VMID}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.Status"}}</th>
+                        <th>{{index . "VMDetails.Label.Status"}}</th>
                         <td>
                             <span id="vm-status-badge" class="tag is-medium {{if eq .Status "running"}}is-success{{else if eq .Status "stopped"}}is-danger{{else}}is-light{{end}}">
                                 <span id="vm-status-text">{{.Status}}</span>
@@ -22,27 +22,27 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.Uptime"}}</th>
+                        <th>{{index . "VMDetails.Label.Uptime"}}</th>
                         <td>{{.Uptime}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.CPU"}}</th>
+                        <th>{{index . "VMDetails.Label.CPU"}}</th>
                         <td>{{.Sockets}} sockets / {{.Cores}} cores</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.RAM"}}</th>
+                        <th>{{index . "VMDetails.Label.RAM"}}</th>
                         <td>{{.RAM}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.Disk"}}</th>
+                        <th>{{index . "VMDetails.Label.Disk"}}</th>
                         <td>{{.DiskCount}} ({{.DiskTotalSize}})</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.Network"}}</th>
+                        <th>{{index . "VMDetails.Label.Network"}}</th>
                         <td>{{.NetworkBridges}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VM.Details.Label.Description"}}</th>
+                        <th>{{index . "VMDetails.Label.Description"}}</th>
                         <td>{{.Description}}</td>
                     </tr>
                 </tbody>
@@ -54,7 +54,7 @@
     <!-- Refresh Button -->
     <div class="is-flex is-justify-content-center mb-4" style="margin-top: 1.5rem;">
         <button class="button is-info is-light" id="refresh-btn" style="min-width: 170px; box-shadow: 0 2px 8px #e3e9f6; border-radius: 8px; display: flex; align-items: center; gap: 0.5em;">
-            <span>{{index . "VM.Details.Action.Refresh"}}</span>
+            <span>{{index . "VMDetails.Action.Refresh"}}</span>
             <span id="refresh-spinner" class="icon is-small" style="display: none;"></span>
         </button>
     </div>
@@ -62,37 +62,39 @@
     <!-- VM Action Buttons -->
     <div class="buttons is-centered mt-4" id="vm-action-buttons">
         <button class="button is-success is-light" data-action="start">
-            <span>{{index . "VM.Details.Action.Start"}}</span>
+            <span>{{index . "VMDetails.Action.Start"}}</span>
         </button>
         <button class="button is-warning is-light" data-action="reboot">
-            <span>{{index . "VM.Details.Action.Reboot"}}</span>
+            <span>{{index . "VMDetails.Action.Reboot"}}</span>
         </button>
         <button class="button is-danger is-light" data-action="shutdown">
-            <span>{{index . "VM.Details.Action.Shutdown"}}</span>
+            <span>{{index . "VMDetails.Action.Shutdown"}}</span>
         </button>
         <button class="button is-danger is-light" data-action="stop">
-            <span>{{index . "VM.Details.Action.Stop"}}</span>
+            <span>{{index . "VMDetails.Action.Stop"}}</span>
         </button>
         <button class="button is-danger is-light" data-action="reset">
-            <span>{{index . "VM.Details.Action.Reset"}}</span>
+            <span>{{index . "VMDetails.Action.Reset"}}</span>
         </button>
     </div>
 
     <div id="vm-action-feedback" class="has-text-centered mt-2"></div>
         <script>
         // Localized feedback messages
-        const msgProcessing = '{{index . "VM.Details.Action.Processing"}}';
-        const msgSuccess = '{{index . "VM.Details.Action.Success"}}';
-        const msgFailed = '{{index . "VM.Details.Action.Failed"}}';
+        const msgProcessing = '{{index . "VMDetails.Action.Processing"}}';
+        const msgSuccess = '{{index . "VMDetails.Action.Success"}}';
+        const msgFailed = '{{index . "VMDetails.Action.Failed"}}';
         document.addEventListener('DOMContentLoaded', function() {
             const buttons = document.querySelectorAll('#vm-action-buttons button[data-action]');
             const feedback = document.getElementById('vm-action-feedback');
-            const vmid = '{{.VMID}}';
-            const node = '{{.Node}}';
             const statusBadge = document.getElementById('vm-status-badge');
             const statusText = document.getElementById('vm-status-text');
             const refreshBtn = document.getElementById('refresh-btn');
             const refreshSpinner = document.getElementById('refresh-spinner');
+            
+            // Get VM info from template
+            const vmid = '{{.VMID}}';
+            const node = '{{.Node}}';
 
             function setFeedback(msg, type) {
                 feedback.textContent = msg;
@@ -152,7 +154,7 @@
                     fetch('/vm/action', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `action=${encodeURIComponent(action)}&vmid=${encodeURIComponent(vmid)}&node=${encodeURIComponent(node)}`
+                        body: `csrf_token={{.CSRFToken}}&action=${encodeURIComponent(action)}&vmid=${encodeURIComponent(vmid)}&node=${encodeURIComponent(node)}`
                     })
                     .then(res => {
                         if (res.ok) return res.text();
