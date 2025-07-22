@@ -5,6 +5,10 @@ other = "Back to Search"
 other = "Cancel"
 ["Common.Error"]
 other = "An error occurred"
+["Error.Title"]
+other = "Error"
+["Error.Generic"]
+other = "An unexpected error occurred. Please try again or contact the administrator."
 ["Common.Reset"]
 other = "Reset"
 ["Common.Save"]
@@ -203,6 +207,16 @@ other = "Processing..."
 other = "Action successful"
 ["VMDetails.Action.Failed"]
 other = "Action failed: {{.Error}}"
+
+# Documentation Pages
+["Docs.Admin.Title"]
+other = "Administrator Documentation"
+["Docs.Admin.Description"]
+other = "Complete guide for PVMSS administration and configuration"
+["Docs.User.Title"]
+other = "User Guide"
+["Docs.User.Description"]
+other = "Instructions for using PVMSS and managing your virtual machines"
 
 # Admin Pages
 

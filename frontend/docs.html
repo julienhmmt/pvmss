@@ -1,0 +1,52 @@
+{{define "docs.html"}}
+<section class="section">
+    <div class="container">
+        <h1 class="title">{{.Title}}</h1>
+        
+        {{if .Description}}
+        <p class="subtitle">{{.Description}}</p>
+        {{end}}
+        
+        <!-- Language selector -->
+        <div class="field is-grouped mb-4">
+            <p class="control">
+                <a class="button {{if eq .Lang "en"}}is-primary{{else}}is-light{{end}}" href="{{.LangEN}}">
+                    <span>English</span>
+                </a>
+            </p>
+            <p class="control">
+                <a class="button {{if eq .Lang "fr"}}is-primary{{else}}is-light{{end}}" href="{{.LangFR}}">
+                    <span>Français</span>
+                </a>
+            </p>
+        </div>
+
+        <!-- Documentation content -->
+        <div class="content">
+            {{.Content}}
+        </div>
+        
+        <!-- Navigation -->
+        <div class="field is-grouped mt-5">
+            <p class="control">
+                <a href="/search" class="button is-light">
+                    <span class="icon">
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                    </span>
+                    <span>{{index . "Common.BackToSearch"}}</span>
+                </a>
+            </p>
+            {{if .IsAuthenticated}}
+            <p class="control">
+                <a href="/admin" class="button is-info is-light">
+                    <span class="icon">
+                        <i class="fas fa-cog" aria-hidden="true"></i>
+                    </span>
+                    <span>{{index . "Navbar.Admin"}}</span>
+                </a>
+            </p>
+            {{end}}
+        </div>
+    </div>
+</section>
+{{end}}

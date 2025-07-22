@@ -5,6 +5,10 @@ other = "Retour à la recherche"
 other = "Annuler"
 ["Common.Error"]
 other = "Une erreur est survenue"
+["Error.Title"]
+other = "Erreur"
+["Error.Generic"]
+other = "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur."
 ["Common.Reset"]
 other = "Réinitialiser"
 ["Common.Save"]
@@ -204,6 +208,16 @@ other = "Traitement en cours..."
 other = "Action réussie"
 ["VMDetails.Action.Failed"]
 other = "Échec de l'action: {{.Error}}"
+
+# Documentation Pages
+["Docs.Admin.Title"]
+other = "Documentation Administrateur"
+["Docs.Admin.Description"]
+other = "Guide complet pour l'administration et la configuration de PVMSS"
+["Docs.User.Title"]
+other = "Guide Utilisateur"
+["Docs.User.Description"]
+other = "Instructions pour utiliser PVMSS et gérer vos machines virtuelles"
 
 # Admin Pages
 

@@ -147,6 +147,8 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["Common.BackToSearch"] = safeLocalize(localizer, "Common.BackToSearch")
 	data["Common.Cancel"] = safeLocalize(localizer, "Common.Cancel")
 	data["Common.Error"] = safeLocalize(localizer, "Common.Error")
+	data["Error.Title"] = safeLocalize(localizer, "Error.Title")
+	data["Error.Generic"] = safeLocalize(localizer, "Error.Generic")
 	data["Common.Reset"] = safeLocalize(localizer, "Common.Reset")
 	data["Common.Save"] = safeLocalize(localizer, "Common.Save")
 	data["Common.Saved"] = safeLocalize(localizer, "Common.Saved")
@@ -253,6 +255,12 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["VMDetails.Action.Processing"] = safeLocalize(localizer, "VMDetails.Action.Processing")
 	data["VMDetails.Action.Success"] = safeLocalize(localizer, "VMDetails.Action.Success")
 	data["VMDetails.Action.Failed"] = safeLocalize(localizer, "VMDetails.Action.Failed")
+
+	// Documentation Pages
+	data["Docs.Admin.Title"] = safeLocalize(localizer, "Docs.Admin.Title")
+	data["Docs.Admin.Description"] = safeLocalize(localizer, "Docs.Admin.Description")
+	data["Docs.User.Title"] = safeLocalize(localizer, "Docs.User.Title")
+	data["Docs.User.Description"] = safeLocalize(localizer, "Docs.User.Description")
 
 	// Admin - ISO Management
 	data["Admin.ISO.Title"] = safeLocalize(localizer, "Admin.ISO.Title")
