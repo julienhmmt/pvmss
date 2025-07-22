@@ -40,9 +40,9 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
 		return
 	}
-	action := r.FormValue("action")
-	vmid := r.FormValue("vmid")
-	node := r.FormValue("node")
+	action := validateInput(r.FormValue("action"), 20)
+	vmid := validateInput(r.FormValue("vmid"), 10)
+	node := validateInput(r.FormValue("node"), 50)
 	logger.Get().Info().
 		Str("handler", "vmActionHandler").
 		Str("action", action).

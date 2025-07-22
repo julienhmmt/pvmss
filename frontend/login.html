@@ -22,10 +22,11 @@
                         {{end}}
 
                         <form method="post" action="/login">
+                            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                             <div class="field">
                                 <label class="label" for="password">{{index . "Login.PasswordLabel"}}</label>
                                 <div class="control">
-                                    <input class="input" type="password" id="password" name="password" required>
+                                    <input class="input" type="password" id="password" name="password" required maxlength="200">
                                 </div>
                             </div>
 

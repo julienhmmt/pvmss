@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/rs/zerolog/log"
+	"pvmss/logger"
 )
 
 const settingsFile = "settings.json"
@@ -70,15 +70,15 @@ func readSettings() (*AppSettings, error) {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
 
-	logger := log.With().Logger()
+	log := logger.Get()
 
-	logger.Debug().
+	log.Debug().
 		Str("settings_file", settingsFile).
 		Msg("Reading settings from file")
 
 	file, err := os.Open(settingsFile)
 	if err != nil {
-		logger.Error().
+		log.Error().
 			Err(err).
 			Str("settings_file", settingsFile).
 			Msg("Failed to open settings file")
@@ -88,7 +88,7 @@ func readSettings() (*AppSettings, error) {
 
 	bytes, err := io.ReadAll(file)
 	if err != nil {
-		logger.Error().
+		log.Error().
 			Err(err).
 			Str("settings_file", settingsFile).
 			Msg("Failed to read settings file")
@@ -96,14 +96,14 @@ func readSettings() (*AppSettings, error) {
 	}
 
 	// Log the raw content read from the file
-	logger.Debug().
+	log.Debug().
 		Str("settings_file", settingsFile).
 		Str("content", string(bytes)).
 		Msg("Read settings file content")
 
 	var settings AppSettings
 	if err := json.Unmarshal(bytes, &settings); err != nil {
-		logger.Error().
+		log.Error().
 			Err(err).
 			Str("settings_file", settingsFile).
 			Msg("Failed to unmarshal settings")
@@ -111,13 +111,13 @@ func readSettings() (*AppSettings, error) {
 	}
 
 	if settings.Limits == nil {
-		logger.Debug().Msg("Initializing empty limits map")
+		log.Debug().Msg("Initializing empty limits map")
 		settings.Limits = make(map[string]interface{})
 	}
 	
 	// Ensure VM limits exists
 	if _, exists := settings.Limits["vm"]; !exists {
-		logger.Debug().Msg("Initializing default VM limits")
+		log.Debug().Msg("Initializing default VM limits")
 		settings.Limits["vm"] = map[string]interface{}{
 			"sockets": map[string]int{"min": 1, "max": 1},
 			"cores":   map[string]int{"min": 1, "max": 2},
@@ -126,7 +126,7 @@ func readSettings() (*AppSettings, error) {
 		}
 	}
 
-	logger.Debug().
+	log.Debug().
 		Interface("settings", settings).
 		Msg("Successfully loaded settings")
 
@@ -140,12 +140,12 @@ func writeSettings(settings *AppSettings) error {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
 
-	logger := log.With().Logger()
+	log := logger.Get()
 
 	// Convert settings to JSON with indentation for readability
 	data, err := json.MarshalIndent(settings, "", "    ")
 	if err != nil {
-		logger.Error().
+		log.Error().
 			Err(err).
 			Msg("Failed to marshal settings to JSON")
 		return fmt.Errorf("failed to marshal settings: %w", err)
@@ -153,14 +153,14 @@ func writeSettings(settings *AppSettings) error {
 
 	// Write directly to the settings file
 	if err := os.WriteFile(settingsFile, data, 0644); err != nil {
-		logger.Error().
+		log.Error().
 			Err(err).
 			Str("settings_file", settingsFile).
 			Msg("Failed to write settings file")
 		return fmt.Errorf("failed to write settings file: %w", err)
 	}
 
-	logger.Debug().
+	log.Debug().
 		Str("settings_file", settingsFile).
 		Msg("Settings saved successfully")
 
@@ -170,7 +170,7 @@ func writeSettings(settings *AppSettings) error {
 // settingsHandler is an HTTP endpoint that handles GET requests to retrieve the complete current application settings.
 // It reads the settings from disk and returns them as a JSON response.
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "settingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Settings handler invoked")
+	logger.Get().Info().Str("handler", "settingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Settings handler invoked")
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", http.MethodGet)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -191,7 +191,7 @@ func settingsHandler(w http.ResponseWriter, r *http.Request) {
 // It expects a POST request with a JSON payload containing the new list of ISOs
 // and saves the updated configuration to settings.json.
 func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "updateIsoSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update ISO settings handler invoked")
+	logger.Get().Info().Str("handler", "updateIsoSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update ISO settings handler invoked")
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -203,15 +203,15 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		log.Error().Err(err).Msg("Failed to decode ISO update payload")
+		logger.Get().Error().Err(err).Msg("Failed to decode ISO update payload")
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	log.Debug().Interface("payload", payload).Msg("Received ISO update payload")
+	logger.Get().Debug().Interface("payload", payload).Msg("Received ISO update payload")
 
 	settings, err := readSettings()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to read settings for ISO update")
+		logger.Get().Error().Err(err).Msg("Failed to read settings for ISO update")
 		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
 		return
 	}
@@ -219,7 +219,7 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	settings.ISOs = payload.ISOs
 
 	if err := writeSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Failed to write updated ISO settings")
+		logger.Get().Error().Err(err).Msg("Failed to write updated ISO settings")
 		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
 		return
 	}
@@ -232,7 +232,7 @@ func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 // It expects a POST request with a JSON payload containing the new list of VMBRs
 // and persists the changes to settings.json.
 func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	log.Info().Str("handler", "updateVmbrSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update VMBR settings handler invoked")
+	logger.Get().Info().Str("handler", "updateVmbrSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update VMBR settings handler invoked")
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -244,15 +244,15 @@ func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		log.Error().Err(err).Msg("Failed to decode VMBR update payload")
+		logger.Get().Error().Err(err).Msg("Failed to decode VMBR update payload")
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	log.Debug().Interface("payload", payload).Msg("Received VMBR update payload")
+	logger.Get().Debug().Interface("payload", payload).Msg("Received VMBR update payload")
 
 	settings, err := readSettings()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to read settings for VMBR update")
+		logger.Get().Error().Err(err).Msg("Failed to read settings for VMBR update")
 		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
 		return
 	}
@@ -260,7 +260,7 @@ func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	settings.VMBRs = payload.VMBRs
 
 	if err := writeSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Failed to write updated VMBR settings")
+		logger.Get().Error().Err(err).Msg("Failed to write updated VMBR settings")
 		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
 		return
 	}

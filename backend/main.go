@@ -79,43 +79,17 @@ func initProxmoxClient() (*proxmox.Client, error) {
 	return client, nil
 }
 
-// Settings defines the structure for application-specific configurations loaded from settings.json.
-// This includes constraints for VM creation like available tags, RAM, CPU, ISOs, and networks.
-type Settings struct {
-	Tags []string `json:"tags"`
-	RAM  struct {
-		Min int `json:"min"`
-		Max int `json:"max"`
-	} `json:"ram"`
-	CPU struct {
-		Min int `json:"min"`
-		Max int `json:"max"`
-	} `json:"cpu"`
-	Sockets struct {
-		Min int `json:"min"`
-		Max int `json:"max"`
-	} `json:"sockets"`
-	ISOs  []string `json:"isos"`
-	VMBRs []string `json:"vmbrs"`
-}
-
-var appSettings Settings
+// Using AppSettings from settings.go instead of duplicate structure
+var appSettings *AppSettings
 
 // loadSettings reads the application configuration from the `settings.json` file
 // and decodes it into the global `appSettings` variable.
 func loadSettings() error {
-	file, err := os.Open("settings.json")
+	settings, err := readSettings()
 	if err != nil {
-		return fmt.Errorf("error opening settings file: %w", err)
+		return fmt.Errorf("error reading settings: %w", err)
 	}
-	defer file.Close()
-
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&appSettings)
-	if err != nil {
-		return fmt.Errorf("error decoding settings: %w", err)
-	}
-
+	appSettings = settings
 	return nil
 }
 
@@ -484,7 +458,7 @@ func initTemplates() (*template.Template, error) {
 
 // setupServer configures and returns a new HTTP server.
 // It sets up the router, registers all application routes (including static files and API endpoints),
-// and wraps the main handler with session management middleware.
+// and wraps the main handler with session management middleware and security headers.
 func setupServer() *http.Server {
 	// Get port from environment
 	port := os.Getenv("PORT")
@@ -552,9 +526,12 @@ func setupServer() *http.Server {
 	r.HandleFunc("/api/limits", limitsHandler)
 
 	// Configure server with timeouts
+	// Apply security middleware chain
+	handler := securityHeadersMiddleware(sessionManager.LoadAndSave(csrfMiddleware(r)))
+	
 	return &http.Server{
 		Addr:         ":" + port,
-		Handler:      sessionManager.LoadAndSave(r),
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -673,6 +650,9 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 	data["Lang"] = lang
 	data["LangEN"] = "/?lang=en"
 	data["LangFR"] = "/?lang=fr"
+	
+	// Generate CSRF token for forms
+	data["CSRFToken"] = generateCSRFToken()
 
 	// Apply translations and other localization helpers
 	localizePage(w, r, data)
@@ -732,8 +712,8 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
     if r.Method == http.MethodPost {
         r.ParseForm()
-        vmid := r.FormValue("vmid")
-        name := r.FormValue("name")
+        vmid := validateInput(r.FormValue("vmid"), 10)
+        name := validateInput(r.FormValue("name"), 100)
 
         // Validate VMID format on the backend
         if vmid != "" {
@@ -851,17 +831,15 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
     data := make(map[string]interface{})
 
-    // Read settings first, to pass them to the template even if proxmox fails
-    settings, err := readSettings()
-    if err != nil {
-        logger.Get().Error().
-            Err(err).
-            Msg("Failed to read settings")
-        data["Error"] = "Failed to read application settings."
+    // Use cached settings instead of reading from disk every time
+    if appSettings == nil {
+        logger.Get().Error().Msg("Global settings not initialized")
+        data["Error"] = "Application settings not loaded."
         renderTemplate(w, r, "admin.html", data)
         return
     }
-    data["Settings"] = settings
+    data["Settings"] = appSettings
+    settings := appSettings // Local alias for compatibility
 
     // Use the global proxmox client
     if proxmoxClient == nil {
@@ -1018,7 +996,16 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Get().Info().Str("handler", "loginHandler").Str("method", r.Method).Str("path", r.URL.Path).Str("remote", r.RemoteAddr).Msg("Request received")
 	if r.Method == http.MethodPost {
-		password := r.FormValue("password")
+		// Check rate limiting
+		clientIP := r.RemoteAddr
+		if !checkRateLimit(clientIP) {
+			logger.Get().Warn().Str("ip", clientIP).Msg("Rate limit exceeded for login attempts")
+			data := map[string]interface{}{"Error": "Too many login attempts. Please try again later."}
+			renderTemplate(w, r, "login.html", data)
+			return
+		}
+		
+		password := validateInput(r.FormValue("password"), 200)
 		adminPasswordHash := os.Getenv("ADMIN_PASSWORD_HASH")
 
 		if adminPasswordHash == "" {
@@ -1033,7 +1020,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/admin", http.StatusFound)
 			return
 		} else {
-			logger.Get().Warn().Msg("Failed login attempt")
+			recordLoginAttempt(clientIP)
+			logger.Get().Warn().Str("ip", clientIP).Msg("Failed login attempt")
 			data := map[string]interface{}{"Error": "Invalid password"}
 			renderTemplate(w, r, "login.html", data)
 			return
