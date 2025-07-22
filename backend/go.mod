@@ -11,7 +11,6 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/rs/zerolog v1.34.0
 	golang.org/x/crypto v0.40.0
-	golang.org/x/term v0.33.0
 	golang.org/x/text v0.27.0
 )
 

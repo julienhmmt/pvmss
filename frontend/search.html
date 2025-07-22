@@ -3,23 +3,26 @@
     <div class="container">
         <h1 class="title">{{index . "Search.Title"}}</h1>
         <form action="/search?lang={{.Lang}}" method="POST">
+            <!-- CSRF Protection -->
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            
             <div class="field">
                 <label class="label" for="vmid">{{index . "Search.VMID"}}</label>
                 <div class="control">
-                    <input class="input" type="number" id="vmid" name="vmid" placeholder='{{index . "Search.Placeholder.VMID"}}' pattern="[0-9]{1,10}" title='{{index . "Search.Title.VMID"}}' oninput="this.value=this.value.slice(0,10)">
+                    <input class="input" type="number" id="vmid" name="vmid" placeholder='{{index . "Search.PlaceholderVMID"}}' pattern="[0-9]{1,10}" title='{{index . "Search.TitleVMID"}}' oninput="this.value=this.value.slice(0,10)" maxlength="10">
                 </div>
             </div>
 
             <div class="field">
                 <label class="label" for="name">{{index . "Search.Name"}}</label>
                 <div class="control">
-                    <input class="input" type="text" id="name" name="name" placeholder='{{index . "Search.Placeholder.Name"}}'>
+                    <input class="input" type="text" id="name" name="name" placeholder='{{index . "Search.PlaceholderName"}}' maxlength="100">
                 </div>
             </div>
 
             <div class="field">
                 <div class="control">
-                    <button type="submit" class="button is-primary">{{index . "Search.Button.SearchVM"}}</button>
+                    <button type="submit" class="button is-primary">{{index . "Search.Submit"}}</button>
                 </div>
             </div>
         </form>
@@ -66,7 +69,7 @@
                         {{formatMemory .maxmem}}
                     </td>
                     <td>
-                        <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$.Lang}}" class="button is-primary is-small">{{index $ "Search.Button.VMDetails"}}</a>
+                        <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$.Lang}}" class="button is-primary is-small">{{index $ "Search.VMDetailsButton"}}</a>
                     </td>
                 </tr>
                 {{end}}

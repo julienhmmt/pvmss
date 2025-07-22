@@ -177,6 +177,7 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["Login.Button"] = safeLocalize(localizer, "Login.Button")
 
 	// Search Page
+	data["Search.Title"] = safeLocalize(localizer, "Search.Title")
 	data["Search.ActionsHeader"] = safeLocalize(localizer, "Search.ActionsHeader")
 	data["Search.CPUs"] = safeLocalize(localizer, "Search.CPUs")
 	data["Search.Memory"] = safeLocalize(localizer, "Search.Memory")
@@ -185,6 +186,7 @@ func localizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	data["Search.PlaceholderName"] = safeLocalize(localizer, "Search.PlaceholderName")
 	data["Search.PlaceholderVMID"] = safeLocalize(localizer, "Search.PlaceholderVMID")
 	data["Search.Results"] = safeLocalize(localizer, "Search.Results")
+	data["Search.Submit"] = safeLocalize(localizer, "Search.Submit")
 	data["Search.Status"] = safeLocalize(localizer, "Search.Status")
 	data["Search.TitleVMID"] = safeLocalize(localizer, "Search.TitleVMID")
 	data["Search.VMDetailsButton"] = safeLocalize(localizer, "Search.VMDetailsButton")

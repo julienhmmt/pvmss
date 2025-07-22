@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 // getStringValue safely retrieves a string from a map, handling both string and float64 types.
@@ -29,21 +28,21 @@ func getStringValue(vmMap map[string]interface{}, key string) (string, bool) {
 }
 
 func searchVM(client *proxmox.Client, vmid, name string) (interface{}, error) {
-	log.Debug().Msg("Entering searchVM function")
+	logger.Get().Debug().Msg("Entering searchVM function")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	vmList, err := client.GetVmList(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get VM list from Proxmox")
+		logger.Get().Error().Err(err).Msg("Failed to get VM list from Proxmox")
 		return nil, err
 	}
 
 	var results []interface{}
 	data, ok := vmList["data"].([]interface{})
 	if !ok {
-		log.Warn().Msg("VM list data is not in the expected format")
+		logger.Get().Warn().Msg("VM list data is not in the expected format")
 		return nil, nil
 	}
 
@@ -98,10 +97,10 @@ func searchVM(client *proxmox.Client, vmid, name string) (interface{}, error) {
 	}
 
 	if len(results) == 0 {
-		log.Debug().Msg("No VMs found matching criteria")
+		logger.Get().Debug().Msg("No VMs found matching criteria")
 		return nil, nil // No results found
 	}
 
-	log.Debug().Int("count", len(results)).Msg("Found matching VMs")
+	logger.Get().Debug().Int("count", len(results)).Msg("Found matching VMs")
 	return results, nil
 }

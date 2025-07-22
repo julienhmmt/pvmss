@@ -59,6 +59,8 @@ other = "Password"
 other = "Login"
 
 # Search Page
+["Search.Title"]
+other = "Virtual Machine Search"
 ["Search.NoResults"]
 other = "No virtual machines matched your criteria."
 ["Search.PlaceholderName"]

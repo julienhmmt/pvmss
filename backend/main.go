@@ -569,6 +569,11 @@ func main() {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize Proxmox client")
 	}
 
+	// Load application settings
+	if err := loadSettings(); err != nil {
+		logger.Get().Fatal().Err(err).Msg("Failed to load application settings")
+	}
+
 	// Initialize i18n
 	InitI18n()
 
@@ -726,6 +731,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
                 renderTemplate(w, r, "search.html", data)
                 return
             }
+        }
+        
+        // Validate VM name format if provided
+        if name != "" && !validateVMName(name) {
+            data["Error"] = "Invalid VM name: Only alphanumeric characters, spaces, hyphens and underscores are allowed."
+            renderTemplate(w, r, "search.html", data)
+            return
         }
 
         logger.Get().Info().

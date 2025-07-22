@@ -60,6 +60,8 @@ other = "Mot de passe"
 other = "Connexion"
 
 # Search Page
+["Search.Title"]
+other = "Recherche de machines virtuelles"
 ["Search.NoResults"]
 other = "Aucune machine virtuelle correspondant à vos critères."
 ["Search.PlaceholderName"]
