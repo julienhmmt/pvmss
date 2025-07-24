@@ -1,20 +1,56 @@
 {{define "index.html"}}
-<section class="hero is-primary is-bold">
+<header class="hero is-primary is-bold">
     <div class="hero-body">
         <div class="container">
-            <h1 class="title">
-                {{index . "UI.Header"}}
-            </h1>
-            <h2 class="subtitle">
-                {{index . "UI.Subtitle"}}
-            </h2>
+            <h1 class="title">{{index . "UI.Header"}}</h1>
+            <p class="subtitle">{{index . "UI.Subtitle"}}</p>
         </div>
     </div>
-</section>
+</header>
 
-<section class="section">
+<main class="section">
     <div class="container">
-        <p>{{index . "UI.Body"}}</p>
+        <div class="content">
+            <p>{{index . "UI.Body"}}</p>
+        </div>
+        
+        <div class="columns is-multiline">
+            <div class="column is-4-desktop is-6-tablet">
+                <div class="box has-text-centered">
+                    <h3 class="title is-4">{{index . "Common.Actions"}}</h3>
+                    <div class="buttons is-centered">
+                        <a href="/create-vm" class="button is-primary is-medium">
+                            {{index . "Navbar.VMs"}}
+                        </a>
+                        <a href="/search" class="button is-link is-medium">
+                            {{index . "Navbar.SearchVM"}}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="column is-4-desktop is-6-tablet">
+                <div class="box has-text-centered">
+                    <h3 class="title is-4">{{index . "Docs.User.Title"}}</h3>
+                    <div class="buttons is-centered">
+                        <a href="/docs/user" class="button is-info is-medium">
+                            {{index . "Navbar.UserDocs"}}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="column is-4-desktop is-6-tablet">
+                <div class="box has-text-centered">
+                    <h3 class="title is-4">{{index . "Navbar.Admin"}}</h3>
+                    <div class="buttons is-centered">
+                        <a href="/admin" class="button is-warning is-medium">
+                            {{index . "Navbar.Admin"}}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</section>
+</main>
 {{end}}

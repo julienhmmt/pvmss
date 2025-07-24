@@ -670,6 +670,10 @@ func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data ma
 		return
 	}
 	data["SafeContent"] = template.HTML(buf.String())
+	
+	// Add footer content with HTML support
+	footerContent := localize(r, "UI.Footer")
+	data["SafeFooter"] = template.HTML(footerContent)
 
 	// Render the main layout which wraps the content
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

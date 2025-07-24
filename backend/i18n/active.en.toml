@@ -69,6 +69,10 @@ other = "Login"
 other = "Virtual Machine Search"
 ["Search.NoResults"]
 other = "No virtual machines matched your criteria."
+["Search.NoResultsMessage"]
+other = "Try adjusting your search criteria or check if the VM exists."
+["Search.Clear"]
+other = "Clear"
 ["Search.PlaceholderName"]
 other = "e.g. my-vm"
 ["Search.PlaceholderVMID"]
@@ -81,6 +85,14 @@ other = "Search by VMID or Name..."
 other = "Search"
 ["Search.Results"]
 other = "Search Results"
+["Search.Subtitle"]
+other = "Find your virtual machines quickly and easily"
+["Search.ResultsFor"]
+other = "Results for"
+["Search.Node"]
+other = "Node"
+["Search.Storage"]
+other = "Storage"
 ["Search.YouSearchedFor"]
 other = "You searched for"
 ["Search.VMID"]

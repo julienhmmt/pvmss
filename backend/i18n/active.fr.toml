@@ -30,6 +30,7 @@ other = "Rechercher"
 
 ["UI.Footer"]
 other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
+
 ["UI.Header"]
 other = "Proxmox VM Self-Service"
 
@@ -69,7 +70,11 @@ other = "Connexion"
 ["Search.Title"]
 other = "Recherche de machines virtuelles"
 ["Search.NoResults"]
-other = "Aucune machine virtuelle correspondant à vos critères."
+other = "Aucune machine virtuelle ne correspond à vos critères."
+["Search.NoResultsMessage"]
+other = "Essayez d'ajuster vos critères de recherche ou vérifiez si la VM existe."
+["Search.Clear"]
+other = "Effacer"
 ["Search.PlaceholderName"]
 other = "ex. ma-vm"
 ["Search.PlaceholderVMID"]
@@ -98,6 +103,14 @@ other = "Statut"
 other = "Actions"
 ["Search.VMDetailsButton"]
 other = "Détails de la VM"
+["Search.Subtitle"]
+other = "Trouvez vos machines virtuelles rapidement et facilement"
+["Search.ResultsFor"]
+other = "Résultats pour"
+["Search.Node"]
+other = "Nœud"
+["Search.Storage"]
+other = "Stockage"
 
 # Nodes Page
 ["Nodes.Title"]

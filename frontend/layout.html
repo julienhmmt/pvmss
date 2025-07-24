@@ -3,93 +3,104 @@
 <html lang="{{.Lang}}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{.Title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{index . "UI.Header"}} - {{index . "UI.Subtitle"}}">
+    <title>{{index . "Title"}} - {{index . "UI.Header"}}</title>
     <link rel="stylesheet" href="/css/bulma.min.css">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <!-- Navigation bar -->
-    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
-        <div class="navbar-brand">
-            <a class="navbar-item" href="/?lang={{.Lang}}">
-                <strong>PVMSS</strong>
-            </a>
-            <a role="button" class="navbar-burger is-primary" aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-            </a>
-        </div>
-
-        <div id="navbarBasicExample" class="navbar-menu">
-            <div class="navbar-start">
-                <a class="navbar-item" href="/?lang={{.Lang}}">
-                    {{index . "Navbar.Home"}}
+    <a href="#main-content" class="is-sr-only">Skip to main content</a>
+    
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="container">
+            <div class="navbar-brand">
+                <a class="navbar-item" href="/?lang={{.Lang}}" aria-label="PVMSS Home">
+                    <strong class="has-text-primary">{{index . "Title"}}</strong>
                 </a>
-                <a class="navbar-item" href="/create-vm">
-                    {{index . "Navbar.CreateVM"}}
-                </a>
-                <a class="navbar-item" href="/search?lang={{.Lang}}">
-                    {{index . "Navbar.SearchVM"}}
-                </a>
-                <a class="navbar-item" href="/docs/user?lang={{.Lang}}">
-                    {{index . "Navbar.UserDocs"}}
+                <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
                 </a>
             </div>
 
-            <div class="navbar-end">
-                <div class="navbar-item">
-                    <div class="buttons">
-                        <a href="{{.LangEN}}" class="button is-light">EN</a>
-                        <a href="{{.LangFR}}" class="button is-light">FR</a>
-                        {{if .IsAuthenticated}}
-                        <a href="/admin?lang={{.Lang}}" class="button is-primary">
-                            <strong>{{index . "Navbar.Admin"}}</strong>
-                        </a>
-                        <a href="/logout" class="button is-light">
-                            {{index . "Navbar.Logout"}}
-                        </a>
-                        {{else}}
-                        <a href="/login" class="button is-primary">
-                            <strong>{{index . "Navbar.Admin"}}</strong>
-                        </a>
-                        {{end}}
+            <div id="navbarMenu" class="navbar-menu">
+                <div class="navbar-start">
+                    <a class="navbar-item" href="/?lang={{.Lang}}">
+                        <span class="icon-text">
+                            <span>{{index . "Navbar.Home"}}</span>
+                        </span>
+                    </a>
+                    <a class="navbar-item" href="/search?lang={{.Lang}}">
+                        <span class="icon-text">
+                            <span>{{index . "Navbar.SearchVM"}}</span>
+                        </span>
+                    </a>
+                    <a class="navbar-item" href="/create-vm?lang={{.Lang}}">
+                        <span class="icon-text">
+                            <span>{{index . "Navbar.VMs"}}</span>
+                        </span>
+                    </a>
+                </div>
+
+                <div class="navbar-end">
+                    <div class="navbar-item">
+                        <div class="field is-grouped">
+                            <p class="control">
+                                <a href="/?lang=en" class="button is-small" aria-label="English">EN</a>
+                            </p>
+                            <p class="control">
+                                <a href="/?lang=fr" class="button is-small" aria-label="Français">FR</a>
+                            </p>
+                        </div>
                     </div>
+                    {{if .IsAuthenticated}}
+                    <div class="navbar-item has-dropdown is-hoverable">
+                        <a class="navbar-link">{{index . "Navbar.Admin"}}</a>
+                        <div class="navbar-dropdown is-right">
+                            <a class="navbar-item" href="/admin?lang={{.Lang}}">{{index . "Navbar.Admin"}}</a>
+                            <a class="navbar-item" href="/docs/admin?lang={{.Lang}}">{{index . "Navbar.AdminDocs"}}</a>
+                        </div>
+                    </div>
+                    <div class="navbar-item">
+                        <a href="/logout?lang={{.Lang}}" class="button is-primary is-light">{{index . "Navbar.Logout"}}</a>
+                    </div>
+                    {{else}}
+                    <div class="navbar-item">
+                        <a href="/login?lang={{.Lang}}" class="button is-primary is-light">{{index . "Navbar.Login"}}</a>
+                    </div>
+                    {{end}}
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Page specific content will be injected here -->
-    {{.SafeContent}}
+    <main id="main-content">
+        {{.SafeContent}}
+    </main>
 
-    <!-- Footer -->
     <footer class="footer">
-        <div class="content has-text-centered">
-            <p>
-                {{index . "UI.Footer" | safe}}
-            </p>
+        <div class="container">
+            <div class="content has-text-centered">
+                <p>{{.SafeFooter}}</p>
+            </div>
         </div>
     </footer>
 
-    <!-- Burger menu script -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const $navbarBurgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
-            if ($navbarBurgers.length > 0) {
-                $navbarBurgers.forEach( el => {
-                    el.addEventListener('click', () => {
-                        const target = el.dataset.target;
-                        const $target = document.getElementById(target);
-                        el.classList.toggle('is-active');
-                        $target.classList.toggle('is-active');
-                    });
+        document.addEventListener('DOMContentLoaded', function() {
+            const burger = document.querySelector('.navbar-burger');
+            const menu = document.querySelector('.navbar-menu');
+            
+            if (burger && menu) {
+                burger.addEventListener('click', function() {
+                    burger.classList.toggle('is-active');
+                    menu.classList.toggle('is-active');
                 });
             }
         });
     </script>
-
 </body>
 </html>
 {{end}}

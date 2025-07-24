@@ -1,95 +1,205 @@
 {{define "search.html"}}
+{{$lang := .Lang}}
+{{$t := .}}
+
+<!-- Search Page Template -->
 <section class="section">
     <div class="container">
-        <h1 class="title">{{index . "Search.Title"}}</h1>
-        <form action="/search?lang={{.Lang}}" method="POST">
-            <!-- CSRF Protection -->
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            
-            <div class="field">
-                <label class="label" for="vmid">{{index . "Search.VMID"}}</label>
-                <div class="control">
-                    <input class="input" type="number" id="vmid" name="vmid" placeholder='{{index . "Search.PlaceholderVMID"}}' pattern="[0-9]{1,10}" title='{{index . "Search.TitleVMID"}}' oninput="this.value=this.value.slice(0,10)" maxlength="10">
+        <div class="columns is-centered">
+            <div class="column is-10">
+                
+                <!-- Hero Section -->
+                <div class="hero is-primary is-small mb-5">
+                    <div class="hero-body">
+                        <div class="container has-text-centered">
+                            <h1 class="title is-2 has-text-white">
+                                <span class="icon-text">
+                                    <span>{{index $t "Search.Title"}}</span>
+                                </span>
+                            </h1>
+                            <p class="subtitle has-text-white">
+                                {{index $t "Search.Subtitle"}}
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <div class="field">
-                <label class="label" for="name">{{index . "Search.Name"}}</label>
-                <div class="control">
-                    <input class="input" type="text" id="name" name="name" placeholder='{{index . "Search.PlaceholderName"}}' maxlength="100">
+                <!-- Search Form Card -->
+                <div class="card mb-5">
+                    <div class="card-content">
+                        <form action="/search" method="POST" class="form-container">
+                            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                            <input type="hidden" name="lang" value="{{$lang}}">
+                            
+                            <div class="columns is-multiline">
+                                <div class="column is-6-desktop">
+                                    <div class="field">
+                                        <label class="label has-text-weight-semibold" for="vmid">
+                                            <span class="icon-text">
+                                                <span>{{index $t "Search.VMID"}}</span>
+                                            </span>
+                                        </label>
+                                        <div class="control">
+                                            <input class="input is-medium" 
+                                                   type="number" 
+                                                   id="vmid" 
+                                                   name="vmid" 
+                                                   placeholder="{{index $t "Search.PlaceholderVMID"}}"
+                                                   min="1" 
+                                                   max="999999"
+                                                   {{if .FormData.vmid}}value="{{.FormData.vmid}}"{{end}}>
+                                        </div>
+                                        <p id="vmid-help" class="help has-text-grey">
+                                            <small>{{index $t "Search.TitleVMID"}}</small>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="column is-6-desktop">
+                                    <div class="field">
+                                        <label class="label has-text-weight-semibold" for="name">
+                                            {{index $t "Search.Name"}}
+                                        </label>
+                                        <div class="control">
+                                            <input class="input is-medium" 
+                                                   type="text" 
+                                                   id="name" 
+                                                   name="name" 
+                                                   placeholder="{{index $t "Search.PlaceholderName"}}"
+                                                   maxlength="100"
+                                                   {{if .FormData.name}}value="{{.FormData.name}}"{{end}}>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="field is-grouped is-grouped-centered mt-5">
+                                <div class="control">
+                                    <button type="submit" class="button is-primary is-medium has-text-weight-semibold">
+                                        {{index $t "Search.Submit"}}
+                                    </button>
+                                </div>
+                                <div class="control">
+                                    <a href="/search?lang={{$lang}}" class="button is-light is-medium">
+                                        {{index $t "Search.Clear"}}
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </div>
 
-            <div class="field">
-                <div class="control">
-                    <button type="submit" class="button is-primary">{{index . "Search.Submit"}}</button>
-                </div>
-            </div>
-        </form>
-
-        {{if .Query}}
-        <hr>
-        <h2 class="subtitle">{{index . "Search.YouSearchedFor"}} {{.Query}}</h2>
-        {{if .Results}}
-                <table class="table is-bordered is-striped is-narrow is-hoverable is-fullwidth">
-            <thead>
-                <tr>
-                    <th>{{index . "Search.VMID"}}</th>
-                    <th>{{index . "Search.Name"}}</th>
-                    <th>{{index . "Search.Status"}}</th>
-                    <th>{{index . "Search.CPUs"}}</th>
-                    <th>{{index . "Search.Memory"}}</th>
-                    <th>{{index . "Search.ActionsHeader"}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .Results}}
-                <tr>
-                    <td>{{printf "%.0f" .vmid}}</td>
-                    <td>{{.name}}</td>
-                    <td>
-                        {{if eq .status "running"}}
-                        <span class="tag is-success">{{.status}}</span>
-                        {{else if eq .status "stopped"}}
-                        <span class="tag is-warning">{{.status}}</span>
-                        {{else}}
-                        <span class="tag is-light">{{.status}}</span>
+                <!-- Results Section -->
+                {{if .Query}}
+                <div class="section">
+                    <div class="container">
+                        <h2 class="title is-4 has-text-centered mb-5">
+                            {{index $t "Search.ResultsFor"}} "{{.Query}}"
+                        </h2>
+                        
+                        {{if .Results}}
+                        <div class="columns is-multiline">
+                            {{range .Results}}
+                            <div class="column is-12-tablet is-6-desktop is-4-widescreen">
+                                <div class="card vm-card">
+                                    <div class="card-content">
+                                        <div class="media">
+                                            <div class="media-left">
+                                                <div class="vm-id-badge">
+                                                    {{printf "%.0f" .vmid}}
+                                                </div>
+                                            </div>
+                                            <div class="media-content">
+                                                <div class="content">
+                                                    <h3 class="title is-4 mb-2">{{.name}}</h3>
+                                                    <div class="tags">
+                                                        <span class="tag is-primary">{{index $t "Search.VMID"}} {{printf "%.0f" .vmid}}</span>
+                                                        <span class="tag is-info">{{index $t "Search.Node"}} {{.node}}</span>
+                                                        {{if eq .status "running"}}
+                                                            <span class="tag is-success">{{index $t "Search.Running"}}</span>
+                                                        {{else}}
+                                                            <span class="tag is-warning">{{index $t "Search.Stopped"}}</span>
+                                                        {{end}}
+                                                    </div>
+                                                    <div class="columns is-mobile">
+                                                        <div class="column has-text-centered">
+                                                            <p class="heading">{{index $t "Search.CPUs"}}</p>
+                                                            <p class="title is-6">{{.cpus}}</p>
+                                                        </div>
+                                                        <div class="column has-text-centered">
+                                                            <p class="heading">{{index $t "Search.Memory"}}</p>
+                                                            <p class="title is-6">{{formatMemory .maxmem}}</p>
+                                                        </div>
+                                                        <div class="column has-text-centered">
+                                                            <p class="heading">{{index $t "Search.Storage"}}</p>
+                                                            <p class="title is-6">{{formatMemory .maxdisk}}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="has-text-centered mt-4">
+                                                        <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$lang}}" 
+                                                           class="button is-primary is-small">
+                                                            {{index $t "Search.VMDetailsButton"}}
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                        {{else if .NoResults}}
+                        <div class="notification is-warning is-light">
+                            <div class="content has-text-centered">
+                                
+                                <p class="is-size-5 has-text-weight-semibold mt-3">{{index $t "Search.NoResults"}}</p>
+                                <p class="has-text-grey">{{index $t "Search.NoResultsMessage"}}</p>
+                            </div>
+                        </div>
                         {{end}}
-                    </td>
-                    <td>
-                        {{if and .sockets .cores}}
-                            {{.sockets}} socket(s) / {{.cores}} core(s)
-                            <br>
-                            <span style="font-size: 0.85em; color: #888;">
-                                Total: {{mul .sockets .cores}} cores
-                            </span>
-                        {{else}}N/A{{end}}
-                    </td>
-                    <td>
-                        {{formatMemory .maxmem}}
-                    </td>
-                    <td>
-                        <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$.Lang}}" class="button is-primary is-small">{{index $ "Search.VMDetailsButton"}}</a>
-                    </td>
-                </tr>
+                    </div>
+                </div>
                 {{end}}
-            </tbody>
-        </table>
-        {{else}}
-        {{if .NoResults}}
-        <div class="notification is-warning is-light">
-            {{index . "Search.NoResults"}}
-        </div>
-        {{end}}
-        {{end}}
-        {{end}}
 
-        {{if .Error}}
-        <hr>
-        <div class="notification is-danger is-light">
-            {{.Error}}
+                <!-- Error Messages -->
+                {{if .Error}}
+                <div class="notification is-danger is-light">
+                    <div class="content has-text-centered">
+                        
+                        <p class="is-size-5 has-text-weight-semibold mt-3">{{.Error}}</p>
+                    </div>
+                </div>
+                {{end}}
+
+            </div>
         </div>
-        {{end}}
     </div>
 </section>
+
+<style>
+.vm-id-badge {
+    background: #FF8800;
+    color: white;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.vm-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0 1rem;
+    }
+}
+</style>
 {{end}}

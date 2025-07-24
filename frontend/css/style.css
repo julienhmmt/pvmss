@@ -1,148 +1,56 @@
-/* Custom Variables */
+/* PVMSS - Clean & Simple */
 :root {
-    --primary: #FF8000;
+    --primary: #FF8800;
     --primary-hover: #e67300;
-    --background: #f7f7f7;
-    --text: #363636;
-    --section-bg: #ffffff;
-    --border: #dbdbdb;
-    --navbar-bg: #ffffff;
-    --menu-bg: #2d3748;
-    --menu-text: #e2e8f0;
-    --menu-hover: rgba(255, 255, 255, 0.08);
-    --card-bg: #ffffff;
 }
 
-/* Resource Limits Specific Styles */
-.limits-form .field:not(:last-child) {
-    margin-bottom: 1rem;
+/* PVMSS - Simple Orange Theme */
+:root {
+    --primary: #FF8800;
+    --primary-hover: #e67300;
 }
 
-.limits-form .box {
-    border-left: 3px solid var(--primary);
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
-.limits-form .title.is-6 {
-    margin-bottom: 0.75rem;
-}
-
-/* Responsive adjustments */
-@media screen and (max-width: 768px) {
-    .column.is-6 {
-        padding: 0.5rem;
-    }
-}
-
-/* Bulma Overrides */
-body .hero.is-primary,
-.hero.is-primary.is-bold {
-    background-color: var(--primary);
-    background-image: none;
-}
-
-.progress.is-primary {
-    --bulma-progress-value-background-color: var(--primary);
-  }
-
-.hero.is-primary .title,
-.hero.is-primary .subtitle {
-    color: #ffffff;
+/* Use Bulma's existing classes - minimal overrides */
+.hero.is-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
 }
 
 .button.is-primary {
-    background-color: var(--primary);
-    border-color: transparent;
+    background: var(--primary);
 }
 
-.button.is-primary {
-    background-color: var(--primary);
-    border-color: transparent;
-    color: #ffffff;
+.button.is-primary:hover {
+    background: var(--primary-hover);
 }
 
-.button.is-primary:hover,
-.button.is-primary:focus {
-    background-color: var(--primary-hover);
-    border-color: transparent;
-    color: #ffffff;
-}
-
-.tag.is-primary {
-    background-color: var(--primary);
-    color: #ffffff;
-}
-
+.tag.is-primary,
 .notification.is-primary {
-    background-color: var(--primary);
-    color: #ffffff;
+    background: var(--primary);
 }
 
-.navbar-burger {
-    color: var(--primary);
-}
-
-.box {
-    border-left: 4px solid transparent;
-    transition: border-color 0.2s ease;
-}
-
-.box.has-background-light {
-    border-left-color: #FF8800;
-}
-
-.input:focus, .input.is-focused {
-    box-shadow: 0 0 0 0.125em rgba(0, 209, 178, 0.25);
-    border-color: #FF8800;
-}
-
-.input[readonly] {
-    background-color: #fafafa;
-    border-color: #f5f5f5;
-    color: #7a7a7a;
-}
-
-@media (max-width: 768px) {
-    .field-label {
-        margin-bottom: 0.5rem;
-        text-align: left;
-    }
-    
-    .field-body {
-        margin-left: 0;
-    }
-}
-.select:not(.is-multiple):not(.is-loading)::after {
-    border-color: #485fc7;
-}
-
-.select select option {
-    padding: 0.5em 1em;
-}
-
-.tag {
-    margin-bottom: 0.5rem;
-    margin-right: 0.5rem;
-}
-
-.checkbox {
+/* Simple VM ID badge fix */
+.vm-id-badge {
+    background: var(--primary);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
 }
 
-.field:not(:last-child) {
-    margin-bottom: 1.5rem;
+/* Clean card hover */
+.search-result-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
 }
 
-/* Make the select dropdowns more visible on hover */
-.select select:hover {
-    border-color: #b5b5b5;
-}
-
-/* Style for the PVMSS tag to indicate it's required */
-tag.is-primary.is-light input[disabled] + span {
-    opacity: 1;
-    font-weight: 600;
-    color: #296fa8;
+/* Simple responsive spacing */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 1rem;
+    }
 }
