@@ -4,19 +4,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{index . "UI.Header"}} - {{index . "UI.Subtitle"}}">
-    <title>{{index . "Title"}} - {{index . "UI.Header"}}</title>
+    <meta name="description" content="{{.UI.Header}} - {{.UI.Subtitle}}">
+    <title>{{.Title}} - {{.UI.Header}}</title>
     <link rel="stylesheet" href="/css/bulma.min.css">
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <a href="#main-content" class="is-sr-only">Skip to main content</a>
     
     <nav class="navbar" role="navigation" aria-label="main navigation">
         <div class="container">
             <div class="navbar-brand">
                 <a class="navbar-item" href="/?lang={{.Lang}}" aria-label="PVMSS Home">
-                    <strong class="has-text-primary">{{index . "Title"}}</strong>
+                    <strong class="has-text-primary">{{.Title}}</strong>
                 </a>
                 <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
                     <span aria-hidden="true"></span>
@@ -29,17 +28,17 @@
                 <div class="navbar-start">
                     <a class="navbar-item" href="/?lang={{.Lang}}">
                         <span class="icon-text">
-                            <span>{{index . "Navbar.Home"}}</span>
+                            <span>{{.Navbar.Home}}</span>
                         </span>
                     </a>
                     <a class="navbar-item" href="/search?lang={{.Lang}}">
                         <span class="icon-text">
-                            <span>{{index . "Navbar.SearchVM"}}</span>
+                            <span>{{.Navbar.SearchVM}}</span>
                         </span>
                     </a>
                     <a class="navbar-item" href="/create-vm?lang={{.Lang}}">
                         <span class="icon-text">
-                            <span>{{index . "Navbar.VMs"}}</span>
+                            <span>{{.Navbar.VMs}}</span>
                         </span>
                     </a>
                 </div>
@@ -57,18 +56,18 @@
                     </div>
                     {{if .IsAuthenticated}}
                     <div class="navbar-item has-dropdown is-hoverable">
-                        <a class="navbar-link">{{index . "Navbar.Admin"}}</a>
+                        <a class="navbar-link">{{.Navbar.Admin}}</a>
                         <div class="navbar-dropdown is-right">
-                            <a class="navbar-item" href="/admin?lang={{.Lang}}">{{index . "Navbar.Admin"}}</a>
-                            <a class="navbar-item" href="/docs/admin?lang={{.Lang}}">{{index . "Navbar.AdminDocs"}}</a>
+                            <a class="navbar-item" href="/admin?lang={{.Lang}}">{{.Navbar.Admin}}</a>
+                            <a class="navbar-item" href="/docs/admin?lang={{.Lang}}">{{.Navbar.AdminDocs}}</a>
                         </div>
                     </div>
                     <div class="navbar-item">
-                        <a href="/logout?lang={{.Lang}}" class="button is-primary is-light">{{index . "Navbar.Logout"}}</a>
+                        <a href="/logout?lang={{.Lang}}" class="button is-primary is-light">{{.Navbar.Logout}}</a>
                     </div>
                     {{else}}
                     <div class="navbar-item">
-                        <a href="/login?lang={{.Lang}}" class="button is-primary is-light">{{index . "Navbar.Login"}}</a>
+                        <a href="/login?lang={{.Lang}}" class="button is-primary is-light">{{.Navbar.Login}}</a>
                     </div>
                     {{end}}
                 </div>

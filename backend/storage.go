@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // Storage represents a Proxmox storage.
@@ -31,7 +32,8 @@ func storageHandler(w http.ResponseWriter, r *http.Request) {
 
 // getStorages is a helper function to fetch and parse storages from Proxmox.
 func getStorages() ([]Storage, error) {
-	// Use the global proxmox client
+	// Get the Proxmox client from state
+	proxmoxClient := state.GetProxmoxClient()
 	if proxmoxClient == nil {
 		log.Error().Msg("Proxmox client not initialized")
 		return nil, fmt.Errorf("proxmox client not initialized")

@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rs/zerolog/log"
+	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // ISOInfo holds combined information about an ISO file.
@@ -19,8 +20,9 @@ type ISOInfo struct {
 
 // allIsosHandler fetches all ISOs from all compatible storages across all nodes.
 func allIsosHandler(w http.ResponseWriter, r *http.Request) {
+	proxmoxClient := state.GetProxmoxClient()
 	if proxmoxClient == nil {
-		log.Error().Msg("Proxmox client not initialized")
+		logger.Get().Error().Msg("Proxmox client not initialized")
 		http.Error(w, "Failed to connect to Proxmox API", http.StatusInternalServerError)
 		return
 	}
@@ -51,24 +53,24 @@ func allIsosHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, node := range nodesToQuery {
-			log.Info().Str("storage", storage.Name).Str("node", node).Msg("Querying for ISOs")
+			logger.Get().Info().Str("storage", storage.Name).Str("node", node).Msg("Querying for ISOs")
 			isoResult, err := proxmox.GetISOList(proxmoxClient, node, storage.Name)
 			if err != nil {
-				log.Warn().Err(err).Str("storage", storage.Name).Str("node", node).Msg("Could not get ISO list. This may be expected if the storage is not available on this node.")
+				logger.Get().Warn().Err(err).Str("storage", storage.Name).Str("node", node).Msg("Could not get ISO list. This may be expected if the storage is not available on this node.")
 				continue // Try next node
 			}
 
 			// isoResult is now a map[string]interface{}, so we can directly access its fields.
 			data, dataOk := isoResult["data"].([]interface{})
 			if !dataOk {
-				log.Debug().Interface("isoResult", isoResult).Msg("Invalid ISO list data format, skipping")
+				logger.Get().Debug().Interface("isoResult", isoResult).Msg("Invalid ISO list data format, skipping")
 				continue
 			}
 			
 			for _, item := range data {
 				isoItem, itemOk := item.(map[string]interface{})
 				if !itemOk {
-					log.Debug().Interface("item", item).Msg("ISO item is not a valid map, skipping")
+					logger.Get().Debug().Interface("item", item).Msg("ISO item is not a valid map, skipping")
 					continue
 				}
 				
@@ -80,7 +82,7 @@ func allIsosHandler(w http.ResponseWriter, r *http.Request) {
 				
 				volid, volidOk := isoItem["volid"].(string)
 				if !volidOk {
-					log.Debug().Interface("isoItem", isoItem).Msg("ISO item missing volid, skipping")
+					logger.Get().Debug().Interface("isoItem", isoItem).Msg("ISO item missing volid, skipping")
 					continue
 				}
 				
@@ -107,7 +109,7 @@ func allIsosHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Info().Int("count", len(allISOs)).Msg("ISO images found")
+	logger.Get().Info().Int("count", len(allISOs)).Msg("ISO images found")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {

@@ -14,11 +14,11 @@
                         <div class="container has-text-centered">
                             <h1 class="title is-2 has-text-white">
                                 <span class="icon-text">
-                                    <span>{{index $t "Search.Title"}}</span>
+                                    <span>{{$t.Search.Title}}</span>
                                 </span>
                             </h1>
                             <p class="subtitle has-text-white">
-                                {{index $t "Search.Subtitle"}}
+                                {{$t.Search.Subtitle}}
                             </p>
                         </div>
                     </div>
@@ -36,7 +36,7 @@
                                     <div class="field">
                                         <label class="label has-text-weight-semibold" for="vmid">
                                             <span class="icon-text">
-                                                <span>{{index $t "Search.VMID"}}</span>
+                                                <span>{{$t.Search.VMID}}</span>
                                             </span>
                                         </label>
                                         <div class="control">
@@ -44,13 +44,13 @@
                                                    type="number" 
                                                    id="vmid" 
                                                    name="vmid" 
-                                                   placeholder="{{index $t "Search.PlaceholderVMID"}}"
+                                                   placeholder="{{$t.Search.PlaceholderVMID}}"
                                                    min="1" 
                                                    max="999999"
                                                    {{if .FormData.vmid}}value="{{.FormData.vmid}}"{{end}}>
                                         </div>
                                         <p id="vmid-help" class="help has-text-grey">
-                                            <small>{{index $t "Search.TitleVMID"}}</small>
+                                            <small>{{$t.Search.TitleVMID}}</small>
                                         </p>
                                     </div>
                                 </div>
@@ -58,14 +58,14 @@
                                 <div class="column is-6-desktop">
                                     <div class="field">
                                         <label class="label has-text-weight-semibold" for="name">
-                                            {{index $t "Search.Name"}}
+                                            {{$t.Search.Name}}
                                         </label>
                                         <div class="control">
                                             <input class="input is-medium" 
                                                    type="text" 
                                                    id="name" 
                                                    name="name" 
-                                                   placeholder="{{index $t "Search.PlaceholderName"}}"
+                                                   placeholder="{{$t.Search.PlaceholderName}}"
                                                    maxlength="100"
                                                    {{if .FormData.name}}value="{{.FormData.name}}"{{end}}>
                                         </div>
@@ -76,12 +76,12 @@
                             <div class="field is-grouped is-grouped-centered mt-5">
                                 <div class="control">
                                     <button type="submit" class="button is-primary is-medium has-text-weight-semibold">
-                                        {{index $t "Search.Submit"}}
+                                        {{$t.Search.Submit}}
                                     </button>
                                 </div>
                                 <div class="control">
                                     <a href="/search?lang={{$lang}}" class="button is-light is-medium">
-                                        {{index $t "Search.Clear"}}
+                                        {{$t.Search.Clear}}
                                     </a>
                                 </div>
                             </div>
@@ -94,61 +94,158 @@
                 <div class="section">
                     <div class="container">
                         <h2 class="title is-4 has-text-centered mb-5">
-                            {{index $t "Search.ResultsFor"}} "{{.Query}}"
+                            {{$t.Search.ResultsFor}} "{{.Query}}"
                         </h2>
                         
                         {{if .Results}}
-                        <div class="columns is-multiline">
-                            {{range .Results}}
-                            <div class="column is-12-tablet is-6-desktop is-4-widescreen">
-                                <div class="card vm-card">
-                                    <div class="card-content">
-                                        <div class="media">
-                                            <div class="media-left">
-                                                <div class="vm-id-badge">
-                                                    {{printf "%.0f" .vmid}}
+                        <div class="table-container">
+                            <div class="level is-mobile mb-4">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        <p class="subtitle is-5">
+                                            <strong>{{len .Results}}</strong> {{$t.Search.ResultsFound}}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="level-right">
+                                    <div class="level-item">
+                                        <div class="field has-addons">
+                                            <p class="control">
+                                                <button class="button is-small" onclick="toggleView()" id="viewToggleBtn">
+                                                    <span class="icon is-small">
+                                                        <i class="fas fa-th-large"></i>
+                                                    </span>
+                                                    <span>{{$t.Search.CardView}}</span>
+                                                </button>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="table-wrapper" id="tableView">
+                                <table class="table is-fullwidth is-hoverable">
+                                    <thead>
+                                        <tr>
+                                            <th class="is-narrow">{{$t.Search.VMID}}</th>
+                                            <th>{{$t.Search.Name}}</th>
+                                            <th>{{$t.Search.Node}}</th>
+                                            <th class="has-text-centered">{{$t.Search.Status}}</th>
+                                            <th class="has-text-centered">{{$t.Search.CPUs}}</th>
+                                            <th class="has-text-centered">{{$t.Search.Memory}}</th>
+                                            <th class="has-text-centered">{{$t.Search.Storage}}</th>
+                                            <th class="has-text-centered">{{$t.Search.Actions}}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{range .Results}}
+                                        <tr>
+                                            <td class="has-text-weight-bold">
+                                                <span class="tag is-primary is-light">{{printf "%.0f" .vmid}}</span>
+                                            </td>
+                                            <td>
+                                                <div class="is-clipped" style="max-width: 200px;">
+                                                    <strong>{{.name}}</strong>
                                                 </div>
-                                            </div>
-                                            <div class="media-content">
-                                                <div class="content">
-                                                    <h3 class="title is-4 mb-2">{{.name}}</h3>
-                                                    <div class="tags">
-                                                        <span class="tag is-primary">{{index $t "Search.VMID"}} {{printf "%.0f" .vmid}}</span>
-                                                        <span class="tag is-info">{{index $t "Search.Node"}} {{.node}}</span>
-                                                        {{if eq .status "running"}}
-                                                            <span class="tag is-success">{{index $t "Search.Running"}}</span>
-                                                        {{else}}
-                                                            <span class="tag is-warning">{{index $t "Search.Stopped"}}</span>
-                                                        {{end}}
+                                            </td>
+                                            <td>
+                                                <span class="tag is-info is-light">{{.node}}</span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                {{if eq .status "running"}}
+                                                    <span class="tag is-success is-light">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-play"></i>
+                                                        </span>
+                                                        <span>{{$t.Search.Running}}</span>
+                                                    </span>
+                                                {{else}}
+                                                    <span class="tag is-warning is-light">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-stop"></i>
+                                                        </span>
+                                                        <span>{{$t.Search.Stopped}}</span>
+                                                    </span>
+                                                {{end}}
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <span class="tag is-dark is-light">{{.cpus}}</span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <span class="tag is-link is-light">{{formatMemory .maxmem}}</span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <span class="tag is-info is-light">{{formatMemory .maxdisk}}</span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <div class="buttons is-centered are-small">
+                                                    <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$lang}}" 
+                                                       class="button is-primary is-small"
+                                                       title="{{index $t "Search.VMDetailsButton"}}">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-info-circle"></i>
+                                                        </span>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {{end}}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Card View (Hidden by default) -->
+                            <div class="columns is-multiline is-hidden" id="cardView">
+                                {{range .Results}}
+                                <div class="column is-12-tablet is-6-desktop">
+                                    <div class="card vm-card">
+                                        <div class="card-content">
+                                            <div class="media">
+                                                <div class="media-left">
+                                                    <div class="vm-id-badge">
+                                                        {{printf "%.0f" .vmid}}
                                                     </div>
-                                                    <div class="columns is-mobile">
-                                                        <div class="column has-text-centered">
-                                                            <p class="heading">{{index $t "Search.CPUs"}}</p>
-                                                            <p class="title is-6">{{.cpus}}</p>
+                                                </div>
+                                                <div class="media-content">
+                                                    <div class="content">
+                                                        <h4 class="title is-5 mb-2">{{.name}}</h4>
+                                                        <div class="tags are-small">
+                                                            <span class="tag is-primary">{{index $t "Search.VMID"}} {{printf "%.0f" .vmid}}</span>
+                                                            <span class="tag is-info">{{.node}}</span>
+                                                            {{if eq .status "running"}}
+                                                                <span class="tag is-success">{{index $t "Search.Running"}}</span>
+                                                            {{else}}
+                                                                <span class="tag is-warning">{{index $t "Search.Stopped"}}</span>
+                                                            {{end}}
                                                         </div>
-                                                        <div class="column has-text-centered">
-                                                            <p class="heading">{{index $t "Search.Memory"}}</p>
-                                                            <p class="title is-6">{{formatMemory .maxmem}}</p>
+                                                        <div class="columns is-mobile">
+                                                            <div class="column has-text-centered">
+                                                                <p class="heading is-size-7">{{index $t "Search.CPUs"}}</p>
+                                                                <p class="title is-6">{{.cpus}}</p>
+                                                            </div>
+                                                            <div class="column has-text-centered">
+                                                                <p class="heading is-size-7">{{index $t "Search.Memory"}}</p>
+                                                                <p class="title is-6">{{formatMemory .maxmem}}</p>
+                                                            </div>
+                                                            <div class="column has-text-centered">
+                                                                <p class="heading is-size-7">{{index $t "Search.Storage"}}</p>
+                                                                <p class="title is-6">{{formatMemory .maxdisk}}</p>
+                                                            </div>
                                                         </div>
-                                                        <div class="column has-text-centered">
-                                                            <p class="heading">{{index $t "Search.Storage"}}</p>
-                                                            <p class="title is-6">{{formatMemory .maxdisk}}</p>
+                                                        <div class="has-text-centered mt-3">
+                                                            <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$lang}}" 
+                                                               class="button is-primary is-small">
+                                                                {{index $t "Search.VMDetailsButton"}}
+                                                            </a>
                                                         </div>
-                                                    </div>
-                                                    <div class="has-text-centered mt-4">
-                                                        <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$lang}}" 
-                                                           class="button is-primary is-small">
-                                                            {{index $t "Search.VMDetailsButton"}}
-                                                        </a>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                                {{end}}
                             </div>
-                            {{end}}
-                        </div>
                         {{else if .NoResults}}
                         <div class="notification is-warning is-light">
                             <div class="content has-text-centered">
@@ -200,6 +297,117 @@
     .container {
         padding: 0 1rem;
     }
+    
+    .table-wrapper {
+        overflow-x: auto;
+    }
+    
+    .table {
+        font-size: 0.875rem;
+    }
+    
+    .tag:not(body) {
+        font-size: 0.75rem;
+    }
+}
+
+.table-wrapper {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.table th {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.table tr:hover {
+    background-color: #f8f9fa;
+}
+
+@media (max-width: 1024px) {
+    .table-wrapper {
+        overflow-x: auto;
+    }
+}
+
+/* Toggle button active state */
+.button.is-active {
+    background-color: #3273dc;
+    color: white;
+}
+
+/* Responsive table improvements */
+@media screen and (max-width: 768px) {
+    .table th,
+    .table td {
+        padding: 0.5rem;
+    }
+    
+    .vm-id-badge {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+}
+
+/* View toggle functionality */
+.is-hidden {
+    display: none !important;
+}
+
+/* Enhanced card view for mobile */
+@media screen and (max-width: 768px) {
+    .vm-card {
+        margin-bottom: 1rem;
+    }
+    
+    .vm-card .card-content {
+        padding: 1rem;
+    }
+}
+
+/* Smooth transitions */
+.table-wrapper,
+.columns {
+    transition: all 0.3s ease;
 }
 </style>
+
+<script>
+function toggleView() {
+    const tableView = document.getElementById('tableView');
+    const cardView = document.getElementById('cardView');
+    const toggleBtn = document.getElementById('viewToggleBtn');
+    
+    if (tableView.classList.contains('is-hidden')) {
+        // Show table view
+        tableView.classList.remove('is-hidden');
+        cardView.classList.add('is-hidden');
+        toggleBtn.innerHTML = `
+            <span class="icon is-small">
+                <i class="fas fa-th-large"></i>
+            </span>
+            <span>{{index $t "Search.CardView"}}</span>
+        `;
+    } else {
+        // Show card view
+        tableView.classList.add('is-hidden');
+        cardView.classList.remove('is-hidden');
+        toggleBtn.innerHTML = `
+            <span class="icon is-small">
+                <i class="fas fa-list"></i>
+            </span>
+            <span>{{index $t "Search.TableView"}}</span>
+        `;
+    }
+}
+</script>
 {{end}}

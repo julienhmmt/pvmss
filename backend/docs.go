@@ -13,6 +13,7 @@ import (
 	htmltemplate "html/template"
 
 	"pvmss/logger"
+	"pvmss/state"
 )
 
 // serveDocHandler serves admin/user documentation as HTML with language support
@@ -159,7 +160,8 @@ func serveDocHandler(docType string) http.HandlerFunc {
 		data["LangFR"] = fmt.Sprintf("%s?lang=fr", baseURL)
 
 		// Add authentication data if user is logged in
-		if sessionManager.Exists(r.Context(), "authenticated") {
+		sessionManager := state.GetSessionManager()
+		if sessionManager != nil && sessionManager.Exists(r.Context(), "authenticated") {
 			data["IsAuthenticated"] = true
 			if username := sessionManager.GetString(r.Context(), "username"); username != "" {
 				data["Username"] = username

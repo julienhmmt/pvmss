@@ -39,12 +39,12 @@ other = "PVMSS"
 other = "A simple self-service portal for Proxmox Virtual Environment."
 
 # Navbar
+["Navbar.Home"]
+other = "Home"
 ["Navbar.Admin"]
 other = "Administration"
 ["Navbar.AdminDocs"]
 other = "Admin Documentation"
-["Navbar.Home"]
-other = "Home"
 ["Navbar.Login"]
 other = "Login"
 ["Navbar.Logout"]
@@ -109,6 +109,12 @@ other = "Memory"
 other = "Actions"
 ["Search.VMDetailsButton"]
 other = "Details"
+["Search.ResultsFound"]
+other = "results found"
+["Search.CardView"]
+other = "Card View"
+["Search.TableView"]
+other = "Table View"
 
 # Nodes Page
 ["Nodes.Title"]

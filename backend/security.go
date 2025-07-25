@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"html"
 	"net/http"
 	"strings"
@@ -18,23 +16,6 @@ var (
 	csrfMutex  = sync.RWMutex{}
 	csrfTTL    = 30 * time.Minute
 )
-
-// generateCSRFToken generates a secure random CSRF token
-func generateCSRFToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	token := base64.URLEncoding.EncodeToString(b)
-	
-	// Store token with expiration
-	csrfMutex.Lock()
-	csrfTokens[token] = time.Now().Add(csrfTTL)
-	csrfMutex.Unlock()
-	
-	// Clean expired tokens periodically
-	go cleanExpiredTokens()
-	
-	return token
-}
 
 // validateCSRFToken validates a CSRF token and removes it
 func validateCSRFToken(token string) bool {
@@ -84,63 +65,14 @@ func validateInput(input string, maxLength int) string {
 	return cleaned
 }
 
-// validateVMName validates VM name input
-func validateVMName(name string) bool {
-	if len(name) == 0 || len(name) > 100 {
-		return false
-	}
-	// Allow alphanumeric, hyphens, underscores
-	for _, r := range name {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || 
-			 (r >= '0' && r <= '9') || r == '-' || r == '_' || r == ' ') {
-			return false
-		}
-	}
-	return true
-}
-
-// Rate limiting for login attempts
-var (
-	loginAttempts = make(map[string][]time.Time)
-	attemptsMutex = sync.RWMutex{}
-	maxAttempts   = 5
-	lockoutPeriod = 15 * time.Minute
-)
-
-// checkRateLimit checks if IP is rate limited for login attempts
-func checkRateLimit(ip string) bool {
-	attemptsMutex.Lock()
-	defer attemptsMutex.Unlock()
-	
-	attempts := loginAttempts[ip]
-	now := time.Now()
-	
-	// Clean old attempts
-	var validAttempts []time.Time
-	for _, attempt := range attempts {
-		if now.Sub(attempt) < lockoutPeriod {
-			validAttempts = append(validAttempts, attempt)
-		}
-	}
-	
-	loginAttempts[ip] = validAttempts
-	
-	return len(validAttempts) < maxAttempts
-}
-
-// recordLoginAttempt records a failed login attempt
-func recordLoginAttempt(ip string) {
-	attemptsMutex.Lock()
-	defer attemptsMutex.Unlock()
-	
-	loginAttempts[ip] = append(loginAttempts[ip], time.Now())
-}
-
 // CSRF middleware
 func csrfMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip CSRF for GET requests and health checks
-		if r.Method == "GET" || r.URL.Path == "/health" {
+		// Skip CSRF for GET requests, health checks, and static files
+		if r.Method == "GET" || r.URL.Path == "/health" || 
+			strings.HasPrefix(r.URL.Path, "/css/") || 
+			strings.HasPrefix(r.URL.Path, "/js/") || 
+			strings.HasPrefix(r.URL.Path, "/static/") {
 			next.ServeHTTP(w, r)
 			return
 		}

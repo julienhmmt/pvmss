@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"sync"
 
 	"pvmss/logger"
+	"pvmss/state"
 )
 
 const settingsFile = "settings.json"
@@ -48,25 +48,10 @@ type ResourceLimits struct {
 	Disk    *MinMax `json:"disk,omitempty"` // Only for VM limits
 }
 
-// AppSettings defines the main structure for the application's configuration file (settings.json).
-// It holds user-configurable lists for tags, ISOs, VMBRs, and resource limits.
-type AppSettings struct {
-	Tags   []string `json:"tags"`
-	ISOs   []string `json:"isos"`
-	VMBRs  []string `json:"vmbrs"`
-	Limits map[string]interface{} `json:"limits"`
-}
-
-// MinMax defines a min/max value pair.
-type MinMax struct {
-	Min int `json:"min"`
-	Max int `json:"max"`
-}
-
-// readSettings reads the settings from settings.json, decodes the JSON into an AppSettings struct,
+// readSettings reads the settings from settings.json, decodes the JSON into a state.AppSettings struct,
 // and applies default values for missing sections like VM limits to ensure application stability.
 // It uses a mutex to prevent race conditions during file access.
-func readSettings() (*AppSettings, error) {
+func readSettings() (*state.AppSettings, error) {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
 
@@ -76,46 +61,50 @@ func readSettings() (*AppSettings, error) {
 		Str("settings_file", settingsFile).
 		Msg("Reading settings from file")
 
+	// Open the settings file
 	file, err := os.Open(settingsFile)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("settings_file", settingsFile).
-			Msg("Failed to open settings file")
-		return nil, fmt.Errorf("failed to open settings file: %w", err)
+		if os.IsNotExist(err) {
+			log.Warn().
+				Str("settings_file", settingsFile).
+				Msg("Settings file not found, creating with default values")
+			// Initialize with default settings if file doesn't exist
+			defaultSettings := &state.AppSettings{
+				AdminPassword: "", // Will be set by admin during first run
+				Tags:          []string{},
+				ISOs:          []string{},
+				VMBRs:         []string{},
+				Limits:        make(map[string]interface{}),
+			}
+
+			// Write default settings to file
+			if err := writeSettings(defaultSettings); err != nil {
+				return nil, fmt.Errorf("failed to create default settings: %w", err)
+			}
+			return defaultSettings, nil
+		}
+		return nil, fmt.Errorf("error opening settings file: %w", err)
 	}
 	defer file.Close()
 
-	bytes, err := io.ReadAll(file)
+	// Read the file content
+	data, err := io.ReadAll(file)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("settings_file", settingsFile).
-			Msg("Failed to read settings file")
-		return nil, fmt.Errorf("failed to read settings file: %w", err)
+		return nil, fmt.Errorf("error reading settings file: %w", err)
 	}
 
-	// Log the raw content read from the file
-	log.Debug().
-		Str("settings_file", settingsFile).
-		Str("content", string(bytes)).
-		Msg("Read settings file content")
-
-	var settings AppSettings
-	if err := json.Unmarshal(bytes, &settings); err != nil {
-		log.Error().
-			Err(err).
-			Str("settings_file", settingsFile).
-			Msg("Failed to unmarshal settings")
-		return nil, fmt.Errorf("failed to unmarshal settings: %w", err)
+	// Parse the JSON into AppSettings struct
+	var settings state.AppSettings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return nil, fmt.Errorf("error parsing settings file: %w", err)
 	}
 
+	// Initialize Limits map if it's nil
 	if settings.Limits == nil {
-		log.Debug().Msg("Initializing empty limits map")
 		settings.Limits = make(map[string]interface{})
 	}
-	
-	// Ensure VM limits exists
+
+	// Initialize default VM limits if not set
 	if _, exists := settings.Limits["vm"]; !exists {
 		log.Debug().Msg("Initializing default VM limits")
 		settings.Limits["vm"] = map[string]interface{}{
@@ -133,16 +122,16 @@ func readSettings() (*AppSettings, error) {
 	return &settings, nil
 }
 
-// writeSettings serializes the provided AppSettings struct into a well-formatted JSON string
+// writeSettings serializes the provided state.AppSettings struct into a well-formatted JSON string
 // and writes it to settings.json, overwriting the previous content.
 // It uses a mutex to ensure thread-safe file writing.
-func writeSettings(settings *AppSettings) error {
+func writeSettings(settings *state.AppSettings) error {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()
 
 	log := logger.Get()
 
-	// Convert settings to JSON with indentation for readability
+	// Create a pretty-printed JSON with 4-space indentation
 	data, err := json.MarshalIndent(settings, "", "    ")
 	if err != nil {
 		log.Error().
@@ -151,120 +140,32 @@ func writeSettings(settings *AppSettings) error {
 		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
 
-	// Write directly to the settings file
-	if err := os.WriteFile(settingsFile, data, 0644); err != nil {
+	// Add a newline at the end for better file readability
+	data = append(data, '\n')
+
+	// Write to a temporary file first to ensure atomicity
+	tempFile := settingsFile + ".tmp"
+	if err := os.WriteFile(tempFile, data, 0600); err != nil {
 		log.Error().
 			Err(err).
+			Str("temp_file", tempFile).
+			Msg("Failed to write temporary settings file")
+		return fmt.Errorf("failed to write temporary settings file: %w", err)
+	}
+
+	// Rename the temporary file to the actual settings file (atomic operation on Unix-like systems)
+	if err := os.Rename(tempFile, settingsFile); err != nil {
+		log.Error().
+			Err(err).
+			Str("temp_file", tempFile).
 			Str("settings_file", settingsFile).
-			Msg("Failed to write settings file")
-		return fmt.Errorf("failed to write settings file: %w", err)
+			Msg("Failed to rename temporary settings file")
+		return fmt.Errorf("failed to rename temporary settings file: %w", err)
 	}
 
 	log.Debug().
 		Str("settings_file", settingsFile).
-		Msg("Settings saved successfully")
+		Msg("Successfully wrote settings to file")
 
 	return nil
-}
-
-// settingsHandler is an HTTP endpoint that handles GET requests to retrieve the complete current application settings.
-// It reads the settings from disk and returns them as a JSON response.
-func settingsHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Get().Info().Str("handler", "settingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Settings handler invoked")
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	settings, err := readSettings()
-	if err != nil {
-		http.Error(w, "Failed to read settings", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(settings)
-}
-
-// updateIsoSettingsHandler is an HTTP endpoint for updating the list of available ISO images.
-// It expects a POST request with a JSON payload containing the new list of ISOs
-// and saves the updated configuration to settings.json.
-func updateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Get().Info().Str("handler", "updateIsoSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update ISO settings handler invoked")
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var payload struct {
-		ISOs []string `json:"isos"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to decode ISO update payload")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	logger.Get().Debug().Interface("payload", payload).Msg("Received ISO update payload")
-
-	settings, err := readSettings()
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to read settings for ISO update")
-		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
-		return
-	}
-
-	settings.ISOs = payload.ISOs
-
-	if err := writeSettings(settings); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to write updated ISO settings")
-		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "ISO settings updated successfully.")
-}
-
-// updateVmbrSettingsHandler is an HTTP endpoint for updating the list of available network bridges (VMBRs).
-// It expects a POST request with a JSON payload containing the new list of VMBRs
-// and persists the changes to settings.json.
-func updateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Get().Info().Str("handler", "updateVmbrSettingsHandler").Str("method", r.Method).Str("path", r.URL.Path).Msg("Update VMBR settings handler invoked")
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var payload struct {
-		VMBRs []string `json:"vmbrs"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to decode VMBR update payload")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	logger.Get().Debug().Interface("payload", payload).Msg("Received VMBR update payload")
-
-	settings, err := readSettings()
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to read settings for VMBR update")
-		http.Error(w, "Failed to read settings for update", http.StatusInternalServerError)
-		return
-	}
-
-	settings.VMBRs = payload.VMBRs
-
-	if err := writeSettings(settings); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to write updated VMBR settings")
-		http.Error(w, "Failed to write updated settings", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "VMBR settings updated successfully.")
 }

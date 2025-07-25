@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // VMBRInfo holds information about a Proxmox network bridge.
@@ -17,7 +18,8 @@ type VMBRInfo struct {
 
 // allVmbrsHandler fetches all VMBRs from all nodes.
 func allVmbrsHandler(w http.ResponseWriter, r *http.Request) {
-	// Use the global proxmox client instead of creating a new one
+	// Get the Proxmox client from state
+	proxmoxClient := state.GetProxmoxClient()
 	if proxmoxClient == nil {
 		log.Error().Msg("Proxmox client not initialized")
 		http.Error(w, "Failed to connect to Proxmox API", http.StatusInternalServerError)

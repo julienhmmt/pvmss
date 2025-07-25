@@ -2,15 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"context"
 	"time"
 
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // LimitsSettings represents the resource limits configuration for VMs and nodes.
@@ -327,7 +328,8 @@ func updateLimitsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Pour les nodes, valider contre la capacité réelle si disponible (en GB)
 	if requestData.EntityID != "vm" {
-		// On suppose que proxmoxClient est accessible globalement
+		// Get Proxmox client from state
+		proxmoxClient := state.GetProxmoxClient()
 		if proxmoxClient == nil {
 			http.Error(w, "Proxmox client unavailable for node hardware validation", http.StatusInternalServerError)
 			return

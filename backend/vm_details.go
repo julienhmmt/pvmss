@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/Telmate/proxmox-api-go/proxmox"
 	"pvmss/logger"
+	"pvmss/state"
 )
 
 // apiVmStatusHandler returns the latest status of a VM (no cache)
@@ -24,8 +28,13 @@ func apiVmStatusHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	statusPath := fmt.Sprintf("/nodes/%s/qemu/%s/status/current", node, vmid)
-	proxmoxClient.InvalidateCache(statusPath)
-	status, err := proxmoxClient.GetWithContext(ctx, statusPath)
+	client := state.GetProxmoxClient()
+	if client == nil {
+		http.Error(w, "Proxmox client not initialized", http.StatusInternalServerError)
+		return
+	}
+	client.InvalidateCache(statusPath)
+	status, err := client.GetWithContext(ctx, statusPath)
 	if err != nil {
 		http.Error(w, "Failed to fetch status: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -38,6 +47,13 @@ func apiVmStatusHandler(w http.ResponseWriter, r *http.Request) {
 func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get Proxmox client from state
+	client := state.GetProxmoxClient()
+	if client == nil {
+		http.Error(w, "Proxmox client not initialized", http.StatusInternalServerError)
 		return
 	}
 	action := validateInput(r.FormValue("action"), 20)
@@ -85,22 +101,22 @@ func vmActionHandler(w http.ResponseWriter, r *http.Request) {
 	ref := proxmox.NewVmRef(proxmox.GuestID(id))
 	switch action {
 	case "start":
-		_, err = proxmoxClient.StartVm(ctx, ref)
+		_, err = client.StartVm(ctx, ref)
 	case "stop":
-		_, err = proxmoxClient.StopVm(ctx, ref)
+		_, err = client.StopVm(ctx, ref)
 	case "shutdown":
-		_, err = proxmoxClient.ShutdownVm(ctx, ref)
+		_, err = client.ShutdownVm(ctx, ref)
 	case "reset":
-		_, err = proxmoxClient.ResetVm(ctx, ref)
+		_, err = client.ResetVm(ctx, ref)
 	case "reboot":
-		_, err = proxmoxClient.RebootVm(ctx, ref)
+		_, err = client.RebootVm(ctx, ref)
 	default:
 		http.Error(w, "Unknown action: "+action, http.StatusBadRequest)
 		return
 	}
 	// Invalidate cache for this VM status after any action
 	statusPath := fmt.Sprintf("/nodes/%s/qemu/%s/status/current", node, vmid)
-	proxmoxClient.InvalidateCache(statusPath)
+	client.InvalidateCache(statusPath)
 
 	if err != nil {
 		logger.Get().Error().
@@ -140,9 +156,17 @@ func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
+	// Get Proxmox client from state
+	client := state.GetProxmoxClient()
+	if client == nil {
+		data["Error"] = "Proxmox client not initialized"
+		renderTemplate(w, r, "vm_details.html", data)
+		return
+	}
+
 	// Fetch VM config
 	configPath := fmt.Sprintf("/nodes/%s/qemu/%s/config", node, vmid)
-	config, err := proxmoxClient.GetWithContext(ctx, configPath)
+	config, err := client.GetWithContext(ctx, configPath)
 	if err != nil {
 		logger.Get().Error().
 			Err(err).
@@ -156,7 +180,7 @@ func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch VM status
 	statusPath := fmt.Sprintf("/nodes/%s/qemu/%s/status/current", node, vmid)
-	status, err := proxmoxClient.GetWithContext(ctx, statusPath)
+	status, err := client.GetWithContext(ctx, statusPath)
 	if err != nil {
 		logger.Get().Error().
 			Err(err).
@@ -261,6 +285,22 @@ func vmDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "vm_details.html", data)
 }
 
+// formatMemory converts bytes to human readable format (KB, MB, GB, TB)
+func formatMemory(bytes float64) string {
+	if bytes <= 0 {
+		return "0 B"
+	}
+
+	const unit = 1024
+	sizes := []string{"B", "KB", "MB", "GB", "TB"}
+	exp := int(math.Log(bytes) / math.Log(unit))
+	if exp >= len(sizes) {
+		exp = len(sizes) - 1
+	}
+	size := bytes / math.Pow(unit, float64(exp))
+	return fmt.Sprintf("%.1f %s", size, sizes[exp])
+}
+
 // formatUptime converts seconds to human readable
 func formatUptime(seconds int64) string {
 	d := time.Duration(seconds) * time.Second
@@ -273,6 +313,45 @@ func formatUptime(seconds int64) string {
 		return fmt.Sprintf("%dd %dh %dm", days, hours, minutes)
 	}
 	return fmt.Sprintf("%dh %dm", hours, minutes)
+}
+
+// renderTemplate is a helper function to render HTML templates
+func renderTemplate(w http.ResponseWriter, r *http.Request, tmpl string, data map[string]interface{}) {
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	// Get templates from state
+	templates := state.GetTemplates()
+	if templates == nil {
+		logger.Get().Error().Msg("Templates not initialized")
+		http.Error(w, "Templates not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	// Add i18n data to template context
+	localizePage(w, r, data)
+
+	// Create a buffer to capture the template output
+	var buf bytes.Buffer
+
+	// Execute the specific template
+	err := templates.ExecuteTemplate(&buf, tmpl, data)
+	if err != nil {
+		logger.Get().Error().Err(err).Str("template", tmpl).Msg("Error executing template")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Add the rendered template to the data map as SafeContent (expected by layout)
+	data["SafeContent"] = template.HTML(buf.String())
+
+	// Execute the layout template with the content
+	err = templates.ExecuteTemplate(w, "layout", data)
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Error executing layout template")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // parseBridge extracts the bridge name from a Proxmox network config string

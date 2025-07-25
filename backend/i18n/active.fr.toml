@@ -41,12 +41,12 @@ other = "PVMSS"
 other = "Un portail libre-service simple pour Proxmox Virtual Environment."
 
 # Navbar
+["Navbar.Home"]
+other = "Accueil"
 ["Navbar.Admin"]
 other = "Administration"
 ["Navbar.AdminDocs"]
 other = "Documentation d'administration"
-["Navbar.Home"]
-other = "Accueil"
 ["Navbar.Login"]
 other = "Connexion"
 ["Navbar.Logout"]
@@ -103,6 +103,12 @@ other = "Statut"
 other = "Actions"
 ["Search.VMDetailsButton"]
 other = "Détails de la VM"
+["Search.ResultsFound"]
+other = "résultats trouvés"
+["Search.CardView"]
+other = "Vue Cartes"
+["Search.TableView"]
+other = "Vue Tableau"
 ["Search.Subtitle"]
 other = "Trouvez vos machines virtuelles rapidement et facilement"
 ["Search.ResultsFor"]
