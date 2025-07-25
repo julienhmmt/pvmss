@@ -51,36 +51,36 @@ func getStorages() ([]Storage, error) {
 		log.Error().Interface("result", storagesResult).Msg("Invalid storages result format")
 		return nil, fmt.Errorf("invalid storages result format")
 	}
-	
+
 	data, dataOk := storagesMap["data"].([]interface{})
 	if !dataOk {
 		log.Error().Interface("storagesMap", storagesMap).Msg("Invalid storages data format")
 		return nil, fmt.Errorf("invalid storages data format")
 	}
-	
+
 	for _, item := range data {
 		storageItem, itemOk := item.(map[string]interface{})
 		if !itemOk {
 			log.Debug().Interface("item", item).Msg("Storage item is not a valid map, skipping")
 			continue
 		}
-		
+
 		// Récupérer les propriétés de stockage avec gestion des erreurs de type
 		storageName, nameOk := storageItem["storage"].(string)
 		storageType, typeOk := storageItem["type"].(string)
 		storageContent, contentOk := storageItem["content"].(string)
-		
+
 		if !nameOk || !typeOk || !contentOk {
 			log.Debug().Interface("storageItem", storageItem).Msg("Storage item missing required fields, skipping")
 			continue
 		}
-		
+
 		storage := Storage{
 			Name:    storageName,
 			Type:    storageType,
 			Content: storageContent,
 		}
-		
+
 		if nodes, ok := storageItem["nodes"].(string); ok {
 			storage.Nodes = nodes
 		}

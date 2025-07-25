@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	px "github.com/Telmate/proxmox-api-go/proxmox"
+	"github.com/rs/zerolog/log"
 
 	"pvmss/logger"
 )
@@ -78,7 +78,7 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 
 	// Set up TLS configuration with connection pooling
 	tr := &http.Transport{
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+		TLSClientConfig:    &tls.Config{InsecureSkipVerify: insecureSkipVerify},
 		MaxIdleConns:       10,
 		IdleConnTimeout:    30 * time.Second,
 		DisableCompression: false,
@@ -103,9 +103,9 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 		HttpClient: httpClient,
 		ApiUrl:     apiURL,
 		AuthToken:  authToken,
-		Timeout:    10 * time.Second, // Default timeout
+		Timeout:    10 * time.Second,             // Default timeout
 		cache:      make(map[string]*CacheEntry), // Default cache
-		cacheTTL:   2 * time.Minute, // Default TTL: 2 minutes
+		cacheTTL:   2 * time.Minute,              // Default TTL: 2 minutes
 	}
 
 	// Apply any provided options
@@ -135,7 +135,7 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 		c.mux.RLock()
 		cacheEntry, found := c.cache[path]
 		c.mux.RUnlock()
-		
+
 		if found && time.Since(cacheEntry.Timestamp) < c.cacheTTL {
 			logger.Get().Debug().Str("path", path).Msg("Using cached response")
 			var result map[string]interface{}
@@ -184,7 +184,7 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 		c.mux.RLock()
 		cacheEntry, found := c.cache[path]
 		c.mux.RUnlock()
-		
+
 		if found && time.Since(cacheEntry.Timestamp) < c.cacheTTL {
 			logger.Get().Debug().Str("path", path).Msg("Using cached raw response")
 			return cacheEntry.Data, nil
@@ -193,7 +193,7 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 
 	url := c.ApiUrl + path
 	logger.Get().Info().Str("url", url).Msg("Making API request to Proxmox")
-	
+
 	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -250,7 +250,7 @@ func (c *Client) InvalidateCache(path string) {
 
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	
+
 	if path == "" {
 		// Invalidate all cache
 		c.cache = make(map[string]*CacheEntry)

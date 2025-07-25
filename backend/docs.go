@@ -24,7 +24,7 @@ func serveDocHandler(docType string) http.HandlerFunc {
 		if lang == "" {
 			lang = "en"
 		}
-		
+
 		// Validate docType for security
 		if docType != "admin" && docType != "user" {
 			logger.Get().Warn().
@@ -42,27 +42,27 @@ func serveDocHandler(docType string) http.HandlerFunc {
 
 		// Initialize data map with language support
 		data := map[string]interface{}{"Lang": lang}
-		
+
 		// Add i18n translations
 		localizePage(w, r, data)
-		
+
 		// Set current URL for navigation
 		currentURL := r.URL.Path
 
 		// Get the docs directory path with ultra-robust fallback
 		var docsDir string
-		
+
 		// Try multiple path options for docs directory
 		docsPaths := []string{
-			"./docs",                     // Current directory
-			"../docs",                    // Parent directory  
-			"./backend/docs",             // From project root
-			"/app/backend/docs",           // Container path
-			"/app/docs",                   // Alternative container path
-			"/usr/src/app/backend/docs",   // Alternative container path
-			"/opt/pvmss/docs",             // Alternative container path
+			"./docs",                    // Current directory
+			"../docs",                   // Parent directory
+			"./backend/docs",            // From project root
+			"/app/backend/docs",         // Container path
+			"/app/docs",                 // Alternative container path
+			"/usr/src/app/backend/docs", // Alternative container path
+			"/opt/pvmss/docs",           // Alternative container path
 		}
-		
+
 		// Add runtime.Caller path
 		if _, filename, _, ok := runtime.Caller(0); ok {
 			dir := filepath.Dir(filename)
@@ -71,7 +71,7 @@ func serveDocHandler(docType string) http.HandlerFunc {
 			parentDir := filepath.Dir(dir)
 			docsPaths = append(docsPaths, filepath.Join(parentDir, "docs"))
 		}
-		
+
 		// Find the first existing docs directory
 		for _, path := range docsPaths {
 			if info, err := os.Stat(path); err == nil && info.IsDir() {
@@ -80,11 +80,11 @@ func serveDocHandler(docType string) http.HandlerFunc {
 				break
 			}
 		}
-		
+
 		// Ultimate fallback: create temporary docs directory with embedded content
 		if docsDir == "" {
 			logger.Get().Warn().Strs("searchPaths", docsPaths).Msg("No docs directory found, creating fallback")
-			
+
 			// Create temporary docs directory
 			tempDocsDir := "/tmp/pvmss-docs"
 			if err := os.MkdirAll(tempDocsDir, 0755); err == nil {
@@ -95,7 +95,7 @@ func serveDocHandler(docType string) http.HandlerFunc {
 				}
 			}
 		}
-		
+
 		if docsDir == "" {
 			logger.Get().Error().Strs("searchPaths", docsPaths).Msg("Unable to find or create docs directory")
 			data["Error"] = "Documentation system unavailable"
@@ -105,7 +105,7 @@ func serveDocHandler(docType string) http.HandlerFunc {
 
 		// Build path to markdown file with language support
 		mdPath := filepath.Join(docsDir, fmt.Sprintf("%s.%s.md", docType, lang))
-		
+
 		// Try fallback to English if the requested language file doesn't exist
 		mdBytes, err := os.ReadFile(mdPath)
 		if err != nil {
@@ -116,7 +116,7 @@ func serveDocHandler(docType string) http.HandlerFunc {
 				mdPath = filepath.Join(docsDir, fmt.Sprintf("%s.en.md", docType))
 				mdBytes, err = os.ReadFile(mdPath)
 			}
-			
+
 			if err != nil {
 				logger.Get().Error().
 					Err(err).
@@ -140,20 +140,20 @@ func serveDocHandler(docType string) http.HandlerFunc {
 		// Prepare template data with i18n support
 		titleKey := fmt.Sprintf("Docs.%s.Title", strings.Title(docType))
 		descriptionKey := fmt.Sprintf("Docs.%s.Description", strings.Title(docType))
-		
+
 		data["Title"] = data[titleKey] // Use i18n title if available
 		if data["Title"] == nil {
 			data["Title"] = fmt.Sprintf("%s Documentation", strings.Title(docType))
 		}
-		
-		data["Description"] = data[descriptionKey] // Use i18n description if available  
+
+		data["Description"] = data[descriptionKey] // Use i18n description if available
 		if data["Description"] == nil {
 			data["Description"] = fmt.Sprintf("Documentation for %s features and configuration", docType)
 		}
-		
+
 		data["Content"] = htmltemplate.HTML(htmlStr)
 		data["CurrentURL"] = currentURL
-		
+
 		// Build language switch URLs
 		baseURL := strings.Split(currentURL, "?")[0]
 		data["LangEN"] = fmt.Sprintf("%s?lang=en", baseURL)

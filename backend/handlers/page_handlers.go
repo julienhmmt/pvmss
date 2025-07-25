@@ -135,7 +135,7 @@ func VmbrPageHandler(w http.ResponseWriter, r *http.Request) {
 // DocsHandler handles documentation page requests
 func DocsHandler(w http.ResponseWriter, r *http.Request, docType, lang string) {
 	data := getI18nData(lang)
-	
+
 	// Add documentation-specific data
 	data["DocType"] = docType
 	data["Language"] = lang

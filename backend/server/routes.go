@@ -13,38 +13,38 @@ import (
 
 // setupStaticRoutes configures static file serving
 func setupStaticRoutes(r *http.ServeMux) {
-    // Serve CSS files
-    r.Handle("/css/", http.StripPrefix("/css/", 
-        http.FileServer(http.Dir("frontend/css/"))))
-    
-    // Serve JavaScript files
-    r.Handle("/js/", http.StripPrefix("/js/", 
-        http.FileServer(http.Dir("frontend/js/"))))
-    
-    // Serve root and handle SPA routing
-    r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-        path := r.URL.Path
-        
-        // Try to serve the requested file directly
-        if path != "/" {
-            // Check if it's a CSS or JS file first
-            if strings.HasPrefix(path, "/css/") || strings.HasPrefix(path, "/js/") {
-                // Let the file server handle it
-                http.NotFound(w, r)
-                return
-            }
-            
-            // Try to serve other files from the frontend directory
-            filePath := filepath.Join("frontend", path)
-            if _, err := os.Stat(filePath); err == nil {
-                http.ServeFile(w, r, filePath)
-                return
-            }
-        }
-        
-        // For any other case, use the index handler
-        handlers.IndexHandler(w, r)
-    })
+	// Serve CSS files
+	r.Handle("/css/", http.StripPrefix("/css/",
+		http.FileServer(http.Dir("frontend/css/"))))
+
+	// Serve JavaScript files
+	r.Handle("/js/", http.StripPrefix("/js/",
+		http.FileServer(http.Dir("frontend/js/"))))
+
+	// Serve root and handle SPA routing
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+
+		// Try to serve the requested file directly
+		if path != "/" {
+			// Check if it's a CSS or JS file first
+			if strings.HasPrefix(path, "/css/") || strings.HasPrefix(path, "/js/") {
+				// Let the file server handle it
+				http.NotFound(w, r)
+				return
+			}
+
+			// Try to serve other files from the frontend directory
+			filePath := filepath.Join("frontend", path)
+			if _, err := os.Stat(filePath); err == nil {
+				http.ServeFile(w, r, filePath)
+				return
+			}
+		}
+
+		// For any other case, use the index handler
+		handlers.IndexHandler(w, r)
+	})
 }
 
 // setupAPIRoutes configures API endpoints

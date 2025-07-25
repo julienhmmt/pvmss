@@ -76,7 +76,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		// Check if VM matches search criteria
 		vmID, _ := vm["vmid"].(string)
 		vmName, _ := vm["name"].(string)
-		
+
 		// If search criteria is provided, filter VMs
 		if vmid != "" && vmID != vmid {
 			continue
@@ -84,7 +84,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		if name != "" && !strings.Contains(strings.ToLower(vmName), strings.ToLower(name)) {
 			continue
 		}
-		
+
 		results = append(results, vm)
 	}
 
@@ -201,10 +201,10 @@ func adminHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare template data
 	data := map[string]interface{}{
-		"Nodes":    nodes,
-		"Storages": storageList,
-		"ISOs":     isoFiles,
-		"VMBRs":    vmbrs,
+		"Nodes":     nodes,
+		"Storages":  storageList,
+		"ISOs":      isoFiles,
+		"VMBRs":     vmbrs,
 		"PageTitle": "Admin",
 	}
 

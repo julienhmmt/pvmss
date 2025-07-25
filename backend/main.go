@@ -64,8 +64,6 @@ func initProxmoxClient() (*proxmox.Client, error) {
 	return client, nil
 }
 
-
-
 // loadSettings reads the application configuration from the `settings.json` file
 // and stores it in the state package.
 func loadSettings() error {
@@ -88,7 +86,7 @@ func initTemplates() (*template.Template, error) {
 	if !ok {
 		return nil, fmt.Errorf("could not get current file path")
 	}
-	
+
 	// Go up one directory from the current file location
 	rootDir := filepath.Dir(filepath.Dir(filename))
 	frontendPath := filepath.Join(rootDir, "frontend")

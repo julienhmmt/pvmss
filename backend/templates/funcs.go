@@ -14,40 +14,40 @@ import (
 func GetFuncMap() template.FuncMap {
 	return template.FuncMap{
 		// Conversion functions
-		"int":      convertToInt,
-		"string":   convertToString,
-		"float64":  convertToFloat64,
-		
+		"int":     convertToInt,
+		"string":  convertToString,
+		"float64": convertToFloat64,
+
 		// Memory and formatting functions
-		"formatMemory":  formatMemory,
-		"nodeMemMaxGB":  nodeMemMaxGB,
-		"formatBytes":   formatBytes,
-		
+		"formatMemory": formatMemory,
+		"nodeMemMaxGB": nodeMemMaxGB,
+		"formatBytes":  formatBytes,
+
 		// Collection functions
-		"sort":      sortSlice,
-		"reverse":   reverseSlice,
-		"contains":  containsValue,
-		"length":    getLength,
-		"until":     until,
-		
+		"sort":     sortSlice,
+		"reverse":  reverseSlice,
+		"contains": containsValue,
+		"length":   getLength,
+		"until":    until,
+
 		// String functions
-		"upper":       toUpper,
-		"lower":       toLower,
-		"truncate":    truncateString,
-		"humanBytes":  formatBytes,
-		
+		"upper":      toUpper,
+		"lower":      toLower,
+		"truncate":   truncateString,
+		"humanBytes": formatBytes,
+
 		// Math functions
-		"add":       addNumbers,
-		"subtract":  subtractNumbers,
-		"multiply":  multiplyNumbers,
-		"mul":       multiplyNumbers,
-		"divide":    divideNumbers,
-		"div":       divideNumbers,
-		
+		"add":      addNumbers,
+		"subtract": subtractNumbers,
+		"multiply": multiplyNumbers,
+		"mul":      multiplyNumbers,
+		"divide":   divideNumbers,
+		"div":      divideNumbers,
+
 		// Utility functions
-		"default":   defaultValue,
-		"empty":     isEmpty,
-		"notEmpty":  isNotEmpty,
+		"default":  defaultValue,
+		"empty":    isEmpty,
+		"notEmpty": isNotEmpty,
 	}
 }
 
@@ -246,11 +246,11 @@ func getLength(v interface{}) int {
 
 // String utility functions
 func toUpper(s string) string {
-    return strings.ToUpper(s)
+	return strings.ToUpper(s)
 }
 
 func toLower(s string) string {
-    return strings.ToLower(s)
+	return strings.ToLower(s)
 }
 
 func truncateString(s string, length int) string {

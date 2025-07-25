@@ -239,16 +239,16 @@ func CreateVmHandler(w http.ResponseWriter, r *http.Request) {
 // extractVMConfig extracts VM configuration from form data
 func extractVMConfig(r *http.Request) map[string]interface{} {
 	return map[string]interface{}{
-		"name":     security.ValidateInput(r.FormValue("name"), 100),
-		"node":     security.ValidateInput(r.FormValue("node"), 50),
-		"cores":    parseIntOrDefault(r.FormValue("cores"), 1),
-		"memory":   parseIntOrDefault(r.FormValue("memory"), 1024),
-		"disk":     parseIntOrDefault(r.FormValue("disk"), 10),
-		"storage":  security.ValidateInput(r.FormValue("storage"), 50),
-		"iso":      security.ValidateInput(r.FormValue("iso"), 200),
-		"network":  security.ValidateInput(r.FormValue("network"), 50),
-		"tags":     security.ValidateInput(r.FormValue("tags"), 200),
-		"ostype":   security.ValidateInput(r.FormValue("ostype"), 20),
+		"name":    security.ValidateInput(r.FormValue("name"), 100),
+		"node":    security.ValidateInput(r.FormValue("node"), 50),
+		"cores":   parseIntOrDefault(r.FormValue("cores"), 1),
+		"memory":  parseIntOrDefault(r.FormValue("memory"), 1024),
+		"disk":    parseIntOrDefault(r.FormValue("disk"), 10),
+		"storage": security.ValidateInput(r.FormValue("storage"), 50),
+		"iso":     security.ValidateInput(r.FormValue("iso"), 200),
+		"network": security.ValidateInput(r.FormValue("network"), 50),
+		"tags":    security.ValidateInput(r.FormValue("tags"), 200),
+		"ostype":  security.ValidateInput(r.FormValue("ostype"), 20),
 	}
 }
 

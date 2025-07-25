@@ -154,7 +154,7 @@ func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, err
 	if data, ok := nodeList["data"].([]interface{}); ok {
 		log.Info().Int("count", len(data)).Msg("Found nodes in API response")
 		nodeNames = make([]string, 0, len(data))
-		
+
 		for _, item := range data {
 			if nodeItem, ok := item.(map[string]interface{}); ok {
 				if name, ok := nodeItem["node"].(string); ok {

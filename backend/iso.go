@@ -66,26 +66,26 @@ func allIsosHandler(w http.ResponseWriter, r *http.Request) {
 				logger.Get().Debug().Interface("isoResult", isoResult).Msg("Invalid ISO list data format, skipping")
 				continue
 			}
-			
+
 			for _, item := range data {
 				isoItem, itemOk := item.(map[string]interface{})
 				if !itemOk {
 					logger.Get().Debug().Interface("item", item).Msg("ISO item is not a valid map, skipping")
 					continue
 				}
-				
+
 				ctype, ctypeOk := isoItem["content"].(string)
 				if !ctypeOk || ctype != "iso" {
 					// Si ce n'est pas un ISO ou type invalide, on ignore
 					continue
 				}
-				
+
 				volid, volidOk := isoItem["volid"].(string)
 				if !volidOk {
 					logger.Get().Debug().Interface("isoItem", isoItem).Msg("ISO item missing volid, skipping")
 					continue
 				}
-				
+
 				// Extract the filename from the volid (e.g., 'local:iso/file.iso' -> 'file.iso')
 				nameParts := strings.Split(volid, "/")
 				name := volid // Fallback to full volid
@@ -98,7 +98,7 @@ func allIsosHandler(w http.ResponseWriter, r *http.Request) {
 					VolID:   volid,
 					Name:    name,
 				}
-				
+
 				if size, ok := isoItem["size"].(float64); ok {
 					iso.Size = int64(size)
 				}

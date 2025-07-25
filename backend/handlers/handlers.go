@@ -52,7 +52,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		lang := getLanguage(r)
 		data := getI18nData(lang)
-		
+
 		// Add CSRF token for the form
 		data["CSRFToken"] = security.GenerateCSRFToken(r)
 
@@ -112,7 +112,7 @@ func SearchHandler(w http.ResponseWriter, r *http.Request) {
 				Str("name", name).
 				Str("node", node).
 				Msg("Error performing VM search")
-			
+
 			data["Error"] = fmt.Sprintf("Search error: %v", err)
 		} else {
 			data["Results"] = results
@@ -259,9 +259,9 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 // LogoutHandler handles user logout
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	sm := state.GetSessionManager()
-	
+
 	username := sm.GetString(r.Context(), "username")
-	
+
 	// Destroy session
 	sm.Destroy(r.Context())
 
@@ -358,5 +358,3 @@ func APIVmStatusHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
 }
-
-

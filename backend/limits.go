@@ -58,8 +58,8 @@ func defaultNodeLimits() ResourceLimits {
 func resourceLimitsToMap(limits ResourceLimits) map[string]interface{} {
 	m := map[string]interface{}{
 		"sockets": map[string]int{"min": limits.Sockets.Min, "max": limits.Sockets.Max},
-		"cores":   map[string]int{"min": limits.Cores.Min,   "max": limits.Cores.Max},
-		"ram":     map[string]int{"min": limits.RAM.Min,     "max": limits.RAM.Max},
+		"cores":   map[string]int{"min": limits.Cores.Min, "max": limits.Cores.Max},
+		"ram":     map[string]int{"min": limits.RAM.Min, "max": limits.RAM.Max},
 	}
 	if limits.Disk != nil {
 		m["disk"] = map[string]int{"min": limits.Disk.Min, "max": limits.Disk.Max}

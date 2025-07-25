@@ -19,7 +19,7 @@ func TagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tags := state.GetTags()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(tags); err != nil {
 		logger.Get().Error().Err(err).Msg("Error encoding tags response")
@@ -114,7 +114,7 @@ func UpdateIsoSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// This would update ISO settings - implement as needed
 	logger.Get().Info().Msg("ISO settings update requested")
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }
@@ -128,7 +128,7 @@ func UpdateVmbrSettingsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// This would update VMBR settings - implement as needed
 	logger.Get().Info().Msg("VMBR settings update requested")
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }

@@ -13,7 +13,7 @@ import (
 func Init(level string) {
 	// Set time format
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	
+
 	// Configure console writer for human-friendly output
 	output := zerolog.ConsoleWriter{
 		Out:        os.Stdout,

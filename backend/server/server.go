@@ -73,7 +73,7 @@ func Start(srv *http.Server) {
 // Shutdown gracefully shuts down the server
 func Shutdown(ctx context.Context, srv *http.Server) error {
 	logger.Get().Info().Msg("Graceful shutdown initiated")
-	
+
 	shutdownCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 

@@ -23,19 +23,19 @@ func getLanguage(r *http.Request) string {
 // For full i18n support, we should use the main localizePage function
 func getI18nData(lang string) map[string]interface{} {
 	data := make(map[string]interface{})
-	
+
 	// Set basic data
 	data["Lang"] = lang
 	data["Language"] = lang
 	data["Title"] = "PVMSS"
 	data["IsAuthenticated"] = false // This should be determined by session
-	
+
 	// Add common UI translations
 	if lang == "fr" {
 		data["UI"] = map[string]interface{}{
-			"Header":    "PVMSS - Proxmox VM Self-Service",
-			"Subtitle":  "Interface de gestion de machines virtuelles",
-			"Body":      "Bienvenue dans PVMSS. Cette interface vous permet de gérer vos machines virtuelles Proxmox de manière autonome.",
+			"Header":   "PVMSS - Proxmox VM Self-Service",
+			"Subtitle": "Interface de gestion de machines virtuelles",
+			"Body":     "Bienvenue dans PVMSS. Cette interface vous permet de gérer vos machines virtuelles Proxmox de manière autonome.",
 		}
 		data["Navbar"] = map[string]interface{}{
 			"Home":      "Accueil",
@@ -53,9 +53,9 @@ func getI18nData(lang string) map[string]interface{} {
 	} else {
 		// Default English
 		data["UI"] = map[string]interface{}{
-			"Header":    "PVMSS - Proxmox VM Self-Service",
-			"Subtitle":  "Virtual Machine Management Interface",
-			"Body":      "Welcome to PVMSS. This interface allows you to manage your Proxmox virtual machines autonomously.",
+			"Header":   "PVMSS - Proxmox VM Self-Service",
+			"Subtitle": "Virtual Machine Management Interface",
+			"Body":     "Welcome to PVMSS. This interface allows you to manage your Proxmox virtual machines autonomously.",
 		}
 		data["Navbar"] = map[string]interface{}{
 			"Home":      "Home",
@@ -74,7 +74,7 @@ func getI18nData(lang string) map[string]interface{} {
 
 	// Add footer
 	data["SafeFooter"] = template.HTML("<p>&copy; 2024 PVMSS - Proxmox VM Self-Service</p>")
-	
+
 	return data
 }
 
@@ -110,10 +110,8 @@ func performVMSearch(vmid, name, node string) ([]map[string]interface{}, error) 
 	_ = vmid // Mark parameters as used until proper implementation
 	_ = name
 	_ = node
-	
+
 	results := make([]map[string]interface{}, 0)
-	
+
 	return results, nil
 }
-
-

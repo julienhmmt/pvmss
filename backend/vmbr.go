@@ -52,14 +52,14 @@ func allVmbrsHandler(w http.ResponseWriter, r *http.Request) {
 					if !ntypeOk || ntype != "bridge" {
 						continue
 					}
-					
+
 					// Récupérer le nom de l'interface
 					iface, ifaceOk := netItem["iface"].(string)
 					if !ifaceOk {
 						log.Debug().Interface("netItem", netItem).Msg("Network bridge missing iface name")
 						continue
 					}
-					
+
 					if !uniqueVMBRs[iface] {
 						description := "N/A"
 						if comment, ok := netItem["comment"].(string); ok {
