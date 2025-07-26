@@ -198,6 +198,20 @@ other = "Reset"
 ["VM.Bridge.Description"]
 other = "Bridge for virtual machine network"
 
+# New UI Elements
+["UI.CreateVMDescription"]
+other = "Create and deploy new virtual machines with just a few clicks."
+["UI.DocsDescription"]
+other = "Find detailed guides and documentation to help you get the most out of PVMSS."
+["UI.AdminDescription"]
+other = "Access administrative tools and settings to manage the PVMSS platform."
+["UI.GetStarted"]
+other = "Get Started"
+["UI.ViewDocumentation"]
+other = "View Documentation"
+["UI.AccessAdmin"]
+other = "Access Admin"
+
 # VM Details Page
 ["VMDetails.Label.Name"]
 other = "Name"

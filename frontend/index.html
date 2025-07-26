@@ -1,53 +1,65 @@
 {{define "index"}}
-<header class="hero is-primary is-bold">
-    <div class="hero-body">
-        <div class="container">
-            <h1 class="title">{{index .t "UI.Header"}}</h1>
-            <p class="subtitle">{{index .t "UI.Subtitle"}}</p>
-        </div>
+<header class="hero">
+    <div class="container">
+        <h1 class="title is-2">{{index .t "UI.Header"}}</h1>
+        <p class="subtitle is-4">{{index .t "UI.Subtitle"}}</p>
+        <p class="has-text-white has-text-centered-mobile">{{index .t "UI.Body"}}</p>
     </div>
 </header>
 
 <main class="section">
     <div class="container">
-        <div class="content">
-            <p>{{index .t "UI.Body"}}</p>
-        </div>
-        
-        <div class="columns is-multiline">
+        <div class="columns is-multiline is-centered">
+            <!-- Carte Créer une VM -->
             <div class="column is-4-desktop is-6-tablet">
-                <div class="box has-text-centered">
-                    <h3 class="title is-4">{{index .t "Common.Actions"}}</h3>
-                    <div class="buttons is-centered">
-                        <a href="/create-vm?lang={{.Lang}}" class="button is-primary is-medium">
-                            {{index .t "Navbar.CreateVM"}}
-                        </a>
-                        <a href="/search?lang={{.Lang}}" class="button is-link is-medium">
-                            {{index .t "Navbar.SearchVM"}}
+                <div class="card">
+                    <div class="card-header">
+                        <p class="card-header-title has-text-white">
+                            <span>{{index .t "Navbar.CreateVM"}}</span>
+                        </p>
+                    </div>
+                    <div class="card-content has-text-centered">
+                        <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
+                        <a href="/create-vm?lang={{.Lang}}" class="button is-orange is-medium">
+                            <span>{{index .t "UI.GetStarted"}}</span>
                         </a>
                     </div>
                 </div>
             </div>
             
+            <!-- Carte Documentation -->
             <div class="column is-4-desktop is-6-tablet">
-                <div class="box has-text-centered">
-                    <h3 class="title is-4">{{index .t "Docs.User.Title"}}</h3>
-                    <div class="buttons is-centered">
-                        <a href="/docs/user?lang={{.Lang}}" class="button is-info is-medium">
-                            {{index .t "Navbar.UserDocs"}}
+                <div class="card">
+                    <div class="card-header">
+                        <p class="card-header-title has-text-white">
+                            <span>{{index .t "Docs.User.Title"}}</span>
+                        </p>
+                    </div>
+                    <div class="card-content has-text-centered">
+                        <p class="mb-4">{{index .t "UI.DocsDescription"}}</p>
+                        <a href="/docs/user?lang={{.Lang}}" class="button is-orange is-medium">
+                            <span>{{index .t "UI.ViewDocumentation"}}</span>
                         </a>
                     </div>
                 </div>
             </div>
             
+            <!-- Carte Admin -->
             <div class="column is-4-desktop is-6-tablet">
-                <div class="box has-text-centered">
-                    <h3 class="title is-4">{{index .t "Navbar.Admin"}}</h3>
-                    <div class="buttons is-centered">
-                        <a href="/admin?lang={{.Lang}}" class="button is-warning is-medium">
-                            {{index .t "Navbar.Admin"}}
+                <div class="card">
+                    <div class="card-header">
+                        <p class="card-header-title has-text-white">
+                            <span>{{index .t "Navbar.Admin"}}</span>
+                        </p>
+                    </div>
+                    <div class="card-content has-text-centered">
+                        <p class="mb-4">{{index .t "UI.AdminDescription"}}</p>
+                        <a href="/admin?lang={{.Lang}}" class="button is-orange is-medium">
+                            <span>{{index .t "UI.AccessAdmin"}}</span>
                         </a>
                     </div>
+                </div>
+            </div>
                 </div>
             </div>
         </div>

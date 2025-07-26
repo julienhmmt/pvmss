@@ -40,6 +40,20 @@ other = "PVMSS"
 ["UI.Subtitle"]
 other = "Un portail libre-service simple pour Proxmox Virtual Environment."
 
+# Nouveaux éléments d'interface
+["UI.CreateVMDescription"]
+other = "Créez et déployez de nouvelles machines virtuelles en quelques clics."
+["UI.DocsDescription"]
+other = "Trouvez des guides détaillés et de la documentation pour tirer le meilleur parti de PVMSS."
+["UI.AdminDescription"]
+other = "Accédez aux outils et paramètres d'administration pour gérer la plateforme PVMSS."
+["UI.GetStarted"]
+other = "Commencer"
+["UI.ViewDocumentation"]
+other = "Voir la documentation"
+["UI.AccessAdmin"]
+other = "Accès Admin"
+
 # Navbar
 ["Navbar.Home"]
 other = "Accueil"

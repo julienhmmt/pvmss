@@ -1,9 +1,9 @@
 {{define "navbar"}}
-<nav class="navbar" role="navigation" aria-label="main navigation">
+<nav class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
     <div class="container">
         <div class="navbar-brand">
             <a class="navbar-item" href="/?lang={{.Lang}}">
-                <strong class="has-text-primary">{{index .t "UI.Header"}}</strong>
+                <span class="has-text-weight-bold is-size-4" style="color: #FF8800">{{index .t "UI.Header"}}</span>
             </a>
             <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
                 <span aria-hidden="true"></span>
@@ -15,18 +15,16 @@
         <div id="navbarMenu" class="navbar-menu">
             <div class="navbar-start">
                 <a class="navbar-item" href="/?lang={{.Lang}}">
-                    <span class="icon-text">
-                        <span>{{index .t "Navbar.Home"}}</span>
-                    </span>
+                    <span>{{index .t "Navbar.Home"}}</span>
                 </a>
                 <a class="navbar-item" href="/create-vm">
-                    {{ index .t "Navbar.CreateVM" }}
+                    <span>{{ index .t "Navbar.CreateVM" }}</span>
                 </a>
                 <a class="navbar-item" href="/search">
-                    {{ index .t "Navbar.SearchVM" }}
+                    <span>{{ index .t "Navbar.SearchVM" }}</span>
                 </a>
                 <a class="navbar-item" href="/docs">
-                    {{ index .t "Navbar.Documentation" }}
+                    <span>{{ index .t "Navbar.Documentation" }}</span>
                 </a>
             </div>
 
@@ -34,24 +32,26 @@
                 <div class="navbar-item">
                     <div class="buttons">
                         {{if .IsAuthenticated}}
-                        <a class="button is-primary" href="/admin">
-                            <strong>{{ index .t "Navbar.Admin" }}</strong>
+                        <a class="button is-orange" href="/admin">
+                            <span>{{ index .t "Navbar.Admin" }}</span>
                         </a>
                         <a class="button is-light" href="/logout">
-                            {{ index .t "Navbar.Logout" }}
+                            <span>{{ index .t "Navbar.Logout" }}</span>
                         </a>
                         {{else}}
-                        <a class="button is-light" href="/login">
-                            {{ index .t "Navbar.Login" }}
+                        <a class="button is-orange" href="/login">
+                            <span>{{ index .t "Navbar.Login" }}</span>
                         </a>
                         {{end}}
 
-                        <a href="?lang=en" class="button is-small {{if eq .Lang "en"}}is-primary{{else}}is-light{{end}}">
-                            EN
-                        </a>
-                        <a href="?lang=fr" class="button is-small {{if eq .Lang "fr"}}is-primary{{else}}is-light{{end}}">
-                            FR
-                        </a>
+                        <div class="buttons has-addons">
+                            <a href="?lang=fr" class="button is-small {{if eq .Lang "fr"}}is-orange is-selected{{else}}is-light{{end}}">
+                                FR
+                            </a>
+                            <a href="?lang=en" class="button is-small {{if eq .Lang "en"}}is-orange is-selected{{else}}is-light{{end}}">
+                                EN
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

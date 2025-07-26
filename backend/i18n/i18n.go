@@ -73,22 +73,36 @@ func InitI18n() {
 	// Charger les traductions françaises
 	loadTranslationFile(Bundle, "active.fr.toml")
 
-	// Vérifier que les fichiers ont été chargés en affichant une clé de test
-	enLocalizer := i18n.NewLocalizer(Bundle, "en")
-	_, err := enLocalizer.Localize(&i18n.LocalizeConfig{
-		MessageID: "Navbar.Home",
-	})
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Erreur lors de la vérification de la clé 'Navbar.Home' en anglais")
+	// Vérifier que les fichiers ont été chargés en vérifiant les clés de traduction
+	checkTranslation := func(lang string, keys ...string) {
+		localizer := i18n.NewLocalizer(Bundle, lang)
+		for _, key := range keys {
+			_, err := localizer.Localize(&i18n.LocalizeConfig{
+				MessageID: key,
+			})
+			if err != nil {
+				logger.Get().Error().
+					Err(err).
+					Str("lang", lang).
+					Str("key", key).
+					Msg("Erreur lors de la vérification de la clé de traduction")
+			}
+		}
 	}
 
-	frLocalizer := i18n.NewLocalizer(Bundle, "fr")
-	_, err = frLocalizer.Localize(&i18n.LocalizeConfig{
-		MessageID: "Navbar.Home",
-	})
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Erreur lors de la vérification de la clé 'Navbar.Home' en français")
+	// Vérifier les clés principales en anglais et en français
+	requiredKeys := []string{
+		"Navbar.Home",
+		"UI.CreateVMDescription",
+		"UI.DocsDescription",
+		"UI.AdminDescription",
+		"UI.GetStarted",
+		"UI.ViewDocumentation",
+		"UI.AccessAdmin",
 	}
+
+	checkTranslation("en", requiredKeys...)
+	checkTranslation("fr", requiredKeys...)
 }
 
 // getLocalizer creates a new localizer for the specified language.
@@ -221,6 +235,9 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["UI.Footer"] = Localize(localizer, "UI.Footer")
 	t["UI.Header"] = Localize(localizer, "UI.Header")
 	t["UI.Subtitle"] = Localize(localizer, "UI.Subtitle")
+	t["UI.GetStarted"] = Localize(localizer, "UI.GetStarted")
+	t["UI.ViewDocumentation"] = Localize(localizer, "UI.ViewDocumentation")
+	t["UI.AccessAdmin"] = Localize(localizer, "UI.AccessAdmin")
 
 	// Navbar
 	t["Navbar.Admin"] = Localize(localizer, "Navbar.Admin")

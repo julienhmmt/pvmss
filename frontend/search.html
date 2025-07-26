@@ -110,9 +110,6 @@
                                         <div class="field has-addons">
                                             <p class="control">
                                                 <button class="button is-small" onclick="toggleView()" id="viewToggleBtn">
-                                                    <span class="icon is-small">
-                                                        <i class="fas fa-th-large"></i>
-                                                    </span>
                                                     <span>{{index .t "Search.CardView"}}</span>
                                                 </button>
                                             </p>
@@ -152,16 +149,10 @@
                                             <td class="has-text-centered">
                                                 {{if eq .status "running"}}
                                                     <span class="tag is-success is-light">
-                                                        <span class="icon is-small">
-                                                            <i class="fas fa-play"></i>
-                                                        </span>
                                                         <span>{{index .t "Search.Running"}}</span>
                                                     </span>
                                                 {{else}}
                                                     <span class="tag is-warning is-light">
-                                                        <span class="icon is-small">
-                                                            <i class="fas fa-stop"></i>
-                                                        </span>
                                                         <span>{{index .t "Search.Stopped"}}</span>
                                                     </span>
                                                 {{end}}
@@ -180,9 +171,6 @@
                                                     <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$lang}}" 
                                                        class="button is-primary is-small"
                                                        title="{{index .t "Search.VMDetailsButton"}}">
-                                                        <span class="icon is-small">
-                                                            <i class="fas fa-info-circle"></i>
-                                                        </span>
                                                     </a>
                                                 </div>
                                             </td>
@@ -390,9 +378,6 @@ function toggleView() {
         tableView.classList.remove('is-hidden');
         cardView.classList.add('is-hidden');
         toggleBtn.innerHTML = `
-            <span class="icon is-small">
-                <i class="fas fa-th-large"></i>
-            </span>
             <span>{{index .t "Search.CardView"}}</span>
         `;
     } else {
@@ -400,9 +385,6 @@ function toggleView() {
         tableView.classList.add('is-hidden');
         cardView.classList.remove('is-hidden');
         toggleBtn.innerHTML = `
-            <span class="icon is-small">
-                <i class="fas fa-list"></i>
-            </span>
             <span>{{index .t "Search.TableView"}}</span>
         `;
     }

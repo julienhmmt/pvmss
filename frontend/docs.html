@@ -30,18 +30,12 @@
         <div class="field is-grouped mt-5">
             <p class="control">
                 <a href="/search" class="button is-light">
-                    <span class="icon">
-                        <i class="fas fa-arrow-left" aria-hidden="true"></i>
-                    </span>
                     <span>{{index . "Common.BackToSearch"}}</span>
                 </a>
             </p>
             {{if .IsAuthenticated}}
             <p class="control">
                 <a href="/admin" class="button is-info is-light">
-                    <span class="icon">
-                        <i class="fas fa-cog" aria-hidden="true"></i>
-                    </span>
                     <span>{{index . "Navbar.Admin"}}</span>
                 </a>
             </p>
