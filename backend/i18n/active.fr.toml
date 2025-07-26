@@ -1,14 +1,37 @@
-# Common terms used across multiple pages
+# ===================================
+# PVMSS - French Translations
+# ===================================
+# Organized alphabetically by section and key
+
+# ======
+# Common
+# ======
+["Common.Add"]
+other = "Ajouter"
 ["Common.BackToSearch"]
 other = "Retour à la recherche"
 ["Common.Cancel"]
 other = "Annuler"
+["Common.Create"]
+other = "Créer"
+["Common.Description"]
+other = "Description"
+["Common.Enabled"]
+other = "Activé"
 ["Common.Error"]
-other = "Une erreur est survenue"
-["Error.Title"]
 other = "Erreur"
-["Error.Generic"]
-other = "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur."
+["Common.Max"]
+other = "Max"
+["Common.Memory"]
+other = "Mémoire"
+["Common.Min"]
+other = "Min"
+["Common.Name"]
+other = "Nom"
+["Common.Node"]
+other = "Nœud"
+["Common.Optional"]
+other = "Optionnel"
 ["Common.Reset"]
 other = "Réinitialiser"
 ["Common.Save"]
@@ -17,54 +40,34 @@ other = "Enregistrer"
 other = "✓ Enregistré"
 ["Common.Saving"]
 other = "Enregistrement en cours..."
-["Common.Min"]
-other = "Min"
-["Common.Max"]
-other = "Max"
+["Common.Status"]
+other = "Statut"
+["Common.Storage"]
+other = "Stockage"
 
-# General UI
-["UI.Body"]
-other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
-["UI.Button.Search"]
-other = "Rechercher"
 
-["UI.Footer"]
-other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">&#9829;</span> en Go 1.24+ et Bulma.'
+# ======
+# Errors
+# ======
+["Error.Generic"]
+other = "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur."
+["Error.Title"]
+other = "Erreur"
 
-["UI.Header"]
-other = "Proxmox VM Self-Service"
 
-["Title"]
-other = "PVMSS"
-
-["UI.Subtitle"]
-other = "Un portail libre-service simple pour Proxmox Virtual Environment."
-
-# Nouveaux éléments d'interface
-["UI.CreateVMDescription"]
-other = "Créez et déployez de nouvelles machines virtuelles en quelques clics."
-["UI.DocsDescription"]
-other = "Trouvez des guides détaillés et de la documentation pour tirer le meilleur parti de PVMSS."
-["UI.AdminDescription"]
-other = "Accédez aux outils et paramètres d'administration pour gérer la plateforme PVMSS."
-["UI.GetStarted"]
-other = "Commencer"
-["UI.ViewDocumentation"]
-other = "Voir la documentation"
-["UI.AccessAdmin"]
-other = "Accès Admin"
-
-# Navbar
-["Navbar.Home"]
-other = "Accueil"
-["Navbar.CreateVM"]
-other = "Créer une machine virtuelle"
-["Navbar.Documentation"]
-other = "Documentation"
+# ===========
+# Navigation
+# ===========
 ["Navbar.Admin"]
 other = "Administration"
 ["Navbar.AdminDocs"]
-other = "Documentation d'administration"
+other = "Docs Admin"
+["Navbar.CreateVM"]
+other = "Créer une VM"
+["Navbar.Documentation"]
+other = "Documentation"
+["Navbar.Home"]
+other = "Accueil"
 ["Navbar.Login"]
 other = "Connexion"
 ["Navbar.Logout"]
@@ -72,83 +75,253 @@ other = "Déconnexion"
 ["Navbar.SearchVM"]
 other = "Rechercher une VM"
 ["Navbar.UserDocs"]
-other = "Documentation utilisateur"
+other = "Docs Utilisateur"
 
-# Docs Pages
-["Docs.User.Title"]
-other = "Documentation Utilisateur"
-["Docs.Admin.Title"]
-other = "Documentation Administrateur"
 
-# Login Page
-["Login.Title"]
-other = "Connexion"
-["Login.PasswordLabel"]
-other = "Mot de passe"
-["Login.Button"]
-other = "Connexion"
+# ===========
+# UI Elements
+# ===========
+["Title"]
+other = "PVMSS"
+["UI.AccessAdmin"]
+other = "Accès administrateur"
+["UI.AdminDescription"]
+other = "Accédez aux paramètres d'administration et à la configuration du système."
+["UI.Body"]
+other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
+["UI.Button.Search"]
+other = "Rechercher"
+["UI.CreateVMDescription"]
+other = "Créez et déployez de nouvelles machines virtuelles en quelques clics."
+["UI.DocsDescription"]
+other = "Trouvez des guides et une documentation détaillée pour tirer le meilleur parti de PVMSS."
+["UI.Footer"]
+other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">❤️</span> en Go 1.24+ et Bulma.'
+["UI.GetStarted"]
+other = "Commencer"
+["UI.Header"]
+other = "Proxmox VM Self-Service"
+["UI.Subtitle"]
+other = "Un portail en libre service et simple pour Proxmox VE."
+["UI.ViewDocumentation"]
+other = "Voir la documentation"
 
-# Search Page
-["Search.Title"]
-other = "Recherche de machines virtuelles"
+# ======
+# Search
+# ======
+["Search.ActionsHeader"]
+other = "Actions"
+["Search.CPUs"]
+other = "CPU (Sockets/Cœurs)"
+["Search.CardView"]
+other = "Vue Cartes"
+["Search.Clear"]
+other = "Effacer"
+["Search.Memory"]
+other = "Mémoire"
+["Search.Name"]
+other = "Nom"
+["Search.Node"]
+other = "Nœud"
 ["Search.NoResults"]
 other = "Aucune machine virtuelle ne correspond à vos critères."
 ["Search.NoResultsMessage"]
 other = "Essayez d'ajuster vos critères de recherche ou vérifiez si la VM existe."
-["Search.Clear"]
-other = "Effacer"
-
-# Search input placeholders and titles
+["Search.Placeholder"]
+other = "Rechercher par ID ou Nom..."
 ["Search.PlaceholderName"]
 other = "ex. ma-vm"
 ["Search.PlaceholderVMID"]
 other = "ex. 100"
-["Search.TitleVMID"]
-other = "Veuillez entrer un ID de VM avec 1 à 10 chiffres."
-["Search.TitleName"]
-other = "Veuillez entrer un nom de VM entre 1 et 100 caractères."
-["Search.Placeholder"]
-other = "Rechercher par ID ou Nom..."
-["Search.Submit"]
-other = "Rechercher"
 ["Search.Results"]
 other = "Résultats de la recherche"
-["Search.YouSearchedFor"]
-other = "Vous avez recherché"
-["Search.VMID"]
-other = "ID de la VM"
-["Search.Name"]
-other = "Nom"
-["Search.CPUs"]
-other = "CPU (Sockets/Cœurs)"
-["Search.Memory"]
-other = "Mémoire"
-["Search.Status"]
-other = "Statut"
-["Search.ActionsHeader"]
-other = "Actions"
-["Search.VMDetailsButton"]
-other = "Détails de la VM"
-["Search.ResultsFound"]
-other = "résultats trouvés"
-["Search.CardView"]
-other = "Vue Cartes"
-["Search.TableView"]
-other = "Vue Tableau"
-["Search.Subtitle"]
-other = "Trouvez vos machines virtuelles rapidement et facilement"
 ["Search.ResultsFor"]
 other = "Résultats pour"
-["Search.Node"]
-other = "Nœud"
+["Search.ResultsFound"]
+other = "résultats trouvés"
+["Search.Status"]
+other = "Statut"
 ["Search.Storage"]
 other = "Stockage"
+["Search.Submit"]
+other = "Rechercher"
+["Search.Subtitle"]
+other = "Trouvez vos machines virtuelles rapidement et facilement"
+["Search.TableView"]
+other = "Vue Tableau"
+["Search.Title"]
+other = "Recherche de machines virtuelles"
+["Search.TitleName"]
+other = "Veuillez entrer un nom de VM entre 1 et 100 caractères."
+["Search.TitleVMID"]
+other = "Veuillez entrer un ID de VM avec 1 à 10 chiffres."
+["Search.VMDetailsButton"]
+other = "Détails de la VM"
+["Search.VMID"]
+other = "ID de la VM"
+["Search.YouSearchedFor"]
+other = "Vous avez recherché"
 
-# Nodes Page
+
+# ======
+# Login
+# ======
+["Login.Button"]
+other = "Se connecter"
+["Login.PasswordLabel"]
+other = "Mot de passe"
+["Login.Title"]
+other = "Connexion"
+
+# VM Creation
+["VM.Bridge.Description"]
+other = "Pont pour le réseau de la machine virtuelle"
+
+# VM Creation - Form Sections
+["VM.Create.AddTags"]
+other = "Ajouter des étiquettes"
+["VM.Create.BasicInfo"]
+other = "Informations de base"
+["VM.Create.CreateButton"]
+other = "Créer la VM"
+["VM.Create.CPUCores"]
+other = "Cœurs par socket"
+["VM.Create.CPUSockets"]
+other = "Sockets CPU"
+["VM.Create.Description"]
+other = "Description"
+["VM.Create.DescriptionPlaceholder"]
+other = "Entrez une description (markdown supporté)"
+["VM.Create.DiskSize"]
+other = "Taille du disque (Go)"
+["VM.Create.DiskSizeHelp"]
+other = "Taille du disque en gigaoctets (8 Go minimum)"
+["VM.Create.Header"]
+other = "Créer une machine virtuelle"
+["VM.Create.ISO"]
+other = "Image ISO"
+["VM.Create.ISOImage"]
+other = "Image ISO"  # This appears to be a duplicate of VM.Create.ISO
+["VM.Create.ISOImageHelp"]
+other = "Sélectionnez une image ISO pour installer le système d'exploitation"
+["VM.Create.MediaNetwork"]
+other = "Image ISO & Réseau"
+["VM.Create.Memory"]
+other = "Mémoire (Mo)"
+["VM.Create.MemoryHelp"]
+other = "Quantité de mémoire en mégaoctets (512 Mo minimum)"
+["VM.Create.Network"]
+other = "Pont réseau"
+["VM.Create.NetworkBridgeHelp"]
+other = "Sélectionnez un pont réseau pour connecter la VM"
+["VM.Create.NoBridgesAvailable"]
+other = "Aucun pont réseau disponible"
+["VM.Create.NoISOs"]
+other = "Aucune image ISO disponible. Veuillez contacter un administrateur."
+["VM.Create.NoISOsAvailable"]
+other = "Aucune image ISO disponible"
+["VM.Create.ResetButton"]
+other = "Réinitialiser"
+["VM.Create.Resources"]
+other = "Ressources"
+["VM.Create.SelectISO"]
+other = "Sélectionnez une ISO"
+["VM.Create.SelectNetwork"]
+other = "Sélectionnez un pont réseau"
+["VM.Create.Storage"]
+other = "Stockage (Go)"
+["VM.Create.Tags"]
+other = "Étiquettes"
+["VM.Create.TagsHelp"]
+other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
+["VM.Create.TagsPlaceholder"]
+other = "Appuyez sur Entrée pour ajouter une étiquette"
+["VM.Create.Title"]
+other = "Créer une nouvelle machine virtuelle"
+["VM.Create.VMName"]
+other = "Nom de la VM"
+["VM.Create.VMNameHelp"]
+other = "Un nom unique pour votre machine virtuelle"
+["VM.Create.VMNamePlaceholder"]
+other = "ex. ma-vm-01"
+["VM.Create.VMID"]
+other = "ID VM (Optionnel)"
+["VM.Create.VMID.Help"]
+other = "Si vous laissez ce champ vide, le prochain ID de VM disponible sera automatiquement attribué."
+["VM.Create.VMIDPlaceholder"]
+other = "Auto-attribué si vide"
+
+# ===========
+# VM Details
+# ===========
+["VMDetails.Action.Failed"]
+other = "Échec de l'action: {{.Error}}"
+["VMDetails.Action.Processing"]
+other = "Traitement en cours..."
+["VMDetails.Action.Reboot"]
+other = "Redémarrer"
+["VMDetails.Action.Refresh"]
+other = "Actualiser"
+["VMDetails.Action.Reset"]
+other = "Reset"
+["VMDetails.Action.Shutdown"]
+other = "Éteindre"
+["VMDetails.Action.Start"]
+other = "Démarrer"
+["VMDetails.Action.Status"]
+other = "Statut"
+["VMDetails.Action.Stop"]
+other = "Arrêter"
+["VMDetails.Action.Success"]
+other = "Action réussie"
+["VMDetails.Label.CPU"]
+other = "CPU"
+["VMDetails.Label.Description"]
+other = "Description"
+["VMDetails.Label.Disk"]
+other = "Disque"
+["VMDetails.Label.ID"]
+other = "ID"
+["VMDetails.Label.Name"]
+other = "Nom"
+["VMDetails.Label.Network"]
+other = "Réseau"
+["VMDetails.Label.RAM"]
+other = "Mémoire"
+["VMDetails.Label.Status"]
+other = "Statut"
+["VMDetails.Label.Uptime"]
+other = "Temps de fonctionnement"
+
+
+# ==============
+# Documentation
+# ==============
+["Docs.Admin.Description"]
+other = "Guide complet pour l'administration et la configuration de PVMSS"
+["Docs.Admin.Title"]
+other = "Documentation Administrateur"
+["Docs.User.Description"]
+other = "Instructions pour utiliser PVMSS et gérer vos machines virtuelles"
+["Docs.User.Title"]
+other = "Documentation Utilisateur"
+
+
+# ======
+# Admin
+# ======
+
+# Admin - Limits
+["Admin.Limits.Max"]
+other = "Max"  # Using Common.Max might be better
+["Admin.Limits.Min"]
+other = "Min"  # Using Common.Min might be better
+
+# ======
+# Nodes
+# ======
 ["Nodes.Title"]
 other = "Nœuds"
-["Nodes.NoNodes"]
-other = "Aucun nœud à afficher."
 ["Nodes.Header.Node"]
 other = "Nœud"
 ["Nodes.Header.Status"]
@@ -156,203 +329,103 @@ other = "Statut"
 ["Nodes.Header.CPUUsage"]
 other = "Utilisation CPU"
 ["Nodes.Header.MemoryUsage"]
-other = "Utilisation mémoire"
+other = "Utilisation Mémoire"
 ["Nodes.Header.DiskUsage"]
-other = "Utilisation disque (rootfs)"
+other = "Utilisation Disque"
 ["Nodes.Status.Online"]
 other = "En ligne"
 ["Nodes.Status.Offline"]
 other = "Hors ligne"
-
-# VM Creation Page
-["VM.Create.Title"]
-other = "Créer une nouvelle machine virtuelle"
-["VM.Create.Header"]
-other = "Créer une nouvelle machine virtuelle"
-["VM.Create.NoISOs"]
-other = "Aucune image ISO disponible. Veuillez contacter un administrateur."
-["VM.Create.NoBridges"]
-other = "Aucun pont réseau disponible. Veuillez contacter un administrateur."
-["VM.Create.Tags"]
-other = "Étiquettes"
-["VM.Create.TagsHelp"]
-other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
-["VM.Create.VMName"]
-other = "Nom de la VM"
-["VM.Create.VMNamePlaceholder"]
-other = "ex. ma-vm-01"
-["VM.Create.VMNameHelp"]
-other = "Un nom unique pour votre machine virtuelle"
-["VM.Create.Description"]
-other = "Description"
-["VM.Create.DescriptionPlaceholder"]
-other = "Entrez une description (markdown supporté)"
-["VM.Create.VMID"]
-other = "ID VM (Optionnel)"
-["VM.Create.VMIDPlaceholder"]
-other = "Auto-attribué si vide"
-["VM.Create.VMID.Help"]
-other = "Si vous laissez ce champ vide, le prochain ID de VM disponible sera automatiquement attribué."
-["VM.Create.CPUSockets"]
-other = "Sockets CPU"
-["VM.Create.CPUCores"]
-other = "Cœurs par socket"
-["VM.Create.Memory"]
-other = "Mémoire (Mo)"
-["VM.Create.Storage"]
-other = "Stockage (Go)"
-["VM.Create.ISO"]
-other = "Image ISO"
-["VM.Create.SelectISO"]
-other = "Sélectionnez une ISO"
-["VM.Create.Network"]
-other = "Pont réseau"
-["VM.Create.SelectNetwork"]
-other = "Sélectionnez un pont réseau"
-["VM.Create.CreateButton"]
-other = "Créer la VM"
-["VM.Create.ResetButton"]
-other = "Réinitialiser"
-["VM.Bridge.Description"]
-other = "Pont pour le réseau de la machine virtuelle"
-
-# VM Details Page
-["VMDetails.Label.Name"]
-other = "Nom"
-["VMDetails.Label.ID"]
-other = "ID"
-["VMDetails.Label.Status"]
-other = "Statut"
-["VMDetails.Label.Uptime"]
-other = "Temps de fonctionnement"
-["VMDetails.Label.CPU"]
-other = "CPU"
-["VMDetails.Label.RAM"]
-other = "Mémoire"
-["VMDetails.Label.Disk"]
-other = "Disque"
-["VMDetails.Label.Network"]
-other = "Réseau"
-["VMDetails.Label.Description"]
-other = "Description"
-["VMDetails.Action.Refresh"]
-other = "Actualiser"
-["VMDetails.Action.Start"]
-other = "Démarrer"
-["VMDetails.Action.Stop"]
-other = "Arrêter"
-["VMDetails.Action.Shutdown"]
-other = "Éteindre"
-["VMDetails.Action.Reboot"]
-other = "Redémarrer"
-["VMDetails.Action.Reset"]
-other = "Reset"
-["VMDetails.Action.Processing"]
-other = "Traitement en cours..."
-["VMDetails.Action.Success"]
-other = "Action réussie"
-["VMDetails.Action.Failed"]
-other = "Échec de l'action: {{.Error}}"
-
-# Documentation Pages
-["Docs.Admin.Description"]
-other = "Guide complet pour l'administration et la configuration de PVMSS"
-["Docs.User.Description"]
-other = "Instructions pour utiliser PVMSS et gérer vos machines virtuelles"
-
-# Admin Pages
+["Nodes.NoNodes"]
+other = "Aucun nœud trouvé"
 
 # Admin - ISO Management
-["Admin.ISO.Title"]
-other = "Gestion des ISOs"
 ["Admin.ISO.Description"]
-other = "Ici, vous pouvez gérer quelles images ISO sont disponibles pour les utilisateurs lors de la création d'une nouvelle machine virtuelle."
+other = "Gérez les images ISO disponibles pour l'installation des machines virtuelles."
 ["Admin.ISO.Header.Enabled"]
-other = "Activé"
+other = "Activé"  # Duplicate of Common.Enabled - consider removing if same meaning
 ["Admin.ISO.Header.Name"]
 other = "Nom de l'ISO"
 ["Admin.ISO.Header.Size"]
 other = "Taille (Go)"
 ["Admin.ISO.Header.Storage"]
 other = "Stockage"
+["Admin.ISO.Title"]
+other = "Gestion des ISOs"
 
 # Admin - Storage Management
-["Admin.Storage.Title"]
-other = "Gestion des stockages"
 ["Admin.Storage.Description"]
-other = "Ici, vous pouvez voir tous les stockages disponibles sur votre hôte Proxmox qui peuvent être utilisés pour les machines virtuelles."
-["Admin.Storage.NoStorages"]
-other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
+other = "Affichez et gérez les espaces de stockage disponibles pour les machines virtuelles."
+["Admin.Storage.Error"]
+other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
+["Admin.Storage.Header.Content"]
+other = "Contenu"
 ["Admin.Storage.Header.Name"]
 other = "Nom"
 ["Admin.Storage.Header.Type"]
 other = "Type"
-["Admin.Storage.Header.Content"]
-other = "Contenu"
-["Admin.Storage.Error"]
-other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
+["Admin.Storage.NoStorages"]
+other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
+["Admin.Storage.Title"]
+other = "Gestion des stockages"
 
 # Admin - VMBR Management
-["Admin.VMBR.Title"]
-other = "Gestion des VMBRs"
 ["Admin.VMBR.Description"]
-other = "Ici, vous pouvez gérer quels VMBRs (ponts de réseau virtuels) sont disponibles pour les utilisateurs lors de la création d'une nouvelle machine virtuelle."
-["Admin.VMBR.NoVMBRs"]
-other = "Aucun VMBR trouvé sur aucun nœud."
-["Admin.VMBR.Header.Name"]
-other = "Nom du VMBR"
-["Admin.VMBR.Header.Node"]
-other = "Nœud"
+other = "Gérez les ponts réseau virtuels disponibles pour les machines virtuelles."
+["Admin.VMBR.Error"]
+other = "Erreur lors de la récupération des données. Voir la console pour les détails."
 ["Admin.VMBR.Header.Description"]
 other = "Description"
 ["Admin.VMBR.Header.Enabled"]
 other = "Activé"
-["Admin.VMBR.Error"]
-other = "Erreur lors de la récupération des données. Voir la console pour les détails."
+["Admin.VMBR.Header.Name"]
+other = "Nom du pont réseau"
+["Admin.VMBR.Header.Node"]
+other = "Nœud"
+["Admin.VMBR.NoVMBRs"]
+other = "Aucun pont réseau trouvé sur aucun nœud."
+["Admin.VMBR.Title"]
+other = "Gestion des ponts réseau"
 
 # Admin - Tags Management
-["Admin.Tags.Title"]
-other = "Gestion des tags"
-["Admin.Tags.Description"]
-other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
 ["Admin.Tags.AddButton"]
 other = "Ajouter"
+["Admin.Tags.Description"]
+other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
+["Admin.Tags.Title"]
+other = "Gestion des tags"
 
 # Admin - Resource Limits
-["Admin.Limits.Title"]
-other = "Limites des ressources"
+["Admin.Limits.Cores"]
+other = "Cœurs par socket"
 ["Admin.Limits.Description"]
 other = "Configurez les ressources minimales et maximales pouvant être allouées aux machines virtuelles"
-["Admin.Limits.VMSection"]
-other = "Limites de ressources par défaut des VMs"
+["Admin.Limits.Disk"]
+other = "Espace disque (Go)"
+["Admin.Limits.Error"]
+other = "Erreur"
+["Admin.Limits.GB"]
+other = "Go"
+["Admin.Limits.Memory"]
+other = "Mémoire (Go)"
+["Admin.Limits.NodeLabel"]
+other = "Nœud :"
 ["Admin.Limits.NodeSection"]
 other = "Limites de ressources des nœuds"
 ["Admin.Limits.NoNodes"]
 other = "Aucun nœud n'est disponible pour configurer les limites. Veuillez vérifier votre connexion Proxmox et l'état des nœuds."
-["Admin.Limits.NodeLabel"]
-other = "Nœud :"
-["Admin.Limits.Sockets"]
-other = "Sockets"
-["Admin.Limits.Cores"]
-other = "Cœurs par socket"
-["Admin.Limits.Memory"]
-other = "Mémoire (Go)"
-["Admin.Limits.Disk"]
-other = "Espace disque (Go)"
-["Admin.Limits.Min"]
-other = "Min"
-["Admin.Limits.Max"]
-other = "Max"
-["Admin.Limits.GB"]
-other = "Go"
 ["Admin.Limits.ResetToDefaults"]
 other = "Réinitialiser"
-["Admin.Limits.Saving"]
-other = "Enregistrement..."
 ["Admin.Limits.Saved"]
 other = "✓ Enregistré"
-["Admin.Limits.Error"]
-other = "Erreur"
+["Admin.Limits.Saving"]
+other = "Enregistrement..."
+["Admin.Limits.Sockets"]
+other = "Sockets"
+["Admin.Limits.Title"]
+other = "Limites des ressources"
+["Admin.Limits.VMSection"]
+other = "Limites de ressources par défaut des VMs"
 ["Admin.Limits.DefaultsRestored"]
 other = "Valeurs par défaut restaurées avec succès"
 ["Admin.Limits.Validation.InProgress"]

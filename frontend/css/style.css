@@ -4,109 +4,70 @@
     --primary-hover: #e67300;
 }
 
-/* PVMSS - Simple Orange Theme */
-:root {
-    --primary: #FF8800;
-    --primary-hover: #e67300;
-}
-
 /* Use Bulma's existing classes - minimal overrides */
 .hero.is-primary {
     background: linear-gradient(135deg, var(--primary), var(--primary-hover));
 }
 
+/* Main content spacing */
+.section {
+    padding: 1.5rem 0;
+}
+
+/* Form styling */
+.box {
+    border-radius: 6px;
+    box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.has-text-primary {
+  color: var(--primary) !important;
+}
+
+/* Section headers */
+.box .title {
+    color: #363636;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #f5f5f5;
+}
+
+/* Form fields */
+.field:not(:last-child) {
+    margin-bottom: 1.25rem;
+}
+
+/* Buttons */
 .button.is-primary {
-    background: var(--primary);
+    background-color: var(--primary);
+    border-color: transparent;
+    color: #fff;
 }
 
-.button.is-primary:hover {
-    background: var(--primary-hover);
+.button.is-primary:hover, .button.is-primary.is-hovered {
+    background-color: var(--primary-hover);
+    border-color: transparent;
 }
 
-.tag.is-primary,
-.notification.is-primary {
-    background: var(--primary);
-}
-
-/* Simple VM ID badge fix */
-.vm-id-badge {
-    background: var(--primary);
-    color: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.1rem;
-}
-
-/* Clean card hover */
-.search-result-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-}
-
-/* Simple responsive spacing */
-@media (max-width: 768px) {
-    .container {
-        padding: 0 1rem;
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .columns {
+        flex-direction: column;
+    }
+    
+    .column {
+        width: 100%;
     }
 }
 
-/* Navbar */
-.navbar {
-  background-color: #fff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  min-height: 4rem;
-  position: fixed;
-  width: 100%;
-  top: 0;
-  left: 0;
-  z-index: 1000;
-}
-
-/* Padding pour le contenu principal */
-html {
-  margin-top: 3.25rem; /* Hauteur légèrement réduite */
-  scroll-padding-top: 1rem; /* Espacement de défilement */
-}
-
-body {
-  padding-top: 0;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-#main-content {
-  flex: 1;
-  padding: 0.75rem 0; /* Réduit l'espacement vertical */
-}
-
-.section {
-  padding: 0.5rem 0.75rem; /* Padding réduit */
-  margin-bottom: 1rem;
-}
-
-/* Conteneur principal avec plus d'espace intérieur */
-.container {
-  padding: 0 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-/* Style spécifique pour le formulaire */
-.box {
-  margin-top: 0.5rem; /* Réduit l'espace au-dessus du formulaire */
-  padding: 1.5rem; /* Plus d'espace à l'intérieur du formulaire */
-}
-
-/* Ajustement des champs du formulaire */
-.field:not(:last-child) {
-  margin-bottom: 1rem; /* Espacement entre les champs */
+/* Help text */
+.help {
+    color: #666;
+    font-size: 0.85em;
+    margin-top: 0.25em;
 }
 
 /* Réduire l'espacement des éléments de la navbar */

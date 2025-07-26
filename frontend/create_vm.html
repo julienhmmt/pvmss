@@ -1,159 +1,209 @@
 {{define "create_vm"}}
-<div class="container">
-    <h2 class="title is-4">{{index . "VM.Create.Title"}}</h2>
-    
-    <form method="POST" action="/api/vm/create" class="box">
-        <!-- VM Name -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.VMName"}}</label>
-            <div class="control">
-                <input class="input" type="text" name="name" placeholder='{{index . "VM.Create.VMNamePlaceholder"}}' required>
-            </div>
-            <p class="help">{{index . "VM.Create.VMNameHelp"}}</p>
-        </div>
+<section class="section">
+    <div class="container">
+        <div class="box has-background-white-ter mb-5">
+            <h1 class="title is-4 has-text-centered has-text-weight-bold has-text-primary">
+                {{index .t "VM.Create.Title"}}
+            </h1>
+            <p class="subtitle is-6 has-text-centered has-text-grey mb-5">
+                {{index .t "UI.CreateVMDescription"}}
+            </p>
 
-        <!-- Description -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.Description"}}</label>
-            <div class="control">
-                <textarea class="textarea" name="description" placeholder='{{index . "VM.Create.DescriptionPlaceholder"}}' rows="2"></textarea>
-            </div>
-        </div>
+            <form method="POST" action="/api/vm/create" id="vmCreateForm">
+                <div class="columns is-multiline">
+                    <!-- Left Column -->
+                    <div class="column is-6">
+                        <!-- Basic Information -->
+                        <div class="box mb-5">
+                            <h2 class="title is-5">{{index .t "VM.Create.BasicInfo"}}</h2>
+                            
+                            <!-- VM Name -->
+                            <div class="field">
+                                <label class="label">{{index .t "Common.Name"}}</label>
+                                <div class="control">
+                                    <input class="input" type="text" name="name" 
+                                           placeholder='{{index .t "VM.Create.VMNamePlaceholder"}}' required>
+                                    <p class="help">{{index .t "VM.Create.VMNameHelp"}}</p>
+                                </div>
+                            </div>
 
-        <!-- VM ID -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.VMID"}}</label>
-            <div class="control">
-                <input class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{index . "VM.Create.VMIDPlaceholder"}}'>
-            </div>
-        </div>
+                            <!-- Description -->
+                            <div class="field">
+                                <label class="label">{{index .t "VM.Create.Description"}}</label>
+                                <div class="control">
+                                    <textarea class="textarea" name="description" placeholder='{{index .t "VM.Create.DescriptionPlaceholder"}}' rows="2"></textarea>
+                                </div>
+                            </div>
 
-        <!-- CPU Configuration -->
-        <div class="columns">
-            <div class="column">
-                <div class="field">
-                    <label class="label">{{index . "VM.Create.CPUSockets"}}</label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select name="sockets" required>
-                                {{range $i := until 5}}
-                                <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
-                                {{end}}
-                            </select>
+                            <!-- VM ID -->
+                            <div class="field">
+                                <label class="label">
+                                    {{index .t "VM.Create.VMID"}}
+                                </label>
+                                <div class="control">
+                                    <input class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{index .t "VM.Create.VMIDPlaceholder"}}'>
+                                    <p class="help">{{index .t "VM.Create.VMID.Help"}}</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-            <div class="column">
-                <div class="field">
-                    <label class="label">{{index . "VM.Create.CPUCores"}}</label>
-                    <div class="control">
-                        <div class="select is-fullwidth">
-                            <select name="cores" required>
-                                {{range $i := until 9}}
-                                <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
-                                {{end}}
-                            </select>
+
+                        <!-- Resources -->
+                        <div class="box mb-5">
+                            <h2 class="title is-5">{{index .t "VM.Create.Resources"}}</h2>
+                            
+                            <div class="columns">
+                                <!-- CPU Sockets -->
+                                <div class="column is-6">
+                                    <div class="field">
+                                        <label class="label">{{index .t "VM.Create.CPUSockets"}}</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select name="sockets" required>
+                                                    {{range $i := until 5}}
+                                                    <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                                    {{end}}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- CPU Cores -->
+                                <div class="column is-6">
+                                    <div class="field">
+                                        <label class="label">{{index .t "VM.Create.CPUCores"}}</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select name="cores" required>
+                                                    {{range $i := until 9}}
+                                                    <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                                    {{end}}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Memory -->
+                            <div class="field">
+                                <label class="label">{{index .t "Common.Memory"}}</label>
+                                <div class="field has-addons">
+                                    <div class="control is-expanded">
+                                        <input class="input" type="number" name="memory" min="512" step="128" 
+                                               value="2048" required>
+                                    </div>
+                                    <div class="control">
+                                        <a class="button is-static">MB</a>
+                                    </div>
+                                </div>
+                                <p class="help">{{index .t "VM.Create.MemoryHelp"}}</p>
+                            </div>
+
+                            <!-- Disk Size -->
+                            <div class="field">
+                                <label class="label">{{index .t "VM.Create.DiskSize"}}</label>
+                                <div class="field has-addons">
+                                    <div class="control is-expanded">
+                                        <input class="input" type="number" name="disk_size" min="8" step="1" 
+                                               value="32" required>
+                                    </div>
+                                    <div class="control">
+                                        <a class="button is-static">GB</a>
+                                    </div>
+                                </div>
+                                <p class="help">{{index .t "VM.Create.DiskSizeHelp"}}</p>
+                            </div>
                         </div>
-                    </div>
+                    </div>  <!-- End Left Column -->
+
+                    <!-- Right Column -->
+                    <div class="column is-6">
+                        <!-- Media & Network -->
+                        <div class="box mb-5">
+                            <h2 class="title is-5">{{index .t "VM.Create.MediaNetwork"}}</h2>
+
+                            <!-- ISO Image -->
+                            <div class="field">
+                                <label class="label">
+                                    {{index .t "VM.Create.ISOImage"}}
+                                </label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="iso">
+                                            <option value="">-- {{index .t "VM.Create.SelectISO"}} --</option>
+                                            {{range .ISOs}}
+                                            <option value="{{.Path}}">{{.Name}}</option>
+                                            {{else}}
+                                            <option disabled>{{index .t "VM.Create.NoISOsAvailable"}}</option>
+                                            {{end}}
+                                        </select>
+                                    </div>
+                                </div>
+                                <p class="help">{{index .t "VM.Create.ISOImageHelp"}}</p>
+                            </div>
+
+                            <!-- Network Bridge -->
+                            <div class="field">
+                                <label class="label">{{index .t "VM.Create.Network"}}</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth">
+                                        <select name="bridge" required>
+                                            {{range .Bridges}}
+                                            <option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>
+                                            {{else}}
+                                            <option disabled>{{index .t "VM.Create.NoBridgesAvailable"}}</option>
+                                            {{end}}
+                                        </select>
+                                    </div>
+                                </div>
+                                <p class="help">{{index .t "VM.Create.NetworkBridgeHelp"}}</p>
+                            </div>
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="box mb-5">
+                            <h2 class="title is-5">{{index .t "VM.Create.Tags"}}</h2>
+                            
+                            <div class="field">
+                                <div class="control">
+                                    <div class="field has-addons">
+                                        <div class="control is-expanded">
+                                            <input type="text" class="input" id="tagInput" placeholder='{{index .t "VM.Create.TagsPlaceholder"}}'>
+                                        </div>
+                                        <div class="control">
+                                            <button type="button" id="addTagBtn" class="button is-primary">
+                                                {{index .t "Common.Add"}}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="tagsContainer" class="tags mt-2">
+                                        <!-- Tags will be added here dynamically -->
+                                    </div>
+                                    <input type="hidden" name="tags" id="tagsInput">
+                                </div>
+                                <p class="help">{{index .t "VM.Create.TagsHelp"}}</p>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="box">
+                            <div class="field is-grouped is-justify-content-flex-end">
+                                <div class="control">
+                                    <button type="reset" class="button is-light is-fullwidth">{{index .t "Common.Reset"}}</button>
+                                </div>
+                                <div class="control">
+                                    <button type="submit" class="button is-primary is-fullwidth">{{index .t "Common.Create"}}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>  <!-- End Right Column -->
                 </div>
-            </div>
+            </form>
         </div>
+    </div>
+</section>
 
-        <!-- Memory -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.Memory"}}</label>
-            <div class="control">
-                <input class="input" type="number" name="memory" min="512" value="2048" required>
-            </div>
-        </div>
-
-        <!-- Storage -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.Storage"}}</label>
-            <div class="control">
-                <input class="input" type="number" name="storage" min="10" value="32" required>
-            </div>
-        </div>
-
-        <!-- ISO Image -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.ISO"}}</label>
-            {{if .AvailableISOs}}
-            <div class="control">
-                <div class="select is-fullwidth">
-                    <select name="iso" class="is-hovered" required>
-                        <option value="">{{index . "VM.Create.SelectISO"}}</option>
-                        {{range sort .AvailableISOs}}
-                        <option value="{{.}}" title='{{.}}'>{{.}}</option>
-                        {{end}}
-                    </select>
-                </div>
-            </div>
-            {{else}}
-            <div class="notification is-warning">
-                {{index . "VM.Create.NoISOs"}}
-            </div>
-            {{end}}
-        </div>
-
-        <!-- Tags -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.Tags"}}</label>
-            <div class="control">
-                <div class="tags are-medium">
-                    {{range .AvailableTags}}
-                    <span class="tag is-primary is-light">
-                        <label class="checkbox">
-                            <input type="checkbox" name="tags" value="{{.}}" 
-                                {{if eq . "pvmss"}}checked disabled{{end}}>
-                            <span class="ml-1">{{.}}</span>
-                            {{if eq . "pvmss"}}
-                            <input type="hidden" name="tags" value="pvmss">
-                            {{end}}
-                        </label>
-                    </span>
-                    {{end}}
-                </div>
-            </div>
-            <p class="help">{{index . "VM.Create.TagsHelp"}}</p>
-        </div>
-
-        <!-- Network -->
-        <div class="field">
-            <label class="label">{{index . "VM.Create.Network"}} <span class="has-text-grey is-size-7">({{index . "Common.Optional"}})</span></label>
-            {{if .AvailableBridges}}
-            <div class="control">
-                <div class="select is-fullwidth">
-                    <select name="bridge" class="is-hovered">
-                        <option value="">{{index . "VM.Create.SelectNetwork"}}</option>
-                        {{range $index, $bridge := .AvailableBridges}}
-                        <option value="{{$bridge}}" {{if eq $index 0}}selected{{end}}>{{$bridge}}</option>
-                        {{end}}
-                    </select>
-                </div>
-                <p class="help">{{index . "VM.Bridge.Description"}}</p>
-            </div>
-            {{else}}
-            <div class="notification is-warning">
-                {{index . "VM.Create.NoBridges"}} {{index . "VM.Bridge.Description"}}
-            </div>
-            {{end}}
-        </div>
-
-        <!-- Form Actions -->
-        <div class="field is-grouped mt-5">
-            <div class="control">
-                <button type="submit" class="button is-primary">
-                    <span>{{index . "VM.Create.CreateButton"}}</span>
-                </button>
-            </div>
-            <div class="control">
-                <button type="reset" class="button is-light">
-                    <span>{{index . "VM.Create.ResetButton"}}</span>
-                </button>
-            </div>
-        </div>
-    </form>
-</div>
+<!-- JavaScript pour la gestion des tags -->
+<script src="/static/js/vm-create.js"></script>
 {{end}}

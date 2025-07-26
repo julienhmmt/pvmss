@@ -72,37 +72,6 @@ func InitI18n() {
 
 	// Charger les traductions françaises
 	loadTranslationFile(Bundle, "active.fr.toml")
-
-	// Vérifier que les fichiers ont été chargés en vérifiant les clés de traduction
-	checkTranslation := func(lang string, keys ...string) {
-		localizer := i18n.NewLocalizer(Bundle, lang)
-		for _, key := range keys {
-			_, err := localizer.Localize(&i18n.LocalizeConfig{
-				MessageID: key,
-			})
-			if err != nil {
-				logger.Get().Error().
-					Err(err).
-					Str("lang", lang).
-					Str("key", key).
-					Msg("Erreur lors de la vérification de la clé de traduction")
-			}
-		}
-	}
-
-	// Vérifier les clés principales en anglais et en français
-	requiredKeys := []string{
-		"Navbar.Home",
-		"UI.CreateVMDescription",
-		"UI.DocsDescription",
-		"UI.AdminDescription",
-		"UI.GetStarted",
-		"UI.ViewDocumentation",
-		"UI.AccessAdmin",
-	}
-
-	checkTranslation("en", requiredKeys...)
-	checkTranslation("fr", requiredKeys...)
 }
 
 // getLocalizer creates a new localizer for the specified language.
@@ -216,15 +185,22 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t := make(map[string]string)
 
 	// Common Elements
+	t["Common.Add"] = Localize(localizer, "Common.Add")
 	t["Common.BackToSearch"] = Localize(localizer, "Common.BackToSearch")
 	t["Common.Cancel"] = Localize(localizer, "Common.Cancel")
+	t["Common.Create"] = Localize(localizer, "Common.Create")
 	t["Common.Error"] = Localize(localizer, "Common.Error")
 	t["Common.Max"] = Localize(localizer, "Common.Max")
+	t["Common.Memory"] = Localize(localizer, "Common.Memory")
 	t["Common.Min"] = Localize(localizer, "Common.Min")
+	t["Common.Name"] = Localize(localizer, "Common.Name")
+	t["Common.Node"] = Localize(localizer, "Common.Node")
 	t["Common.Reset"] = Localize(localizer, "Common.Reset")
 	t["Common.Save"] = Localize(localizer, "Common.Save")
 	t["Common.Saved"] = Localize(localizer, "Common.Saved")
 	t["Common.Saving"] = Localize(localizer, "Common.Saving")
+	t["Common.Status"] = Localize(localizer, "Common.Status")
+	t["Common.Storage"] = Localize(localizer, "Common.Storage")
 	t["Error.Generic"] = Localize(localizer, "Error.Generic")
 	t["Error.Title"] = Localize(localizer, "Error.Title")
 
@@ -232,6 +208,7 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Title"] = Localize(localizer, "Title")
 	t["UI.Body"] = Localize(localizer, "UI.Body")
 	t["UI.Button.Search"] = Localize(localizer, "UI.Button.Search")
+	t["UI.CreateVMDescription"] = Localize(localizer, "UI.CreateVMDescription")
 	t["UI.Footer"] = Localize(localizer, "UI.Footer")
 	t["UI.Header"] = Localize(localizer, "UI.Header")
 	t["UI.Subtitle"] = Localize(localizer, "UI.Subtitle")
@@ -264,12 +241,17 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Search.Name"] = Localize(localizer, "Search.Name")
 	t["Search.NoResults"] = Localize(localizer, "Search.NoResults")
 	t["Search.NoResultsMessage"] = Localize(localizer, "Search.NoResultsMessage")
+	t["Search.Node"] = Localize(localizer, "Search.Node")
+	t["Search.Placeholder"] = Localize(localizer, "Search.Placeholder")
 	t["Search.PlaceholderName"] = Localize(localizer, "Search.PlaceholderName")
 	t["Search.PlaceholderVMID"] = Localize(localizer, "Search.PlaceholderVMID")
 	t["Search.Results"] = Localize(localizer, "Search.Results")
+	t["Search.ResultsFor"] = Localize(localizer, "Search.ResultsFor")
 	t["Search.ResultsFound"] = Localize(localizer, "Search.ResultsFound")
 	t["Search.Status"] = Localize(localizer, "Search.Status")
+	t["Search.Storage"] = Localize(localizer, "Search.Storage")
 	t["Search.Submit"] = Localize(localizer, "Search.Submit")
+	t["Search.Subtitle"] = Localize(localizer, "Search.Subtitle")
 	t["Search.TableView"] = Localize(localizer, "Search.TableView")
 	t["Search.Title"] = Localize(localizer, "Search.Title")
 	t["Search.TitleName"] = Localize(localizer, "Search.TitleName")
@@ -292,23 +274,34 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 
 	// VM Creation Page
 	t["VM.Bridge.Description"] = Localize(localizer, "VM.Bridge.Description")
+	t["VM.Create.BasicInfo"] = Localize(localizer, "VM.Create.BasicInfo")
 	t["VM.Create.CPUCores"] = Localize(localizer, "VM.Create.CPUCores")
 	t["VM.Create.CPUSockets"] = Localize(localizer, "VM.Create.CPUSockets")
 	t["VM.Create.CreateButton"] = Localize(localizer, "VM.Create.CreateButton")
 	t["VM.Create.Description"] = Localize(localizer, "VM.Create.Description")
 	t["VM.Create.DescriptionPlaceholder"] = Localize(localizer, "VM.Create.DescriptionPlaceholder")
+	t["VM.Create.DiskSize"] = Localize(localizer, "VM.Create.DiskSize")
+	t["VM.Create.DiskSizeHelp"] = Localize(localizer, "VM.Create.DiskSizeHelp")
 	t["VM.Create.Header"] = Localize(localizer, "VM.Create.Header")
 	t["VM.Create.ISO"] = Localize(localizer, "VM.Create.ISO")
+	t["VM.Create.ISOImage"] = Localize(localizer, "VM.Create.ISOImage")
+	t["VM.Create.ISOImageHelp"] = Localize(localizer, "VM.Create.ISOImageHelp")
+	t["VM.Create.MediaNetwork"] = Localize(localizer, "VM.Create.MediaNetwork")
 	t["VM.Create.Memory"] = Localize(localizer, "VM.Create.Memory")
+	t["VM.Create.MemoryHelp"] = Localize(localizer, "VM.Create.MemoryHelp")
 	t["VM.Create.Network"] = Localize(localizer, "VM.Create.Network")
-	t["VM.Create.NoBridges"] = Localize(localizer, "VM.Create.NoBridges")
+	t["VM.Create.NetworkBridgeHelp"] = Localize(localizer, "VM.Create.NetworkBridgeHelp")
+	t["VM.Create.NoBridgesAvailable"] = Localize(localizer, "VM.Create.NoBridgesAvailable")
 	t["VM.Create.NoISOs"] = Localize(localizer, "VM.Create.NoISOs")
+	t["VM.Create.NoISOsAvailable"] = Localize(localizer, "VM.Create.NoISOsAvailable")
 	t["VM.Create.ResetButton"] = Localize(localizer, "VM.Create.ResetButton")
+	t["VM.Create.Resources"] = Localize(localizer, "VM.Create.Resources")
 	t["VM.Create.SelectISO"] = Localize(localizer, "VM.Create.SelectISO")
 	t["VM.Create.SelectNetwork"] = Localize(localizer, "VM.Create.SelectNetwork")
 	t["VM.Create.Storage"] = Localize(localizer, "VM.Create.Storage")
 	t["VM.Create.Tags"] = Localize(localizer, "VM.Create.Tags")
 	t["VM.Create.TagsHelp"] = Localize(localizer, "VM.Create.TagsHelp")
+	t["VM.Create.TagsPlaceholder"] = Localize(localizer, "VM.Create.TagsPlaceholder")
 	t["VM.Create.Title"] = Localize(localizer, "VM.Create.Title")
 	t["VM.Create.VMID"] = Localize(localizer, "VM.Create.VMID")
 	t["VM.Create.VMID.Help"] = Localize(localizer, "VM.Create.VMID.Help")
@@ -337,13 +330,13 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["VMDetails.Action.Stop"] = Localize(localizer, "VMDetails.Action.Stop")
 	t["VMDetails.Action.Success"] = Localize(localizer, "VMDetails.Action.Success")
 
-	// Documentation Pages
+	// Documentation
 	t["Docs.Admin.Description"] = Localize(localizer, "Docs.Admin.Description")
 	t["Docs.Admin.Title"] = Localize(localizer, "Docs.Admin.Title")
 	t["Docs.User.Description"] = Localize(localizer, "Docs.User.Description")
 	t["Docs.User.Title"] = Localize(localizer, "Docs.User.Title")
 
-	// Admin - ISO Management
+	// Admin Section - ISO
 	t["Admin.ISO.Description"] = Localize(localizer, "Admin.ISO.Description")
 	t["Admin.ISO.Header.Enabled"] = Localize(localizer, "Admin.ISO.Header.Enabled")
 	t["Admin.ISO.Header.Name"] = Localize(localizer, "Admin.ISO.Header.Name")
@@ -351,7 +344,7 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Admin.ISO.Header.Storage"] = Localize(localizer, "Admin.ISO.Header.Storage")
 	t["Admin.ISO.Title"] = Localize(localizer, "Admin.ISO.Title")
 
-	// Admin - Storage Management
+	// Admin Section - Storage
 	t["Admin.Storage.Description"] = Localize(localizer, "Admin.Storage.Description")
 	t["Admin.Storage.Error"] = Localize(localizer, "Admin.Storage.Error")
 	t["Admin.Storage.Header.Content"] = Localize(localizer, "Admin.Storage.Header.Content")
@@ -360,7 +353,7 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Admin.Storage.NoStorages"] = Localize(localizer, "Admin.Storage.NoStorages")
 	t["Admin.Storage.Title"] = Localize(localizer, "Admin.Storage.Title")
 
-	// Admin - VMBR Management
+	// Admin Section - VMBR
 	t["Admin.VMBR.Description"] = Localize(localizer, "Admin.VMBR.Description")
 	t["Admin.VMBR.Error"] = Localize(localizer, "Admin.VMBR.Error")
 	t["Admin.VMBR.Header.Description"] = Localize(localizer, "Admin.VMBR.Header.Description")
@@ -370,36 +363,34 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Admin.VMBR.NoVMBRs"] = Localize(localizer, "Admin.VMBR.NoVMBRs")
 	t["Admin.VMBR.Title"] = Localize(localizer, "Admin.VMBR.Title")
 
-	// Admin - Tags Management
+	// Admin Section - Tags
 	t["Admin.Tags.AddButton"] = Localize(localizer, "Admin.Tags.AddButton")
 	t["Admin.Tags.Description"] = Localize(localizer, "Admin.Tags.Description")
 	t["Admin.Tags.Title"] = Localize(localizer, "Admin.Tags.Title")
 
-	// Admin - Resource Limits
+	// Admin Section - Limits
 	t["Admin.Limits.Cores"] = Localize(localizer, "Admin.Limits.Cores")
 	t["Admin.Limits.DefaultsRestored"] = Localize(localizer, "Admin.Limits.DefaultsRestored")
 	t["Admin.Limits.Description"] = Localize(localizer, "Admin.Limits.Description")
 	t["Admin.Limits.Disk"] = Localize(localizer, "Admin.Limits.Disk")
-	t["Admin.Limits.Error"] = Localize(localizer, "Admin.Limits.Error")
 	t["Admin.Limits.GB"] = Localize(localizer, "Admin.Limits.GB")
 	t["Admin.Limits.Max"] = Localize(localizer, "Admin.Limits.Max")
 	t["Admin.Limits.Memory"] = Localize(localizer, "Admin.Limits.Memory")
 	t["Admin.Limits.Min"] = Localize(localizer, "Admin.Limits.Min")
 	t["Admin.Limits.NetworkError"] = Localize(localizer, "Admin.Limits.NetworkError")
-	t["Admin.Limits.NoNodes"] = Localize(localizer, "Admin.Limits.NoNodes")
 	t["Admin.Limits.NodeLabel"] = Localize(localizer, "Admin.Limits.NodeLabel")
 	t["Admin.Limits.NodeSection"] = Localize(localizer, "Admin.Limits.NodeSection")
+	t["Admin.Limits.NoNodes"] = Localize(localizer, "Admin.Limits.NoNodes")
 	t["Admin.Limits.ResetToDefaults"] = Localize(localizer, "Admin.Limits.ResetToDefaults")
 	t["Admin.Limits.Saved"] = Localize(localizer, "Admin.Limits.Saved")
 	t["Admin.Limits.Saving"] = Localize(localizer, "Admin.Limits.Saving")
 	t["Admin.Limits.Sockets"] = Localize(localizer, "Admin.Limits.Sockets")
 	t["Admin.Limits.Title"] = Localize(localizer, "Admin.Limits.Title")
-	t["Admin.Limits.VMSection"] = Localize(localizer, "Admin.Limits.VMSection")
 	t["Admin.Limits.Validation.InProgress"] = Localize(localizer, "Admin.Limits.Validation.InProgress")
 	t["Admin.Limits.Validation.MinMax"] = Localize(localizer, "Admin.Limits.Validation.MinMax")
-	t["Admin.Limits.Validation.Positive"] = Localize(localizer, "Admin.Limits.Validation.Positive")
 	t["Admin.Limits.Validation.Required"] = Localize(localizer, "Admin.Limits.Validation.Required")
 	t["Admin.Limits.Validation.Success"] = Localize(localizer, "Admin.Limits.Validation.Success")
+	t["Admin.Limits.VMSection"] = Localize(localizer, "Admin.Limits.VMSection")
 
 	// Add the completed translation map to the main data map
 	data["t"] = t

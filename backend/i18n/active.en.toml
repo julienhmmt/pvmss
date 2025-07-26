@@ -36,7 +36,44 @@ other = "Proxmox VM Self-Service"
 other = "PVMSS"
 
 ["UI.Subtitle"]
-other = "A simple self-service portal for Proxmox Virtual Environment."
+other = "A simple self-service portal for Proxmox VE."
+
+# VM Creation
+["VM.Create.BasicInfo"]
+other = "Basic Information"
+
+["VM.Create.Resources"]
+other = "Resources"
+
+["VM.Create.MediaNetwork"]
+other = "Media & Network"
+
+["VM.Create.DiskSize"]
+other = "Disk Size"
+
+["VM.Create.DiskSizeHelp"]
+other = "Disk space in gigabytes (minimum 8GB)"
+
+["VM.Create.ISOImage"]
+other = "ISO Image"
+
+["VM.Create.ISOImageHelp"]
+other = "Select an ISO image to install the operating system"
+
+["VM.Create.MemoryHelp"]
+other = "Amount of memory in megabytes (minimum 512MB)"
+
+["VM.Create.NetworkBridgeHelp"]
+other = "Select a network bridge to connect the VM"
+
+["VM.Create.NoBridgesAvailable"]
+other = "No network bridges available"
+
+["VM.Create.NoISOsAvailable"]
+other = "No ISO images available"
+
+["VM.Create.TagsPlaceholder"]
+other = "Press Enter to add a tag"
 
 # Search page
 ["Search.Title"]
