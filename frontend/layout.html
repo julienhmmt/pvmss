@@ -13,19 +13,16 @@
     
     {{template "navbar" .}}
 
-    <main id="main-content">
-        <!-- {{.SafeContent}} -->
-        {{if .Content}}
-            {{.Content}}
-        {{else}}
-            {{/* Default content if no content template is defined */}}
-            <div class="section">
-                <div class="container">
-                    <h1 class="title">{{.Title}}</h1>
-                    <p>No content available</p>
-                </div>
-            </div>
-        {{end}}
+    <main id="main-content" class="section">
+        <div class="container">
+            {{if .Content}}
+                {{.Content}}
+            {{else}}
+                {{/* Default content if no content template is defined */}}
+                <h1 class="title">{{.Title}}</h1>
+                <p>No content available</p>
+            {{end}}
+        </div>
     </main>
 
     <footer class="footer">

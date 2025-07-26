@@ -3,7 +3,7 @@
     <div class="container">
         <div class="navbar-brand">
             <a class="navbar-item" href="/?lang={{.Lang}}">
-                <span class="has-text-weight-bold is-size-4" style="color: #FF8800">{{index .t "UI.Header"}}</span>
+                <span class="has-text-weight-bold">{{index .t "UI.Header"}}</span>
             </a>
             <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
                 <span aria-hidden="true"></span>
@@ -15,22 +15,30 @@
         <div id="navbarMenu" class="navbar-menu">
             <div class="navbar-start">
                 <a class="navbar-item" href="/?lang={{.Lang}}">
-                    <span>{{index .t "Navbar.Home"}}</span>
+                    <span class="icon-text">
+                        <span>{{index .t "Navbar.Home"}}</span>
+                    </span>
                 </a>
                 <a class="navbar-item" href="/create-vm">
-                    <span>{{ index .t "Navbar.CreateVM" }}</span>
+                    <span class="icon-text">
+                        <span>{{ index .t "Navbar.CreateVM" }}</span>
+                    </span>
                 </a>
                 <a class="navbar-item" href="/search">
-                    <span>{{ index .t "Navbar.SearchVM" }}</span>
+                    <span class="icon-text">
+                        <span>{{ index .t "Navbar.SearchVM" }}</span>
+                    </span>
                 </a>
                 <a class="navbar-item" href="/docs">
-                    <span>{{ index .t "Navbar.Documentation" }}</span>
+                    <span class="icon-text">
+                        <span>{{ index .t "Navbar.Documentation" }}</span>
+                    </span>
                 </a>
             </div>
 
             <div class="navbar-end">
                 <div class="navbar-item">
-                    <div class="buttons">
+                    <div class="buttons are-small">
                         {{if .IsAuthenticated}}
                         <a class="button is-orange" href="/admin">
                             <span>{{ index .t "Navbar.Admin" }}</span>
@@ -44,11 +52,11 @@
                         </a>
                         {{end}}
 
-                        <div class="buttons has-addons">
-                            <a href="?lang=fr" class="button is-small {{if eq .Lang "fr"}}is-orange is-selected{{else}}is-light{{end}}">
+                        <div class="buttons has-addons language-buttons">
+                            <a href="?lang=fr" class="button {{if eq .Lang "fr"}}is-selected{{else}}is-light{{end}}" title="Français">
                                 FR
                             </a>
-                            <a href="?lang=en" class="button is-small {{if eq .Lang "en"}}is-orange is-selected{{else}}is-light{{end}}">
+                            <a href="?lang=en" class="button {{if eq .Lang "en"}}is-selected{{else}}is-light{{end}}" title="English">
                                 EN
                             </a>
                         </div>

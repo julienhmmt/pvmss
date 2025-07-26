@@ -59,28 +59,154 @@
 .navbar {
   background-color: #fff;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  min-height: 4rem;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1000;
 }
+
+/* Padding pour le contenu principal */
+html {
+  margin-top: 3.25rem; /* Hauteur légèrement réduite */
+  scroll-padding-top: 1rem; /* Espacement de défilement */
+}
+
+body {
+  padding-top: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+#main-content {
+  flex: 1;
+  padding: 0.75rem 0; /* Réduit l'espacement vertical */
+}
+
+.section {
+  padding: 0.5rem 0.75rem; /* Padding réduit */
+  margin-bottom: 1rem;
+}
+
+/* Conteneur principal avec plus d'espace intérieur */
+.container {
+  padding: 0 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Style spécifique pour le formulaire */
+.box {
+  margin-top: 0.5rem; /* Réduit l'espace au-dessus du formulaire */
+  padding: 1.5rem; /* Plus d'espace à l'intérieur du formulaire */
+}
+
+/* Ajustement des champs du formulaire */
+.field:not(:last-child) {
+  margin-bottom: 1rem; /* Espacement entre les champs */
+}
+
+/* Réduire l'espacement des éléments de la navbar */
 .navbar-item {
-  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  margin: 0 0.1rem;
+}
+
+.navbar-brand .navbar-item {
+  padding: 0.5rem 1rem;
+}
+
+/* Ajuster l'espacement des sections dans le contenu */
+.section > .container > .section {
+  padding: 0.5rem 0;
+  min-height: auto;
+}
+
+/* Style de la navbar */
+.navbar-item {
+  font-weight: 600;
   color: #4a4a4a;
-  transition: all 0.3s ease;
+  padding: 0.5rem 1rem;
+  margin: 0 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
+
 .navbar-item:hover {
-  color: #FF8800;
-  background-color: transparent !important;
+  color: var(--primary-hover) !important;
+  background-color: rgba(255, 136, 0, 0.1) !important;
 }
-.navbar-brand a.navbar-item:hover {
-  color: #FF8800 !important;
+
+.navbar-brand .navbar-item {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--primary) !important;
+  padding: 0.5rem 1.5rem;
 }
+
 .navbar-burger {
-  height: 4.25rem;
+  height: 4rem;
+  width: 4rem;
 }
+
+.navbar-burger:hover {
+  background-color: rgba(255, 136, 0, 0.1);
+}
+
 .navbar-burger span {
   height: 2px;
   width: 20px;
+  background-color: var(--primary);
+  left: calc(50% - 10px);
 }
-.navbar-item img {
-  max-height: 2.5rem;
+
+/* Style des boutons de langue */
+.language-buttons .button {
+  min-width: 2.5em;
+  padding: 0 0.5em;
+}
+
+/* Style du bouton actif */
+.language-buttons .is-selected {
+  background-color: var(--primary) !important;
+  color: white !important;
+  border-color: var(--primary) !important;
+}
+
+/* Style des boutons d'action */
+.navbar .button {
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.navbar .button.is-orange {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+}
+
+.navbar .button.is-orange:hover {
+  background-color: var(--primary-hover);
+  color: white;
+}
+
+/* Menu mobile */
+@media screen and (max-width: 1023px) {
+  .navbar-menu {
+    background-color: white;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+  
+  .navbar-end {
+    padding: 1rem;
+  }
+  
+  .navbar-item {
+    padding: 0.75rem 1.5rem;
+  }
 }
 
 /* Search */
