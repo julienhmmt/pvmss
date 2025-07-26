@@ -16,6 +16,7 @@ services:
     volumes:
       - pvmss_data:/app/data
       - ./backend/settings.json:/app/settings.json
+      - ./backend/docs:/app/backend/docs:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:50000/health"]
       interval: 30s

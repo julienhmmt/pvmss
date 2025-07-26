@@ -38,33 +38,7 @@ other = "PVMSS"
 ["UI.Subtitle"]
 other = "A simple self-service portal for Proxmox Virtual Environment."
 
-# Navbar
-["Navbar.Home"]
-other = "Home"
-["Navbar.Admin"]
-other = "Administration"
-["Navbar.AdminDocs"]
-other = "Admin Documentation"
-["Navbar.Login"]
-other = "Login"
-["Navbar.Logout"]
-other = "Logout"
-["Navbar.SearchVM"]
-other = "Search a VM"
-["Navbar.UserDocs"]
-other = "User Documentation"
-["Navbar.VMs"]
-other = "Create a virtual machine"
-
-# Login Page
-["Login.Title"]
-other = "Login"
-["Login.PasswordLabel"]
-other = "Password"
-["Login.Button"]
-other = "Login"
-
-# Search Page
+# Search page
 ["Search.Title"]
 other = "Virtual Machine Search"
 ["Search.NoResults"]
@@ -79,6 +53,8 @@ other = "e.g. my-vm"
 other = "e.g. 100"
 ["Search.TitleVMID"]
 other = "Please enter a VM ID with 1 to 10 digits."
+["Search.TitleName"]
+other = "Please enter a VM name between 1 and 100 characters."
 ["Search.Placeholder"]
 other = "Search by VMID or Name..."
 ["Search.Submit"]
@@ -115,6 +91,40 @@ other = "results found"
 other = "Card View"
 ["Search.TableView"]
 other = "Table View"
+
+# Navbar
+["Navbar.Home"]
+other = "Home"
+["Navbar.CreateVM"]
+other = "Create VM"
+["Navbar.Documentation"]
+other = "Documentation"
+["Navbar.Admin"]
+other = "Administration"
+["Navbar.AdminDocs"]
+other = "Admin Documentation"
+["Navbar.Login"]
+other = "Login"
+["Navbar.Logout"]
+other = "Logout"
+["Navbar.SearchVM"]
+other = "Search VM"
+["Navbar.UserDocs"]
+other = "User Documentation"
+
+# Docs Pages
+["Docs.User.Title"]
+other = "User Documentation"
+["Docs.Admin.Title"]
+other = "Administrator Documentation"
+
+# Login page
+["Login.Title"]
+other = "Login"
+["Login.PasswordLabel"]
+other = "Password"
+["Login.Button"]
+other = "Login"
 
 # Nodes Page
 ["Nodes.Title"]
@@ -227,12 +237,8 @@ other = "Action successful"
 other = "Action failed: {{.Error}}"
 
 # Documentation Pages
-["Docs.Admin.Title"]
-other = "Administrator Documentation"
 ["Docs.Admin.Description"]
 other = "Complete guide for PVMSS administration and configuration"
-["Docs.User.Title"]
-other = "User Guide"
 ["Docs.User.Description"]
 other = "Instructions for using PVMSS and managing your virtual machines"
 

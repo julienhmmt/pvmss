@@ -1,11 +1,11 @@
-{{define "resource_limits.html"}}
+{{define "resource_limits"}}
 <div class="container">
     <div class="title is-4">
-        <h2 class="title is-4">{{index . "Admin.Limits.Title"}}</h2>
+        <h2 class="title is-4">{{index .t "Admin.Limits.Title"}}</h2>
     </div>
 
     <div class="notification is-light">
-        {{index . "Admin.Limits.Description"}}
+        {{index .t "Admin.Limits.Description"}}
     </div>
 
     <!-- VM Limits -->
@@ -19,13 +19,13 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index . "Admin.Limits.Sockets"}}</h3>
+                                        <h3 class="title is-6">{{index .t "Admin.Limits.Sockets"}}</h3>
                                     </div>
                                 </div>
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Min"}}</label>
+                                        <label class="label">{{index .t "Common.Min"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">
@@ -42,7 +42,7 @@
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Max"}}</label>
+                                        <label class="label">{{index .t "Common.Max"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">
@@ -63,13 +63,13 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index . "Admin.Limits.Cores"}}</h3>
+                                        <h3 class="title is-6">{{index .t "Admin.Limits.Cores"}}</h3>
                                     </div>
                                 </div>
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Min"}}</label>
+                                        <label class="label">{{index .t "Common.Min"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">
@@ -87,7 +87,7 @@
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Max"}}</label>
+                                        <label class="label">{{index .t "Common.Max"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">
@@ -113,13 +113,13 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index . "Admin.Limits.Memory"}}</h3>
+                                        <h3 class="title is-6">{{index .t "Admin.Limits.Memory"}}</h3>
                                     </div>
                                 </div>
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Min"}}</label>
+                                        <label class="label">{{index .t "Common.Min"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">
@@ -137,7 +137,7 @@
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Max"}}</label>
+                                        <label class="label">{{index .t "Common.Max"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">
@@ -160,13 +160,13 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index . "Admin.Limits.Disk"}}</h3>
+                                        <h3 class="title is-6">{{index .t "Admin.Limits.Disk"}}</h3>
                                     </div>
                                 </div>
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Min"}}</label>
+                                        <label class="label">{{index .t "Common.Min"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">
@@ -184,7 +184,7 @@
                                 
                                 <div class="field is-horizontal">
                                     <div class="field-label is-normal">
-                                        <label class="label">{{index . "Common.Max"}}</label>
+                                        <label class="label">{{index .t "Common.Max"}}</label>
                                     </div>
                                     <div class="field-body">
                                         <div class="field">

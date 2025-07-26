@@ -1,6 +1,5 @@
-{{define "search.html"}}
+{{define "search"}}
 {{$lang := .Lang}}
-{{$t := .}}
 
 <!-- Search Page Template -->
 <section class="section">
@@ -14,11 +13,11 @@
                         <div class="container has-text-centered">
                             <h1 class="title is-2 has-text-white">
                                 <span class="icon-text">
-                                    <span>{{$t.Search.Title}}</span>
+                                    <span>{{index .t "Search.Title"}}</span>
                                 </span>
                             </h1>
                             <p class="subtitle has-text-white">
-                                {{$t.Search.Subtitle}}
+                                {{index .t "Search.Subtitle"}}
                             </p>
                         </div>
                     </div>
@@ -27,16 +26,15 @@
                 <!-- Search Form Card -->
                 <div class="card mb-5">
                     <div class="card-content">
-                        <form action="/search" method="POST" class="form-container">
+                        <form action="/search?lang={{$lang}}" method="POST" class="form-container">
                             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                            <input type="hidden" name="lang" value="{{$lang}}">
                             
                             <div class="columns is-multiline">
                                 <div class="column is-6-desktop">
                                     <div class="field">
                                         <label class="label has-text-weight-semibold" for="vmid">
                                             <span class="icon-text">
-                                                <span>{{$t.Search.VMID}}</span>
+                                                <span>{{index .t "Search.VMID"}}</span>
                                             </span>
                                         </label>
                                         <div class="control">
@@ -44,13 +42,13 @@
                                                    type="number" 
                                                    id="vmid" 
                                                    name="vmid" 
-                                                   placeholder="{{$t.Search.PlaceholderVMID}}"
+                                                   placeholder="{{index .t "Search.PlaceholderVMID"}}"
                                                    min="1" 
                                                    max="999999"
                                                    {{if .FormData.vmid}}value="{{.FormData.vmid}}"{{end}}>
                                         </div>
                                         <p id="vmid-help" class="help has-text-grey">
-                                            <small>{{$t.Search.TitleVMID}}</small>
+                                            <small>{{index .t "Search.TitleVMID"}}</small>
                                         </p>
                                     </div>
                                 </div>
@@ -58,14 +56,14 @@
                                 <div class="column is-6-desktop">
                                     <div class="field">
                                         <label class="label has-text-weight-semibold" for="name">
-                                            {{$t.Search.Name}}
+                                            {{index .t "Search.Name"}}
                                         </label>
                                         <div class="control">
                                             <input class="input is-medium" 
                                                    type="text" 
                                                    id="name" 
                                                    name="name" 
-                                                   placeholder="{{$t.Search.PlaceholderName}}"
+                                                   placeholder="{{index .t "Search.PlaceholderName"}}"
                                                    maxlength="100"
                                                    {{if .FormData.name}}value="{{.FormData.name}}"{{end}}>
                                         </div>
@@ -76,12 +74,12 @@
                             <div class="field is-grouped is-grouped-centered mt-5">
                                 <div class="control">
                                     <button type="submit" class="button is-primary is-medium has-text-weight-semibold">
-                                        {{$t.Search.Submit}}
+                                        {{index .t "Search.Submit"}}
                                     </button>
                                 </div>
                                 <div class="control">
                                     <a href="/search?lang={{$lang}}" class="button is-light is-medium">
-                                        {{$t.Search.Clear}}
+                                        {{index .t "Search.Clear"}}
                                     </a>
                                 </div>
                             </div>
@@ -94,7 +92,7 @@
                 <div class="section">
                     <div class="container">
                         <h2 class="title is-4 has-text-centered mb-5">
-                            {{$t.Search.ResultsFor}} "{{.Query}}"
+                            {{index .t "Search.ResultsFor"}} "{{.Query}}"
                         </h2>
                         
                         {{if .Results}}
@@ -103,7 +101,7 @@
                                 <div class="level-left">
                                     <div class="level-item">
                                         <p class="subtitle is-5">
-                                            <strong>{{len .Results}}</strong> {{$t.Search.ResultsFound}}
+                                            <strong>{{len .Results}}</strong> {{index .t "Search.ResultsFound"}}
                                         </p>
                                     </div>
                                 </div>
@@ -115,7 +113,7 @@
                                                     <span class="icon is-small">
                                                         <i class="fas fa-th-large"></i>
                                                     </span>
-                                                    <span>{{$t.Search.CardView}}</span>
+                                                    <span>{{index .t "Search.CardView"}}</span>
                                                 </button>
                                             </p>
                                         </div>
@@ -127,14 +125,14 @@
                                 <table class="table is-fullwidth is-hoverable">
                                     <thead>
                                         <tr>
-                                            <th class="is-narrow">{{$t.Search.VMID}}</th>
-                                            <th>{{$t.Search.Name}}</th>
-                                            <th>{{$t.Search.Node}}</th>
-                                            <th class="has-text-centered">{{$t.Search.Status}}</th>
-                                            <th class="has-text-centered">{{$t.Search.CPUs}}</th>
-                                            <th class="has-text-centered">{{$t.Search.Memory}}</th>
-                                            <th class="has-text-centered">{{$t.Search.Storage}}</th>
-                                            <th class="has-text-centered">{{$t.Search.Actions}}</th>
+                                            <th class="is-narrow">{{index .t "Search.VMID"}}</th>
+                                            <th>{{index .t "Search.Name"}}</th>
+                                            <th>{{index .t "Search.Node"}}</th>
+                                            <th class="has-text-centered">{{index .t "Search.Status"}}</th>
+                                            <th class="has-text-centered">{{index .t "Search.CPU"}}</th>
+                                            <th class="has-text-centered">{{index .t "Search.Memory"}}</th>
+                                            <th class="has-text-centered">{{index .t "Search.Storage"}}</th>
+                                            <th class="has-text-centered">{{index .t "Search.Actions"}}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -157,14 +155,14 @@
                                                         <span class="icon is-small">
                                                             <i class="fas fa-play"></i>
                                                         </span>
-                                                        <span>{{$t.Search.Running}}</span>
+                                                        <span>{{index .t "Search.Running"}}</span>
                                                     </span>
                                                 {{else}}
                                                     <span class="tag is-warning is-light">
                                                         <span class="icon is-small">
                                                             <i class="fas fa-stop"></i>
                                                         </span>
-                                                        <span>{{$t.Search.Stopped}}</span>
+                                                        <span>{{index .t "Search.Stopped"}}</span>
                                                     </span>
                                                 {{end}}
                                             </td>
@@ -181,7 +179,7 @@
                                                 <div class="buttons is-centered are-small">
                                                     <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$lang}}" 
                                                        class="button is-primary is-small"
-                                                       title="{{index $t "Search.VMDetailsButton"}}">
+                                                       title="{{index .t "Search.VMDetailsButton"}}">
                                                         <span class="icon is-small">
                                                             <i class="fas fa-info-circle"></i>
                                                         </span>
@@ -210,32 +208,32 @@
                                                     <div class="content">
                                                         <h4 class="title is-5 mb-2">{{.name}}</h4>
                                                         <div class="tags are-small">
-                                                            <span class="tag is-primary">{{index $t "Search.VMID"}} {{printf "%.0f" .vmid}}</span>
+                                                            <span class="tag is-primary">{{index .t "Search.VMID"}} {{printf "%.0f" .vmid}}</span>
                                                             <span class="tag is-info">{{.node}}</span>
                                                             {{if eq .status "running"}}
-                                                                <span class="tag is-success">{{index $t "Search.Running"}}</span>
+                                                                <span class="tag is-success">{{index .t "Search.Running"}}</span>
                                                             {{else}}
-                                                                <span class="tag is-warning">{{index $t "Search.Stopped"}}</span>
+                                                                <span class="tag is-warning">{{index .t "Search.Stopped"}}</span>
                                                             {{end}}
                                                         </div>
                                                         <div class="columns is-mobile">
                                                             <div class="column has-text-centered">
-                                                                <p class="heading is-size-7">{{index $t "Search.CPUs"}}</p>
+                                                                <p class="heading is-size-7">{{index .t "Search.CPUs"}}</p>
                                                                 <p class="title is-6">{{.cpus}}</p>
                                                             </div>
                                                             <div class="column has-text-centered">
-                                                                <p class="heading is-size-7">{{index $t "Search.Memory"}}</p>
+                                                                <p class="heading is-size-7">{{index .t "Search.Memory"}}</p>
                                                                 <p class="title is-6">{{formatMemory .maxmem}}</p>
                                                             </div>
                                                             <div class="column has-text-centered">
-                                                                <p class="heading is-size-7">{{index $t "Search.Storage"}}</p>
+                                                                <p class="heading is-size-7">{{index .t "Search.Storage"}}</p>
                                                                 <p class="title is-6">{{formatMemory .maxdisk}}</p>
                                                             </div>
                                                         </div>
                                                         <div class="has-text-centered mt-3">
                                                             <a href="/vm/details?vmid={{printf "%.0f" .vmid}}&node={{.node}}&lang={{$lang}}" 
                                                                class="button is-primary is-small">
-                                                                {{index $t "Search.VMDetailsButton"}}
+                                                                {{index .t "Search.VMDetailsButton"}}
                                                             </a>
                                                         </div>
                                                     </div>
@@ -250,8 +248,8 @@
                         <div class="notification is-warning is-light">
                             <div class="content has-text-centered">
                                 
-                                <p class="is-size-5 has-text-weight-semibold mt-3">{{index $t "Search.NoResults"}}</p>
-                                <p class="has-text-grey">{{index $t "Search.NoResultsMessage"}}</p>
+                                <p class="is-size-5 has-text-weight-semibold mt-3">{{index .t "Search.NoResults"}}</p>
+                                <p class="has-text-grey">{{index .t "Search.NoResultsMessage"}}</p>
                             </div>
                         </div>
                         {{end}}
@@ -395,7 +393,7 @@ function toggleView() {
             <span class="icon is-small">
                 <i class="fas fa-th-large"></i>
             </span>
-            <span>{{index $t "Search.CardView"}}</span>
+            <span>{{index .t "Search.CardView"}}</span>
         `;
     } else {
         // Show card view
@@ -405,7 +403,7 @@ function toggleView() {
             <span class="icon is-small">
                 <i class="fas fa-list"></i>
             </span>
-            <span>{{index $t "Search.TableView"}}</span>
+            <span>{{index .t "Search.TableView"}}</span>
         `;
     }
 }

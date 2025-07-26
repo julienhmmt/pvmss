@@ -4,14 +4,18 @@ package templates
 import (
 	"fmt"
 	"html/template"
+	"net/http"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"pvmss/security"
 )
 
-// GetFuncMap returns the function map for template functions
-func GetFuncMap() template.FuncMap {
+// GetBaseFuncMap returns functions that don't depend on the request
+func GetBaseFuncMap() template.FuncMap {
 	return template.FuncMap{
 		// Conversion functions
 		"int":     convertToInt,
@@ -48,6 +52,9 @@ func GetFuncMap() template.FuncMap {
 		"default":  defaultValue,
 		"empty":    isEmpty,
 		"notEmpty": isNotEmpty,
+
+		// Utility functions that don't depend on the request
+		"formatDuration": formatDuration,
 	}
 }
 
@@ -155,19 +162,66 @@ func nodeMemMaxGB(node interface{}) int64 {
 	return 8 // Default to 8GB
 }
 
+// GetFuncMap returns a function map with request-aware functions
+func GetFuncMap(r *http.Request) template.FuncMap {
+	// Start with base functions
+	funcMap := GetBaseFuncMap()
+
+	// Add request-aware functions if request is provided
+	if r != nil {
+		// Add request context to the function map
+		funcMap["csrfToken"] = func() template.HTML {
+			token := security.GenerateCSRFToken(r)
+			return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, token))
+		}
+
+		funcMap["csrfMeta"] = func() template.HTML {
+			token := security.GenerateCSRFToken(r)
+			return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, token))
+		}
+
+		funcMap["isRateLimited"] = func(ip string) bool {
+			return !security.CheckRateLimit(ip)
+		}
+
+		// Add request info functions
+		funcMap["isHTTPS"] = func() bool { return r.TLS != nil }
+		funcMap["host"] = func() string { return r.Host }
+	}
+
+	return funcMap
+}
+
+// formatDuration formats a time.Duration to a human-readable string
+func formatDuration(d time.Duration) string {
+	d = d.Round(time.Second)
+	h := d / time.Hour
+	d -= h * time.Hour
+	m := d / time.Minute
+	d -= m * time.Minute
+	s := d / time.Second
+
+	if h > 0 {
+		return fmt.Sprintf("%dh %dm %ds", h, m, s)
+	} else if m > 0 {
+		return fmt.Sprintf("%dm %ds", m, s)
+	}
+	return fmt.Sprintf("%ds", s)
+}
+
 // formatBytes formats bytes to human readable format
 func formatBytes(bytes interface{}) string {
 	b := convertToFloat64(bytes)
 	const unit = 1024
 	if b < unit {
-		return fmt.Sprintf("%.0f B", b)
+		return fmt.Sprintf("%d B", int64(b))
 	}
 	div, exp := int64(unit), 0
 	for n := b / unit; n >= unit; n /= unit {
 		div *= unit
 		exp++
 	}
-	return fmt.Sprintf("%.1f %cB", b/float64(div), "KMGTPE"[exp])
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
 // sortSlice sorts a slice of strings

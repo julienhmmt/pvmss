@@ -1,0 +1,61 @@
+{{define "navbar"}}
+<nav class="navbar" role="navigation" aria-label="main navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/?lang={{.Lang}}">
+                <strong class="has-text-primary">{{index .t "UI.Header"}}</strong>
+            </a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+        </div>
+
+        <div id="navbarMenu" class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="/?lang={{.Lang}}">
+                    <span class="icon-text">
+                        <span>{{index .t "Navbar.Home"}}</span>
+                    </span>
+                </a>
+                <a class="navbar-item" href="/create-vm">
+                    {{ index .t "Navbar.CreateVM" }}
+                </a>
+                <a class="navbar-item" href="/search">
+                    {{ index .t "Navbar.SearchVM" }}
+                </a>
+                <a class="navbar-item" href="/docs">
+                    {{ index .t "Navbar.Documentation" }}
+                </a>
+            </div>
+
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <div class="buttons">
+                        {{if .IsAuthenticated}}
+                        <a class="button is-primary" href="/admin">
+                            <strong>{{ index .t "Navbar.Admin" }}</strong>
+                        </a>
+                        <a class="button is-light" href="/logout">
+                            {{ index .t "Navbar.Logout" }}
+                        </a>
+                        {{else}}
+                        <a class="button is-light" href="/login">
+                            {{ index .t "Navbar.Login" }}
+                        </a>
+                        {{end}}
+
+                        <a href="?lang=en" class="button is-small {{if eq .Lang "en"}}is-primary{{else}}is-light{{end}}">
+                            EN
+                        </a>
+                        <a href="?lang=fr" class="button is-small {{if eq .Lang "fr"}}is-primary{{else}}is-light{{end}}">
+                            FR
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+{{end}}

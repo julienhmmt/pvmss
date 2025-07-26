@@ -11,72 +11,21 @@
 </head>
 <body>
     
-    <nav class="navbar" role="navigation" aria-label="main navigation">
-        <div class="container">
-            <div class="navbar-brand">
-                <a class="navbar-item" href="/?lang={{.Lang}}" aria-label="PVMSS Home">
-                    <strong class="has-text-primary">{{.Title}}</strong>
-                </a>
-                <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
-                    <span aria-hidden="true"></span>
-                    <span aria-hidden="true"></span>
-                    <span aria-hidden="true"></span>
-                </a>
-            </div>
-
-            <div id="navbarMenu" class="navbar-menu">
-                <div class="navbar-start">
-                    <a class="navbar-item" href="/?lang={{.Lang}}">
-                        <span class="icon-text">
-                            <span>{{.Navbar.Home}}</span>
-                        </span>
-                    </a>
-                    <a class="navbar-item" href="/search?lang={{.Lang}}">
-                        <span class="icon-text">
-                            <span>{{.Navbar.SearchVM}}</span>
-                        </span>
-                    </a>
-                    <a class="navbar-item" href="/create-vm?lang={{.Lang}}">
-                        <span class="icon-text">
-                            <span>{{.Navbar.VMs}}</span>
-                        </span>
-                    </a>
-                </div>
-
-                <div class="navbar-end">
-                    <div class="navbar-item">
-                        <div class="field is-grouped">
-                            <p class="control">
-                                <a href="/?lang=en" class="button is-small" aria-label="English">EN</a>
-                            </p>
-                            <p class="control">
-                                <a href="/?lang=fr" class="button is-small" aria-label="Français">FR</a>
-                            </p>
-                        </div>
-                    </div>
-                    {{if .IsAuthenticated}}
-                    <div class="navbar-item has-dropdown is-hoverable">
-                        <a class="navbar-link">{{.Navbar.Admin}}</a>
-                        <div class="navbar-dropdown is-right">
-                            <a class="navbar-item" href="/admin?lang={{.Lang}}">{{.Navbar.Admin}}</a>
-                            <a class="navbar-item" href="/docs/admin?lang={{.Lang}}">{{.Navbar.AdminDocs}}</a>
-                        </div>
-                    </div>
-                    <div class="navbar-item">
-                        <a href="/logout?lang={{.Lang}}" class="button is-primary is-light">{{.Navbar.Logout}}</a>
-                    </div>
-                    {{else}}
-                    <div class="navbar-item">
-                        <a href="/login?lang={{.Lang}}" class="button is-primary is-light">{{.Navbar.Login}}</a>
-                    </div>
-                    {{end}}
-                </div>
-            </div>
-        </div>
-    </nav>
+    {{template "navbar" .}}
 
     <main id="main-content">
-        {{.SafeContent}}
+        <!-- {{.SafeContent}} -->
+        {{if .Content}}
+            {{.Content}}
+        {{else}}
+            {{/* Default content if no content template is defined */}}
+            <div class="section">
+                <div class="container">
+                    <h1 class="title">{{.Title}}</h1>
+                    <p>No content available</p>
+                </div>
+            </div>
+        {{end}}
     </main>
 
     <footer class="footer">

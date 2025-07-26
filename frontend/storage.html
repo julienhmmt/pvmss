@@ -1,7 +1,7 @@
-{{define "storage.html"}}
-<h2 class="title is-4">{{index . "Admin.Storage.Title"}}</h2>
+{{define "storage"}}
+<h2 class="title is-4">{{index .t "Admin.Storage.Title"}}</h2>
 <div class="notification is-light">
-    {{index . "Admin.Storage.Description"}}
+    {{index .t "Admin.Storage.Description"}}
 </div>
 <div id="storage-list" class="mb-4"></div>
 
@@ -25,9 +25,9 @@
                         const thead = document.createElement('thead');
                         thead.innerHTML = `
                             <tr>
-                                <th>{{index . "Admin.Storage.Header.Name"}}</th>
-                                <th>{{index . "Admin.Storage.Header.Type"}}</th>
-                                <th>{{index . "Admin.Storage.Header.Content"}}</th>
+                                <th>{{index .t "Admin.Storage.Header.Name"}}</th>
+                                <th>{{index .t "Admin.Storage.Header.Type"}}</th>
+                                <th>{{index .t "Admin.Storage.Header.Content"}}</th>
                             </tr>
                         `;
                         table.appendChild(thead);
@@ -46,7 +46,7 @@
 
                         storageList.appendChild(table);
                     } else {
-                        storageList.innerHTML = '<p>{{index . "Admin.Storage.NoStorages"}}</p>';
+                        storageList.innerHTML = '<p>{{index .t "Admin.Storage.NoStorages"}}</p>';
                     }
                 })
                 .catch(error => {

@@ -1,9 +1,9 @@
-{{define "index.html"}}
+{{define "index"}}
 <header class="hero is-primary is-bold">
     <div class="hero-body">
         <div class="container">
-            <h1 class="title">{{.UI.Header}}</h1>
-            <p class="subtitle">{{.UI.Subtitle}}</p>
+            <h1 class="title">{{index .t "UI.Header"}}</h1>
+            <p class="subtitle">{{index .t "UI.Subtitle"}}</p>
         </div>
     </div>
 </header>
@@ -11,30 +11,19 @@
 <main class="section">
     <div class="container">
         <div class="content">
-            <p>{{index . "UI.Body"}}</p>
+            <p>{{index .t "UI.Body"}}</p>
         </div>
         
         <div class="columns is-multiline">
             <div class="column is-4-desktop is-6-tablet">
                 <div class="box has-text-centered">
-                    <h3 class="title is-4">{{.Common.Actions}}</h3>
+                    <h3 class="title is-4">{{index .t "Common.Actions"}}</h3>
                     <div class="buttons is-centered">
-                        <a href="/create-vm" class="button is-primary is-medium">
-                            {{.Navbar.VMs}}
+                        <a href="/create-vm?lang={{.Lang}}" class="button is-primary is-medium">
+                            {{index .t "Navbar.CreateVM"}}
                         </a>
-                        <a href="/search" class="button is-link is-medium">
-                            {{.Navbar.SearchVM}}
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="column is-4-desktop is-6-tablet">
-                <div class="box has-text-centered">
-                    <h3 class="title is-4">{{.Docs.User.Title}}</h3>
-                    <div class="buttons is-centered">
-                        <a href="/docs/user" class="button is-info is-medium">
-                            {{.Navbar.UserDocs}}
+                        <a href="/search?lang={{.Lang}}" class="button is-link is-medium">
+                            {{index .t "Navbar.SearchVM"}}
                         </a>
                     </div>
                 </div>
@@ -42,10 +31,21 @@
             
             <div class="column is-4-desktop is-6-tablet">
                 <div class="box has-text-centered">
-                    <h3 class="title is-4">{{.Navbar.Admin}}</h3>
+                    <h3 class="title is-4">{{index .t "Docs.User.Title"}}</h3>
                     <div class="buttons is-centered">
-                        <a href="/admin" class="button is-warning is-medium">
-                            {{index . "Navbar.Admin"}}
+                        <a href="/docs/user?lang={{.Lang}}" class="button is-info is-medium">
+                            {{index .t "Navbar.UserDocs"}}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="column is-4-desktop is-6-tablet">
+                <div class="box has-text-centered">
+                    <h3 class="title is-4">{{index .t "Navbar.Admin"}}</h3>
+                    <div class="buttons is-centered">
+                        <a href="/admin?lang={{.Lang}}" class="button is-warning is-medium">
+                            {{index .t "Navbar.Admin"}}
                         </a>
                     </div>
                 </div>

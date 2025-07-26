@@ -1,9 +1,9 @@
-{{define "vmbr.html"}}
+{{define "vmbr"}}
 <div class="container">
-    <h2 class="title is-4">{{index . "Admin.VMBR.Title"}}</h2>
+    <h2 class="title is-4">{{index .t "Admin.VMBR.Title"}}</h2>
 
     <div class="notification is-light">
-        {{index . "Admin.VMBR.Description"}}
+        {{index .t "Admin.VMBR.Description"}}
     </div>
 
     <div id="vmbr-container" class="mb-4">
@@ -38,10 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
-                        <th>{{index . "Admin.VMBR.Header.Enabled"}}</th>
-                        <th>{{index . "Admin.VMBR.Header.Node"}}</th>
-                        <th>{{index . "Admin.VMBR.Header.Name"}}</th>
-                        <th>{{index . "Admin.VMBR.Header.Description"}}</th>
+                        <th>{{index .t "Admin.VMBR.Header.Enabled"}}</th>
+                        <th>{{index .t "Admin.VMBR.Header.Node"}}</th>
+                        <th>{{index .t "Admin.VMBR.Header.Name"}}</th>
+                        <th>{{index .t "Admin.VMBR.Header.Description"}}</th>
                     </tr>
                 `;
                 table.appendChild(thead);

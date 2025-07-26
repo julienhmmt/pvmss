@@ -43,6 +43,10 @@ other = "Un portail libre-service simple pour Proxmox Virtual Environment."
 # Navbar
 ["Navbar.Home"]
 other = "Accueil"
+["Navbar.CreateVM"]
+other = "Créer une machine virtuelle"
+["Navbar.Documentation"]
+other = "Documentation"
 ["Navbar.Admin"]
 other = "Administration"
 ["Navbar.AdminDocs"]
@@ -55,8 +59,12 @@ other = "Déconnexion"
 other = "Rechercher une VM"
 ["Navbar.UserDocs"]
 other = "Documentation utilisateur"
-["Navbar.VMs"]
-other = "Créer une machine virtuelle"
+
+# Docs Pages
+["Docs.User.Title"]
+other = "Documentation Utilisateur"
+["Docs.Admin.Title"]
+other = "Documentation Administrateur"
 
 # Login Page
 ["Login.Title"]
@@ -75,20 +83,24 @@ other = "Aucune machine virtuelle ne correspond à vos critères."
 other = "Essayez d'ajuster vos critères de recherche ou vérifiez si la VM existe."
 ["Search.Clear"]
 other = "Effacer"
+
+# Search input placeholders and titles
 ["Search.PlaceholderName"]
 other = "ex. ma-vm"
 ["Search.PlaceholderVMID"]
 other = "ex. 100"
 ["Search.TitleVMID"]
-other = "Veuillez saisir un ID de VM de 1 à 10 chiffres."
+other = "Veuillez entrer un ID de VM avec 1 à 10 chiffres."
+["Search.TitleName"]
+other = "Veuillez entrer un nom de VM entre 1 et 100 caractères."
 ["Search.Placeholder"]
-other = "Rechercher par VMID ou Nom..."
+other = "Rechercher par ID ou Nom..."
 ["Search.Submit"]
 other = "Rechercher"
 ["Search.Results"]
 other = "Résultats de la recherche"
 ["Search.YouSearchedFor"]
-other = "Vous avez recherché :"
+other = "Vous avez recherché"
 ["Search.VMID"]
 other = "ID de la VM"
 ["Search.Name"]
@@ -229,12 +241,8 @@ other = "Action réussie"
 other = "Échec de l'action: {{.Error}}"
 
 # Documentation Pages
-["Docs.Admin.Title"]
-other = "Documentation Administrateur"
 ["Docs.Admin.Description"]
 other = "Guide complet pour l'administration et la configuration de PVMSS"
-["Docs.User.Title"]
-other = "Guide Utilisateur"
 ["Docs.User.Description"]
 other = "Instructions pour utiliser PVMSS et gérer vos machines virtuelles"
 

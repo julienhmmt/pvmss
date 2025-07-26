@@ -10,10 +10,12 @@ RUN apk add --no-cache gcc musl-dev
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
-# Copy backend files (including i18n)
+# Copy backend files (including i18n and docs)
 COPY backend/ ./backend/
 # Copy frontend files to the correct location
 COPY frontend/ /app/frontend/
+# Ensure docs directory exists
+RUN mkdir -p /app/backend/docs
 
 # Build the application
 WORKDIR /app/backend
@@ -24,7 +26,7 @@ WORKDIR /app
 FROM alpine:3.22
 
 # Install runtime dependencies
-RUN apk --no-cache add \
+RUN apk add --no-cache \
     ca-certificates \
     tzdata && \
     addgroup -g 1000 -S pvmssuser && \
@@ -38,6 +40,7 @@ WORKDIR /app
 COPY --from=builder /app/pvmss-backend .
 COPY --from=builder /app/frontend/ /app/frontend/
 COPY --from=builder /app/backend/i18n/ /app/backend/i18n/
+COPY --from=builder /app/backend/docs/ /app/backend/docs/
 
 # Create necessary directories and symlinks
 RUN mkdir -p /app/i18n && \

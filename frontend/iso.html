@@ -1,9 +1,9 @@
-{{define "iso.html"}}
+{{define "iso"}}
 <div class="container">
-    <h2 class="title is-4">{{index . "Admin.ISO.Title"}}</h2>
+    <h2 class="title is-4">{{index .t "Admin.ISO.Title"}}</h2>
 
     <div class="notification is-light">
-        {{index . "Admin.ISO.Description"}}
+        {{index .t "Admin.ISO.Description"}}
     </div>
 
     <div id="iso-container" class="mb-4">
@@ -40,10 +40,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 const thead = document.createElement('thead');
                 thead.innerHTML = `
                     <tr>
-                        <th>{{index . "Admin.ISO.Header.Enabled"}}</th>
-                        <th>{{index . "Admin.ISO.Header.Storage"}}</th>
-                        <th>{{index . "Admin.ISO.Header.Name"}}</th>
-                        <th>{{index . "Admin.ISO.Header.Size"}}</th>
+                        <th>{{index .t "Admin.ISO.Header.Enabled"}}</th>
+                        <th>{{index .t "Admin.ISO.Header.Storage"}}</th>
+                        <th>{{index .t "Admin.ISO.Header.Name"}}</th>
+                        <th>{{index .t "Admin.ISO.Header.Size"}}</th>
                     </tr>
                 `;
                 table.appendChild(thead);

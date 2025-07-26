@@ -1,6 +1,6 @@
-{{define "nodes.html"}}
+{{define "nodes"}}
 <div class="container">
-    <h2 class="title is-4">{{index . "Admin.Nodes.Title"}}</h2>
+    <h2 class="title is-4">{{index .t "Admin.Nodes.Title"}}</h2>
 
     {{if .Error}}
         <div class="notification is-danger">
@@ -10,11 +10,11 @@
         <table class="table is-striped is-fullwidth">
             <thead>
                 <tr>
-                    <th>{{index . "Admin.Nodes.Header.Node"}}</th>
-                    <th>{{index . "Admin.Nodes.Header.Status"}}</th>
-                    <th>{{index . "Admin.Nodes.Header.CPUUsage"}}</th>
-                    <th>{{index . "Admin.Nodes.Header.MemoryUsage"}}</th>
-                    <th>{{index . "Admin.Nodes.Header.DiskUsage"}}</th>
+                    <th>{{index .t "Admin.Nodes.Header.Node"}}</th>
+                    <th>{{index .t "Admin.Nodes.Header.Status"}}</th>
+                    <th>{{index .t "Admin.Nodes.Header.CPUUsage"}}</th>
+                    <th>{{index .t "Admin.Nodes.Header.MemoryUsage"}}</th>
+                    <th>{{index .t "Admin.Nodes.Header.DiskUsage"}}</th>
                 </tr>
             </thead>
             <tbody>
@@ -22,7 +22,7 @@
                 <tr>
                     <td>{{.Node}}</td>
                     <td>
-                        <span class="tag is-success">{{index $ "Admin.Nodes.StatusOnline"}}</span>
+                        <span class="tag is-success">{{index $.t "Admin.Nodes.StatusOnline"}}</span>
                     </td>
                     <td>
                         {{$cpu_percent := mul .CPU 100.0}}
@@ -45,7 +45,7 @@
         </table>
     {{else}}
         <div class="notification">
-            {{index . "Admin.Nodes.NoNodes"}}
+            {{index .t "Admin.Nodes.NoNodes"}}
         </div>
     {{end}}
 </div>
