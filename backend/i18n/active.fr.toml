@@ -200,8 +200,6 @@ other = "Taille du disque en gigaoctets (8 Go minimum)"
 other = "Créer une machine virtuelle"
 ["VM.Create.ISO"]
 other = "Image ISO"
-["VM.Create.ISOImage"]
-other = "Image ISO"  # This appears to be a duplicate of VM.Create.ISO
 ["VM.Create.ISOImageHelp"]
 other = "Sélectionnez une image ISO pour installer le système d'exploitation"
 ["VM.Create.MediaNetwork"]
@@ -214,6 +212,9 @@ other = "Quantité de mémoire en mégaoctets (512 Mo minimum)"
 other = "Pont réseau"
 ["VM.Create.NetworkBridgeHelp"]
 other = "Sélectionnez un pont réseau pour connecter la VM"
+["VM.Create.NoBridges"]
+other = "Aucun pont réseau disponible"
+
 ["VM.Create.NoBridgesAvailable"]
 other = "Aucun pont réseau disponible"
 ["VM.Create.NoISOs"]
@@ -232,6 +233,8 @@ other = "Sélectionnez un pont réseau"
 other = "Stockage (Go)"
 ["VM.Create.Tags"]
 other = "Étiquettes"
+["VM.Create.ISOImage"]
+other = "Image ISO"
 ["VM.Create.TagsHelp"]
 other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
 ["VM.Create.TagsPlaceholder"]

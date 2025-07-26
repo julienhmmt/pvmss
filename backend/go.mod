@@ -8,6 +8,7 @@ require (
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/gomarkdown/markdown v0.0.0-20250311123330-531bef5e742b
 	github.com/joho/godotenv v1.5.1
+	github.com/julienschmidt/httprouter v1.3.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
 	github.com/rs/zerolog v1.34.0
 	golang.org/x/crypto v0.40.0

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,8 +18,8 @@ import (
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/parser"
 	"github.com/joho/godotenv"
-	"golang.org/x/crypto/bcrypt"
 
+	"pvmss/handlers"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -29,7 +28,7 @@ import (
 )
 
 func main() {
-	// Initialize logger first
+
 	initLogger()
 	logger.Get().Info().Msg("Starting PVMSS")
 
@@ -44,7 +43,7 @@ func main() {
 	}
 
 	// Setup HTTP server
-	mux := setupRoutes()
+	router := handlers.InitHandlers()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "50000"
@@ -52,7 +51,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      mux,
+		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -192,99 +191,96 @@ func initTemplates() (*template.Template, error) {
 	return tmpl, nil
 }
 
-// IndexHandler handles the root path
+// IndexHandler est un wrapper pour le handler d'index du package handlers
+// Cette fonction est maintenue pour compatibilité mais devrait être remplacée
+// par l'utilisation directe du handler du package handlers
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-
-	// Initialize data with required i18n keys
-	data := map[string]interface{}{
-		"Title":           "PVMSS",
-		"Description":     "Proxmox Virtual Machine Self-Service",
-		"IsAuthenticated": isAuthenticated(r),
-	}
-
-	renderTemplate(w, r, "index", data)
-}
-
-func SearchHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		renderTemplate(w, r, "search", nil)
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		vmid := r.FormValue("vmid")
-		name := r.FormValue("name")
-
-		logger.Get().Info().Str("vmid", vmid).Str("name", name).Msg("VM search")
-
-		data := map[string]interface{}{
-			"Results": []map[string]string{},
-			"Query":   map[string]string{"vmid": vmid, "name": name},
-		}
-		renderTemplate(w, r, "search", data)
-		return
-	}
-
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-}
-
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	if isAuthenticated(r) {
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
-		return
-	}
-
-	if r.Method == http.MethodGet {
-		renderTemplate(w, r, "login", nil)
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		password := r.FormValue("password")
-		storedHash := os.Getenv("ADMIN_PASSWORD_HASH")
-
-		if storedHash == "" {
-			logger.Get().Error().Msg("SECURITY ALERT: ADMIN_PASSWORD_HASH is not set.")
-			data := map[string]interface{}{"Error": "Server configuration error."}
-			renderTemplate(w, r, "login", data)
-			return
-		}
-
-		err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password))
-		if err != nil {
-			logger.Get().Warn().Msg("Failed login attempt")
-			data := map[string]interface{}{"Error": "Invalid credentials"}
-			renderTemplate(w, r, "login", data)
-			return
-		}
-
-		stateManager := state.GetGlobalState()
-		sessionManager := stateManager.GetSessionManager()
-		sessionManager.Put(r.Context(), "authenticated", true)
-
-		logger.Get().Info().Msg("Admin user logged in successfully")
-		http.Redirect(w, r, "/admin", http.StatusSeeOther)
-		return
-	}
-
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-}
-
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
-	_ = sessionManager.Destroy(r.Context())
-	logger.Get().Info().Msg("User logged out")
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	// Rediriger vers le handler d'index du package handlers
+	handlers.IndexHandler(w, r)
 }
 
 func AdminHandler(w http.ResponseWriter, r *http.Request) {
-	settings := state.GetGlobalState().GetSettings()
-	data := map[string]interface{}{"Settings": settings}
+	stateManager := state.GetGlobalState()
+	client := stateManager.GetProxmoxClient()
+
+	// Récupérer les paramètres
+	settings := stateManager.GetSettings()
+
+	// Récupérer les nœuds
+	nodes, err := proxmox.GetNodeNames(client)
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to get nodes")
+		nodes = []string{} // Liste vide en cas d'erreur
+	}
+
+	// Récupérer les tags (à partir des paramètres ou autre source)
+	tags := settings.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
+	// Prepare data for templates
+	data := map[string]interface{}{
+		"Settings": settings,
+		"Nodes":    nodes,
+		"Tags":     tags,
+	}
+
+	// Get node details for each node
+	nodeDetailsList := make([]*proxmox.NodeDetails, 0)
+	nodeDetailsMap := make(map[string]interface{})
+	for _, node := range nodes {
+		details, err := proxmox.GetNodeDetails(client, node)
+		if err != nil {
+			logger.Get().Error().Err(err).Str("node", node).Msg("Failed to get node details")
+			continue
+		}
+		nodeDetailsList = append(nodeDetailsList, details)
+		nodeDetailsMap[node] = details
+	}
+	data["NodeDetails"] = nodeDetailsList
+
+	// Get storages
+	storages, err := proxmox.GetStorages(client)
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to get storages")
+		storages = nil
+	}
+	data["Storages"] = storages
+
+	// Get ISOs (for the first node if available)
+	isoList := make([]interface{}, 0)
+	if len(nodes) > 0 && storages != nil {
+		// Convert storages to map to access data
+		if storageMap, ok := storages.(map[string]interface{}); ok {
+			if storageData, ok := storageMap["data"].([]interface{}); ok && len(storageData) > 0 {
+				// Get first storage from the first node
+				if storage, ok := storageData[0].(map[string]interface{}); ok {
+					if storageName, ok := storage["storage"].(string); ok {
+						// Get ISO list for this storage
+						isos, err := proxmox.GetISOList(client, nodes[0], storageName)
+						if err == nil {
+							isoList = append(isoList, isos)
+						} else {
+							logger.Get().Error().Err(err).Str("node", nodes[0]).Str("storage", storageName).Msg("Failed to get ISO list")
+						}
+					}
+				}
+			}
+		}
+	}
+	data["ISOs"] = isoList
+
+	// Get VMBRs (for the first node if available)
+	vmbrs := make(map[string]interface{})
+	if len(nodes) > 0 {
+		vmbrData, err := proxmox.GetVMBRs(client, nodes[0])
+		if err == nil {
+			vmbrs[nodes[0]] = vmbrData
+		}
+	}
+	data["VMBRs"] = vmbrs
+
 	renderTemplate(w, r, "admin", data)
 }
 
@@ -292,55 +288,6 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	response := map[string]string{"status": "healthy", "app": "pvmss"}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-
-// Additional handlers needed by the application
-func VMDetailsHandler(w http.ResponseWriter, r *http.Request) {
-	vmid := r.URL.Query().Get("vmid")
-	if vmid == "" {
-		http.Error(w, "VM ID required", http.StatusBadRequest)
-		return
-	}
-
-	logger.Get().Info().Str("vmid", vmid).Msg("VM details request")
-
-	// TODO: Get actual VM details from Proxmox
-	data := map[string]interface{}{
-		"VM": map[string]string{
-			"ID":     vmid,
-			"Name":   "Sample VM",
-			"Status": "running",
-		},
-	}
-
-	renderTemplate(w, r, "vm_details", data)
-}
-
-func CreateVMHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		renderTemplate(w, r, "create_vm", nil)
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		name := r.FormValue("name")
-		logger.Get().Info().Str("name", name).Msg("VM creation request")
-
-		data := map[string]interface{}{
-			"Success": "VM creation initiated",
-		}
-		renderTemplate(w, r, "create_vm", data)
-		return
-	}
-
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-}
-
-func StoragePageHandler(w http.ResponseWriter, r *http.Request) {
-	data := map[string]interface{}{
-		"Storages": []map[string]string{},
-	}
-	renderTemplate(w, r, "storage", data)
 }
 
 func TagsAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -368,11 +315,11 @@ func findDocsDir() (string, error) {
 		// Development paths (relative to binary)
 		filepath.Join(".", "docs"),
 		filepath.Join(".", "backend", "docs"),
-		
+
 		// Docker paths
 		filepath.Join("/app", "docs"),
 		filepath.Join("/app", "backend", "docs"),
-		
+
 		// Fallback to current directory structure
 		filepath.Dir("."),
 	}
@@ -381,7 +328,7 @@ func findDocsDir() (string, error) {
 	exePath, err := os.Executable()
 	if err == nil {
 		exeDir := filepath.Dir(exePath)
-		possibleDirs = append(possibleDirs, 
+		possibleDirs = append(possibleDirs,
 			filepath.Join(exeDir, "docs"),
 			filepath.Join(exeDir, "backend", "docs"),
 		)
@@ -392,17 +339,17 @@ func findDocsDir() (string, error) {
 		if dir == "" {
 			continue
 		}
-		
+
 		// Get absolute path and clean it
 		dir, err := filepath.Abs(dir)
 		if err != nil {
 			continue
 		}
-		
+
 		logger.Get().Debug().
 			Str("path", dir).
 			Msg("Checking for docs directory")
-		
+
 		// Check if directory exists and is readable
 		if info, err := os.Stat(dir); err == nil && info.IsDir() {
 			// Verify there are markdown files in the directory
@@ -420,23 +367,23 @@ func findDocsDir() (string, error) {
 			}
 		}
 	}
-	
+
 	// If we get here, no valid directory was found
 	logger.Get().Error().
 		Msg("Documentation directory not found in any expected location")
-		
+
 	// Try one last time with the current working directory
 	if wd, err := os.Getwd(); err == nil {
 		return wd, nil
 	}
-	
+
 	return "", fmt.Errorf("documentation directory not found. Checked multiple locations")
 }
 
 func DocsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get language from URL or default to English
 	lang := i18n.GetLanguage(r)
-	
+
 	// Determine document type from URL
 	docType := "user"
 	if strings.Contains(r.URL.Path, "admin") {
@@ -471,12 +418,12 @@ func DocsHandler(w http.ResponseWriter, r *http.Request) {
 		// Fallback to English if the requested language is not available
 		fallbackFile := fmt.Sprintf("%s.en.md", docType)
 		fallbackPath := filepath.Join(docsDir, fallbackFile)
-		
+
 		logger.Get().Warn().
 			Str("requested", fileName).
 			Str("fallback", fallbackFile).
 			Msg("Falling back to English documentation")
-		
+
 		mdContent, err = os.ReadFile(fallbackPath)
 		if err != nil {
 			logger.Get().Error().
@@ -495,15 +442,15 @@ func DocsHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare template data
 	data := map[string]interface{}{
-		"Content":        template.HTML(htmlContent),
-		"Title":          fmt.Sprintf("%s Documentation", docType),
-		"Description":    fmt.Sprintf("%s documentation for PVMSS", docType),
-		"Lang":           lang,
-		"LangEN":         strings.Replace(r.URL.Path, "/"+lang, "/en", 1),
-		"LangFR":         strings.Replace(r.URL.Path, "/"+lang, "/fr", 1),
-		"IsAdmin":        docType == "admin",
+		"Content":         template.HTML(htmlContent),
+		"Title":           fmt.Sprintf("%s Documentation", docType),
+		"Description":     fmt.Sprintf("%s documentation for PVMSS", docType),
+		"Lang":            lang,
+		"LangEN":          strings.Replace(r.URL.Path, "/"+lang, "/en", 1),
+		"LangFR":          strings.Replace(r.URL.Path, "/"+lang, "/fr", 1),
+		"IsAdmin":         docType == "admin",
 		"IsAuthenticated": isAuthenticated(r),
-		"CurrentPath":    r.URL.Path,
+		"CurrentPath":     r.URL.Path,
 	}
 
 	// Set title in data map to be used by the template
@@ -516,155 +463,13 @@ func DocsHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, r, "docs", data)
 }
 
-// Routing setup
-func setupRoutes() http.Handler {
-	mux := http.NewServeMux()
-
-	_, filename, _, _ := runtime.Caller(0)
-	rootDir := filepath.Dir(filepath.Dir(filename))
-	frontendPath := filepath.Join(rootDir, "frontend")
-
-	cssPath := filepath.Join(frontendPath, "css")
-	jsPath := filepath.Join(frontendPath, "js")
-
-	logger.Get().Info().
-		Str("css_path", cssPath).
-		Str("js_path", jsPath).
-		Msg("Serving static files from")
-
-	// Serve static files with proper MIME types
-	serveStatic := func(prefix, dir string) {
-		fs := http.StripPrefix(prefix, http.FileServer(http.Dir(filepath.Join(frontendPath, dir))))
-		mux.Handle(prefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Set proper cache control for static files
-			w.Header().Set("Cache-Control", "public, max-age=31536000")
-
-			// Set MIME types for known file extensions
-			ext := filepath.Ext(r.URL.Path)
-			switch ext {
-			case ".css":
-				w.Header().Set("Content-Type", "text/css; charset=utf-8")
-			case ".js":
-				w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-			case ".png":
-				w.Header().Set("Content-Type", "image/png")
-			case ".jpg", ".jpeg":
-				w.Header().Set("Content-Type", "image/jpeg")
-			case ".svg":
-				w.Header().Set("Content-Type", "image/svg+xml")
-			case ".ico":
-				w.Header().Set("Content-Type", "image/x-icon")
-			}
-
-			fs.ServeHTTP(w, r)
-		}))
-	}
-
-	// Register static file handlers
-	serveStatic("/css/", "css")
-	serveStatic("/js/", "js")
-
-	// Routes
-	mux.HandleFunc("/", IndexHandler)
-	mux.HandleFunc("/login", LoginHandler)
-	mux.HandleFunc("/logout", requireAuth(LogoutHandler)) // Protect logout route
-	mux.HandleFunc("/search", SearchHandler)
-	mux.HandleFunc("/admin", requireAuth(AdminHandler))
-	mux.HandleFunc("/health", HealthHandler)
-	mux.HandleFunc("/api/tags", requireAuth(TagsAPIHandler))
-	mux.HandleFunc("/api/storage", requireAuth(StorageAPIHandler))
-	mux.HandleFunc("/storage", requireAuth(StoragePageHandler))
-	mux.HandleFunc("/vm/details", requireAuth(VMDetailsHandler))
-	mux.HandleFunc("/create-vm", CreateVMHandler)
-	mux.HandleFunc("/docs/", DocsHandler)
-
-	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
-	return sessionManager.LoadAndSave(mux)
-}
-
-// Simple auth middleware
-func requireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isAuthenticated(r) {
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
-			return
-		}
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
-		next.ServeHTTP(w, r)
-	})
-}
-
+// isAuthenticated est un wrapper pour la fonction isAuthenticated du package handlers
 func isAuthenticated(r *http.Request) bool {
-	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
-	return sessionManager.GetBool(r.Context(), "authenticated")
+	return handlers.IsAuthenticated(r)
 }
 
+// renderTemplate est un wrapper pour la fonction renderTemplate du package handlers
 func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
-	stateManager := state.GetGlobalState()
-	tmpl := stateManager.GetTemplates()
-	if tmpl == nil {
-		logger.Get().Error().Msg("Templates not initialized")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Create a clone of the template to avoid modifying the original
-	t, err := tmpl.Clone()
-	if err != nil {
-		logger.Get().Error().Err(err).Str("template", name).Msg("Failed to clone template")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Get the function map with request context and apply it to the template
-	t = t.Funcs(templates.GetFuncMap(r))
-
-	// Initialize data map
-	dataMap := make(map[string]interface{})
-	if data != nil {
-		if dm, ok := data.(map[string]interface{}); ok {
-			dataMap = dm
-		} else {
-			dataMap["Data"] = data
-		}
-	}
-
-	// Add i18n data and common template variables
-	i18n.LocalizePage(w, r, dataMap)
-	dataMap["CurrentPath"] = r.URL.Path
-	dataMap["IsHTTPS"] = r.TLS != nil
-	dataMap["Host"] = r.Host
-
-	// Set content type to HTML
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	// First execute the content template into a buffer
-	contentBuf := new(bytes.Buffer)
-	if err := t.ExecuteTemplate(contentBuf, name, dataMap); err != nil {
-		logger.Get().Error().
-			Err(err).
-			Str("template", name).
-			Str("path", r.URL.Path).
-			Msg("Template execution failed")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Add content to data map
-	dataMap["Content"] = template.HTML(contentBuf.String())
-
-	// Then execute the layout template with the content
-	if err := t.ExecuteTemplate(w, "layout", dataMap); err != nil {
-		logger.Get().Error().
-			Err(err).
-			Str("template", "layout").
-			Str("path", r.URL.Path).
-			Msg("Layout template execution failed")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	// Utiliser la fonction renderTemplate du package handlers
+	handlers.RenderTemplate(w, r, name, data)
 }

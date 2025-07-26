@@ -94,7 +94,7 @@ func Localize(localizer *i18n.Localizer, messageID string) string {
 	if localizer == nil || messageID == "" {
 		return messageID
 	}
-	
+
 	localized, err := localizer.Localize(&i18n.LocalizeConfig{
 		MessageID: messageID,
 	})
