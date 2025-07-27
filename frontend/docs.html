@@ -2,29 +2,23 @@
 <section class="section">
     <div class="container">
         <h1 class="title">{{.Title}}</h1>
-        
+
         {{if .Description}}
         <p class="subtitle">{{.Description}}</p>
         {{end}}
-        
+
         <!-- Language selector -->
         <div class="field is-grouped mb-4">
             <p class="control">
-                <a class="button {{if eq .Lang "en"}}is-primary{{else}}is-light{{end}}" href="{{.LangEN}}">
-                    <span>English</span>
-                </a>
+                <a class="button {{if eq .Lang `en`}}is-primary{{else}}is-light{{end}}" href="{{.LangEN}}">English</a>
             </p>
             <p class="control">
-                <a class="button {{if eq .Lang "fr"}}is-primary{{else}}is-light{{end}}" href="{{.LangFR}}">
-                    <span>Français</span>
-                </a>
+                <a class="button {{if eq .Lang `fr`}}is-primary{{else}}is-light{{end}}" href="{{.LangFR}}">Français</a>
             </p>
         </div>
 
         <!-- Documentation content -->
-        <div class="content">
-            {{.Content}}
-        </div>
+        <div class="content">{{.Content}}</div>
     </div>
 </section>
 {{end}}

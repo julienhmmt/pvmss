@@ -1,20 +1,10 @@
-{{define "admin"}}
-
-    {{if .Content}}
-        {{.Content}}
-    {{else}}
-        <section class="section">
-            <div class="container">
-                <h1 class="title">{{index .t "Navbar.Admin"}}</h1>
-                <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{index .t "Navbar.AdminDocs"}}</a>
-                {{template "nodes" .}}
-                {{template "tags" .}}
-                {{template "storage" .}}
-                {{template "iso" .}}
-                {{template "vmbr" .}}
-                {{template "resource_limits" .}}
-            </div>
-        </section>
-    {{end}}
-
-{{end}}
+{{define "admin"}} {{if .Content}} {{.Content}} {{else}}
+<section class="section">
+  <div class="container">
+    <h1 class="title">{{index .t "Navbar.Admin"}}</h1>
+    <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{index .t "Navbar.AdminDocs"}}</a>
+    {{template "nodes" .}} {{template "tags" .}} {{template "storage" .}}
+    {{template "iso" .}} {{template "vmbr" .}} {{template "resource_limits" .}}
+  </div>
+</section>
+{{end}} {{end}}
