@@ -6,20 +6,46 @@
 # ======
 # Common
 # ======
+["Common.Actions"]
+other = "Actions"
 ["Common.Add"]
 other = "Ajouter"
+["Common.Admin"]
+other = "Administration"
+["Common.Back"]
+other = "Retour"
 ["Common.BackToSearch"]
 other = "Retour à la recherche"
+["Common.CPU"]
+other = "CPU"
 ["Common.Cancel"]
 other = "Annuler"
+["Common.Confirm"]
+other = "Confirmer"
 ["Common.Create"]
 other = "Créer"
+["Common.Delete"]
+other = "Supprimer"
 ["Common.Description"]
 other = "Description"
+["Common.Disk"]
+other = "Disque"
+["Common.Edit"]
+other = "Modifier"
 ["Common.Enabled"]
 other = "Activé"
 ["Common.Error"]
 other = "Erreur"
+["Common.Home"]
+other = "Accueil"
+["Common.ID"]
+other = "ID"
+["Common.Loading"]
+other = "Chargement..."
+["Common.Login"]
+other = "Connexion"
+["Common.Logout"]
+other = "Déconnexion"
 ["Common.Max"]
 other = "Max"
 ["Common.Memory"]
@@ -28,10 +54,24 @@ other = "Mémoire"
 other = "Min"
 ["Common.Name"]
 other = "Nom"
+["Common.Network"]
+other = "Réseau"
+["Common.Next"]
+other = "Suivant"
 ["Common.Node"]
 other = "Nœud"
+["Common.No"]
+other = "Non"
+["Common.None"]
+other = "Aucun"
+["Common.OK"]
+other = "OK"
 ["Common.Optional"]
 other = "Optionnel"
+["Common.Previous"]
+other = "Précédent"
+["Common.Required"]
+other = "Requis"
 ["Common.Reset"]
 other = "Réinitialiser"
 ["Common.Save"]
@@ -40,20 +80,50 @@ other = "Enregistrer"
 other = "✓ Enregistré"
 ["Common.Saving"]
 other = "Enregistrement en cours..."
+["Common.Search"]
+other = "Rechercher"
+["Common.SelectAll"]
+other = "Tout sélectionner"
+["Common.Selected"]
+other = "sélectionné(s)"
+["Common.SelectNone"]
+other = "Tout désélectionner"
+["Common.Settings"]
+other = "Paramètres"
 ["Common.Status"]
 other = "Statut"
 ["Common.Storage"]
 other = "Stockage"
-
+["Common.Submit"]
+other = "Envoyer"
+["Common.Success"]
+other = "Succès"
+["Common.Tags"]
+other = "Étiquettes"
+["Common.Unauthorized"]
+other = "Non autorisé"
+["Common.Update"]
+other = "Mettre à jour"
+["Common.User"]
+other = "Utilisateur"
+["Common.Users"]
+other = "Utilisateurs"
+["Common.Yes"]
+other = "Oui"
 
 # ======
 # Errors
 # ======
 ["Error.Generic"]
 other = "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur."
+["Error.InternalServer"]
+other = "Erreur Interne du Serveur"
+["Error.NotFound"]
+other = "Ressource Non Trouvée"
 ["Error.Title"]
 other = "Erreur"
-
+["Error.Unauthorized"]
+other = "Non Autorisé"
 
 # ===========
 # Navigation
@@ -76,7 +146,6 @@ other = "Déconnexion"
 other = "Rechercher une VM"
 ["Navbar.UserDocs"]
 other = "Docs Utilisateur"
-
 
 # ===========
 # UI Elements
@@ -105,6 +174,82 @@ other = "Proxmox VM Self-Service"
 other = "Un portail en libre service et simple pour Proxmox VE."
 ["UI.ViewDocumentation"]
 other = "Voir la documentation"
+
+# ===========
+# Messages
+# ===========
+["Message.ActionFailed"]
+other = "L'action a échoué"
+["Message.CreatedSuccessfully"]
+other = "Créé avec succès"
+["Message.DeletedSuccessfully"]
+other = "Supprimé avec succès"
+["Message.SavedSuccessfully"]
+other = "Enregistré avec succès"
+["Message.UpdatedSuccessfully"]
+other = "Mis à jour avec succès"
+
+# ===========
+# Status
+# ===========
+["Status.Active"]
+other = "Actif"
+["Status.Connected"]
+other = "Connecté"
+["Status.Disabled"]
+other = "Désactivé"
+["Status.Disconnected"]
+other = "Déconnecté"
+["Status.Down"]
+other = "Arrêté"
+["Status.Error"]
+other = "Erreur"
+["Status.Failed"]
+other = "Échec"
+["Status.Offline"]
+other = "Hors ligne"
+["Status.Online"]
+other = "En ligne"
+["Status.Paused"]
+other = "En pause"
+["Status.Pending"]
+other = "En attente"
+["Status.Running"]
+other = "En cours d'exécution"
+["Status.Stopped"]
+other = "Arrêté"
+["Status.Success"]
+other = "Succès"
+["Status.Unknown"]
+other = "Inconnu"
+["Status.Updating"]
+other = "Mise à jour en cours"
+["Status.Warning"]
+other = "Avertissement"
+
+# ===========
+# Validation
+# ===========
+["Validation.Required"]
+other = "Ce champ est obligatoire"
+["Validation.InvalidFormat"]
+other = "Format invalide"
+["Validation.MinLength"]
+other = "Doit contenir au moins {{.Limit}} caractères"
+["Validation.MaxLength"]
+other = "Ne doit pas dépasser {{.Limit}} caractères"
+["Validation.Email"]
+other = "Doit être une adresse email valide"
+["Validation.URL"]
+other = "Doit être une URL valide"
+["Validation.Numeric"]
+other = "Doit être un nombre"
+["Validation.IP"]
+other = "Doit être une adresse IP valide"
+["Validation.Positive"]
+other = "Doit être un nombre positif"
+["Validation.Negative"]
+other = "Doit être un nombre négatif"
 
 # ======
 # Search
@@ -161,7 +306,6 @@ other = "Détails de la VM"
 other = "ID de la VM"
 ["Search.YouSearchedFor"]
 other = "Vous avez recherché"
-
 
 # ======
 # Login
@@ -296,7 +440,6 @@ other = "Statut"
 ["VMDetails.Label.Uptime"]
 other = "Temps de fonctionnement"
 
-
 # ==============
 # Documentation
 # ==============
@@ -308,17 +451,6 @@ other = "Documentation Administrateur"
 other = "Instructions pour utiliser PVMSS et gérer vos machines virtuelles"
 ["Docs.User.Title"]
 other = "Documentation Utilisateur"
-
-
-# ======
-# Admin
-# ======
-
-# Admin - Limits
-["Admin.Limits.Max"]
-other = "Max"  # Using Common.Max might be better
-["Admin.Limits.Min"]
-other = "Min"  # Using Common.Min might be better
 
 # ======
 # Nodes
