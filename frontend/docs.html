@@ -25,22 +25,6 @@
         <div class="content">
             {{.Content}}
         </div>
-        
-        <!-- Navigation -->
-        <div class="field is-grouped mt-5">
-            <p class="control">
-                <a href="/search" class="button is-light">
-                    <span>{{index . "Common.BackToSearch"}}</span>
-                </a>
-            </p>
-            {{if .IsAuthenticated}}
-            <p class="control">
-                <a href="/admin" class="button is-info is-light">
-                    <span>{{index . "Navbar.Admin"}}</span>
-                </a>
-            </p>
-            {{end}}
-        </div>
     </div>
 </section>
 {{end}}
