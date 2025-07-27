@@ -138,7 +138,7 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/create", HandlerFuncToHTTPrHandle(func(w http.ResponseWriter, r *http.Request) {
 		h.CreateVMHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	}))
-	
+
 	// Détails de la VM (protégé par authentification)
 	router.GET("/vm/details/:id", HandlerFuncToHTTPrHandle(func(w http.ResponseWriter, r *http.Request) {
 		h.VMDetailsHandler(w, r, httprouter.ParamsFromContext(r.Context()))

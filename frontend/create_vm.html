@@ -3,78 +3,71 @@
 
 <section class="section">
     <div class="container">
-        <div class="hero is-primary is-small mb-5">
+        <div class="hero is-primary is-small has-hero-bg">
             <div class="hero-body">
                 <div class="container has-text-centered">
-                    <h1 class="title is-2 has-text-white">
-                        <span class="icon-text">
-                            <span>{{index .t "VM.Create.Title"}}</span>
-                        </span>
+                    <h1 class="title is-2 has-text-white mb-2">
+                        <span class="icon-text">{{index .t "VM.Create.Title"}}</span>
                     </h1>
-                    <p class="subtitle has-text-white">
+                    <p class="subtitle has-text-white mb-2">
                         {{index .t "UI.CreateVMDescription"}}
                     </p>
                 </div>
             </div>
         </div>
-
-        <div class="box has-background-white-ter mb-5">
-            <form method="POST" action="/api/vm/create" id="vmCreateForm">
-                <div class="columns is-multiline">
-                    <!-- Left Column -->
-                    <div class="column is-6">
-                        <!-- Basic Information -->
-                        <div class="box mb-5">
-                            <h2 class="title is-5">{{index .t "VM.Create.BasicInfo"}}</h2>
-                            
-                            <!-- VM Name -->
-                            <div class="field">
-                                <label class="label">{{index .t "Common.Name"}}</label>
-                                <div class="control">
-                                    <input class="input" type="text" name="name" 
-                                           placeholder='{{index .t "VM.Create.VMNamePlaceholder"}}' required>
-                                    <p class="help">{{index .t "VM.Create.VMNameHelp"}}</p>
+        <div class="columns is-centered">
+            <div class="column is-10 welcome-block">
+                <form method="POST" action="/api/vm/create" id="vmCreateForm">
+                    <div class="columns is-multiline">
+                        <!-- Left Column -->
+                        <div class="column is-6">
+                            <!-- Basic Information -->
+                            <div class="box mb-5">
+                                <h2 class="title is-5">{{index .t "VM.Create.BasicInfo"}}</h2>
+                                <!-- VM Name -->
+                                <div class="field">
+                                    <label class="label">{{index .t "Common.Name"}}</label>
+                                    <div class="control">
+                                        <input class="input" type="text" name="name" 
+                                               placeholder='{{index .t "VM.Create.VMNamePlaceholder"}}' required>
+                                        <p class="help">{{index .t "VM.Create.VMNameHelp"}}</p>
+                                    </div>
+                                </div>
+                                <!-- Description -->
+                                <div class="field">
+                                    <label class="label">{{index .t "VM.Create.Description"}}</label>
+                                    <div class="control">
+                                        <textarea class="textarea" name="description" placeholder='{{index .t "VM.Create.DescriptionPlaceholder"}}' rows="2"></textarea>
+                                    </div>
+                                </div>
+                                <!-- VM ID -->
+                                <div class="field">
+                                    <label class="label">
+                                        {{index .t "VM.Create.VMID"}}
+                                    </label>
+                                    <div class="control">
+                                        <input class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{index .t "VM.Create.VMIDPlaceholder"}}'>
+                                        <p class="help">{{index .t "VM.Create.VMID.Help"}}</p>
+                                    </div>
                                 </div>
                             </div>
-
-                            <!-- Description -->
-                            <div class="field">
-                                <label class="label">{{index .t "VM.Create.Description"}}</label>
-                                <div class="control">
-                                    <textarea class="textarea" name="description" placeholder='{{index .t "VM.Create.DescriptionPlaceholder"}}' rows="2"></textarea>
-                                </div>
-                            </div>
-
-                            <!-- VM ID -->
-                            <div class="field">
-                                <label class="label">
-                                    {{index .t "VM.Create.VMID"}}
-                                </label>
-                                <div class="control">
-                                    <input class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{index .t "VM.Create.VMIDPlaceholder"}}'>
-                                    <p class="help">{{index .t "VM.Create.VMID.Help"}}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Resources -->
-                        <div class="box mb-5">
-                            <h2 class="title is-5">{{index .t "VM.Create.Resources"}}</h2>
-                            
-                            <div class="columns">
-                                <!-- CPU Sockets -->
-                                <div class="column is-6">
-                                    <div class="field">
-                                        <label class="label">{{index .t "VM.Create.CPUSockets"}}</label>
-                                        <div class="control">
-                                            <div class="select is-fullwidth">
-                                                <select name="sockets" required>
-                                                    {{range $i := until 5}}
-                                                    <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
-                                                    {{end}}
-                                                </select>
+                            <!-- Resources -->
+                            <div class="box mb-5">
+                                <h2 class="title is-5">{{index .t "VM.Create.Resources"}}</h2>
+                                <div class="columns">
+                                    <!-- CPU Sockets -->
+                                    <div class="column is-6">
+                                        <div class="field">
+                                            <label class="label">{{index .t "VM.Create.CPUSockets"}}</label>
+                                            <div class="control">
+                                                <div class="select is-fullwidth">
+                                                    <select name="sockets" required>
+                                                        {{range $i := until 5}}
+                                                        <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                                        {{end}}
+                                                    </select>
+                                                </div>
                                             </div>
-                                        </div>
                                     </div>
                                 </div>
 

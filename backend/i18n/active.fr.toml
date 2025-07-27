@@ -165,7 +165,7 @@ other = "Créez et déployez de nouvelles machines virtuelles en quelques clics.
 ["UI.DocsDescription"]
 other = "Trouvez des guides et une documentation détaillée pour tirer le meilleur parti de PVMSS."
 ["UI.Footer"]
-other = '<b><a href="https://j.hommet.net/pvmss" target="_blank" rel="noopener noreferrer">PVMSS</a></b> - <a href="https://www.linkedin.com/in/julienhommet/" target="_blank" rel="noopener noreferrer">Julien HOMMET</a>. Créé avec <span style="color: #e25555;">❤️</span> en Go 1.24+ et Bulma.'
+other = 'PVMSS - Julien HOMMET. Fait avec le ❤️ en 🇫🇷 🇪🇺.'
 ["UI.GetStarted"]
 other = "Commencer"
 ["UI.Header"]

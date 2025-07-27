@@ -19,7 +19,7 @@
                 {{.Content}}
             {{else}}
                 {{/* Default content if no content template is defined */}}
-                <h1 class="title">{{.Title}}</h1>
+                <h1 class="title">{{index .t "Title"}}</h1>
                 <p>No content available</p>
             {{end}}
         </div>
@@ -28,7 +28,7 @@
     <footer class="footer">
         <div class="container">
             <div class="content has-text-centered">
-                <p>{{.Footer}}</p>
+                <p>{{index .t "UI.Footer"}}</p>
             </div>
         </div>
     </footer>
