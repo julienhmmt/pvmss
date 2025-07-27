@@ -11,8 +11,6 @@ import (
 	"time"
 
 	px "github.com/Telmate/proxmox-api-go/proxmox"
-	"github.com/rs/zerolog/log"
-
 	"pvmss/logger"
 )
 
@@ -72,7 +70,7 @@ func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify boo
 // It is the main constructor for creating a customized client instance.
 func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
 	if apiURL == "" || apiTokenID == "" || apiTokenSecret == "" {
-		log.Error().Str("apiURL", apiURL).Str("apiTokenID", apiTokenID).Msg("Missing required Proxmox API credentials")
+		logger.Get().Error().Str("apiURL", apiURL).Str("apiTokenID", apiTokenID).Msg("Missing required Proxmox API credentials")
 		return nil, fmt.Errorf("apiURL, apiTokenID, and apiTokenSecret are required")
 	}
 
@@ -89,7 +87,7 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 	// Create the underlying Proxmox client
 	pxClient, err := px.NewClient(apiURL, httpClient, "", nil, "", 300)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create Proxmox client")
+		logger.Get().Error().Err(err).Msg("Failed to create Proxmox client")
 		return nil, fmt.Errorf("failed to create Proxmox client: %w", err)
 	}
 
@@ -122,7 +120,7 @@ func (c *Client) Get(path string) (map[string]interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), c.Timeout)
 	defer cancel()
 
-	log.Info().Str("path", path).Msg("Performing GET request to Proxmox API")
+	logger.Get().Info().Str("path", path).Msg("Performing GET request to Proxmox API")
 	return c.GetWithContext(ctx, path)
 }
 

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"pvmss/logger"
 )
 
 // NodeDetails is a simplified, application-specific struct that holds curated information about a Proxmox node,
@@ -58,30 +58,30 @@ func GetNodeDetails(client *Client, nodeName string) (*NodeDetails, error) {
 // It then unmarshals the raw response into the NodeStatus struct and maps the relevant data
 // into the cleaner, application-friendly NodeDetails struct.
 func GetNodeDetailsWithContext(ctx context.Context, client *Client, nodeName string) (*NodeDetails, error) {
-	log.Info().Str("node", nodeName).Msg("Fetching node details")
+	logger.Get().Info().Str("node", nodeName).Msg("Fetching node details")
 
 	// Get node status from Proxmox API
 	status, err := client.GetWithContext(ctx, fmt.Sprintf("/nodes/%s/status", nodeName))
 	if err != nil {
-		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node status from Proxmox API")
+		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get node status from Proxmox API")
 		return nil, fmt.Errorf("failed to get node status for %s: %w", nodeName, err)
 	}
 
 	// Log the raw response for debugging
 	rawResponse, _ := json.Marshal(status)
-	log.Debug().RawJSON("raw_api_response", rawResponse).Msg("Raw Proxmox API response for node status")
+	logger.Get().Debug().RawJSON("raw_api_response", rawResponse).Msg("Raw Proxmox API response for node status")
 
 	// Marshal the map to JSON bytes
 	jsonBytes, err := json.Marshal(status)
 	if err != nil {
-		log.Error().Err(err).Str("node", nodeName).Msg("Failed to marshal node status to JSON")
+		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to marshal node status to JSON")
 		return nil, fmt.Errorf("failed to marshal node status: %w", err)
 	}
 
 	// Unmarshal into our NodeStatus struct
 	var nodeStatus NodeStatus
 	if err := json.Unmarshal(jsonBytes, &nodeStatus); err != nil {
-		log.Error().Err(err).Str("node", nodeName).Msg("Failed to unmarshal node status JSON")
+		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to unmarshal node status JSON")
 		return nil, fmt.Errorf("failed to unmarshal node status: %w", err)
 	}
 
@@ -112,7 +112,7 @@ func GetNodeDetailsWithContext(ctx context.Context, client *Client, nodeName str
 	}
 
 	// Log the final computed details that will be sent to the frontend
-	log.Info().
+	logger.Get().Info().
 		Str("node", details.Node).
 		Int("sockets", details.Sockets).
 		Int("final_max_cpu", details.MaxCPU).
@@ -137,22 +137,22 @@ func GetNodeNames(client *Client) ([]string, error) {
 // GetNodeNamesWithContext fetches the list of all configured nodes from the `/nodes` endpoint of the Proxmox API.
 // It parses the response to extract and return a simple slice of node names.
 func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, error) {
-	log.Info().Msg("Fetching node names")
+	logger.Get().Info().Msg("Fetching node names")
 
 	// Using our custom implementation with context support
-	log.Debug().Msg("Getting node names")
+	logger.Get().Debug().Msg("Getting node names")
 
 	// Use the generic Get method to fetch the list of all nodes.
 	nodeList, err := client.GetWithContext(ctx, "/nodes")
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get node list from Proxmox API")
+		logger.Get().Error().Err(err).Msg("Failed to get node list from Proxmox API")
 		return nil, fmt.Errorf("failed to get node list: %w", err)
 	}
 
 	var nodeNames []string
 	// The 'data' key contains a slice of interfaces, where each interface is a map.
 	if data, ok := nodeList["data"].([]interface{}); ok {
-		log.Info().Int("count", len(data)).Msg("Found nodes in API response")
+		logger.Get().Info().Int("count", len(data)).Msg("Found nodes in API response")
 		nodeNames = make([]string, 0, len(data))
 
 		for _, item := range data {
@@ -160,14 +160,14 @@ func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, err
 				if name, ok := nodeItem["node"].(string); ok {
 					nodeNames = append(nodeNames, name)
 				} else {
-					log.Warn().Interface("item", nodeItem).Msg("Node item found but 'node' key is not a string or is missing")
+					logger.Get().Warn().Interface("item", nodeItem).Msg("Node item found but 'node' key is not a string or is missing")
 				}
 			} else {
-				log.Warn().Interface("item", item).Msg("Item in node list data is not a map[string]interface{}")
+				logger.Get().Warn().Interface("item", item).Msg("Item in node list data is not a map[string]interface{}")
 			}
 		}
 	} else {
-		log.Error().Interface("response", nodeList).Msg("Failed to parse node list data: 'data' key is not a slice or is missing")
+		logger.Get().Error().Interface("response", nodeList).Msg("Failed to parse node list data: 'data' key is not a slice or is missing")
 		return nil, fmt.Errorf("failed to parse node list data")
 	}
 
@@ -177,7 +177,7 @@ func GetNodeNamesWithContext(ctx context.Context, client *Client) ([]string, err
 // GetNodeStatus provides a simple health check for a given node.
 // It attempts to fetch the node's status and returns 'online' on success or 'offline' on failure.
 func GetNodeStatus(client *Client, nodeName string) (string, error) {
-	log.Info().Str("node", nodeName).Msg("Checking node status")
+	logger.Get().Info().Str("node", nodeName).Msg("Checking node status")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -185,7 +185,7 @@ func GetNodeStatus(client *Client, nodeName string) (string, error) {
 	// Try to get node details
 	_, err := client.GetWithContext(ctx, fmt.Sprintf("/nodes/%s/status", nodeName))
 	if err != nil {
-		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node status in GetNodeStatus")
+		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get node status in GetNodeStatus")
 		return "offline", nil
 	}
 
