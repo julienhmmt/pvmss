@@ -13,6 +13,12 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// contextKey is used for context keys to avoid collisions between packages using context
+type contextKey string
+
+// ParamsKey is the key used to store httprouter.Params in the request context
+const ParamsKey contextKey = "params"
+
 // InitState est une fonction de compatibilité qui ne fait plus rien
 // car nous utilisons maintenant le package state
 func InitState() {
