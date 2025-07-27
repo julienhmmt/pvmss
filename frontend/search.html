@@ -82,13 +82,6 @@
                         </h2>
                         {{if .Results}}
                         <div class="table-container">
-                            <div class="level is-mobile mb-4">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <span class="tag is-info is-light">{{len .Results}} {{index .t "Search.ResultsFound"}}</span>
-                                    </div>
-                                </div>
-                            </div>
                             <div class="table-wrapper" id="tableView">
                                 <table class="table is-fullwidth is-hoverable">
                                     <thead>
@@ -97,20 +90,34 @@
                                             <th class="has-text-centered">{{index .t "Search.Name"}}</th>
                                             <th class="has-text-centered">{{index .t "Search.Node"}}</th>
                                             <th class="has-text-centered">{{index .t "Search.Status"}}</th>
+                                            <th class="has-text-centered">CPU</th>
+                                            <th class="has-text-centered">RAM</th>
                                             <th class="has-text-centered">{{index .t "Search.Actions"}}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {{range .Results}}
                                         <tr>
-                                            <td class="has-text-weight-bold">
-                                                <span class="tag is-primary is-light">{{printf "%.0f" .vmid}}</span>
+                                            <td class="has-text-centered">{{.vmid}}</td>
+                                            <td class="has-text-centered">{{.name}}</td>
+                                            <td class="has-text-centered">{{.node}}</td>
+                                            <td class="has-text-centered">
+                                                <span class="tag {{if eq .status "running"}}is-success{{else}}is-danger{{end}}">
+                                                    {{.status}}
+                                                </span>
                                             </td>
-                                            <td>{{.name}}</td>
-                                            <td><span class="tag is-info is-light">{{.node}}</span></td>
-                                            <td>{{.status}}</td>
-                                            <td>
-                                                <a href="/vm/details/{{.vmid}}?lang={{$lang}}" class="button is-small is-link">{{index $.t "Search.View"}}</a>
+                                            <td class="has-text-centered">
+                                                <progress class="progress is-small is-primary" value="{{.cpuload}}" max="100">{{.cpuload}}%</progress>
+                                                <span class="is-size-7">{{.cpuload}}%</span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <progress class="progress is-small is-info" value="{{.mem}}" max="{{.maxmem}}">
+                                                    {{div (mul .mem 100) .maxmem}}%
+                                                </progress>
+                                                <span class="is-size-7">{{div .mem 1024}}/{{div .maxmem 1024}} GB</span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <a href="/vm/details/{{.vmid}}?lang={{$lang}}" class="button is-small is-link">{{index $.t "Search.Actions"}}</a>
                                             </td>
                                         </tr>
                                         {{end}}

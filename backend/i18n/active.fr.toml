@@ -255,6 +255,8 @@ other = "Doit être un nombre négatif"
 # Search
 # ======
 ["Search.ActionsHeader"]
+other = "Boutons d'actions"
+["Search.Actions"]
 other = "Actions"
 ["Search.CPUs"]
 other = "CPU (Sockets/Cœurs)"
@@ -282,6 +284,8 @@ other = "ex. 100"
 other = "Résultats de la recherche"
 ["Search.ResultsFor"]
 other = "Résultats pour"
+["Search.ResultFound"]
+other = "résultat trouvé"
 ["Search.ResultsFound"]
 other = "résultats trouvés"
 ["Search.Status"]

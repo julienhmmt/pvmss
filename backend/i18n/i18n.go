@@ -299,6 +299,7 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 
 	// Search Page
 	t["Search.ActionsHeader"] = Localize(localizer, "Search.ActionsHeader")
+	t["Search.Actions"] = Localize(localizer, "Search.Actions")
 	t["Search.CardView"] = Localize(localizer, "Search.CardView")
 	t["Search.Clear"] = Localize(localizer, "Search.Clear")
 	t["Search.CPUs"] = Localize(localizer, "Search.CPUs")

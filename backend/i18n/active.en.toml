@@ -193,6 +193,8 @@ other = "User docs"
 # Search
 # ===========
 ["Search.ActionsHeader"]
+other = "Actions buttons"
+["Search.Actions"]
 other = "Actions"
 ["Search.CreateVM"]
 other = "Create VM"
@@ -224,6 +226,8 @@ other = "Search by VM ID..."
 other = "Search Results"
 ["Search.ResultsFor"]
 other = "Results for"
+["Search.ResultFound"]
+other = "{{.Count}} result found"
 ["Search.ResultsFound"]
 other = "{{.Count}} results found"
 ["Search.Status"]
