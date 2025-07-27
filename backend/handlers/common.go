@@ -216,22 +216,23 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Traitement de la requête pour la page d'accueil")
 
+	// Si ce n'est pas la racine, on renvoie une 404
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
 
-	if IsAuthenticated(r) {
-		log.Info().Msg("Utilisateur authentifié détecté, redirection vers /search")
-		http.Redirect(w, r, "/search", http.StatusSeeOther)
-		return
+	// Préparer les données pour le template
+	data := map[string]interface{}{
+		"Title": "PVMSS",
+		"Lang":  i18n.GetLanguage(r), // Ajouter la langue détectée
 	}
 
-	log.Debug().Msg("Affichage de la page d'accueil pour visiteur non authentifié")
+	// Ajouter les données de traduction en fonction de la langue
+	i18n.LocalizePage(w, r, data)
 
-	renderTemplateInternal(w, r, "index", map[string]interface{}{
-		"Title": "Bienvenue sur PVMSS",
-	})
+	log.Debug().Msg("Rendu du template index")
+	renderTemplateInternal(w, r, "index", data) // Utiliser le nom du template au lieu du nom de fichier
 
 	log.Info().Msg("Page d'accueil affichée avec succès")
 }

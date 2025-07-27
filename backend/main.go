@@ -173,16 +173,35 @@ func initTemplates() (*template.Template, error) {
 	frontendPath := filepath.Join(rootDir, "frontend")
 
 	// Parse all HTML files in the frontend directory
+	var templateFiles []string
 	err := filepath.Walk(frontendPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".html") {
+			relPath, _ := filepath.Rel(frontendPath, path)
+			templateFiles = append(templateFiles, relPath)
 			_, err = tmpl.ParseFiles(path)
+			if err != nil {
+				logger.Get().Error().
+					Err(err).
+					Str("template", relPath).
+					Msg("Erreur lors du chargement du template")
+			} else {
+				logger.Get().Debug().
+					Str("template", relPath).
+					Msg("Template chargé avec succès")
+			}
 			return err
 		}
 		return nil
 	})
+
+	// Log des templates chargés
+	logger.Get().Info().
+		Strs("templates", templateFiles).
+		Int("count", len(templateFiles)).
+		Msg("Templates chargés")
 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing templates: %w", err)

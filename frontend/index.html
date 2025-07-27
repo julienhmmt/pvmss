@@ -1,6 +1,5 @@
-{{define "index"}}
+{{define "content"}}
 {{$lang := .Lang}}
-
 <section class="section">
     <div class="container">
         <!-- Hero Section -->
@@ -78,4 +77,9 @@
         </div>
     </div>
 </section>
+{{end}}
+
+{{/* Template principal qui sera inclus dans le layout */}}
+{{define "index"}}
+    {{template "content" .}}
 {{end}}
