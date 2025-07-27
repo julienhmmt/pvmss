@@ -1,14 +1,24 @@
 {{define "create_vm"}}
+{{$lang := .Lang}}
+
 <section class="section">
     <div class="container">
-        <div class="box has-background-white-ter mb-5">
-            <h1 class="title is-4 has-text-centered has-text-weight-bold has-text-primary">
-                {{index .t "VM.Create.Title"}}
-            </h1>
-            <p class="subtitle is-6 has-text-centered has-text-grey mb-5">
-                {{index .t "UI.CreateVMDescription"}}
-            </p>
+        <div class="hero is-primary is-small mb-5">
+            <div class="hero-body">
+                <div class="container has-text-centered">
+                    <h1 class="title is-2 has-text-white">
+                        <span class="icon-text">
+                            <span>{{index .t "VM.Create.Title"}}</span>
+                        </span>
+                    </h1>
+                    <p class="subtitle has-text-white">
+                        {{index .t "UI.CreateVMDescription"}}
+                    </p>
+                </div>
+            </div>
+        </div>
 
+        <div class="box has-background-white-ter mb-5">
             <form method="POST" action="/api/vm/create" id="vmCreateForm">
                 <div class="columns is-multiline">
                     <!-- Left Column -->

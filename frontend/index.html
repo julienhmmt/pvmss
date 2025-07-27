@@ -1,68 +1,114 @@
 {{define "index"}}
-<header class="hero">
-    <div class="container">
-        <h1 class="title is-2">{{index .t "UI.Header"}}</h1>
-        <p class="subtitle is-4">{{index .t "UI.Subtitle"}}</p>
-        <p class="has-text-white has-text-centered-mobile">{{index .t "UI.Body"}}</p>
-    </div>
-</header>
+{{$lang := .Lang}}
 
-<main class="section">
+<section class="section">
     <div class="container">
-        <div class="columns is-multiline is-centered">
-            <!-- Carte Créer une VM -->
-            <div class="column is-4-desktop is-6-tablet">
-                <div class="card">
-                    <div class="card-header">
-                        <p class="card-header-title has-text-white">
-                            <span>{{index .t "Navbar.CreateVM"}}</span>
-                        </p>
-                    </div>
-                    <div class="card-content has-text-centered">
-                        <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
-                        <a href="/create-vm?lang={{.Lang}}" class="button is-orange is-medium">
-                            <span>{{index .t "UI.GetStarted"}}</span>
-                        </a>
-                    </div>
+        <!-- Hero Section -->
+        <div class="hero is-primary is-small has-hero-bg">
+            <div class="hero-body">
+                <div class="container has-text-centered">
+                    <h1 class="title is-2 has-text-white mb-2">
+                        <span class="icon-text">{{index .t "UI.Header"}}</span>
+                    </h1>
+                    <p class="subtitle has-text-white mb-2">
+                        {{index .t "UI.Subtitle"}}
+                    </p>
+                    <p class="subtitle has-text-white is-size-5">
+                        {{index .t "UI.Body"}}
+                    </p>
                 </div>
             </div>
-            
-            <!-- Carte Documentation -->
-            <div class="column is-4-desktop is-6-tablet">
-                <div class="card">
-                    <div class="card-header">
-                        <p class="card-header-title has-text-white">
-                            <span>{{index .t "Docs.User.Title"}}</span>
-                        </p>
+        </div>
+
+        <div class="columns is-centered">
+            <div class="column is-10 welcome-block">
+                <div class="columns is-multiline is-centered">
+                    <!-- Carte Créer une VM -->
+                    <div class="column is-4-desktop is-6-tablet">
+                        <div class="card home-card">
+                            <div class="card-header">
+                                <p class="card-header-title has-text-white has-text-centered">
+                                    {{index .t "Navbar.CreateVM"}}
+                                </p>
+                            </div>
+                            <div class="card-content has-text-centered">
+                                <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
+                                <a href="/create-vm?lang={{.Lang}}" class="button is-orange is-medium home-btn">
+                                    {{index .t "UI.GetStarted"}}
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-content has-text-centered">
-                        <p class="mb-4">{{index .t "UI.DocsDescription"}}</p>
-                        <a href="/docs/user?lang={{.Lang}}" class="button is-orange is-medium">
-                            <span>{{index .t "UI.ViewDocumentation"}}</span>
-                        </a>
+                    
+                    <!-- Carte Documentation -->
+                    <div class="column is-4-desktop is-6-tablet">
+                        <div class="card home-card">
+                            <div class="card-header">
+                                <p class="card-header-title has-text-white has-text-centered">
+                                    {{index .t "Docs.User.Title"}}
+                                </p>
+                            </div>
+                            <div class="card-content has-text-centered">
+                                <p class="mb-4">{{index .t "UI.DocsDescription"}}</p>
+                                <a href="/docs/user?lang={{.Lang}}" class="button is-orange is-medium home-btn">
+                                    {{index .t "UI.ViewDocumentation"}}
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Carte Admin -->
-            <div class="column is-4-desktop is-6-tablet">
-                <div class="card">
-                    <div class="card-header">
-                        <p class="card-header-title has-text-white">
-                            <span>{{index .t "Navbar.Admin"}}</span>
-                        </p>
+                    
+                    <!-- Carte Admin -->
+                    <div class="column is-4-desktop is-6-tablet">
+                        <div class="card home-card">
+                            <div class="card-header">
+                                <p class="card-header-title has-text-white">
+                                    {{index .t "Navbar.Admin"}}
+                                </p>
+                            </div>
+                            <div class="card-content has-text-centered has-text-centered">
+                                <p class="mb-4">{{index .t "UI.AdminDescription"}}</p>
+                                <a href="/admin?lang={{.Lang}}" class="button is-orange is-medium home-btn">
+                                    {{index .t "UI.AccessAdmin"}}
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-content has-text-centered">
-                        <p class="mb-4">{{index .t "UI.AdminDescription"}}</p>
-                        <a href="/admin?lang={{.Lang}}" class="button is-orange is-medium">
-                            <span>{{index .t "UI.AccessAdmin"}}</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
                 </div>
             </div>
         </div>
     </div>
-</main>
+
+    <style>
+    /* Main block styling */
+    .welcome-block {
+        background: rgba(255,255,255,0.96);
+        border-radius: 18px;
+        box-shadow: 0 8px 32px rgba(50,50,93,0.07);
+        padding: 2.5rem 2.2rem 2.2rem 2.2rem;
+        margin-top: -2.5rem;
+    }
+    /* Card styling */
+    .home-card {
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(50,50,93,0.10);
+        transition: transform 0.15s, box-shadow 0.15s;
+        border: none;
+    }
+    .home-card:hover {
+        transform: translateY(-4px) scale(1.03);
+        box-shadow: 0 8px 28px rgba(50,50,93,0.18);
+        z-index: 2;
+    }
+    .home-btn {
+        transition: background 0.15s, box-shadow 0.15s;
+        box-shadow: 0 2px 8px rgba(50,50,93,0.10);
+        border-radius: 8px;
+    }
+    .home-btn:hover {
+        background: #ff8800 !important;
+        color: #fff !important;
+        box-shadow: 0 4px 16px rgba(255,136,0,0.18);
+    }
+    </style>
+</section>
 {{end}}

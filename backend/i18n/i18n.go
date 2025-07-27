@@ -271,8 +271,10 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	// General UI
 	t["Title"] = Localize(localizer, "Title")
 	t["UI.AccessAdmin"] = Localize(localizer, "UI.AccessAdmin")
+	t["UI.AdminDescription"] = Localize(localizer, "UI.AdminDescription")
 	t["UI.Body"] = Localize(localizer, "UI.Body")
 	t["UI.CreateVMDescription"] = Localize(localizer, "UI.CreateVMDescription")
+	t["UI.DocsDescription"] = Localize(localizer, "UI.DocsDescription")
 	t["UI.Footer"] = Localize(localizer, "UI.Footer")
 	t["UI.GetStarted"] = Localize(localizer, "UI.GetStarted")
 	t["UI.Header"] = Localize(localizer, "UI.Header")
