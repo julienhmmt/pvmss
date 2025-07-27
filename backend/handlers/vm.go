@@ -19,11 +19,22 @@ func NewVMHandler() *VMHandler {
 
 // IndexHandler gère la page d'accueil avec la liste des VMs
 func (h *VMHandler) IndexHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "VMHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
+
+	log.Debug().Msg("Début du traitement de la requête IndexHandler")
+
 	// Récupérer la liste des VMs (mock temporaire)
 	vms := []map[string]interface{}{
 		{"id": 100, "name": "vm1", "status": "running"},
 		{"id": 101, "name": "vm2", "status": "stopped"},
 	}
+
+	log.Debug().Int("vm_count", len(vms)).Msg("Liste des VMs récupérée")
 
 	// Préparer les données pour le template
 	data := map[string]interface{}{
@@ -31,16 +42,31 @@ func (h *VMHandler) IndexHandler(w http.ResponseWriter, r *http.Request, _ httpr
 		"VMs":   vms,
 	}
 
+	// Ajouter les données de traduction
+	i18n.LocalizePage(w, r, data)
+
+	log.Debug().Msg("Rendu du template index.html")
 	renderTemplateInternal(w, r, "index.html", data)
 }
 
 // VMDetailsHandler gère la page de détails d'une VM
 func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "VMHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
+
 	vmID := ps.ByName("id")
 	if vmID == "" {
+		log.Warn().Msg("ID de VM non spécifié dans la requête")
 		http.Error(w, "VM ID is required", http.StatusBadRequest)
 		return
 	}
+
+	log = log.With().Str("vm_id", vmID).Logger()
+	log.Debug().Msg("Récupération des détails de la VM")
 
 	// Récupérer les détails de la VM depuis Proxmox
 	// À implémenter: Récupérer les vrais détails de la VM
@@ -53,31 +79,61 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"Storage": "50GB",
 	}
 
+	log.Debug().Interface("vm_details", vmDetails).Msg("Détails de la VM récupérés")
+
 	data := map[string]interface{}{
 		"Title": "Détails de la VM " + vmID,
 		"VM":    vmDetails,
 	}
 
+	// Ajouter les données de traduction
+	i18n.LocalizePage(w, r, data)
+
+	log.Debug().Msg("Rendu du template vm_details.html")
 	renderTemplateInternal(w, r, "vm_details.html", data)
 }
 
 // CreateVMHandler gère la création d'une nouvelle VM
 func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "VMHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
+
+	log.Debug().Str("http_method", r.Method).Msg("Traitement de la requête CreateVMHandler")
+
 	switch r.Method {
 	case http.MethodGet:
 		h.renderCreateVMForm(w, r)
 	case http.MethodPost:
 		h.handleCreateVM(w, r)
 	default:
+		log.Warn().Str("method", r.Method).Msg("Méthode HTTP non autorisée")
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 // renderCreateVMForm affiche le formulaire de création de VM
 func (h *VMHandler) renderCreateVMForm(w http.ResponseWriter, r *http.Request) {
+	log := logger.Get().With().
+		Str("handler", "VMHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
+
+	log.Debug().Msg("Affichage du formulaire de création de VM")
+
 	// Récupérer les données nécessaires pour le formulaire
 	nodes := []string{"node1", "node2"}             // À remplacer par les vrais nœuds
 	images := []string{"ubuntu-20.04", "debian-11"} // À remplacer par les vraies images
+
+	log.Debug().
+		Int("nodes_count", len(nodes)).
+		Int("images_count", len(images)).
+		Msg("Données du formulaire chargées")
 
 	// Créer les données pour le template
 	data := make(map[string]interface{})
@@ -90,16 +146,41 @@ func (h *VMHandler) renderCreateVMForm(w http.ResponseWriter, r *http.Request) {
 	// Définir le titre de la page
 	data["Title"] = data["VM.Create.Title"]
 
+	log.Debug().Str("template", "create_vm").Msg("Rendu du template de création de VM")
+
 	// Rendre le template avec le bon nom (sans extension .html)
 	renderTemplateInternal(w, r, "create_vm", data)
 }
 
 // handleCreateVM traite la soumission du formulaire de création de VM
 func (h *VMHandler) handleCreateVM(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+	log := logger.Get().With().
+		Str("handler", "VMHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
+
+	log.Debug().Msg("Traitement de la soumission du formulaire de création de VM")
+
+	// Parser le formulaire
+	if err := r.ParseForm(); err != nil {
+		log.Error().Err(err).Msg("Échec de l'analyse du formulaire")
+		h.renderCreateVMFormWithError(w, r, "Erreur lors de l'analyse du formulaire")
+		return
+	}
+
 	vmName := r.FormValue("name")
 	node := r.FormValue("node")
 	image := r.FormValue("image")
+
+	log = log.With().
+		Str("vm_name", vmName).
+		Str("node", node).
+		Str("image", image).
+		Logger()
+
+	log.Info().Msg("Tentative de création d'une nouvelle VM")
 
 	// Valider les entrées
 	if vmName == "" || node == "" || image == "" {
