@@ -1,82 +1,80 @@
 {{define "tags"}}
 <h2 class="title is-4">{{index .t "Admin.Tags.Title"}}</h2>
-<div class="notification is-light">
-    {{index .t "Admin.Tags.Description"}}
-</div>
+<div class="notification is-light">{{index .t "Admin.Tags.Description"}}</div>
 <div id="tags-list" class="mb-4"></div>
 
 <div class="field has-addons">
-    <div class="control">
-        <input id="tag-input" class="input" type="text" placeholder='{{index .t "Admin.Tags.Placeholder.NewTag"}}'>
-    </div>
-    <div class="control">
-        <a id="add-tag-btn" class="button is-primary">{{index .t "Admin.Tags.AddButton"}}</a>
-    </div>
+  <div class="control">
+    <input id="tag-input" class="input" type="text" placeholder='{{index .t "Admin.Tags.Placeholder.NewTag"}}'/>
+  </div>
+  <div class="control">
+    <a id="add-tag-btn" class="button is-primary">{{index .t "Admin.Tags.AddButton"}}</a>
+  </div>
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.tagsInitialized) return;
-        window.tagsInitialized = true;
-        
-        const tagsList = document.getElementById('tags-list');
-        const tagInput = document.getElementById('tag-input');
-        const addTagBtn = document.getElementById('add-tag-btn');
+  document.addEventListener("DOMContentLoaded", function () {
+    if (window.tagsInitialized) return;
+    window.tagsInitialized = true;
 
-        function fetchTags() {
-            fetch('/api/tags')
-                .then(response => response.json())
-                .then(data => {
-                    tagsList.innerHTML = '';
-                    data.tags.forEach(tag => {
-                        const tagElement = document.createElement('span');
-                        tagElement.className = 'tag is-medium is-primary mr-2';
-                        tagElement.textContent = tag;
+    const tagsList = document.getElementById("tags-list");
+    const tagInput = document.getElementById("tag-input");
+    const addTagBtn = document.getElementById("add-tag-btn");
 
-                        if (tag !== 'PVMSS') {
-                            const deleteButton = document.createElement('button');
-                            deleteButton.className = 'delete is-small';
-                            deleteButton.onclick = () => deleteTag(tag);
-                            tagElement.appendChild(deleteButton);
-                        }
-                        
-                        tagsList.appendChild(tagElement);
-                    });
-                });
-        }
+    function fetchTags() {
+      fetch("/api/tags")
+        .then((response) => response.json())
+        .then((data) => {
+          tagsList.innerHTML = "";
+          data.tags.forEach((tag) => {
+            const tagElement = document.createElement("span");
+            tagElement.className = "tag is-medium is-primary mr-2";
+            tagElement.textContent = tag;
 
-        function addTag() {
-            const tag = tagInput.value.trim();
-            if (tag) {
-                fetch('/api/tags', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ name: tag })
-                }).then(() => {
-                    tagInput.value = '';
-                    fetchTags();
-                });
+            if (tag !== "PVMSS") {
+              const deleteButton = document.createElement("button");
+              deleteButton.className = "delete is-small";
+              deleteButton.onclick = () => deleteTag(tag);
+              tagElement.appendChild(deleteButton);
             }
-        }
 
-        function deleteTag(tag) {
-            fetch(`/api/tags/${tag}`, {
-                method: 'DELETE'
-            }).then(() => {
-                fetchTags();
-            });
-        }
-
-        addTagBtn.addEventListener('click', addTag);
-        tagInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                addTag();
-            }
+            tagsList.appendChild(tagElement);
+          });
         });
+    }
 
+    function addTag() {
+      const tag = tagInput.value.trim();
+      if (tag) {
+        fetch("/api/tags", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ name: tag }),
+        }).then(() => {
+          tagInput.value = "";
+          fetchTags();
+        });
+      }
+    }
+
+    function deleteTag(tag) {
+      fetch(`/api/tags/${tag}`, {
+        method: "DELETE",
+      }).then(() => {
         fetchTags();
+      });
+    }
+
+    addTagBtn.addEventListener("click", addTag);
+    tagInput.addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        addTag();
+      }
     });
+
+    fetchTags();
+  });
 </script>
 {{end}}

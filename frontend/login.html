@@ -1,37 +1,33 @@
 {{define "login"}}
 <section class="section">
-    <div class="container">
-        <div class="columns is-centered">
-            <div class="column is-one-third">
-                <div class="box">
-                    <h1 class="title has-text-centered">{{index .t "Login.Title"}}</h1>
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-one-third">
+        <div class="box">
+          <h1 class="title has-text-centered">{{index .t "Login.Title"}}</h1>
 
-                    {{if .Error}}
-                    <div class="notification is-danger">
-                        {{.Error}}
-                    </div>
-                    {{end}}
+          {{if .Error}}
+          <div class="notification is-danger">{{.Error}}</div>
+          {{end}}
 
-                    <form method="post" action="/login?lang={{.Lang}}">
-                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                        <div class="field">
-                            <label class="label" for="password">{{index .t "Login.PasswordLabel"}}</label>
-                            <div class="control">
-                                <input class="input" type="password" id="password" name="password" required maxlength="200" placeholder="{{index .t "Login.PasswordLabel"}}">
-                            </div>
-                        </div>
-
-                        <div class="field">
-                            <div class="control">
-                                <button class="button is-primary is-fullwidth" type="submit">
-                                    {{index .t "Login.Button"}}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+          <form method="post" action="/login?lang={{.Lang}}">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+            <div class="field">
+              <label class="label" for="password">{{index .t "Login.PasswordLabel"}}</label>
+              <div class="control">
+                <input class="input" type="password" id="password" name="password" required maxlength="200" placeholder="{{index .t `Login.PasswordLabel`}}">
+              </div>
             </div>
+
+            <div class="field">
+              <div class="control">
+                <button class="button is-primary is-fullwidth" type="submit">{{index .t "Login.Button"}}</button>
+              </div>
+            </div>
+          </form>
         </div>
+      </div>
     </div>
+  </div>
 </section>
 {{end}}
