@@ -429,8 +429,8 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Admin.VMBR.Title"] = Localize(localizer, "Admin.VMBR.Title")
 
 	// Admin Section - Tags
-	t["Admin.Tags.AddButton"] = Localize(localizer, "Admin.Tags.AddButton")
 	t["Admin.Tags.Description"] = Localize(localizer, "Admin.Tags.Description")
+	t["Admin.Tags.Placeholder"] = Localize(localizer, "Admin.Tags.Placeholder")
 	t["Admin.Tags.Title"] = Localize(localizer, "Admin.Tags.Title")
 
 	// Admin Section - Limits

@@ -531,10 +531,10 @@ other = "No network bridge found on any node."
 other = "Network Bridges Management"
 
 # Admin - Tags Management
-["Admin.Tags.AddButton"]
-other = "Add"
 ["Admin.Tags.Description"]
 other = "Manage tags for your virtual machines. Tags must be between 3 and 24 characters long and can only contain alphanumeric characters."
+["Admin.Tags.Placeholder"]
+other = "Tag name"
 ["Admin.Tags.Title"]
 other = "Tags Management"
 

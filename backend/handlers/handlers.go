@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/logger"
 	"pvmss/state"
 )
 
@@ -11,6 +12,11 @@ import (
 func InitHandlers() http.Handler {
 	// Créer un nouveau routeur
 	router := httprouter.New()
+
+	// S'assurer que le tag par défaut existe
+	if err := EnsureDefaultTag(); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to ensure default tag")
+	}
 
 	// Initialiser les gestionnaires
 	authHandler := NewAuthHandler()
@@ -21,9 +27,11 @@ func InitHandlers() http.Handler {
 	docsHandler := NewDocsHandler()
 	healthHandler := NewHealthHandler()
 	settingsHandler := NewSettingsHandler()
+	tagsHandler := NewTagsHandler()
+	tagsUIHandler := NewTagsUIHandler()
 
 	// Configurer les routes
-	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler)
+	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, tagsUIHandler)
 
 	// Configurer le gestionnaire de fichiers statiques
 	setupStaticFiles(router)
@@ -48,6 +56,8 @@ func setupRoutes(
 	docsHandler *DocsHandler,
 	healthHandler *HealthHandler,
 	settingsHandler *SettingsHandler,
+	tagsHandler *TagsHandler,
+	tagsUIHandler *TagsUIHandler,
 ) {
 	// Enregistrer les routes de chaque gestionnaire
 	authHandler.RegisterRoutes(router)
@@ -58,6 +68,8 @@ func setupRoutes(
 	docsHandler.RegisterRoutes(router)
 	healthHandler.RegisterRoutes(router)
 	settingsHandler.RegisterRoutes(router)
+	tagsHandler.RegisterRoutes(router)
+	tagsUIHandler.RegisterRoutes(router)
 
 	// Route d'accueil
 	router.GET("/", IndexRouterHandler)
