@@ -291,22 +291,40 @@ func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	// Journaliser le résultat final
-	logger.Get().Debug().
-		Int("total_vmbrs", len(allVMBRs)).
-		Msg("Bridges réseau trouvés")
+	// Format the response in the expected structure
+	formattedVMBRs := make([]map[string]interface{}, 0, len(allVMBRs))
+	for _, vmbr := range allVMBRs {
+		formattedVMBR := map[string]interface{}{
+			"name":        vmbr["iface"],
+			"node":        vmbr["node"],
+			"description": "",
+		}
+		
+		// Add description if available
+		if desc, ok := vmbr["comments"].(string); ok && desc != "" {
+			formattedVMBR["description"] = desc
+		}
+		
+		formattedVMBRs = append(formattedVMBRs, formattedVMBR)
+	}
 
-	// Renvoyer la réponse
+	// Log the result
+	logger.Get().Debug().
+		Int("total_vmbrs", len(formattedVMBRs)).
+		Msg("Network bridges found")
+
+	// Send the response
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "success",
-		"vmbrs":  allVMBRs,
+		"vmbrs":  formattedVMBRs,
 	})
 
 	if err != nil {
 		logger.Get().Error().
 			Err(err).
-			Msg("Échec de l'encodage de la réponse JSON")
+			Msg("Failed to encode JSON response")
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 

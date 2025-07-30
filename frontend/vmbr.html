@@ -15,79 +15,109 @@
     window.vmbrInitialized = true;
 
     const vmbrContainer = document.getElementById("vmbr-container");
+    const loadingIndicator = '<div class="has-text-centered">Loading network bridges...</div>';
+    
+    // Show loading indicator
+    vmbrContainer.innerHTML = loadingIndicator;
 
     let savedVmbrs = [];
+    
+    // First, get saved VMBR settings
     fetch("/api/settings")
-      .then((response) => response.json())
-      .then((settings) => {
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(settings => {
         savedVmbrs = settings.vmbrs || [];
+        // Then get all available VMBRs
         return fetch("/api/vmbr/all");
       })
-      .then((response) => response.json())
-      .then((data) => {
-        vmbrContainer.innerHTML = ""; // Clear any previous content
-        if (data.vmbrs && data.vmbrs.length > 0) {
-          // Create table element
-          const table = document.createElement("table");
-          table.className = "table is-fullwidth is-striped";
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        vmbrContainer.innerHTML = ""; // Clear loading indicator
+        
+        if (!data || data.status !== "success" || !Array.isArray(data.vmbrs)) {
+          throw new Error("Invalid data format received from server");
+        }
 
-          // Create table header
-          const thead = document.createElement("thead");
-          thead.innerHTML = `
-            <tr>
+        if (data.vmbrs.length === 0) {
+          vmbrContainer.innerHTML = `
+            <div class="notification is-warning">
+              No network bridges found. Please check your Proxmox configuration.
+            </div>`;
+          return;
+        }
+
+        // Create table element
+        const table = document.createElement("table");
+        table.className = "table is-fullwidth is-striped is-hoverable";
+
+        // Create table header
+        const thead = document.createElement("thead");
+        thead.innerHTML = `
+          <tr>
               <th>{{index .t "Admin.VMBR.Header.Enabled"}}</th>
               <th>{{index .t "Admin.VMBR.Header.Node"}}</th>
               <th>{{index .t "Admin.VMBR.Header.Name"}}</th>
               <th>{{index .t "Admin.VMBR.Header.Description"}}</th>
-            </tr>
-          `;
-          table.appendChild(thead);
+          </tr>
+        `;
+        table.appendChild(thead);
 
-          // Create table body
-          const tbody = document.createElement("tbody");
-          data.vmbrs.forEach((vmbr) => {
-            const row = document.createElement("tr");
-
-            // Enabled cell with checkbox
-            const enabledCell = document.createElement("td");
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.className = "vmbr-checkbox";
-            checkbox.dataset.name = vmbr.name;
-            if (savedVmbrs.includes(vmbr.name)) {
-              checkbox.checked = true;
-            }
-            enabledCell.appendChild(checkbox);
-            row.appendChild(enabledCell);
-
-            // Node cell
-            const nodeCell = document.createElement("td");
-            nodeCell.textContent = vmbr.node;
-            row.appendChild(nodeCell);
-
-            // Name cell
-            const nameCell = document.createElement("td");
-            nameCell.textContent = vmbr.name;
-            row.appendChild(nameCell);
-
-            // Description cell
-            const descriptionCell = document.createElement("td");
-            descriptionCell.textContent = vmbr.description;
-            row.appendChild(descriptionCell);
-
-            tbody.appendChild(row);
-          });
-          table.appendChild(tbody);
-          vmbrContainer.appendChild(table);
-        } else {
-          vmbrContainer.innerHTML =
-            '<div class="notification is-warning">{{index . "Admin.VMBR.NoVMBRs"}}</div>';
-        }
+        // Create table body
+        const tbody = document.createElement("tbody");
+        
+        data.vmbrs.forEach(vmbr => {
+          const row = document.createElement("tr");
+          
+          // Create cells
+          const enabledCell = document.createElement("td");
+          const nodeCell = document.createElement("td");
+          const nameCell = document.createElement("td");
+          const descCell = document.createElement("td");
+          
+          // Add checkbox for enabled state
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.className = "vmbr-checkbox";
+          checkbox.dataset.name = vmbr.name || '';
+          checkbox.checked = savedVmbrs.includes(vmbr.name || '');
+          
+          enabledCell.appendChild(checkbox);
+          nodeCell.textContent = vmbr.node || 'N/A';
+          nameCell.textContent = vmbr.name || 'N/A';
+          descCell.textContent = vmbr.description || 'No description';
+          
+          // Add cells to row
+          row.appendChild(enabledCell);
+          row.appendChild(nodeCell);
+          row.appendChild(nameCell);
+          row.appendChild(descCell);
+          
+          tbody.appendChild(row);
+        });
+        
+        table.appendChild(tbody);
+        vmbrContainer.appendChild(table);
       })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
-        vmbrContainer.innerHTML =
-          '<div class="notification is-danger">{{index . "Admin.VMBR.Error"}}</div>';
+      .catch(error => {
+        console.error("Error loading VMBR data:", error);
+        vmbrContainer.innerHTML = `
+          <div class="notification is-danger">
+            <p><strong>Error loading network bridges</strong></p>
+            <p>${error.message || 'Unknown error occurred'}</p>
+            <button class="button is-small is-light mt-2" onclick="window.location.reload()">
+              <span>Try Again</span>
+            </button>
+          </div>`;
       });
 
     function saveVmbrSelections() {
