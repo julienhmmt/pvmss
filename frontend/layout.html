@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{.UI.Header}} - {{.UI.Subtitle}}">
+    <meta name="csrf-token" content="{{.CSRFToken}}">
     <title>{{.Title}} - {{.UI.Header}}</title>
     <link rel="stylesheet" href="/css/bulma.min.css">
     <link rel="stylesheet" href="/css/style.css">
@@ -34,6 +35,13 @@
     </footer>
 
     <script>
+        // Fonction utilitaire pour récupérer le jeton CSRF
+        function getCSRFToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.content || 
+                   document.querySelector('input[name="csrf_token"]')?.value || '';
+        }
+
+        // Gestion du menu burger
         document.addEventListener('DOMContentLoaded', function() {
             const burger = document.querySelector('.navbar-burger');
             const menu = document.querySelector('.navbar-menu');
@@ -44,6 +52,14 @@
                     menu.classList.toggle('is-active');
                 });
             }
+
+            // Ajouter le jeton CSRF à toutes les requêtes AJAX par défaut
+            document.addEventListener('htmx:configRequest', function(event) {
+                const csrfToken = getCSRFToken();
+                if (csrfToken && !event.detail.headers['X-CSRF-Token']) {
+                    event.detail.headers['X-CSRF-Token'] = csrfToken;
+                }
+            });
         });
     </script>
 </body>

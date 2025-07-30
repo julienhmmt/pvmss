@@ -28,9 +28,19 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       try {
+        const headers = {
+          "Content-Type": "application/json"
+        };
+        
+        // Utiliser la fonction utilitaire getCSRFToken pour récupérer le jeton
+        const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
+        if (csrfToken) {
+          headers["X-CSRF-Token"] = csrfToken;
+        }
+        
         const response = await fetch(form.action, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: headers,
           body: JSON.stringify(payload),
         });
 

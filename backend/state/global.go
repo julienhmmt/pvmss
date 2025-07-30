@@ -22,10 +22,13 @@ func InitGlobalState() StateManager {
 	return globalState
 }
 
-// GetGlobalState returns the global state manager
+// GetGlobalState returns the global state manager.
+// It assumes InitGlobalState has been called at application startup.
 func GetGlobalState() StateManager {
 	if globalState == nil {
-		return InitGlobalState()
+		// This should not happen if InitGlobalState is called in main().
+		// It's a programming error.
+		logger.Get().Fatal().Msg("FATAL: Global state accessed before initialization")
 	}
 	return globalState
 }

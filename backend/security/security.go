@@ -12,13 +12,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Security constants
-const (
-	csrfTTL       = 30 * time.Minute
-	maxAttempts   = 5
-	lockoutPeriod = 15 * time.Minute
-)
-
 // CheckRateLimit checks if an IP has exceeded rate limits
 func CheckRateLimit(ip string) bool {
 	if ip == "" {
@@ -43,12 +36,12 @@ func CheckRateLimit(ip string) bool {
 	recentAttempts := 0
 	now := time.Now()
 	for _, attempt := range attempts {
-		if now.Sub(attempt) < lockoutPeriod {
+		if now.Sub(attempt) < LockoutPeriod {
 			recentAttempts++
 		}
 	}
 
-	return recentAttempts < maxAttempts
+	return recentAttempts < MaxLoginAttempts
 }
 
 // ValidateInput validates and sanitizes input

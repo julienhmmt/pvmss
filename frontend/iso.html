@@ -100,11 +100,20 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedIsos.push(checkbox.dataset.volid);
         });
 
+        // Récupérer le jeton CSRF
+        const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        // Ajouter le jeton CSRF s'il est disponible
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
+
         fetch('/api/iso/settings', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({ isos: selectedIsos })
         })
         .then(response => {

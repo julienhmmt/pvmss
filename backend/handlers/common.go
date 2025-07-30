@@ -91,14 +91,16 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	if IsAuthenticated(r) {
 		log.Debug().Msg("Utilisateur authentifié détecté, ajout des données de session")
 		data["IsAuthenticated"] = true
-		sessionManager := stateManager.GetSessionManager()
-		username := sessionManager.GetString(r.Context(), "username")
-		if username != "" {
-			data["Username"] = username
-			log.Debug().Str("username", username).Msg("Nom d'utilisateur ajouté aux données du template")
-		}
 	} else {
 		log.Debug().Msg("Aucun utilisateur authentifié détecté")
+	}
+
+	// Ajouter le jeton CSRF aux données du template
+	if csrfToken, ok := r.Context().Value("csrf_token").(string); ok && csrfToken != "" {
+		data["CSRFToken"] = csrfToken
+		log.Debug().Msg("Jeton CSRF ajouté aux données du template")
+	} else {
+		log.Warn().Msg("Aucun jeton CSRF trouvé dans le contexte de la requête")
 	}
 
 	// Ajouter les données i18n et variables communes
@@ -164,23 +166,54 @@ func IsAuthenticated(r *http.Request) bool {
 	log := logger.Get().With().
 		Str("function", "IsAuthenticated").
 		Str("remote_addr", r.RemoteAddr).
+		Str("path", r.URL.Path).
 		Logger()
 
 	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
-
-	// Vérifier si la session contient le flag d'authentification
-	authenticated, ok := sessionManager.Get(r.Context(), "authenticated").(bool)
-	if !ok {
-		log.Debug().Msg("Aucune session d'authentification active")
+	if stateManager == nil {
+		log.Error().Msg("State manager non initialisé")
 		return false
 	}
 
+	sessionManager := stateManager.GetSessionManager()
+	if sessionManager == nil {
+		log.Error().Msg("Session manager non initialisé")
+		return false
+	}
+
+	// Log des cookies de la requête
+	cookies := make(map[string]string)
+	for _, cookie := range r.Cookies() {
+		cookies[cookie.Name] = cookie.Value
+		log.Debug().
+			Str("cookie_name", cookie.Name).
+			Str("value", cookie.Value).
+			Str("path", cookie.Path).
+			Str("domain", cookie.Domain).
+			Bool("secure", cookie.Secure).
+			Bool("http_only", cookie.HttpOnly).
+			Msg("Cookie reçu")
+	}
+
+	// Obtenir le token de session actuel
+	sessionToken := sessionManager.Token(r.Context())
 	log.Debug().
-		Bool("is_authenticated", authenticated).
+		Interface("cookies", cookies).
+		Str("session_token", sessionToken).
 		Msg("Vérification de l'authentification")
 
-	return authenticated
+	// Vérifier si la session contient le flag d'authentification
+	authenticated, ok := sessionManager.Get(r.Context(), "authenticated").(bool)
+	if !ok || !authenticated {
+		log.Warn().
+			Str("session_token", sessionToken).
+			Bool("authenticated", authenticated).
+			Bool("ok", ok).
+			Msg("Aucune session d'authentification active ou session invalide")
+		return false
+	}
+
+	return true
 }
 
 // RequireAuth est un middleware pour protéger les routes nécessitant une authentification

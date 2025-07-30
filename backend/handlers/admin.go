@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/proxmox"
+	"pvmss/state"
 
 	"pvmss/i18n"
 	"pvmss/logger"
@@ -26,11 +28,11 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	log.Debug().Msg("Tentative d'accès à la page d'administration")
+	log.Debug().Msg("Attempting to access admin page")
 
-	// Vérifier les autorisations (utilise la session)
+	// Check permissions (uses session)
 	if !IsAuthenticated(r) {
-		errMsg := "Accès refusé: utilisateur non authentifié"
+		errMsg := "Access denied: unauthenticated user"
 		log.Warn().
 			Str("status", "forbidden").
 			Msg(errMsg)
@@ -38,21 +40,52 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	log.Debug().Msg("Préparation des données pour la page d'administration")
+	log.Debug().Msg("Preparing data for admin page")
 
-	// Récupérer les données nécessaires (mock temporaire)
-	settings := map[string]interface{}{
-		"VMCount":   42,
-		"UserCount": 10,
+	// Get current application settings
+	appSettings := state.GetSettings()
+	if appSettings == nil {
+		log.Error().Msg("Application settings are not available")
+		http.Error(w, "Internal error: Unable to load settings", http.StatusInternalServerError)
+		return
 	}
 
-	log.Debug().
-		Interface("settings", settings).
-		Msg("Données de la page d'administration chargées")
+	// Get Proxmox client
+	client := state.GetGlobalState().GetProxmoxClient()
+	if client == nil {
+		log.Error().Msg("Proxmox client is not initialized")
+		http.Error(w, "Internal error: Unable to connect to Proxmox", http.StatusInternalServerError)
+		return
+	}
+
+	// Get list of nodes
+	nodeNames, err := proxmox.GetNodeNames(client)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to retrieve Proxmox nodes")
+		http.Error(w, "Internal error: Unable to retrieve Proxmox nodes", http.StatusInternalServerError)
+		return
+	}
+
+	// Get details for each node
+	var nodeDetails []*proxmox.NodeDetails
+	for _, nodeName := range nodeNames {
+		nodeDetail, err := proxmox.GetNodeDetails(client, nodeName)
+		if err != nil {
+			log.Error().Err(err).Str("node", nodeName).Msg("Failed to retrieve node details")
+			continue
+		}
+		nodeDetails = append(nodeDetails, nodeDetail)
+	}
+
+	log.Debug().Msg("Admin page data loaded successfully")
 
 	// Préparer les données pour le template
 	data := map[string]interface{}{
-		"Settings": settings,
+		"Tags":        appSettings.Tags,
+		"ISOs":        appSettings.ISOs,
+		"VMBRs":       appSettings.VMBRs,
+		"Limits":      appSettings.Limits,
+		"NodeDetails": nodeDetails,
 	}
 
 	// Ajouter les traductions

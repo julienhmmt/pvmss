@@ -2,38 +2,20 @@ package security
 
 import (
 	"net/http"
-	"strings"
-
-	"pvmss/logger"
 )
 
-// CSRFMiddleware provides CSRF protection
-func CSRFMiddleware(next http.Handler) http.Handler {
+// CSRFMiddleware est remplacé par AdminCSRFMiddleware
+// pour cibler uniquement la partie admin et éviter l'interférence avec Proxmox.
+// Voir admin_csrf.go pour la nouvelle implémentation.
+
+// HeadersMiddleware ajoute des en-têtes de sécurité à toutes les réponses
+func HeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip CSRF for GET requests, health checks, and static files
-		if r.Method == "GET" ||
-			r.URL.Path == "/health" ||
-			strings.HasPrefix(r.URL.Path, "/css/") ||
-			strings.HasPrefix(r.URL.Path, "/js/") ||
-			strings.HasPrefix(r.URL.Path, "/favicon") {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Skip CSRF for API GET requests
-		if strings.HasPrefix(r.URL.Path, "/api/") && r.Method == "GET" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		if !ValidateCSRFToken(r) {
-			logger.Get().Warn().
-				Str("ip", r.RemoteAddr).
-				Str("path", r.URL.Path).
-				Msg("CSRF token validation failed")
-			http.Error(w, "Invalid CSRF token", http.StatusForbidden)
-			return
-		}
+		// En-têtes de sécurité de base
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 
 		next.ServeHTTP(w, r)
 	})

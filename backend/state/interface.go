@@ -28,6 +28,7 @@ type StateManager interface {
 	// Settings management
 	GetSettings() *AppSettings
 	SetSettings(settings *AppSettings) error
+	SetSettingsWithoutSave(settings *AppSettings)
 	GetAdminPassword() string
 	GetTags() []string
 	GetISOs() []string

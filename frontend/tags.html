@@ -1,39 +1,61 @@
 {{define "tags"}}
-<h2 class="title is-4">{{index .t "Admin.Tags.Title"}}</h2>
-<div class="notification is-light">{{index .t "Admin.Tags.Description"}}</div>
+<div class="container mt-4">
+  <h2 class="title is-4">{{index .t "Admin.Tags.Title"}}</h2>
+  <div class="notification is-light">{{index .t "Admin.Tags.Description"}}</div>
 
-<div id="tags-list" class="mb-4">
-  {{range .Tags}}
-    {{$isDefault := eq (lower .) "pvmss"}}
-    {{if $isDefault}}
-      <div class="tags has-addons mb-2 mr-2" style="display: inline-flex;">
-        <span class="tag is-info is-medium">{{.}}</span>
-        <span class="tag is-info is-medium">
-          <span class="icon is-small">
-            <i class="fas fa-lock"></i>
-          </span>
-        </span>
-      </div>
-    {{else}}
-      <div class="tags has-addons mb-2 mr-2" style="display: inline-flex;" hx-target="this" hx-swap="outerHTML">
-        <span class="tag is-info is-medium">{{.}}</span>
-        <a class="tag is-delete is-medium"
-           hx-delete="/api/tags/{{. | urlquery}}"
-           hx-headers='{"X-CSRF-Token": "{{$.CSRFToken}}"}'>
-        </a>
-      </div>
-    {{end}}
-  {{end}}
-</div>
-
-<div class="field has-addons">
-  <div class="control">
-    <input id="tag-input" class="input" type="text" placeholder='{{index .t "Admin.Tags.Placeholder"}}' hx-post="/api/tags" hx-trigger="keyup[key=='Enter']" hx-target="#tags-list" hx-swap="beforeend" hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}' name="tag" />
+  <!-- Liste des tags -->
+  <div class="box">
+    <h3 class="subtitle is-5 mb-3">Tags existants</h3>
+    <div id="tags-list" class="mb-4">
+      {{if .Tags}}
+        {{range .Tags}}
+          <div class="tags has-addons mb-2 mr-2" style="display: inline-flex;">
+            <span class="tag is-info is-medium">{{.}}</span>
+            {{if eq . "pvmss"}}
+              <span class="tag is-info is-medium">
+                <span class="icon is-small"><i class="fas fa-lock"></i></span>
+              </span>
+            {{else}}
+              <form action="/tags/delete" method="POST" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="tag" value="{{.}}">
+                <button type="submit" class="tag is-delete is-medium" aria-label="delete"></button>
+              </form>
+            {{end}}
+          </div>
+        {{end}}
+      {{else}}
+        <p class="has-text-grey">Aucun tag pour le moment.</p>
+      {{end}}
+    </div>
   </div>
-  <div class="control">
-    <button class="button is-primary" hx-post="/api/tags" hx-include="#tag-input" hx-target="#tags-list" hx-swap="beforeend" hx-headers='{"X-CSRF-Token": "{{.CSRFToken}}"}'>
-      {{index .t "Common.Add"}}
-    </button>
+
+  <!-- Formulaire d'ajout de tag -->
+  <div class="box">
+    <h3 class="subtitle is-5 mb-3">Ajouter un tag</h3>
+    <form id="add-tag-form" action="/tags" method="POST">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="field has-addons">
+        <div class="control is-expanded">
+          <input id="tag-input" 
+                 class="input" 
+                 type="text" 
+                 name="tag" 
+                 placeholder='{{index .t "Admin.Tags.Placeholder"}}' 
+                 required
+                 minlength="1"
+                 maxlength="50"
+                 pattern="[a-zA-Z0-9_-]+"
+                 title="Le nom du tag ne peut contenir que des lettres, chiffres, tirets et underscores">
+        </div>
+        <div class="control">
+          <button type="submit" class="button is-primary">
+            <span class="icon"><i class="fas fa-plus"></i></span>
+            <span>{{index .t "Common.Add"}}</span>
+          </button>
+        </div>
+      </div>
+    </form>
   </div>
 </div>
 {{end}}

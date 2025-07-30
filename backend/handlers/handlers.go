@@ -5,6 +5,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
+	"pvmss/security"
 	"pvmss/state"
 )
 
@@ -28,10 +29,9 @@ func InitHandlers() http.Handler {
 	healthHandler := NewHealthHandler()
 	settingsHandler := NewSettingsHandler()
 	tagsHandler := NewTagsHandler()
-	tagsUIHandler := NewTagsUIHandler()
 
 	// Configurer les routes
-	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, tagsUIHandler)
+	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler)
 
 	// Configurer le gestionnaire de fichiers statiques
 	setupStaticFiles(router)
@@ -40,9 +40,22 @@ func InitHandlers() http.Handler {
 	stateManager := state.GetGlobalState()
 	sessionManager := stateManager.GetSessionManager()
 
-	// Wrapper le routeur avec le middleware de session pour que les données de session
-	// soient disponibles dans le contexte de la requête
-	return sessionManager.LoadAndSave(router)
+	// Créer la chaîne de middlewares
+	handler := http.Handler(router)
+
+	// 0. Middleware de débogage des sessions
+	handler = sessionDebugMiddleware(handler)
+
+	// 1. Middleware de session en premier
+	handler = sessionManager.LoadAndSave(handler)
+
+	// 2. Middleware CSRF pour les sections admin uniquement
+	handler = security.AdminCSRFMiddleware(handler)
+
+	// 3. Middleware pour les en-têtes de sécurité
+	handler = security.HeadersMiddleware(handler)
+
+	return handler
 }
 
 // setupRoutes configure toutes les routes de l'application
@@ -57,7 +70,7 @@ func setupRoutes(
 	healthHandler *HealthHandler,
 	settingsHandler *SettingsHandler,
 	tagsHandler *TagsHandler,
-	tagsUIHandler *TagsUIHandler,
+
 ) {
 	// Enregistrer les routes de chaque gestionnaire
 	authHandler.RegisterRoutes(router)
@@ -69,7 +82,6 @@ func setupRoutes(
 	healthHandler.RegisterRoutes(router)
 	settingsHandler.RegisterRoutes(router)
 	tagsHandler.RegisterRoutes(router)
-	tagsUIHandler.RegisterRoutes(router)
 
 	// Route d'accueil
 	router.GET("/", IndexRouterHandler)
@@ -80,4 +92,71 @@ func setupStaticFiles(router *httprouter.Router) {
 	// Servir les fichiers statiques depuis le répertoire frontend
 	router.ServeFiles("/css/*filepath", http.Dir("frontend/css"))
 	router.ServeFiles("/js/*filepath", http.Dir("frontend/js"))
+}
+
+// sessionDebugMiddleware est un middleware de débogage pour les sessions
+func sessionDebugMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := logger.Get().With().
+			Str("remote_addr", r.RemoteAddr).
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Logger()
+
+		// Log des en-têtes de la requête
+		headers := make(map[string]string)
+		for name, values := range r.Header {
+			headers[name] = values[0] // On ne prend que la première valeur pour simplifier
+		}
+
+		// Log détaillé des cookies
+		cookies := make(map[string]string)
+		for _, cookie := range r.Cookies() {
+			cookies[cookie.Name] = cookie.Value
+			log.Debug().
+				Str("cookie_name", cookie.Name).
+				Str("value", cookie.Value).
+				Str("path", cookie.Path).
+				Str("domain", cookie.Domain).
+				Bool("secure", cookie.Secure).
+				Bool("http_only", cookie.HttpOnly).
+				Msg("Cookie reçu dans la requête")
+		}
+
+		// Log avant le prochain middleware
+		log.Debug().
+			Interface("headers", headers).
+			Interface("cookies", cookies).
+			Msg("Requête reçue - avant traitement")
+
+		// Création d'un wrapper pour capturer les en-têtes de réponse
+		ww := &responseWriterWrapper{ResponseWriter: w, status: 200}
+
+		// Appel au prochain middleware
+		next.ServeHTTP(ww, r)
+
+		// Log des en-têtes de réponse
+		log.Debug().
+			Int("status_code", ww.status).
+			Interface("response_headers", ww.Header()).
+			Msg("Réponse envoyée")
+
+		// Log spécifique pour les cookies de session dans la réponse
+		for _, cookie := range ww.Header()["Set-Cookie"] {
+			log.Debug().
+				Str("set_cookie", cookie).
+				Msg("Cookie défini dans la réponse")
+		}
+	})
+}
+
+// responseWriterWrapper est un wrapper pour capturer le code de statut HTTP
+type responseWriterWrapper struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *responseWriterWrapper) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
 }

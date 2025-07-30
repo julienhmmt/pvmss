@@ -18,6 +18,7 @@
         <div class="columns is-centered">
             <div class="column is-10 welcome-block">
                 <form method="POST" action="/api/vm/create" id="vmCreateForm">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                     <div class="columns is-multiline">
                         <!-- Left Column -->
                         <div class="column is-6">
@@ -207,6 +208,32 @@
     </div>
 </section>
 
-<!-- JavaScript pour la gestion des tags -->
+<!-- JavaScript pour la gestion des tags et la soumission du formulaire -->
 <script src="/static/js/vm-create.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('vmCreateForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // Récupérer le jeton CSRF
+                const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
+                
+                // Créer un champ caché pour le jeton CSRF s'il n'existe pas déjà
+                let csrfInput = form.querySelector('input[name="csrf_token"]');
+                if (!csrfInput && csrfToken) {
+                    csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrf_token';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                } else if (csrfInput && csrfToken) {
+                    // Mettre à jour la valeur du jeton CSRF existant
+                    csrfInput.value = csrfToken;
+                }
+                
+                // La soumission du formulaire se poursuivra normalement
+            });
+        }
+    });
+</script>
 {{end}}

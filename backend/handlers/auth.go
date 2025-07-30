@@ -9,6 +9,7 @@ import (
 
 	"pvmss/i18n"
 	"pvmss/logger"
+	"pvmss/security"
 	"pvmss/state"
 )
 
@@ -70,6 +71,13 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	log := logger.Get().With().Str("remote_addr", r.RemoteAddr).Logger()
 
+	// Vérifier le jeton CSRF
+	if !security.ValidateCSRFToken(r) {
+		log.Warn().Msg("CSRF token validation failed")
+		h.renderLoginForm(w, r, "Session invalide. Veuillez réessayer.")
+		return
+	}
+
 	adminHash := os.Getenv("ADMIN_PASSWORD_HASH")
 	if adminHash == "" {
 		log.Error().Msg("ADMIN_PASSWORD_HASH non configuré dans les variables d'environnement")
@@ -111,6 +119,11 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// Création de la session
 	sessionManager.Put(r.Context(), "authenticated", true)
 	sessionManager.Put(r.Context(), "username", "admin")
+
+	// Log des informations de session
+	log.Debug().
+		Str("session_id", sessionManager.Token(r.Context())).
+		Msg("Session créée avec succès")
 
 	// Récupération de l'URL de redirection
 	redirectURL := r.URL.Query().Get("redirect")

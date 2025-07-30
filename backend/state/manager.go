@@ -2,6 +2,7 @@ package state
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -111,16 +112,41 @@ func (s *appState) GetSettings() *AppSettings {
 	return s.settings
 }
 
-// SetSettings updates the application settings
-func (s *appState) SetSettings(settings *AppSettings) error {
+// SetSettingsWithoutSave updates the application settings in memory without saving them to file
+func (s *appState) SetSettingsWithoutSave(settings *AppSettings) {
 	if settings == nil {
-		return errors.New("settings cannot be nil")
+		logger.Get().Warn().Msg("Attempted to set nil settings without saving")
+		return
 	}
 	s.mu.Lock()
 	s.settings = settings
 	s.mu.Unlock()
-	logger.Get().Info().Msg("Application settings updated")
+	logger.Get().Debug().Msg("Application settings updated in memory only")
+}
+
+// SetSettings updates the application settings and saves them to the settings file
+func (s *appState) SetSettings(settings *AppSettings) error {
+	if settings == nil {
+		return errors.New("settings cannot be nil")
+	}
+
+	s.mu.Lock()
+	s.settings = settings
+	s.mu.Unlock()
+
+	// Sauvegarder les paramètres dans le fichier
+	if err := WriteSettings(settings); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to save settings to file")
+		return fmt.Errorf("failed to save settings: %w", err)
+	}
+
+	logger.Get().Info().Msg("Application settings updated and saved to file")
 	return nil
+}
+
+// SaveSettings saves the settings to the settings file
+func SaveSettings(settings *AppSettings) error {
+	return WriteSettings(settings)
 }
 
 // GetAdminPassword returns the admin password hash
@@ -176,37 +202,61 @@ func (s *appState) GetLimits() map[string]interface{} {
 // Security Methods
 // AddCSRFToken adds a new CSRF token with an expiry time
 func (s *appState) AddCSRFToken(token string, expiry time.Time) error {
-	if token == "" {
-		return errors.New("token cannot be empty")
-	}
-
 	s.securityMu.Lock()
+	defer s.securityMu.Unlock()
+
 	s.csrfTokens[token] = expiry
-	s.securityMu.Unlock()
+
+	log := logger.Get().With().
+		Str("function", "AddCSRFToken").
+		Str("token", token).
+		Time("expiry", expiry).
+		Logger()
+
+	log.Debug().
+		Int("total_tokens", len(s.csrfTokens)).
+		Msg("Nouveau jeton CSRF ajouté")
+
 	return nil
 }
 
 // ValidateAndRemoveCSRFToken validates a CSRF token and removes it if valid
 func (s *appState) ValidateAndRemoveCSRFToken(token string) bool {
-	if token == "" {
-		return false
-	}
+	log := logger.Get().With().
+		Str("function", "ValidateAndRemoveCSRFToken").
+		Str("token", token).
+		Logger()
 
 	s.securityMu.Lock()
 	defer s.securityMu.Unlock()
 
+	log.Debug().
+		Int("total_tokens_before", len(s.csrfTokens)).
+		Msg("Début de la validation du jeton CSRF")
+
 	expiry, exists := s.csrfTokens[token]
 	if !exists {
+		log.Warn().
+			Msg("Jeton CSRF non trouvé")
 		return false
 	}
 
-	// Remove token regardless of expiry
+	// Remove the token (one-time use)
 	delete(s.csrfTokens, token)
 
-	// Check if expired
-	if time.Now().After(expiry) {
+	// Check if token is expired
+	now := time.Now()
+	if now.After(expiry) {
+		log.Warn().
+			Time("expiry", expiry).
+			Time("now", now).
+			Msg("Jeton CSRF expiré")
 		return false
 	}
+
+	log.Debug().
+		Int("total_tokens_after", len(s.csrfTokens)).
+		Msg("Jeton CSRF validé et supprimé avec succès")
 
 	return true
 }

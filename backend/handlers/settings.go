@@ -356,7 +356,7 @@ func (h *SettingsHandler) UpdateISOSettingsHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Persister les paramètres dans le fichier
-	if err := state.WriteSettings(settings); err != nil {
+	if err := state.GetGlobalState().SetSettings(settings); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to write settings to file")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -421,7 +421,7 @@ func (h *SettingsHandler) UpdateVMBRSettingsHandler(w http.ResponseWriter, r *ht
 	}
 
 	// Persister les paramètres dans le fichier
-	if err := state.WriteSettings(settings); err != nil {
+	if err := state.GetGlobalState().SetSettings(settings); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to write settings to file")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)

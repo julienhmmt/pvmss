@@ -1,266 +1,145 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
+	"regexp"
 	"strings"
 
-	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
 	"pvmss/state"
+
+	"github.com/julienschmidt/httprouter"
 )
 
-// TagsHandler gère les opérations liées aux tags
+// TagsHandler handles tag-related operations.
 type TagsHandler struct{}
 
-// NewTagsHandler crée une nouvelle instance de TagsHandler
+// NewTagsHandler creates a new instance of TagsHandler.
 func NewTagsHandler() *TagsHandler {
 	return &TagsHandler{}
 }
 
-// GetTagsHandler renvoie la liste des tags disponibles
-func (h *TagsHandler) GetTagsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "TagsHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
 
-	settings := state.GetGlobalState().GetSettings()
-	if settings == nil {
-		log.Error().Msg("Settings not available")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Settings not available",
-		})
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"tags":   settings.Tags,
-	})
-}
-
-// CreateTagHandler crée un nouveau tag
+// CreateTagHandler handles the creation of a new tag via an HTML form.
 func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "TagsHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := logger.Get().With().Str("handler", "CreateTagHandler").Logger()
 
-	// Décoder le corps de la requête
-	var requestData struct {
-		Tag string `json:"tag"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
-		log.Warn().Err(err).Msg("Invalid request body")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Invalid request body",
-		})
+	if err := r.ParseForm(); err != nil {
+		log.Warn().Err(err).Msg("Error parsing form data")
+		http.Error(w, "Invalid form data.", http.StatusBadRequest)
 		return
 	}
 
-	tagName := strings.TrimSpace(requestData.Tag)
-	if tagName == "" {
-		log.Warn().Msg("Empty tag name provided")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Tag name cannot be empty",
-		})
+	tagName := strings.TrimSpace(r.FormValue("tag"))
+
+	if !tagNameRegex.MatchString(tagName) {
+		log.Warn().Str("tag", tagName).Msg("Invalid tag name")
+		http.Error(w, "Invalid tag name. Use only letters, numbers, hyphens, and underscores (1-50 characters).", http.StatusBadRequest)
 		return
 	}
 
-	// Vérifier si le tag existe déjà
-	state := state.GetGlobalState()
-	settings := state.GetSettings()
-	if settings == nil {
-		log.Error().Msg("Settings not available")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Settings not available",
-		})
-		return
-	}
+	gs := state.GetGlobalState()
+	settings := gs.GetSettings()
 
 	for _, existingTag := range settings.Tags {
 		if strings.EqualFold(existingTag, tagName) {
-			log.Warn().Str("tag", tagName).Msg("Tag already exists")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"status":  "error",
-				"message": "Tag already exists",
-			})
+			log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
+			http.Redirect(w, r, "/admin?error=exists", http.StatusSeeOther)
 			return
 		}
 	}
 
-	// Ajouter le nouveau tag
 	settings.Tags = append(settings.Tags, tagName)
-
-	// Sauvegarder les paramètres
-	if err := state.SetSettings(settings); err != nil {
+	if err := gs.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to save settings",
-		})
+		http.Error(w, "Internal server error.", http.StatusInternalServerError)
 		return
 	}
 
-	log.Info().Str("tag", tagName).Msg("Tag created successfully")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "success",
-		"message": "Tag created successfully",
-		"tag":     tagName,
-	})
+	log.Info().Str("tag", tagName).Msg("Tag added successfully")
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
-// DeleteTagHandler supprime un tag existant
-func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	tagName := ps.ByName("tag")
-	log := logger.Get().With().
-		Str("handler", "TagsHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("tag", tagName).
-		Logger()
+// DeleteTagHandler handles tag deletion.
+func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().Str("handler", "DeleteTagHandler").Logger()
 
-	// Vérifier si le tag est le tag par défaut
+	if err := r.ParseForm(); err != nil {
+		log.Warn().Err(err).Msg("Error parsing delete form")
+		http.Error(w, "Invalid request.", http.StatusBadRequest)
+		return
+	}
+
+	tagName := strings.TrimSpace(r.FormValue("tag"))
+
+	if !tagNameRegex.MatchString(tagName) {
+		log.Warn().Str("tag", tagName).Msg("Attempted to delete a tag with invalid format")
+		http.Error(w, "Invalid tag name.", http.StatusBadRequest)
+		return
+	}
+
 	if strings.EqualFold(tagName, "pvmss") {
-		log.Warn().Msg("Attempt to delete default tag 'pvmss'")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Cannot delete default tag 'pvmss'",
-		})
+		log.Warn().Msg("Attempted to delete the default tag")
+		http.Error(w, "The default tag 'pvmss' cannot be deleted.", http.StatusForbidden)
 		return
 	}
 
-	state := state.GetGlobalState()
-	settings := state.GetSettings()
-	if settings == nil {
-		log.Error().Msg("Settings not available")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Settings not available",
-		})
-		return
-	}
+	gs := state.GetGlobalState()
+	settings := gs.GetSettings()
 
-	// Rechercher et supprimer le tag
 	found := false
-	for i, tag := range settings.Tags {
-		if strings.EqualFold(tag, tagName) {
-			// Supprimer le tag du slice
-			settings.Tags = append(settings.Tags[:i], settings.Tags[i+1:]...)
+	var newTags []string
+	for _, tag := range settings.Tags {
+		if !strings.EqualFold(tag, tagName) {
+			newTags = append(newTags, tag)
+		} else {
 			found = true
-			break
 		}
 	}
 
 	if !found {
-		log.Warn().Msg("Tag not found")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Tag not found",
-		})
+		log.Warn().Str("tag", tagName).Msg("Tentative de suppression d'un tag inexistant")
+		http.Redirect(w, r, "/admin?error=notfound", http.StatusSeeOther)
 		return
 	}
 
-	// Sauvegarder les paramètres
-	if err := state.SetSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Failed to save settings")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to save settings",
-		})
+	settings.Tags = newTags
+	if err := gs.SetSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Échec de la sauvegarde des paramètres après suppression")
+		http.Error(w, "Erreur interne du serveur.", http.StatusInternalServerError)
 		return
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag deleted successfully")
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "success",
-		"message": "Tag deleted successfully",
-	})
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
-// RegisterRoutes enregistre les routes pour la gestion des tags
+// RegisterRoutes registers the routes for tag management.
 func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
-	log := logger.Get().With().
-		Str("component", "TagsHandler").
-		Str("method", "RegisterRoutes").
-		Logger()
-
-	// Définition des routes
-	routes := []struct {
-		method  string
-		path    string
-		handler httprouter.Handle
-		desc    string
-	}{
-		{"GET", "/api/tags", h.GetTagsHandler, "Get all tags"},
-		{"POST", "/api/tags", h.CreateTagHandler, "Create a new tag"},
-		{"DELETE", "/api/tags/:tag", h.DeleteTagHandler, "Delete a tag"},
-	}
-
-	// Enregistrement des routes
-	for _, route := range routes {
-		router.Handle(route.method, route.path, route.handler)
-		log.Debug().
-			Str("method", route.method).
-			Str("path", route.path).
-			Str("description", route.desc).
-			Msg("Route enregistrée pour la gestion des tags")
-	}
-
-	log.Info().
-		Int("routes_count", len(routes)).
-		Msg("Routes de gestion des tags enregistrées avec succès")
+	router.POST("/tags", h.CreateTagHandler)
+	router.POST("/tags/delete", h.DeleteTagHandler)
 }
 
-// EnsureDefaultTag s'assure que le tag par défaut existe dans les paramètres
+// EnsureDefaultTag ensures that the default tag "pvmss" exists.
 func EnsureDefaultTag() error {
-	state := state.GetGlobalState()
-	settings := state.GetSettings()
+	gs := state.GetGlobalState()
+	settings := gs.GetSettings()
 	if settings == nil {
+		// Ne rien faire si les paramètres ne sont pas encore chargés
 		return nil
 	}
 
-	// Vérifier si le tag par défaut existe déjà
 	defaultTag := "pvmss"
 	for _, tag := range settings.Tags {
-		if tag == defaultTag {
-			return nil
+		if strings.EqualFold(tag, defaultTag) {
+			return nil // Le tag existe déjà
 		}
 	}
 
-	// Ajouter le tag par défaut s'il n'existe pas
+	// Ajouter le tag par défaut et sauvegarder
 	settings.Tags = append(settings.Tags, defaultTag)
-	return state.SetSettings(settings)
+	log := logger.Get()
+	log.Info().Msg("Tag par défaut 'pvmss' ajouté aux paramètres.")
+	return gs.SetSettings(settings)
 }
