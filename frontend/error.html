@@ -1,31 +1,23 @@
-{{define "error"}}
-<section class="section">
-  <div class="container">
-    <div class="box">
-      <div class="has-text-centered">
-        <h1 class="title is-3 has-text-danger mt-4">{{index .t "Error.Title"}}</h1>
+{{define "content"}}
+<div class="box">
+  <div class="has-text-centered">
+    <h1 class="title is-3 has-text-danger mt-4">{{.Title}}</h1>
 
-        {{if .Error}}
-        <div class="notification is-danger is-light">
-          <p class="subtitle">{{.Error}}</p>
-        </div>
-        {{else}}
-        <p class="subtitle">{{index .t "Error.Generic"}}</p>
-        {{end}}
+    <div class="notification is-danger is-light">
+      <p class="subtitle">{{.Message}}</p>
+    </div>
 
-        <div class="field is-grouped is-grouped-centered mt-5">
-          <p class="control">
-            <a href="/search" class="button is-primary">{{index .t "Common.BackToSearch"}}</a>
-          </p>
-
-          {{if .IsAuthenticated}}
-          <p class="control">
-            <a href="/admin" class="button is-info is-light">{{index .t "Navbar.Admin"}}</a>
-          </p>
-          {{end}}
-        </div>
-      </div>
+    <div class="field is-grouped is-grouped-centered mt-5">
+      <p class="control">
+        <a href="/search" class="button is-primary">Retour à la recherche</a>
+      </p>
+      
+      {{if not .IsAuthenticated}}
+      <p class="control">
+        <a href="/login?return={{.URL}}" class="button is-info">Se connecter</a>
+      </p>
+      {{end}}
     </div>
   </div>
-</section>
+</div>
 {{end}}

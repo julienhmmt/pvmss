@@ -35,8 +35,11 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 		errMsg := "Access denied: unauthenticated user"
 		log.Warn().
 			Str("status", "forbidden").
+			Str("remote_addr", r.RemoteAddr).
 			Msg(errMsg)
-		http.Error(w, errMsg, http.StatusForbidden)
+		
+		// Rediriger vers la page de connexion avec une URL de retour
+		http.Redirect(w, r, "/login?return="+r.URL.Path, http.StatusSeeOther)
 		return
 	}
 
