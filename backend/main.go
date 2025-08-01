@@ -184,6 +184,9 @@ func initTemplates() (*template.Template, error) {
 	rootDir := filepath.Dir(filepath.Dir(filename))
 	frontendPath := filepath.Join(rootDir, "frontend")
 
+	// Sauvegarder le chemin pour une utilisation globale (ex: servir les fichiers statiques)
+	state.SetTemplatesPath(frontendPath)
+
 	// Parse all HTML files in the frontend directory
 	var templateFiles []string
 	err := filepath.Walk(frontendPath, func(path string, info os.FileInfo, err error) error {

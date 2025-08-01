@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
@@ -91,9 +92,23 @@ func setupRoutes(
 
 // setupStaticFiles configure le serveur de fichiers statiques
 func setupStaticFiles(router *httprouter.Router) {
-	// Servir les fichiers statiques depuis le répertoire frontend
-	router.ServeFiles("/css/*filepath", http.Dir("frontend/css"))
-	router.ServeFiles("/js/*filepath", http.Dir("frontend/js"))
+	// Récupère le chemin de base du répertoire frontend.
+	basePath := state.GetTemplatesPath()
+
+	// Crée des gestionnaires de fichiers spécifiques pour chaque sous-répertoire statique.
+	cssServer := http.FileServer(http.Dir(filepath.Join(basePath, "css")))
+	jsServer := http.FileServer(http.Dir(filepath.Join(basePath, "js")))
+	imagesServer := http.FileServer(http.Dir(filepath.Join(basePath, "images")))
+	webfontsServer := http.FileServer(http.Dir(filepath.Join(basePath, "webfonts")))
+
+	// Configure les routes pour servir les fichiers statiques en utilisant StripPrefix.
+	// Cela garantit que le serveur de fichiers reçoit le bon chemin relatif.
+	router.Handler(http.MethodGet, "/css/*filepath", http.StripPrefix("/css/", cssServer))
+	router.Handler(http.MethodGet, "/js/*filepath", http.StripPrefix("/js/", jsServer))
+	router.Handler(http.MethodGet, "/images/*filepath", http.StripPrefix("/images/", imagesServer))
+	router.Handler(http.MethodGet, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
+
+	logger.Get().Info().Str("path", basePath).Msg("Service des fichiers statiques configuré pour css, js, images et webfonts")
 }
 
 // sessionDebugMiddleware est un middleware de débogage pour les sessions
