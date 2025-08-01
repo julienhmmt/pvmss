@@ -5,27 +5,43 @@
 
   <!-- Liste des tags -->
   <div class="box">
-    <h3 class="subtitle is-5 mb-3">Tags existants</h3>
-    <div id="tags-list" class="mb-4">
+    <h3 class="subtitle is-5 mb-4 has-text-grey-dark">
+      <span class="icon-text">
+        <span class="icon">
+          <i class="fas fa-tags"></i>
+        </span>
+        <span>Tags existants</span>
+      </span>
+    </h3>
+    <div id="tags-list" class="is-flex is-flex-wrap-wrap" style="gap: 0.75rem;">
       {{if .Tags}}
         {{range .Tags}}
-          <div class="tags has-addons mb-2 mr-2" style="display: inline-flex;">
-            <span class="tag is-info is-medium">{{.}}</span>
-            {{if eq . "pvmss"}}
-              <span class="tag is-info is-medium">
-                <span class="icon is-small"><i class="fas fa-lock"></i></span>
-              </span>
-            {{else}}
-              <form action="/tags/delete" method="POST" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="tag" value="{{.}}">
-                <button type="submit" class="tag is-delete is-medium" aria-label="delete"></button>
-              </form>
-            {{end}}
+          <div class="tag-container">
+            <span class="tag is-rounded is-medium has-text-weight-semibold {{if eq . "pvmss"}}is-primary{{else}}is-info{{end}}">
+              {{.}}
+              {{if eq . "pvmss"}}
+                <span class="icon is-small ml-1">
+                  <i class="fas fa-lock"></i>
+                </span>
+              {{else}}
+                <form action="/tags/delete" method="POST" class="is-inline">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <input type="hidden" name="tag" value="{{.}}">
+                  <button type="submit" class="delete is-small ml-2" aria-label="delete"></button>
+                </form>
+              {{end}}
+            </span>
           </div>
         {{end}}
       {{else}}
-        <p class="has-text-grey">Aucun tag pour le moment.</p>
+        <div class="notification is-light is-flex is-align-items-center" style="width: 100%;">
+          <span class="icon-text">
+            <span class="icon has-text-grey">
+              <i class="fas fa-info-circle"></i>
+            </span>
+            <span class="has-text-grey">Aucun tag pour le moment.</span>
+          </span>
+        </div>
       {{end}}
     </div>
   </div>

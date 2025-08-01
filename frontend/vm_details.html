@@ -1,20 +1,27 @@
 {{define "vm_details"}}
 <section class="section">
     <div class="container">
-        <h1 class="title">{{.VMName}} (ID: {{.VMID}})</h1>
+        <h1 class="title">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-server"></i>
+                </span>
+                <span>{{.VMName}} (ID: {{.VMID}})</span>
+            </span>
+        </h1>
         <div class="box">
             <table class="table is-fullwidth">
                 <tbody>
                     <tr>
-                        <th>{{index . "VMDetails.Label.Name"}}</th>
+                        <th><i class="fas fa-tag"></i> {{index . "VMDetails.Label.Name"}}</th>
                         <td>{{.VMName}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.ID"}}</th>
+                        <th><i class="fas fa-hashtag"></i> {{index . "VMDetails.Label.ID"}}</th>
                         <td>{{.VMID}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.Status"}}</th>
+                        <th><i class="fas fa-power-off"></i> {{index . "VMDetails.Label.Status"}}</th>
                         <td>
                             <span id="vm-status-badge" class="tag is-medium {{if eq .Status "running"}}is-success{{else if eq .Status "stopped"}}is-danger{{else}}is-light{{end}}">
                                 <span id="vm-status-text">{{.Status}}</span>
@@ -22,27 +29,27 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.Uptime"}}</th>
+                        <th><i class="fas fa-clock"></i> {{index . "VMDetails.Label.Uptime"}}</th>
                         <td>{{.Uptime}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.CPU"}}</th>
+                        <th><i class="fas fa-microchip"></i> {{index . "VMDetails.Label.CPU"}}</th>
                         <td>{{.Sockets}} sockets / {{.Cores}} cores</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.RAM"}}</th>
+                        <th><i class="fas fa-memory"></i> {{index . "VMDetails.Label.RAM"}}</th>
                         <td>{{.RAM}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.Disk"}}</th>
+                        <th><i class="fas fa-hdd"></i> {{index . "VMDetails.Label.Disk"}}</th>
                         <td>{{.DiskCount}} ({{.DiskTotalSize}})</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.Network"}}</th>
+                        <th><i class="fas fa-network-wired"></i> {{index . "VMDetails.Label.Network"}}</th>
                         <td>{{.NetworkBridges}}</td>
                     </tr>
                     <tr>
-                        <th>{{index . "VMDetails.Label.Description"}}</th>
+                        <th><i class="fas fa-info-circle"></i> {{index . "VMDetails.Label.Description"}}</th>
                         <td>{{.Description}}</td>
                     </tr>
                 </tbody>

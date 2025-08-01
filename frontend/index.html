@@ -7,10 +7,20 @@
             <div class="hero-body">
                 <div class="container has-text-centered">
                     <h1 class="title is-2 has-text-white mb-2">
-                        <span class="icon-text">{{index .t "UI.Header"}}</span>
+                        <span class="icon-text">
+                            <span class="icon">
+                                <i class="fas fa-server"></i>
+                            </span>
+                            <span>{{index .t "UI.Header"}}</span>
+                        </span>
                     </h1>
                     <p class="subtitle has-text-white mb-2">
-                        {{index .t "UI.Subtitle"}}
+                        <span class="icon-text">
+                            <span class="icon">
+                                <i class="fas fa-info-circle"></i>
+                            </span>
+                            <span>{{index .t "UI.Subtitle"}}</span>
+                        </span>
                     </p>
                     <p class="subtitle has-text-white is-size-5">
                         {{index .t "UI.Body"}}
@@ -27,13 +37,21 @@
                         <div class="card home-card">
                             <div class="card-header">
                                 <p class="card-header-title has-text-white has-text-centered">
-                                    {{index .t "Navbar.CreateVM"}}
+                                    <span class="icon-text">
+                                        <span class="icon">
+                                            <i class="fas fa-plus-square"></i>
+                                        </span>
+                                        <span>{{index .t "Navbar.CreateVM"}}</span>
+                                    </span>
                                 </p>
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
                                 <a href="/vm/create?lang={{.Lang}}" class="button is-orange is-medium home-btn">
-                                    {{index .t "UI.GetStarted"}}
+                                    <span class="icon">
+                                        <i class="fas fa-rocket"></i>
+                                    </span>
+                                    <span>{{index .t "UI.GetStarted"}}</span>
                                 </a>
                             </div>
                         </div>
@@ -44,7 +62,12 @@
                         <div class="card home-card">
                             <div class="card-header">
                                 <p class="card-header-title has-text-white has-text-centered">
-                                    {{index .t "Docs.User.Title"}}
+                                    <span class="icon-text">
+                                        <span class="icon">
+                                            <i class="fas fa-book"></i>
+                                        </span>
+                                        <span>{{index .t "Docs.User.Title"}}</span>
+                                    </span>
                                 </p>
                             </div>
                             <div class="card-content has-text-centered">

@@ -1,7 +1,14 @@
 {{define "resource_limits"}}
 <div class="container">
     <div class="title is-4">
-        <h2 class="title is-4">{{index .t "Admin.Limits.Title"}}</h2>
+        <h2 class="title is-4">
+            <span class="icon-text">
+                <span class="icon">
+                    <i class="fas fa-sliders-h"></i>
+                </span>
+                <span>{{index .t "Admin.Limits.Title"}}</span>
+            </span>
+        </h2>
     </div>
 
     <div class="notification is-light">
@@ -20,7 +27,14 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index .t "Admin.Limits.Sockets"}}</h3>
+                                        <h3 class="title is-6">
+                                            <span class="icon-text">
+                                                <span class="icon">
+                                                    <i class="fas fa-microchip"></i>
+                                                </span>
+                                                <span>{{index .t "Admin.Limits.Sockets"}}</span>
+                                            </span>
+                                        </h3>
                                     </div>
                                 </div>
                                 
@@ -64,7 +78,14 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index .t "Admin.Limits.Cores"}}</h3>
+                                        <h3 class="title is-6">
+                                            <span class="icon-text">
+                                                <span class="icon">
+                                                    <i class="fas fa-microchip"></i>
+                                                </span>
+                                                <span>{{index .t "Admin.Limits.Cores"}}</span>
+                                            </span>
+                                        </h3>
                                     </div>
                                 </div>
                                 
@@ -114,7 +135,14 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index .t "Admin.Limits.Memory"}}</h3>
+                                        <h3 class="title is-6">
+                                            <span class="icon-text">
+                                                <span class="icon">
+                                                    <i class="fas fa-memory"></i>
+                                                </span>
+                                                <span>{{index .t "Admin.Limits.RAM"}}</span>
+                                            </span>
+                                        </h3>
                                     </div>
                                 </div>
                                 
@@ -161,7 +189,14 @@
                             <div class="box">
                                 <div class="level is-mobile">
                                     <div class="level-item">
-                                        <h3 class="title is-6">{{index .t "Admin.Limits.Disk"}}</h3>
+                                        <h3 class="title is-6">
+                                            <span class="icon-text">
+                                                <span class="icon">
+                                                    <i class="fas fa-hdd"></i>
+                                                </span>
+                                                <span>{{index .t "Admin.Limits.Disk"}}</span>
+                                            </span>
+                                        </h3>
                                     </div>
                                 </div>
                                 
@@ -214,8 +249,11 @@
                                     </button>
                                 </div>
                                 <div class="control">
-                                    <button type="submit" class="button is-primary is-outlined save-limits-btn" title='{{index . "Common.Save"}}'>
-                                        <span>{{index . "Common.Save"}}</span>
+                                    <button type="submit" class="button is-primary">
+                                        <span class="icon">
+                                            <i class="fas fa-save"></i>
+                                        </span>
+                                        <span>{{index .t "Common.Save"}}</span>
                                     </button>
                                 </div>
                             </div>

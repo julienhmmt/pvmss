@@ -16,21 +16,33 @@
             <div class="navbar-start">
                 <a class="navbar-item" href="/?lang={{.Lang}}">
                     <span class="icon-text">
+                        <span class="icon">
+                            <i class="fas fa-home"></i>
+                        </span>
                         <span>{{index .t "Navbar.Home"}}</span>
                     </span>
                 </a>
                 <a class="navbar-item" href="/vm/create">
                     <span class="icon-text">
+                        <span class="icon">
+                            <i class="fas fa-plus-square"></i>
+                        </span>
                         <span>{{ index .t "Navbar.CreateVM" }}</span>
                     </span>
                 </a>
                 <a class="navbar-item" href="/search">
                     <span class="icon-text">
+                        <span class="icon">
+                            <i class="fas fa-search"></i>
+                        </span>
                         <span>{{ index .t "Navbar.SearchVM" }}</span>
                     </span>
                 </a>
                 <a class="navbar-item" href="/docs/user">
                     <span class="icon-text">
+                        <span class="icon">
+                            <i class="fas fa-book"></i>
+                        </span>
                         <span>{{ index .t "Navbar.Documentation" }}</span>
                     </span>
                 </a>
@@ -41,13 +53,22 @@
                     <div class="buttons are-small">
                         {{if .IsAuthenticated}}
                         <a class="button is-orange" href="/admin">
+                            <span class="icon">
+                                <i class="fas fa-cog"></i>
+                            </span>
                             <span>{{ index .t "Navbar.Admin" }}</span>
                         </a>
                         <a class="button is-light" href="/logout">
+                            <span class="icon">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </span>
                             <span>{{ index .t "Navbar.Logout" }}</span>
                         </a>
                         {{else}}
                         <a class="button is-orange" href="/login">
+                            <span class="icon">
+                                <i class="fas fa-sign-in-alt"></i>
+                            </span>
                             <span>{{ index .t "Navbar.Login" }}</span>
                         </a>
                         {{end}}
