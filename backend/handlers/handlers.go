@@ -29,9 +29,10 @@ func InitHandlers() http.Handler {
 	healthHandler := NewHealthHandler()
 	settingsHandler := NewSettingsHandler()
 	tagsHandler := NewTagsHandler()
+	vmbrHandler := NewVMBRHandler()
 
 	// Configurer les routes
-	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler)
+	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler)
 
 	// Configurer le gestionnaire de fichiers statiques
 	setupStaticFiles(router)
@@ -70,7 +71,7 @@ func setupRoutes(
 	healthHandler *HealthHandler,
 	settingsHandler *SettingsHandler,
 	tagsHandler *TagsHandler,
-
+	vmbrHandler *VMBRHandler,
 ) {
 	// Enregistrer les routes de chaque gestionnaire
 	authHandler.RegisterRoutes(router)
@@ -82,6 +83,7 @@ func setupRoutes(
 	healthHandler.RegisterRoutes(router)
 	settingsHandler.RegisterRoutes(router)
 	tagsHandler.RegisterRoutes(router)
+	vmbrHandler.RegisterRoutes(router)
 
 	// Route d'accueil
 	router.GET("/", IndexRouterHandler)

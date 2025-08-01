@@ -254,6 +254,26 @@ other = "VM ID"
 other = "You searched for"
 
 # ======
+# Admin
+# ======
+["Admin.VMBR.Title"]
+other = "Network Bridges"
+["Admin.VMBR.Description"]
+other = "Manage network bridges that will be available for VM creation"
+["Admin.VMBR.AvailableBridges"]
+other = "Available Network Bridges"
+["Admin.VMBR.NoVMBRs"]
+other = "No network bridges found. Please check your Proxmox configuration."
+["Admin.VMBR.Enable"]
+other = "Enable"
+["Admin.VMBR.Disable"]
+other = "Disable"
+["Admin.VMBR.SaveSuccess"]
+other = "Network bridge settings saved successfully"
+["Admin.VMBR.SaveError"]
+other = "Failed to save network bridge settings"
+
+# ======
 # Login
 # ======
 ["Login.Button"]
@@ -513,8 +533,6 @@ other = "No storage found that can be used for virtual machines."
 other = "Storage Management"
 
 # Admin - VMBR Management
-["Admin.VMBR.Description"]
-other = "Manage virtual network bridges available for virtual machines."
 ["Admin.VMBR.Error"]
 other = "Error retrieving data. See console for details."
 ["Admin.VMBR.Header.Description"]
@@ -525,8 +543,6 @@ other = "Enabled"
 other = "Bridge Name"
 ["Admin.VMBR.Header.Node"]
 other = "Node"
-["Admin.VMBR.NoVMBRs"]
-other = "No network bridge found on any node."
 ["Admin.VMBR.Title"]
 other = "Network Bridges Management"
 

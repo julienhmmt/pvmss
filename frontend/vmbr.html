@@ -1,164 +1,68 @@
 {{define "vmbr"}}
-<div class="container">
+<div class="container mt-4">
   <h2 class="title is-4">{{index .t "Admin.VMBR.Title"}}</h2>
-
-  <div class="notification is-light">{{index .t "Admin.VMBR.Description"}}</div>
-
-  <div id="vmbr-container" class="mb-4">
-    <!-- VMBR content will be loaded here -->
+  <div class="notification is-light">
+    {{index .t "Admin.VMBR.Description"}}
   </div>
+
+  {{if .Error}}
+    <div class="notification is-danger">
+      <p><strong>{{index .t "Common.Error"}}:</strong> {{.Error}}</p>
+      <a href="/admin/vmbr" class="button is-small is-light mt-2">
+        <span>{{index .t "Common.TryAgain"}}</span>
+      </a>
+    </div>
+  {{else}}
+    <form method="POST" action="/admin/vmbr/update">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      
+      <div class="box">
+        <h3 class="subtitle is-5 mb-3">{{index .t "Admin.VMBR.Title"}}</h3>
+        
+        {{if .VMBRs}}
+          <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+              <thead>
+                <tr>
+                  <th><span class="icon-text"><span class="icon"><i class="fas fa-toggle-on"></i></span> <span>{{index .t "Admin.VMBR.Header.Enabled"}}</span></span></th>
+                  <th><span class="icon-text"><span class="icon"><i class="fas fa-server"></i></span> <span>{{index .t "Admin.VMBR.Header.Node"}}</span></span></th>
+                  <th><span class="icon-text"><span class="icon"><i class="fas fa-network-wired"></i></span> <span>{{index .t "Admin.VMBR.Header.Name"}}</span></span></th>
+                  <th><span class="icon-text"><span class="icon"><i class="fas fa-info-circle"></i></span> <span>{{index .t "Admin.VMBR.Header.Description"}}</span></span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range $i, $vmbr := .VMBRs}}
+                  <tr>
+                    <td>
+                      <label class="checkbox">
+                        <input type="checkbox" name="enabled_vmbrs" value="{{$vmbr.name}}" 
+                          {{if index $.EnabledVMBRs $vmbr.name}}checked{{end}}>
+                      </label>
+                    </td>
+                    <td>{{$vmbr.node}}</td>
+                    <td>{{$vmbr.name}}</td>
+                    <td>{{$vmbr.description}}</td>
+                  </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="field mt-5">
+            <div class="control">
+              <button type="submit" class="button is-primary">
+                <span class="icon"><i class="fas fa-save"></i></span>
+                <span>{{index .t "Common.Save"}}</span>
+              </button>
+            </div>
+          </div>
+        {{else}}
+          <div class="notification is-warning">
+            {{index .t "Admin.VMBR.NoVMBRs"}}
+          </div>
+        {{end}}
+      </div>
+    </form>
+  {{end}}
 </div>
-
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    if (window.vmbrInitialized) return;
-    window.vmbrInitialized = true;
-
-    const vmbrContainer = document.getElementById("vmbr-container");
-    const loadingIndicator = '<div class="has-text-centered">Loading network bridges...</div>';
-    
-    // Show loading indicator
-    vmbrContainer.innerHTML = loadingIndicator;
-
-    let savedVmbrs = [];
-    
-    // First, get saved VMBR settings
-    fetch("/api/settings")
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(settings => {
-        savedVmbrs = settings.vmbrs || [];
-        // Then get all available VMBRs
-        return fetch("/api/vmbr/all");
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        vmbrContainer.innerHTML = ""; // Clear loading indicator
-        
-        if (!data || data.status !== "success" || !Array.isArray(data.vmbrs)) {
-          throw new Error("Invalid data format received from server");
-        }
-
-        if (data.vmbrs.length === 0) {
-          vmbrContainer.innerHTML = `
-            <div class="notification is-warning">
-              No network bridges found. Please check your Proxmox configuration.
-            </div>`;
-          return;
-        }
-
-        // Create table element
-        const table = document.createElement("table");
-        table.className = "table is-fullwidth is-striped is-hoverable";
-
-        // Create table header
-        const thead = document.createElement("thead");
-        thead.innerHTML = `
-          <tr>
-              <th>{{index .t "Admin.VMBR.Header.Enabled"}}</th>
-              <th>{{index .t "Admin.VMBR.Header.Node"}}</th>
-              <th>{{index .t "Admin.VMBR.Header.Name"}}</th>
-              <th>{{index .t "Admin.VMBR.Header.Description"}}</th>
-          </tr>
-        `;
-        table.appendChild(thead);
-
-        // Create table body
-        const tbody = document.createElement("tbody");
-        
-        data.vmbrs.forEach(vmbr => {
-          const row = document.createElement("tr");
-          
-          // Create cells
-          const enabledCell = document.createElement("td");
-          const nodeCell = document.createElement("td");
-          const nameCell = document.createElement("td");
-          const descCell = document.createElement("td");
-          
-          // Add checkbox for enabled state
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.className = "vmbr-checkbox";
-          checkbox.dataset.name = vmbr.name || '';
-          checkbox.checked = savedVmbrs.includes(vmbr.name || '');
-          
-          enabledCell.appendChild(checkbox);
-          nodeCell.textContent = vmbr.node || 'N/A';
-          nameCell.textContent = vmbr.name || 'N/A';
-          descCell.textContent = vmbr.description || 'No description';
-          
-          // Add cells to row
-          row.appendChild(enabledCell);
-          row.appendChild(nodeCell);
-          row.appendChild(nameCell);
-          row.appendChild(descCell);
-          
-          tbody.appendChild(row);
-        });
-        
-        table.appendChild(tbody);
-        vmbrContainer.appendChild(table);
-      })
-      .catch(error => {
-        console.error("Error loading VMBR data:", error);
-        vmbrContainer.innerHTML = `
-          <div class="notification is-danger">
-            <p><strong>Error loading network bridges</strong></p>
-            <p>${error.message || 'Unknown error occurred'}</p>
-            <button class="button is-small is-light mt-2" onclick="window.location.reload()">
-              <span>Try Again</span>
-            </button>
-          </div>`;
-      });
-
-    function saveVmbrSelections() {
-      const selectedVmbrs = [];
-      document
-        .querySelectorAll(".vmbr-checkbox:checked")
-        .forEach((checkbox) => {
-          selectedVmbrs.push(checkbox.dataset.name);
-        });
-
-      // Récupérer le jeton CSRF
-      const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
-      const headers = {
-        "Content-Type": "application/json"
-      };
-
-      // Ajouter le jeton CSRF s'il est disponible
-      if (csrfToken) {
-        headers["X-CSRF-Token"] = csrfToken;
-      }
-
-      fetch("/api/vmbr/settings", {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify({ vmbrs: selectedVmbrs }),
-      })
-        .then((response) => {
-          if (!response.ok) {
-            console.error("Failed to save VMBR selections.");
-          }
-        })
-        .catch((error) => {
-          console.error("Error saving VMBRs:", error);
-        });
-    }
-
-    vmbrContainer.addEventListener("change", function (event) {
-      if (event.target.matches(".vmbr-checkbox")) {
-        saveVmbrSelections();
-      }
-    });
-  });
-</script>
 {{end}}

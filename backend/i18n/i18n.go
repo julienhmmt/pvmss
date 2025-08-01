@@ -419,14 +419,19 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Admin.Storage.Title"] = Localize(localizer, "Admin.Storage.Title")
 
 	// Admin Section - VMBR
+	t["Admin.VMBR.Title"] = Localize(localizer, "Admin.VMBR.Title")
 	t["Admin.VMBR.Description"] = Localize(localizer, "Admin.VMBR.Description")
+	t["Admin.VMBR.AvailableBridges"] = Localize(localizer, "Admin.VMBR.AvailableBridges")
+	t["Admin.VMBR.NoVMBRs"] = Localize(localizer, "Admin.VMBR.NoVMBRs")
+	t["Admin.VMBR.Enable"] = Localize(localizer, "Admin.VMBR.Enable")
+	t["Admin.VMBR.Disable"] = Localize(localizer, "Admin.VMBR.Disable")
+	t["Admin.VMBR.SaveSuccess"] = Localize(localizer, "Admin.VMBR.SaveSuccess")
+	t["Admin.VMBR.SaveError"] = Localize(localizer, "Admin.VMBR.SaveError")
 	t["Admin.VMBR.Error"] = Localize(localizer, "Admin.VMBR.Error")
 	t["Admin.VMBR.Header.Description"] = Localize(localizer, "Admin.VMBR.Header.Description")
 	t["Admin.VMBR.Header.Enabled"] = Localize(localizer, "Admin.VMBR.Header.Enabled")
 	t["Admin.VMBR.Header.Name"] = Localize(localizer, "Admin.VMBR.Header.Name")
 	t["Admin.VMBR.Header.Node"] = Localize(localizer, "Admin.VMBR.Header.Node")
-	t["Admin.VMBR.NoVMBRs"] = Localize(localizer, "Admin.VMBR.NoVMBRs")
-	t["Admin.VMBR.Title"] = Localize(localizer, "Admin.VMBR.Title")
 
 	// Admin Section - Tags
 	t["Admin.Tags.Description"] = Localize(localizer, "Admin.Tags.Description")

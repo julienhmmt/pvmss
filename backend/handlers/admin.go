@@ -79,13 +79,49 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 
 	log.Debug().Msg("Admin page data loaded successfully")
 
+	// Get all VMBRs from all nodes
+	allVMBRs := make([]map[string]string, 0)
+	for _, node := range nodeNames {
+		vmbrs, err := proxmox.GetVMBRs(client, node)
+		if err != nil {
+			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node")
+			continue
+		}
+
+		if data, ok := vmbrs["data"].([]interface{}); ok {
+			for _, iface := range data {
+				if ifaceMap, ok := iface.(map[string]interface{}); ok {
+					if ifaceMap["type"] == "bridge" {
+						description := ""
+						if desc, ok := ifaceMap["comments"].(string); ok {
+							description = desc
+						}
+
+						allVMBRs = append(allVMBRs, map[string]string{
+							"node":        node,
+							"name":        ifaceMap["iface"].(string),
+							"description": description,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	// Get current settings to check which VMBRs are enabled
+	enabledVMBRs := make(map[string]bool)
+	for _, vmbr := range appSettings.VMBRs {
+		enabledVMBRs[vmbr] = true
+	}
+
 	// Préparer les données pour le template
 	data := map[string]interface{}{
-		"Tags":        appSettings.Tags,
-		"ISOs":        appSettings.ISOs,
-		"VMBRs":       appSettings.VMBRs,
-		"Limits":      appSettings.Limits,
-		"NodeDetails": nodeDetails,
+		"Tags":         appSettings.Tags,
+		"ISOs":         appSettings.ISOs,
+		"VMBRs":        allVMBRs,
+		"EnabledVMBRs": enabledVMBRs,
+		"Limits":       appSettings.Limits,
+		"NodeDetails":  nodeDetails,
 	}
 
 	// Ajouter les traductions
