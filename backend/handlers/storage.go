@@ -10,12 +10,23 @@ import (
 	"pvmss/state"
 )
 
+// StateManager is an interface that both real and mock state managers implement
+type StateManager interface {
+	GetProxmoxClient() *proxmox.Client
+	GetSettings() *state.AppSettings
+	SetSettings(settings *state.AppSettings) error
+}
+
 // StorageHandler gère les routes liées au stockage
-type StorageHandler struct{}
+type StorageHandler struct {
+	stateManager StateManager
+}
 
 // NewStorageHandler crée une nouvelle instance de StorageHandler
-func NewStorageHandler() *StorageHandler {
-	return &StorageHandler{}
+func NewStorageHandler(stateManager state.StateManager) *StorageHandler {
+	return &StorageHandler{
+		stateManager: stateManager,
+	}
 }
 
 // StoragePageHandler gère la page de gestion du stockage
@@ -27,7 +38,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		Logger()
 
 	// Récupérer le client Proxmox
-	client := state.GetGlobalState().GetProxmoxClient()
+	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
 		return
@@ -39,9 +50,8 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		node = "pve" // Valeur par défaut
 	}
 
-	// Récupérer les stockages activés à partir des paramètres globaux
-	gs := state.GetGlobalState()
-	settings := gs.GetSettings()
+	// Récupérer les paramètres
+	settings := h.stateManager.GetSettings()
 
 	// Initialiser la liste si elle est nulle pour éviter les erreurs
 	if settings.EnabledStorages == nil {
@@ -152,15 +162,14 @@ func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Req
 	// Récupérer les stockages cochés depuis le formulaire
 	enabledStoragesList := r.Form["enabled_storages"]
 
-	// Mettre à jour les paramètres globaux
-	gs := state.GetGlobalState()
-	settings := gs.GetSettings()
+	// Mettre à jour les paramètres
+	settings := h.stateManager.GetSettings()
 
 	// Mettre à jour la liste des stockages activés
 	settings.EnabledStorages = enabledStoragesList
 
 	// Sauvegarder les paramètres
-	if err := state.WriteSettings(settings); err != nil {
+	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Erreur lors de la sauvegarde des paramètres")
 		http.Error(w, "Erreur lors de la sauvegarde des paramètres", http.StatusInternalServerError)
 		return

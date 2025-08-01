@@ -24,7 +24,7 @@ func InitHandlers() http.Handler {
 	authHandler := NewAuthHandler()
 	adminHandler := NewAdminHandler()
 	vmHandler := NewVMHandler()
-	storageHandler := NewStorageHandler()
+	storageHandler := NewStorageHandler(state.GetGlobalState())
 	searchHandler := NewSearchHandler()
 	docsHandler := NewDocsHandler()
 	healthHandler := NewHealthHandler()
