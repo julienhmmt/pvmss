@@ -52,136 +52,76 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	client := state.GetGlobalState().GetProxmoxClient()
 	if client == nil {
-		logger.Get().Error().Msg("Proxmox client not available")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Proxmox client not available",
-		})
+		logger.Get().Error().Msg("Proxmox client is not initialized")
+		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
 		return
 	}
 
-	// Créer un contexte avec timeout pour la requête API
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
+	appSettings := state.GetGlobalState().GetSettings()
+	enabledISOsMap := make(map[string]bool)
+	for _, enabledISO := range appSettings.ISOs { // Correction: itérer sur ISOs, pas EnabledISOs
+		enabledISOsMap[enabledISO] = true
+	}
 
-	// Récupérer la liste des nœuds
-	nodesResult, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNames(client)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get nodes from Proxmox")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": fmt.Sprintf("Failed to get nodes: %v", err),
-		})
+		http.Error(w, "Failed to get nodes", http.StatusInternalServerError)
 		return
 	}
 
-	// Récupérer la liste des storages
-	storagesResult, err := proxmox.GetStoragesWithContext(ctx, client)
+	storages, err := proxmox.GetStorages(client)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get storages from Proxmox")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": fmt.Sprintf("Failed to get storages: %v", err),
-		})
+		http.Error(w, "Failed to get storages", http.StatusInternalServerError)
 		return
 	}
 
-	// Extraire les données de stockage
-	storagesData, ok := storagesResult.(map[string]interface{})
-	if !ok {
-		logger.Get().Error().Msg("Unexpected response format from Proxmox API")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Unexpected response format from Proxmox API",
-		})
-		return
-	}
+	var allISOs []ISOInfo
+	logger.Get().Debug().Int("storage_count", len(storages)).Msg("Fetching ISOs from storages")
 
-	// Extraire la liste des storages
-	storagesList, ok := storagesData["data"].([]interface{})
-	if !ok {
-		logger.Get().Error().Msg("Failed to extract storage list from response")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to extract storage list from response",
-		})
-		return
-	}
-
-	// Collecter toutes les ISOs
-	allISOs := make([]map[string]interface{}, 0)
-
-	// Pour chaque nœud et chaque storage, récupérer les ISOs
-	for _, node := range nodesResult {
-		for _, storageItem := range storagesList {
-			storage, ok := storageItem.(map[string]interface{})
-			if !ok {
+	for _, nodeName := range nodes {
+		for _, storage := range storages {
+			isNodeInStorage := storage.Nodes == "" || strings.Contains(storage.Nodes, nodeName)
+			if !isNodeInStorage || !containsISO(storage.Content) {
 				continue
 			}
 
-			// Vérifier si le stockage contient des ISOs
-			content, ok := storage["content"].(string)
-			if !ok || !containsISO(content) {
-				continue
-			}
-
-			storageName, ok := storage["storage"].(string)
-			if !ok {
-				continue
-			}
-
-			// Récupérer les ISOs pour ce storage
-			isoResult, err := proxmox.GetISOListWithContext(ctx, client, node, storageName)
+			logger.Get().Debug().Str("node", nodeName).Str("storage", storage.Storage).Msg("Fetching ISO list for storage")
+			isoList, err := proxmox.GetISOList(client, nodeName, storage.Storage)
 			if err != nil {
-				logger.Get().Warn().Err(err).
-					Str("node", node).
-					Str("storage", storageName).
-					Msg("Failed to get ISOs for storage")
+				logger.Get().Warn().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Could not get ISO list for storage, skipping")
 				continue
 			}
 
-			isoList, ok := isoResult["data"].([]interface{})
-			if !ok {
-				continue
-			}
-
-			// Ajouter les ISOs à la liste complète
 			for _, iso := range isoList {
-				isoMap, ok := iso.(map[string]interface{})
-				if !ok {
+				// On ne traite que les fichiers .iso, en ignorant les autres formats comme .img
+				if !strings.HasSuffix(iso.VolID, ".iso") {
+					logger.Get().Debug().Str("volid", iso.VolID).Msg("Skipping non-ISO file")
 					continue
 				}
 
-				// Vérifier si c'est bien une ISO
-				contentType, ok := isoMap["content"].(string)
-				if !ok || contentType != "iso" {
-					continue
+				_, isEnabled := enabledISOsMap[iso.VolID]
+				isoInfo := ISOInfo{
+					VolID:   iso.VolID,
+					Format:  "iso", // On force le format à "iso" car on a déjà filtré
+					Size:    iso.Size,
+					Node:    nodeName,
+					Storage: storage.Storage,
+					Enabled: isEnabled,
 				}
-
-				// Ajouter le nœud et le storage aux informations de l'ISO
-				isoMap["node"] = node
-				isoMap["storage"] = storageName
-				allISOs = append(allISOs, isoMap)
+				allISOs = append(allISOs, isoInfo)
+				logger.Get().Debug().Str("volid", iso.VolID).Bool("enabled", isEnabled).Msg("Found ISO")
 			}
 		}
 	}
 
-	// Renvoyer la réponse
+	logger.Get().Info().Int("total_isos_found", len(allISOs)).Msg("Finished fetching all ISOs")
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"isos":   allISOs,
-	})
+	if err := json.NewEncoder(w).Encode(map[string][]ISOInfo{"isos": allISOs}); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to encode ISOs to JSON")
+		http.Error(w, "Failed to encode ISOs", http.StatusInternalServerError)
+	}
 }
 
 // GetAllVMBRsHandler récupère tous les bridges réseau disponibles
@@ -299,12 +239,12 @@ func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Requ
 			"node":        vmbr["node"],
 			"description": "",
 		}
-		
+
 		// Add description if available
 		if desc, ok := vmbr["comments"].(string); ok && desc != "" {
 			formattedVMBR["description"] = desc
 		}
-		
+
 		formattedVMBRs = append(formattedVMBRs, formattedVMBR)
 	}
 
@@ -465,7 +405,7 @@ func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 		h.GetSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
-	router.GET("/api/iso/all", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.GET("/api/settings/iso", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.GetAllISOsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
@@ -481,8 +421,6 @@ func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 		h.UpdateVMBRSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 }
-
-// Fonctions utilitaires
 
 // containsISO vérifie si un type de contenu de stockage peut contenir des ISOs
 func containsISO(content string) bool {

@@ -37,7 +37,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 			Str("status", "forbidden").
 			Str("remote_addr", r.RemoteAddr).
 			Msg(errMsg)
-		
+
 		// Rediriger vers la page de connexion avec une URL de retour
 		http.Redirect(w, r, "/login?return="+r.URL.Path, http.StatusSeeOther)
 		return

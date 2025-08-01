@@ -543,8 +543,6 @@ other = "Enabled"
 other = "Bridge Name"
 ["Admin.VMBR.Header.Node"]
 other = "Node"
-["Admin.VMBR.Title"]
-other = "Network Bridges Management"
 
 # Admin - Tags Management
 ["Admin.Tags.Description"]

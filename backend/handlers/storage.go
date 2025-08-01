@@ -1,11 +1,7 @@
 package handlers
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/i18n"
@@ -28,200 +24,154 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		Str("handler", "StorageHandler").
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	log.Debug().Msg("Début du traitement de la requête StoragePageHandler")
-
-	// Préparer les données pour le template
-	data := map[string]interface{}{}
-
-	// Récupérer le client Proxmox depuis l'état global
+	// Récupérer le client Proxmox
 	client := state.GetGlobalState().GetProxmoxClient()
 	if client == nil {
-		errMsg := "Proxmox client not available"
-		log.Error().Msg(errMsg)
-		data["Error"] = errMsg
-		i18n.LocalizePage(w, r, data)
-		data["Title"] = data["Storage.Title"]
-		renderTemplateInternal(w, r, "storage", data)
+		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
 		return
 	}
 
-	// Créer un contexte avec timeout pour la requête API
-	timeout := 10 * time.Second
-	ctx, cancel := context.WithTimeout(r.Context(), timeout)
-	defer cancel()
-
-	log.Debug().
-		Str("timeout", timeout.String()).
-		Msg("Récupération des stockages depuis Proxmox")
-
-	// Récupérer les stockages depuis Proxmox
-	result, err := proxmox.GetStoragesWithContext(ctx, client)
-	if err != nil {
-		errMsg := fmt.Sprintf("Échec de la récupération des stockages: %v", err)
-		log.Error().Err(err).Msg(errMsg)
-		data["Error"] = errMsg
-		i18n.LocalizePage(w, r, data)
-		data["Title"] = data["Storage.Title"]
-		renderTemplateInternal(w, r, "storage", data)
-		return
+	// Récupérer les paramètres
+	node := r.URL.Query().Get("node")
+	if node == "" {
+		node = "pve" // Valeur par défaut
 	}
 
-	// Extraire les données de stockage de la réponse
-	responseData, ok := result.(map[string]interface{})
-	if !ok {
-		errMsg := "Format de réponse inattendu de l'API Proxmox"
-		log.Error().
-			Interface("response_type", fmt.Sprintf("%T", result)).
-			Msg(errMsg)
-		data["Error"] = errMsg
-		i18n.LocalizePage(w, r, data)
-		data["Title"] = data["Storage.Title"]
-		renderTemplateInternal(w, r, "storage", data)
-		return
+	// Récupérer les stockages activés à partir des paramètres globaux
+	gs := state.GetGlobalState()
+	settings := gs.GetSettings()
+
+	// Initialiser la liste si elle est nulle pour éviter les erreurs
+	if settings.EnabledStorages == nil {
+		settings.EnabledStorages = []string{}
 	}
 
-	// Extraire la liste des stockages
-	storageList, ok := responseData["data"].([]interface{})
-	if !ok {
-		errMsg := "Impossible d'extraire la liste des stockages de la réponse"
-		log.Error().
-			Interface("data_type", fmt.Sprintf("%T", responseData["data"])).
-			Msg(errMsg)
-		data["Error"] = errMsg
-		i18n.LocalizePage(w, r, data)
-		data["Title"] = data["Storage.Title"]
-		renderTemplateInternal(w, r, "storage", data)
-		return
-	}
+	// Déterminer si la configuration manuelle est utilisée
+	useManualConfig := len(settings.EnabledStorages) > 0
 
-	log.Debug().
-		Int("storage_count", len(storageList)).
-		Msg("Liste des stockages récupérée avec succès")
-
-	// Convertir la liste des stockages en format attendu par le template
-	storages := make([]map[string]interface{}, 0, len(storageList))
-	validItems := 0
-
-	for i, item := range storageList {
-		if storageData, ok := item.(map[string]interface{}); ok {
-			storages = append(storages, storageData)
-			validItems++
-		} else {
-			log.Warn().
-				Int("item_index", i).
-				Interface("item_type", fmt.Sprintf("%T", item)).
-				Msg("Élément de stockage ignoré (format invalide)")
+	// Créer une map des stockages activés
+	enabledStoragesMap := make(map[string]bool)
+	if useManualConfig {
+		for _, storageName := range settings.EnabledStorages {
+			enabledStoragesMap[storageName] = true
 		}
 	}
 
-	log.Debug().
-		Int("total_items", len(storageList)).
-		Int("valid_items", validItems).
-		Msg("Conversion des données de stockage terminée")
+	// Récupérer les stockages du nœud
+	storages, err := proxmox.GetStorages(client)
+	if err != nil {
+		log.Error().Err(err).Msg("Erreur lors de la récupération des stockages")
+		http.Error(w, "Erreur lors de la récupération des stockages: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	// Ajouter les données à la map pour le template
-	data["Storages"] = storages
+	// Log le nombre de stockages trouvés
+	log.Info().Int("count", len(storages)).Msg("Stockages récupérés depuis Proxmox")
+
+	// Convertir le résultat en format attendu par le template
+	storageMaps := make([]map[string]interface{}, 0, len(storages))
+
+	// Convertir chaque stockage en map pour le template
+	for i, storage := range storages {
+		// Log des détails du stockage pour le débogage
+		log.Debug().
+			Int("index", i).
+			Str("storage", storage.Storage).
+			Str("type", storage.Type).
+			Str("used", storage.Used.String()).
+			Str("total", storage.Total.String()).
+			Msg("Traitement du stockage")
+
+		// Convertir Used et Total en int64 pour le template
+		used, _ := storage.Used.Int64()
+		total, _ := storage.Total.Int64()
+
+		// Créer la map pour le template
+		s := map[string]interface{}{
+			"Storage":     storage.Storage,
+			"Type":        storage.Type,
+			"Used":        used,
+			"Total":       total,
+			"Description": storage.Description,
+			"Enabled":     !useManualConfig || enabledStoragesMap[storage.Storage],
+			"Content":     storage.Content,
+		}
+
+		// Ajouter des champs optionnels s'ils sont présents
+		if storage.Avail.String() != "" {
+			avail, _ := storage.Avail.Int64()
+			s["Available"] = avail
+		}
+		if storage.Content != "" {
+			s["Content"] = storage.Content
+		}
+
+		storageMaps = append(storageMaps, s)
+	}
+
+	log.Debug().Interface("storages", storages).Msg("Storages récupérés")
+
+	// Préparer les données pour le template
+	data := map[string]interface{}{
+		"Title":           "Gestion du stockage",
+		"Node":            node,
+		"Storages":        storageMaps,
+		"EnabledStorages": settings.EnabledStorages,
+		"EnabledMap":      enabledStoragesMap,
+	}
+
+	// Log des données envoyées au template pour le débogage
+	log.Debug().Interface("template_data", data).Msg("Data being sent to storage template")
 
 	// Ajouter les traductions
 	i18n.LocalizePage(w, r, data)
-	data["Title"] = data["Storage.Title"]
-
-	log.Debug().Msg("Rendu du template de gestion du stockage")
 	renderTemplateInternal(w, r, "storage", data)
 }
 
-// StorageAPIHandler gère les appels API pour les opérations sur le stockage
-func (h *StorageHandler) StorageAPIHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// UpdateStorageHandler gère la mise à jour des stockages activés
+func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := logger.Get().With().
-		Str("handler", "StorageHandler").
+		Str("handler", "UpdateStorageHandler").
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	log.Debug().Msg("Début du traitement de la requête StorageAPIHandler")
-
-	// Récupérer le client Proxmox depuis l'état global
-	client := state.GetGlobalState().GetProxmoxClient()
-	if client == nil {
-		errMsg := "Client Proxmox non disponible"
-		log.Error().Msg(errMsg)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": errMsg})
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Créer un contexte avec timeout pour la requête API
-	timeout := 10 * time.Second
-	ctx, cancel := context.WithTimeout(r.Context(), timeout)
-	defer cancel()
-
-	log.Debug().
-		Str("timeout", timeout.String()).
-		Msg("Exécution de la requête API de stockage")
-
-	// Récupérer les stockages depuis Proxmox
-	result, err := proxmox.GetStoragesWithContext(ctx, client)
-	if err != nil {
-		errMsg := fmt.Sprintf("Échec de la récupération des stockages: %v", err)
-		log.Error().Err(err).Msg(errMsg)
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": errMsg})
+	// Lire les paramètres du formulaire
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Erreur lors de l'analyse du formulaire", http.StatusBadRequest)
 		return
 	}
 
-	// Log du succès de la requête
-	log.Debug().
-		Interface("result_type", fmt.Sprintf("%T", result)).
-		Msg("Requête API de stockage exécutée avec succès")
+	// Récupérer les stockages cochés depuis le formulaire
+	enabledStoragesList := r.Form["enabled_storages"]
 
-	// Renvoyer la réponse JSON
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		log.Error().Err(err).Msg("Échec de l'encodage de la réponse JSON")
+	// Mettre à jour les paramètres globaux
+	gs := state.GetGlobalState()
+	settings := gs.GetSettings()
+
+	// Mettre à jour la liste des stockages activés
+	settings.EnabledStorages = enabledStoragesList
+
+	// Sauvegarder les paramètres
+	if err := state.WriteSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Erreur lors de la sauvegarde des paramètres")
+		http.Error(w, "Erreur lors de la sauvegarde des paramètres", http.StatusInternalServerError)
+		return
 	}
+
+	// Rediriger vers la page de gestion des stockages
+	http.Redirect(w, r, "/admin/storage?success=true", http.StatusSeeOther)
 }
 
 // RegisterRoutes enregistre les routes liées au stockage
 func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
-	log := logger.Get().With().
-		Str("component", "StorageHandler").
-		Str("method", "RegisterRoutes").
-		Logger()
-
-	// Définition des routes
-	routes := []struct {
-		method  string
-		path    string
-		handler httprouter.Handle
-	}{
-		{"GET", "/admin/storage", h.StoragePageHandler},
-		{"GET", "/api/v1/storage", h.StorageAPIHandler},
-		{"GET", "/storage", h.StoragePageHandler},
-		{"GET", "/api/storage", h.StorageAPIHandler},
-	}
-
-	// Enregistrement des routes
-	for _, route := range routes {
-		router.Handle(route.method, route.path, route.handler)
-
-		// Journalisation
-		log.Debug().
-			Str("method", route.method).
-			Str("path", route.path).
-			Msg("Route de stockage enregistrée")
-	}
-
-	// Journalisation du succès
-	log.Info().
-		Int("routes_count", len(routes)).
-		Msg("Routes du gestionnaire de stockage enregistrées avec succès")
-
-	// Note: L'authentification est gérée par le middleware global dans main.go
+	router.GET("/admin/storage", h.StoragePageHandler)
+	router.POST("/admin/storage/update", h.UpdateStorageHandler)
 }

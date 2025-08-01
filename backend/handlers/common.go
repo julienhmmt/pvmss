@@ -13,6 +13,16 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// ISOInfo représente les informations détaillées sur une image ISO.
+type ISOInfo struct {
+	VolID   string `json:"volid"`
+	Format  string `json:"format"`
+	Size    int64  `json:"size"`
+	Node    string `json:"node,omitempty"`
+	Storage string `json:"storage,omitempty"`
+	Enabled bool   `json:"enabled"`
+}
+
 // contextKey is used for context keys to avoid collisions between packages using context
 type contextKey string
 

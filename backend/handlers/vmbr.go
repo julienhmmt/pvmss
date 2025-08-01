@@ -77,7 +77,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 	// Prepare template data
 	templateData := map[string]interface{}{
-		"VMBRs":       allVMBRs,
+		"VMBRs":        allVMBRs,
 		"EnabledVMBRs": enabledVMBRs,
 	}
 

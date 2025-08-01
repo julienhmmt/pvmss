@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(settings => {
             savedIsos = settings.isos || [];
             // Now fetch all ISOs
-            return fetch('/api/iso/all');
+            return fetch('/api/settings/iso');
         })
         .then(response => response.json())
         .then(data => {
@@ -73,7 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Name cell
                     const nameCell = document.createElement('td');
-                    nameCell.textContent = iso.name;
+                    const volidParts = iso.volid.split('/');
+                    nameCell.textContent = volidParts.length > 1 ? volidParts[1] : iso.volid;
                     row.appendChild(nameCell);
                     
                     // Size cell
