@@ -40,9 +40,4 @@ type StateManager interface {
 	AddCSRFToken(token string, expiry time.Time) error
 	ValidateAndRemoveCSRFToken(token string) bool
 	CleanExpiredCSRFTokens()
-
-	// Rate limiting
-	RecordLoginAttempt(ip string, timestamp time.Time) error
-	GetLoginAttempts(ip string) ([]time.Time, error)
-	CleanExpiredLoginAttempts()
 }

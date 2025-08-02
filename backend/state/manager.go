@@ -21,17 +21,15 @@ type appState struct {
 	mu             sync.RWMutex
 
 	// Security-related fields
-	csrfTokens    map[string]time.Time
-	loginAttempts map[string][]time.Time
-	securityMu    sync.RWMutex // Separate mutex for security operations
+	csrfTokens map[string]time.Time
+	securityMu sync.RWMutex // Mutex for CSRF token operations
 }
 
 // NewAppState creates a new instance of the application state manager
 func NewAppState() StateManager {
 	state := &appState{
-		settings:      &AppSettings{},
-		csrfTokens:    make(map[string]time.Time),
-		loginAttempts: make(map[string][]time.Time),
+		settings:   &AppSettings{},
+		csrfTokens: make(map[string]time.Time),
 	}
 
 	// Start background cleanup goroutines
@@ -47,7 +45,6 @@ func (s *appState) cleanupSecurityData() {
 
 	for range ticker.C {
 		s.CleanExpiredCSRFTokens()
-		s.CleanExpiredLoginAttempts()
 	}
 }
 
@@ -270,63 +267,6 @@ func (s *appState) CleanExpiredCSRFTokens() {
 	for token, expiry := range s.csrfTokens {
 		if now.After(expiry) {
 			delete(s.csrfTokens, token)
-		}
-	}
-}
-
-// RecordLoginAttempt records a login attempt for rate limiting
-func (s *appState) RecordLoginAttempt(ip string, timestamp time.Time) error {
-	if ip == "" {
-		return errors.New("IP address cannot be empty")
-	}
-
-	s.securityMu.Lock()
-	defer s.securityMu.Unlock()
-
-	if s.loginAttempts[ip] == nil {
-		s.loginAttempts[ip] = make([]time.Time, 0, 1)
-	}
-	s.loginAttempts[ip] = append(s.loginAttempts[ip], timestamp)
-
-	return nil
-}
-
-// GetLoginAttempts returns all login attempts for an IP address
-func (s *appState) GetLoginAttempts(ip string) ([]time.Time, error) {
-	if ip == "" {
-		return nil, errors.New("IP address cannot be empty")
-	}
-
-	s.securityMu.RLock()
-	defer s.securityMu.RUnlock()
-
-	// Return a copy of the slice to prevent external modification
-	attempts := make([]time.Time, len(s.loginAttempts[ip]))
-	copy(attempts, s.loginAttempts[ip])
-
-	return attempts, nil
-}
-
-// CleanExpiredLoginAttempts removes login attempts older than the lockout period
-func (s *appState) CleanExpiredLoginAttempts() {
-	s.securityMu.Lock()
-	defer s.securityMu.Unlock()
-
-	now := time.Now()
-	lockoutPeriod := 15 * time.Minute // Should match the security package constant
-
-	for ip, attempts := range s.loginAttempts {
-		var validAttempts []time.Time
-		for _, attempt := range attempts {
-			if now.Sub(attempt) < lockoutPeriod {
-				validAttempts = append(validAttempts, attempt)
-			}
-		}
-
-		if len(validAttempts) > 0 {
-			s.loginAttempts[ip] = validAttempts
-		} else {
-			delete(s.loginAttempts, ip)
 		}
 	}
 }

@@ -180,10 +180,6 @@ func GetFuncMap(r *http.Request) template.FuncMap {
 			return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, token))
 		}
 
-		funcMap["isRateLimited"] = func(ip string) bool {
-			return !security.CheckRateLimit(ip)
-		}
-
 		// Add request info functions
 		funcMap["isHTTPS"] = func() bool { return r.TLS != nil }
 		funcMap["host"] = func() string { return r.Host }

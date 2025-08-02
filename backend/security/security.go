@@ -1,76 +1,41 @@
-// Package security provides security utilities and middleware for the PVMSS application
 package security
 
 import (
-	"html"
+	"net/url"
 	"strings"
-	"time"
-
-	"pvmss/logger"
-	"pvmss/state"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-// CheckRateLimit checks if an IP has exceeded rate limits
-func CheckRateLimit(ip string) bool {
-	if ip == "" {
-		return false
-	}
-
-	// Get state manager
-	stateManager := state.GetGlobalState()
-	if stateManager == nil {
-		logger.Get().Error().Msg("State manager not initialized")
-		return false
-	}
-
-	// Get login attempts
-	attempts, err := stateManager.GetLoginAttempts(ip)
-	if err != nil {
-		logger.Get().Error().Err(err).Str("ip", ip).Msg("Failed to get login attempts")
-		return false
-	}
-
-	// Count recent attempts
-	recentAttempts := 0
-	now := time.Now()
-	for _, attempt := range attempts {
-		if now.Sub(attempt) < LockoutPeriod {
-			recentAttempts++
-		}
-	}
-
-	return recentAttempts < MaxLoginAttempts
-}
-
 // ValidateInput validates and sanitizes input
 func ValidateInput(input string, maxLength int) string {
-	// Remove any HTML tags and limit length
-	cleaned := html.EscapeString(strings.TrimSpace(input))
+	if input == "" {
+		return ""
+	}
+
+	// Trim and limit length
+	cleaned := strings.TrimSpace(input)
 	if len(cleaned) > maxLength {
 		cleaned = cleaned[:maxLength]
 	}
+
 	return cleaned
 }
 
-// RecordLoginAttempt records a login attempt for rate limiting
-func RecordLoginAttempt(ip string) {
-	if ip == "" {
-		return
+// ValidateURL validates a URL
+func ValidateURL(urlStr string) bool {
+	u, err := url.ParseRequestURI(urlStr)
+	if err != nil {
+		return false
 	}
+	return u.Scheme == "http" || u.Scheme == "https"
+}
 
-	// Get state manager
-	stateManager := state.GetGlobalState()
-	if stateManager == nil {
-		logger.Get().Error().Msg("State manager not initialized")
-		return
-	}
-
-	// Record the attempt
-	if err := stateManager.RecordLoginAttempt(ip, time.Now()); err != nil {
-		logger.Get().Error().Err(err).Str("ip", ip).Msg("Failed to record login attempt")
-	}
+// SanitizePath cleans and validates a file path
+func SanitizePath(path string) string {
+	// Remove any directory traversal attempts
+	path = strings.ReplaceAll(path, "../", "")
+	return path
 }
 
 // HashPassword hashes a password using bcrypt
