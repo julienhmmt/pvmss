@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"pvmss/proxmox"
 )
 
 // MockStorage represents a Proxmox storage entry for testing
@@ -126,6 +128,9 @@ type MockProxmoxClient struct {
 	mockVMs      []MockVM
 	mockNodes    []MockNode
 }
+
+// Ensure MockProxmoxClient implements proxmox.ClientInterface
+var _ proxmox.ClientInterface = (*MockProxmoxClient)(nil)
 
 // NewMockProxmoxClient creates a new mock Proxmox client for testing
 func NewMockProxmoxClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, opts ...MockClientOption) *MockProxmoxClient {
@@ -295,19 +300,20 @@ func (c *MockProxmoxClient) Get(path string) (map[string]interface{}, error) {
 }
 
 // InvalidateCache removes entries from the client's response cache
-func (c *MockProxmoxClient) InvalidateCache(path string) {
-	if c.cache == nil {
-		return
-	}
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
+func (m *MockProxmoxClient) InvalidateCache(path string) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
 
 	if path == "" {
-		// Invalidate all cache
-		c.cache = make(map[string]*MockCacheEntry)
+		// Clear all cache if no specific path is provided
+		m.cache = make(map[string]*MockCacheEntry)
 	} else {
-		// Invalidate specific path
-		delete(c.cache, path)
+		// Clear specific cache entry
+		delete(m.cache, path)
 	}
+}
+
+// GetTimeout returns the client's configured timeout duration
+func (m *MockProxmoxClient) GetTimeout() time.Duration {
+	return m.Timeout
 }

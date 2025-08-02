@@ -12,7 +12,7 @@ import (
 
 // StateManager is an interface that both real and mock state managers implement
 type StateManager interface {
-	GetProxmoxClient() *proxmox.Client
+	GetProxmoxClient() proxmox.ClientInterface
 	GetSettings() *state.AppSettings
 	SetSettings(settings *state.AppSettings) error
 }

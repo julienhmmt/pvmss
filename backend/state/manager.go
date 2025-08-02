@@ -16,7 +16,7 @@ import (
 type appState struct {
 	templates      *template.Template
 	sessionManager *scs.SessionManager
-	proxmoxClient  *proxmox.Client
+	proxmoxClient  proxmox.ClientInterface
 	settings       *AppSettings
 	mu             sync.RWMutex
 
@@ -88,14 +88,14 @@ func (s *appState) SetSessionManager(sm *scs.SessionManager) error {
 }
 
 // GetProxmoxClient returns the Proxmox client
-func (s *appState) GetProxmoxClient() *proxmox.Client {
+func (s *appState) GetProxmoxClient() proxmox.ClientInterface {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.proxmoxClient
 }
 
 // SetProxmoxClient sets the Proxmox client
-func (s *appState) SetProxmoxClient(pc *proxmox.Client) error {
+func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 	if pc == nil {
 		return errors.New("proxmox client cannot be nil")
 	}

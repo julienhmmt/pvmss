@@ -15,7 +15,7 @@ import (
 type MockStateManager struct {
 	templates      *template.Template
 	sessionManager *scs.SessionManager
-	proxmoxClient  *proxmox.Client
+	proxmoxClient  proxmox.ClientInterface // Changed to use interface
 	settings       *state.AppSettings
 	mu             sync.RWMutex
 
@@ -49,7 +49,7 @@ func NewMockStateManager() *MockStateManager {
 }
 
 // WithMockProxmoxClient sets the mock Proxmox client
-func (s *MockStateManager) WithMockProxmoxClient(client *MockProxmoxClient) *MockStateManager {
+func (s *MockStateManager) WithMockProxmoxClient(client proxmox.ClientInterface) *MockStateManager {
 	s.proxmoxClient = client
 	return s
 }
@@ -97,20 +97,20 @@ func (s *MockStateManager) SetSessionManager(sm *scs.SessionManager) error {
 }
 
 // GetProxmoxClient returns the Proxmox client
-func (s *MockStateManager) GetProxmoxClient() *proxmox.Client {
+func (s *MockStateManager) GetProxmoxClient() proxmox.ClientInterface {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	if s.proxmoxClient == nil {
-		return nil
+		// Return a new mock client if none is set
+		s.proxmoxClient = NewMockProxmoxClient("http://localhost:8006", "test-token-id", "test-token-secret", true)
 	}
-	if client, ok := s.proxmoxClient.(*proxmox.Client); ok {
-		return client
-	}
-	return nil
+
+	return s.proxmoxClient
 }
 
 // SetProxmoxClient sets the Proxmox client
-func (s *MockStateManager) SetProxmoxClient(pc *proxmox.Client) error {
+func (s *MockStateManager) SetProxmoxClient(pc proxmox.ClientInterface) error {
 	if pc == nil {
 		return fmt.Errorf("proxmox client cannot be nil")
 	}

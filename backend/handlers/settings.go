@@ -57,20 +57,29 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	proxmoxClient, ok := client.(*proxmox.Client)
+	if !ok {
+		logger.Get().Error().Msg("Failed to convert client to *proxmox.Client")
+		http.Error(w, "Internal error: Invalid client type", http.StatusInternalServerError)
+		return
+	}
+
 	appSettings := state.GetGlobalState().GetSettings()
 	enabledISOsMap := make(map[string]bool)
 	for _, enabledISO := range appSettings.ISOs { // Correction: itérer sur ISOs, pas EnabledISOs
 		enabledISOsMap[enabledISO] = true
 	}
 
-	nodes, err := proxmox.GetNodeNames(client)
+	// Get all nodes
+	nodes, err := proxmox.GetNodeNames(proxmoxClient)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get nodes from Proxmox")
 		http.Error(w, "Failed to get nodes", http.StatusInternalServerError)
 		return
 	}
 
-	storages, err := proxmox.GetStorages(client)
+	// Get all storages
+	storages, err := proxmox.GetStorages(proxmoxClient)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get storages from Proxmox")
 		http.Error(w, "Failed to get storages", http.StatusInternalServerError)
@@ -88,7 +97,8 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 			}
 
 			logger.Get().Debug().Str("node", nodeName).Str("storage", storage.Storage).Msg("Fetching ISO list for storage")
-			isoList, err := proxmox.GetISOList(client, nodeName, storage.Storage)
+			// Get ISO list for this storage
+			isoList, err := proxmox.GetISOList(proxmoxClient, nodeName, storage.Storage)
 			if err != nil {
 				logger.Get().Warn().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Could not get ISO list for storage, skipping")
 				continue
@@ -138,19 +148,32 @@ func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
+	proxmoxClient, ok := client.(*proxmox.Client)
+	if !ok {
+		logger.Get().Error().Msg("Failed to convert client to *proxmox.Client")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":  "error",
+			"message": "Internal error: Invalid client type",
+		})
+		return
+	}
+
 	// Créer un contexte avec timeout pour la requête API
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	// Récupérer la liste des nœuds
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get nodes from Proxmox")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "error",
-			"message": fmt.Sprintf("Failed to get nodes: %v", err),
+			"message": "Failed to get nodes",
 		})
 		return
 	}
@@ -160,15 +183,15 @@ func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Requ
 
 	// Pour chaque nœud, récupérer les interfaces réseau
 	for _, node := range nodes {
-		logger.Get().Debug().
+		log := logger.Get().With().
 			Str("node", node).
-			Msg("Récupération des interfaces réseau pour le nœud")
+			Logger()
 
-		vmbrResult, err := proxmox.GetVMBRsWithContext(ctx, client, node)
+		log.Debug().Msg("Récupération des interfaces réseau pour le nœud")
+
+		vmbrResult, err := proxmox.GetVMBRsWithContext(ctx, proxmoxClient, node)
 		if err != nil {
-			logger.Get().Warn().Err(err).
-				Str("node", node).
-				Msg("Échec de la récupération des VMBRs pour le nœud")
+			log.Warn().Err(err).Msg("Échec de la récupération des VMBRs pour le nœud")
 			continue
 		}
 

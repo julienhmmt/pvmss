@@ -22,8 +22,8 @@ type StateManager interface {
 	SetSessionManager(sm *scs.SessionManager) error
 
 	// Proxmox client management
-	GetProxmoxClient() *proxmox.Client
-	SetProxmoxClient(pc *proxmox.Client) error
+	GetProxmoxClient() proxmox.ClientInterface
+	SetProxmoxClient(pc proxmox.ClientInterface) error
 
 	// Settings management
 	GetSettings() *AppSettings

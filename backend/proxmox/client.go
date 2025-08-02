@@ -17,6 +17,7 @@ import (
 // Client is a custom wrapper around the standard Proxmox API client.
 // It enhances the base client with features like request timeouts, response caching,
 // and a simplified authentication mechanism using API tokens.
+// It implements the ClientInterface for better testability and abstraction.
 type Client struct {
 	*px.Client
 	HttpClient *http.Client
@@ -258,4 +259,9 @@ func (c *Client) InvalidateCache(path string) {
 		delete(c.cache, path)
 		logger.Get().Debug().Str("path", path).Msg("Cache entry invalidated")
 	}
+}
+
+// GetTimeout returns the client's configured timeout duration
+func (c *Client) GetTimeout() time.Duration {
+	return c.Timeout
 }

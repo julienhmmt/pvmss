@@ -152,12 +152,19 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 }
 
 // searchVMs recherche les VMs selon les critères fournis
-func searchVMs(ctx context.Context, client *proxmox.Client, vmidStr, name string) ([]map[string]interface{}, error) {
+func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmidStr, name string) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("function", "searchVMs").
 		Str("vmid", vmidStr).
 		Str("name", name).
 		Logger()
+
+	// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
+	client, ok := clientInterface.(*proxmox.Client)
+	if !ok {
+		log.Error().Msg("Failed to convert client to *proxmox.Client")
+		return nil, fmt.Errorf("invalid client type")
+	}
 
 	log.Debug().Msg("Début de la recherche de VMs")
 

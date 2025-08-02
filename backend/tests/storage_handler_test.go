@@ -9,7 +9,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"pvmss/handlers"
 	"pvmss/state"
-	"pvmss/proxmox"
 )
 
 // TestStoragePageHandler tests the StoragePageHandler with mock data

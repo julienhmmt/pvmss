@@ -13,13 +13,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/joho/godotenv"
 
 	"pvmss/handlers"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/security"
 	"pvmss/state"
 	"pvmss/templates"
 )
@@ -41,19 +41,33 @@ func main() {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize application")
 	}
 
-	// Setup HTTP server
-	router := handlers.InitHandlers()
+	// Initialize security and get the session manager
+	sessionManager, err := security.InitSecurity()
+	if err != nil {
+		logger.Get().Fatal().Err(err).Msg("Failed to initialize security")
+	}
+
+	// Store the session manager in the global state
+	stateManager := state.GetGlobalState()
+	if err := stateManager.SetSessionManager(sessionManager.SessionManager); err != nil {
+		logger.Get().Fatal().Err(err).Msg("Failed to set session manager in state")
+	}
+
+	// Setup HTTP server (this now includes all middleware)
+	handler := handlers.InitHandlers()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "50000"
 	}
 
 	srv := &http.Server{
-		Addr:         ":" + port,
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		Addr:    ":" + port,
+		Handler: handler,
+		// Security-related timeouts
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  120 * time.Second,
 	}
 
 	// Start server
@@ -113,13 +127,6 @@ func initializeApp() error {
 		return fmt.Errorf("failed to initialize templates: %w", err)
 	}
 
-	sessionManager := scs.New()
-	sessionManager.Lifetime = 24 * time.Hour
-	sessionManager.Cookie.Name = "pvmss_session"
-	sessionManager.Cookie.HttpOnly = true
-	sessionManager.Cookie.Secure = false // Set to true in production
-	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
-
 	// 4. Populate the state manager with all components.
 	if err := stateManager.SetProxmoxClient(proxmoxClient); err != nil {
 		return fmt.Errorf("failed to set Proxmox client: %w", err)
@@ -127,9 +134,7 @@ func initializeApp() error {
 	if err := stateManager.SetTemplates(templates); err != nil {
 		return fmt.Errorf("failed to set templates: %w", err)
 	}
-	if err := stateManager.SetSessionManager(sessionManager); err != nil {
-		return fmt.Errorf("failed to set session manager: %w", err)
-	}
+	// Note: Session manager will be set later in main() after security initialization
 
 	// 5. Handle settings: save if modified, otherwise just load into state.
 	if modified {
@@ -149,33 +154,82 @@ func initializeApp() error {
 }
 
 func initProxmoxClient() (*proxmox.Client, error) {
+	// Get required configuration from environment variables
 	proxmoxURL := os.Getenv("PROXMOX_URL")
-	proxmoxAPITokenName := os.Getenv("PROXMOX_API_TOKEN_NAME")
-	proxmoxAPITokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+	if proxmoxURL == "" {
+		return nil, fmt.Errorf("missing PROXMOX_URL environment variable")
+	}
+
+	// Get API token credentials from environment variables
+	tokenName := os.Getenv("PROXMOX_API_TOKEN_NAME")
+	tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+
+	// Fallback to username/password if token is not provided
+	if tokenName == "" || tokenValue == "" {
+		logger.Get().Warn().Msg("API token not provided, falling back to username/password")
+		username := os.Getenv("PROXMOX_USER")
+		password := os.Getenv("PROXMOX_PASSWORD")
+		if username == "" || password == "" {
+			return nil, fmt.Errorf("missing PROXMOX_API_TOKEN_NAME/TOKEN_VALUE or PROXMOX_USER/PASSWORD environment variables")
+		}
+		// Convert to token format (username@pve!tokenname=tokenvalue)
+		tokenName = fmt.Sprintf("%s@pve!pvmss", username)
+		tokenValue = password
+	}
+
+	// Parse insecure flag
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
-	if proxmoxURL == "" || proxmoxAPITokenName == "" || proxmoxAPITokenValue == "" {
-		return nil, fmt.Errorf("missing required Proxmox configuration")
+	// Set timeout from environment or use default
+	timeout := 30 * time.Second
+	if timeoutStr := os.Getenv("PROXMOX_TIMEOUT"); timeoutStr != "" {
+		if timeoutVal, err := time.ParseDuration(timeoutStr); err == nil {
+			timeout = timeoutVal
+		}
 	}
 
 	logger.Get().Info().
 		Str("url", proxmoxURL).
 		Bool("insecureSkipVerify", insecureSkipVerify).
+		Dur("timeout", timeout).
 		Msg("Initializing Proxmox client")
 
-	return proxmox.NewClientWithOptions(
+	// Create client with options
+	client, err := proxmox.NewClientWithOptions(
 		proxmoxURL,
-		proxmoxAPITokenName,
-		proxmoxAPITokenValue,
+		tokenName,
+		tokenValue,
 		insecureSkipVerify,
 	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Proxmox client: %w", err)
+	}
+
+	// Set timeout
+	client.Timeout = timeout
+
+	// Verify connection with basic test request
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Try a simple API call to check connectivity
+	_, err = client.GetWithContext(ctx, "/api2/json/version")
+	if err != nil {
+		logger.Get().Warn().
+			Err(err).
+			Str("url", proxmoxURL).
+			Msg("Proxmox connection test failed")
+		// Continue anyway as the server might be temporarily unavailable
+	}
+
+	return client, nil
 }
 
 func initTemplates() (*template.Template, error) {
 	// Create base template with functions
 	tmpl := template.New("").Funcs(templates.GetBaseFuncMap())
 
-	// Parse all HTML files in the frontend directory
+	// Get template directory path
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		return nil, fmt.Errorf("could not get current file path")

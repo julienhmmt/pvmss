@@ -62,7 +62,15 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Get list of nodes
-	nodeNames, err := proxmox.GetNodeNames(client)
+	// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
+	proxmoxClient, ok := client.(*proxmox.Client)
+	if !ok {
+		log.Error().Msg("Failed to convert client to *proxmox.Client")
+		http.Error(w, "Internal error: Invalid client type", http.StatusInternalServerError)
+		return
+	}
+
+	nodeNames, err := proxmox.GetNodeNames(proxmoxClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to retrieve Proxmox nodes")
 		http.Error(w, "Internal error: Unable to retrieve Proxmox nodes", http.StatusInternalServerError)
@@ -72,7 +80,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	// Get details for each node
 	var nodeDetails []*proxmox.NodeDetails
 	for _, nodeName := range nodeNames {
-		nodeDetail, err := proxmox.GetNodeDetails(client, nodeName)
+		nodeDetail, err := proxmox.GetNodeDetails(proxmoxClient, nodeName)
 		if err != nil {
 			log.Error().Err(err).Str("node", nodeName).Msg("Failed to retrieve node details")
 			continue
@@ -85,7 +93,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	// Get all VMBRs from all nodes
 	allVMBRs := make([]map[string]string, 0)
 	for _, node := range nodeNames {
-		vmbrs, err := proxmox.GetVMBRs(client, node)
+		vmbrs, err := proxmox.GetVMBRs(proxmoxClient, node)
 		if err != nil {
 			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node")
 			continue
