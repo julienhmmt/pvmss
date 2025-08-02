@@ -31,16 +31,8 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		return
 	}
 
-	// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
-	proxmoxClient, ok := client.(*proxmox.Client)
-	if !ok {
-		log.Error().Msg("Failed to convert client to *proxmox.Client")
-		http.Error(w, "Internal error: Invalid client type", http.StatusInternalServerError)
-		return
-	}
-
 	// Get all nodes
-	nodes, err := proxmox.GetNodeNames(proxmoxClient)
+	nodes, err := proxmox.GetNodeNames(client)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get nodes")
 		http.Error(w, "Failed to get nodes", http.StatusInternalServerError)
@@ -50,29 +42,18 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Get all VMBRs from all nodes
 	allVMBRs := make([]map[string]string, 0)
 	for _, node := range nodes {
-		vmbrs, err := proxmox.GetVMBRs(proxmoxClient, node)
+		vmbrs, err := proxmox.GetVMBRs(client, node)
 		if err != nil {
 			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node")
 			continue
 		}
 
-		if data, ok := vmbrs["data"].([]interface{}); ok {
-			for _, iface := range data {
-				if ifaceMap, ok := iface.(map[string]interface{}); ok {
-					if ifaceMap["type"] == "bridge" {
-						description := ""
-						if desc, ok := ifaceMap["comments"].(string); ok {
-							description = desc
-						}
-
-						allVMBRs = append(allVMBRs, map[string]string{
-							"node":        node,
-							"name":        ifaceMap["iface"].(string),
-							"description": description,
-						})
-					}
-				}
-			}
+		for _, vmbr := range vmbrs {
+			allVMBRs = append(allVMBRs, map[string]string{
+				"node":        node,
+				"name":        vmbr.Iface,
+				"description": "", // The VMBR struct doesn't have a Description field
+			})
 		}
 	}
 

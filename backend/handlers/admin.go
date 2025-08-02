@@ -99,22 +99,18 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 			continue
 		}
 
-		if data, ok := vmbrs["data"].([]interface{}); ok {
-			for _, iface := range data {
-				if ifaceMap, ok := iface.(map[string]interface{}); ok {
-					if ifaceMap["type"] == "bridge" {
-						description := ""
-						if desc, ok := ifaceMap["comments"].(string); ok {
-							description = desc
-						}
-
-						allVMBRs = append(allVMBRs, map[string]string{
-							"node":        node,
-							"name":        ifaceMap["iface"].(string),
-							"description": description,
-						})
-					}
-				}
+		for _, vmbr := range vmbrs {
+			if vmbr.Type == "bridge" {
+				allVMBRs = append(allVMBRs, map[string]string{
+					"node":        node,
+					"iface":       vmbr.Iface,
+					"type":        vmbr.Type,
+					"method":      vmbr.Method,
+					"address":     vmbr.Address,
+					"netmask":     vmbr.Netmask,
+					"gateway":     vmbr.Gateway,
+					"description": "", // VMBR struct doesn't have a description field
+				})
 			}
 		}
 	}

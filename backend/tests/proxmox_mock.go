@@ -314,6 +314,27 @@ func (m *MockProxmoxClient) InvalidateCache(path string) {
 }
 
 // GetTimeout returns the client's configured timeout duration
-func (m *MockProxmoxClient) GetTimeout() time.Duration {
-	return m.Timeout
+func (c *MockProxmoxClient) GetTimeout() time.Duration {
+	return c.Timeout
+}
+
+// SetTimeout sets the client's request timeout
+func (c *MockProxmoxClient) SetTimeout(timeout time.Duration) {
+	c.Timeout = timeout
+}
+
+// GetJSON performs a GET request and unmarshals the response into the target interface
+func (c *MockProxmoxClient) GetJSON(ctx context.Context, path string, target interface{}) error {
+	// Get raw response
+	data, err := c.GetRawWithContext(ctx, path)
+	if err != nil {
+		return fmt.Errorf("failed to get data: %w", err)
+	}
+
+	// Unmarshal into target
+	if err := json.Unmarshal(data, target); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return nil
 }

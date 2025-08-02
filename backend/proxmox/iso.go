@@ -2,7 +2,6 @@ package proxmox
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"pvmss/logger"
@@ -19,11 +18,16 @@ type ISO struct {
 	Size   int64  `json:"size"`
 }
 
+// ISOListResponse represents the response from the ISO list endpoint
+type ISOListResponse struct {
+	Data []ISO `json:"data"`
+}
+
 // GetISOList retrieves the list of ISO images from a specific storage on a given Proxmox node.
 // It uses the client's default timeout for the API request.
-func GetISOList(client *Client, node string, storage string) ([]ISO, error) {
+func GetISOList(client ClientInterface, node, storage string) ([]ISO, error) {
 	logger.Get().Info().Str("node", node).Str("storage", storage).Msg("Fetching ISO list from Proxmox")
-	ctx, cancel := context.WithTimeout(context.Background(), client.Timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
 	return GetISOListWithContext(ctx, client, node, storage)
 }
@@ -31,31 +35,45 @@ func GetISOList(client *Client, node string, storage string) ([]ISO, error) {
 // GetISOListWithContext retrieves the list of ISO images from a specific storage on a given Proxmox node
 // using the provided context for timeout and cancellation control.
 // This is the underlying function that performs the actual API call.
-func GetISOListWithContext(ctx context.Context, client *Client, node string, storage string) ([]ISO, error) {
-	logger.Get().Info().Str("node", node).Str("storage", storage).Msg("Fetching ISO list with context from Proxmox")
+func GetISOListWithContext(ctx context.Context, client ClientInterface, node, storage string) ([]ISO, error) {
+	if node == "" {
+		return nil, fmt.Errorf("node name cannot be empty")
+	}
+	if storage == "" {
+		return nil, fmt.Errorf("storage name cannot be empty")
+	}
+
+	logger.Get().Info().
+		Str("node", node).
+		Str("storage", storage).
+		Msg("Fetching ISO list with context from Proxmox")
+
 	path := fmt.Sprintf("/nodes/%s/storage/%s/content", node, storage)
-	data, err := client.GetWithContext(ctx, path)
-	if err != nil {
-		return nil, err
+
+	// Use the new GetJSON method to directly unmarshal into our typed response
+	var response ISOListResponse
+	if err := client.GetJSON(ctx, path, &response); err != nil {
+		logger.Get().Error().
+			Err(err).
+			Str("node", node).
+			Str("storage", storage).
+			Msg("Failed to get ISO list from Proxmox API")
+		return nil, fmt.Errorf("failed to get ISO list: %w", err)
 	}
 
-	// The 'data' field from the Proxmox API response contains the list of ISOs.
-	// We need to marshal it back to JSON and then unmarshal it into our typed slice.
-	// This is a common pattern when dealing with nested, dynamic JSON in Go.
-	var result struct {
-		Data []ISO `json:"data"`
+	// Filter for ISO files only
+	var isos []ISO
+	for _, item := range response.Data {
+		if item.Format == "iso" {
+			isos = append(isos, item)
+		}
 	}
 
-	// Marshal the map[string]interface{} to a byte slice
-	jsonBytes, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal iso list data: %w", err)
-	}
+	logger.Get().Info().
+		Str("node", node).
+		Str("storage", storage).
+		Int("count", len(isos)).
+		Msg("Successfully fetched ISO list")
 
-	// Unmarshal the byte slice into our result struct
-	if err := json.Unmarshal(jsonBytes, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal iso list into typed struct: %w", err)
-	}
-
-	return result.Data, nil
+	return isos, nil
 }

@@ -154,28 +154,16 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 // searchVMs recherche les VMs selon les critères fournis
 func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmidStr, name string) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
-		Str("function", "searchVMs").
+		Str("handler", "searchVMs").
 		Str("vmid", vmidStr).
 		Str("name", name).
 		Logger()
 
-	// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
-	client, ok := clientInterface.(*proxmox.Client)
-	if !ok {
-		log.Error().Msg("Failed to convert client to *proxmox.Client")
-		return nil, fmt.Errorf("invalid client type")
-	}
-
-	log.Debug().Msg("Début de la recherche de VMs")
-
-	// Récupérer la liste des nœuds
-	nodes, err := proxmox.GetNodeNames(client)
+	// Get all nodes
+	nodes, err := proxmox.GetNodeNames(clientInterface)
 	if err != nil {
-		errMsg := "Échec de la récupération des nœuds"
-		log.Error().
-			Err(err).
-			Msg(errMsg)
-		return nil, fmt.Errorf("%s: %v", errMsg, err)
+		log.Error().Err(err).Msg("Failed to get node names")
+		return nil, fmt.Errorf("failed to get node names: %w", err)
 	}
 
 	log.Debug().
@@ -184,17 +172,29 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 		Msg("Liste des nœuds récupérée avec succès")
 
 	// Récupérer toutes les VMs
-	allVMs, err := proxmox.GetVMsWithContext(ctx, client)
+	allVMs, err := proxmox.GetVMsWithContext(ctx, clientInterface)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get VMs: %w", err)
 	}
 
 	// Si aucun critère de recherche n'est fourni, retourner toutes les VMs (limité à 20)
 	if vmidStr == "" && name == "" {
-		if len(allVMs) > 20 {
-			return allVMs[:20], nil
+		results := make([]map[string]interface{}, 0, min(20, len(allVMs)))
+		for i, vm := range allVMs {
+			if i >= 20 {
+				break
+			}
+			results = append(results, map[string]interface{}{
+				"vmid":   vm.VMID,
+				"name":   vm.Name,
+				"node":   vm.Node,
+				"status": "", // Status n'est pas disponible dans la structure VM de base
+				"cpu":    vm.CPU,
+				"memory": vm.Mem,
+				"disk":   vm.MaxDisk,
+			})
 		}
-		return allVMs, nil
+		return results, nil
 	}
 
 	// Convertir vmid en entier si spécifié
@@ -217,16 +217,15 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 
 	// Filtrer les VMs selon les critères
 	var results []map[string]interface{}
-	filteredCount := 0
 
 	log.Debug().
 		Int("total_vms_to_filter", len(allVMs)).
 		Msg("Début du filtrage des VMs selon les critères")
 
 	for _, vm := range allVMs {
-		vmID, _ := vm["vmid"].(int)
-		vmName, _ := vm["name"].(string)
-		node, _ := vm["node"].(string)
+		vmID := vm.VMID // VMID is already an int
+		vmName := vm.Name
+		node := vm.Node
 
 		// Filtrer par VMID si spécifié
 		if vmid > 0 {
@@ -252,12 +251,39 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 				Msg("VM correspondant au critère de nom")
 		}
 
-		results = append(results, vm)
-		filteredCount++
+		match := true
+
+		if vmidStr != "" && vmID != vmid {
+			match = false
+		}
+
+		if name != "" && !strings.Contains(strings.ToLower(vmName), strings.ToLower(name)) {
+			match = false
+		}
+
+		if match {
+			vmMap := map[string]interface{}{
+				"vmid":   vm.VMID,
+				"name":   vm.Name,
+				"node":   vm.Node,
+				"status": "", // Status n'est pas disponible dans la structure VM de base
+				"cpu":    vm.CPU,
+				"memory": vm.Mem,
+				"disk":   vm.MaxDisk,
+			}
+			results = append(results, vmMap)
+
+			log.Debug().
+				Int("vmid", vmID).
+				Str("name", vmName).
+				Str("node", node).
+				Int("filtered_count", len(results)).
+				Msg("VM correspondante trouvée")
+		}
 	}
 
 	log.Info().
-		Int("matching_vms", filteredCount).
+		Int("matching_vms", len(results)).
 		Int("total_vms_searched", len(allVMs)).
 		Msg("Filtrage des VMs terminé avec succès")
 

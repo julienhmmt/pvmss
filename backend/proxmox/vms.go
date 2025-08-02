@@ -19,11 +19,24 @@ type VMInfo struct {
 	Template bool   `json:"template"`
 }
 
+// VM represents a Proxmox virtual machine
+type VM struct {
+	CPU     float64 `json:"cpu"`
+	CPUs    int     `json:"cpus"`
+	MaxDisk int64   `json:"maxdisk"`
+	MaxMem  int64   `json:"maxmem"`
+	Mem     int64   `json:"mem"`
+	Name    string  `json:"name"`
+	Node    string  `json:"node"`
+	Status  string  `json:"status"`
+	Uptime  int64   `json:"uptime"`
+	VMID    int     `json:"vmid"`
+}
+
 // GetVMsWithContext retrieves a comprehensive list of all VMs across all available Proxmox nodes.
 // It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeWithContext for each.
-func GetVMsWithContext(ctx context.Context, client *Client) ([]map[string]interface{}, error) {
+func GetVMsWithContext(ctx context.Context, client ClientInterface) ([]VM, error) {
 	logger.Get().Info().Msg("Fetching all VMs from Proxmox")
-	logger.Get().Debug().Msg("Getting VM list with context")
 
 	// Get all nodes first
 	nodes, err := GetNodeNamesWithContext(ctx, client)
@@ -33,7 +46,7 @@ func GetVMsWithContext(ctx context.Context, client *Client) ([]map[string]interf
 	}
 
 	// Collect VMs from all nodes
-	vms := make([]map[string]interface{}, 0)
+	allVMs := make([]VM, 0)
 
 	for _, node := range nodes {
 		logger.Get().Info().Str("node", node).Msg("Fetching VMs for node")
@@ -42,54 +55,51 @@ func GetVMsWithContext(ctx context.Context, client *Client) ([]map[string]interf
 			logger.Get().Warn().Err(err).Str("node", node).Msg("Failed to get VMs for node")
 			continue
 		}
-		vms = append(vms, nodeVMs...)
+		allVMs = append(allVMs, nodeVMs...)
 	}
 
-	return vms, nil
+	logger.Get().Info().Int("total_vms", len(allVMs)).Msg("Successfully fetched all VMs")
+	return allVMs, nil
 }
 
 // GetVMsForNodeWithContext fetches all VMs located on a single, specified Proxmox node.
 // It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
-func GetVMsForNodeWithContext(ctx context.Context, client *Client, nodeName string) ([]map[string]interface{}, error) {
+func GetVMsForNodeWithContext(ctx context.Context, client ClientInterface, nodeName string) ([]VM, error) {
 	path := fmt.Sprintf("/nodes/%s/qemu", nodeName)
 
-	response, err := client.GetWithContext(ctx, path)
-	if err != nil {
+	// Use the new GetJSON method to directly unmarshal into our typed response
+	var response ListResponse[VM]
+	if err := client.GetJSON(ctx, path, &response); err != nil {
 		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMs for node from Proxmox API")
 		return nil, fmt.Errorf("failed to get VMs for node %s: %w", nodeName, err)
 	}
 
-	// Extract data from response
-	data, ok := response["data"].([]interface{})
-	if !ok {
-		logger.Get().Error().Str("node", nodeName).Msg("Unexpected response format for VMs on node")
-		return nil, fmt.Errorf("unexpected response format for VMs on node %s", nodeName)
+	// Set the node name for each VM
+	for i := range response.Data {
+		response.Data[i].Node = nodeName
 	}
 
-	// Convert to the expected format
-	vms := make([]map[string]interface{}, 0, len(data))
-	for _, item := range data {
-		if vmData, ok := item.(map[string]interface{}); ok {
-			// Add node information to each VM
-			vmData["node"] = nodeName
-			vms = append(vms, vmData)
-		}
-	}
-
-	return vms, nil
+	logger.Get().Debug().Str("node", nodeName).Int("count", len(response.Data)).Msg("Fetched VMs for node")
+	return response.Data, nil
 }
 
 // GetVmList is a backward compatibility wrapper. It calls GetVMsWithContext and then wraps
 // the resulting slice of VMs into a map with a "data" key to match an older, expected response structure.
-func GetVmList(c *Client, ctx context.Context) (map[string]interface{}, error) {
-	vms, err := GetVMsWithContext(ctx, c)
+func GetVmList(client ClientInterface, ctx context.Context) (map[string]interface{}, error) {
+	vms, err := GetVMsWithContext(ctx, client)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get VMs in GetVmList")
 		return nil, err
 	}
 
+	// Convert to a slice of interfaces for backward compatibility
+	vmsInterface := make([]interface{}, len(vms))
+	for i, vm := range vms {
+		vmsInterface[i] = vm
+	}
+
 	result := map[string]interface{}{
-		"data": vms,
+		"data": vmsInterface,
 	}
 
 	logger.Get().Info().Int("vm_count", len(vms)).Msg("Returning VM list result")
@@ -98,7 +108,7 @@ func GetVmList(c *Client, ctx context.Context) (map[string]interface{}, error) {
 
 // GetNextVMID determines the next available unique ID for a new VM.
 // It fetches all existing VMs, finds the highest current VMID, and returns that value incremented by one.
-func GetNextVMID(ctx context.Context, client *Client) (int, error) {
+func GetNextVMID(ctx context.Context, client ClientInterface) (int, error) {
 	vms, err := GetVMsWithContext(ctx, client)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get VMs to calculate next VMID: %w", err)
@@ -106,11 +116,8 @@ func GetNextVMID(ctx context.Context, client *Client) (int, error) {
 
 	highestVMID := 0
 	for _, vm := range vms {
-		if vmidFloat, ok := vm["vmid"].(float64); ok {
-			vmid := int(vmidFloat)
-			if vmid > highestVMID {
-				highestVMID = vmid
-			}
+		if vm.VMID > highestVMID {
+			highestVMID = vm.VMID
 		}
 	}
 

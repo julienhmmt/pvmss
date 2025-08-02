@@ -40,26 +40,11 @@ func GetStorages(client ClientInterface) ([]Storage, error) {
 // GetStoragesWithContext fetches the list of all storages from the `/storage` endpoint of the Proxmox API
 // using the provided context for timeout and cancellation control.
 func GetStoragesWithContext(ctx context.Context, client ClientInterface) ([]Storage, error) {
-	// Get raw response
-	rawData, err := client.GetRawWithContext(ctx, "/storage")
-	if err != nil {
+	// Use the new GetJSON method to directly unmarshal into our typed response
+	var response ListResponse[Storage]
+	if err := client.GetJSON(ctx, "/storage", &response); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to fetch storages from Proxmox API")
 		return nil, fmt.Errorf("failed to fetch storages: %w", err)
-	}
-
-	// Log raw response for debugging
-	logger.Get().Debug().
-		Str("raw_response", string(rawData)).
-		Msg("Raw storage API response")
-
-	// Parse response into typed structure
-	var response StorageListResponse
-	if err := json.Unmarshal(rawData, &response); err != nil {
-		logger.Get().Error().
-			Err(err).
-			Str("raw_response", string(rawData)).
-			Msg("Failed to parse storage API response")
-		return nil, fmt.Errorf("failed to parse storage response: %w", err)
 	}
 
 	// Log parsed storages for debugging
@@ -75,5 +60,6 @@ func GetStoragesWithContext(ctx context.Context, client ClientInterface) ([]Stor
 			Msg("Parsed storage entry")
 	}
 
+	logger.Get().Info().Int("count", len(response.Data)).Msg("Successfully fetched storage list")
 	return response.Data, nil
 }

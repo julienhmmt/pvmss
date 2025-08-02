@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -189,85 +188,52 @@ func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Requ
 
 		log.Debug().Msg("Récupération des interfaces réseau pour le nœud")
 
-		vmbrResult, err := proxmox.GetVMBRsWithContext(ctx, proxmoxClient, node)
+		vmbrs, err := proxmox.GetVMBRs(proxmoxClient, node)
 		if err != nil {
-			log.Warn().Err(err).Msg("Échec de la récupération des VMBRs pour le nœud")
-			continue
-		}
-
-		logger.Get().Debug().
-			Str("node", node).
-			Interface("result", vmbrResult).
-			Msg("Réponse brute de l'API Proxmox pour les interfaces réseau")
-
-		vmbrList, ok := vmbrResult["data"].([]interface{})
-		if !ok {
-			logger.Get().Warn().
+			log.Warn().
+				Err(err).
 				Str("node", node).
-				Interface("result_type", fmt.Sprintf("%T", vmbrResult["data"])).
-				Msg("Format de données inattendu pour les interfaces réseau")
+				Msg("Échec de la récupération des interfaces réseau")
 			continue
 		}
 
-		logger.Get().Debug().
+		log.Debug().
 			Str("node", node).
-			Int("count", len(vmbrList)).
+			Int("count", len(vmbrs)).
 			Msg("Nombre d'interfaces réseau trouvées")
 
 		// Filtrer pour ne garder que les bridges
-		for i, vmbr := range vmbrList {
-			vmbrMap, ok := vmbr.(map[string]interface{})
-			if !ok {
-				logger.Get().Warn().
-					Str("node", node).
-					Int("index", i).
-					Interface("type", fmt.Sprintf("%T", vmbr)).
-					Msg("Format d'interface réseau inattendu")
-				continue
+		for _, vmbr := range vmbrs {
+			// Vérifier si c'est un bridge et un VMBR
+			if vmbr.Type == "bridge" && isVMBR(vmbr.Iface) {
+				vmbrDetails := map[string]interface{}{
+					"node":        node,
+					"iface":       vmbr.Iface,
+					"type":        vmbr.Type,
+					"method":      vmbr.Method,
+					"address":     vmbr.Address,
+					"netmask":     vmbr.Netmask,
+					"gateway":     vmbr.Gateway,
+					"description": "", // VMBR struct doesn't have a description field
+				}
+				allVMBRs = append(allVMBRs, vmbrDetails)
 			}
-
-			// Vérifier si c'est un bridge
-			iface, ok := vmbrMap["iface"].(string)
-			if !ok {
-				logger.Get().Warn().
-					Str("node", node).
-					Interface("iface_type", fmt.Sprintf("%T", vmbrMap["iface"])).
-					Msg("Champ 'iface' manquant ou de type incorrect")
-				continue
-			}
-
-			if !isVMBR(iface) {
-				logger.Get().Debug().
-					Str("node", node).
-					Str("interface", iface).
-					Msg("Interface ignorée (pas un bridge VMBR)")
-				continue
-			}
-
-			// Ajouter le nœud aux informations du VMBR
-			vmbrMap["node"] = node
-			vmbrMap["name"] = iface
-			if _, ok := vmbrMap["description"]; !ok {
-				vmbrMap["description"] = ""
-			}
-			allVMBRs = append(allVMBRs, vmbrMap)
 		}
 	}
 
-	// Format the response in the expected structure
+	// Formater la réponse
 	formattedVMBRs := make([]map[string]interface{}, 0, len(allVMBRs))
 	for _, vmbr := range allVMBRs {
 		formattedVMBR := map[string]interface{}{
 			"name":        vmbr["iface"],
+			"description": vmbr["description"],
 			"node":        vmbr["node"],
-			"description": "",
+			"type":        vmbr["type"],
+			"method":      vmbr["method"],
+			"address":     vmbr["address"],
+			"netmask":     vmbr["netmask"],
+			"gateway":     vmbr["gateway"],
 		}
-
-		// Add description if available
-		if desc, ok := vmbr["comments"].(string); ok && desc != "" {
-			formattedVMBR["description"] = desc
-		}
-
 		formattedVMBRs = append(formattedVMBRs, formattedVMBR)
 	}
 
