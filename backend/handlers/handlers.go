@@ -12,12 +12,14 @@ import (
 
 // InitHandlers initialise tous les gestionnaires et configure les routes
 func InitHandlers() http.Handler {
+	log := logger.Get().With().Str("component", "handlers").Logger()
+
 	// Créer un nouveau routeur
 	router := httprouter.New()
 
 	// S'assurer que le tag par défaut existe
 	if err := EnsureDefaultTag(); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to ensure default tag")
+		log.Error().Err(err).Msg("Failed to ensure default tag")
 	}
 
 	// Initialiser les gestionnaires
@@ -38,25 +40,37 @@ func InitHandlers() http.Handler {
 	// Configurer le gestionnaire de fichiers statiques
 	setupStaticFiles(router)
 
-	// Appliquer le middleware de session
-	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
-
 	// Créer la chaîne de middlewares
 	handler := http.Handler(router)
 
-	// 0. Middleware de débogage des sessions
-	handler = sessionDebugMiddleware(handler)
+	// 0. Get the state manager first
+	stateManager := state.GetGlobalState()
+	if stateManager == nil {
+		log.Fatal().Msg("State manager not initialized")
+	}
 
-	// 1. Middleware de session en premier
+	// 1. Get the session manager
+	sessionManager := stateManager.GetSessionManager()
+	if sessionManager == nil {
+		log.Fatal().Msg("Session manager not initialized. Make sure security.InitSecurity() was called")
+	}
+
+	// 2. Session middleware (MUST be the first middleware that touches the request)
 	handler = sessionManager.LoadAndSave(handler)
 
-	// 2. Middleware CSRF pour les sections admin uniquement
-	handler = security.AdminCSRFMiddleware(handler)
+	// 3. Debug middleware (after session middleware to have access to session)
+	handler = sessionDebugMiddleware(handler)
 
-	// 3. Middleware pour les en-têtes de sécurité
+	// 4. CSRF token generation middleware (must be after session middleware)
+	handler = security.CSRFGeneratorMiddleware(handler)
+
+	// 5. CSRF validation middleware (must be after token generation)
+	handler = security.CSRFMiddleware(handler)
+
+	// 6. Security headers middleware
 	handler = security.HeadersMiddleware(handler)
 
+	log.Info().Msg("Handlers and middleware initialized successfully")
 	return handler
 }
 

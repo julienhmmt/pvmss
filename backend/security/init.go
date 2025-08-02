@@ -1,11 +1,13 @@
 package security
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+	"github.com/alexedwards/scs/v2/memstore"
 	"pvmss/logger"
 )
 
@@ -19,34 +21,30 @@ func InitSecurity() (*SessionManager, error) {
 	logger := logger.Get()
 	logger.Info().Msg("Initializing security components")
 
-	// Initialize session manager
+	// Get session secret from environment
+	sessionSecret := os.Getenv("SESSION_SECRET")
+	if sessionSecret == "" {
+		return nil, fmt.Errorf("SESSION_SECRET environment variable not set")
+	}
+
+	// Initialize session manager with enhanced configuration
 	sessionManager := scs.New()
+	sessionManager.Store = memstore.New()
 	sessionManager.Lifetime = 24 * time.Hour
 	sessionManager.Cookie = scs.SessionCookie{
 		Name:     "pvmss_session",
 		HttpOnly: true,
 		Secure:   os.Getenv("ENV") == "production",
-		SameSite: http.SameSiteStrictMode,
+		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 	}
-
-	// Set up CSRF protection
-	sessionManager.Cookie.Name = "pvmss_csrf"
 	sessionManager.IdleTimeout = 30 * time.Minute
+	// Ensure session is persisted even across browser sessions
+	sessionManager.Cookie.Persist = true
 
 	logger.Info().Msg("Security components initialized successfully")
 
 	return &SessionManager{
 		SessionManager: sessionManager,
 	}, nil
-}
-
-// WrapHandlers wraps HTTP handlers with security middleware
-func (sm *SessionManager) WrapHandlers(handler http.Handler) http.Handler {
-	// Apply security middleware in the correct order
-	return HeadersMiddleware(
-		sm.SessionManager.LoadAndSave(
-			AdminCSRFMiddleware(handler),
-		),
-	)
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"pvmss/security"
+	"pvmss/state"
 )
 
 // GetBaseFuncMap returns functions that don't depend on the request
@@ -169,15 +170,38 @@ func GetFuncMap(r *http.Request) template.FuncMap {
 
 	// Add request-aware functions if request is provided
 	if r != nil {
-		// Add request context to the function map
-		funcMap["csrfToken"] = func() template.HTML {
-			token := security.GenerateCSRFToken(r)
-			return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, token))
-		}
+		// Get session manager
+		stateManager := state.GetGlobalState()
+		if stateManager != nil {
+			sessionManager := stateManager.GetSessionManager()
+			if sessionManager != nil {
+				// Add CSRF token function
+				funcMap["csrfToken"] = func() template.HTML {
+					token, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
+					if !ok || token == "" {
+						// Generate a new token if one doesn't exist
+						newToken, err := security.GenerateCSRFToken()
+						if err == nil {
+							sessionManager.Put(r.Context(), "csrf_token", newToken)
+							token = newToken
+						}
+					}
+					return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, token))
+				}
 
-		funcMap["csrfMeta"] = func() template.HTML {
-			token := security.GenerateCSRFToken(r)
-			return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, token))
+				funcMap["csrfMeta"] = func() template.HTML {
+					token, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
+					if !ok || token == "" {
+						// Generate a new token if one doesn't exist
+						newToken, err := security.GenerateCSRFToken()
+						if err == nil {
+							sessionManager.Put(r.Context(), "csrf_token", newToken)
+							token = newToken
+						}
+					}
+					return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, token))
+				}
+			}
 		}
 
 		// Add request info functions

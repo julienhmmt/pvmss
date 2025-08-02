@@ -19,17 +19,37 @@
 
           <form method="post" action="/login?lang={{.Lang}}">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+            
+            <!-- Username Field -->
+            <div class="field">
+              <label class="label" for="username">
+                <span class="icon-text">
+                  <span class="icon">
+                    <i class="fas fa-user"></i>
+                  </span>
+                  <span>Username</span>
+                </span>
+              </label>
+              <div class="control has-icons-left">
+                <input class="input" type="text" id="username" name="username" value="admin" readonly required>
+                <span class="icon is-small is-left">
+                  <i class="fas fa-user"></i>
+                </span>
+              </div>
+            </div>
+
+            <!-- Password Field -->
             <div class="field">
               <label class="label" for="password">
                 <span class="icon-text">
                   <span class="icon">
-                    <i class="fas fa-user-shield"></i>
+                    <i class="fas fa-lock"></i>
                   </span>
                   <span>{{index .t "Login.PasswordLabel"}}</span>
                 </span>
               </label>
               <div class="control has-icons-left">
-                <input class="input" type="password" id="password" name="password" required maxlength="200" placeholder="{{index .t `Login.PasswordLabel`}}">
+                <input class="input" type="password" id="password" name="password" required autofocus>
                 <span class="icon is-small is-left">
                   <i class="fas fa-lock"></i>
                 </span>

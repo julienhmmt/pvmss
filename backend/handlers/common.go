@@ -5,9 +5,11 @@ import (
 	"context"
 	"html/template"
 	"net/http"
+	"net/url"
 
 	"pvmss/i18n"
 	"pvmss/logger"
+	"pvmss/security"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -106,7 +108,8 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 
 	// Ajouter le jeton CSRF aux données du template
-	if csrfToken, ok := r.Context().Value("csrf_token").(string); ok && csrfToken != "" {
+	csrfToken := security.GetCSRFToken(r)
+	if csrfToken != "" {
 		data["CSRFToken"] = csrfToken
 		log.Debug().Msg("Jeton CSRF ajouté aux données du template")
 	} else {
@@ -170,76 +173,105 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		Msg("Rendu de la page terminé avec succès")
 }
 
-// IsAuthenticated vérifie si l'utilisateur est authentifié
-// Cette fonction est exportée pour être utilisée par d'autres packages
+// IsAuthenticated checks if the user is authenticated
+// This function is exported for use by other packages
 func IsAuthenticated(r *http.Request) bool {
 	log := logger.Get().With().
-		Str("function", "IsAuthenticated").
-		Str("remote_addr", r.RemoteAddr).
+		Str("handler", "IsAuthenticated").
 		Str("path", r.URL.Path).
+		Str("method", r.Method).
+		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
 	stateManager := state.GetGlobalState()
-	if stateManager == nil {
-		log.Error().Msg("State manager non initialisé")
-		return false
-	}
-
 	sessionManager := stateManager.GetSessionManager()
-	if sessionManager == nil {
-		log.Error().Msg("Session manager non initialisé")
-		return false
-	}
 
-	// Log des cookies de la requête
-	cookies := make(map[string]string)
-	for _, cookie := range r.Cookies() {
-		cookies[cookie.Name] = cookie.Value
-		log.Debug().
-			Str("cookie_name", cookie.Name).
-			Str("value", cookie.Value).
-			Str("path", cookie.Path).
-			Str("domain", cookie.Domain).
-			Bool("secure", cookie.Secure).
-			Bool("http_only", cookie.HttpOnly).
-			Msg("Cookie reçu")
-	}
-
-	// Obtenir le token de session actuel
-	sessionToken := sessionManager.Token(r.Context())
-	log.Debug().
-		Interface("cookies", cookies).
-		Str("session_token", sessionToken).
-		Msg("Vérification de l'authentification")
-
-	// Vérifier si la session contient le flag d'authentification
+	// Check if the session contains the authentication flag
 	authenticated, ok := sessionManager.Get(r.Context(), "authenticated").(bool)
 	if !ok || !authenticated {
-		log.Warn().
-			Str("session_token", sessionToken).
-			Bool("authenticated", authenticated).
-			Bool("ok", ok).
-			Msg("Aucune session d'authentification active ou session invalide")
+		log.Debug().
+			Bool("authenticated", false).
+			Msg("Access denied: user not authenticated")
 		return false
 	}
+
+	// Additional security check for username
+	username, ok := sessionManager.Get(r.Context(), "username").(string)
+	if !ok || username == "" {
+		log.Warn().
+			Msg("Corrupted session: missing username")
+		return false
+	}
+
+	// Verify CSRF token for state-changing requests
+	if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete || r.Method == http.MethodPatch {
+		csrfToken := r.Header.Get("X-CSRF-Token")
+		if csrfToken == "" {
+			// Try to get from form if not in header
+			csrfToken = r.FormValue("csrf_token")
+		}
+
+		sessionToken, _ := sessionManager.Get(r.Context(), "csrf_token").(string)
+		if csrfToken == "" || csrfToken != sessionToken {
+			log.Warn().
+				Str("session_token", sessionToken).
+				Str("provided_token", csrfToken).
+				Msg("CSRF token validation failed")
+			return false
+		}
+	}
+
+	log.Debug().
+		Str("username", username).
+		Str("session_id", sessionManager.Token(r.Context())).
+		Msg("Access granted: user authenticated")
 
 	return true
 }
 
-// RequireAuth est un middleware pour protéger les routes nécessitant une authentification
-// Cette fonction est exportée pour être utilisée par d'autres packages
+// RequireAuth is a middleware that enforces authentication for protected routes
+// This function is exported for use by other packages
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !IsAuthenticated(r) {
-			stateManager := state.GetGlobalState()
-			sessionManager := stateManager.GetSessionManager()
-			sessionManager.Put(r.Context(), "redirect_after_login", r.URL.Path)
+		log := logger.Get().With().
+			Str("handler", "RequireAuth").
+			Str("path", r.URL.Path).
+			Str("method", r.Method).
+			Str("remote_addr", r.RemoteAddr).
+			Logger()
 
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+		if !IsAuthenticated(r) {
+			log.Info().Msg("Authentication required, redirecting to login")
+
+			// Store the original URL for redirection after login
+			returnURL := r.URL.Path
+			if r.URL.RawQuery != "" {
+				returnURL = returnURL + "?" + r.URL.RawQuery
+			}
+
+			// Set cache control headers to prevent caching of protected pages
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
+			// Redirect to login page with return URL
+			http.Redirect(w, r, "/login?return="+url.QueryEscape(returnURL), http.StatusSeeOther)
 			return
 		}
 
-		// Ajouter des en-têtes de sécurité
+		// Add security headers for authenticated routes
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+		// Add CSRF token to the response headers for AJAX requests
+		if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+			stateManager := state.GetGlobalState()
+			sessionManager := stateManager.GetSessionManager()
+			if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
+				w.Header().Set("X-CSRF-Token", csrfToken)
+			}
+		}
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")

@@ -48,13 +48,7 @@ func main() {
 	}
 
 	// Store the session manager in the global state
-	stateManager := state.GetGlobalState()
-	if err := stateManager.SetSessionManager(sessionManager.SessionManager); err != nil {
-		logger.Get().Fatal().Err(err).Msg("Failed to set session manager in state")
-	}
-
-	// Setup HTTP server (this now includes all middleware)
-	handler := handlers.InitHandlers()
+	state.GetGlobalState().SetSessionManager(sessionManager.SessionManager)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -62,12 +56,12 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:    ":" + port,
-		Handler: handler,
+		Addr: ":" + port,
 		// Security-related timeouts
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		Handler:      handlers.InitHandlers(),
 	}
 
 	// Start server
@@ -112,9 +106,8 @@ func initializeApp() error {
 		return fmt.Errorf("failed to load settings: %w", err)
 	}
 
-	// 2. Initialize the global state manager.
-	// It's created empty and will be populated by subsequent steps.
-	stateManager := state.InitGlobalState()
+	// The global state manager is already initialized in main().
+	stateManager := state.GetGlobalState()
 
 	// 3. Initialize individual components.
 	proxmoxClient, err := initProxmoxClient()
@@ -154,73 +147,27 @@ func initializeApp() error {
 }
 
 func initProxmoxClient() (*proxmox.Client, error) {
-	// Get required configuration from environment variables
 	proxmoxURL := os.Getenv("PROXMOX_URL")
-	if proxmoxURL == "" {
-		return nil, fmt.Errorf("missing PROXMOX_URL environment variable")
-	}
-
-	// Get API token credentials from environment variables
-	tokenName := os.Getenv("PROXMOX_API_TOKEN_NAME")
+	tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
 	tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-
-	// Fallback to username/password if token is not provided
-	if tokenName == "" || tokenValue == "" {
-		logger.Get().Warn().Msg("API token not provided, falling back to username/password")
-		username := os.Getenv("PROXMOX_USER")
-		password := os.Getenv("PROXMOX_PASSWORD")
-		if username == "" || password == "" {
-			return nil, fmt.Errorf("missing PROXMOX_API_TOKEN_NAME/TOKEN_VALUE or PROXMOX_USER/PASSWORD environment variables")
-		}
-		// Convert to token format (username@pve!tokenname=tokenvalue)
-		tokenName = fmt.Sprintf("%s@pve!pvmss", username)
-		tokenValue = password
-	}
-
-	// Parse insecure flag
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
-	// Set timeout from environment or use default
-	timeout := 30 * time.Second
-	if timeoutStr := os.Getenv("PROXMOX_TIMEOUT"); timeoutStr != "" {
-		if timeoutVal, err := time.ParseDuration(timeoutStr); err == nil {
-			timeout = timeoutVal
-		}
+	if proxmoxURL == "" || tokenID == "" || tokenValue == "" {
+		return nil, fmt.Errorf("missing Proxmox environment variables. PROXMOX_URL, PROXMOX_API_TOKEN_NAME, and PROXMOX_API_TOKEN_VALUE are required")
 	}
 
-	logger.Get().Info().
-		Str("url", proxmoxURL).
-		Bool("insecureSkipVerify", insecureSkipVerify).
-		Dur("timeout", timeout).
-		Msg("Initializing Proxmox client")
-
-	// Create client with options
-	client, err := proxmox.NewClientWithOptions(
-		proxmoxURL,
-		tokenName,
-		tokenValue,
-		insecureSkipVerify,
-	)
+	client, err := proxmox.NewClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Proxmox client: %w", err)
 	}
 
-	// Set timeout
-	client.Timeout = timeout
+	client.SetTimeout(30 * time.Second)
 
-	// Verify connection with basic test request
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Try a simple API call to check connectivity
-	_, err = client.GetWithContext(ctx, "/api2/json/version")
-	if err != nil {
-		logger.Get().Warn().
-			Err(err).
-			Str("url", proxmoxURL).
-			Msg("Proxmox connection test failed")
-		// Continue anyway as the server might be temporarily unavailable
-	}
+	logger.Get().Info().
+		Str("url", proxmoxURL).
+		Str("token_id", tokenID).
+		Bool("insecure", insecureSkipVerify).
+		Msg("Proxmox client initialized successfully")
 
 	return client, nil
 }
