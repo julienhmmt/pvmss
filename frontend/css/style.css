@@ -232,3 +232,38 @@
 .section {
   padding: 4rem 1.5rem;
 }
+
+.tags .tag {
+  cursor: pointer;
+  margin-bottom: 0.25rem;
+}
+
+.tags {
+  gap: 0.5rem;
+  color: var(--primary);
+}
+
+.tag-option {
+  transition: all 0.2s ease;
+  margin-bottom: 0.5rem;
+  border: 1px solid transparent;
+}
+
+.tag-option:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  color: var(--primary-hover);
+}
+
+.tag-option[aria-pressed="true"] {
+  font-weight: 600;
+}
+
+/* Selected tags container */
+#selectedTags {
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  border: 1px solid #dbdbdb;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+}

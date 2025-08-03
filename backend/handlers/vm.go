@@ -2,11 +2,14 @@ package handlers
 
 import (
 	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
 	"pvmss/logger"
+	"pvmss/state"
 )
 
 // VMHandler gère les routes liées aux machines virtuelles
@@ -115,7 +118,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 }
 
-// renderCreateVMForm affiche le formulaire de création de VM
+// renderCreateVMForm displays the VM creation form
 func (h *VMHandler) renderCreateVMForm(w http.ResponseWriter, r *http.Request) {
 	log := logger.Get().With().
 		Str("handler", "VMHandler").
@@ -124,31 +127,84 @@ func (h *VMHandler) renderCreateVMForm(w http.ResponseWriter, r *http.Request) {
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	log.Debug().Msg("Affichage du formulaire de création de VM")
+	log.Debug().Msg("Displaying VM creation form")
 
-	// Récupérer les données nécessaires pour le formulaire
-	nodes := []string{"node1", "node2"}             // À remplacer par les vrais nœuds
-	images := []string{"ubuntu-20.04", "debian-11"} // À remplacer par les vraies images
+	// Get the global state
+	stateMgr := state.GetGlobalState()
+	if stateMgr == nil {
+		log.Error().Msg("State manager not initialized")
+		http.Error(w, "Internal server error: state not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	// Get settings
+	settings := stateMgr.GetSettings()
+	if settings == nil {
+		log.Error().Msg("Settings not available")
+		http.Error(w, "Settings not available", http.StatusInternalServerError)
+		return
+	}
 
 	log.Debug().
-		Int("nodes_count", len(nodes)).
-		Int("images_count", len(images)).
-		Msg("Données du formulaire chargées")
+		Int("total_isos", len(settings.ISOs)).
+		Int("total_vmbrs", len(settings.VMBRs)).
+		Msg("Loaded VM creation settings")
 
-	// Créer les données pour le template
+	// Create ISO items with proper path and display name
+	type isoItem struct {
+		Path string `json:"path"`
+		Name string `json:"name"`
+	}
+
+	var isos []isoItem
+	for _, path := range settings.ISOs {
+		if path == "" {
+			continue
+		}
+
+		// Extract filename from path
+		name := path
+		if lastSlash := strings.LastIndex(path, "/"); lastSlash >= 0 {
+			name = path[lastSlash+1:]
+		}
+
+		isos = append(isos, isoItem{
+			Path: path,
+			Name: name,
+		})
+
+		log.Debug().
+			Str("path", path).
+			Str("name", name).
+			Msg("Added ISO to selection")
+	}
+
+	// Get network bridges
+	bridges := settings.VMBRs
+	if len(bridges) == 0 {
+		bridges = []string{"vmbr0"}
+		log.Warn().Msg("No network bridges found in settings, using default 'vmbr0'")
+	}
+
+	// Get and sort tags
+	tags := settings.Tags
+	sort.Strings(tags) // Sort tags alphabetically
+
+	// Prepare template data
 	data := make(map[string]interface{})
-	data["Nodes"] = nodes
-	data["Images"] = images
+	data["ISOs"] = isos
+	data["Bridges"] = bridges
+	data["AvailableTags"] = tags
 
-	// Ajouter les données de traduction
+	// Add translation data
 	i18n.LocalizePage(w, r, data)
-
-	// Définir le titre de la page
 	data["Title"] = data["VM.Create.Title"]
 
-	log.Debug().Str("template", "create_vm").Msg("Rendu du template de création de VM")
+	log.Debug().
+		Int("isos_count", len(isos)).
+		Int("bridges_count", len(bridges)).
+		Msg("Rendering VM creation form")
 
-	// Rendre le template avec le bon nom (sans extension .html)
 	renderTemplateInternal(w, r, "create_vm", data)
 }
 

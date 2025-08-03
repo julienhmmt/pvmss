@@ -197,34 +197,36 @@
                             <!-- Tags -->
                             <div class="box mb-5" role="region" aria-labelledby="tags-heading">
                                 <h2 id="tags-heading" class="title is-5">{{index .t "VM.Create.Tags"}}</h2>
-                                
                                 <div class="field">
-                                    <label for="tagInput" class="label">
+                                    <label class="label" id="tags-label">
                                         <span class="icon-text">
                                             <span class="icon"><i class="fas fa-tags"></i></span>
-                                            <span>{{index .t "VM.Create.Tags"}}</span>
+                                            <span>{{index .t "VM.Create.SelectTags"}}</span>
                                         </span>
                                     </label>
-                                    <div class="control">
-                                        <div class="field has-addons">
-                                            <div class="control is-expanded">
-                                                <input type="text" id="tagInput" class="input" 
-                                                       placeholder='{{index .t "VM.Create.TagsPlaceholder"}}'
-                                                       aria-describedby="tagsHelp">
-                                            </div>
-                                            <div class="control">
-                                                <button type="button" id="addTagBtn" class="button is-primary">
-                                                    <span class="icon"><i class="fas fa-plus" aria-hidden="true"></i></span>
-                                                    <span>{{index .t "Common.Add"}}</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div id="tagsContainer" class="tags mt-2" role="list" aria-label="Tags list">
-                                            <!-- Tags will be added here dynamically -->
-                                        </div>
-                                        <input type="hidden" name="tags" id="tagsInput">
+                                    
+                                    <!-- Selected Tags (for visual feedback) -->
+                                    <div id="selectedTags" class="tags mb-4" role="list" aria-labelledby="tags-label">
+                                        <span class="tag is-light is-medium">No tags selected</span>
                                     </div>
-                                    <p id="tagsHelp" class="help">{{index .t "VM.Create.TagsHelp"}}</p>
+                                    
+                                    <!-- Available Tags -->
+                                    <div class="tags" role="listbox" aria-multiselectable="true">
+                                        {{range .AvailableTags}}
+                                        <button type="button" 
+                                                class="tag is-light is-medium is-clickable tag-option" 
+                                                data-tag="{{.}}"
+                                                aria-pressed="false"
+                                                aria-label="Select tag {{.}}">
+                                            {{.}}
+                                        </button>
+                                        {{else}}
+                                        <p class="has-text-grey">{{index .t "VM.Create.NoTagsAvailable"}}</p>
+                                        {{end}}
+                                    </div>
+                                    
+                                    <!-- Hidden input to store selected tags -->
+                                    <input type="hidden" name="tags" id="tagsInput" value="">
                                 </div>
                             </div>
 
@@ -256,83 +258,67 @@
 <!-- JavaScript for form handling -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('vmCreateForm');
-    const tagInput = document.getElementById('tagInput');
-    const addTagBtn = document.getElementById('addTagBtn');
-    const tagsContainer = document.getElementById('tagsContainer');
+    const selectedTagsContainer = document.getElementById('selectedTags');
+    const tagOptions = document.querySelectorAll('.tag-option');
     const tagsInput = document.getElementById('tagsInput');
-    let tags = [];
+    const selectedTags = new Set();
 
-    // Add tag function
-    function addTag() {
-        const tagText = tagInput.value.trim();
+    // Update the UI to show selected tags
+    function updateSelectedTags() {
+        const tagsArray = Array.from(selectedTags);
         
-        if (tagText && !tags.includes(tagText)) {
-            tags.push(tagText);
-            updateTags();
-            tagInput.value = '';
-        }
-        
-        tagInput.focus();
-    }
-
-    // Update tags display and hidden input
-    function updateTags() {
-        tagsContainer.innerHTML = '';
-        
-        tags.forEach((tag, index) => {
-            const tagElement = document.createElement('span');
-            tagElement.className = 'tag is-primary is-light is-medium';
-            tagElement.setAttribute('role', 'listitem');
-            tagElement.innerHTML = `
-                ${tag}
-                <button type="button" class="delete is-small" 
-                        data-index="${index}"
-                        aria-label="Remove tag ${tag}"></button>
-            `;
-            tagsContainer.appendChild(tagElement);
-        });
-        
-        tagsInput.value = tags.join(',');
-
-        // Add event listeners to delete buttons
-        document.querySelectorAll('.delete').forEach(button => {
-            button.addEventListener('click', function() {
-                const index = parseInt(this.getAttribute('data-index'));
-                tags.splice(index, 1);
-                updateTags();
+        if (tagsArray.length === 0) {
+            selectedTagsContainer.innerHTML = '<span class="tag is-light is-medium">No tags selected</span>';
+        } else {
+            selectedTagsContainer.innerHTML = '';
+            tagsArray.forEach(tag => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag is-primary is-medium';
+                tagElement.textContent = tag;
+                selectedTagsContainer.appendChild(tagElement);
             });
-        });
-    }
-
-    // Add tag on button click
-    addTagBtn.addEventListener('click', addTag);
-    
-    // Add tag on Enter key
-    tagInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            addTag();
         }
-    });
-
-    // Initialize with any existing tags
-    if (tagsInput.value) {
-        tags = tagsInput.value.split(',').filter(tag => tag.trim() !== '');
-        updateTags();
+        
+        // Update hidden input
+        tagsInput.value = tagsArray.join(',');
     }
 
-    // Form validation
-    form.addEventListener('submit', function(e) {
-        if (!form.checkValidity()) {
-            e.preventDefault();
-            // Focus on first invalid field
-            const invalidField = form.querySelector(':invalid');
-            if (invalidField) {
-                invalidField.focus();
+    // Handle tag selection
+    tagOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const tag = this.dataset.tag;
+            const isSelected = this.getAttribute('aria-pressed') === 'true';
+            
+            if (isSelected) {
+                selectedTags.delete(tag);
+                this.setAttribute('aria-pressed', 'false');
+                this.classList.remove('is-primary');
+                this.classList.add('is-light');
+            } else {
+                selectedTags.add(tag);
+                this.setAttribute('aria-pressed', 'true');
+                this.classList.remove('is-light');
+                this.classList.add('is-primary');
             }
-        }
+            
+            updateSelectedTags();
+        });
     });
+
+    // Initialize with any existing tags from the hidden input
+    if (tagsInput.value) {
+        const initialTags = tagsInput.value.split(',').filter(Boolean);
+        initialTags.forEach(tag => {
+            selectedTags.add(tag);
+            const option = document.querySelector(`.tag-option[data-tag="${tag}"]`);
+            if (option) {
+                option.setAttribute('aria-pressed', 'true');
+                option.classList.remove('is-light');
+                option.classList.add('is-primary');
+            }
+        });
+        updateSelectedTags();
+    }
 });
 </script>
 {{end}}
