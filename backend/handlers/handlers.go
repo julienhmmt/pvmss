@@ -7,6 +7,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
 	"pvmss/security"
+	"pvmss/security/middleware"
 	"pvmss/state"
 )
 
@@ -66,10 +67,10 @@ func InitHandlers() http.Handler {
 	handler = security.CSRFGeneratorMiddleware(handler)
 
 	// 5. CSRF validation middleware (must be after token generation)
-	handler = security.CSRFMiddleware(handler)
+	handler = middleware.CSRF(handler)
 
 	// 6. Security headers middleware
-	handler = security.HeadersMiddleware(handler)
+	handler = middleware.Headers(handler)
 
 	log.Info().Msg("Handlers and middleware initialized successfully")
 	return handler

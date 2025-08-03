@@ -9,7 +9,7 @@ import (
 
 	"pvmss/i18n"
 	"pvmss/logger"
-	"pvmss/security"
+	"pvmss/security/middleware"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -108,7 +108,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 
 	// Ajouter le jeton CSRF aux données du template
-	csrfToken := security.GetCSRFToken(r)
+	csrfToken := middleware.GetCSRFToken(r)
 	if csrfToken != "" {
 		data["CSRFToken"] = csrfToken
 		log.Debug().Msg("Jeton CSRF ajouté aux données du template")
