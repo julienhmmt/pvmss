@@ -57,6 +57,7 @@ func InitHandlers() http.Handler {
 
 	// 2. Session middleware (MUST be the first middleware that touches the request)
 	handler = sessionManager.LoadAndSave(handler)
+	log.Info().Msgf("Session middleware applied with sessionManager pointer: %p", sessionManager)
 
 	// 3. Debug middleware (after session middleware to have access to session)
 	handler = sessionDebugMiddleware(handler)
