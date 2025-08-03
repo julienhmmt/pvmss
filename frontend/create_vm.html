@@ -1,13 +1,13 @@
 {{define "create_vm"}}
 {{$lang := .Lang}}
 
-<section class="section">
+<section class="section" aria-labelledby="main-title" role="main">
     <div class="container">
         <div class="hero is-primary is-small has-hero-bg">
             <div class="hero-body">
                 <div class="container has-text-centered">
-                    <h1 class="title is-2 has-text-white mb-2">
-                        <span class="icon-text">{{index .t "VM.Create.Title"}}</span>
+                    <h1 id="main-title" class="title is-2 has-text-white mb-2">
+                        {{index .t "VM.Create.Title"}}
                     </h1>
                     <p class="subtitle has-text-white mb-2">
                         {{index .t "UI.CreateVMDescription"}}
@@ -17,223 +17,322 @@
         </div>
         <div class="columns is-centered">
             <div class="column is-10 welcome-block">
-                <form method="POST" action="/api/vm/create" id="vmCreateForm">
+                <form method="POST" action="/api/vm/create" id="vmCreateForm" aria-label="Create new virtual machine">
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                     <div class="columns is-multiline">
                         <!-- Left Column -->
                         <div class="column is-6">
                             <!-- Basic Information -->
-                            <div class="box mb-5">
-                                <h2 class="title is-5">{{index .t "VM.Create.BasicInfo"}}</h2>
+                            <div class="box mb-5" role="region" aria-labelledby="basic-info-heading">
+                                <h2 id="basic-info-heading" class="title is-5">{{index .t "VM.Create.BasicInfo"}}</h2>
                                 <!-- VM Name -->
                                 <div class="field">
-                                    <label class="label">{{index .t "Common.Name"}}</label>
+                                    <label for="vmName" class="label">
+                                        <span class="icon-text">
+                                            <span class="icon"><i class="fas fa-tag"></i></span>
+                                            <span>{{index .t "Common.Name"}}</span>
+                                        </span>
+                                    </label>
                                     <div class="control">
-                                        <input class="input" type="text" name="name" 
-                                               placeholder='{{index .t "VM.Create.VMNamePlaceholder"}}' required>
-                                        <p class="help">{{index .t "VM.Create.VMNameHelp"}}</p>
+                                        <input id="vmName" class="input" type="text" name="name" 
+                                               placeholder='{{index .t "VM.Create.VMNamePlaceholder"}}' 
+                                               required
+                                               aria-required="true"
+                                               aria-describedby="nameHelp">
+                                        <p id="nameHelp" class="help">{{index .t "VM.Create.VMNameHelp"}}</p>
                                     </div>
                                 </div>
                                 <!-- Description -->
                                 <div class="field">
-                                    <label class="label">{{index .t "VM.Create.Description"}}</label>
+                                    <label for="vmDescription" class="label">{{index .t "VM.Create.Description"}}</label>
                                     <div class="control">
-                                        <textarea class="textarea" name="description" placeholder='{{index .t "VM.Create.DescriptionPlaceholder"}}' rows="2"></textarea>
+                                        <textarea id="vmDescription" class="textarea" name="description" 
+                                                 placeholder='{{index .t "VM.Create.DescriptionPlaceholder"}}' 
+                                                 rows="2"
+                                                 aria-describedby="descHelp"></textarea>
+                                        <p id="descHelp" class="help is-hidden" aria-hidden="true">Optional description for your virtual machine</p>
                                     </div>
                                 </div>
                                 <!-- VM ID -->
                                 <div class="field">
-                                    <label class="label">
+                                    <label for="vmId" class="label">
                                         {{index .t "VM.Create.VMID"}}
                                     </label>
                                     <div class="control">
-                                        <input class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{index .t "VM.Create.VMIDPlaceholder"}}'>
-                                        <p class="help">{{index .t "VM.Create.VMID.Help"}}</p>
+                                        <input id="vmId" class="input" type="number" name="vmid" 
+                                               min="100" max="999999999" 
+                                               placeholder='{{index .t "VM.Create.VMIDPlaceholder"}}'
+                                               aria-describedby="vmidHelp">
+                                        <p id="vmidHelp" class="help">{{index .t "VM.Create.VMID.Help"}}</p>
                                     </div>
                                 </div>
                             </div>
                             <!-- Resources -->
-                            <div class="box mb-5">
-                                <h2 class="title is-5">{{index .t "VM.Create.Resources"}}</h2>
+                            <div class="box mb-5" role="region" aria-labelledby="resources-heading">
+                                <h2 id="resources-heading" class="title is-5">{{index .t "VM.Create.Resources"}}</h2>
                                 <div class="columns">
                                     <!-- CPU Sockets -->
                                     <div class="column is-6">
                                         <div class="field">
-                                            <label class="label">{{index .t "VM.Create.CPUSockets"}}</label>
+                                            <label for="cpuSockets" class="label">
+                                                <span class="icon-text">
+                                                    <span class="icon"><i class="fas fa-microchip"></i></span>
+                                                    <span>{{index .t "VM.Create.CPUSockets"}}</span>
+                                                </span>
+                                            </label>
                                             <div class="control">
                                                 <div class="select is-fullwidth">
-                                                    <select name="sockets" required>
+                                                    <select id="cpuSockets" name="sockets" required
+                                                            aria-required="true">
                                                         {{range $i := until 5}}
                                                         <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
                                                         {{end}}
                                                     </select>
                                                 </div>
                                             </div>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <!-- CPU Cores -->
-                                <div class="column is-6">
-                                    <div class="field">
-                                        <label class="label">{{index .t "VM.Create.CPUCores"}}</label>
-                                        <div class="control">
-                                            <div class="select is-fullwidth">
-                                                <select name="cores" required>
-                                                    {{range $i := until 9}}
-                                                    <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
-                                                    {{end}}
-                                                </select>
+                                    <!-- CPU Cores -->
+                                    <div class="column is-6">
+                                        <div class="field">
+                                            <label for="cpuCores" class="label">{{index .t "VM.Create.CPUCores"}}</label>
+                                            <div class="control">
+                                                <div class="select is-fullwidth">
+                                                    <select id="cpuCores" name="cores" required
+                                                            aria-required="true">
+                                                        {{range $i := until 9}}
+                                                        <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                                        {{end}}
+                                                    </select>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Memory -->
-                            <div class="field">
-                                <label class="label">{{index .t "Common.Memory"}}</label>
-                                <div class="field has-addons">
-                                    <div class="control is-expanded">
-                                        <input class="input" type="number" name="memory" min="512" step="128" 
-                                               value="2048" required>
-                                    </div>
-                                    <div class="control">
-                                        <a class="button is-static">MB</a>
-                                    </div>
-                                </div>
-                                <p class="help">{{index .t "VM.Create.MemoryHelp"}}</p>
-                            </div>
-
-                            <!-- Disk Size -->
-                            <div class="field">
-                                <label class="label">{{index .t "VM.Create.DiskSize"}}</label>
-                                <div class="field has-addons">
-                                    <div class="control is-expanded">
-                                        <input class="input" type="number" name="disk_size" min="8" step="1" 
-                                               value="32" required>
-                                    </div>
-                                    <div class="control">
-                                        <a class="button is-static">GB</a>
-                                    </div>
-                                </div>
-                                <p class="help">{{index .t "VM.Create.DiskSizeHelp"}}</p>
-                            </div>
-                        </div>
-                    </div>  <!-- End Left Column -->
-
-                    <!-- Right Column -->
-                    <div class="column is-6">
-                        <!-- Media & Network -->
-                        <div class="box mb-5">
-                            <h2 class="title is-5">{{index .t "VM.Create.MediaNetwork"}}</h2>
-
-                            <!-- ISO Image -->
-                            <div class="field">
-                                <label class="label">
-                                    {{index .t "VM.Create.ISOImage"}}
-                                </label>
-                                <div class="control">
-                                    <div class="select is-fullwidth">
-                                        <select name="iso">
-                                            <option value="">-- {{index .t "VM.Create.SelectISO"}} --</option>
-                                            {{range .ISOs}}
-                                            <option value="{{.Path}}">{{.Name}}</option>
-                                            {{else}}
-                                            <option disabled>{{index .t "VM.Create.NoISOsAvailable"}}</option>
-                                            {{end}}
-                                        </select>
-                                    </div>
-                                </div>
-                                <p class="help">{{index .t "VM.Create.ISOImageHelp"}}</p>
-                            </div>
-
-                            <!-- Network Bridge -->
-                            <div class="field">
-                                <label class="label">{{index .t "VM.Create.Network"}}</label>
-                                <div class="control">
-                                    <div class="select is-fullwidth">
-                                        <select name="bridge" required>
-                                            {{range .Bridges}}
-                                            <option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>
-                                            {{else}}
-                                            <option disabled>{{index .t "VM.Create.NoBridgesAvailable"}}</option>
-                                            {{end}}
-                                        </select>
-                                    </div>
-                                </div>
-                                <p class="help">{{index .t "VM.Create.NetworkBridgeHelp"}}</p>
-                            </div>
-                        </div>
-
-                        <!-- Tags -->
-                        <div class="box mb-5">
-                            <h2 class="title is-5">{{index .t "VM.Create.Tags"}}</h2>
-                            
-                            <div class="field">
-                                <div class="control">
+                                <!-- Memory -->
+                                <div class="field">
+                                    <label for="memory" class="label">{{index .t "Common.Memory"}}</label>
                                     <div class="field has-addons">
                                         <div class="control is-expanded">
-                                            <input type="text" class="input" id="tagInput" placeholder='{{index .t "VM.Create.TagsPlaceholder"}}'>
+                                            <input id="memory" class="input" type="number" name="memory" 
+                                                   min="512" step="128" value="2048" required
+                                                   aria-required="true">
                                         </div>
                                         <div class="control">
-                                            <button type="button" id="addTagBtn" class="button is-primary">
-                                                {{index .t "Common.Add"}}
-                                            </button>
+                                            <span class="button is-static" aria-hidden="true">MB</span>
                                         </div>
                                     </div>
-                                    <div id="tagsContainer" class="tags mt-2">
-                                        <!-- Tags will be added here dynamically -->
-                                    </div>
-                                    <input type="hidden" name="tags" id="tagsInput">
+                                    <p class="help">{{index .t "VM.Create.MemoryHelp"}}</p>
                                 </div>
-                                <p class="help">{{index .t "VM.Create.TagsHelp"}}</p>
-                            </div>
-                        </div>
 
-                        <!-- Form Actions -->
-                        <div class="box">
-                            <div class="field is-grouped is-justify-content-flex-end">
-                                <div class="control">
-                                    <button type="reset" class="button is-light is-fullwidth">{{index .t "Common.Reset"}}</button>
+                                <!-- Disk Size -->
+                                <div class="field">
+                                    <label for="diskSize" class="label">{{index .t "VM.Create.DiskSize"}}</label>
+                                    <div class="field has-addons">
+                                        <div class="control is-expanded">
+                                            <input id="diskSize" class="input" type="number" name="disk_size" 
+                                                   min="8" step="1" value="32" required
+                                                   aria-required="true">
+                                        </div>
+                                        <div class="control">
+                                            <span class="button is-static" aria-hidden="true">GB</span>
+                                        </div>
+                                    </div>
+                                    <p class="help">{{index .t "VM.Create.DiskSizeHelp"}}</p>
                                 </div>
-                                <div class="control">
-                                    <button type="submit" class="button is-primary is-fullwidth">{{index .t "Common.Create"}}</button>
+                            </div>
+                        </div>  <!-- End Left Column -->
+
+                        <!-- Right Column -->
+                        <div class="column is-6">
+                            <!-- Media & Network -->
+                            <div class="box mb-5" role="region" aria-labelledby="media-heading">
+                                <h2 id="media-heading" class="title is-5">{{index .t "VM.Create.MediaNetwork"}}</h2>
+
+                                <!-- ISO Image -->
+                                <div class="field">
+                                    <label for="isoImage" class="label">
+                                        <span class="icon-text">
+                                            <span class="icon"><i class="fas fa-compact-disc"></i></span>
+                                            <span>{{index .t "VM.Create.ISOImage"}}</span>
+                                        </span>
+                                    </label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth">
+                                            <select id="isoImage" name="iso"
+                                                   aria-describedby="isoHelp">
+                                                <option value="">-- {{index .t "VM.Create.SelectISO"}} --</option>
+                                                {{range .ISOs}}
+                                                <option value="{{.Path}}">{{.Name}}</option>
+                                                {{else}}
+                                                <option disabled>{{index .t "VM.Create.NoISOsAvailable"}}</option>
+                                                {{end}}
+                                            </select>
+                                        </div>
+                                        <p id="isoHelp" class="help">{{index .t "VM.Create.ISOImageHelp"}}</p>
+                                    </div>
+                                </div>
+
+                                <!-- Network Bridge -->
+                                <div class="field">
+                                    <label for="networkBridge" class="label">{{index .t "VM.Create.Network"}}</label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth">
+                                            <select id="networkBridge" name="bridge" required
+                                                   aria-required="true">
+                                                {{range .Bridges}}
+                                                <option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>
+                                                {{else}}
+                                                <option disabled>{{index .t "VM.Create.NoBridgesAvailable"}}</option>
+                                                {{end}}
+                                            </select>
+                                        </div>
+                                        <p class="help">{{index .t "VM.Create.NetworkBridgeHelp"}}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tags -->
+                            <div class="box mb-5" role="region" aria-labelledby="tags-heading">
+                                <h2 id="tags-heading" class="title is-5">{{index .t "VM.Create.Tags"}}</h2>
+                                
+                                <div class="field">
+                                    <label for="tagInput" class="label">
+                                        <span class="icon-text">
+                                            <span class="icon"><i class="fas fa-tags"></i></span>
+                                            <span>{{index .t "VM.Create.Tags"}}</span>
+                                        </span>
+                                    </label>
+                                    <div class="control">
+                                        <div class="field has-addons">
+                                            <div class="control is-expanded">
+                                                <input type="text" id="tagInput" class="input" 
+                                                       placeholder='{{index .t "VM.Create.TagsPlaceholder"}}'
+                                                       aria-describedby="tagsHelp">
+                                            </div>
+                                            <div class="control">
+                                                <button type="button" id="addTagBtn" class="button is-primary">
+                                                    <span class="icon"><i class="fas fa-plus" aria-hidden="true"></i></span>
+                                                    <span>{{index .t "Common.Add"}}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div id="tagsContainer" class="tags mt-2" role="list" aria-label="Tags list">
+                                            <!-- Tags will be added here dynamically -->
+                                        </div>
+                                        <input type="hidden" name="tags" id="tagsInput">
+                                    </div>
+                                    <p id="tagsHelp" class="help">{{index .t "VM.Create.TagsHelp"}}</p>
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="box" role="region">
+                                <div class="field is-grouped is-justify-content-flex-end">
+                                    <div class="control">
+                                        <button type="reset" class="button is-light is-fullwidth">
+                                            <span class="icon"><i class="fas fa-undo"></i></span>
+                                            <span>{{index .t "Common.Reset"}}</span>
+                                        </button>
+                                    </div>
+                                    <div class="control">
+                                        <button type="submit" class="button is-primary is-fullwidth">
+                                            <span class="icon"><i class="fas fa-save"></i></span>
+                                            <span>{{index .t "Common.Create"}}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>  <!-- End Right Column -->
-                </div>
-            </form>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </section>
 
-<!-- JavaScript pour la gestion des tags et la soumission du formulaire -->
-<script src="/static/js/vm-create.js"></script>
+<!-- JavaScript for form handling -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('vmCreateForm');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                // Récupérer le jeton CSRF
-                const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
-                
-                // Créer un champ caché pour le jeton CSRF s'il n'existe pas déjà
-                let csrfInput = form.querySelector('input[name="csrf_token"]');
-                if (!csrfInput && csrfToken) {
-                    csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = 'csrf_token';
-                    csrfInput.value = csrfToken;
-                    form.appendChild(csrfInput);
-                } else if (csrfInput && csrfToken) {
-                    // Mettre à jour la valeur du jeton CSRF existant
-                    csrfInput.value = csrfToken;
-                }
-                
-                // La soumission du formulaire se poursuivra normalement
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('vmCreateForm');
+    const tagInput = document.getElementById('tagInput');
+    const addTagBtn = document.getElementById('addTagBtn');
+    const tagsContainer = document.getElementById('tagsContainer');
+    const tagsInput = document.getElementById('tagsInput');
+    let tags = [];
+
+    // Add tag function
+    function addTag() {
+        const tagText = tagInput.value.trim();
+        
+        if (tagText && !tags.includes(tagText)) {
+            tags.push(tagText);
+            updateTags();
+            tagInput.value = '';
+        }
+        
+        tagInput.focus();
+    }
+
+    // Update tags display and hidden input
+    function updateTags() {
+        tagsContainer.innerHTML = '';
+        
+        tags.forEach((tag, index) => {
+            const tagElement = document.createElement('span');
+            tagElement.className = 'tag is-primary is-light is-medium';
+            tagElement.setAttribute('role', 'listitem');
+            tagElement.innerHTML = `
+                ${tag}
+                <button type="button" class="delete is-small" 
+                        data-index="${index}"
+                        aria-label="Remove tag ${tag}"></button>
+            `;
+            tagsContainer.appendChild(tagElement);
+        });
+        
+        tagsInput.value = tags.join(',');
+
+        // Add event listeners to delete buttons
+        document.querySelectorAll('.delete').forEach(button => {
+            button.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                tags.splice(index, 1);
+                updateTags();
             });
+        });
+    }
+
+    // Add tag on button click
+    addTagBtn.addEventListener('click', addTag);
+    
+    // Add tag on Enter key
+    tagInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addTag();
         }
     });
+
+    // Initialize with any existing tags
+    if (tagsInput.value) {
+        tags = tagsInput.value.split(',').filter(tag => tag.trim() !== '');
+        updateTags();
+    }
+
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            // Focus on first invalid field
+            const invalidField = form.querySelector(':invalid');
+            if (invalidField) {
+                invalidField.focus();
+            }
+        }
+    });
+});
 </script>
 {{end}}
