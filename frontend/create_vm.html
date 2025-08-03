@@ -194,28 +194,26 @@
                                 </div>
                             </div>
 
-                            <!-- Tags -->
-                            <div class="box mb-5" role="region" aria-labelledby="tags-heading">
-                                <h2 id="tags-heading" class="title is-5">{{index .t "VM.Create.Tags"}}</h2>
+                            <!-- Tags Section -->
+                            <div class="tags-section">
                                 <div class="field">
-                                    <label class="label" id="tags-label">
-                                        <span class="icon-text">
-                                            <span class="icon"><i class="fas fa-tags"></i></span>
-                                            <span>{{index .t "VM.Create.SelectTags"}}</span>
-                                        </span>
-                                    </label>
+                                    <div class="tags-label">
+                                        <span class="icon"><i class="fas fa-tags"></i></span>
+                                        <span>{{index .t "VM.Create.Tags"}}</span>
+                                    </div>
                                     
-                                    <!-- Selected Tags (for visual feedback) -->
-                                    <div id="selectedTags" class="tags mb-4" role="list" aria-labelledby="tags-label">
-                                        <span class="tag is-light is-medium">No tags selected</span>
+                                    <!-- Selected Tags -->
+                                    <div id="selectedTags" role="status" aria-live="polite">
+                                        <!-- Will be populated by JavaScript -->
                                     </div>
                                     
                                     <!-- Available Tags -->
-                                    <div class="tags" role="listbox" aria-multiselectable="true">
+                                    <div class="tags-options" role="listbox" aria-multiselectable="true">
                                         {{range .AvailableTags}}
                                         <button type="button" 
-                                                class="tag is-light is-medium is-clickable tag-option" 
+                                                class="tag-option" 
                                                 data-tag="{{.}}"
+                                                role="option"
                                                 aria-pressed="false"
                                                 aria-label="Select tag {{.}}">
                                             {{.}}
@@ -224,8 +222,7 @@
                                         <p class="has-text-grey">{{index .t "VM.Create.NoTagsAvailable"}}</p>
                                         {{end}}
                                     </div>
-                                    
-                                    <!-- Hidden input to store selected tags -->
+                                    <p class="help">{{index .t "VM.Create.TagsHelp"}}</p>
                                     <input type="hidden" name="tags" id="tagsInput" value="">
                                 </div>
                             </div>

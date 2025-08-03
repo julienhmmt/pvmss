@@ -233,37 +233,108 @@
   padding: 4rem 1.5rem;
 }
 
-.tags .tag {
-  cursor: pointer;
-  margin-bottom: 0.25rem;
+/* Tags Section Container */
+.tags-section {
+  background-color: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.tags {
-  gap: 0.5rem;
-  color: var(--primary);
+/* Tag Options Container */
+.tags-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
 }
 
+/* Individual Tag Option */
 .tag-option {
-  transition: all 0.2s ease;
-  margin-bottom: 0.5rem;
-  border: 1px solid transparent;
+  position: relative;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #e0e0e0;
+  background-color: white;
+  color: #424242;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .tag-option:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  color: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .tag-option[aria-pressed="true"] {
-  font-weight: 600;
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary-dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Selected tags container */
+.tag-option[aria-pressed="true"]:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* Selected Tags Container */
 #selectedTags {
-  min-height: 2.5rem;
-  padding: 0.5rem;
-  border: 1px solid #dbdbdb;
-  border-radius: 4px;
-  background-color: #f5f5f5;
+  min-height: 3.5rem;
+  padding: 0.75rem;
+  border: 2px dashed #e0e0e0;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  margin: 1.25rem 0;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#selectedTags:has(.tag) {
+  background-color: #f5f9ff;
+  border-color: #e3f2fd;
+}
+
+#selectedTags:empty::before {
+  content: "No tags selected";
+  color: #9e9e9e;
+  font-style: italic;
+  width: 100%;
+  text-align: center;
+}
+
+/* Label Styling */
+.tags-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: #424242;
+}
+
+.tags-label .icon {
+  color: var(--primary);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .tags-options {
+    gap: 0.5rem;
+  }
+  
+  .tag-option {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
 }

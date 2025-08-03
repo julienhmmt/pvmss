@@ -362,7 +362,8 @@ other = "Pont réseau"
 other = "Sélectionnez un pont réseau pour connecter la VM"
 ["VM.Create.NoBridges"]
 other = "Aucun pont réseau disponible"
-
+["VM.Create.NoTagsAvailable"]
+other = "Aucune étiquette disponible"
 ["VM.Create.NoBridgesAvailable"]
 other = "Aucun pont réseau disponible"
 ["VM.Create.NoISOs"]
