@@ -202,28 +202,35 @@
                                         <span>{{index .t "VM.Create.Tags"}}</span>
                                     </div>
                                     
-                                    <!-- Selected Tags -->
-                                    <div id="selectedTags" role="status" aria-live="polite">
-                                        <!-- Will be populated by JavaScript -->
+                                    <!-- Selected Tags (for visual feedback) -->
+                                    <div class="selected-tags mb-4">
+                                        {{if .FormData.Tags}}
+                                            {{range $tag := .FormData.Tags}}
+                                            <span class="tag is-primary is-medium">{{$tag}}</span>
+                                            {{end}}
+                                        {{else}}
+                                            <span class="has-text-grey">No tags selected</span>
+                                        {{end}}
                                     </div>
                                     
-                                    <!-- Available Tags -->
-                                    <div class="tags-options" role="listbox" aria-multiselectable="true">
-                                        {{range .AvailableTags}}
-                                        <button type="button" 
-                                                class="tag-option" 
-                                                data-tag="{{.}}"
-                                                role="option"
-                                                aria-pressed="false"
-                                                aria-label="Select tag {{.}}">
-                                            {{.}}
-                                        </button>
+                                    <!-- Available Tags as Checkboxes -->
+                                    <div class="tags-options">
+                                        {{range $tag := .AvailableTags}}
+                                        <label class="tag-option checkbox-label">
+                                            <input type="checkbox" 
+                                                name="tags" 
+                                                value="{{$tag}}"
+                                                {{if contains $tag .FormData.Tags}}checked{{end}}
+                                                class="is-hidden">
+                                            <span class="tag {{if contains $tag .FormData.Tags}}is-primary{{else}}is-light{{end}}">
+                                                {{$tag}}
+                                            </span>
+                                        </label>
                                         {{else}}
                                         <p class="has-text-grey">{{index .t "VM.Create.NoTagsAvailable"}}</p>
                                         {{end}}
                                     </div>
                                     <p class="help">{{index .t "VM.Create.TagsHelp"}}</p>
-                                    <input type="hidden" name="tags" id="tagsInput" value="">
                                 </div>
                             </div>
 

@@ -1,5 +1,7 @@
 # Proxmox VM Self-Service (PVMSS)
 
+[![Lint](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml)
+
 PVMSS is a lightweight, self-service web portal for Proxmox Virtual Environment (PVE). It allows users to perform basic virtual machine (VM) management tasks without needing direct access to the Proxmox web UI. The application is designed to be simple, fast, and easy to deploy as a Docker container.
 
 ## Architecture
@@ -98,7 +100,7 @@ PVMSS est un portail web libre-service léger pour Proxmox Virtual Environment (
 
 PVMSS suit une architecture client-serveur simple :
 
--   **Backend**: Une application Go qui sert l'interface web et communique avec l'API Proxmox. Elle gère toute la logique métier, y compris l'authentification, les opérations sur les VM et le rendu des templates.
+-   **Backend**: Une application Go qui sert l'interface web et communique avec l'API Proxmox. Elle gère toute la logique métier, y compris la connexion, les opérations sur les VM et le rendu des templates.
 -   **Frontend**: HTML, CSS et JavaScript minimalistes. Il utilise le framework CSS [Bulma](https://bulma.io/) pour un design propre et réactif. Le frontend est rendu côté serveur à l'aide du package `html/template` de Go.
 -   **Conteneurisation**: L'ensemble de l'application est packagé et déployé comme un unique conteneur Docker, utilisant un build multi-étapes pour une image finale de petite taille.
 

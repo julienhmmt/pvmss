@@ -12,11 +12,11 @@ Ce guide couvre toutes les fonctionnalités administratives et workflows disponi
 - **Gestion du Stockage** : Voir et gérer les ressources de stockage disponibles
 - **Ponts Réseau (VMBR)** : Configurer les ponts réseau disponibles pour la mise en réseau des VM
 - **Limites de Ressources** : Définir des limites sur les ressources CPU, mémoire et stockage
-- **Paramètres de Sécurité** : Gérer l'authentification et le contrôle d'accès
+- **Paramètres de Sécurité** : Gérer la connexion et le contrôle d'accès
 
 ### Gestion des Utilisateurs
 
-- **Contrôle d'Accès** : Configurer les permissions utilisateur et l'authentification
+- **Contrôle d'Accès** : Configurer les permissions utilisateur et la connexion
 - **Quotas de Ressources** : Définir des limites de ressources par utilisateur
 - **Audit et Logs** : Surveiller les activités utilisateur et les changements système
 
@@ -29,7 +29,7 @@ Ce guide couvre toutes les fonctionnalités administratives et workflows disponi
 
 ### Guide de Démarrage
 
-1. Accéder au panneau d'administration sur `/admin` (authentification requise)
+1. Accéder au panneau d'administration sur `/admin` (connexion requise)
 2. Examiner et configurer les images ISO pour la création de VM utilisateur
 3. Configurer les ponts réseau et les options de stockage
 4. Définir des limites de ressources appropriées basées sur votre infrastructure
