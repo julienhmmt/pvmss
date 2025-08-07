@@ -36,6 +36,16 @@ other = "Edit"
 other = "Enabled"
 ["Common.Error"]
 other = "Error"
+
+# Proxmox
+["Proxmox.ConnectionError"]
+other = "Proxmox Connection Error"
+["Proxmox.NotConnected"]
+other = "Proxmox server is not connected"
+["Proxmox.NotConnectedMessage"]
+other = "Cannot create VM: Proxmox server is not connected."
+["Proxmox.CheckConnection"]
+other = "Please check the Proxmox server connection and try again."
 ["Common.Home"]
 other = "Home"
 ["Common.ID"]

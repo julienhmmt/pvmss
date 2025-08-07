@@ -17,8 +17,28 @@
         </div>
         <div class="columns is-centered">
             <div class="column is-10 welcome-block">
-                <form method="POST" action="/api/vm/create" id="vmCreateForm" aria-label="Create new virtual machine">
+                {{if not .ProxmoxConnected}}
+                <div class="notification is-warning is-light mb-5" role="alert">
+                    <div class="level is-mobile">
+                        <div class="level-left">
+                            <div class="level-item">
+                                <span class="icon has-text-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                            </div>
+                            <div class="level-item">
+                                <p>{{index .t "VM.Create.ProxmoxNotConnected" | default "Cannot create VM: Proxmox server is not connected."}}</p>
+                                {{if .ProxmoxError}}
+                                <p class="has-text-danger mt-2">{{.ProxmoxError}}</p>
+                                {{end}}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{end}}
+                <form method="POST" action="/api/vm/create" id="vmCreateForm" aria-label="Create new virtual machine" {{if not .ProxmoxConnected}}onsubmit="return false;"{{end}}>
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    <fieldset {{if not .ProxmoxConnected}}disabled{{end}} aria-disabled="{{if not .ProxmoxConnected}}true{{else}}false{{end}}">
                     <div class="columns is-multiline">
                         <!-- Left Column -->
                         <div class="column is-6">
@@ -253,6 +273,7 @@
                             </div>
                         </div>
                     </div>
+                    </fieldset>
                 </form>
             </div>
         </div>

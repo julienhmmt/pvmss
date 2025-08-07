@@ -9,7 +9,8 @@ import (
 
 	"pvmss/i18n"
 	"pvmss/logger"
-	"pvmss/security/middleware"
+	customMiddleware "pvmss/middleware"
+	securityMw "pvmss/security/middleware"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -99,25 +100,36 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		log.Debug().Int("data_size", len(data)).Msg("Données fournies pour le rendu")
 	}
 
-	// Ajouter les données d'authentification
+	// Récupérer les données de template du contexte si elles existent
+	if ctxData, ok := r.Context().Value(customMiddleware.TemplateDataKey).(map[string]interface{}); ok {
+		log.Debug().Int("context_data_size", len(ctxData)).Msg("Données de contexte récupérées")
+		// Fusionner les données du contexte avec les données fournies (les données fournies ont la priorité)
+		for k, v := range ctxData {
+			if _, exists := data[k]; !exists {
+				data[k] = v
+			}
+		}
+	}
+
+	// Add authentication data
 	if IsAuthenticated(r) {
-		log.Debug().Msg("Utilisateur authentifié détecté, ajout des données de session")
+		log.Debug().Msg("Authenticated user detected, adding session data")
 		data["IsAuthenticated"] = true
 	} else {
-		log.Debug().Msg("Aucun utilisateur authentifié détecté")
+		log.Debug().Msg("No authenticated user detected")
 	}
 
-	// Ajouter le jeton CSRF aux données du template
-	csrfToken := middleware.GetCSRFToken(r)
+	// Add CSRF token to template data
+	csrfToken := securityMw.GetCSRFToken(r)
 	if csrfToken != "" {
 		data["CSRFToken"] = csrfToken
-		log.Debug().Msg("Jeton CSRF ajouté aux données du template")
+		log.Debug().Msg("CSRF token added to template data")
 	} else {
-		log.Warn().Msg("Aucun jeton CSRF trouvé dans le contexte de la requête")
+		log.Warn().Msg("No CSRF token found in request context")
 	}
 
-	// Ajouter les données i18n et variables communes
-	log.Debug().Msg("Application des données i18n et des variables communes")
+	// Add i18n data and common variables
+	log.Debug().Msg("Applying i18n data and common variables")
 	i18n.LocalizePage(w, r, data)
 	data["CurrentPath"] = r.URL.Path
 	data["IsHTTPS"] = r.TLS != nil
@@ -127,50 +139,50 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		Str("current_path", r.URL.Path).
 		Bool("is_https", r.TLS != nil).
 		Str("host", r.Host).
-		Msg("Variables de contexte ajoutées")
+		Msg("Context variables added")
 
-	// Exécuter le template
+	// Execute the template
 	buf := new(bytes.Buffer)
-	log.Debug().Msg("Exécution du template principal")
+	log.Debug().Msg("Executing main template")
 
 	if err := tmpl.ExecuteTemplate(buf, name, data); err != nil {
 		log.Error().
 			Err(err).
 			Str("template", name).
-			Msg("Échec de l'exécution du template")
-		http.Error(w, "Erreur interne du serveur", http.StatusInternalServerError)
+			Msg("Failed to execute template")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	log.Debug().
 		Int("content_length", buf.Len()).
-		Msg("Template principal exécuté avec succès")
+		Msg("Main template executed successfully")
 
-	// Ajouter le contenu au layout
+	// Add content to layout
 	content := buf.String()
 	data["Content"] = template.HTML(content)
 
 	log.Debug().
 		Int("content_length", len(content)).
-		Msg("Contenu du template préparé pour le layout")
+		Msg("Template content prepared for layout")
 
-	// Exécuter le layout
+	// Execute the layout
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	log.Debug().Msg("Exécution du template de layout")
+	log.Debug().Msg("Executing layout template")
 
 	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
 		log.Error().
 			Err(err).
 			Str("template", "layout").
-			Msg("Échec de l'exécution du template de layout")
-		http.Error(w, "Erreur interne du serveur", http.StatusInternalServerError)
+			Msg("Failed to execute layout template")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	log.Info().
 		Str("template", name).
 		Int("response_size", len(content)).
-		Msg("Rendu de la page terminé avec succès")
+		Msg("Page rendering completed successfully")
 }
 
 // IsAuthenticated checks if the user is authenticated

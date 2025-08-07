@@ -19,6 +19,27 @@
     
     {{template "navbar" .}}
 
+    {{/* Proxmox Connection Status Banner */}}
+    {{if not .ProxmoxConnected}}
+    <div class="notification is-danger is-light" id="proxmox-status-banner">
+        <div class="level is-mobile">
+            <div class="level-left">
+                <div class="level-item">
+                    <span class="icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </span>
+                </div>
+                <div class="level-item">
+                    <strong>{{index .t "Proxmox.ConnectionError"}}:</strong> {{.ProxmoxError}}
+                </div>
+            </div>
+            <div class="level-right">
+                <button class="delete" onclick="document.getElementById('proxmox-status-banner').style.display='none'; document.getElementById('main-content').style.marginTop='3.25rem';"></button>
+            </div>
+        </div>
+    </div>
+    {{end}}
+
     <main id="main-content" class="section">
         <div class="container">
             {{if .Content}}
@@ -53,6 +74,59 @@
                    document.querySelector('input[name="csrf_token"]')?.value || '';
         }
 
+        // Check Proxmox connection status
+        function checkProxmoxStatus() {
+            fetch('/api/health/proxmox')
+                .then(response => response.json())
+                .then(data => {
+                    const banner = document.getElementById('proxmox-status-banner');
+                    const statusText = banner ? banner.querySelector('.status-text') : null;
+                    
+                    if (data.connected) {
+                        if (banner) banner.style.display = 'none';
+                    } else {
+                        if (!banner) {
+                            // Create banner if it doesn't exist
+                            const newBanner = document.createElement('div');
+                            newBanner.id = 'proxmox-status-banner';
+                            newBanner.className = 'notification is-danger is-light';
+                            newBanner.style.marginBottom = '0';
+                            newBanner.style.borderRadius = '0';
+                            newBanner.innerHTML = `
+                                <div class="container">
+                                    <div class="level is-mobile">
+                                        <div class="level-left">
+                                            <div class="level-item">
+                                                <span class="icon">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                </span>
+                                            </div>
+                                            <div class="level-item status-text">
+                                                <strong>Proxmox Connection Error:</strong> ${data.error || 'Unable to connect to Proxmox server'}
+                                            </div>
+                                        </div>
+                                        <div class="level-right">
+                                            <button class="delete" onclick="this.parentElement.parentElement.parentElement.style.display='none';"></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            const mainContent = document.querySelector('main');
+                            if (mainContent) {
+                                mainContent.parentNode.insertBefore(newBanner, mainContent);
+                            }
+                        } else if (statusText) {
+                            // Update existing banner
+                            statusText.innerHTML = `<strong>Proxmox Connection Error:</strong> ${data.error || 'Unable to connect to Proxmox server'}`;
+                            banner.style.display = 'block';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking Proxmox status:', error);
+                });
+        }
+
         // Gestion du menu burger
         document.addEventListener('DOMContentLoaded', function() {
             const burger = document.querySelector('.navbar-burger');
@@ -72,6 +146,12 @@
                     event.detail.headers['X-CSRF-Token'] = csrfToken;
                 }
             });
+
+            // Check Proxmox status on page load
+            checkProxmoxStatus();
+            
+            // Check Proxmox status every 30 seconds
+            setInterval(checkProxmoxStatus, 30000);
         });
     </script>
 </body>

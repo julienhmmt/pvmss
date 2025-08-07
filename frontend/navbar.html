@@ -22,20 +22,30 @@
                         <span>{{index .t "Navbar.Home"}}</span>
                     </span>
                 </a>
-                <a class="navbar-item" href="/vm/create">
+                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create" {{if not .ProxmoxConnected}}title="Proxmox server is not available"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-plus-square"></i>
                         </span>
                         <span>{{ index .t "Navbar.CreateVM" }}</span>
+                        {{if not .ProxmoxConnected}}
+                        <span class="icon has-text-danger ml-1">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </span>
+                        {{end}}
                     </span>
                 </a>
-                <a class="navbar-item" href="/search">
+                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search" {{if not .ProxmoxConnected}}title="Proxmox server is not available"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-search"></i>
                         </span>
                         <span>{{ index .t "Navbar.SearchVM" }}</span>
+                        {{if not .ProxmoxConnected}}
+                        <span class="icon has-text-danger ml-1">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </span>
+                        {{end}}
                     </span>
                 </a>
                 <a class="navbar-item" href="/docs/user">

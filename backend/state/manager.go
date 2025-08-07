@@ -1,15 +1,17 @@
 package state
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
-	"pvmss/logger"
-	"pvmss/proxmox"
 	"sync"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+
+	"pvmss/logger"
+	"pvmss/proxmox"
 )
 
 // appState is the concrete implementation of StateManager
@@ -19,6 +21,11 @@ type appState struct {
 	proxmoxClient  proxmox.ClientInterface
 	settings       *AppSettings
 	mu             sync.RWMutex
+
+	// Proxmox connection status
+	proxmoxConnected bool
+	proxmoxError     string
+	proxmoxMu        sync.RWMutex
 
 	// Security-related fields
 	csrfTokens map[string]time.Time
@@ -99,7 +106,65 @@ func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 	s.mu.Lock()
 	s.proxmoxClient = pc
 	s.mu.Unlock()
+
+	// Check connection when setting a new client
+	s.CheckProxmoxConnection()
 	return nil
+}
+
+// GetProxmoxStatus returns the current Proxmox connection status
+func (s *appState) GetProxmoxStatus() (bool, string) {
+	s.proxmoxMu.RLock()
+	defer s.proxmoxMu.RUnlock()
+	return s.proxmoxConnected, s.proxmoxError
+}
+
+// CheckProxmoxConnection checks the connection to the Proxmox server and updates the status
+func (s *appState) CheckProxmoxConnection() bool {
+	s.mu.RLock()
+	client := s.proxmoxClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		s.updateProxmoxStatus(false, "Proxmox client not initialized")
+		return false
+	}
+
+	// Try to get node names as a simple connection test
+	nodes, err := proxmox.GetNodeNamesWithContext(context.Background(), client)
+	if err != nil || len(nodes) == 0 {
+		errMsg := "Failed to connect to Proxmox"
+		if err != nil {
+			errMsg = fmt.Sprintf("%s: %v", errMsg, err)
+		}
+		s.updateProxmoxStatus(false, errMsg)
+		return false
+	}
+
+	// If we got here, the connection is good
+	s.updateProxmoxStatus(true, "")
+	return true
+}
+
+// updateProxmoxStatus updates the Proxmox connection status in a thread-safe way
+func (s *appState) updateProxmoxStatus(connected bool, errorMsg string) {
+	s.proxmoxMu.Lock()
+	defer s.proxmoxMu.Unlock()
+
+	// Only log if status changed
+	if s.proxmoxConnected != connected || s.proxmoxError != errorMsg {
+		status := "connected"
+		if !connected {
+			status = fmt.Sprintf("disconnected: %s", errorMsg)
+		}
+		logger.Get().Info().
+			Bool("connected", connected).
+			Str("error", errorMsg).
+			Msgf("Proxmox connection status changed: %s", status)
+
+		s.proxmoxConnected = connected
+		s.proxmoxError = errorMsg
+	}
 }
 
 // GetSettings returns the application settings

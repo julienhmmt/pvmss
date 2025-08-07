@@ -13,11 +13,15 @@ import (
 )
 
 // VMHandler gère les routes liées aux machines virtuelles
-type VMHandler struct{}
+type VMHandler struct {
+	stateManager state.StateManager
+}
 
 // NewVMHandler crée une nouvelle instance de VMHandler
-func NewVMHandler() *VMHandler {
-	return &VMHandler{}
+func NewVMHandler(stateManager state.StateManager) *VMHandler {
+	return &VMHandler{
+		stateManager: stateManager,
+	}
 }
 
 // IndexHandler gère la page d'accueil avec la liste des VMs
@@ -107,6 +111,14 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	log.Debug().Str("http_method", r.Method).Msg("Traitement de la requête CreateVMHandler")
 
+	// Vérifier si Proxmox est connecté
+	connected, _ := h.stateManager.GetProxmoxStatus()
+	if !connected {
+		log.Warn().Msg("Tentative d'accès à la création de VM alors que Proxmox n'est pas connecté")
+		http.Redirect(w, r, "/?error=proxmox_disconnected", http.StatusSeeOther)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
 		h.renderCreateVMForm(w, r)
@@ -128,6 +140,12 @@ func (h *VMHandler) renderCreateVMForm(w http.ResponseWriter, r *http.Request) {
 		Logger()
 
 	log.Debug().Msg("Displaying VM creation form")
+
+	// Get Proxmox connection status
+	connected, errMsg := h.stateManager.GetProxmoxStatus()
+	if !connected {
+		log.Warn().Str("error", errMsg).Msg("Proxmox is not connected, showing disabled form")
+	}
 
 	// Get the global state
 	stateMgr := state.GetGlobalState()
@@ -195,6 +213,8 @@ func (h *VMHandler) renderCreateVMForm(w http.ResponseWriter, r *http.Request) {
 	data["ISOs"] = isos
 	data["Bridges"] = bridges
 	data["AvailableTags"] = tags
+	data["ProxmoxConnected"] = connected
+	data["ProxmoxError"] = errMsg
 
 	// Add translation data
 	i18n.LocalizePage(w, r, data)

@@ -124,6 +124,15 @@ func initializeApp() error {
 	if err := stateManager.SetProxmoxClient(proxmoxClient); err != nil {
 		return fmt.Errorf("failed to set Proxmox client: %w", err)
 	}
+
+	// Check Proxmox connection status
+	if connected := stateManager.CheckProxmoxConnection(); !connected {
+		// Log the error but don't fail the startup
+		_, errorMsg := stateManager.GetProxmoxStatus()
+		logger.Get().Warn().
+			Str("error", errorMsg).
+			Msg("Proxmox server is not reachable. The application will start in read-only mode.")
+	}
 	if err := stateManager.SetTemplates(templates); err != nil {
 		return fmt.Errorf("failed to set templates: %w", err)
 	}
@@ -163,10 +172,26 @@ func initProxmoxClient() (*proxmox.Client, error) {
 
 	client.SetTimeout(30 * time.Second)
 
+	// Test the connection by getting node status
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	if err != nil || len(nodes) == 0 {
+		logger.Get().Error().
+			Err(err).
+			Msg("Failed to connect to Proxmox server. The application will start in read-only mode.")
+
+		// Return the client anyway, but log the error
+		// The actual connection status will be handled by the state manager
+		return client, nil
+	}
+
 	logger.Get().Info().
 		Str("url", proxmoxURL).
 		Str("token_id", tokenID).
 		Bool("insecure", insecureSkipVerify).
+		Strs("available_nodes", nodes).
 		Msg("Proxmox client initialized successfully")
 
 	return client, nil

@@ -6,8 +6,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
+	"pvmss/middleware"
 	"pvmss/security"
-	"pvmss/security/middleware"
+	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 )
 
@@ -23,14 +24,20 @@ func InitHandlers() http.Handler {
 		log.Error().Err(err).Msg("Failed to ensure default tag")
 	}
 
+	// Get the global state manager
+	stateManager := state.GetGlobalState()
+	if stateManager == nil {
+		log.Fatal().Msg("State manager not initialized")
+	}
+
 	// Initialiser les gestionnaires
 	authHandler := NewAuthHandler()
 	adminHandler := NewAdminHandler()
-	vmHandler := NewVMHandler()
-	storageHandler := NewStorageHandler(state.GetGlobalState())
+	vmHandler := NewVMHandler(stateManager)
+	storageHandler := NewStorageHandler(stateManager)
 	searchHandler := NewSearchHandler()
 	docsHandler := NewDocsHandler()
-	healthHandler := NewHealthHandler()
+	healthHandler := NewHealthHandler(stateManager)
 	settingsHandler := NewSettingsHandler()
 	tagsHandler := NewTagsHandler()
 	vmbrHandler := NewVMBRHandler()
@@ -43,12 +50,6 @@ func InitHandlers() http.Handler {
 
 	// Créer la chaîne de middlewares
 	handler := http.Handler(router)
-
-	// 0. Get the state manager first
-	stateManager := state.GetGlobalState()
-	if stateManager == nil {
-		log.Fatal().Msg("State manager not initialized")
-	}
 
 	// 1. Get the session manager
 	sessionManager := stateManager.GetSessionManager()
@@ -67,10 +68,13 @@ func InitHandlers() http.Handler {
 	handler = security.CSRFGeneratorMiddleware(handler)
 
 	// 5. CSRF validation middleware (must be after token generation)
-	handler = middleware.CSRF(handler)
+	handler = securityMiddleware.CSRF(handler)
 
-	// 6. Security headers middleware
-	handler = middleware.Headers(handler)
+	// 6. Proxmox status middleware
+	handler = middleware.ProxmoxStatusMiddleware(handler)
+
+	// 7. Security headers middleware
+	handler = securityMiddleware.Headers(handler)
 
 	log.Info().Msg("Handlers and middleware initialized successfully")
 	return handler

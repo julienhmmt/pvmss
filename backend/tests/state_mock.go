@@ -19,6 +19,11 @@ type MockStateManager struct {
 	settings       *state.AppSettings
 	mu             sync.RWMutex
 
+	// Proxmox status
+	proxmoxConnected bool
+	proxmoxError     string
+	proxmoxMu        sync.RWMutex
+
 	// Security-related fields
 	csrfTokens    map[string]time.Time
 	loginAttempts map[string][]time.Time
@@ -245,16 +250,11 @@ func (s *MockStateManager) ValidateAndRemoveCSRFToken(token string) bool {
 	s.securityMu.Lock()
 	defer s.securityMu.Unlock()
 
-	expiry, exists := s.csrfTokens[token]
-	if !exists {
-		return false
+	if expiry, exists := s.csrfTokens[token]; exists {
+		delete(s.csrfTokens, token)
+		return time.Now().Before(expiry)
 	}
-
-	// Remove the token (one-time use)
-	delete(s.csrfTokens, token)
-
-	// Check if token is expired
-	return time.Now().Before(expiry)
+	return false
 }
 
 // CleanExpiredCSRFTokens removes all expired CSRF tokens
@@ -325,4 +325,43 @@ func (s *MockStateManager) CleanExpiredLoginAttempts() {
 			delete(s.loginAttempts, ip)
 		}
 	}
+}
+
+// GetProxmoxStatus returns the current Proxmox connection status
+func (s *MockStateManager) GetProxmoxStatus() (bool, string) {
+	s.proxmoxMu.RLock()
+	defer s.proxmoxMu.RUnlock()
+	return s.proxmoxConnected, s.proxmoxError
+}
+
+// CheckProxmoxConnection checks the connection to the Proxmox server and updates the status
+func (s *MockStateManager) CheckProxmoxConnection() bool {
+	s.mu.RLock()
+	client := s.proxmoxClient
+	s.mu.RUnlock()
+
+	if client == nil {
+		s.updateProxmoxStatus(false, "Proxmox client not initialized")
+		return false
+	}
+
+	// In the mock, we'll just return the current status
+	// Tests can set this using WithProxmoxStatus
+	connected, _ := s.GetProxmoxStatus()
+	return connected
+}
+
+// updateProxmoxStatus updates the Proxmox connection status in a thread-safe way
+func (s *MockStateManager) updateProxmoxStatus(connected bool, errorMsg string) {
+	s.proxmoxMu.Lock()
+	defer s.proxmoxMu.Unlock()
+
+	s.proxmoxConnected = connected
+	s.proxmoxError = errorMsg
+}
+
+// WithProxmoxStatus sets the Proxmox connection status for testing
+func (s *MockStateManager) WithProxmoxStatus(connected bool, errorMsg string) *MockStateManager {
+	s.updateProxmoxStatus(connected, errorMsg)
+	return s
 }

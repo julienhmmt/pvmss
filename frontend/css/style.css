@@ -281,6 +281,90 @@
   color: var(--primary);
 }
 
+/* Disabled navbar items */
+.navbar-item.is-disabled {
+  pointer-events: none;
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: transparent !important;
+}
+
+.navbar-item.is-disabled .icon-text {
+  opacity: 0.7;
+}
+
+/* Disabled form state */
+fieldset[disabled] {
+  opacity: 0.7;
+  position: relative;
+}
+
+fieldset[disabled]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 10;
+  pointer-events: none;
+  border-radius: 6px;
+}
+
+/* Navbar and notification positioning */
+.navbar {
+  position: relative;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Notification banner */
+#proxmox-status-banner {
+  position: fixed;
+  top: 3.25rem; /* Height of the navbar */
+  left: 0;
+  right: 0;
+  z-index: 99;
+  border-radius: 0;
+  margin: 0;
+  padding: 0.75rem 1.5rem;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+/* Adjust main content to account for fixed navbar and notification */
+#main-content {
+  padding-top: 1.5rem;
+  margin-top: 3.25rem; /* Height of the navbar */
+}
+
+/* If notification is visible, add extra margin to main content */
+#proxmox-status-banner ~ #main-content {
+  margin-top: 6rem; /* Navbar height + notification height */
+}
+
+/* Animation for notification */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Warning notification */
+.notification.is-warning.is-light {
+  background-color: #fffbeb;
+  color: #947600;
+  border-left: 4px solid #ffdd57;
+}
+
+/* Tag options */
 .tag-option[aria-pressed="true"] {
   background-color: var(--primary);
   color: white;

@@ -24,6 +24,8 @@ type StateManager interface {
 	// Proxmox client management
 	GetProxmoxClient() proxmox.ClientInterface
 	SetProxmoxClient(pc proxmox.ClientInterface) error
+	GetProxmoxStatus() (bool, string) // Returns (connected, errorMessage)
+	CheckProxmoxConnection() bool     // Performs a connection check and updates status
 
 	// Settings management
 	GetSettings() *AppSettings
