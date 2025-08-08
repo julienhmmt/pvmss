@@ -2,6 +2,15 @@
 <div class="container">
     <h2 class="title is-4">{{index .t "Admin.Nodes.Title"}}</h2>
 
+    {{if not .ProxmoxConnected}}
+    <div class="notification is-warning">
+        <span class="icon-text">
+            <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+            <span>{{index .t "Admin.Nodes.OfflineNotice"}}</span>
+        </span>
+    </div>
+    {{end}}
+
     {{if .Error}}
         <div class="notification is-danger">
             {{.Error}}
@@ -22,7 +31,11 @@
                 <tr>
                     <td>{{.Node}}</td>
                     <td>
-                        <span class="tag is-success">{{index $.t "Admin.Nodes.StatusOnline"}}</span>
+                        {{if $.ProxmoxConnected}}
+                          <span class="tag is-success">{{index $.t "Admin.Nodes.StatusOnline"}}</span>
+                        {{else}}
+                          <span class="tag is-danger">{{index $.t "Admin.Nodes.StatusOffline"}}</span>
+                        {{end}}
                     </td>
                     <td>
                         {{$cpu_percent := mul .CPU 100.0}}
@@ -45,7 +58,11 @@
         </table>
     {{else}}
         <div class="notification">
-            {{index .t "Admin.Nodes.NoNodes"}}
+            {{if .ProxmoxConnected}}
+              {{index .t "Admin.Nodes.NoNodes"}}
+            {{else}}
+              {{index .t "Admin.Nodes.Unavailable"}}
+            {{end}}
         </div>
     {{end}}
 </div>

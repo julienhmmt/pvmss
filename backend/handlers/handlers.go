@@ -12,14 +12,14 @@ import (
 	"pvmss/state"
 )
 
-// InitHandlers initialise tous les gestionnaires et configure les routes
+// InitHandlers initializes all handlers and configures routes
 func InitHandlers() http.Handler {
 	log := logger.Get().With().Str("component", "handlers").Logger()
 
-	// Créer un nouveau routeur
+	// Create a new router
 	router := httprouter.New()
 
-	// S'assurer que le tag par défaut existe
+	// Ensure default tag exists
 	if err := EnsureDefaultTag(); err != nil {
 		log.Error().Err(err).Msg("Failed to ensure default tag")
 	}
@@ -30,7 +30,7 @@ func InitHandlers() http.Handler {
 		log.Fatal().Msg("State manager not initialized")
 	}
 
-	// Initialiser les gestionnaires
+	// Initialize handlers
 	authHandler := NewAuthHandler()
 	adminHandler := NewAdminHandler()
 	vmHandler := NewVMHandler(stateManager)
@@ -42,41 +42,47 @@ func InitHandlers() http.Handler {
 	tagsHandler := NewTagsHandler()
 	vmbrHandler := NewVMBRHandler()
 
-	// Configurer les routes
+	// Configure routes
 	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler)
 
-	// Configurer le gestionnaire de fichiers statiques
+	// Configure static files handler
 	setupStaticFiles(router)
 
-	// Créer la chaîne de middlewares
-	handler := http.Handler(router)
+	// Create middleware chain
+	var handler http.Handler = router
 
-	// 1. Get the session manager
+	// Get the session manager
 	sessionManager := stateManager.GetSessionManager()
 	if sessionManager == nil {
-		log.Fatal().Msg("Session manager not initialized. Make sure security.InitSecurity() was called")
+		log.Warn().Msg("Session manager is not available, running with limited functionality")
+	} else {
+		// 1. Session middleware (MUST be the first middleware that touches the request)
+		handler = sessionManager.LoadAndSave(handler)
+		log.Info().Msgf("Session middleware enabled with session manager: %p", sessionManager)
+
+		// 2. Add our custom session middleware to ensure session manager is in context
+		handler = securityMiddleware.SessionMiddleware(handler)
+
+		// 3. Debug middleware (after session middleware to have access to session)
+		handler = sessionDebugMiddleware(handler)
+
+		// 4. CSRF token generation middleware (must be after session middleware)
+		handler = security.CSRFGeneratorMiddleware(handler)
+
+		// 5. Add CSRF token to context for templates
+		handler = middleware.CSRFMiddleware(handler)
 	}
 
-	// 2. Session middleware (MUST be the first middleware that touches the request)
-	handler = sessionManager.LoadAndSave(handler)
-	log.Info().Msgf("Session middleware applied with sessionManager pointer: %p", sessionManager)
-
-	// 3. Debug middleware (after session middleware to have access to session)
-	handler = sessionDebugMiddleware(handler)
-
-	// 4. CSRF token generation middleware (must be after session middleware)
-	handler = security.CSRFGeneratorMiddleware(handler)
-
-	// 5. CSRF validation middleware (must be after token generation)
-	handler = securityMiddleware.CSRF(handler)
-
-	// 6. Proxmox status middleware
-	handler = middleware.ProxmoxStatusMiddleware(handler)
-
-	// 7. Security headers middleware
+	// 6. Security headers middleware
 	handler = securityMiddleware.Headers(handler)
 
-	log.Info().Msg("Handlers and middleware initialized successfully")
+	// 7. CSRF validation middleware (must be after token generation and headers)
+	handler = securityMiddleware.CSRF(handler)
+
+	// 8. Proxmox status middleware (after CSRF validation)
+	handler = middleware.ProxmoxStatusMiddleware(handler)
+
+	log.Info().Msg("HTTP handlers and middleware initialized")
 	return handler
 }
 

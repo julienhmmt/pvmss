@@ -19,6 +19,7 @@
     <div id="vm-limits" class="mb-4">
         <form class="limits-form" data-entity-id="vm" action="/api/limits" method="POST">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="entityId" value="vm">
             <div class="card">
                 <div class="card-content">
                     <div class="columns">
@@ -262,109 +263,6 @@
                 </div>
             </div>
         </form>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Handle refresh button click
-            const refreshButton = document.getElementById('refresh-limits');
-            if (refreshButton) {
-                refreshButton.addEventListener('click', function() {
-                    window.location.reload();
-                });
-            }
-            const refreshBtn = document.getElementById('refresh-limits');
-            if (refreshBtn) {
-                refreshBtn.addEventListener('click', function() {
-                    this.classList.add('is-loading');
-                    setTimeout(() => { window.location.reload(); }, 500);
-                });
-            }
-
-            // Validation des champs min/max
-            document.querySelectorAll('input[type="number"][data-validate-min]').forEach(maxInput => {
-                maxInput.addEventListener('change', function() {
-                    const minInput = document.getElementById(this.getAttribute('data-validate-min'));
-                    if (minInput) {
-                        const minVal = parseInt(minInput.value) || 0;
-                        const maxVal = parseInt(this.value) || 0;
-                        if (minVal > maxVal) {
-                            minInput.value = maxVal;
-                            showNotification('warning', '{{index . "Admin.Limits.WarningAdjusted"}}');
-                        }
-                    }
-                });
-            });
-
-            // Gestion de la soumission des formulaires
-            document.querySelectorAll('.limits-form').forEach(form => {
-                form.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    const submitBtn = this.querySelector('.save-limits-btn');
-                    const originalText = submitBtn?.innerHTML;
-                    if (submitBtn) {
-                        submitBtn.classList.add('is-loading');
-                        submitBtn.disabled = true;
-                    }
-
-                    try {
-                        const formData = new FormData(this);
-                        const data = Object.fromEntries(formData.entries());
-
-                        const response = await fetch('/api/limits/' + this.dataset.entityId, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(data)
-                        });
-
-                        const result = await response.json();
-                        if (response.ok && result.success) {
-                            showNotification('success', result.message || '{{index . "Admin.Limits.SuccessNotification"}}');
-                        } else {
-                            throw new Error(result.message || '{{index . "Admin.Limits.ErrorUpdate"}}');
-                        }
-                    } catch (error) {
-                        console.error('Error updating limits:', error);
-                        showNotification('danger', error.message || '{{index . "Admin.Limits.ErrorUpdateGeneric"}}');
-                    } finally {
-                        if (submitBtn) {
-                            submitBtn.classList.remove('is-loading');
-                            submitBtn.disabled = false;
-                            if (originalText) submitBtn.innerHTML = originalText;
-                        }
-                    }
-                });
-            });
-
-            // Gestion des boutons de réinitialisation
-            document.querySelectorAll('.reset-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (confirm('{{index . "Admin.Limits.ConfirmReset"}}')) {
-                        const form = this.closest('form');
-                        form.querySelectorAll('input[type="number"]').forEach(input => {
-                            if (input.name.includes('-max')) {
-                                input.value = input.getAttribute('max') || '16';
-                            }
-                        });
-                        showNotification('info', '{{index . "Admin.Limits.ResetNotification"}}');
-                    }
-                });
-            });
-
-            // Fonction pour afficher des notifications
-            function showNotification(type, message) {
-                const container = document.getElementById('notification-container') || document.body;
-                const notification = document.createElement('div');
-                notification.className = `notification is-${type} is-light is-fixed-bottom-right`;
-                notification.innerHTML = `<button class="delete"></button>${message}`;
-                container.appendChild(notification);
-                notification.querySelector('.delete').addEventListener('click', () => notification.remove());
-                setTimeout(() => notification.remove(), 5000);
-            }
-        });
-    </script>
-
-
-<script src="/js/limits.js"></script>
-</body>
-</html>
+    </div>
+ </div>
 {{end}}

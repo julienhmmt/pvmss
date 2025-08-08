@@ -19,24 +19,6 @@
 
           <form method="post" action="/login?lang={{.Lang}}">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            
-            <!-- Username Field -->
-            <div class="field">
-              <label class="label" for="username">
-                <span class="icon-text">
-                  <span class="icon">
-                    <i class="fas fa-user"></i>
-                  </span>
-                  <span>Username</span>
-                </span>
-              </label>
-              <div class="control has-icons-left">
-                <input class="input" type="text" id="username" name="username" value="admin" readonly required>
-                <span class="icon is-small is-left">
-                  <i class="fas fa-user"></i>
-                </span>
-              </div>
-            </div>
 
             <!-- Password Field -->
             <div class="field">

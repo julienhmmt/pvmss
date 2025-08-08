@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"os"
 
@@ -19,6 +20,13 @@ type AuthHandler struct{}
 // NewAuthHandler crée une nouvelle instance de AuthHandler
 func NewAuthHandler() *AuthHandler {
 	return &AuthHandler{}
+}
+
+// RegisterRoutes enregistre les routes d'authentification
+func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
+	router.GET("/login", h.LoginHandler)
+	router.POST("/login", h.LoginHandler)
+	router.POST("/logout", h.LogoutHandler)
 }
 
 // LoginHandler gère la page de connexion
@@ -87,11 +95,41 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	// Validate CSRF token
-	if !security.ValidateCSRFToken(r) {
-		log.Warn().Msg("CSRF token validation failed")
-		h.renderLoginForm(w, r, "Invalid session. Please try again.")
+	// Get session manager
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		log.Error().Msg("Session manager not available")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+
+	// For POST requests, validate CSRF token
+	if r.Method == http.MethodPost {
+		// Get CSRF token from form
+		csrfToken := r.FormValue("csrf_token")
+		if csrfToken == "" {
+			log.Warn().Msg("CSRF token is missing from form")
+			h.renderLoginForm(w, r, "Invalid request. Please try again.")
+			return
+		}
+
+		// Get CSRF token from session
+		sessionToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
+		if !ok || sessionToken == "" {
+			log.Warn().Msg("No CSRF token found in session")
+			h.renderLoginForm(w, r, "Session expired. Please try again.")
+			return
+		}
+
+		// Validate CSRF token
+		if subtle.ConstantTimeCompare([]byte(csrfToken), []byte(sessionToken)) != 1 {
+			log.Warn().
+				Str("expected_token", sessionToken).
+				Str("received_token", csrfToken).
+				Msg("CSRF token validation failed - tokens don't match")
+			h.renderLoginForm(w, r, "Invalid request. Please try again.")
+			return
+		}
 	}
 
 	// Get admin password hash from environment
@@ -118,8 +156,8 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify password
-	err := bcrypt.CompareHashAndPassword([]byte(adminHash), []byte(password))
-	if err != nil {
+	var err error
+	if err = bcrypt.CompareHashAndPassword([]byte(adminHash), []byte(password)); err != nil {
 		log.Info().Err(err).Msg("Login failed - incorrect password")
 		h.renderLoginForm(w, r, "Invalid credentials.")
 		return
@@ -127,13 +165,12 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Authentication successful, creating session")
 
-	// Get session manager
+	// Get session manager from state manager
 	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
+	sessionManager = stateManager.GetSessionManager()
 
 	// Create new session with fresh token
-	err = sessionManager.RenewToken(r.Context())
-	if err != nil {
+	if err = sessionManager.RenewToken(r.Context()); err != nil {
 		log.Error().Err(err).Msg("Failed to renew session token")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -144,13 +181,14 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	sessionManager.Put(r.Context(), "username", "admin")
 
 	// Generate new CSRF token for the session
-	csrfToken, err := security.GenerateCSRFToken()
+	var newCSRFToken string
+	newCSRFToken, err = security.GenerateCSRFToken()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to generate CSRF token")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	sessionManager.Put(r.Context(), "csrf_token", csrfToken)
+	sessionManager.Put(r.Context(), "csrf_token", newCSRFToken)
 
 	log.Info().
 		Str("session_id", sessionManager.Token(r.Context())).
@@ -162,30 +200,68 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		redirectURL = "/admin"
 	}
 
+	// Ensure the URL has a scheme
+	if len(redirectURL) > 0 && redirectURL[0] != '/' {
+		redirectURL = "/" + redirectURL
+	}
+
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
-// renderLoginForm affiche le formulaire de connexion
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	log := logger.Get().With().Str("remote_addr", r.RemoteAddr).Logger()
+	log := logger.Get().
+		With().
+		Str("handler", "AuthHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
 
-	data := map[string]interface{}{
-		"Error": errorMsg,
+	log.Debug().Msg("Rendering login form")
+
+	// Get session manager
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		log.Error().Msg("Session manager not available")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
-	// Ajouter les traductions
-	log.Debug().Msg("Localisation de la page de connexion")
+	// Get CSRF token from context (should be set by CSRFGeneratorMiddleware)
+	var csrfToken string
+	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok && token != "" {
+		csrfToken = token
+		log.Debug().Msg("Using CSRF token from request context")
+	} else {
+		// Fallback to session if not in context
+		if token, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && token != "" {
+			csrfToken = token
+			log.Debug().Msg("Using CSRF token from session")
+		} else {
+			// Generate a new CSRF token as last resort
+			var err error
+			csrfToken, err = security.GenerateCSRFToken()
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to generate CSRF token")
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			sessionManager.Put(r.Context(), "csrf_token", csrfToken)
+			log.Debug().Msg("Generated new CSRF token")
+		}
+	}
+
+	// Prepare template data with CSRF token
+	data := map[string]interface{}{
+		"Title":       "Login",
+		"Error":       errorMsg,
+		"CSRFToken":   csrfToken,
+		"RedirectURL": r.URL.Query().Get("redirect"),
+	}
+
+	// Add translations
 	i18n.LocalizePage(w, r, data)
 
-	data["Title"] = data["Auth.LoginTitle"]
-
-	log.Debug().Msg("Rendu du template de connexion")
+	log.Debug().Msg("Rendering login template")
 	renderTemplateInternal(w, r, "login", data)
-}
-
-// RegisterRoutes enregistre les routes d'authentification
-func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/login", h.LoginHandler)
-	router.POST("/login", h.LoginHandler)
-	router.GET("/logout", h.LogoutHandler)
 }

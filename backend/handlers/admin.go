@@ -55,64 +55,68 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 
 	// Get Proxmox client
 	client := state.GetGlobalState().GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client is not initialized")
-		http.Error(w, "Internal error: Unable to connect to Proxmox", http.StatusInternalServerError)
-		return
-	}
-
-	// Get list of nodes
-	// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
-	proxmoxClient, ok := client.(*proxmox.Client)
-	if !ok {
-		log.Error().Msg("Failed to convert client to *proxmox.Client")
-		http.Error(w, "Internal error: Invalid client type", http.StatusInternalServerError)
-		return
-	}
-
-	nodeNames, err := proxmox.GetNodeNames(proxmoxClient)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to retrieve Proxmox nodes")
-		http.Error(w, "Internal error: Unable to retrieve Proxmox nodes", http.StatusInternalServerError)
-		return
-	}
-
-	// Get details for each node
+	var proxmoxClient *proxmox.Client
+	var nodeNames []string
 	var nodeDetails []*proxmox.NodeDetails
-	for _, nodeName := range nodeNames {
-		nodeDetail, err := proxmox.GetNodeDetails(proxmoxClient, nodeName)
-		if err != nil {
-			log.Error().Err(err).Str("node", nodeName).Msg("Failed to retrieve node details")
-			continue
+
+	if client == nil {
+		// Offline mode: proceed without Proxmox
+		log.Warn().Msg("Proxmox client is not initialized; continuing in offline/read-only mode")
+	} else {
+		// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
+		pc, ok := client.(*proxmox.Client)
+		if !ok {
+			log.Error().Msg("Failed to convert client to *proxmox.Client; continuing without Proxmox data")
+		} else {
+			proxmoxClient = pc
+			// Attempt to get node names; on failure, continue gracefully
+			n, err := proxmox.GetNodeNames(proxmoxClient)
+			if err != nil {
+				log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes; continuing with empty node list")
+			} else {
+				nodeNames = n
+				// Get details for each node
+				for _, nodeName := range nodeNames {
+					nodeDetail, err := proxmox.GetNodeDetails(proxmoxClient, nodeName)
+					if err != nil {
+						log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve node details; skipping node")
+						continue
+					}
+					nodeDetails = append(nodeDetails, nodeDetail)
+				}
+			}
 		}
-		nodeDetails = append(nodeDetails, nodeDetail)
 	}
 
 	log.Debug().Msg("Admin page data loaded successfully")
 
 	// Get all VMBRs from all nodes
 	allVMBRs := make([]map[string]string, 0)
-	for _, node := range nodeNames {
-		vmbrs, err := proxmox.GetVMBRs(proxmoxClient, node)
-		if err != nil {
-			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node")
-			continue
-		}
+	if proxmoxClient != nil && len(nodeNames) > 0 {
+		for _, node := range nodeNames {
+			vmbrs, err := proxmox.GetVMBRs(proxmoxClient, node)
+			if err != nil {
+				log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node")
+				continue
+			}
 
-		for _, vmbr := range vmbrs {
-			if vmbr.Type == "bridge" {
-				allVMBRs = append(allVMBRs, map[string]string{
-					"node":        node,
-					"iface":       vmbr.Iface,
-					"type":        vmbr.Type,
-					"method":      vmbr.Method,
-					"address":     vmbr.Address,
-					"netmask":     vmbr.Netmask,
-					"gateway":     vmbr.Gateway,
-					"description": "", // VMBR struct doesn't have a description field
-				})
+			for _, vmbr := range vmbrs {
+				if vmbr.Type == "bridge" {
+					allVMBRs = append(allVMBRs, map[string]string{
+						"node":        node,
+						"iface":       vmbr.Iface,
+						"type":        vmbr.Type,
+						"method":      vmbr.Method,
+						"address":     vmbr.Address,
+						"netmask":     vmbr.Netmask,
+						"gateway":     vmbr.Gateway,
+						"description": "", // VMBR struct doesn't have a description field
+					})
+				}
 			}
 		}
+	} else {
+		log.Warn().Msg("Skipping VMBR retrieval due to missing Proxmox client or nodes")
 	}
 
 	// Get current settings to check which VMBRs are enabled

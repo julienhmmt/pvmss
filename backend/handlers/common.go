@@ -6,11 +6,9 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-
 	"pvmss/i18n"
 	"pvmss/logger"
-	customMiddleware "pvmss/middleware"
-	securityMw "pvmss/security/middleware"
+	"pvmss/security"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -82,7 +80,25 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 
 	log.Debug().Msg("Début du rendu interne du template")
 
+	// Initialize data map if nil
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	// Get CSRF token from session and add to template data
 	stateManager := state.GetGlobalState()
+	sessionManager := stateManager.GetSessionManager()
+	if sessionManager != nil {
+		if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
+			data["CSRFToken"] = csrfToken
+			log.Debug().Str("token", csrfToken).Msg("CSRF token added to template data")
+		} else {
+			log.Warn().Msg("No CSRF token found in session")
+		}
+	} else {
+		log.Error().Msg("Session manager not available")
+	}
+
 	tmpl := stateManager.GetTemplates()
 
 	if tmpl == nil {
@@ -101,7 +117,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 
 	// Récupérer les données de template du contexte si elles existent
-	if ctxData, ok := r.Context().Value(customMiddleware.TemplateDataKey).(map[string]interface{}); ok {
+	if ctxData, ok := r.Context().Value("templateData").(map[string]interface{}); ok {
 		log.Debug().Int("context_data_size", len(ctxData)).Msg("Données de contexte récupérées")
 		// Fusionner les données du contexte avec les données fournies (les données fournies ont la priorité)
 		for k, v := range ctxData {
@@ -119,13 +135,16 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		log.Debug().Msg("No authenticated user detected")
 	}
 
-	// Add CSRF token to template data
-	csrfToken := securityMw.GetCSRFToken(r)
-	if csrfToken != "" {
-		data["CSRFToken"] = csrfToken
-		log.Debug().Msg("CSRF token added to template data")
-	} else {
-		log.Warn().Msg("No CSRF token found in request context")
+	// Add/override CSRF token from request context if available (prefer context value set by middleware)
+	if v := r.Context().Value(security.CSRFTokenContextKey); v != nil {
+		if token, ok := v.(string); ok && token != "" {
+			data["CSRFToken"] = token
+
+			log.Debug().Msg("CSRF token added to template data from request context")
+		} else {
+			// Do not warn here; absence or non-string is acceptable on static/safe routes
+			log.Debug().Msg("No valid CSRF token in request context (expected for some routes)")
+		}
 	}
 
 	// Add i18n data and common variables

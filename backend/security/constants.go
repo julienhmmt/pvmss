@@ -8,11 +8,11 @@ import (
 // It's a good practice for context keys.
 type contextKey string
 
+// CSRFTokenContextKey is the key used to store the CSRF token in the request context.
+const CSRFTokenContextKey = contextKey("csrf_token")
+
 // Constants for security settings
 const (
 	// CSRFTokenTTL is the lifetime of CSRF tokens (default 30 minutes).
 	CSRFTokenTTL = 30 * time.Minute
-
-	// CSRFTokenContextKey is the key used to store the CSRF token in the request context.
-	CSRFTokenContextKey = contextKey("csrf_token")
 )

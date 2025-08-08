@@ -11,11 +11,6 @@ import (
 	"pvmss/logger"
 )
 
-// SessionManager wraps scs.SessionManager to provide additional methods
-type SessionManager struct {
-	*scs.SessionManager
-}
-
 // InitSecurity initializes all security components and returns a session manager
 func InitSecurity() (*SessionManager, error) {
 	logger := logger.Get()
@@ -28,23 +23,24 @@ func InitSecurity() (*SessionManager, error) {
 	}
 
 	// Initialize session manager with enhanced configuration
-	sessionManager := scs.New()
-	sessionManager.Store = memstore.New()
-	sessionManager.Lifetime = 24 * time.Hour
-	sessionManager.Cookie = scs.SessionCookie{
+	scsm := scs.New()
+	scsm.Store = memstore.New()
+	scsm.Lifetime = 24 * time.Hour
+	scsm.Cookie = scs.SessionCookie{
 		Name:     "pvmss_session",
 		HttpOnly: true,
-		Secure:   os.Getenv("ENV") == "production",
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
 	}
-	sessionManager.IdleTimeout = 30 * time.Minute
+	scsm.IdleTimeout = 30 * time.Minute
 	// Ensure session is persisted even across browser sessions
-	sessionManager.Cookie.Persist = true
+	scsm.Cookie.Persist = true
+
+	// Create our custom session manager
+	sessionManager := NewSessionManager(scsm)
 
 	logger.Info().Msg("Security components initialized successfully")
 
-	return &SessionManager{
-		SessionManager: sessionManager,
-	}, nil
+	return sessionManager, nil
 }

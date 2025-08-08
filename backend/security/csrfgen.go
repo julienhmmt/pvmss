@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"net/http"
+	"strings"
 
 	"pvmss/logger"
 )
@@ -74,8 +75,11 @@ func ValidateCSRFToken(r *http.Request) bool {
 // CSRFGeneratorMiddleware generates CSRF tokens for GET requests
 func CSRFGeneratorMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip CSRF for health endpoints and non-GET requests
-		if r.URL.Path == "/health" || r.URL.Path == "/api/health" || r.Method != http.MethodGet {
+		// Skip CSRF for health endpoints, API endpoints, and non-GET requests
+		if r.URL.Path == "/health" || r.URL.Path == "/api/health" ||
+			r.URL.Path == "/api/healthz" ||
+			strings.HasPrefix(r.URL.Path, "/api/") ||
+			r.Method != http.MethodGet {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -85,54 +89,61 @@ func CSRFGeneratorMiddleware(next http.Handler) http.Handler {
 			Str("path", r.URL.Path).
 			Logger()
 
-		// Get the session manager from the request context
+		// Get the session manager (may not have data loaded yet for some routes)
 		sessionManager := GetSession(r)
-		if sessionManager == nil {
-			log.Error().Msg("Session manager not available in CSRF generator")
-			next.ServeHTTP(w, r)
-			return
+
+		// Helper: safe session get to avoid panics when no session data in context
+		safeGet := func() (string, bool) {
+			if sessionManager == nil {
+				return "", false
+			}
+			defer func() {
+				if rec := recover(); rec != nil {
+					// scs panicked due to missing session data in context
+					log.Debug().Interface("recover", rec).Msg("CSRFGenerator: session Get panicked; treating as no token")
+				}
+			}()
+			if v, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && v != "" {
+				return v, true
+			}
+			return "", false
 		}
 
-		// Check for existing session
-		sessionToken, err := r.Cookie(sessionManager.Cookie.Name)
-		if err != nil || sessionToken == nil || sessionToken.Value == "" {
-			// No active session, skip CSRF token generation
-			log.Debug().Msg("No active session, skipping CSRF token generation")
-			next.ServeHTTP(w, r)
-			return
+		// Helper: safe session put to avoid panics when no session data in context
+		safePut := func(token string) {
+			if sessionManager == nil {
+				return
+			}
+			defer func() {
+				if rec := recover(); rec != nil {
+					log.Debug().Interface("recover", rec).Msg("CSRFGenerator: session Put panicked; skipping persist")
+				}
+			}()
+			sessionManager.Put(r.Context(), "csrf_token", token)
 		}
 
-		// Ensure we have a valid session ID
-		_, err = sessionManager.Load(r.Context(), sessionToken.Value)
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to load session")
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+		// Reuse existing token if safely retrievable; else generate
+		var csrfToken string
+		if existing, ok := safeGet(); ok {
+			csrfToken = existing
+			log.Debug().Msg("CSRF token found in session; reusing")
+		} else {
+			newToken, err := GenerateCSRFToken()
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to generate CSRF token")
+				next.ServeHTTP(w, r)
+				return
+			}
+			csrfToken = newToken
+			// Try to persist in session if available (safe against panic)
+			safePut(csrfToken)
+			log.Debug().Msg("CSRF token generated; persisted to session if available")
 		}
-
-		// Generate a new CSRF token
-		csrfToken, err := GenerateCSRFToken()
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to generate CSRF token")
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Store the CSRF token in the session
-		err = sessionManager.RenewToken(r.Context())
-		if err != nil {
-			log.Error().Err(err).Msg("Failed to renew session token")
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		sessionManager.Put(r.Context(), "csrf_token", csrfToken)
 
 		// Add the token to the request context
 		ctx := context.WithValue(r.Context(), CSRFTokenContextKey, csrfToken)
 		r = r.WithContext(ctx)
 
-		log.Debug().Msg("CSRF token generated and stored in session")
 		next.ServeHTTP(w, r)
 	})
 }

@@ -75,12 +75,6 @@
     </footer>
 
     <script>
-        // Fonction utilitaire pour récupérer le jeton CSRF
-        function getCSRFToken() {
-            return document.querySelector('meta[name="csrf-token"]')?.content || 
-                   document.querySelector('input[name="csrf_token"]')?.value || '';
-        }
-
         // Gestion du menu burger
         document.addEventListener('DOMContentLoaded', function() {
             const burger = document.querySelector('.navbar-burger');
@@ -92,14 +86,6 @@
                     menu.classList.toggle('is-active');
                 });
             }
-
-            // Ajouter le jeton CSRF à toutes les requêtes AJAX par défaut
-            document.addEventListener('htmx:configRequest', function(event) {
-                const csrfToken = getCSRFToken();
-                if (csrfToken && !event.detail.headers['X-CSRF-Token']) {
-                    event.detail.headers['X-CSRF-Token'] = csrfToken;
-                }
-            });
         });
     </script>
 </body>

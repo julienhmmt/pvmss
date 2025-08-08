@@ -1,41 +1,97 @@
 package middleware
 
 import (
+	"crypto/subtle"
 	"net/http"
+	"strings"
+
 	"pvmss/logger"
-	"pvmss/security"
 )
 
-// contextKey is used to create context keys that are safe from collisions.
+// contextKey is a custom type for context keys
 type contextKey string
 
-// CSRFTokenContextKey is the key used to store the CSRF token in the request context.
-const CSRFTokenContextKey contextKey = "csrf_token"
+// String implements the Stringer interface
+func (c contextKey) String() string {
+	return "context_key_" + string(c)
+}
+
+// CSRFContextKey is the key used to store CSRF token in context
+var CSRFContextKey = contextKey("csrf_token")
+
+// CompareTokens performs a constant time comparison of two tokens
+// to prevent timing attacks.
+func CompareTokens(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
+// GetCSRFToken retrieves the CSRF token from the request context.
+// It returns an empty string if the token is not found.
+func GetCSRFToken(r *http.Request) string {
+	if token, ok := r.Context().Value(CSRFContextKey).(string); ok {
+		return token
+	}
+	return ""
+}
 
 // CSRF provides CSRF protection
 func CSRF(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := logger.Get().With().
-			Str("middleware", "CSRF").
+			Str("middleware", "security.CSRFValidation").
 			Str("method", r.Method).
 			Str("path", r.URL.Path).
-			Str("remote_addr", r.RemoteAddr).
-			Str("user_agent", r.UserAgent()).
 			Logger()
 
-		// Skip CSRF checks for safe methods and health endpoints
+		// Centralized skip logic
 		if shouldSkipCSRF(r) {
-			log.Debug().Msg("Skipping CSRF validation for safe method or health check")
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		// Log CSRF token validation attempt
-		log.Debug().Msg("Validating CSRF token")
+		// Retrieve session manager from context (may be present without data)
+		sessionManager := GetSessionManagerFromContext(r.Context())
 
-		if !security.ValidateCSRFToken(r) {
-			log.Warn().Msg("CSRF token validation failed")
-			http.Error(w, "Invalid CSRF Token: request rejected for security reasons", http.StatusForbidden)
+		// Extract token from request (header or form)
+		token := r.Header.Get("X-CSRF-Token")
+		if token == "" {
+			token = r.FormValue("csrf_token")
+		}
+
+		if token == "" {
+			// This is an unsafe request and token is missing
+			log.Warn().Msg("Missing CSRF token in request (unsafe method)")
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		// Helper: safely read token from session without panicking if no session data
+		safeGet := func() (string, bool) {
+			if sessionManager == nil {
+				return "", false
+			}
+			defer func() {
+				if rec := recover(); rec != nil {
+					log.Debug().Interface("recover", rec).Msg("CSRFValidation: session Get panicked; treating as missing token")
+				}
+			}()
+			if v, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && v != "" {
+				return v, true
+			}
+			return "", false
+		}
+
+		sessionToken, ok := safeGet()
+		if !ok {
+			log.Warn().Msg("Missing CSRF token in session during validation")
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		// Validate
+		if !CompareTokens(token, sessionToken) {
+			log.Warn().Msg("Invalid CSRF token")
+			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
@@ -47,7 +103,7 @@ func CSRF(next http.Handler) http.Handler {
 // shouldSkipCSRF determines if CSRF validation should be skipped for the request
 func shouldSkipCSRF(r *http.Request) bool {
 	// Skip health checks
-	if r.URL.Path == "/health" || r.URL.Path == "/api/health" {
+	if r.URL.Path == "/health" || r.URL.Path == "/api/health" || r.URL.Path == "/api/healthz" {
 		return true
 	}
 
@@ -60,15 +116,17 @@ func shouldSkipCSRF(r *http.Request) bool {
 	}
 
 	// Check if the current method is in the safe methods list
-	_, isSafe := safeMethods[r.Method]
-	return isSafe
-}
-
-// GetCSRFToken retrieves the CSRF token from the request context.
-// It returns an empty string if the token is not found.
-func GetCSRFToken(r *http.Request) string {
-	if token, ok := r.Context().Value(CSRFTokenContextKey).(string); ok {
-		return token
+	if _, isSafe := safeMethods[r.Method]; isSafe {
+		return true
 	}
-	return ""
+
+	// Static asset paths — no CSRF needed
+	if strings.HasPrefix(r.URL.Path, "/css/") ||
+		strings.HasPrefix(r.URL.Path, "/js/") ||
+		strings.HasPrefix(r.URL.Path, "/webfonts/") ||
+		r.URL.Path == "/favicon.ico" {
+		return true
+	}
+
+	return false
 }
