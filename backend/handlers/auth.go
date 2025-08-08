@@ -57,14 +57,8 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	// Get username from session before destroying it
 	stateManager := state.GetGlobalState()
 	sessionManager := stateManager.GetSessionManager()
-	username, _ := sessionManager.Get(r.Context(), "username").(string)
-
-	if username != "" {
-		log = log.With().Str("username", username).Logger()
-	}
 
 	log.Info().Msg("User logging out")
 
@@ -178,7 +172,6 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// Store authentication data in session
 	sessionManager.Put(r.Context(), "authenticated", true)
-	sessionManager.Put(r.Context(), "username", "admin")
 
 	// Generate new CSRF token for the session
 	var newCSRFToken string

@@ -56,31 +56,33 @@ func InitHandlers() http.Handler {
 	if sessionManager == nil {
 		log.Warn().Msg("Session manager is not available, running with limited functionality")
 	} else {
-		// 1. Session middleware (MUST be the first middleware that touches the request)
-		handler = sessionManager.LoadAndSave(handler)
-		log.Info().Msgf("Session middleware enabled with session manager: %p", sessionManager)
-
-		// 2. Add our custom session middleware to ensure session manager is in context
+		// Add our custom session middleware to ensure session manager is in context
 		handler = securityMiddleware.SessionMiddleware(handler)
 
-		// 3. Debug middleware (after session middleware to have access to session)
+		// Debug middleware (after session manager injection)
 		handler = sessionDebugMiddleware(handler)
 
-		// 4. CSRF token generation middleware (must be after session middleware)
+		// CSRF token generation middleware (needs session data; will run inside LoadAndSave)
 		handler = security.CSRFGeneratorMiddleware(handler)
 
-		// 5. Add CSRF token to context for templates
+		// Add CSRF token to context for templates
 		handler = middleware.CSRFMiddleware(handler)
 	}
 
-	// 6. Security headers middleware
+	// Security headers middleware
 	handler = securityMiddleware.Headers(handler)
 
-	// 7. CSRF validation middleware (must be after token generation and headers)
+	// CSRF validation middleware (must be after token generation and headers)
 	handler = securityMiddleware.CSRF(handler)
 
-	// 8. Proxmox status middleware (after CSRF validation)
+	// Proxmox status middleware (after CSRF validation)
 	handler = middleware.ProxmoxStatusMiddleware(handler)
+
+	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context
+	if sessionManager != nil {
+		handler = sessionManager.LoadAndSave(handler)
+		log.Info().Msgf("Session middleware enabled with session manager: %p", sessionManager)
+	}
 
 	log.Info().Msg("HTTP handlers and middleware initialized")
 	return handler
