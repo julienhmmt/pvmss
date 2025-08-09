@@ -62,18 +62,22 @@ func InitHandlers() http.Handler {
 		// Debug middleware (after session manager injection)
 		handler = sessionDebugMiddleware(handler)
 
+		// IMPORTANT: Order matters. We want CSRF validation to run AFTER token generation.
+		// Because wrappers are applied inside-out, we add CSRF validation first (inner),
+		// then headers, CSRFMiddleware, and finally the CSRF token generator (outer).
+		// This results in the runtime order: CSRFGenerator -> CSRFMiddleware -> Headers -> CSRFValidation.
+		// CSRF validation middleware (must be after token generation at runtime)
+		handler = securityMiddleware.CSRF(handler)
+
+		// Security headers middleware
+		handler = securityMiddleware.Headers(handler)
+
+		// Add CSRF token from context to response for templates
+		handler = middleware.CSRFMiddleware(handler)
+
 		// CSRF token generation middleware (needs session data; will run inside LoadAndSave)
 		handler = security.CSRFGeneratorMiddleware(handler)
-
-		// Add CSRF token to context for templates
-		handler = middleware.CSRFMiddleware(handler)
 	}
-
-	// Security headers middleware
-	handler = securityMiddleware.Headers(handler)
-
-	// CSRF validation middleware (must be after token generation and headers)
-	handler = securityMiddleware.CSRF(handler)
 
 	// Proxmox status middleware (after CSRF validation)
 	handler = middleware.ProxmoxStatusMiddleware(handler)

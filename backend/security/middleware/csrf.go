@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"pvmss/logger"
+	"pvmss/security"
 )
 
 // contextKey is a custom type for context keys
@@ -49,8 +50,9 @@ func CSRF(next http.Handler) http.Handler {
 			return
 		}
 
-		// Retrieve session manager from context (may be present without data)
-		sessionManager := GetSessionManagerFromContext(r.Context())
+		// Retrieve session manager. Use security.GetSession so validation works
+		// even if SessionMiddleware hasn't injected the manager into context yet.
+		sessionManager := security.GetSession(r)
 
 		// Extract token from request (header or form)
 		token := r.Header.Get("X-CSRF-Token")

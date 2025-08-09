@@ -226,14 +226,6 @@ func IsAuthenticated(r *http.Request) bool {
 		return false
 	}
 
-	// Additional security check for username
-	username, ok := sessionManager.Get(r.Context(), "username").(string)
-	if !ok || username == "" {
-		log.Warn().
-			Msg("Corrupted session: missing username")
-		return false
-	}
-
 	// Verify CSRF token for state-changing requests
 	if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete || r.Method == http.MethodPatch {
 		csrfToken := r.Header.Get("X-CSRF-Token")
@@ -253,7 +245,7 @@ func IsAuthenticated(r *http.Request) bool {
 	}
 
 	log.Debug().
-		Str("username", username).
+		Bool("authenticated", true).
 		Str("session_id", sessionManager.Token(r.Context())).
 		Msg("Access granted: user authenticated")
 

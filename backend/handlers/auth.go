@@ -188,7 +188,11 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Msg("User logged in successfully")
 
 	// Redirect to admin page or return URL
-	redirectURL := r.URL.Query().Get("redirect")
+	// Prefer 'return' (used by protected routes), fallback to 'redirect'
+	redirectURL := r.URL.Query().Get("return")
+	if redirectURL == "" {
+		redirectURL = r.URL.Query().Get("redirect")
+	}
 	if redirectURL == "" {
 		redirectURL = "/admin"
 	}
