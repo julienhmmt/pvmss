@@ -43,11 +43,6 @@ func SetSettings(settings *AppSettings) error {
 	return GetGlobalState().SetSettings(settings)
 }
 
-// GetAdminPassword returns the admin password hash from the global state
-func GetAdminPassword() string {
-	return GetGlobalState().GetAdminPassword()
-}
-
 // GetTags returns the list of available tags from the global state
 func GetTags() []string {
 	return GetGlobalState().GetTags()

@@ -12,6 +12,7 @@
     "vmbrs": [
         "vmbr0"
     ],
+    "storages": null,
     "limits": {
         "nodes": {
             "miniquarium": {

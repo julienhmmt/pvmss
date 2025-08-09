@@ -211,16 +211,6 @@ func SaveSettings(settings *AppSettings) error {
 	return WriteSettings(settings)
 }
 
-// GetAdminPassword returns the admin password hash
-func (s *appState) GetAdminPassword() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.settings == nil {
-		return ""
-	}
-	return s.settings.AdminPassword
-}
-
 // GetTags returns the list of available tags
 func (s *appState) GetTags() []string {
 	s.mu.RLock()

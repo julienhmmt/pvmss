@@ -10,8 +10,6 @@ type MinMax struct {
 // This struct is used to unmarshal the settings.json file
 // and make the configuration available throughout the application
 type AppSettings struct {
-	// AdminPassword is the bcrypt hashed password for admin access
-	AdminPassword string                 `json:"admin_password"`
 	Tags          []string               `json:"tags"`
 	ISOs          []string               `json:"isos"`
 	VMBRs         []string               `json:"vmbrs"`

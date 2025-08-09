@@ -52,7 +52,7 @@ func TestStoragePageHandler(t *testing.T) {
 
 	// Create mock settings
 	mockSettings := &state.AppSettings{
-		EnabledStorages: []string{"local"}, // Only local storage enabled
+		Storages: []string{"local"}, // Only local storage enabled
 	}
 
 	// Set the mock settings in the mock state manager
@@ -107,7 +107,7 @@ func TestUpdateStorageHandler(t *testing.T) {
 
 	// Create mock settings
 	mockSettings := &state.AppSettings{
-		EnabledStorages: []string{"local", "nfs"}, // Both storages enabled
+		Storages: []string{"local", "nfs"}, // Both storages enabled
 	}
 
 	// Set the mock settings in the mock state manager

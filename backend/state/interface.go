@@ -31,7 +31,6 @@ type StateManager interface {
 	GetSettings() *AppSettings
 	SetSettings(settings *AppSettings) error
 	SetSettingsWithoutSave(settings *AppSettings)
-	GetAdminPassword() string
 	GetTags() []string
 	GetISOs() []string
 	GetVMBRs() []string

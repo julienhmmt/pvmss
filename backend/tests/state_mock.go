@@ -42,10 +42,8 @@ func NewMockStateManager() *MockStateManager {
 		settings: &MockAppSettings{
 			Tags:            []string{},
 			ISOs:            []string{},
-			EnabledISOs:     []string{},
 			VMBRs:           []string{},
-			EnabledVMBRs:    []string{},
-			EnabledStorages: []string{},
+			Storages:		 []string{},
 			Limits:          make(map[string]interface{}),
 		},
 		csrfTokens:    make(map[string]time.Time),
@@ -135,13 +133,10 @@ func (s *MockStateManager) GetSettings() *state.AppSettings {
 		return nil
 	}
 	return &state.AppSettings{
-		AdminPassword:   mockSettings.AdminPassword,
 		Tags:            mockSettings.Tags,
 		ISOs:            mockSettings.ISOs,
-		EnabledISOs:     mockSettings.EnabledISOs,
 		VMBRs:           mockSettings.VMBRs,
-		EnabledVMBRs:    mockSettings.EnabledVMBRs,
-		EnabledStorages: mockSettings.EnabledStorages,
+		Storages:		 mockSettings.Storages,
 		Limits:          mockSettings.Limits,
 	}
 }
@@ -154,13 +149,10 @@ func (s *MockStateManager) SetSettings(settings *state.AppSettings) error {
 	s.mu.Lock()
 	// Convert state.AppSettings to MockAppSettings
 	s.settings = &MockAppSettings{
-		AdminPassword:   settings.AdminPassword,
 		Tags:            settings.Tags,
 		ISOs:            settings.ISOs,
-		EnabledISOs:     settings.EnabledISOs,
 		VMBRs:           settings.VMBRs,
-		EnabledVMBRs:    settings.EnabledVMBRs,
-		EnabledStorages: settings.EnabledStorages,
+		Storages:		 settings.Storages,
 		Limits:          settings.Limits,
 	}
 	s.mu.Unlock()
@@ -175,26 +167,13 @@ func (s *MockStateManager) SetSettingsWithoutSave(settings *state.AppSettings) {
 	s.mu.Lock()
 	// Convert state.AppSettings to MockAppSettings
 	s.settings = &MockAppSettings{
-		AdminPassword:   settings.AdminPassword,
 		Tags:            settings.Tags,
 		ISOs:            settings.ISOs,
-		EnabledISOs:     settings.EnabledISOs,
 		VMBRs:           settings.VMBRs,
-		EnabledVMBRs:    settings.EnabledVMBRs,
-		EnabledStorages: settings.EnabledStorages,
+		Storages:		 settings.Storages,
 		Limits:          settings.Limits,
 	}
 	s.mu.Unlock()
-}
-
-// GetAdminPassword returns the admin password hash
-func (s *MockStateManager) GetAdminPassword() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.settings == nil {
-		return ""
-	}
-	return s.settings.AdminPassword
 }
 
 // GetTags returns the list of available tags
