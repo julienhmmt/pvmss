@@ -31,11 +31,11 @@
                         </span>
                     </div>
                     <div class="level-item status-text">
-                        <strong>{{index .t "Proxmox.ConnectionError"}}:</strong> 
+                        <strong>{{index .t "Proxmox.ConnectionError"}} : </strong> 
                         {{if .ProxmoxError}}
                             {{.ProxmoxError}}
                         {{else}}
-                            {{index .t "Proxmox.ConnectionErrorDefault"}}
+                            {{index .t "Proxmox.NotConnected"}} {{index .t "Proxmox.Proxmox.NotConnectedMessage"}}
                         {{end}}
                     </div>
                 </div>

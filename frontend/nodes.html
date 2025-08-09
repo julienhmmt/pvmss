@@ -1,17 +1,15 @@
 {{define "nodes"}}
 <div class="container">
-    <h2 class="title is-4">{{index .t "Admin.Nodes.Title"}}</h2>
+    <h2 class="title is-4">{{index .t "Nodes.Title"}}</h2>
 
     {{if not .ProxmoxConnected}}
     <div class="notification is-warning">
         <span class="icon-text">
             <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
-            <span>{{index .t "Admin.Nodes.OfflineNotice"}}</span>
+            <span>{{index .t "Proxmox.NotConnected"}} {{index .t "Proxmox.CheckConnection"}}</span>
         </span>
     </div>
-    {{end}}
-
-    {{if .Error}}
+    {{else if .Error}}
         <div class="notification is-danger">
             {{.Error}}
         </div>
@@ -19,11 +17,11 @@
         <table class="table is-striped is-fullwidth">
             <thead>
                 <tr>
-                    <th>{{index .t "Admin.Nodes.Header.Node"}}</th>
-                    <th>{{index .t "Admin.Nodes.Header.Status"}}</th>
-                    <th>{{index .t "Admin.Nodes.Header.CPUUsage"}}</th>
-                    <th>{{index .t "Admin.Nodes.Header.MemoryUsage"}}</th>
-                    <th>{{index .t "Admin.Nodes.Header.DiskUsage"}}</th>
+                    <th>{{index .t "Nodes.Header.Node"}}</th>
+                    <th>{{index .t "Nodes.Header.Status"}}</th>
+                    <th>{{index .t "Nodes.Header.CPUUsage"}}</th>
+                    <th>{{index .t "Nodes.Header.MemoryUsage"}}</th>
+                    <th>{{index .t "Nodes.Header.DiskUsage"}}</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,9 +30,9 @@
                     <td>{{.Node}}</td>
                     <td>
                         {{if $.ProxmoxConnected}}
-                          <span class="tag is-success">{{index $.t "Admin.Nodes.StatusOnline"}}</span>
+                          <span class="tag is-success">{{index $.t "Nodes.StatusOnline"}}</span>
                         {{else}}
-                          <span class="tag is-danger">{{index $.t "Admin.Nodes.StatusOffline"}}</span>
+                          <span class="tag is-danger">{{index $.t "Nodes.StatusOffline"}}</span>
                         {{end}}
                     </td>
                     <td>
@@ -58,11 +56,7 @@
         </table>
     {{else}}
         <div class="notification">
-            {{if .ProxmoxConnected}}
-              {{index .t "Admin.Nodes.NoNodes"}}
-            {{else}}
-              {{index .t "Admin.Nodes.Unavailable"}}
-            {{end}}
+            {{index .t "Search.NoResults"}}
         </div>
     {{end}}
 </div>

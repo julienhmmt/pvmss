@@ -39,13 +39,13 @@ other = "Error"
 
 # Proxmox
 ["Proxmox.ConnectionError"]
-other = "Proxmox Connection Error"
+other = "Connection error"
 ["Proxmox.NotConnected"]
-other = "Proxmox server is not connected"
+other = "Proxmox host is down or not connected"
 ["Proxmox.NotConnectedMessage"]
-other = "Cannot create VM: Proxmox server is not connected."
+other = "Cannot create VM: Proxmox host is not connected."
 ["Proxmox.CheckConnection"]
-other = "Please check the Proxmox server connection and try again."
+other = "Please check the Proxmox host connection and try again."
 ["Common.Home"]
 other = "Home"
 ["Common.ID"]

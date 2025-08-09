@@ -229,6 +229,11 @@ func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interf
 	t["Message.SavedSuccessfully"] = Localize(localizer, "Message.SavedSuccessfully")
 	t["Message.UpdatedSuccessfully"] = Localize(localizer, "Message.UpdatedSuccessfully")
 
+	// Proxmox
+	t["Proxmox.ConnectionError"] = Localize(localizer, "Proxmox.ConnectionError")
+	t["Proxmox.NotConnected"] = Localize(localizer, "Proxmox.NotConnected")
+	t["Proxmox.NotConnectedMessage"] = Localize(localizer, "Proxmox.NotConnectedMessage")
+
 	// Status
 	t["Status.Active"] = Localize(localizer, "Status.Active")
 	t["Status.Connected"] = Localize(localizer, "Status.Connected")

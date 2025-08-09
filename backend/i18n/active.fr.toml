@@ -39,9 +39,9 @@ other = "Erreur"
 
 # Proxmox
 ["Proxmox.ConnectionError"]
-other = "Erreur de connexion Proxmox"
+other = "Erreur de connexion au serveur Proxmox"
 ["Proxmox.NotConnected"]
-other = "Le serveur Proxmox n'est pas connecté"
+other = "Le serveur Proxmox est éteint ou n'est pas connecté"
 ["Proxmox.NotConnectedMessage"]
 other = "Impossible de créer une VM : le serveur Proxmox n'est pas connecté."
 ["Proxmox.CheckConnection"]
@@ -141,7 +141,7 @@ other = "Non Autorisé"
 ["Navbar.Admin"]
 other = "Administration"
 ["Navbar.AdminDocs"]
-other = "Docs Admin"
+other = "Documentation administrateur"
 ["Navbar.CreateVM"]
 other = "Créer une VM"
 ["Navbar.Documentation"]

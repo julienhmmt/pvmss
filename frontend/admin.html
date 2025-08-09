@@ -4,16 +4,6 @@
     <h1 class="title">{{index .t "Navbar.Admin"}}</h1>
     <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{index .t "Navbar.AdminDocs"}}</a>
 
-    {{/* Offline/read-only banner when Proxmox is down */}}
-    {{if not .ProxmoxConnected}}
-    <div class="notification is-warning">
-      <p><strong>{{index .t "Common.Warning"}}:</strong> {{index .t "Admin.OfflineMode"}}</p>
-      {{if .ProxmoxError}}
-        <p class="is-size-7 has-text-grey">{{.ProxmoxError}}</p>
-      {{end}}
-    </div>
-    {{end}}
-
     {{template "nodes" .}}
     {{template "tags" .}}
     {{template "storage" .}}
