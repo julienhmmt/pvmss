@@ -5,7 +5,6 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"pvmss/logger"
-	"pvmss/state"
 )
 
 // GetSession retrieves the session from the request context
@@ -24,18 +23,7 @@ func GetSession(r *http.Request) *scs.SessionManager {
 		return sessionManager
 	}
 
-	// Fall back to global state
-	stateManager := state.GetGlobalState()
-	if stateManager == nil {
-		log.Debug().Msg("Global state manager is nil in GetSession")
-		return nil
-	}
-
-	sessionManager := stateManager.GetSessionManager()
-	if sessionManager == nil {
-		log.Debug().Msg("Session manager is nil in GetSession")
-		return nil
-	}
-
-	return sessionManager
+	// No global fallback: if not present in context, consider no session available
+	log.Debug().Msg("Session manager not found in request context in GetSession")
+	return nil
 }

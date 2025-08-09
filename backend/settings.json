@@ -2,7 +2,8 @@
     "tags": [
         "pvmss",
         "test",
-        "test2"
+        "test2",
+        "test3"
     ],
     "isos": [
         "local:iso/archlinux-2025.02.01-x86_64.iso",
@@ -12,7 +13,8 @@
     "vmbrs": [
         "vmbr0"
     ],
-    "storages": null,
+    "storages": [],
+    "enabled_storages": [],
     "limits": {
         "nodes": {
             "miniquarium": {

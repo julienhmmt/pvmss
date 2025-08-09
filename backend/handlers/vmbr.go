@@ -11,11 +11,13 @@ import (
 )
 
 // VMBRHandler handles VMBR-related operations.
-type VMBRHandler struct{}
+type VMBRHandler struct {
+	stateManager state.StateManager
+}
 
 // NewVMBRHandler creates a new instance of VMBRHandler.
-func NewVMBRHandler() *VMBRHandler {
-	return &VMBRHandler{}
+func NewVMBRHandler(sm state.StateManager) *VMBRHandler {
+	return &VMBRHandler{stateManager: sm}
 }
 
 // VMBRPageHandler renders the VMBR management page.
@@ -23,7 +25,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	log := logger.Get().With().Str("handler", "VMBRPageHandler").Logger()
 
 	// Get the global state
-	gs := state.GetGlobalState()
+	gs := h.stateManager
 	client := gs.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
@@ -88,11 +90,11 @@ func (h *VMBRHandler) UpdateVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	enabledVMBRs := r.Form["enabled_vmbrs"]
 
 	// Update settings
-	gs := state.GetGlobalState()
+	gs := h.stateManager
 	settings := gs.GetSettings()
 	settings.VMBRs = enabledVMBRs
 
-	if err := state.WriteSettings(settings); err != nil {
+	if err := gs.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to update settings")
 		http.Error(w, "Failed to update settings", http.StatusInternalServerError)
 		return

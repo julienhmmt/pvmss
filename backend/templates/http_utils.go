@@ -5,17 +5,11 @@ import (
 	"html/template"
 	"net/http"
 	"pvmss/security"
-	"pvmss/state"
 )
 
 // csrfToken generates a CSRF token input field for forms
 func csrfToken(r *http.Request) template.HTML {
-	stateManager := state.GetGlobalState()
-	if stateManager == nil {
-		return ""
-	}
-
-	sessionManager := stateManager.GetSessionManager()
+	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
 		return ""
 	}
@@ -35,12 +29,7 @@ func csrfToken(r *http.Request) template.HTML {
 
 // csrfMeta generates a CSRF meta tag for JavaScript
 func csrfMeta(r *http.Request) template.HTML {
-	stateManager := state.GetGlobalState()
-	if stateManager == nil {
-		return ""
-	}
-
-	sessionManager := stateManager.GetSessionManager()
+	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
 		return ""
 	}

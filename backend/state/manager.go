@@ -131,11 +131,15 @@ func (s *appState) CheckProxmoxConnection() bool {
 	}
 
 	// Try to get node names as a simple connection test
-	nodes, err := proxmox.GetNodeNamesWithContext(context.Background(), client)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
 	if err != nil || len(nodes) == 0 {
 		errMsg := "Failed to connect to Proxmox"
 		if err != nil {
 			errMsg = fmt.Sprintf("%s: %v", errMsg, err)
+		} else if len(nodes) == 0 {
+			errMsg = fmt.Sprintf("%s: no nodes returned", errMsg)
 		}
 		s.updateProxmoxStatus(false, errMsg)
 		return false
@@ -196,7 +200,7 @@ func (s *appState) SetSettings(settings *AppSettings) error {
 	s.settings = settings
 	s.mu.Unlock()
 
-	// Sauvegarder les paramètres dans le fichier
+	// Save the settings to the settings file
 	if err := WriteSettings(settings); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to save settings to file")
 		return fmt.Errorf("failed to save settings: %w", err)
@@ -251,6 +255,16 @@ func (s *appState) GetLimits() map[string]interface{} {
 	return s.settings.Limits
 }
 
+// GetStorages returns the list of available storages
+func (s *appState) GetStorages() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.settings == nil || s.settings.Storages == nil {
+		return []string{}
+	}
+	return s.settings.Storages
+}
+
 // Security Methods
 // AddCSRFToken adds a new CSRF token with an expiry time
 func (s *appState) AddCSRFToken(token string, expiry time.Time) error {
@@ -261,13 +275,12 @@ func (s *appState) AddCSRFToken(token string, expiry time.Time) error {
 
 	log := logger.Get().With().
 		Str("function", "AddCSRFToken").
-		Str("token", token).
 		Time("expiry", expiry).
 		Logger()
 
 	log.Debug().
 		Int("total_tokens", len(s.csrfTokens)).
-		Msg("Nouveau jeton CSRF ajouté")
+		Msg("New CSRF token added")
 
 	return nil
 }
@@ -276,7 +289,6 @@ func (s *appState) AddCSRFToken(token string, expiry time.Time) error {
 func (s *appState) ValidateAndRemoveCSRFToken(token string) bool {
 	log := logger.Get().With().
 		Str("function", "ValidateAndRemoveCSRFToken").
-		Str("token", token).
 		Logger()
 
 	s.securityMu.Lock()
@@ -284,12 +296,12 @@ func (s *appState) ValidateAndRemoveCSRFToken(token string) bool {
 
 	log.Debug().
 		Int("total_tokens_before", len(s.csrfTokens)).
-		Msg("Début de la validation du jeton CSRF")
+		Msg("Starting CSRF token validation")
 
 	expiry, exists := s.csrfTokens[token]
 	if !exists {
 		log.Warn().
-			Msg("Jeton CSRF non trouvé")
+			Msg("CSRF token not found")
 		return false
 	}
 
@@ -302,13 +314,13 @@ func (s *appState) ValidateAndRemoveCSRFToken(token string) bool {
 		log.Warn().
 			Time("expiry", expiry).
 			Time("now", now).
-			Msg("Jeton CSRF expiré")
+			Msg("CSRF token expired")
 		return false
 	}
 
 	log.Debug().
 		Int("total_tokens_after", len(s.csrfTokens)).
-		Msg("Jeton CSRF validé et supprimé avec succès")
+		Msg("CSRF token validated and removed successfully")
 
 	return true
 }

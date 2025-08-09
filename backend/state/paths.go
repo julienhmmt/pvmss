@@ -7,14 +7,15 @@ var (
 	pathMutex     sync.RWMutex
 )
 
-// SetTemplatesPath définit le chemin global vers le répertoire des templates.
+// Deprecated: Prefer injecting parsed templates through StateManager.SetTemplates
+// and avoid global template path. This global will be removed in a future release.
 func SetTemplatesPath(path string) {
 	pathMutex.Lock()
 	defer pathMutex.Unlock()
 	templatesPath = path
 }
 
-// GetTemplatesPath récupère le chemin global vers le répertoire des templates.
+// Deprecated: Prefer retrieving templates via StateManager.GetTemplates.
 func GetTemplatesPath() string {
 	pathMutex.RLock()
 	defer pathMutex.RUnlock()

@@ -12,11 +12,13 @@ import (
 )
 
 // TagsHandler handles tag-related operations.
-type TagsHandler struct{}
+type TagsHandler struct {
+	stateManager state.StateManager
+}
 
 // NewTagsHandler creates a new instance of TagsHandler.
-func NewTagsHandler() *TagsHandler {
-	return &TagsHandler{}
+func NewTagsHandler(sm state.StateManager) *TagsHandler {
+	return &TagsHandler{stateManager: sm}
 }
 
 var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
@@ -39,7 +41,7 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	gs := state.GetGlobalState()
+	gs := h.stateManager
 	settings := gs.GetSettings()
 
 	for _, existingTag := range settings.Tags {
@@ -85,7 +87,7 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	gs := state.GetGlobalState()
+	gs := h.stateManager
 	settings := gs.GetSettings()
 
 	found := false
@@ -122,8 +124,8 @@ func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
 }
 
 // EnsureDefaultTag ensures that the default tag "pvmss" exists.
-func EnsureDefaultTag() error {
-	gs := state.GetGlobalState()
+func EnsureDefaultTag(sm state.StateManager) error {
+	gs := sm
 	settings := gs.GetSettings()
 	if settings == nil {
 		// Ne rien faire si les paramètres ne sont pas encore chargés

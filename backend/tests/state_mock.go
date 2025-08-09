@@ -6,9 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
 	"pvmss/proxmox"
 	"pvmss/state"
+
+	"github.com/alexedwards/scs/v2"
 )
 
 // MockStateManager is a mock implementation of the StateManager interface for testing
@@ -43,7 +44,8 @@ func NewMockStateManager() *MockStateManager {
 			Tags:            []string{},
 			ISOs:            []string{},
 			VMBRs:           []string{},
-			Storages:		 []string{},
+			Storages:        []string{},
+			EnabledStorages: []string{},
 			Limits:          make(map[string]interface{}),
 		},
 		csrfTokens:    make(map[string]time.Time),
@@ -136,7 +138,8 @@ func (s *MockStateManager) GetSettings() *state.AppSettings {
 		Tags:            mockSettings.Tags,
 		ISOs:            mockSettings.ISOs,
 		VMBRs:           mockSettings.VMBRs,
-		Storages:		 mockSettings.Storages,
+		Storages:        mockSettings.Storages,
+		EnabledStorages: mockSettings.EnabledStorages,
 		Limits:          mockSettings.Limits,
 	}
 }
@@ -152,7 +155,8 @@ func (s *MockStateManager) SetSettings(settings *state.AppSettings) error {
 		Tags:            settings.Tags,
 		ISOs:            settings.ISOs,
 		VMBRs:           settings.VMBRs,
-		Storages:		 settings.Storages,
+		Storages:        settings.Storages,
+		EnabledStorages: settings.EnabledStorages,
 		Limits:          settings.Limits,
 	}
 	s.mu.Unlock()
@@ -170,7 +174,8 @@ func (s *MockStateManager) SetSettingsWithoutSave(settings *state.AppSettings) {
 		Tags:            settings.Tags,
 		ISOs:            settings.ISOs,
 		VMBRs:           settings.VMBRs,
-		Storages:		 settings.Storages,
+		Storages:        settings.Storages,
+		EnabledStorages: settings.EnabledStorages,
 		Limits:          settings.Limits,
 	}
 	s.mu.Unlock()
@@ -214,6 +219,16 @@ func (s *MockStateManager) GetLimits() map[string]interface{} {
 		return make(map[string]interface{})
 	}
 	return s.settings.Limits
+}
+
+// GetStorages returns the list of available storages
+func (s *MockStateManager) GetStorages() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.settings == nil || s.settings.Storages == nil {
+		return []string{}
+	}
+	return s.settings.Storages
 }
 
 // AddCSRFToken adds a new CSRF token with an expiry time

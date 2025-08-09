@@ -147,8 +147,8 @@ func (h *VMHandler) renderCreateVMForm(w http.ResponseWriter, r *http.Request) {
 		log.Warn().Str("error", errMsg).Msg("Proxmox is not connected, showing disabled form")
 	}
 
-	// Get the global state
-	stateMgr := state.GetGlobalState()
+	// Use injected state manager
+	stateMgr := h.stateManager
 	if stateMgr == nil {
 		log.Error().Msg("State manager not initialized")
 		http.Error(w, "Internal server error: state not initialized", http.StatusInternalServerError)

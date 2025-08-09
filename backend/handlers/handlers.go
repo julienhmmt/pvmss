@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"path/filepath"
 
@@ -13,34 +14,32 @@ import (
 )
 
 // InitHandlers initializes all handlers and configures routes
-func InitHandlers() http.Handler {
+func InitHandlers(stateManager state.StateManager) http.Handler {
 	log := logger.Get().With().Str("component", "handlers").Logger()
 
 	// Create a new router
 	router := httprouter.New()
 
 	// Ensure default tag exists
-	if err := EnsureDefaultTag(); err != nil {
+	if err := EnsureDefaultTag(stateManager); err != nil {
 		log.Error().Err(err).Msg("Failed to ensure default tag")
 	}
 
-	// Get the global state manager
-	stateManager := state.GetGlobalState()
 	if stateManager == nil {
 		log.Fatal().Msg("State manager not initialized")
 	}
 
 	// Initialize handlers
-	authHandler := NewAuthHandler()
-	adminHandler := NewAdminHandler()
+	authHandler := NewAuthHandler(stateManager)
+	adminHandler := NewAdminHandler(stateManager)
 	vmHandler := NewVMHandler(stateManager)
 	storageHandler := NewStorageHandler(stateManager)
-	searchHandler := NewSearchHandler()
+	searchHandler := NewSearchHandler(stateManager)
 	docsHandler := NewDocsHandler()
 	healthHandler := NewHealthHandler(stateManager)
-	settingsHandler := NewSettingsHandler()
-	tagsHandler := NewTagsHandler()
-	vmbrHandler := NewVMBRHandler()
+	settingsHandler := NewSettingsHandler(stateManager)
+	tagsHandler := NewTagsHandler(stateManager)
+	vmbrHandler := NewVMBRHandler(stateManager)
 
 	// Configure routes
 	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler)
@@ -51,36 +50,34 @@ func InitHandlers() http.Handler {
 	// Create middleware chain
 	var handler http.Handler = router
 
+	// Inject state manager into request context for downstream usage
+	handler = stateManagerContextMiddleware(stateManager)(handler)
+
 	// Get the session manager
 	sessionManager := stateManager.GetSessionManager()
 	if sessionManager == nil {
 		log.Warn().Msg("Session manager is not available, running with limited functionality")
 	} else {
-		// Add our custom session middleware to ensure session manager is in context
+		// Add our custom session middleware (diagnostics and headers/CSRF are applied after)
 		handler = securityMiddleware.SessionMiddleware(handler)
 
-		// Debug middleware (after session manager injection)
+		// Debug middleware (after session)
 		handler = sessionDebugMiddleware(handler)
 
-		// IMPORTANT: Order matters. We want CSRF validation to run AFTER token generation.
-		// Because wrappers are applied inside-out, we add CSRF validation first (inner),
-		// then headers, CSRFMiddleware, and finally the CSRF token generator (outer).
-		// This results in the runtime order: CSRFGenerator -> CSRFMiddleware -> Headers -> CSRFValidation.
-		// CSRF validation middleware (must be after token generation at runtime)
+		// IMPORTANT: Order matters (outermost first in code, innermost executes first):
+		// We want runtime order: LoadAndSave -> InjectSession -> CSRFGenerator -> CSRF -> Headers -> CSRFMiddleware -> router
+		// Apply inner to outer accordingly (wrapping inside-out below):
 		handler = securityMiddleware.CSRF(handler)
-
-		// Security headers middleware
 		handler = securityMiddleware.Headers(handler)
-
-		// Add CSRF token from context to response for templates
 		handler = middleware.CSRFMiddleware(handler)
-
-		// CSRF token generation middleware (needs session data; will run inside LoadAndSave)
 		handler = security.CSRFGeneratorMiddleware(handler)
+
+		// Inject scs.SessionManager into context so security.GetSession finds it BEFORE CSRF/headers run at runtime
+		handler = security.InjectSessionManagerMiddleware(sessionManager)(handler)
 	}
 
 	// Proxmox status middleware (after CSRF validation)
-	handler = middleware.ProxmoxStatusMiddleware(handler)
+	handler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(handler)
 
 	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context
 	if sessionManager != nil {
@@ -90,6 +87,20 @@ func InitHandlers() http.Handler {
 
 	log.Info().Msg("HTTP handlers and middleware initialized")
 	return handler
+}
+
+// stateManagerContextMiddleware adds the provided state manager to each request context
+func stateManagerContextMiddleware(sm state.StateManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if sm != nil {
+				ctx := context.WithValue(r.Context(), StateManagerKey, sm)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // setupRoutes configure toutes les routes de l'application

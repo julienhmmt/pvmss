@@ -22,6 +22,21 @@ func NewSessionManager(sm *scs.SessionManager) *SessionManager {
 	return &SessionManager{SessionManager: sm}
 }
 
+// InjectSessionManagerMiddleware injects the provided scs.SessionManager into the request context
+// so that security.GetSession(r) can retrieve it later in the chain.
+func InjectSessionManagerMiddleware(sm *scs.SessionManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if sm != nil {
+				ctx := context.WithValue(r.Context(), sessionManagerKey, sm)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // LoadAndSave provides middleware that loads and saves session data
 func (sm *SessionManager) LoadAndSave(next http.Handler) http.Handler {
 	return sm.SessionManager.LoadAndSave(next)

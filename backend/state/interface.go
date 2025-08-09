@@ -25,7 +25,7 @@ type StateManager interface {
 	GetProxmoxClient() proxmox.ClientInterface
 	SetProxmoxClient(pc proxmox.ClientInterface) error
 	GetProxmoxStatus() (bool, string) // Returns (connected, errorMessage)
-	CheckProxmoxConnection() bool     // Performs a connection check and updates status
+	CheckProxmoxConnection() bool
 
 	// Settings management
 	GetSettings() *AppSettings
@@ -35,9 +35,9 @@ type StateManager interface {
 	GetISOs() []string
 	GetVMBRs() []string
 	GetLimits() map[string]interface{}
+	GetStorages() []string
 
 	// Security management
-	// CSRF token management
 	AddCSRFToken(token string, expiry time.Time) error
 	ValidateAndRemoveCSRFToken(token string) bool
 	CleanExpiredCSRFTokens()

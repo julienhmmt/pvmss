@@ -15,11 +15,13 @@ import (
 )
 
 // AuthHandler gère les routes d'authentification
-type AuthHandler struct{}
+type AuthHandler struct {
+	stateManager state.StateManager
+}
 
 // NewAuthHandler crée une nouvelle instance de AuthHandler
-func NewAuthHandler() *AuthHandler {
-	return &AuthHandler{}
+func NewAuthHandler(sm state.StateManager) *AuthHandler {
+	return &AuthHandler{stateManager: sm}
 }
 
 // RegisterRoutes enregistre les routes d'authentification
@@ -50,15 +52,20 @@ func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request, _ htt
 
 // LogoutHandler handles user logout
 func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
+	log := logger.Get().
+		With().
 		Str("handler", "AuthHandler").
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
+	// Prefer session from middleware context
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		// Fallback to state manager if needed
+		sessionManager = h.stateManager.GetSessionManager()
+	}
 
 	log.Info().Msg("User logging out")
 
@@ -83,7 +90,8 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 // handleLogin handles the login form submission
 func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
-	log := logger.Get().With().
+	log := logger.Get().
+		With().
 		Str("handler", "AuthHandler").
 		Str("method", r.Method).
 		Str("remote_addr", r.RemoteAddr).
@@ -159,9 +167,11 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Authentication successful, creating session")
 
-	// Get session manager from state manager
-	stateManager := state.GetGlobalState()
-	sessionManager = stateManager.GetSessionManager()
+	// Get session manager from context/state manager
+	sessionManager = security.GetSession(r)
+	if sessionManager == nil {
+		sessionManager = h.stateManager.GetSessionManager()
+	}
 
 	// Create new session with fresh token
 	if err = sessionManager.RenewToken(r.Context()); err != nil {

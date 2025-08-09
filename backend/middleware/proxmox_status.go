@@ -15,31 +15,45 @@ const TemplateDataKey contextKey = "templateData"
 
 // ProxmoxStatusMiddleware adds Proxmox connection status to the request context
 // and template data
+// Deprecated: use ProxmoxStatusMiddlewareWithState and pass the state manager explicitly
 func ProxmoxStatusMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := logger.Get().With().Str("middleware", "ProxmoxStatus").Logger()
-		stateManager := state.GetGlobalState()
+	return ProxmoxStatusMiddlewareWithState(nil)(next)
+}
 
-		// Get current Proxmox status
-		connected, message := stateManager.GetProxmoxStatus()
-		log.Debug().Bool("connected", connected).Str("message", message).Msg("Proxmox connection status")
+// ProxmoxStatusMiddlewareWithState adds Proxmox connection status using the provided state manager
+func ProxmoxStatusMiddlewareWithState(sm state.StateManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log := logger.Get().With().Str("middleware", "ProxmoxStatus").Logger()
 
-		// Get existing template data from context or create new
-		templateData, ok := r.Context().Value(TemplateDataKey).(map[string]interface{})
-		if !ok {
-			templateData = make(map[string]interface{})
-		}
+			// Require provided state manager (no global fallback)
+			if sm == nil {
+				log.Warn().Msg("State manager missing in ProxmoxStatusMiddleware; skipping status injection")
+				next.ServeHTTP(w, r)
+				return
+			}
 
-		// Add Proxmox status to template data
-		templateData["ProxmoxConnected"] = connected
-		if !connected {
-			templateData["ProxmoxError"] = message
-		}
+			// Get current Proxmox status
+			connected, message := sm.GetProxmoxStatus()
+			log.Debug().Bool("connected", connected).Str("message", message).Msg("Proxmox connection status")
 
-		// Add template data back to context
-		ctx := context.WithValue(r.Context(), TemplateDataKey, templateData)
-		r = r.WithContext(ctx)
+			// Get existing template data from context or create new
+			templateData, ok := r.Context().Value(TemplateDataKey).(map[string]interface{})
+			if !ok {
+				templateData = make(map[string]interface{})
+			}
 
-		next.ServeHTTP(w, r)
-	})
+			// Add Proxmox status to template data
+			templateData["ProxmoxConnected"] = connected
+			if !connected {
+				templateData["ProxmoxError"] = message
+			}
+
+			// Add template data back to context
+			ctx := context.WithValue(r.Context(), TemplateDataKey, templateData)
+			r = r.WithContext(ctx)
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

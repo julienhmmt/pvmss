@@ -25,8 +25,8 @@ import (
 )
 
 func main() {
-	// Initialiser le gestionnaire d'état global. C'est la première chose à faire.
-	state.InitGlobalState()
+	// Initialize a dedicated app state (no global singleton)
+	stateManager := state.NewAppState()
 
 	initLogger()
 	logger.Get().Info().Msg("Starting PVMSS")
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// Initialize components
-	if err := initializeApp(); err != nil {
+	if err := initializeApp(stateManager); err != nil {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize application")
 	}
 
@@ -47,8 +47,10 @@ func main() {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize security")
 	}
 
-	// Store the session manager in the global state
-	state.GetGlobalState().SetSessionManager(sessionManager.SessionManager)
+	// Store the session manager in the injected state
+	if err := stateManager.SetSessionManager(sessionManager.SessionManager); err != nil {
+		logger.Get().Fatal().Err(err).Msg("Failed to set session manager on state")
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -61,7 +63,7 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  120 * time.Second,
-		Handler:      handlers.InitHandlers(),
+		Handler:      handlers.InitHandlers(stateManager),
 	}
 
 	// Start server
@@ -99,15 +101,12 @@ func initLogger() {
 	logger.Init("debug")
 }
 
-func initializeApp() error {
+func initializeApp(stateManager state.StateManager) error {
 	// 1. Load settings first, as they are needed by the state manager.
 	settings, modified, err := state.LoadSettings()
 	if err != nil {
 		return fmt.Errorf("failed to load settings: %w", err)
 	}
-
-	// The global state manager is already initialized in main().
-	stateManager := state.GetGlobalState()
 
 	// 3. Initialize individual components.
 	proxmoxClient, err := initProxmoxClient()

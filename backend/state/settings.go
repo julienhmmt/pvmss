@@ -13,10 +13,12 @@ import (
 // defaultSettings returns the default application settings
 func defaultSettings() *AppSettings {
 	return &AppSettings{
-		Tags:   []string{"pvmss"}, // Tag par défaut
-		ISOs:   []string{},
-		VMBRs:  []string{},
-		Limits: make(map[string]interface{}),
+		Tags:            []string{"pvmss"},
+		ISOs:            []string{},
+		VMBRs:           []string{},
+		Storages:        []string{},
+		EnabledStorages: []string{},
+		Limits:          make(map[string]interface{}),
 	}
 }
 
@@ -26,8 +28,22 @@ type AppSettings struct {
 	Tags            []string               `json:"tags"`
 	ISOs            []string               `json:"isos"`
 	VMBRs           []string               `json:"vmbrs"`
-	Storages 		[]string               `json:"storages"`
+	Storages        []string               `json:"storages"`
+	EnabledStorages []string               `json:"enabled_storages"`
 	Limits          map[string]interface{} `json:"limits"`
+}
+
+// getSettingsFilePath returns the absolute path to the settings file.
+// It uses PVMSS_SETTINGS_PATH if set; otherwise, it resolves to settings.json next to the executable.
+func getSettingsFilePath() (string, error) {
+	if v := os.Getenv("PVMSS_SETTINGS_PATH"); v != "" {
+		return v, nil
+	}
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("could not get executable path: %w", err)
+	}
+	return filepath.Join(filepath.Dir(exePath), "settings.json"), nil
 }
 
 // WriteSettings serializes the provided AppSettings struct into a well-formatted JSON string
@@ -42,15 +58,14 @@ func LoadSettings() (*AppSettings, bool, error) {
 	log := logger.Get()
 	modified := false
 
-	exePath, err := os.Executable()
+	settingsFile, err := getSettingsFilePath()
 	if err != nil {
-		return nil, false, fmt.Errorf("could not get executable path: %w", err)
+		return nil, false, err
 	}
-	settingsFile := filepath.Join(filepath.Dir(exePath), "settings.json")
 
 	// Check if settings file exists
 	if _, err := os.Stat(settingsFile); os.IsNotExist(err) {
-		log.Info().Msg("Settings file not found, creating with default values")
+		log.Info().Msg("Settings file not found, returning default values")
 		return defaultSettings(), true, nil
 	}
 
@@ -79,6 +94,14 @@ func LoadSettings() (*AppSettings, bool, error) {
 	if settings.VMBRs == nil {
 		modified = true
 		settings.VMBRs = []string{}
+	}
+	if settings.Storages == nil {
+		modified = true
+		settings.Storages = []string{}
+	}
+	if settings.EnabledStorages == nil {
+		modified = true
+		settings.EnabledStorages = []string{}
 	}
 	if settings.Limits == nil {
 		modified = true
@@ -110,11 +133,10 @@ func WriteSettings(settings *AppSettings) error {
 
 	log := logger.Get()
 
-	exePath, err := os.Executable()
+	settingsFile, err := getSettingsFilePath()
 	if err != nil {
-		return fmt.Errorf("could not get executable path: %w", err)
+		return err
 	}
-	settingsFile := filepath.Join(filepath.Dir(exePath), "settings.json")
 
 	// Create a pretty-printed JSON with 4-space indentation
 	data, err := json.MarshalIndent(settings, "", "    ")
@@ -140,6 +162,5 @@ func WriteSettings(settings *AppSettings) error {
 	log.Debug().
 		Str("settings_file", settingsFile).
 		Msg("Successfully wrote settings to file")
-
 	return nil
 }

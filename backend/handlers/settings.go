@@ -14,16 +14,18 @@ import (
 )
 
 // SettingsHandler gère les routes liées aux paramètres
-type SettingsHandler struct{}
+type SettingsHandler struct {
+	stateManager state.StateManager
+}
 
 // NewSettingsHandler crée une nouvelle instance de SettingsHandler
-func NewSettingsHandler() *SettingsHandler {
-	return &SettingsHandler{}
+func NewSettingsHandler(sm state.StateManager) *SettingsHandler {
+	return &SettingsHandler{stateManager: sm}
 }
 
 // GetSettingsHandler renvoie les paramètres actuels de l'application
 func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	settings := state.GetGlobalState().GetSettings()
+	settings := h.stateManager.GetSettings()
 	if settings == nil {
 		logger.Get().Error().Msg("Settings not available")
 		w.Header().Set("Content-Type", "application/json")
@@ -49,7 +51,7 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 
 // GetAllISOsHandler récupère toutes les images ISO disponibles
 func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	client := state.GetGlobalState().GetProxmoxClient()
+	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		logger.Get().Error().Msg("Proxmox client is not initialized")
 		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
@@ -63,7 +65,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	appSettings := state.GetGlobalState().GetSettings()
+	appSettings := h.stateManager.GetSettings()
 	enabledISOsMap := make(map[string]bool)
 	for _, enabledISO := range appSettings.ISOs { // Correction: itérer sur ISOs, pas EnabledISOs
 		enabledISOsMap[enabledISO] = true
@@ -135,7 +137,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 
 // GetAllVMBRsHandler récupère tous les bridges réseau disponibles
 func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	client := state.GetGlobalState().GetProxmoxClient()
+	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		logger.Get().Error().Msg("Proxmox client not available")
 		w.Header().Set("Content-Type", "application/json")
@@ -275,7 +277,7 @@ func (h *SettingsHandler) UpdateISOSettingsHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Récupérer les paramètres actuels
-	stateManager := state.GetGlobalState()
+	stateManager := h.stateManager
 	settings := stateManager.GetSettings()
 	if settings == nil {
 		logger.Get().Error().Msg("Settings not available")
@@ -303,7 +305,7 @@ func (h *SettingsHandler) UpdateISOSettingsHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Persister les paramètres dans le fichier
-	if err := state.GetGlobalState().SetSettings(settings); err != nil {
+	if err := h.stateManager.SetSettings(settings); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to write settings to file")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -340,7 +342,7 @@ func (h *SettingsHandler) UpdateVMBRSettingsHandler(w http.ResponseWriter, r *ht
 	}
 
 	// Récupérer les paramètres actuels
-	stateManager := state.GetGlobalState()
+	stateManager := h.stateManager
 	settings := stateManager.GetSettings()
 	if settings == nil {
 		logger.Get().Error().Msg("Settings not available")
@@ -368,7 +370,7 @@ func (h *SettingsHandler) UpdateVMBRSettingsHandler(w http.ResponseWriter, r *ht
 	}
 
 	// Persister les paramètres dans le fichier
-	if err := state.GetGlobalState().SetSettings(settings); err != nil {
+	if err := h.stateManager.SetSettings(settings); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to write settings to file")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)

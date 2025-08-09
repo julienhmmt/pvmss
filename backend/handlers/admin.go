@@ -12,11 +12,13 @@ import (
 )
 
 // AdminHandler gère les routes d'administration
-type AdminHandler struct{}
+type AdminHandler struct {
+	stateManager state.StateManager
+}
 
 // NewAdminHandler crée une nouvelle instance de AdminHandler
-func NewAdminHandler() *AdminHandler {
-	return &AdminHandler{}
+func NewAdminHandler(sm state.StateManager) *AdminHandler {
+	return &AdminHandler{stateManager: sm}
 }
 
 // AdminPageHandler gère la page d'administration
@@ -46,7 +48,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	log.Debug().Msg("Preparing data for admin page")
 
 	// Get current application settings
-	appSettings := state.GetSettings()
+	appSettings := h.stateManager.GetSettings()
 	if appSettings == nil {
 		log.Error().Msg("Application settings are not available")
 		http.Error(w, "Internal error: Unable to load settings", http.StatusInternalServerError)
@@ -54,7 +56,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Get Proxmox client
-	client := state.GetGlobalState().GetProxmoxClient()
+	client := h.stateManager.GetProxmoxClient()
 	var proxmoxClient *proxmox.Client
 	var nodeNames []string
 	var nodeDetails []*proxmox.NodeDetails

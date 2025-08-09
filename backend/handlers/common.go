@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"github.com/alexedwards/scs/v2"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -29,6 +30,19 @@ type contextKey string
 
 // ParamsKey is the key used to store httprouter.Params in the request context
 const ParamsKey contextKey = "params"
+
+// StateManagerKey stores the state manager in request context
+const StateManagerKey contextKey = "stateManager"
+
+// getStateManager returns the state manager from request context when available.
+// No global fallback: state is injected by handlers.InitHandlers.
+func getStateManager(r *http.Request) state.StateManager {
+	if sm, ok := r.Context().Value(StateManagerKey).(state.StateManager); ok && sm != nil {
+		return sm
+	}
+	logger.Get().Error().Msg("State manager missing from request context")
+	return nil
+}
 
 // InitState est une fonction de compatibilité qui ne fait plus rien
 // car nous utilisons maintenant le package state
@@ -86,8 +100,11 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 
 	// Get CSRF token from session and add to template data
-	stateManager := state.GetGlobalState()
-	sessionManager := stateManager.GetSessionManager()
+	stateManager := getStateManager(r)
+	var sessionManager *scs.SessionManager
+	if stateManager != nil {
+		sessionManager = stateManager.GetSessionManager()
+	}
 	if sessionManager != nil {
 		if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
 			data["CSRFToken"] = csrfToken
@@ -214,7 +231,7 @@ func IsAuthenticated(r *http.Request) bool {
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	stateManager := state.GetGlobalState()
+	stateManager := getStateManager(r)
 	sessionManager := stateManager.GetSessionManager()
 
 	// Check if the session contains the authentication flag
@@ -289,8 +306,11 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 
 		// Add CSRF token to the response headers for AJAX requests
 		if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
-			stateManager := state.GetGlobalState()
-			sessionManager := stateManager.GetSessionManager()
+			stateManager := getStateManager(r)
+			var sessionManager *scs.SessionManager
+			if stateManager != nil {
+				sessionManager = stateManager.GetSessionManager()
+			}
 			if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
 				w.Header().Set("X-CSRF-Token", csrfToken)
 			}

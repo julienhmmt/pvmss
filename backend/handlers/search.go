@@ -18,11 +18,12 @@ import (
 
 // SearchHandler gère les requêtes de recherche
 type SearchHandler struct {
+	stateManager state.StateManager
 }
 
 // NewSearchHandler crée un nouveau gestionnaire de recherche
-func NewSearchHandler() *SearchHandler {
-	return &SearchHandler{}
+func NewSearchHandler(sm state.StateManager) *SearchHandler {
+	return &SearchHandler{stateManager: sm}
 }
 
 // SearchPageHandler gère les requêtes GET et POST pour la page de recherche
@@ -85,8 +86,8 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 			Str("query", queryString).
 			Msg("Critères de recherche formatés")
 
-		// Récupérer le client Proxmox depuis l'état global
-		client := state.GetGlobalState().GetProxmoxClient()
+		// Récupérer le client Proxmox depuis le gestionnaire d'état injecté
+		client := h.stateManager.GetProxmoxClient()
 		if client == nil {
 			errMsg := "Client Proxmox non disponible"
 			log.Error().Msg(errMsg)
@@ -322,7 +323,7 @@ func SearchHandlerFunc(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Appel du gestionnaire de recherche via la fonction wrapper")
 
-	h := &SearchHandler{}
+	h := &SearchHandler{stateManager: getStateManager(r)}
 	h.SearchPageHandler(w, r, nil)
 
 	log.Debug().Msg("Traitement du gestionnaire de recherche terminé")

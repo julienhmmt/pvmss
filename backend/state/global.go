@@ -1,5 +1,9 @@
 // Package state provides centralized management of application state and dependencies.
 // It uses dependency injection and interface-based design for better testability and maintainability.
+//
+// Deprecated: Prefer dependency injection by passing a `StateManager` to the
+// components that need it. The global helpers are kept for backward
+// compatibility and will be removed in a future release.
 package state
 
 import (
@@ -13,7 +17,10 @@ var (
 	once        sync.Once
 )
 
-// InitGlobalState initializes the global state manager
+// InitGlobalState initializes the global state manager.
+//
+// Deprecated: Prefer creating an instance with `NewAppState()` and passing it
+// via dependency injection.
 func InitGlobalState() StateManager {
 	once.Do(func() {
 		globalState = NewAppState()
@@ -24,6 +31,8 @@ func InitGlobalState() StateManager {
 
 // GetGlobalState returns the global state manager.
 // It assumes InitGlobalState has been called at application startup.
+//
+// Deprecated: Prefer passing a `StateManager` reference explicitly.
 func GetGlobalState() StateManager {
 	if globalState == nil {
 		// This should not happen if InitGlobalState is called in main().
@@ -33,32 +42,51 @@ func GetGlobalState() StateManager {
 	return globalState
 }
 
-// GetSettings returns the application settings from the global state
+// GetSettings returns the application settings from the global state.
+//
+// Deprecated: Prefer calling `GetSettings()` on an injected `StateManager`.
 func GetSettings() *AppSettings {
 	return GetGlobalState().GetSettings()
 }
 
-// SetSettings updates the application settings in the global state
+// SetSettings updates the application settings in the global state.
+//
+// Deprecated: Prefer calling `SetSettings()` on an injected `StateManager`.
 func SetSettings(settings *AppSettings) error {
 	return GetGlobalState().SetSettings(settings)
 }
 
-// GetTags returns the list of available tags from the global state
+// GetTags returns the list of available tags from the global state.
+//
+// Deprecated: Prefer calling `GetTags()` on an injected `StateManager`.
 func GetTags() []string {
 	return GetGlobalState().GetTags()
 }
 
-// GetISOs returns the list of available ISO files from the global state
+// GetISOs returns the list of available ISO files from the global state.
+//
+// Deprecated: Prefer calling `GetISOs()` on an injected `StateManager`.
 func GetISOs() []string {
 	return GetGlobalState().GetISOs()
 }
 
-// GetVMBRs returns the list of available network bridges from the global state
+// GetVMBRs returns the list of available network bridges from the global state.
+//
+// Deprecated: Prefer calling `GetVMBRs()` on an injected `StateManager`.
 func GetVMBRs() []string {
 	return GetGlobalState().GetVMBRs()
 }
 
-// GetLimits returns the resource limits from the global state
+// GetLimits returns the resource limits from the global state.
+//
+// Deprecated: Prefer calling `GetLimits()` on an injected `StateManager`.
 func GetLimits() map[string]interface{} {
 	return GetGlobalState().GetLimits()
+}
+
+// GetStorages returns the list of available storages from the global state.
+//
+// Deprecated: Prefer calling `GetStorages()` on an injected `StateManager`.
+func GetStorages() []string {
+	return GetGlobalState().GetStorages()
 }
