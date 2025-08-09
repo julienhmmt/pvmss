@@ -274,6 +274,10 @@ other = "CPU (Sockets/Cœurs)"
 other = "Vue Cartes"
 ["Search.Clear"]
 other = "Effacer"
+["Search.CreateVM"]
+other = "Créer une VM"
+["Search.Filter"]
+other = "Filtrer"
 ["Search.Memory"]
 other = "Mémoire"
 ["Search.Name"]
