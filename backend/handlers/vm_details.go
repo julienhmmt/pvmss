@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -97,14 +98,31 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		s := strconv.FormatFloat(val, 'f', 1, 64)
 		return s + " GB"
 	}
+	formatUptime := func(seconds int64) string {
+		if seconds <= 0 {
+			return "0s"
+		}
+		d := time.Duration(seconds) * time.Second
+		// Show up to hours/minutes/seconds compactly
+		h := int(d.Hours())
+		m := int(d.Minutes()) % 60
+		s := int(d.Seconds()) % 60
+		if h > 0 {
+			return strconv.Itoa(h) + "h" + strconv.Itoa(m) + "m"
+		}
+		if m > 0 {
+			return strconv.Itoa(m) + "m" + strconv.Itoa(s) + "s"
+		}
+		return strconv.Itoa(s) + "s"
+	}
 
 	data := map[string]interface{}{
-		"Title":          "VM details " + vmID,
+		"Title":          found.Name,
 		"VMID":           vmID,
 		"VMName":         found.Name,
 		"Status":         found.Status,
-		"Uptime":         found.Uptime, // seconds; template shows raw value for now
-		"Sockets":        1,            // unknown here
+		"Uptime":         formatUptime(found.Uptime),
+		"Sockets":        1, // unknown here
 		"Cores":          found.CPUs,
 		"RAM":            formatBytes(found.MaxMem),
 		"DiskCount":      0, // not available from this endpoint
