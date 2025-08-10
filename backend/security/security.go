@@ -2,6 +2,7 @@ package security
 
 import (
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -33,14 +34,22 @@ func ValidateURL(urlStr string) bool {
 
 // SanitizePath cleans and validates a file path
 func SanitizePath(path string) string {
-	// Remove any directory traversal attempts
-	path = strings.ReplaceAll(path, "../", "")
-	return path
+	// Clean collapses things like /a/../b and removes redundant separators
+	cleaned := filepath.Clean(path)
+	// Disallow parent traversal that escapes root by removing any leading ../
+	for strings.HasPrefix(cleaned, "../") || cleaned == ".." {
+		cleaned = strings.TrimPrefix(cleaned, "../")
+		if cleaned == ".." {
+			cleaned = "."
+		}
+	}
+	return cleaned
 }
 
 // HashPassword hashes a password using bcrypt
 func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	cost := GetConfig().BcryptCost
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), cost)
 	return string(bytes), err
 }
 

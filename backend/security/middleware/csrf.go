@@ -1,35 +1,16 @@
 package middleware
 
 import (
-	"crypto/subtle"
 	"net/http"
-	"strings"
 
 	"pvmss/logger"
 	"pvmss/security"
 )
 
-// contextKey is a custom type for context keys
-type contextKey string
-
-// String implements the Stringer interface
-func (c contextKey) String() string {
-	return "context_key_" + string(c)
-}
-
-// CSRFContextKey is the key used to store CSRF token in context
-var CSRFContextKey = contextKey("csrf_token")
-
-// CompareTokens performs a constant time comparison of two tokens
-// to prevent timing attacks.
-func CompareTokens(a, b string) bool {
-	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
-}
-
 // GetCSRFToken retrieves the CSRF token from the request context.
 // It returns an empty string if the token is not found.
 func GetCSRFToken(r *http.Request) string {
-	if token, ok := r.Context().Value(CSRFContextKey).(string); ok {
+	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok {
 		return token
 	}
 	return ""
@@ -45,7 +26,7 @@ func CSRF(next http.Handler) http.Handler {
 			Logger()
 
 		// Centralized skip logic
-		if shouldSkipCSRF(r) {
+		if security.ShouldSkipCSRF(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -91,7 +72,7 @@ func CSRF(next http.Handler) http.Handler {
 		}
 
 		// Validate
-		if !CompareTokens(token, sessionToken) {
+		if !security.CompareTokens(token, sessionToken) {
 			log.Warn().Msg("Invalid CSRF token")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
@@ -100,35 +81,4 @@ func CSRF(next http.Handler) http.Handler {
 		log.Debug().Msg("CSRF token validated successfully")
 		next.ServeHTTP(w, r)
 	})
-}
-
-// shouldSkipCSRF determines if CSRF validation should be skipped for the request
-func shouldSkipCSRF(r *http.Request) bool {
-	// Skip health checks
-	if r.URL.Path == "/health" || r.URL.Path == "/api/health" || r.URL.Path == "/api/healthz" {
-		return true
-	}
-
-	// Define safe methods that don't need CSRF protection
-	safeMethods := map[string]bool{
-		http.MethodGet:     true, // Safe, read-only
-		http.MethodHead:    true, // Safe, read-only
-		http.MethodOptions: true, // Safe, preflight requests
-		http.MethodTrace:   true, // Safe, diagnostic
-	}
-
-	// Check if the current method is in the safe methods list
-	if _, isSafe := safeMethods[r.Method]; isSafe {
-		return true
-	}
-
-	// Static asset paths — no CSRF needed
-	if strings.HasPrefix(r.URL.Path, "/css/") ||
-		strings.HasPrefix(r.URL.Path, "/js/") ||
-		strings.HasPrefix(r.URL.Path, "/webfonts/") ||
-		r.URL.Path == "/favicon.ico" {
-		return true
-	}
-
-	return false
 }

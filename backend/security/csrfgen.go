@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"strings"
+	"time"
 
 	"pvmss/logger"
 )
@@ -25,51 +26,33 @@ func GenerateCSRFToken() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// ValidateCSRFToken validates a CSRF token from the request against the session
-func ValidateCSRFToken(r *http.Request) bool {
-	// Skip CSRF check for safe methods
-	if r.Method == http.MethodGet || r.Method == http.MethodHead ||
-		r.Method == http.MethodOptions || r.Method == http.MethodTrace {
+// CompareTokens performs a constant time comparison of two tokens.
+func CompareTokens(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
+// ShouldSkipCSRF determines if CSRF validation should be skipped for the request.
+// Rules: safe HTTP methods, health endpoints, and static asset paths.
+func ShouldSkipCSRF(r *http.Request) bool {
+	// Health checks
+	if r.URL.Path == "/health" || r.URL.Path == "/api/health" || r.URL.Path == "/api/healthz" {
 		return true
 	}
 
-	log := logger.Get().With().
-		Str("function", "ValidateCSRFToken").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
-
-	// Get token from header or form
-	token := r.Header.Get("X-CSRF-Token")
-	if token == "" {
-		token = r.FormValue("csrf_token")
+	// Safe methods
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
+		return true
 	}
 
-	if token == "" {
-		log.Warn().Msg("CSRF token is missing")
-		return false
+	// Static assets
+	if strings.HasPrefix(r.URL.Path, "/css/") ||
+		strings.HasPrefix(r.URL.Path, "/js/") ||
+		strings.HasPrefix(r.URL.Path, "/webfonts/") ||
+		r.URL.Path == "/favicon.ico" {
+		return true
 	}
-
-	// Get session manager
-	sessionManager := GetSession(r)
-	if sessionManager == nil {
-		log.Error().Msg("Failed to get session manager")
-		return false
-	}
-
-	// Get token from session
-	sessionToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
-	if !ok || sessionToken == "" {
-		log.Warn().Msg("CSRF token not found in session")
-		return false
-	}
-
-	// Compare tokens
-	valid := subtle.ConstantTimeCompare([]byte(token), []byte(sessionToken)) == 1
-	if !valid {
-		log.Warn().Msg("CSRF token validation failed")
-	}
-	return valid
+	return false
 }
 
 // CSRFGeneratorMiddleware generates CSRF tokens for GET requests
@@ -110,7 +93,7 @@ func CSRFGeneratorMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Helper: safe session put to avoid panics when no session data in context
-		safePut := func(token string) {
+		safePut := func(token string, issuedAt time.Time) {
 			if sessionManager == nil {
 				return
 			}
@@ -120,14 +103,36 @@ func CSRFGeneratorMiddleware(next http.Handler) http.Handler {
 				}
 			}()
 			sessionManager.Put(r.Context(), "csrf_token", token)
+			sessionManager.Put(r.Context(), "csrf_issued_at", issuedAt.UTC().Format(time.RFC3339))
 		}
 
 		// Reuse existing token if safely retrievable; else generate
 		var csrfToken string
+		var issuedAt time.Time
 		if existing, ok := safeGet(); ok {
-			csrfToken = existing
-			log.Debug().Msg("CSRF token found in session; reusing")
-		} else {
+			// Try to read issued_at and decide if still valid
+			if sessionManager != nil {
+				if v, ok := sessionManager.Get(r.Context(), "csrf_issued_at").(string); ok && v != "" {
+					if t, err := time.Parse(time.RFC3339, v); err == nil {
+						issuedAt = t
+					}
+				}
+			}
+			// Fallback: if no issued_at, consider now
+			if issuedAt.IsZero() {
+				issuedAt = time.Now().UTC()
+			}
+			// Determine TTL from config if available
+			ttl := CSRFTokenTTL
+			if cfg := GetConfig(); cfg.CSRFTokenTTL > 0 {
+				ttl = cfg.CSRFTokenTTL
+			}
+			if time.Since(issuedAt) < ttl {
+				csrfToken = existing
+				log.Debug().Msg("CSRF token found in session; reusing (within TTL)")
+			}
+		}
+		if csrfToken == "" {
 			newToken, err := GenerateCSRFToken()
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to generate CSRF token")
@@ -135,8 +140,9 @@ func CSRFGeneratorMiddleware(next http.Handler) http.Handler {
 				return
 			}
 			csrfToken = newToken
+			issuedAt = time.Now().UTC()
 			// Try to persist in session if available (safe against panic)
-			safePut(csrfToken)
+			safePut(csrfToken, issuedAt)
 			log.Debug().Msg("CSRF token generated; persisted to session if available")
 		}
 
