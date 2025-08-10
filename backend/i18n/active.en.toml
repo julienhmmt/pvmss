@@ -214,6 +214,8 @@ other = "CPU (Sockets/Cores)"
 other = "Card View"
 ["Search.Clear"]
 other = "Clear"
+["Search.Details"]
+other = "VM details"
 ["Search.Filter"]
 other = "Filter"
 ["Search.Memory"]
@@ -232,6 +234,8 @@ other = "Search by ID or Name..."
 other = "e.g. my-vm"
 ["Search.PlaceholderVMID"]
 other = "Search by VM ID..."
+["Search.RAM"]
+other = "Memory"
 ["Search.Results"]
 other = "Search Results"
 ["Search.ResultsFor"]

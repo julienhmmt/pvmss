@@ -276,6 +276,8 @@ other = "Vue Cartes"
 other = "Effacer"
 ["Search.CreateVM"]
 other = "Créer une VM"
+["Search.Details"]
+other = "Détails de la VM"
 ["Search.Filter"]
 other = "Filtrer"
 ["Search.Memory"]
@@ -294,6 +296,8 @@ other = "Rechercher par ID ou Nom..."
 other = "ex. ma-vm"
 ["Search.PlaceholderVMID"]
 other = "ex. 100"
+["Search.RAM"]
+other = "Mémoire vive"
 ["Search.Results"]
 other = "Résultats de la recherche"
 ["Search.ResultsFor"]

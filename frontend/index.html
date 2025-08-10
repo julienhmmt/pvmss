@@ -38,9 +38,6 @@
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
                                 <a href="/vm/create?lang={{.Lang}}" class="button is-orange is-medium home-btn">
-                                    <span class="icon">
-                                        <i class="fas fa-rocket"></i>
-                                    </span>
                                     <span>{{index .t "UI.GetStarted"}}</span>
                                 </a>
                             </div>
@@ -73,8 +70,13 @@
                     <div class="column is-4-desktop is-6-tablet">
                         <div class="card home-card">
                             <div class="card-header">
-                                <p class="card-header-title has-text-white">
-                                    {{index .t "Navbar.Admin"}}
+                                <p class="card-header-title has-text-white has-text-centered">
+                                    <span class="icon-text">
+                                        <span class="icon">
+                                            <i class="fas fa-screwdriver-wrench"></i>
+                                        </span>
+                                        <span>{{index .t "Navbar.Admin"}}</span>
+                                    </span>
                                 </p>
                             </div>
                             <div class="card-content has-text-centered has-text-centered">

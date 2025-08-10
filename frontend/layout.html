@@ -4,9 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{.UI.Header}} - {{.UI.Subtitle}}">
+    <meta name="description" content="{{index .t "UI.Header"}} - {{index .t "UI.Subtitle"}}">
     <meta name="csrf-token" content="{{.CSRFToken}}">
-    <title>{{.Title}} - {{.UI.Header}}</title>
+    <title>
+        {{- if .Title -}}
+            {{.Title}} - {{index .t "UI.Header"}}
+        {{- else if .TitleKey -}}
+            {{index .t .TitleKey}} - {{index .t "UI.Header"}}
+        {{- else -}}
+            {{index .t "UI.Header"}}
+        {{- end -}}
+    </title>
     <link rel="stylesheet" href="/css/bulma.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <!-- Font Awesome -->
@@ -53,7 +61,7 @@
                 {{.Content}}
             {{else}}
                 {{/* Default content if no content template is defined */}}
-                <h1 class="title">{{index .t "Title"}}</h1>
+                <h1 class="title">{{index .t "UI.Header"}}</h1>
                 <p>No content available</p>
             {{end}}
         </div>
