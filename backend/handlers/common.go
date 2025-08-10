@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"pvmss/i18n"
 	"pvmss/logger"
+	"pvmss/middleware"
 	"pvmss/security"
 	"pvmss/state"
 
@@ -133,8 +134,8 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		log.Debug().Int("data_size", len(data)).Msg("Données fournies pour le rendu")
 	}
 
-	// Récupérer les données de template du contexte si elles existent
-	if ctxData, ok := r.Context().Value("templateData").(map[string]interface{}); ok {
+	// Récupérer les données de template du contexte si elles existent (utiliser la même clé que le middleware)
+	if ctxData, ok := r.Context().Value(middleware.TemplateDataKey).(map[string]interface{}); ok {
 		log.Debug().Int("context_data_size", len(ctxData)).Msg("Données de contexte récupérées")
 		// Fusionner les données du contexte avec les données fournies (les données fournies ont la priorité)
 		for k, v := range ctxData {
