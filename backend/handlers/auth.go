@@ -22,34 +22,34 @@ type AuthHandler struct {
 // LogoutGet serves a minimal page that auto-submits a POST request to /logout including CSRF token.
 // This preserves CSRF protection while allowing logout links to be simple GETs.
 func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-    log := logger.Get().With().Str("handler", "AuthHandler.LogoutGet").Str("path", r.URL.Path).Logger()
+	log := logger.Get().With().Str("handler", "AuthHandler.LogoutGet").Str("path", r.URL.Path).Logger()
 
-    // Attempt to get CSRF token from context (populated by CSRFGeneratorMiddleware for GET)
-    var csrfToken string
-    if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok && token != "" {
-        csrfToken = token
-    } else {
-        // Fallback to session
-        if sm := security.GetSession(r); sm != nil {
-            if t, ok := sm.Get(r.Context(), "csrf_token").(string); ok && t != "" {
-                csrfToken = t
-            }
-        }
-    }
+	// Attempt to get CSRF token from context (populated by CSRFGeneratorMiddleware for GET)
+	var csrfToken string
+	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok && token != "" {
+		csrfToken = token
+	} else {
+		// Fallback to session
+		if sm := security.GetSession(r); sm != nil {
+			if t, ok := sm.Get(r.Context(), "csrf_token").(string); ok && t != "" {
+				csrfToken = t
+			}
+		}
+	}
 
-    if csrfToken == "" {
-        log.Warn().Msg("No CSRF token available for logout form; generating new one")
-        if sm := security.GetSession(r); sm != nil {
-            if t, err := security.GenerateCSRFToken(); err == nil {
-                csrfToken = t
-                sm.Put(r.Context(), "csrf_token", csrfToken)
-            }
-        }
-    }
+	if csrfToken == "" {
+		log.Warn().Msg("No CSRF token available for logout form; generating new one")
+		if sm := security.GetSession(r); sm != nil {
+			if t, err := security.GenerateCSRFToken(); err == nil {
+				csrfToken = t
+				sm.Put(r.Context(), "csrf_token", csrfToken)
+			}
+		}
+	}
 
-    w.Header().Set("Content-Type", "text/html; charset=utf-8")
-    // Minimal HTML page with auto-submitting POST form containing CSRF token
-    _, _ = w.Write([]byte(`<!doctype html>
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Minimal HTML page with auto-submitting POST form containing CSRF token
+	_, _ = w.Write([]byte(`<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -77,9 +77,9 @@ func NewAuthHandler(sm state.StateManager) *AuthHandler {
 func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/login", h.LoginHandler)
 	router.POST("/login", h.LoginHandler)
-    // GET /logout displays an auto-submitting form to POST /logout with CSRF token
-    router.GET("/logout", h.LogoutGet)
-    router.POST("/logout", h.LogoutHandler)
+	// GET /logout displays an auto-submitting form to POST /logout with CSRF token
+	router.GET("/logout", h.LogoutGet)
+	router.POST("/logout", h.LogoutHandler)
 }
 
 // LoginHandler gère la page de connexion
