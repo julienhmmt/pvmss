@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"pvmss/logger"
-	"pvmss/proxmox"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -28,36 +27,16 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	gs := h.stateManager
 	client := gs.GetProxmoxClient()
 	if client == nil {
-		log.Error().Msg("Proxmox client not available")
-		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
-		return
+		// Proceed gracefully in offline/read-only mode like AdminPageHandler
+		log.Warn().Msg("Proxmox client not available; rendering page with empty VMBR list")
 	}
 
-	// Get all nodes
-	nodes, err := proxmox.GetNodeNames(client)
+	// Collect all VMBRs using common helper
+	allVMBRs, err := collectAllVMBRs(h.stateManager)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get nodes")
-		http.Error(w, "Failed to get nodes", http.StatusInternalServerError)
-		return
+		log.Warn().Err(err).Msg("collectAllVMBRs returned an error; continuing")
 	}
-
-	// Get all VMBRs from all nodes
-	allVMBRs := make([]map[string]string, 0)
-	for _, node := range nodes {
-		vmbrs, err := proxmox.GetVMBRs(client, node)
-		if err != nil {
-			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node")
-			continue
-		}
-
-		for _, vmbr := range vmbrs {
-			allVMBRs = append(allVMBRs, map[string]string{
-				"node":        node,
-				"name":        vmbr.Iface,
-				"description": "", // The VMBR struct doesn't have a Description field
-			})
-		}
-	}
+	log.Info().Int("vmbr_total", len(allVMBRs)).Msg("Total VMBRs prepared for template")
 
 	// Get current settings to check which VMBRs are enabled
 	settings := gs.GetSettings()
@@ -67,13 +46,26 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	}
 
 	// Prepare template data
+	// Map to template shape used previously: name field instead of iface
+	vmbrsForTemplate := make([]map[string]string, 0, len(allVMBRs))
+	for _, v := range allVMBRs {
+		vmbrsForTemplate = append(vmbrsForTemplate, map[string]string{
+			"node":        v["node"],
+			"name":        v["iface"],
+			"description": v["description"],
+		})
+	}
+
 	templateData := map[string]interface{}{
-		"VMBRs":        allVMBRs,
+		"VMBRs":        vmbrsForTemplate,
 		"EnabledVMBRs": enabledVMBRs,
+	}
+	if err != nil {
+		templateData["Error"] = err.Error()
 	}
 
 	// Render the template
-	renderTemplateInternal(w, r, "vmbr.html", templateData)
+	renderTemplateInternal(w, r, "vmbr", templateData)
 }
 
 // UpdateVMBRHandler handles updating enabled VMBRs.

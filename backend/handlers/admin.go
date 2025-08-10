@@ -92,33 +92,10 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 
 	log.Debug().Msg("Admin page data loaded successfully")
 
-	// Get all VMBRs from all nodes
-	allVMBRs := make([]map[string]string, 0)
-	if proxmoxClient != nil && len(nodeNames) > 0 {
-		for _, node := range nodeNames {
-			vmbrs, err := proxmox.GetVMBRs(proxmoxClient, node)
-			if err != nil {
-				log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node")
-				continue
-			}
-
-			for _, vmbr := range vmbrs {
-				if vmbr.Type == "bridge" {
-					allVMBRs = append(allVMBRs, map[string]string{
-						"node":        node,
-						"iface":       vmbr.Iface,
-						"type":        vmbr.Type,
-						"method":      vmbr.Method,
-						"address":     vmbr.Address,
-						"netmask":     vmbr.Netmask,
-						"gateway":     vmbr.Gateway,
-						"description": "", // VMBR struct doesn't have a description field
-					})
-				}
-			}
-		}
-	} else {
-		log.Warn().Msg("Skipping VMBR retrieval due to missing Proxmox client or nodes")
+	// Get all VMBRs from all nodes via common helper
+	allVMBRs, err := collectAllVMBRs(h.stateManager)
+	if err != nil {
+		log.Warn().Err(err).Msg("collectAllVMBRs returned an error; continuing with best-effort data")
 	}
 
 	// Get current settings to check which VMBRs are enabled

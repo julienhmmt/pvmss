@@ -37,11 +37,13 @@ func getSecurityHeaders() map[string]string {
 		"X-XSS-Protection":       "1; mode=block",
 		"Referrer-Policy":        "strict-origin-when-cross-origin",
 		"Permissions-Policy":     "camera=(), microphone=(), geolocation=()",
+		// Apply a reasonable default CSP in all environments to reduce risk.
+		// In development, this policy is permissive enough for inline styles/scripts already configured below.
+		"Content-Security-Policy": getCSP(),
 	}
 
 	if os.Getenv("ENV") == "production" {
 		headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-		headers["Content-Security-Policy"] = getCSP()
 	}
 	return headers
 }

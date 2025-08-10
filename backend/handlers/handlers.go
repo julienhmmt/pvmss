@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
 	"net/http"
 	"path/filepath"
 
@@ -12,6 +13,37 @@ import (
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 )
+
+// withStaticCaching wraps a static file handler to add strong caching headers.
+// We use a long max-age with immutable as these assets are expected to be fingerprinted or rarely change.
+func withStaticCaching(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Do not cache if explicitly disabled upstream
+		if w.Header().Get("Cache-Control") == "" {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// serveFavicon serves a tiny transparent PNG at /favicon.ico to satisfy browsers without touching sessions.
+func serveFavicon(w http.ResponseWriter, r *http.Request) {
+	// cache shorter than other assets to allow easy replacement
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("Content-Type", "image/png")
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	const b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YfP2dQAAAAASUVORK5CYII="
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
 
 // InitHandlers initializes all handlers and configures routes
 func InitHandlers(stateManager state.StateManager) http.Handler {
@@ -79,10 +111,22 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Proxmox status middleware (after CSRF validation)
 	handler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(handler)
 
-	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context
+	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context.
+	// However, to avoid unnecessary session churn on static assets and health checks,
+	// we bypass LoadAndSave for those paths.
 	if sessionManager != nil {
-		handler = sessionManager.LoadAndSave(handler)
-		log.Info().Msgf("Session middleware enabled with session manager: %p", sessionManager)
+		// Capture the current handler chain to avoid self-recursion in the closure
+		baseHandler := handler
+		// Pre-wrap once to avoid allocating per-request
+		withSession := sessionManager.LoadAndSave(baseHandler)
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isStaticPath(r.URL.Path) || r.URL.Path == "/health" {
+				baseHandler.ServeHTTP(w, r)
+				return
+			}
+			withSession.ServeHTTP(w, r)
+		})
+		log.Info().Msgf("Session middleware enabled with conditional bypass for static/health; manager: %p", sessionManager)
 	}
 
 	log.Info().Msg("HTTP handlers and middleware initialized")
@@ -139,19 +183,42 @@ func setupStaticFiles(router *httprouter.Router) {
 	basePath := state.GetTemplatesPath()
 
 	// Crée des gestionnaires de fichiers spécifiques pour chaque sous-répertoire statique.
-	cssServer := http.FileServer(http.Dir(filepath.Join(basePath, "css")))
-	jsServer := http.FileServer(http.Dir(filepath.Join(basePath, "js")))
-	imagesServer := http.FileServer(http.Dir(filepath.Join(basePath, "images")))
-	webfontsServer := http.FileServer(http.Dir(filepath.Join(basePath, "webfonts")))
+	cssServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "css"))))
+	jsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "js"))))
+	imagesServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "images"))))
+	webfontsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "webfonts"))))
 
 	// Configure les routes pour servir les fichiers statiques en utilisant StripPrefix.
 	// Cela garantit que le serveur de fichiers reçoit le bon chemin relatif.
 	router.Handler(http.MethodGet, "/css/*filepath", http.StripPrefix("/css/", cssServer))
+	router.Handler(http.MethodHead, "/css/*filepath", http.StripPrefix("/css/", cssServer))
 	router.Handler(http.MethodGet, "/js/*filepath", http.StripPrefix("/js/", jsServer))
+	router.Handler(http.MethodHead, "/js/*filepath", http.StripPrefix("/js/", jsServer))
 	router.Handler(http.MethodGet, "/images/*filepath", http.StripPrefix("/images/", imagesServer))
+	router.Handler(http.MethodHead, "/images/*filepath", http.StripPrefix("/images/", imagesServer))
 	router.Handler(http.MethodGet, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
+	router.Handler(http.MethodHead, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
+	router.Handler(http.MethodGet, "/favicon.ico", http.HandlerFunc(serveFavicon))
+	router.Handler(http.MethodHead, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
 	logger.Get().Info().Str("path", basePath).Msg("Service des fichiers statiques configuré pour css, js, images et webfonts")
+}
+
+// isStaticPath returns true when the request is for a static asset we serve directly
+func isStaticPath(p string) bool {
+	if p == "/favicon.ico" {
+		return true
+	}
+	return hasAnyPrefix(p, "/css/", "/js/", "/images/", "/webfonts/")
+}
+
+func hasAnyPrefix(s string, prefixes ...string) bool {
+	for _, pref := range prefixes {
+		if len(s) >= len(pref) && s[:len(pref)] == pref {
+			return true
+		}
+	}
+	return false
 }
 
 // sessionDebugMiddleware est un middleware de débogage pour les sessions

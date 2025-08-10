@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	// "encoding/json"
 	"github.com/alexedwards/scs/v2"
 	"html/template"
 	"net/http"
@@ -390,3 +391,27 @@ func HandlerFuncToHTTPrHandle(h http.HandlerFunc) httprouter.Handle {
 		log.Debug().Msg("Traitement du gestionnaire HTTP terminé")
 	}
 }
+
+// jsonOK writes a JSON success payload with content-type set.
+// func jsonOK(w http.ResponseWriter, payload interface{}) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	_ = json.NewEncoder(w).Encode(payload)
+// }
+
+// jsonErr writes a standardized JSON error response with the given HTTP status code.
+// func jsonErr(w http.ResponseWriter, status int, message string) {
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(status)
+// 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+// 		"status":  "error",
+// 		"message": message,
+// 	})
+// }
+
+// saveSettings persists settings using the provided state manager.
+// func saveSettings(sm state.StateManager, settings *state.AppSettings) error {
+// 	if sm == nil || settings == nil {
+// 		return nil
+// 	}
+// 	return sm.SetSettings(settings)
+// }

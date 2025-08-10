@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
@@ -137,124 +135,33 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 
 // GetAllVMBRsHandler récupère tous les bridges réseau disponibles
 func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		logger.Get().Error().Msg("Proxmox client not available")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Proxmox client not available",
-		})
-		return
-	}
-
-	// Type assert client to *proxmox.Client for functions that haven't been updated to use the interface
-	proxmoxClient, ok := client.(*proxmox.Client)
-	if !ok {
-		logger.Get().Error().Msg("Failed to convert client to *proxmox.Client")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Internal error: Invalid client type",
-		})
-		return
-	}
-
-	// Créer un contexte avec timeout pour la requête API
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	// Récupérer la liste des nœuds
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, proxmoxClient)
+	// Use shared helper to collect VMBRs
+	vmbrs, err := collectAllVMBRs(h.stateManager)
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get nodes from Proxmox")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to get nodes",
+		logger.Get().Warn().Err(err).Msg("collectAllVMBRs returned an error")
+	}
+
+	// Format for API response
+	formatted := make([]map[string]interface{}, 0, len(vmbrs))
+	for _, v := range vmbrs {
+		formatted = append(formatted, map[string]interface{}{
+			"name":        v["iface"],
+			"description": v["description"],
+			"node":        v["node"],
+			"type":        v["type"],
+			"method":      v["method"],
+			"address":     v["address"],
+			"netmask":     v["netmask"],
+			"gateway":     v["gateway"],
 		})
-		return
 	}
 
-	// Collecter tous les VMBRs
-	allVMBRs := make([]map[string]interface{}, 0)
-
-	// Pour chaque nœud, récupérer les interfaces réseau
-	for _, node := range nodes {
-		log := logger.Get().With().
-			Str("node", node).
-			Logger()
-
-		log.Debug().Msg("Récupération des interfaces réseau pour le nœud")
-
-		vmbrs, err := proxmox.GetVMBRs(proxmoxClient, node)
-		if err != nil {
-			log.Warn().
-				Err(err).
-				Str("node", node).
-				Msg("Échec de la récupération des interfaces réseau")
-			continue
-		}
-
-		log.Debug().
-			Str("node", node).
-			Int("count", len(vmbrs)).
-			Msg("Nombre d'interfaces réseau trouvées")
-
-		// Filtrer pour ne garder que les bridges
-		for _, vmbr := range vmbrs {
-			// Vérifier si c'est un bridge et un VMBR
-			if vmbr.Type == "bridge" && isVMBR(vmbr.Iface) {
-				vmbrDetails := map[string]interface{}{
-					"node":        node,
-					"iface":       vmbr.Iface,
-					"type":        vmbr.Type,
-					"method":      vmbr.Method,
-					"address":     vmbr.Address,
-					"netmask":     vmbr.Netmask,
-					"gateway":     vmbr.Gateway,
-					"description": "", // VMBR struct doesn't have a description field
-				}
-				allVMBRs = append(allVMBRs, vmbrDetails)
-			}
-		}
-	}
-
-	// Formater la réponse
-	formattedVMBRs := make([]map[string]interface{}, 0, len(allVMBRs))
-	for _, vmbr := range allVMBRs {
-		formattedVMBR := map[string]interface{}{
-			"name":        vmbr["iface"],
-			"description": vmbr["description"],
-			"node":        vmbr["node"],
-			"type":        vmbr["type"],
-			"method":      vmbr["method"],
-			"address":     vmbr["address"],
-			"netmask":     vmbr["netmask"],
-			"gateway":     vmbr["gateway"],
-		}
-		formattedVMBRs = append(formattedVMBRs, formattedVMBR)
-	}
-
-	// Log the result
-	logger.Get().Debug().
-		Int("total_vmbrs", len(formattedVMBRs)).
-		Msg("Network bridges found")
-
-	// Send the response
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "success",
-		"vmbrs":  formattedVMBRs,
-	})
-
-	if err != nil {
-		logger.Get().Error().
-			Err(err).
-			Msg("Failed to encode JSON response")
+		"vmbrs":  formatted,
+	}); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to encode JSON response")
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -422,9 +329,4 @@ func containsISO(content string) bool {
 		}
 	}
 	return false
-}
-
-// isVMBR vérifie si une interface est un bridge réseau
-func isVMBR(iface string) bool {
-	return strings.HasPrefix(iface, "vmbr")
 }
