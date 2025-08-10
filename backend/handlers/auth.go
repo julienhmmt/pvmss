@@ -19,6 +19,55 @@ type AuthHandler struct {
 	stateManager state.StateManager
 }
 
+// LogoutGet serves a minimal page that auto-submits a POST request to /logout including CSRF token.
+// This preserves CSRF protection while allowing logout links to be simple GETs.
+func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+    log := logger.Get().With().Str("handler", "AuthHandler.LogoutGet").Str("path", r.URL.Path).Logger()
+
+    // Attempt to get CSRF token from context (populated by CSRFGeneratorMiddleware for GET)
+    var csrfToken string
+    if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok && token != "" {
+        csrfToken = token
+    } else {
+        // Fallback to session
+        if sm := security.GetSession(r); sm != nil {
+            if t, ok := sm.Get(r.Context(), "csrf_token").(string); ok && t != "" {
+                csrfToken = t
+            }
+        }
+    }
+
+    if csrfToken == "" {
+        log.Warn().Msg("No CSRF token available for logout form; generating new one")
+        if sm := security.GetSession(r); sm != nil {
+            if t, err := security.GenerateCSRFToken(); err == nil {
+                csrfToken = t
+                sm.Put(r.Context(), "csrf_token", csrfToken)
+            }
+        }
+    }
+
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    // Minimal HTML page with auto-submitting POST form containing CSRF token
+    _, _ = w.Write([]byte(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Logging out…</title>
+  </head>
+  <body>
+    <form id="logoutForm" method="POST" action="/logout">
+      <input type="hidden" name="csrf_token" value="` + csrfToken + `" />
+    </form>
+    <noscript>
+      <p>JavaScript is required to log out automatically.</p>
+      <button type="submit" form="logoutForm">Log out</button>
+    </noscript>
+    <script>document.getElementById('logoutForm').submit();</script>
+  </body>
+</html>`))
+}
+
 // NewAuthHandler crée une nouvelle instance de AuthHandler
 func NewAuthHandler(sm state.StateManager) *AuthHandler {
 	return &AuthHandler{stateManager: sm}
@@ -28,7 +77,9 @@ func NewAuthHandler(sm state.StateManager) *AuthHandler {
 func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/login", h.LoginHandler)
 	router.POST("/login", h.LoginHandler)
-	router.POST("/logout", h.LogoutHandler)
+    // GET /logout displays an auto-submitting form to POST /logout with CSRF token
+    router.GET("/logout", h.LogoutGet)
+    router.POST("/logout", h.LogoutHandler)
 }
 
 // LoginHandler gère la page de connexion
