@@ -16,19 +16,19 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// SearchHandler gère les requêtes de recherche
+// SearchHandler handles search requests
 type SearchHandler struct {
 	stateManager state.StateManager
 }
 
-// NewSearchHandler crée un nouveau gestionnaire de recherche
+// NewSearchHandler creates a new search handler
 func NewSearchHandler(sm state.StateManager) *SearchHandler {
 	return &SearchHandler{stateManager: sm}
 }
 
-// SearchPageHandler gère les requêtes GET et POST pour la page de recherche
+// SearchPageHandler handles GET and POST for the search page
 func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Créer un logger pour cette requête
+	// Create a logger for this request
 	log := logger.Get().With().
 		Str("handler", "SearchPageHandler").
 		Str("method", r.Method).
@@ -36,34 +36,34 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	log.Debug().Msg("Traitement de la requête de recherche")
+	log.Debug().Msg("Handling search request")
 
 	data := make(map[string]interface{})
 
-	// Pour les requêtes GET, afficher simplement le formulaire de recherche
+	// For GET, simply display the search form
 	if r.Method == http.MethodGet {
-		log.Debug().Msg("Affichage du formulaire de recherche")
+		log.Debug().Msg("Rendering search form")
 		i18n.LocalizePage(w, r, data)
 		data["Title"] = data["Search.Title"]
 		renderTemplateInternal(w, r, "search", data)
-		log.Info().Msg("Formulaire de recherche affiché avec succès")
+		log.Info().Msg("Search form rendered successfully")
 		return
 	}
 
-	// Pour les requêtes POST, effectuer la recherche
+	// For POST, perform the search
 	if r.Method == http.MethodPost {
-		// Récupérer et valider les paramètres de recherche
+		// Read and validate search parameters
 		vmid := strings.TrimSpace(r.FormValue("vmid"))
 		name := strings.TrimSpace(r.FormValue("name"))
 
 		log.Info().
 			Str("vmid", vmid).
 			Str("name", name).
-			Msg("Nouvelle recherche de VM")
+			Msg("New VM search")
 
-		// Valider les entrées
+		// Validate inputs
 		if vmid == "" && name == "" {
-			log.Warn().Msg("Aucun critère de recherche fourni")
+			log.Warn().Msg("No search criteria provided")
 			data["Error"] = "Veuillez fournir au moins un critère de recherche (ID ou nom)"
 			i18n.LocalizePage(w, r, data)
 			data["Title"] = data["Search.Title"]
@@ -71,7 +71,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// Construire la chaîne de requête pour l'affichage
+		// Build the query string for display
 		var queryParts []string
 		if vmid != "" {
 			queryParts = append(queryParts, "VMID: "+vmid)
@@ -84,12 +84,12 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 
 		log.Debug().
 			Str("query", queryString).
-			Msg("Critères de recherche formatés")
+			Msg("Search criteria formatted")
 
-		// Récupérer le client Proxmox depuis le gestionnaire d'état injecté
+		// Retrieve Proxmox client from state manager
 		client := h.stateManager.GetProxmoxClient()
 		if client == nil {
-			errMsg := "Client Proxmox non disponible"
+			errMsg := "Proxmox client unavailable"
 			log.Error().Msg(errMsg)
 			data["Error"] = errMsg
 			i18n.LocalizePage(w, r, data)
@@ -98,20 +98,20 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		log.Debug().Msg("Client Proxmox récupéré avec succès")
+		log.Debug().Msg("Proxmox client retrieved successfully")
 
-		// Créer un contexte avec timeout pour la requête API
+		// Create a context with timeout for the API request
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
-		log.Debug().Msg("Lancement de la recherche de VMs")
+		log.Debug().Msg("Starting VM search")
 
-		// Récupérer toutes les VMs depuis Proxmox
+		// Retrieve VMs from Proxmox
 		vms, err := searchVMs(ctx, client, vmid, name)
 		if err != nil {
 			log.Error().
 				Err(err).
-				Msg("Échec de la recherche de VMs")
+				Msg("VM search failed")
 
 			data["Error"] = fmt.Sprintf("Échec de la recherche de VMs: %v", err)
 			i18n.LocalizePage(w, r, data)
@@ -122,37 +122,37 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 
 		log.Info().
 			Int("results_count", len(vms)).
-			Msg("Recherche de VMs terminée avec succès")
+			Msg("VM search completed successfully")
 
-		// Ajouter les résultats à la map de données
+		// Add results to the data map
 		data["Results"] = vms
 		if len(vms) == 0 {
-			log.Debug().Msg("Aucun résultat trouvé pour la recherche")
+			log.Debug().Msg("No results found for search")
 			data["NoResults"] = true
 		} else {
 			log.Debug().
 				Int("vms_found", len(vms)).
-				Msg("VMs trouvées avec succès")
+				Msg("VMs found successfully")
 		}
 
 		i18n.LocalizePage(w, r, data)
 		data["Title"] = data["Search.Results"]
 
-		log.Debug().Msg("Rendu de la page de résultats")
+		log.Debug().Msg("Rendering results page")
 		renderTemplateInternal(w, r, "search", data)
-		log.Info().Msg("Résultats de recherche affichés avec succès")
+		log.Info().Msg("Search results rendered successfully")
 		return
 	}
 
-	// Méthode HTTP non autorisée
+	// HTTP method not allowed
 	log.Warn().
 		Str("method", r.Method).
-		Msg("Méthode HTTP non autorisée pour la route de recherche")
+		Msg("HTTP method not allowed for search route")
 
 	http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
 }
 
-// searchVMs recherche les VMs selon les critères fournis
+// searchVMs searches for VMs based on the provided criteria
 func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmidStr, name string) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("handler", "searchVMs").
@@ -160,26 +160,33 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 		Str("name", name).
 		Logger()
 
-	// Get all nodes
-	nodes, err := proxmox.GetNodeNames(clientInterface)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get node names")
-		return nil, fmt.Errorf("failed to get node names: %w", err)
+	// Prepare search criteria
+	lowerNameQuery := strings.ToLower(strings.TrimSpace(name))
+	var vmid int
+	if vmidStr != "" {
+		var err error
+		vmid, err = strconv.Atoi(vmidStr)
+		if err != nil {
+			errMsg := "Invalid VM ID"
+			log.Error().
+				Err(err).
+				Str("vmid_input", vmidStr).
+				Msg(errMsg)
+			return nil, fmt.Errorf("%s: %v", errMsg, err)
+		}
+		log.Debug().
+			Int("vmid_parsed", vmid).
+			Msg("VM ID parsed successfully")
 	}
 
-	log.Debug().
-		Strs("nodes", nodes).
-		Int("nodes_count", len(nodes)).
-		Msg("Liste des nœuds récupérée avec succès")
-
-	// Récupérer toutes les VMs
+	// Retrieve all VMs
 	allVMs, err := proxmox.GetVMsWithContext(ctx, clientInterface)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get VMs: %w", err)
 	}
 
-	// Si aucun critère de recherche n'est fourni, retourner toutes les VMs (limité à 20)
-	if vmidStr == "" && name == "" {
+	// If no criteria are provided, return up to 20 VMs
+	if vmidStr == "" && lowerNameQuery == "" {
 		results := make([]map[string]interface{}, 0, min(20, len(allVMs)))
 		for i, vm := range allVMs {
 			if i >= 20 {
@@ -189,7 +196,7 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 				"vmid":   vm.VMID,
 				"name":   vm.Name,
 				"node":   vm.Node,
-				"status": "", // Status n'est pas disponible dans la structure VM de base
+				"status": "", // Status is not available in the base VM structure
 				"cpu":    vm.CPU,
 				"memory": vm.Mem,
 				"disk":   vm.MaxDisk,
@@ -198,100 +205,45 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 		return results, nil
 	}
 
-	// Convertir vmid en entier si spécifié
-	var vmid int
-	if vmidStr != "" {
-		var err error
-		vmid, err = strconv.Atoi(vmidStr)
-		if err != nil {
-			errMsg := "ID de VM invalide"
-			log.Error().
-				Err(err).
-				Str("vmid_input", vmidStr).
-				Msg(errMsg)
-			return nil, fmt.Errorf("%s: %v", errMsg, err)
-		}
-		log.Debug().
-			Int("vmid_parsed", vmid).
-			Msg("ID de VM parsé avec succès")
-	}
-
-	// Filtrer les VMs selon les critères
+	// Filter VMs according to criteria
 	var results []map[string]interface{}
 
-	log.Debug().
-		Int("total_vms_to_filter", len(allVMs)).
-		Msg("Début du filtrage des VMs selon les critères")
-
 	for _, vm := range allVMs {
-		vmID := vm.VMID // VMID is already an int
-		vmName := vm.Name
-		node := vm.Node
+		// VMID check (if provided)
+		if vmid > 0 && vm.VMID != vmid {
+			continue
+		}
 
-		// Filtrer par VMID si spécifié
+		// Name contains check (if provided)
+		if lowerNameQuery != "" && !strings.Contains(strings.ToLower(vm.Name), lowerNameQuery) {
+			continue
+		}
+
+		results = append(results, map[string]interface{}{
+			"vmid":   vm.VMID,
+			"name":   vm.Name,
+			"node":   vm.Node,
+			"status": "", // Status is not available in the base VM structure
+			"cpu":    vm.CPU,
+			"memory": vm.Mem,
+			"disk":   vm.MaxDisk,
+		})
+
+		// If VMID is specified, it's unique; return early after first match
 		if vmid > 0 {
-			if vmID != vmid {
-				continue
-			}
-			log.Debug().
-				Int("vmid", vmID).
-				Str("name", vmName).
-				Str("node", node).
-				Msg("VM correspondant au critère VMID")
-		}
-
-		// Filtrer par nom si spécifié
-		if name != "" {
-			if !strings.Contains(strings.ToLower(vmName), strings.ToLower(name)) {
-				continue
-			}
-			log.Debug().
-				Int("vmid", vmID).
-				Str("name", vmName).
-				Str("node", node).
-				Msg("VM correspondant au critère de nom")
-		}
-
-		match := true
-
-		if vmidStr != "" && vmID != vmid {
-			match = false
-		}
-
-		if name != "" && !strings.Contains(strings.ToLower(vmName), strings.ToLower(name)) {
-			match = false
-		}
-
-		if match {
-			vmMap := map[string]interface{}{
-				"vmid":   vm.VMID,
-				"name":   vm.Name,
-				"node":   vm.Node,
-				"status": "", // Status n'est pas disponible dans la structure VM de base
-				"cpu":    vm.CPU,
-				"memory": vm.Mem,
-				"disk":   vm.MaxDisk,
-			}
-			results = append(results, vmMap)
-
-			log.Debug().
-				Int("vmid", vmID).
-				Str("name", vmName).
-				Str("node", node).
-				Int("filtered_count", len(results)).
-				Msg("VM correspondante trouvée")
+			break
 		}
 	}
 
 	log.Info().
 		Int("matching_vms", len(results)).
 		Int("total_vms_searched", len(allVMs)).
-		Msg("Filtrage des VMs terminé avec succès")
+		Msg("VM filtering completed successfully")
 
 	return results, nil
 }
 
-// RegisterRoutes enregistre les routes de recherche
+// RegisterRoutes registers search routes
 func (h *SearchHandler) RegisterRoutes(router *httprouter.Router) {
 	log := logger.Get().With().
 		Str("component", "SearchHandler").
@@ -299,21 +251,21 @@ func (h *SearchHandler) RegisterRoutes(router *httprouter.Router) {
 		Logger()
 
 	if router == nil {
-		log.Error().Msg("Le routeur est nul, impossible d'enregistrer les routes de recherche")
+		log.Error().Msg("Router is nil, cannot register search routes")
 		return
 	}
 
-	log.Debug().Msg("Enregistrement des routes de recherche")
+	log.Debug().Msg("Registering search routes")
 
 	router.GET("/search", h.SearchPageHandler)
 	router.POST("/search", h.SearchPageHandler)
 
 	log.Info().
 		Strs("routes", []string{"GET /search", "POST /search"}).
-		Msg("Routes de recherche enregistrées avec succès")
+		Msg("Search routes registered successfully")
 }
 
-// SearchHandlerFunc est une fonction wrapper pour compatibilité avec le code existant
+// SearchHandlerFunc is a wrapper function for compatibility with existing code
 func SearchHandlerFunc(w http.ResponseWriter, r *http.Request) {
 	log := logger.Get().With().
 		Str("function", "SearchHandlerFunc").
@@ -321,10 +273,10 @@ func SearchHandlerFunc(w http.ResponseWriter, r *http.Request) {
 		Str("path", r.URL.Path).
 		Logger()
 
-	log.Debug().Msg("Appel du gestionnaire de recherche via la fonction wrapper")
+	log.Debug().Msg("Calling search handler via wrapper function")
 
 	h := &SearchHandler{stateManager: getStateManager(r)}
 	h.SearchPageHandler(w, r, nil)
 
-	log.Debug().Msg("Traitement du gestionnaire de recherche terminé")
+	log.Debug().Msg("Search handler processing finished")
 }
