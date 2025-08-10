@@ -4,12 +4,14 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"strconv"
 
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/state"
+	"pvmss/proxmox"
 )
 
 // VMHandler gère les routes liées aux machines virtuelles
@@ -75,29 +77,75 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	log = log.With().Str("vm_id", vmID).Logger()
 	log.Debug().Msg("Récupération des détails de la VM")
 
-	// Récupérer les détails de la VM depuis Proxmox
-	// À implémenter: Récupérer les vrais détails de la VM
-	vmDetails := map[string]interface{}{
-		"ID":      vmID,
-		"Name":    "VM " + vmID,
-		"Status":  "running",
-		"CPUs":    2,
-		"Memory":  "4GB",
-		"Storage": "50GB",
+	// Récupérer le client Proxmox et chercher la VM par ID
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		log.Error().Msg("Client Proxmox non initialisé")
+		http.Error(w, "Proxmox client not initialized", http.StatusInternalServerError)
+		return
 	}
 
-	log.Debug().Interface("vm_details", vmDetails).Msg("Détails de la VM récupérés")
+	vms, err := proxmox.GetVMsWithContext(r.Context(), client)
+	if err != nil {
+		log.Error().Err(err).Msg("Échec de la récupération des VMs depuis Proxmox")
+		http.Error(w, "Failed to fetch VM details", http.StatusBadGateway)
+		return
+	}
+
+	var found *proxmox.VM
+	for i := range vms {
+		if strconv.Itoa(vms[i].VMID) == vmID {
+			found = &vms[i]
+			break
+		}
+	}
+	if found == nil {
+		log.Warn().Str("vm_id", vmID).Msg("VM introuvable")
+		http.Error(w, "VM not found", http.StatusNotFound)
+		return
+	}
+
+	// Formater quelques champs pour le template
+	formatBytes := func(b int64) string {
+		// Format approx en Go: afficher en GB avec 1 décimale
+		if b <= 0 {
+			return "0 B"
+		}
+		const gb = 1024 * 1024 * 1024
+		val := float64(b) / float64(gb)
+		if val < 1 {
+			// montrer en MB
+			const mb = 1024 * 1024
+			return strconv.FormatInt(b/int64(mb), 10) + " MB"
+		}
+		// Arrondi simple à une décimale
+		s := strconv.FormatFloat(val, 'f', 1, 64)
+		return s + " GB"
+	}
 
 	data := map[string]interface{}{
-		"Title": "Détails de la VM " + vmID,
-		"VM":    vmDetails,
+		"Title":          "Détails de la VM " + vmID,
+		"VMID":           vmID,
+		"VMName":         found.Name,
+		"Status":         found.Status,
+		"Uptime":         found.Uptime, // secondes; le template l'affiche tel quel pour l'instant
+		"Sockets":        1,            // inconnu ici
+		"Cores":          found.CPUs,
+		"RAM":            formatBytes(found.MaxMem),
+		"DiskCount":      0,                      // non disponible via cet endpoint
+		"DiskTotalSize":  formatBytes(found.MaxDisk),
+		"NetworkBridges": "",                     // non disponible ici
+		"Description":    "",
+		"Node":           found.Node,
 	}
+
+	log.Debug().Interface("vm_details", data).Msg("Détails de la VM récupérés depuis Proxmox")
 
 	// Ajouter les données de traduction
 	i18n.LocalizePage(w, r, data)
 
-	log.Debug().Msg("Rendu du template vm_details.html")
-	renderTemplateInternal(w, r, "vm_details.html", data)
+	log.Debug().Msg("Rendu du template vm_details")
+	renderTemplateInternal(w, r, "vm_details", data)
 }
 
 // CreateVMHandler gère la création d'une nouvelle VM
@@ -297,9 +345,7 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	}))
 
 	// Détails de la VM (protégé par authentification)
-	router.GET("/vm/details/:id", HandlerFuncToHTTPrHandle(func(w http.ResponseWriter, r *http.Request) {
-		h.VMDetailsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	}))
+	router.GET("/vm/details/:id", h.VMDetailsHandler)
 }
 
 // VMDetailsHandlerFunc est une fonction wrapper pour la compatibilité avec le code existant
