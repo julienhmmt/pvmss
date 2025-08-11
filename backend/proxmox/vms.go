@@ -20,6 +20,33 @@ type VMInfo struct {
 	Template bool   `json:"template"`
 }
 
+// VMCurrent represents the runtime status/metrics of a VM from
+// GET /nodes/{node}/qemu/{vmid}/status/current
+type VMCurrent struct {
+	Status    string  `json:"status"`
+	CPU       float64 `json:"cpu"` // fraction 0..1
+	Mem       int64   `json:"mem"`
+	MaxMem    int64   `json:"maxmem"`
+	Name      string  `json:"name"`
+	CPUs      int     `json:"cpus"`
+	QMPStatus string  `json:"qmpstatus"`
+}
+
+// GetVMCurrentWithContext fetches the current runtime metrics for a VM
+func GetVMCurrentWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (*VMCurrent, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", node, vmid)
+	// The Proxmox API returns an object: { "data": { ...fields } }
+	type singleResponse[T any] struct {
+		Data T `json:"data"`
+	}
+	var resp singleResponse[VMCurrent]
+	if err := client.GetJSON(ctx, path, &resp); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get current VM status")
+		return nil, fmt.Errorf("failed to get current status for vm %d on node %s: %w", vmid, node, err)
+	}
+	return &resp.Data, nil
+}
+
 // VM represents a Proxmox virtual machine
 type VM struct {
 	CPU     float64 `json:"cpu"`

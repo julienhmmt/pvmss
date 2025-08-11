@@ -192,14 +192,25 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 			if i >= 20 {
 				break
 			}
+			// Determine status: use list status, and if empty try status/current
+			status := vm.Status
+			if status == "" {
+				if cur, err := proxmox.GetVMCurrentWithContext(ctx, clientInterface, vm.Node, vm.VMID); err == nil && cur != nil {
+					if cur.Status != "" {
+						status = cur.Status
+					} else if cur.QMPStatus != "" {
+						status = cur.QMPStatus
+					}
+				}
+			}
+			if status == "" && vm.Uptime == 0 {
+				status = "stopped"
+			}
 			results = append(results, map[string]interface{}{
 				"vmid":   vm.VMID,
 				"name":   vm.Name,
 				"node":   vm.Node,
-				"status": "", // Status is not available in the base VM structure
-				"cpu":    vm.CPU,
-				"memory": vm.Mem,
-				"disk":   vm.MaxDisk,
+				"status": strings.ToLower(status),
 			})
 		}
 		return results, nil
@@ -219,14 +230,22 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 			continue
 		}
 
+		// Derive status: prefer list status; if empty, try status/current
+		status := vm.Status
+		if status == "" {
+			if cur, err := proxmox.GetVMCurrentWithContext(ctx, clientInterface, vm.Node, vm.VMID); err == nil && cur != nil {
+				if cur.Status != "" {
+					status = cur.Status
+				} else if cur.QMPStatus != "" {
+					status = cur.QMPStatus
+				}
+			}
+		}
 		results = append(results, map[string]interface{}{
 			"vmid":   vm.VMID,
 			"name":   vm.Name,
 			"node":   vm.Node,
-			"status": "", // Status is not available in the base VM structure
-			"cpu":    vm.CPU,
-			"memory": vm.Mem,
-			"disk":   vm.MaxDisk,
+			"status": strings.ToLower(status),
 		})
 
 		// If VMID is specified, it's unique; return early after first match

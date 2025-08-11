@@ -80,8 +80,6 @@
                                             <th class="has-text-centered">{{index .t "Search.Name"}}</th>
                                             <th class="has-text-centered">{{index .t "Search.Node"}}</th>
                                             <th class="has-text-centered">{{index .t "Search.Status"}}</th>
-                                            <th class="has-text-centered">{{index .t "Search.CPU"}}</th>
-                                            <th class="has-text-centered">{{index .t "Search.RAM"}}</th>
                                             <th class="has-text-centered">{{index .t "Search.Details"}}</th>
                                         </tr>
                                     </thead>
@@ -92,25 +90,13 @@
                                             <td class="has-text-centered">{{.name}}</td>
                                             <td class="has-text-centered">{{.node}}</td>
                                             <td class="has-text-centered">
-                                                <span class="tag {{if eq .status "running"}}is-success{{else}}is-danger{{end}}">
-                                                    {{.status}}
+                                                <span class="tag {{if eq .status "running"}}is-success{{else if eq .status "stopped"}}is-danger{{else}}is-warning{{end}}">
+                                                    {{with (index $.t (printf "VM.Status.%s" .status))}}{{.}}{{else}}{{if .status}}{{.status}}{{else}}unknown{{end}}{{end}}
                                                 </span>
                                             </td>
                                             <td class="has-text-centered">
-                                                <progress class="progress is-small is-primary" value="{{.cpuload}}"
-                                                    max="100">{{.cpuload}}%</progress>
-                                                <span class="is-size-7">{{.cpuload}}%</span>
-                                            </td>
-                                            <td class="has-text-centered">
-                                                <progress class="progress is-small is-info" value="{{.mem}}"
-                                                    max="{{.maxmem}}">
-                                                    {{div (mul .mem 100) .maxmem}}%
-                                                </progress>
-                                                <span class="is-size-7">{{div .mem 1024}}/{{div .maxmem 1024}} GB</span>
-                                            </td>
-                                            <td class="has-text-centered">
                                                 <a href="/vm/details/{{.vmid}}?lang={{$lang}}"
-                                                    class="button is-small is-link">{{index $.t "Search.Actions"}}</a>
+                                                    class="button is-small is-link">{{index $.t "Search.Details"}}</a>
                                             </td>
                                         </tr>
                                         {{end}}
