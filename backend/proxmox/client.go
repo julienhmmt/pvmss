@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -237,6 +239,48 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	}
 
 	return data, nil
+}
+
+// PostFormWithContext performs a POST request with form-encoded data to the Proxmox API.
+// It is primarily used for VM actions such as start/stop/reset/reboot/shutdown which
+// require POSTing to status endpoints.
+func (c *Client) PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error) {
+	urlStr := c.ApiUrl + path
+	logger.Get().Info().Str("url", urlStr).Msg("Making POST request to Proxmox")
+
+	vals := url.Values{}
+	for k, v := range form {
+		vals.Set(k, v)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, strings.NewReader(vals.Encode()))
+	if err != nil {
+		logger.Get().Error().Err(err).Str("url", urlStr).Msg("Failed to create POST request for Proxmox API")
+		return nil, fmt.Errorf("failed to create POST request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		logger.Get().Error().Err(err).Str("url", urlStr).Msg("HTTP POST to Proxmox API failed")
+		return nil, fmt.Errorf("POST request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	// Proxmox may return 200 OK or 202 Accepted for async tasks (returns UPID)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+		logger.Get().Error().Int("status", resp.StatusCode).Str("url", urlStr).RawJSON("body", body).Msg("Proxmox API returned error status for POST")
+		return nil, fmt.Errorf("API returned non-success status: %d - %s", resp.StatusCode, string(body))
+	}
+
+	// Invalidate cache for the path and possibly related GET endpoints since state may change
+	c.InvalidateCache("")
+
+	return body, nil
 }
 
 // InvalidateCache removes entries from the client's response cache.

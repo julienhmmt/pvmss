@@ -60,7 +60,7 @@
 
     <!-- Refresh Button -->
     <div class="is-flex is-justify-content-center mb-4" style="margin-top: 1.5rem;">
-        <a class="button is-info is-light" href="/vm/details/{{.VMID}}" style="min-width: 170px; box-shadow: 0 2px 8px #e3e9f6; border-radius: 8px; display: flex; align-items: center; gap: 0.5em;">
+        <a class="button is-info is-light" href="/vm/details/{{.VMID}}?refresh=1" style="min-width: 170px; box-shadow: 0 2px 8px #e3e9f6; border-radius: 8px; display: flex; align-items: center; gap: 0.5em;">
             <span>{{index .t "VMDetails.Action.Refresh"}}</span>
         </a>
     </div>

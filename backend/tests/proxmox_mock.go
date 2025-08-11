@@ -160,6 +160,7 @@ var _ interface {
 	GetWithContext(ctx context.Context, path string) (map[string]interface{}, error)
 	Get(path string) (map[string]interface{}, error)
 	InvalidateCache(path string)
+	PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error)
 } = (*MockProxmoxClient)(nil)
 
 // GetRawWithContext is the core method for making GET requests in the mock client
@@ -337,4 +338,18 @@ func (c *MockProxmoxClient) GetJSON(ctx context.Context, path string, target int
 	}
 
 	return nil
+}
+
+// PostFormWithContext performs a mock POST operation and returns a fake UPID
+func (c *MockProxmoxClient) PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error) {
+	// Optionally, update mock state based on action encoded in path
+	// For now, just return a deterministic UPID-like response
+	resp := map[string]string{
+		"data": "UPID:MOCK-12345",
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
 }

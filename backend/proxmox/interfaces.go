@@ -16,6 +16,10 @@ type ClientInterface interface {
 	// GetJSON performs a GET request and unmarshals the response into the target interface
 	GetJSON(ctx context.Context, path string, target interface{}) error
 
+	// PostFormWithContext performs a POST request with form-encoded body and returns the raw response
+	// This is primarily used for Proxmox VM actions such as start/stop/reset/reboot/shutdown.
+	PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error)
+
 	// Get performs a GET request using the client's default timeout
 	Get(path string) (map[string]interface{}, error)
 

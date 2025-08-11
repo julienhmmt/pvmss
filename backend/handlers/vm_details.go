@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -58,6 +59,15 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
+
+	// If refresh is requested, clear client cache to force fresh data
+	if r.URL.Query().Get("refresh") == "1" {
+		log.Debug().Msg("Refresh requested, invalidating Proxmox client cache")
+		client.InvalidateCache("")
+	}
+
+	// Always auto-refresh this page every 5 seconds, navigating to the same VM with refresh=1
+	w.Header().Set("Refresh", fmt.Sprintf("5; url=/vm/details/%s?refresh=1", vmID))
 
 	vms, err := proxmox.GetVMsWithContext(r.Context(), client)
 	if err != nil {
@@ -141,10 +151,61 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	renderTemplateInternal(w, r, "vm_details", data)
 }
 
+// VMActionHandler handles VM lifecycle actions via server-side POST forms
+func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().Str("handler", "VMActionHandler").Str("method", r.Method).Str("path", r.URL.Path).Logger()
+	if r.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse posted form values
+	if err := r.ParseForm(); err != nil {
+		log.Error().Err(err).Msg("failed to parse form")
+		localizer := i18n.GetLocalizer(r)
+		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
+		return
+	}
+
+	vmid := r.FormValue("vmid")
+	node := r.FormValue("node")
+	action := r.FormValue("action")
+	if vmid == "" || node == "" || action == "" {
+		log.Warn().Str("vmid", vmid).Str("node", node).Str("action", action).Msg("missing required fields")
+		localizer := i18n.GetLocalizer(r)
+		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
+		return
+	}
+
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		log.Error().Msg("Proxmox client not initialized")
+		localizer := i18n.GetLocalizer(r)
+		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
+		return
+	}
+
+	log = log.With().Str("vmid", vmid).Str("node", node).Str("action", action).Logger()
+	log.Info().Msg("performing VM action")
+
+	// Execute action against Proxmox
+	if _, err := proxmox.VMActionWithContext(r.Context(), client, node, vmid, action); err != nil {
+		log.Error().Err(err).Msg("VM action failed")
+		localizer := i18n.GetLocalizer(r)
+		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
+		return
+	}
+
+	// Redirect back to details page for the same VM with refresh=1 to force fresh data
+	http.Redirect(w, r, "/vm/details/"+vmid+"?refresh=1", http.StatusSeeOther)
+}
+
 // RegisterRoutes registers VM-related routes
 func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	// VM details (protected by authentication)
 	router.GET("/vm/details/:id", h.VMDetailsHandler)
+	// VM action endpoint (POST only)
+	router.POST("/vm/action", h.VMActionHandler)
 }
 
 // VMDetailsHandlerFunc is a wrapper function for compatibility with existing code

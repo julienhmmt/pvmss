@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"pvmss/logger"
 )
@@ -122,4 +123,43 @@ func GetNextVMID(ctx context.Context, client ClientInterface) (int, error) {
 	}
 
 	return highestVMID + 1, nil
+}
+
+// VMActionWithContext performs a lifecycle action on a VM via the Proxmox API.
+// Supported actions map to the following endpoints:
+//
+//	POST /nodes/{node}/qemu/{vmid}/status/{action}
+//
+// Where action is one of: start, stop, shutdown, reboot, reset
+// Returns the UPID string on success (for async tasks), or an empty string when not applicable.
+func VMActionWithContext(ctx context.Context, client ClientInterface, node string, vmid string, action string) (string, error) {
+	// Validate action
+	switch action {
+	case "start", "stop", "shutdown", "reboot", "reset":
+	default:
+		return "", fmt.Errorf("unsupported VM action: %s", action)
+	}
+
+	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", node, vmid, action)
+
+	// Proxmox typically responds with {"data":"UPID:..."}
+	raw, err := client.PostFormWithContext(ctx, path, map[string]string{})
+	if err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action failed")
+		return "", err
+	}
+
+	// Extract UPID in a tolerant way without strict JSON coupling
+	s := string(raw)
+	// common response: {"data":"UPID:..."}
+	startIdx := strings.Index(s, "UPID:")
+	if startIdx >= 0 {
+		// trim until closing quote or brace
+		endIdx := strings.IndexAny(s[startIdx:], "\"}\n")
+		if endIdx > 0 {
+			return s[startIdx : startIdx+endIdx], nil
+		}
+		return s[startIdx:], nil
+	}
+	return "", nil
 }
