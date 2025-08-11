@@ -4,6 +4,12 @@
     <h1 class="title">{{index .t "Navbar.Admin"}}</h1>
     <a class="button is-link mb-4" href="/docs/admin?lang={{.Lang}}">{{index .t "Navbar.AdminDocs"}}</a>
 
+    {{if .Success}}
+    <div class="notification is-success is-light">
+      {{.SuccessMessage}}
+    </div>
+    {{end}}
+
     {{template "nodes" .}}
     {{template "tags" .}}
     {{template "storage" .}}

@@ -26,9 +26,6 @@
       </a>
     </div>
   {{else}}
-    <form method="POST" action="/admin/storage/update">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      
       <div class="box">
         <h3 class="subtitle is-5 mb-3">{{index .t "Admin.Storage.AvailableStorages"}}</h3>
         
@@ -91,10 +88,19 @@
                 {{range $i, $storage := .Storages}}
                   <tr>
                     <td>
-                      <label class="checkbox">
-                        <input type="checkbox" name="enabled_storages" value="{{$storage.Storage}}" 
-                          {{if index $.EnabledMap $storage.Storage}}checked{{end}}>
-                      </label>
+                      {{/* Per-row form to toggle enable/disable without JS */}}
+                      <form method="POST" action="/admin/storage/toggle" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                        <input type="hidden" name="storage" value="{{$storage.Storage}}">
+                        <input type="hidden" name="action" value="{{if index $.EnabledMap $storage.Storage}}disable{{else}}enable{{end}}">
+                        <button type="submit" class="button is-small {{if index $.EnabledMap $storage.Storage}}is-success{{else}}is-light{{end}}">
+                          {{if index $.EnabledMap $storage.Storage}}
+                            {{index $.t "Common.Disable"}}
+                          {{else}}
+                            {{index $.t "Common.Enable"}}
+                          {{end}}
+                        </button>
+                      </form>
                     </td>
                     <td>{{$storage.Storage}}</td>
                     <td>
@@ -126,23 +132,13 @@
             </table>
           </div>
           
-          <div class="field mt-5">
-            <div class="control">
-              <button type="submit" class="button is-primary">
-                <span class="icon">
-                  <i class="fas fa-save"></i>
-                </span>
-                <span>{{index .t "Common.Save"}}</span>
-              </button>
-            </div>
-          </div>
+          {{/* No bulk save button: auto-save per toggle */}}
         {{else}}
           <div class="notification is-warning">
             {{index .t "Admin.Storage.NoStorages"}}
           </div>
         {{end}}
       </div>
-    </form>
   {{end}}
 </div>
 {{end}}

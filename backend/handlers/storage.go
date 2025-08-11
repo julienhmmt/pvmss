@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
+	"net/url"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/i18n"
@@ -16,6 +16,74 @@ type StateManager interface {
 	GetProxmoxClient() proxmox.ClientInterface
 	GetSettings() *state.AppSettings
 	SetSettings(settings *state.AppSettings) error
+}
+
+// ToggleStorageHandler toggles a single storage enabled state (auto-save per click, no JS)
+func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "ToggleStorageHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Logger()
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Erreur lors de l'analyse du formulaire", http.StatusBadRequest)
+		return
+	}
+
+	storageName := r.FormValue("storage")
+	action := r.FormValue("action") // "enable" or "disable"
+	if storageName == "" || (action != "enable" && action != "disable") {
+		http.Error(w, "Requête invalide", http.StatusBadRequest)
+		return
+	}
+
+	settings := h.stateManager.GetSettings()
+	if settings.EnabledStorages == nil {
+		settings.EnabledStorages = []string{}
+	}
+
+	enabledMap := make(map[string]bool, len(settings.EnabledStorages))
+	for _, s := range settings.EnabledStorages {
+		enabledMap[s] = true
+	}
+
+	changed := false
+	if action == "enable" {
+		if !enabledMap[storageName] {
+			settings.EnabledStorages = append(settings.EnabledStorages, storageName)
+			changed = true
+		}
+	} else { // disable
+		if enabledMap[storageName] {
+			// remove
+			filtered := make([]string, 0, len(settings.EnabledStorages))
+			for _, s := range settings.EnabledStorages {
+				if s != storageName {
+					filtered = append(filtered, s)
+				}
+			}
+			settings.EnabledStorages = filtered
+			changed = true
+		}
+	}
+
+	if changed {
+		if err := h.stateManager.SetSettings(settings); err != nil {
+			log.Error().Err(err).Msg("Erreur lors de la sauvegarde des paramètres")
+			http.Error(w, "Erreur lors de la sauvegarde des paramètres", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Redirect back to admin page with context for success banner
+	redirectURL := "/admin?success=1&action=" + action + "&storage=" + url.QueryEscape(storageName)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // StorageHandler gère les routes liées au stockage
@@ -47,149 +115,32 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 	// Récupérer les paramètres
 	node := r.URL.Query().Get("node")
-	if node == "" {
-		// Try to detect first available node automatically
-		if nodes, err := proxmox.GetNodeNames(h.stateManager.GetProxmoxClient()); err == nil && len(nodes) > 0 {
-			node = nodes[0]
-		}
-	}
+	refresh := r.URL.Query().Get("refresh") == "1"
 
 	// Récupérer les paramètres
 	settings := h.stateManager.GetSettings()
-
-	// Initialiser la liste si elle est nulle pour éviter les erreurs
 	if settings.EnabledStorages == nil {
 		settings.EnabledStorages = []string{}
 	}
 
-	// Déterminer si la configuration manuelle est utilisée
-	useManualConfig := len(settings.EnabledStorages) > 0
-
-	// Créer une map des stockages activés
-	enabledStoragesMap := make(map[string]bool, len(settings.EnabledStorages))
-	for _, storageName := range settings.EnabledStorages {
-		enabledStoragesMap[storageName] = true
-	}
-
-	// Récupérer la configuration globale des stockages (pour Content/Type)
-	globalStorages, err := proxmox.GetStorages(client)
+	// Utilise l'utilitaire partagé pour récupérer les stockages rendables
+	storages, enabledMap, chosenNode, err := FetchRenderableStorages(client, node, settings.EnabledStorages, refresh)
 	if err != nil {
-		log.Error().Err(err).Msg("Erreur lors de la récupération de la configuration des stockages")
+		log.Error().Err(err).Msg("Erreur lors de la récupération des stockages")
 		http.Error(w, "Erreur lors de la récupération des stockages: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Indexer la config globale par nom de stockage
-	cfgByName := make(map[string]proxmox.Storage, len(globalStorages))
-	for _, s := range globalStorages {
-		cfgByName[s.Storage] = s
-	}
-
-	// Récupérer les stockages du nœud avec statistiques courantes
-	nodeStorages, err := proxmox.GetNodeStorages(client, node)
-	if err != nil {
-		log.Error().Err(err).Msg("Erreur lors de la récupération des stockages du nœud")
-		http.Error(w, "Erreur lors de la récupération des stockages: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Log le nombre de stockages trouvés avant filtrage
-	log.Info().Int("global_count", len(globalStorages)).Int("node_count", len(nodeStorages)).Msg("Stockages récupérés depuis Proxmox")
-
-	// Convertir le résultat en format attendu par le template (avec filtrage)
-	storageMaps := make([]map[string]interface{}, 0, len(nodeStorages))
-
-	// Convertir chaque stockage en map pour le template
-	for i, storage := range nodeStorages {
-		// Log des détails du stockage pour le débogage
-		log.Debug().
-			Int("index", i).
-			Str("storage", storage.Storage).
-			Str("type", storage.Type).
-			Str("used", storage.Used.String()).
-			Str("total", storage.Total.String()).
-			Msg("Traitement du stockage")
-
-		// Enrichir avec la config globale si disponible (Content/Type/Description)
-		if cfg, ok := cfgByName[storage.Storage]; ok {
-			if storage.Content == "" && cfg.Content != "" {
-				storage.Content = cfg.Content
-			}
-			if storage.Type == "" && cfg.Type != "" {
-				storage.Type = cfg.Type
-			}
-			if storage.Description == "" && cfg.Description != "" {
-				storage.Description = cfg.Description
-			}
-		}
-
-		// Filtrer uniquement les stockages pouvant héberger des disques VM
-		// Règle: exclure PBS; inclure si content contient "images" OU si content vide mais type dans la whitelist
-		if strings.EqualFold(storage.Type, "pbs") {
-			log.Debug().Str("storage", storage.Storage).Msg("Skipping storage: PBS type")
-			continue
-		}
-		canHoldVMDisks := false
-		if storage.Content != "" && strings.Contains(storage.Content, "images") {
-			canHoldVMDisks = true
-		} else if storage.Content == "" {
-			switch strings.ToLower(storage.Type) {
-			case "dir", "lvm", "lvmthin", "zfs", "rbd", "ceph", "cephfs", "nfs", "glusterfs":
-				canHoldVMDisks = true
-			}
-		}
-		if !canHoldVMDisks {
-			log.Debug().Str("storage", storage.Storage).Str("type", storage.Type).Str("content", storage.Content).Msg("Skipping storage: not VM-disk capable")
-			continue
-		}
-
-		// Convertir Used et Total en int64 pour le template
-		used, _ := storage.Used.Int64()
-		total, _ := storage.Total.Int64()
-		percent := 0
-		if total > 0 {
-			percent = int((used * 100) / total)
-		}
-
-		// Créer la map pour le template
-		s := map[string]interface{}{
-			"Storage":       storage.Storage,
-			"Type":          storage.Type,
-			"Used":          used,
-			"Total":         total,
-			"Description":   storage.Description,
-			"Enabled":       !useManualConfig || enabledStoragesMap[storage.Storage],
-			"Content":       storage.Content,
-			"UsedPercent":   percent,
-		}
-
-		// Ajouter des champs optionnels s'ils sont présents
-		if storage.Avail.String() != "" {
-			avail, _ := storage.Avail.Int64()
-			s["Available"] = avail
-		}
-		if storage.Content != "" {
-			s["Content"] = storage.Content
-		}
-
-		storageMaps = append(storageMaps, s)
-	}
-
-	log.Debug().Interface("storages", nodeStorages).Msg("Storages récupérés")
 
 	// Préparer les données pour le template
 	data := map[string]interface{}{
 		"Title":           "Gestion du stockage",
-		"Node":            node,
-		"Storages":        storageMaps,
+		"Node":            chosenNode,
+		"Storages":        storages,
 		"EnabledStorages": settings.EnabledStorages,
-		"EnabledMap":      enabledStoragesMap,
+		"EnabledMap":      enabledMap,
 	}
 
-	// Log des données envoyées au template pour le débogage
-	log.Debug().Interface("template_data", data).Msg("Data being sent to storage template")
-
-	// Ajouter les traductions
+	// Ajouter les traductions et rendre
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "storage", data)
 }
@@ -229,12 +180,13 @@ func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Rediriger vers la page de gestion des stockages
-	http.Redirect(w, r, "/admin/storage?success=true", http.StatusSeeOther)
+	// Rediriger vers la page d'administration principale
+	http.Redirect(w, r, "/admin?success=true", http.StatusSeeOther)
 }
 
 // RegisterRoutes enregistre les routes liées au stockage
 func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/admin/storage", h.StoragePageHandler)
 	router.POST("/admin/storage/update", h.UpdateStorageHandler)
+	router.POST("/admin/storage/toggle", h.ToggleStorageHandler)
 }
