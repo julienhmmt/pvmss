@@ -16,7 +16,6 @@ func defaultSettings() *AppSettings {
 		Tags:            []string{"pvmss"},
 		ISOs:            []string{},
 		VMBRs:           []string{},
-		Storages:        []string{},
 		EnabledStorages: []string{},
 		Limits:          make(map[string]interface{}),
 	}
@@ -28,7 +27,6 @@ type AppSettings struct {
 	Tags            []string               `json:"tags"`
 	ISOs            []string               `json:"isos"`
 	VMBRs           []string               `json:"vmbrs"`
-	Storages        []string               `json:"storages"`
 	EnabledStorages []string               `json:"enabled_storages"`
 	Limits          map[string]interface{} `json:"limits"`
 }
@@ -95,10 +93,7 @@ func LoadSettings() (*AppSettings, bool, error) {
 		modified = true
 		settings.VMBRs = []string{}
 	}
-	if settings.Storages == nil {
-		modified = true
-		settings.Storages = []string{}
-	}
+	// Do not force-initialize Storages; when empty, keep it nil so it is omitted from JSON
 	if settings.EnabledStorages == nil {
 		modified = true
 		settings.EnabledStorages = []string{}
@@ -136,6 +131,11 @@ func WriteSettings(settings *AppSettings) error {
 	settingsFile, err := getSettingsFilePath()
 	if err != nil {
 		return err
+	}
+
+	// Ensure empty optional fields are omitted
+	if settings != nil && len(settings.EnabledStorages) == 0 {
+		settings.EnabledStorages = nil
 	}
 
 	// Create a pretty-printed JSON with 4-space indentation

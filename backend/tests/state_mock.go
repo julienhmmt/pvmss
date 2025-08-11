@@ -44,7 +44,6 @@ func NewMockStateManager() *MockStateManager {
 			Tags:            []string{},
 			ISOs:            []string{},
 			VMBRs:           []string{},
-			Storages:        []string{},
 			EnabledStorages: []string{},
 			Limits:          make(map[string]interface{}),
 		},
@@ -138,7 +137,6 @@ func (s *MockStateManager) GetSettings() *state.AppSettings {
 		Tags:            mockSettings.Tags,
 		ISOs:            mockSettings.ISOs,
 		VMBRs:           mockSettings.VMBRs,
-		Storages:        mockSettings.Storages,
 		EnabledStorages: mockSettings.EnabledStorages,
 		Limits:          mockSettings.Limits,
 	}
@@ -155,7 +153,6 @@ func (s *MockStateManager) SetSettings(settings *state.AppSettings) error {
 		Tags:            settings.Tags,
 		ISOs:            settings.ISOs,
 		VMBRs:           settings.VMBRs,
-		Storages:        settings.Storages,
 		EnabledStorages: settings.EnabledStorages,
 		Limits:          settings.Limits,
 	}
@@ -174,7 +171,6 @@ func (s *MockStateManager) SetSettingsWithoutSave(settings *state.AppSettings) {
 		Tags:            settings.Tags,
 		ISOs:            settings.ISOs,
 		VMBRs:           settings.VMBRs,
-		Storages:        settings.Storages,
 		EnabledStorages: settings.EnabledStorages,
 		Limits:          settings.Limits,
 	}
@@ -225,10 +221,10 @@ func (s *MockStateManager) GetLimits() map[string]interface{} {
 func (s *MockStateManager) GetStorages() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.settings == nil || s.settings.Storages == nil {
+	if s.settings == nil || s.settings.EnabledStorages == nil {
 		return []string{}
 	}
-	return s.settings.Storages
+	return s.settings.EnabledStorages
 }
 
 // AddCSRFToken adds a new CSRF token with an expiry time

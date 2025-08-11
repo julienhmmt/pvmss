@@ -259,10 +259,10 @@ func (s *appState) GetLimits() map[string]interface{} {
 func (s *appState) GetStorages() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.settings == nil || s.settings.Storages == nil {
+	if s.settings == nil || s.settings.EnabledStorages == nil {
 		return []string{}
 	}
-	return s.settings.Storages
+	return s.settings.EnabledStorages
 }
 
 // Security Methods
