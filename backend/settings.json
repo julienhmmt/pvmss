@@ -13,8 +13,9 @@
     "vmbrs": [
         "vmbr0"
     ],
-    "storages": [],
-    "enabled_storages": [],
+    "enabled_storages": [
+        "local-nvme"
+    ],
     "limits": {
         "nodes": {
             "miniquarium": {
