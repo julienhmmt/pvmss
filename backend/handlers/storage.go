@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/i18n"
@@ -47,7 +48,10 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	// Récupérer les paramètres
 	node := r.URL.Query().Get("node")
 	if node == "" {
-		node = "pve" // Valeur par défaut
+		// Try to detect first available node automatically
+		if nodes, err := proxmox.GetNodeNames(h.stateManager.GetProxmoxClient()); err == nil && len(nodes) > 0 {
+			node = nodes[0]
+		}
 	}
 
 	// Récupérer les paramètres
@@ -62,29 +66,41 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	useManualConfig := len(settings.EnabledStorages) > 0
 
 	// Créer une map des stockages activés
-	enabledStoragesMap := make(map[string]bool)
-	if useManualConfig {
-		for _, storageName := range settings.EnabledStorages {
-			enabledStoragesMap[storageName] = true
-		}
+	enabledStoragesMap := make(map[string]bool, len(settings.EnabledStorages))
+	for _, storageName := range settings.EnabledStorages {
+		enabledStoragesMap[storageName] = true
 	}
 
-	// Récupérer les stockages du nœud
-	storages, err := proxmox.GetStorages(client)
+	// Récupérer la configuration globale des stockages (pour Content/Type)
+	globalStorages, err := proxmox.GetStorages(client)
 	if err != nil {
-		log.Error().Err(err).Msg("Erreur lors de la récupération des stockages")
+		log.Error().Err(err).Msg("Erreur lors de la récupération de la configuration des stockages")
 		http.Error(w, "Erreur lors de la récupération des stockages: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Log le nombre de stockages trouvés
-	log.Info().Int("count", len(storages)).Msg("Stockages récupérés depuis Proxmox")
+	// Indexer la config globale par nom de stockage
+	cfgByName := make(map[string]proxmox.Storage, len(globalStorages))
+	for _, s := range globalStorages {
+		cfgByName[s.Storage] = s
+	}
 
-	// Convertir le résultat en format attendu par le template
-	storageMaps := make([]map[string]interface{}, 0, len(storages))
+	// Récupérer les stockages du nœud avec statistiques courantes
+	nodeStorages, err := proxmox.GetNodeStorages(client, node)
+	if err != nil {
+		log.Error().Err(err).Msg("Erreur lors de la récupération des stockages du nœud")
+		http.Error(w, "Erreur lors de la récupération des stockages: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Log le nombre de stockages trouvés avant filtrage
+	log.Info().Int("global_count", len(globalStorages)).Int("node_count", len(nodeStorages)).Msg("Stockages récupérés depuis Proxmox")
+
+	// Convertir le résultat en format attendu par le template (avec filtrage)
+	storageMaps := make([]map[string]interface{}, 0, len(nodeStorages))
 
 	// Convertir chaque stockage en map pour le template
-	for i, storage := range storages {
+	for i, storage := range nodeStorages {
 		// Log des détails du stockage pour le débogage
 		log.Debug().
 			Int("index", i).
@@ -94,19 +110,57 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 			Str("total", storage.Total.String()).
 			Msg("Traitement du stockage")
 
+		// Enrichir avec la config globale si disponible (Content/Type/Description)
+		if cfg, ok := cfgByName[storage.Storage]; ok {
+			if storage.Content == "" && cfg.Content != "" {
+				storage.Content = cfg.Content
+			}
+			if storage.Type == "" && cfg.Type != "" {
+				storage.Type = cfg.Type
+			}
+			if storage.Description == "" && cfg.Description != "" {
+				storage.Description = cfg.Description
+			}
+		}
+
+		// Filtrer uniquement les stockages pouvant héberger des disques VM
+		// Règle: exclure PBS; inclure si content contient "images" OU si content vide mais type dans la whitelist
+		if strings.EqualFold(storage.Type, "pbs") {
+			log.Debug().Str("storage", storage.Storage).Msg("Skipping storage: PBS type")
+			continue
+		}
+		canHoldVMDisks := false
+		if storage.Content != "" && strings.Contains(storage.Content, "images") {
+			canHoldVMDisks = true
+		} else if storage.Content == "" {
+			switch strings.ToLower(storage.Type) {
+			case "dir", "lvm", "lvmthin", "zfs", "rbd", "ceph", "cephfs", "nfs", "glusterfs":
+				canHoldVMDisks = true
+			}
+		}
+		if !canHoldVMDisks {
+			log.Debug().Str("storage", storage.Storage).Str("type", storage.Type).Str("content", storage.Content).Msg("Skipping storage: not VM-disk capable")
+			continue
+		}
+
 		// Convertir Used et Total en int64 pour le template
 		used, _ := storage.Used.Int64()
 		total, _ := storage.Total.Int64()
+		percent := 0
+		if total > 0 {
+			percent = int((used * 100) / total)
+		}
 
 		// Créer la map pour le template
 		s := map[string]interface{}{
-			"Storage":     storage.Storage,
-			"Type":        storage.Type,
-			"Used":        used,
-			"Total":       total,
-			"Description": storage.Description,
-			"Enabled":     !useManualConfig || enabledStoragesMap[storage.Storage],
-			"Content":     storage.Content,
+			"Storage":       storage.Storage,
+			"Type":          storage.Type,
+			"Used":          used,
+			"Total":         total,
+			"Description":   storage.Description,
+			"Enabled":       !useManualConfig || enabledStoragesMap[storage.Storage],
+			"Content":       storage.Content,
+			"UsedPercent":   percent,
 		}
 
 		// Ajouter des champs optionnels s'ils sont présents
@@ -121,7 +175,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		storageMaps = append(storageMaps, s)
 	}
 
-	log.Debug().Interface("storages", storages).Msg("Storages récupérés")
+	log.Debug().Interface("storages", nodeStorages).Msg("Storages récupérés")
 
 	// Préparer les données pour le template
 	data := map[string]interface{}{

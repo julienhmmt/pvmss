@@ -108,12 +108,12 @@
                     <td>
                       <div class="is-flex is-align-items-center" style="gap: 0.5rem;">
                         <progress 
-                          class="progress {{if lt (div (mul $storage.Used 100) $storage.Total) 70}}is-success{{else if lt (div (mul $storage.Used 100) $storage.Total) 90}}is-warning{{else}}is-danger{{end}}" 
+                          class="progress {{if lt $storage.UsedPercent 70}}is-success{{else if lt $storage.UsedPercent 90}}is-warning{{else}}is-danger{{end}}" 
                           value="{{$storage.Used}}" 
                           max="{{$storage.Total}}"
                           style="width: 100px;"
                         ></progress>
-                        <span>{{div (mul $storage.Used 100) $storage.Total}}%</span>
+                        <span>{{$storage.UsedPercent}}%</span>
                       </div>
                       <div class="is-size-7 has-text-grey">
                         {{$storage.Used | formatBytes}} / {{$storage.Total | formatBytes}}

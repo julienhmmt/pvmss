@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	"pvmss/logger"
 )
@@ -61,5 +62,40 @@ func GetStoragesWithContext(ctx context.Context, client ClientInterface) ([]Stor
 	}
 
 	logger.Get().Info().Int("count", len(response.Data)).Msg("Successfully fetched storage list")
+	return response.Data, nil
+}
+
+// GetNodeStorages returns storages with live status for a specific node from /nodes/{node}/storage.
+// It uses the client's default timeout.
+func GetNodeStorages(client ClientInterface, node string) ([]Storage, error) {
+	logger.Get().Info().Str("node", node).Msg("Fetching node storage list from Proxmox")
+	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
+	defer cancel()
+	return GetNodeStoragesWithContext(ctx, client, node)
+}
+
+// GetNodeStoragesWithContext fetches storages for a specific node with status fields (used/total/avail).
+func GetNodeStoragesWithContext(ctx context.Context, client ClientInterface, node string) ([]Storage, error) {
+	var response ListResponse[Storage]
+	path := "/nodes/" + url.PathEscape(node) + "/storage"
+	if err := client.GetJSON(ctx, path, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Msg("Failed to fetch node storages from Proxmox API")
+		return nil, fmt.Errorf("failed to fetch node storages: %w", err)
+	}
+
+	for i, storage := range response.Data {
+		logger.Get().Debug().
+			Int("index", i).
+			Str("node", node).
+			Str("storage", storage.Storage).
+			Str("type", storage.Type).
+			Str("used", storage.Used.String()).
+			Str("total", storage.Total.String()).
+			Str("avail", storage.Avail.String()).
+			Int("active", storage.Active).
+			Msg("Parsed node storage entry")
+	}
+
+	logger.Get().Info().Str("node", node).Int("count", len(response.Data)).Msg("Successfully fetched node storage list")
 	return response.Data, nil
 }

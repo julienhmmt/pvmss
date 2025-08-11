@@ -9,6 +9,7 @@ import (
 
 	"pvmss/i18n"
 	"pvmss/logger"
+	"strings"
 )
 
 // AdminHandler gère les routes d'administration
@@ -104,15 +105,105 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 		enabledVMBRs[vmbr] = true
 	}
 
-	// Préparer les données pour le template
-	data := map[string]interface{}{
-		"Tags":         appSettings.Tags,
-		"ISOs":         appSettings.ISOs,
-		"VMBRs":        allVMBRs,
-		"EnabledVMBRs": enabledVMBRs,
-		"Limits":       appSettings.Limits,
-		"NodeDetails":  nodeDetails,
-	}
+    // --- Storage section for admin page ---
+    var storageMaps []map[string]interface{}
+    enabledStoragesMap := make(map[string]bool, len(appSettings.EnabledStorages))
+    for _, s := range appSettings.EnabledStorages {
+        enabledStoragesMap[s] = true
+    }
+
+    if client != nil {
+        // Detect node: first available
+        node := ""
+        if n, err := proxmox.GetNodeNames(client); err == nil && len(n) > 0 {
+            node = n[0]
+        }
+
+        // Fetch global storage config and node storages
+        if node != "" {
+            globalStorages, err := proxmox.GetStorages(client)
+            if err != nil {
+                log.Warn().Err(err).Msg("Unable to fetch global storages for admin page")
+            } else {
+                cfgByName := make(map[string]proxmox.Storage, len(globalStorages))
+                for _, s := range globalStorages {
+                    cfgByName[s.Storage] = s
+                }
+                nodeStorages, err := proxmox.GetNodeStorages(client, node)
+                if err != nil {
+                    log.Warn().Err(err).Str("node", node).Msg("Unable to fetch node storages for admin page")
+                } else {
+                    for _, st := range nodeStorages {
+                        // Enrich from global config
+                        if cfg, ok := cfgByName[st.Storage]; ok {
+                            if st.Content == "" && cfg.Content != "" {
+                                st.Content = cfg.Content
+                            }
+                            if st.Type == "" && cfg.Type != "" {
+                                st.Type = cfg.Type
+                            }
+                            if st.Description == "" && cfg.Description != "" {
+                                st.Description = cfg.Description
+                            }
+                        }
+
+                        // Filter VM-disk capable: exclude PBS; include images or known types
+                        if strings.EqualFold(st.Type, "pbs") {
+                            continue
+                        }
+                        canHold := false
+                        if st.Content != "" && strings.Contains(st.Content, "images") {
+                            canHold = true
+                        } else if st.Content == "" {
+                            switch strings.ToLower(st.Type) {
+                            case "dir", "lvm", "lvmthin", "zfs", "rbd", "ceph", "cephfs", "nfs", "glusterfs":
+                                canHold = true
+                            }
+                        }
+                        if !canHold {
+                            continue
+                        }
+
+                        used, _ := st.Used.Int64()
+                        total, _ := st.Total.Int64()
+                        percent := 0
+                        if total > 0 {
+                            percent = int((used * 100) / total)
+                        }
+                        sm := map[string]interface{}{
+                            "Storage":     st.Storage,
+                            "Type":        st.Type,
+                            "Used":        used,
+                            "Total":       total,
+                            "Description": st.Description,
+                            "Enabled":     len(appSettings.EnabledStorages) == 0 || enabledStoragesMap[st.Storage],
+                            "Content":     st.Content,
+                            "UsedPercent": percent,
+                        }
+                        if st.Avail.String() != "" {
+                            if avail, err := st.Avail.Int64(); err == nil {
+                                sm["Available"] = avail
+                            }
+                        }
+                        storageMaps = append(storageMaps, sm)
+                    }
+                }
+            }
+        }
+    }
+
+    // Préparer les données pour le template (includes storage)
+    data := map[string]interface{}{
+        "Tags":             appSettings.Tags,
+        "ISOs":             appSettings.ISOs,
+        "VMBRs":            allVMBRs,
+        "EnabledVMBRs":     enabledVMBRs,
+        "Limits":           appSettings.Limits,
+        "NodeDetails":      nodeDetails,
+        "Storages":         storageMaps,
+        "EnabledStorages":  appSettings.EnabledStorages,
+        "EnabledMap":       enabledStoragesMap,
+    }
 
 	// Ajouter les traductions
 	i18n.LocalizePage(w, r, data)
