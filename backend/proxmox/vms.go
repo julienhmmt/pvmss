@@ -2,7 +2,9 @@ package proxmox
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"pvmss/logger"
@@ -34,7 +36,7 @@ type VMCurrent struct {
 
 // GetVMCurrentWithContext fetches the current runtime metrics for a VM
 func GetVMCurrentWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (*VMCurrent, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", node, vmid)
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid)
 	// The Proxmox API returns an object: { "data": { ...fields } }
 	type singleResponse[T any] struct {
 		Data T `json:"data"`
@@ -93,7 +95,7 @@ func GetVMsWithContext(ctx context.Context, client ClientInterface) ([]VM, error
 // GetVMsForNodeWithContext fetches all VMs located on a single, specified Proxmox node.
 // It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
 func GetVMsForNodeWithContext(ctx context.Context, client ClientInterface, nodeName string) ([]VM, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu", nodeName)
+	path := fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(nodeName))
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
 	var response ListResponse[VM]
@@ -167,7 +169,7 @@ func VMActionWithContext(ctx context.Context, client ClientInterface, node strin
 		return "", fmt.Errorf("unsupported VM action: %s", action)
 	}
 
-	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", node, vmid, action)
+	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", url.PathEscape(node), url.PathEscape(vmid), action)
 
 	// Proxmox typically responds with {"data":"UPID:..."}
 	raw, err := client.PostFormWithContext(ctx, path, map[string]string{})
@@ -175,18 +177,25 @@ func VMActionWithContext(ctx context.Context, client ClientInterface, node strin
 		logger.Get().Error().Err(err).Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action failed")
 		return "", err
 	}
-
-	// Extract UPID in a tolerant way without strict JSON coupling
-	s := string(raw)
-	// common response: {"data":"UPID:..."}
-	startIdx := strings.Index(s, "UPID:")
-	if startIdx >= 0 {
-		// trim until closing quote or brace
-		endIdx := strings.IndexAny(s[startIdx:], "\"}\n")
-		if endIdx > 0 {
-			return s[startIdx : startIdx+endIdx], nil
+	// Try to unmarshal typed response
+	var resp struct {
+		Data string `json:"data"`
+	}
+	if err := json.Unmarshal(raw, &resp); err == nil && resp.Data != "" {
+		// Extra guard: ensure it looks like a UPID
+		if strings.HasPrefix(resp.Data, "UPID:") {
+			return resp.Data, nil
 		}
-		return s[startIdx:], nil
+		return resp.Data, nil
+	}
+	// Fallback: tolerant search
+	s := string(raw)
+	if idx := strings.Index(s, "UPID:"); idx >= 0 {
+		end := strings.IndexAny(s[idx:], "\"}\n")
+		if end > 0 {
+			return s[idx : idx+end], nil
+		}
+		return s[idx:], nil
 	}
 	return "", nil
 }

@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"pvmss/logger"
 )
@@ -51,7 +52,7 @@ func GetVMBRsWithContext(ctx context.Context, client ClientInterface, node strin
 
 	logger.Get().Info().Str("node", node).Msg("Fetching VMBRs with context from Proxmox")
 
-	path := fmt.Sprintf("/nodes/%s/network", node)
+	path := fmt.Sprintf("/nodes/%s/network", url.PathEscape(node))
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
 	var response VMBRListResponse

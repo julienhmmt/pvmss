@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"pvmss/logger"
 )
@@ -48,7 +49,7 @@ func GetISOListWithContext(ctx context.Context, client ClientInterface, node, st
 		Str("storage", storage).
 		Msg("Fetching ISO list with context from Proxmox")
 
-	path := fmt.Sprintf("/nodes/%s/storage/%s/content", node, storage)
+	path := fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage))
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
 	var response ISOListResponse

@@ -6,142 +6,46 @@
         {{index .t "Admin.ISO.Description"}}
     </div>
 
-    <div id="iso-container" class="mb-4">
-        <!-- ISO content will be loaded here -->
+    <div class="box">
+        {{if .ISOsList}}
+        <div class="table-container">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th><span class="icon-text"><span class="icon"><i class="fas fa-toggle-on"></i></span> <span>{{index .t "Admin.ISO.Header.Enabled"}}</span></span></th>
+                        <th><span class="icon-text"><span class="icon"><i class="fas fa-server"></i></span> <span>{{index .t "Admin.ISO.Header.Storage"}}</span></span></th>
+                        <th><span class="icon-text"><span class="icon"><i class="fas fa-compact-disc"></i></span> <span>{{index .t "Admin.ISO.Header.Name"}}</span></span></th>
+                        <th><span class="icon-text"><span class="icon"><i class="fas fa-database"></i></span> <span>{{index .t "Admin.ISO.Header.Size"}}</span></span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $i, $iso := .ISOsList}}
+                    <tr>
+                        <td>
+                            <form method="POST" action="/admin/iso/toggle" style="display:inline">
+                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                <input type="hidden" name="volid" value="{{$iso.VolID}}">
+                                <input type="hidden" name="action" value="{{if $iso.Enabled}}disable{{else}}enable{{end}}">
+                                <button type="submit" class="button is-small {{if $iso.Enabled}}is-success{{else}}is-light{{end}}">
+                                    {{if $iso.Enabled}}
+                                        {{index $.t "Common.Disable"}}
+                                    {{else}}
+                                        {{index $.t "Common.Enable"}}
+                                    {{end}}
+                                </button>
+                            </form>
+                        </td>
+                        <td>{{$iso.Storage}}</td>
+                        <td>{{$iso.VolID}}</td>
+                        <td>{{formatBytes $iso.Size}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="notification is-warning">{{index .t "Admin.ISO.NoISOs"}}</div>
+        {{end}}
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if this component has already been initialized
-    if (window.isoInitialized) return;
-    window.isoInitialized = true;
-    
-    const isoContainer = document.getElementById('iso-container');
-
-    // Fetch the current settings to pre-check the saved ISOs
-    let savedIsos = [];
-    fetch('/api/settings')
-        .then(response => response.json())
-        .then(settings => {
-            savedIsos = settings.isos || [];
-            // Now fetch all ISOs
-            return fetch('/api/settings/iso');
-        })
-        .then(response => response.json())
-        .then(data => {
-            isoContainer.innerHTML = ''; // Clear any previous content
-            if (data.isos && data.isos.length > 0) {
-                // Create table element
-                const table = document.createElement('table');
-                table.className = 'table is-fullwidth is-striped';
-                
-                // Create table header
-                const thead = document.createElement('thead');
-                thead.innerHTML = `
-                    <tr>
-                        <th>{{index .t "Admin.ISO.Header.Enabled"}}</th>
-                        <th>{{index .t "Admin.ISO.Header.Storage"}}</th>
-                        <th>{{index .t "Admin.ISO.Header.Name"}}</th>
-                        <th>{{index .t "Admin.ISO.Header.Size"}}</th>
-                    </tr>
-                `;
-                table.appendChild(thead);
-                
-                // Create table body
-                const tbody = document.createElement('tbody');
-                data.isos.forEach(iso => {
-                    const row = document.createElement('tr');
-                    
-                    // Enabled cell with checkbox
-                    const enabledCell = document.createElement('td');
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'iso-checkbox';
-                    checkbox.dataset.volid = iso.volid;
-                    // Check the box if this ISO is in the saved settings
-                    if (savedIsos.includes(iso.volid)) {
-                        checkbox.checked = true;
-                    }
-                    enabledCell.appendChild(checkbox);
-                    row.appendChild(enabledCell);
-                    
-                    // Storage cell
-                    const storageCell = document.createElement('td');
-                    storageCell.textContent = iso.storage;
-                    row.appendChild(storageCell);
-                    
-                    // Name cell
-                    const nameCell = document.createElement('td');
-                    const volidParts = iso.volid.split('/');
-                    nameCell.textContent = volidParts.length > 1 ? volidParts[1] : iso.volid;
-                    row.appendChild(nameCell);
-                    
-                    // Size cell
-                    const sizeCell = document.createElement('td');
-                    sizeCell.textContent = formatBytes(iso.size);
-                    row.appendChild(sizeCell);
-                    
-                    tbody.appendChild(row);
-                });
-                table.appendChild(tbody);
-                isoContainer.appendChild(table);
-            } else {
-                isoContainer.innerHTML = '<div class="notification is-warning">No ISO images found on any compatible storage.</div>';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching data:', error);
-            isoContainer.innerHTML = '<div class="notification is-danger">{{index . "Admin.ISO.Error"}}</div>';
-        });
-
-    function saveIsoSelections() {
-        const selectedIsos = [];
-        document.querySelectorAll('.iso-checkbox:checked').forEach(checkbox => {
-            selectedIsos.push(checkbox.dataset.volid);
-        });
-
-        // Récupérer le jeton CSRF
-        const csrfToken = typeof getCSRFToken === 'function' ? getCSRFToken() : '';
-        const headers = {
-            'Content-Type': 'application/json'
-        };
-
-        // Ajouter le jeton CSRF s'il est disponible
-        if (csrfToken) {
-            headers['X-CSRF-Token'] = csrfToken;
-        }
-
-        fetch('/api/iso/settings', {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({ isos: selectedIsos })
-        })
-        .then(response => {
-            if (!response.ok) {
-                console.error('Failed to save ISO selections.');
-            }
-        })
-        .catch(error => {
-            console.error('Error saving ISOs:', error);
-        });
-    }
-
-    // Add event listener to the container for delegation
-    isoContainer.addEventListener('change', function(event) {
-        if (event.target.matches('.iso-checkbox')) {
-            saveIsoSelections();
-        }
-    });
-
-    function formatBytes(bytes, decimals = 2) {
-        if (!bytes || bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    }
-});
-</script>
 {{end}}

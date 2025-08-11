@@ -83,6 +83,13 @@
     </footer>
 
     <script>
+        // Global helper to read CSRF token from meta tag
+        // Keeps client-side POSTs (e.g., ISO settings) CSRF-compliant
+        function getCSRFToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+
         // Gestion du menu burger
         document.addEventListener('DOMContentLoaded', function() {
             const burger = document.querySelector('.navbar-burger');

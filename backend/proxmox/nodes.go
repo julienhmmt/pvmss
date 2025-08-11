@@ -3,6 +3,7 @@ package proxmox
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"pvmss/logger"
@@ -60,7 +61,7 @@ func GetNodeDetailsWithContext(ctx context.Context, client ClientInterface, node
 	logger.Get().Info().Str("node", nodeName).Msg("Fetching node details")
 
 	// Get node status from Proxmox API
-	path := fmt.Sprintf("/nodes/%s/status", nodeName)
+	path := fmt.Sprintf("/nodes/%s/status", url.PathEscape(nodeName))
 	var status NodeStatus
 	if err := client.GetJSON(ctx, path, &status); err != nil {
 		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get node status from Proxmox API")
@@ -162,7 +163,7 @@ func GetNodeStatus(client ClientInterface, nodeName string) (string, error) {
 	defer cancel()
 
 	var status NodeStatus
-	err := client.GetJSON(ctx, fmt.Sprintf("/nodes/%s/status", nodeName), &status)
+	err := client.GetJSON(ctx, fmt.Sprintf("/nodes/%s/status", url.PathEscape(nodeName)), &status)
 	if err != nil {
 		logger.Get().Debug().
 			Err(err).

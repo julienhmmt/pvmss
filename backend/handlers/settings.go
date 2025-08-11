@@ -3,9 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -166,6 +168,153 @@ func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// ISOPageHandler renders the ISO management page (server-rendered, no JS required)
+func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "ISOPageHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Logger()
+
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+		return
+	}
+
+	proxmoxClient, ok := client.(*proxmox.Client)
+	if !ok {
+		log.Error().Msg("Failed to convert client to *proxmox.Client")
+		http.Error(w, "Internal error: Invalid client type", http.StatusInternalServerError)
+		return
+	}
+
+	settings := h.stateManager.GetSettings()
+	enabledMap := make(map[string]bool)
+	for _, v := range settings.ISOs {
+		enabledMap[v] = true
+	}
+
+	// Collect all ISOs (reuse logic from GetAllISOsHandler)
+	nodes, err := proxmox.GetNodeNames(proxmoxClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get nodes from Proxmox")
+		http.Error(w, "Failed to get nodes", http.StatusInternalServerError)
+		return
+	}
+
+	storages, err := proxmox.GetStorages(proxmoxClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get storages from Proxmox")
+		http.Error(w, "Failed to get storages", http.StatusInternalServerError)
+		return
+	}
+
+	var allISOs []ISOInfo
+	for _, nodeName := range nodes {
+		for _, storage := range storages {
+			isNodeInStorage := storage.Nodes == "" || strings.Contains(storage.Nodes, nodeName)
+			if !isNodeInStorage || !containsISO(storage.Content) {
+				continue
+			}
+			isoList, err := proxmox.GetISOList(proxmoxClient, nodeName, storage.Storage)
+			if err != nil {
+				log.Warn().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Could not get ISO list for storage, skipping")
+				continue
+			}
+			for _, iso := range isoList {
+				if !strings.HasSuffix(iso.VolID, ".iso") {
+					continue
+				}
+				_, isEnabled := enabledMap[iso.VolID]
+				allISOs = append(allISOs, ISOInfo{
+					VolID:   iso.VolID,
+					Format:  "iso",
+					Size:    iso.Size,
+					Node:    nodeName,
+					Storage: storage.Storage,
+					Enabled: isEnabled,
+				})
+			}
+		}
+	}
+
+	// Build data and render
+	data := map[string]interface{}{
+		"Title":       "ISO Management",
+		"ISOsList":    allISOs,
+		"EnabledISOs": enabledMap,
+	}
+	i18n.LocalizePage(w, r, data)
+	renderTemplateInternal(w, r, "iso", data)
+}
+
+// ToggleISOHandler toggles a single ISO enabled state (auto-save per click, no JS)
+func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "ToggleISOHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Logger()
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	volid := r.FormValue("volid")
+	action := r.FormValue("action") // enable|disable
+	if volid == "" || (action != "enable" && action != "disable") {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	settings := h.stateManager.GetSettings()
+	if settings.ISOs == nil {
+		settings.ISOs = []string{}
+	}
+
+	enabled := make(map[string]bool, len(settings.ISOs))
+	for _, v := range settings.ISOs {
+		enabled[v] = true
+	}
+
+	changed := false
+	if action == "enable" {
+		if !enabled[volid] {
+			settings.ISOs = append(settings.ISOs, volid)
+			changed = true
+		}
+	} else { // disable
+		if enabled[volid] {
+			filtered := make([]string, 0, len(settings.ISOs))
+			for _, v := range settings.ISOs {
+				if v != volid {
+					filtered = append(filtered, v)
+				}
+			}
+			settings.ISOs = filtered
+			changed = true
+		}
+	}
+
+	if changed {
+		if err := h.stateManager.SetSettings(settings); err != nil {
+			log.Error().Err(err).Msg("Failed to save settings")
+			http.Error(w, "Failed to save settings", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	redirectURL := "/admin?success=1&action=" + action + "&iso=" + url.QueryEscape(volid)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
 // UpdateISOSettingsHandler met à jour les paramètres des ISOs
 func (h *SettingsHandler) UpdateISOSettingsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Décoder le corps de la requête
@@ -298,6 +447,10 @@ func (h *SettingsHandler) UpdateVMBRSettingsHandler(w http.ResponseWriter, r *ht
 
 // RegisterRoutes enregistre les routes liées aux paramètres
 func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
+	// Admin ISO page and toggle (no JS)
+	router.GET("/admin/iso", h.ISOPageHandler)
+	router.POST("/admin/iso/toggle", h.ToggleISOHandler)
+
 	// Routes API protégées par authentification
 	router.GET("/api/settings", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.GetSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))

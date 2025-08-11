@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/proxmox"
@@ -60,6 +61,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	var proxmoxClient *proxmox.Client
 	var nodeNames []string
 	var nodeDetails []*proxmox.NodeDetails
+	var isosList []ISOInfo
 
 	if client == nil {
 		// Offline mode: proceed without Proxmox
@@ -85,6 +87,46 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 						continue
 					}
 					nodeDetails = append(nodeDetails, nodeDetail)
+				}
+
+				// --- Build ISOs list for server-rendered ISO section ---
+				// Enabled map from settings
+				enabledISOMap := make(map[string]bool)
+				for _, v := range appSettings.ISOs {
+					enabledISOMap[v] = true
+				}
+
+				storages, err := proxmox.GetStorages(proxmoxClient)
+				if err != nil {
+					log.Warn().Err(err).Msg("Unable to fetch storages for ISO listing")
+				} else {
+					for _, nodeName := range nodeNames {
+						for _, storage := range storages {
+							isNodeInStorage := storage.Nodes == "" || strings.Contains(storage.Nodes, nodeName)
+							if !isNodeInStorage || !containsISO(storage.Content) { // reuse helper in this package
+								continue
+							}
+							isoList, err := proxmox.GetISOList(proxmoxClient, nodeName, storage.Storage)
+							if err != nil {
+								log.Warn().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Could not get ISO list for storage, skipping")
+								continue
+							}
+							for _, iso := range isoList {
+								if !strings.HasSuffix(iso.VolID, ".iso") {
+									continue
+								}
+								_, isEnabled := enabledISOMap[iso.VolID]
+								isosList = append(isosList, ISOInfo{
+									VolID:   iso.VolID,
+									Format:  "iso",
+									Size:    iso.Size,
+									Node:    nodeName,
+									Storage: storage.Storage,
+									Enabled: isEnabled,
+								})
+							}
+						}
+					}
 				}
 			}
 		}
@@ -125,23 +167,35 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	act := r.URL.Query().Get("action")
 	stor := r.URL.Query().Get("storage")
 	vmbrName := r.URL.Query().Get("vmbr")
+	isoName := r.URL.Query().Get("iso")
 	var successMsg string
 	if success {
 		switch {
+		case isoName != "":
+			switch act {
+			case "enable":
+				successMsg = "ISO '" + isoName + "' enabled"
+			case "disable":
+				successMsg = "ISO '" + isoName + "' disabled"
+			default:
+				successMsg = "ISO settings updated"
+			}
 		case vmbrName != "":
-			if act == "enable" {
+			switch act {
+			case "enable":
 				successMsg = "VMBR '" + vmbrName + "' enabled"
-			} else if act == "disable" {
+			case "disable":
 				successMsg = "VMBR '" + vmbrName + "' disabled"
-			} else {
+			default:
 				successMsg = "VMBR settings updated"
 			}
 		case stor != "":
-			if act == "enable" {
+			switch act {
+			case "enable":
 				successMsg = "Storage '" + stor + "' enabled"
-			} else if act == "disable" {
+			case "disable":
 				successMsg = "Storage '" + stor + "' disabled"
-			} else {
+			default:
 				successMsg = "Storage settings updated"
 			}
 		default:
@@ -151,8 +205,16 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 
 	// Préparer les données pour le template (includes storage)
 	data := map[string]interface{}{
-		"Tags":            appSettings.Tags,
-		"ISOs":            appSettings.ISOs,
+		"Tags":     appSettings.Tags,
+		"ISOs":     appSettings.ISOs,
+		"ISOsList": isosList,
+		"EnabledISOs": func() map[string]bool {
+			m := make(map[string]bool)
+			for _, v := range appSettings.ISOs {
+				m[v] = true
+			}
+			return m
+		}(),
 		"VMBRs":           allVMBRs,
 		"EnabledVMBRs":    enabledVMBRs,
 		"Limits":          appSettings.Limits,
