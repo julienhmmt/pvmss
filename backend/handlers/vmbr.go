@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 
 	"pvmss/logger"
 	"pvmss/state"
@@ -12,6 +13,69 @@ import (
 // VMBRHandler handles VMBR-related operations.
 type VMBRHandler struct {
 	stateManager state.StateManager
+}
+
+// ToggleVMBRHandler toggles a single VMBR enable state (auto-save without JS)
+func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().Str("handler", "ToggleVMBRHandler").Logger()
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form data.", http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("vmbr")
+	action := r.FormValue("action") // enable|disable
+	if name == "" || (action != "enable" && action != "disable") {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	gs := h.stateManager
+	settings := gs.GetSettings()
+	if settings.VMBRs == nil {
+		settings.VMBRs = []string{}
+	}
+
+	enabled := make(map[string]bool, len(settings.VMBRs))
+	for _, v := range settings.VMBRs {
+		enabled[v] = true
+	}
+
+	changed := false
+	if action == "enable" {
+		if !enabled[name] {
+			settings.VMBRs = append(settings.VMBRs, name)
+			changed = true
+		}
+	} else { // disable
+		if enabled[name] {
+			filtered := make([]string, 0, len(settings.VMBRs))
+			for _, v := range settings.VMBRs {
+				if v != name {
+					filtered = append(filtered, v)
+				}
+			}
+			settings.VMBRs = filtered
+			changed = true
+		}
+	}
+
+	if changed {
+		if err := gs.SetSettings(settings); err != nil {
+			log.Error().Err(err).Msg("Failed to update settings")
+			http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	redirectURL := "/admin?success=1&action=" + action + "&vmbr=" + url.QueryEscape(name)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // NewVMBRHandler creates a new instance of VMBRHandler.
@@ -100,4 +164,5 @@ func (h *VMBRHandler) UpdateVMBRHandler(w http.ResponseWriter, r *http.Request, 
 func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/admin/vmbr", h.VMBRPageHandler)
 	router.POST("/admin/vmbr/update", h.UpdateVMBRHandler)
+	router.POST("/admin/vmbr/toggle", h.ToggleVMBRHandler)
 }

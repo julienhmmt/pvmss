@@ -41,15 +41,52 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 		log.Info().Str("node", node).Int("vmbr_count", len(vmbrs)).Msg("Fetched VMBRs for node")
 		for _, vmbr := range vmbrs {
 			if vmbr.Type == "bridge" { // keep parity with existing admin filtering
+				// Fallbacks: some Proxmox versions expose interface as "name" instead of "iface"
+				iface := vmbr.Iface
+				if iface == "" && vmbr.IfaceName != "" {
+					iface = vmbr.IfaceName
+				}
+
+				// Build a readable description from available fields
+				desc := ""
+				if vmbr.BridgePorts != "" {
+					desc = "ports: " + vmbr.BridgePorts
+				}
+				if vmbr.Address != "" {
+					if desc != "" {
+						desc += " | "
+					}
+					cidr := vmbr.Address
+					if vmbr.Netmask != "" {
+						cidr += "/" + vmbr.Netmask
+					}
+					desc += "ip: " + cidr
+				}
+				if vmbr.Gateway != "" {
+					if desc != "" {
+						desc += " | "
+					}
+					desc += "gw: " + vmbr.Gateway
+				}
+				if vmbr.Method != "" {
+					if desc != "" {
+						desc += " | "
+					}
+					desc += "method: " + vmbr.Method
+				}
+				if desc == "" && vmbr.Comments != "" {
+					desc = vmbr.Comments
+				}
+
 				allVMBRs = append(allVMBRs, map[string]string{
 					"node":        node,
-					"iface":       vmbr.Iface,
+					"iface":       iface,
 					"type":        vmbr.Type,
 					"method":      vmbr.Method,
 					"address":     vmbr.Address,
 					"netmask":     vmbr.Netmask,
 					"gateway":     vmbr.Gateway,
-					"description": "",
+					"description": desc,
 				})
 			}
 		}

@@ -10,15 +10,18 @@ import (
 // VMBR represents a network interface in Proxmox
 type VMBR struct {
 	Iface       string `json:"iface"`
+	IfaceName   string `json:"name"`
 	Type        string `json:"type"`
-	Active      bool   `json:"active"`
 	Method      string `json:"method"`
 	Address     string `json:"address"`
 	Netmask     string `json:"netmask"`
 	Gateway     string `json:"gateway"`
-	BridgeFD    string `json:"bridge_fd"`
-	BridgeSTP   string `json:"bridge_stp"`
 	BridgePorts string `json:"bridge_ports"`
+	Comments    string `json:"comments"`
+	// Fields that may be number/bool or vary across versions
+	Active    any `json:"active"`
+	BridgeFD  any `json:"bridge_fd"`
+	BridgeSTP any `json:"bridge_stp"`
 }
 
 // VMBRListResponse represents the response from the network interfaces endpoint

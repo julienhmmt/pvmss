@@ -124,13 +124,27 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	success := r.URL.Query().Get("success") != ""
 	act := r.URL.Query().Get("action")
 	stor := r.URL.Query().Get("storage")
+	vmbrName := r.URL.Query().Get("vmbr")
 	var successMsg string
 	if success {
-		if act == "enable" {
-			successMsg = "Storage '" + stor + "' enabled"
-		} else if act == "disable" {
-			successMsg = "Storage '" + stor + "' disabled"
-		} else {
+		switch {
+		case vmbrName != "":
+			if act == "enable" {
+				successMsg = "VMBR '" + vmbrName + "' enabled"
+			} else if act == "disable" {
+				successMsg = "VMBR '" + vmbrName + "' disabled"
+			} else {
+				successMsg = "VMBR settings updated"
+			}
+		case stor != "":
+			if act == "enable" {
+				successMsg = "Storage '" + stor + "' enabled"
+			} else if act == "disable" {
+				successMsg = "Storage '" + stor + "' disabled"
+			} else {
+				successMsg = "Storage settings updated"
+			}
+		default:
 			successMsg = "Settings saved"
 		}
 	}

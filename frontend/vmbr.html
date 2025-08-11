@@ -13,9 +13,6 @@
       </a>
     </div>
   {{else}}
-    <form method="POST" action="/admin/vmbr/update">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      
       <div class="box">
         <h3 class="subtitle is-5 mb-3">{{index .t "Admin.VMBR.Title"}}</h3>
         
@@ -32,37 +29,39 @@
               </thead>
               <tbody>
                 {{range $i, $vmbr := .VMBRs}}
+                  {{/* Safely extract name from map to avoid nil in index */}}
+                  {{$name := index $vmbr "iface"}}
                   <tr>
                     <td>
-                      <label class="checkbox">
-                        <input type="checkbox" name="enabled_vmbrs" value="{{$vmbr.name}}" 
-                          {{if index $.EnabledVMBRs $vmbr.name}}checked{{end}}>
-                      </label>
+                      <form method="POST" action="/admin/vmbr/toggle" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                        <input type="hidden" name="vmbr" value="{{$name}}">
+                        <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
+                        <button type="submit" class="button is-small {{if index $.EnabledVMBRs $name}}is-success{{else}}is-light{{end}}">
+                          {{if index $.EnabledVMBRs $name}}
+                            {{index $.t "Common.Disable"}}
+                          {{else}}
+                            {{index $.t "Common.Enable"}}
+                          {{end}}
+                        </button>
+                      </form>
                     </td>
                     <td>{{$vmbr.node}}</td>
-                    <td>{{$vmbr.name}}</td>
-                    <td>{{$vmbr.description}}</td>
+                    <td>{{$name}}</td>
+                    <td>{{index $vmbr "description"}}</td>
                   </tr>
                 {{end}}
               </tbody>
             </table>
           </div>
           
-          <div class="field mt-5">
-            <div class="control">
-              <button type="submit" class="button is-primary">
-                <span class="icon"><i class="fas fa-save"></i></span>
-                <span>{{index .t "Common.Save"}}</span>
-              </button>
-            </div>
-          </div>
+          {{/* No bulk save button: auto-save per toggle */}}
         {{else}}
           <div class="notification is-warning">
             {{index .t "Admin.VMBR.NoVMBRs"}}
           </div>
         {{end}}
       </div>
-    </form>
   {{end}}
 </div>
 {{end}}
