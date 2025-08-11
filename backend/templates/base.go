@@ -20,16 +20,20 @@ func GetBaseFuncMap() template.FuncMap {
 		"formatBytes":  formatBytes,
 
 		// Collection functions
-		"sort":     sortSlice,
-		"reverse":  reverseSlice,
-		"contains": containsValue,
-		"length":   getLength,
-		"until":    until,
+		"sort":        sortSlice,
+		"reverse":     reverseSlice,
+		"contains":    containsValue,
+		"length":      getLength,
+		"until":       until,
+		"sortStrings": sortStrings,
+		"sortInts":    sortInts,
+		"seq":         seq,
 
 		// String functions
 		"upper":      toUpper,
 		"lower":      toLower,
 		"truncate":   truncateString,
+		"join":       join,
 		"humanBytes": formatBytes,
 
 		// Math functions
@@ -44,9 +48,12 @@ func GetBaseFuncMap() template.FuncMap {
 		"default":  defaultValue,
 		"empty":    isEmpty,
 		"notEmpty": isNotEmpty,
+		"coalesce": coalesce,
 
 		// Utility functions that don't depend on the request
 		"formatDuration": formatDuration,
+		"dateFormat":     dateFormat,
+		"toJSON":         toJSON,
 	}
 }
 

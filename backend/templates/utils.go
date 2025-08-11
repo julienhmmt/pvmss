@@ -34,3 +34,14 @@ func isEmpty(v interface{}) bool {
 func isNotEmpty(v interface{}) bool {
 	return !isEmpty(v)
 }
+
+// coalesce returns the first non-empty value from the provided arguments
+// Example: {{ coalesce .Name .Fallback "Unknown" }}
+func coalesce(values ...interface{}) interface{} {
+	for _, v := range values {
+		if !isEmpty(v) {
+			return v
+		}
+	}
+	return nil
+}

@@ -30,8 +30,14 @@ other = "Supprimer"
 other = "Description"
 ["Common.Disk"]
 other = "Disque"
+["Common.Disable"]
+other = "Désactiver"
+["Common.Disabled"]
+other = "Désactivé"
 ["Common.Edit"]
 other = "Modifier"
+["Common.Enable"]
+other = "Activer"
 ["Common.Enabled"]
 other = "Activé"
 ["Common.Error"]

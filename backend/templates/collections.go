@@ -57,7 +57,8 @@ func containsValue(slice interface{}, value interface{}) bool {
 	}
 
 	for i := 0; i < val.Len(); i++ {
-		if val.Index(i).Interface() == value {
+		// Use DeepEqual to avoid panics on non-comparable element types
+		if reflect.DeepEqual(val.Index(i).Interface(), value) {
 			return true
 		}
 	}
@@ -92,4 +93,40 @@ func until(count int) []int {
 		result[i] = i
 	}
 	return result
+}
+
+// sortStrings sorts a slice of strings ascending
+func sortStrings(in []string) []string {
+	if in == nil {
+		return []string{}
+	}
+	out := make([]string, len(in))
+	copy(out, in)
+	sort.Strings(out)
+	return out
+}
+
+// sortInts sorts a slice of ints ascending
+func sortInts(in []int) []int {
+	if in == nil {
+		return []int{}
+	}
+	out := make([]int, len(in))
+	copy(out, in)
+	sort.Ints(out)
+	return out
+}
+
+// seq returns a sequence of integers from start to end-1
+// Example: seq(3, 7) => [3,4,5,6]
+func seq(start, end int) []int {
+	if end <= start {
+		return []int{}
+	}
+	n := end - start
+	res := make([]int, n)
+	for i := 0; i < n; i++ {
+		res[i] = start + i
+	}
+	return res
 }

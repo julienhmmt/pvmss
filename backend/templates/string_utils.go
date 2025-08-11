@@ -14,8 +14,18 @@ func toLower(s string) string {
 
 // truncateString truncates a string to the specified length and adds "..." if truncated
 func truncateString(s string, length int) string {
-	if len(s) <= length {
+	if length <= 0 {
+		return ""
+	}
+	// UTF-8 safe truncation via runes
+	r := []rune(s)
+	if len(r) <= length {
 		return s
 	}
-	return s[:length] + "..."
+	return string(r[:length]) + "..."
+}
+
+// join joins a slice of strings with a separator
+func join(parts []string, sep string) string {
+	return strings.Join(parts, sep)
 }

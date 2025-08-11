@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -8,22 +9,8 @@ import (
 
 // formatMemory formats memory bytes to human readable format
 func formatMemory(memBytes interface{}) string {
-	var memInt int64
-	switch v := memBytes.(type) {
-	case int:
-		memInt = int64(v)
-	case int64:
-		memInt = v
-	case float64:
-		memInt = int64(v)
-	default:
-		return "0 MB"
-	}
-
-	if memInt >= 1024*1024*1024 {
-		return fmt.Sprintf("%.1f GB", float64(memInt)/(1024*1024*1024))
-	}
-	return fmt.Sprintf("%d MB", memInt/(1024*1024))
+	// Delegate to formatBytes for consistent formatting
+	return formatBytes(memBytes)
 }
 
 // nodeMemMaxGB extracts maximum memory in GB from a node object
@@ -77,4 +64,19 @@ func formatBytes(bytes interface{}) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+}
+
+// dateFormat formats a time.Time with the provided layout
+// Example layout: "2006-01-02 15:04:05"
+func dateFormat(t time.Time, layout string) string {
+	return t.Format(layout)
+}
+
+// toJSON marshals a value to a JSON string; returns "" on error
+func toJSON(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
