@@ -79,13 +79,17 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 
 	// Set up TLS configuration with connection pooling
 	tr := &http.Transport{
-		TLSClientConfig:    &tls.Config{InsecureSkipVerify: insecureSkipVerify},
-		MaxIdleConns:       10,
-		IdleConnTimeout:    30 * time.Second,
-		DisableCompression: false,
-		MaxConnsPerHost:    5,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+		MaxIdleConns:          64,
+		MaxIdleConnsPerHost:   32,
+		IdleConnTimeout:       60 * time.Second,
+		DisableCompression:    false,
+		MaxConnsPerHost:       32,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
 	}
-	httpClient := &http.Client{Transport: tr}
+	httpClient := &http.Client{Transport: tr, Timeout: 10 * time.Second}
 
 	// Create the underlying Proxmox client
 	pxClient, err := px.NewClient(apiURL, httpClient, "", nil, "", 300)
@@ -204,9 +208,40 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 
 	// Set authorization header
 	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
+	req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
 
-	// Execute the request
-	resp, err := c.HttpClient.Do(req)
+	// Execute with simple retries for transient errors
+	var resp *http.Response
+	var attempt int
+	for attempt = 0; attempt < 3; attempt++ {
+		resp, err = c.HttpClient.Do(req)
+		if err != nil {
+			// Network error: backoff and retry
+			backoff := time.Duration(attempt+1) * 300 * time.Millisecond
+			logger.Get().Warn().Err(err).Str("url", url).Dur("backoff", backoff).Msg("HTTP request failed, retrying")
+			select {
+			case <-time.After(backoff):
+				continue
+			case <-ctx.Done():
+				return nil, fmt.Errorf("request canceled: %w", ctx.Err())
+			}
+		}
+
+		// Retry on 429 or 5xx
+		if resp.StatusCode == http.StatusTooManyRequests || (resp.StatusCode >= 500 && resp.StatusCode <= 599) {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			backoff := time.Duration(attempt+1) * 300 * time.Millisecond
+			logger.Get().Warn().Int("status", resp.StatusCode).Str("url", url).Dur("backoff", backoff).RawJSON("body", body).Msg("Proxmox transient error, retrying")
+			select {
+			case <-time.After(backoff):
+				continue
+			case <-ctx.Done():
+				return nil, fmt.Errorf("request canceled: %w", ctx.Err())
+			}
+		}
+		break
+	}
 	if err != nil {
 		logger.Get().Error().Err(err).Str("url", url).Msg("HTTP request to Proxmox API failed")
 		return nil, fmt.Errorf("request failed: %w", err)
@@ -216,7 +251,13 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 	// Check for non-200 status codes
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		logger.Get().Error().Int("status", resp.StatusCode).Str("url", url).Msg("Proxmox API returned non-200 status")
+		// Try to parse Proxmox error response
+		var perr ErrorResponse
+		if err := json.Unmarshal(body, &perr); err == nil && perr.Message != "" {
+			logger.Get().Error().Int("status", resp.StatusCode).Str("url", url).Str("message", perr.Message).Msg("Proxmox API error")
+			return nil, fmt.Errorf("proxmox error (%d): %s", resp.StatusCode, perr.Message)
+		}
+		logger.Get().Error().Int("status", resp.StatusCode).Str("url", url).RawJSON("body", body).Msg("Proxmox API returned non-200 status")
 		return nil, fmt.Errorf("API returned non-200 status: %d - %s", resp.StatusCode, string(body))
 	}
 
@@ -261,6 +302,7 @@ func (c *Client) PostFormWithContext(ctx context.Context, path string, form map[
 
 	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
@@ -313,6 +355,9 @@ func (c *Client) GetTimeout() time.Duration {
 // SetTimeout sets the client's request timeout
 func (c *Client) SetTimeout(timeout time.Duration) {
 	c.Timeout = timeout
+	if c.HttpClient != nil {
+		c.HttpClient.Timeout = timeout
+	}
 }
 
 // GetJSON performs a GET request and unmarshals the response into the target interface
