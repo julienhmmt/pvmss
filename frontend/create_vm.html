@@ -185,7 +185,7 @@
                                                    aria-describedby="isoHelp">
                                                 <option value="">-- {{index .t "VM.Create.SelectISO"}} --</option>
                                                 {{range .ISOs}}
-                                                <option value="{{.Path}}">{{.Name}}</option>
+                                                <option value="{{.}}">{{.}}</option>
                                                 {{else}}
                                                 <option disabled>{{index .t "VM.Create.NoISOsAvailable"}}</option>
                                                 {{end}}
@@ -224,8 +224,8 @@
                                     
                                     <!-- Selected Tags (for visual feedback) -->
                                     <div class="selected-tags mb-4">
-                                        {{if .FormData.Tags}}
-                                            {{range $tag := .FormData.Tags}}
+                                        {{if $.FormData.Tags}}
+                                            {{range $tag := $.FormData.Tags}}
                                             <span class="tag is-primary is-medium">{{$tag}}</span>
                                             {{end}}
                                         {{else}}
@@ -236,16 +236,29 @@
                                     <!-- Available Tags as Checkboxes -->
                                     <div class="tags-options">
                                         {{range $tag := .AvailableTags}}
-                                        <label class="tag-option checkbox-label">
-                                            <input type="checkbox" 
-                                                name="tags" 
-                                                value="{{$tag}}"
-                                                {{if contains $tag .FormData.Tags}}checked{{end}}
-                                                class="is-hidden">
-                                            <span class="tag {{if contains $tag .FormData.Tags}}is-primary{{else}}is-light{{end}}">
-                                                {{$tag}}
-                                            </span>
-                                        </label>
+                                            {{if eq $tag "pvmss"}}
+                                            <label class="tag-option checkbox-label" title="Mandatory tag">
+                                                <input type="checkbox"
+                                                    name="tags"
+                                                    value="pvmss"
+                                                    checked disabled aria-disabled="true"
+                                                    class="is-hidden">
+                                                <span class="tag is-primary">pvmss</span>
+                                                <!-- Ensure value is submitted since the checkbox is disabled -->
+                                                <input type="hidden" name="tags" value="pvmss">
+                                            </label>
+                                            {{else}}
+                                            <label class="tag-option checkbox-label">
+                                                <input type="checkbox" 
+                                                    name="tags" 
+                                                    value="{{$tag}}"
+                                                    {{if contains $tag $.FormData.Tags}}checked{{end}}
+                                                    class="is-hidden">
+                                                <span class="tag {{if contains $tag $.FormData.Tags}}is-primary{{else}}is-light{{end}}">
+                                                    {{$tag}}
+                                                </span>
+                                            </label>
+                                            {{end}}
                                         {{else}}
                                         <p class="has-text-grey">{{index .t "VM.Create.NoTagsAvailable"}}</p>
                                         {{end}}
@@ -279,71 +292,4 @@
         </div>
     </div>
 </section>
-
-<!-- JavaScript for form handling -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const selectedTagsContainer = document.getElementById('selectedTags');
-    const tagOptions = document.querySelectorAll('.tag-option');
-    const tagsInput = document.getElementById('tagsInput');
-    const selectedTags = new Set();
-
-    // Update the UI to show selected tags
-    function updateSelectedTags() {
-        const tagsArray = Array.from(selectedTags);
-        
-        if (tagsArray.length === 0) {
-            selectedTagsContainer.innerHTML = '<span class="tag is-light is-medium">No tags selected</span>';
-        } else {
-            selectedTagsContainer.innerHTML = '';
-            tagsArray.forEach(tag => {
-                const tagElement = document.createElement('span');
-                tagElement.className = 'tag is-primary is-medium';
-                tagElement.textContent = tag;
-                selectedTagsContainer.appendChild(tagElement);
-            });
-        }
-        
-        // Update hidden input
-        tagsInput.value = tagsArray.join(',');
-    }
-
-    // Handle tag selection
-    tagOptions.forEach(option => {
-        option.addEventListener('click', function() {
-            const tag = this.dataset.tag;
-            const isSelected = this.getAttribute('aria-pressed') === 'true';
-            
-            if (isSelected) {
-                selectedTags.delete(tag);
-                this.setAttribute('aria-pressed', 'false');
-                this.classList.remove('is-primary');
-                this.classList.add('is-light');
-            } else {
-                selectedTags.add(tag);
-                this.setAttribute('aria-pressed', 'true');
-                this.classList.remove('is-light');
-                this.classList.add('is-primary');
-            }
-            
-            updateSelectedTags();
-        });
-    });
-
-    // Initialize with any existing tags from the hidden input
-    if (tagsInput.value) {
-        const initialTags = tagsInput.value.split(',').filter(Boolean);
-        initialTags.forEach(tag => {
-            selectedTags.add(tag);
-            const option = document.querySelector(`.tag-option[data-tag="${tag}"]`);
-            if (option) {
-                option.setAttribute('aria-pressed', 'true');
-                option.classList.remove('is-light');
-                option.classList.add('is-primary');
-            }
-        });
-        updateSelectedTags();
-    }
-});
-</script>
 {{end}}

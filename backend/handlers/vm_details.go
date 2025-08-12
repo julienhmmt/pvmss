@@ -11,11 +11,13 @@ import (
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // VMStateManager defines the minimal state contract needed by VM details.
 type VMStateManager interface {
 	GetProxmoxClient() proxmox.ClientInterface
+	GetSettings() *state.AppSettings
 }
 
 // VMHandler handles routes related to virtual machines
@@ -206,6 +208,9 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/vm/details/:id", h.VMDetailsHandler)
 	// VM action endpoint (POST only)
 	router.POST("/vm/action", h.VMActionHandler)
+	// VM creation page and submit
+	router.GET("/vm/create", h.CreateVMPage)
+	router.POST("/api/vm/create", h.CreateVMHandler)
 }
 
 // VMDetailsHandlerFunc is a wrapper function for compatibility with existing code
