@@ -325,7 +325,7 @@ other = "Enter a description (markdown supported)"
 ["VM.Create.DiskSize"]
 other = "Disk Size (GB)"
 ["VM.Create.DiskSizeHelp"]
-other = "Disk size in gigabytes (8GB minimum)"
+other = "Disk size in gigabytes"
 ["VM.Create.Header"]
 other = "Create a Virtual Machine"
 ["VM.Create.ISO"]

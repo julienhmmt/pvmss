@@ -40,6 +40,20 @@
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                     <fieldset {{if not .ProxmoxConnected}}disabled{{end}} aria-disabled="{{if not .ProxmoxConnected}}true{{else}}false{{end}}">
                     <div class="columns is-multiline">
+                        {{/* Prepare limits helpers */}}
+                        {{$vm := index .Limits "vm"}}
+                        {{$vmSockMin := int (index (index $vm "sockets") "min")}}
+                        {{$vmSockMax := int (index (index $vm "sockets") "max")}}
+                        {{$vmCoreMin := int (index (index $vm "cores") "min")}}
+                        {{$vmCoreMax := int (index (index $vm "cores") "max")}}
+                        {{$vmRamMinGB := int (index (index $vm "ram") "min")}}
+                        {{$vmRamMaxGB := int (index (index $vm "ram") "max")}}
+                        {{$vmRamMinMB := int (mul $vmRamMinGB 1024)}}
+                        {{$vmRamMaxMB := int (mul $vmRamMaxGB 1024)}}
+                        {{$vmDiskMin := int (index (index $vm "disk") "min")}}
+                        {{$vmDiskMax := int (index (index $vm "disk") "max")}}
+                        {{/* Node limits map for later inline lookups */}}
+                        {{$nodesLimits := index .Limits "nodes"}}
                         <!-- Left Column -->
                         <div class="column is-6">
                             <!-- Basic Information -->
@@ -102,14 +116,17 @@
                                             </label>
                                             <div class="control">
                                                 <div class="select is-fullwidth">
-                                                    <select id="cpuSockets" name="sockets" required
-                                                            aria-required="true">
-                                                        {{range $i := until 5}}
-                                                        <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                                    <select id="cpuSockets" name="sockets" required aria-required="true">
+                                                        {{/* Limit sockets to configured min..max inclusive */}}
+                                                        {{range $i := seq $vmSockMin (int (add $vmSockMax 1))}}
+                                                        <option value="{{$i}}" {{if eq $i $vmSockMin}}selected{{end}}>{{$i}}</option>
                                                         {{end}}
                                                     </select>
                                                 </div>
                                             </div>
+                                            <p class="help">
+                                                VM limits: {{$vmSockMin}}–{{$vmSockMax}}
+                                            </p>
                                         </div>
                                     </div>
 
@@ -119,14 +136,17 @@
                                             <label for="cpuCores" class="label">{{index .t "VM.Create.CPUCores"}}</label>
                                             <div class="control">
                                                 <div class="select is-fullwidth">
-                                                    <select id="cpuCores" name="cores" required
-                                                            aria-required="true">
-                                                        {{range $i := until 9}}
-                                                        <option value="{{$i}}" {{if eq $i 1}}selected{{end}}>{{$i}}</option>
+                                                    <select id="cpuCores" name="cores" required aria-required="true">
+                                                        {{/* Limit cores to configured min..max inclusive */}}
+                                                        {{range $i := seq $vmCoreMin (int (add $vmCoreMax 1))}}
+                                                        <option value="{{$i}}" {{if eq $i $vmCoreMin}}selected{{end}}>{{$i}}</option>
                                                         {{end}}
                                                     </select>
                                                 </div>
                                             </div>
+                                            <p class="help">
+                                                VM limits: {{$vmCoreMin}}–{{$vmCoreMax}}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -137,14 +157,17 @@
                                     <div class="field has-addons">
                                         <div class="control is-expanded">
                                             <input id="memory" class="input" type="number" name="memory" 
-                                                   min="512" step="128" value="2048" required
+                                                   min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required
                                                    aria-required="true">
                                         </div>
                                         <div class="control">
                                             <span class="button is-static" aria-hidden="true">MB</span>
                                         </div>
                                     </div>
-                                    <p class="help">{{index .t "VM.Create.MemoryHelp"}}</p>
+                                    <p class="help">
+                                        {{index .t "VM.Create.MemoryHelp"}}<br>
+                                        VM limits: {{$vmRamMinGB}}–{{$vmRamMaxGB}} GB ({{$vmRamMinMB}}–{{$vmRamMaxMB}} MB)
+                                    </p>
                                 </div>
 
                                 <!-- Disk Size -->
@@ -153,14 +176,17 @@
                                     <div class="field has-addons">
                                         <div class="control is-expanded">
                                             <input id="diskSize" class="input" type="number" name="disk_size" 
-                                                   min="8" step="1" value="32" required
+                                                   min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required
                                                    aria-required="true">
                                         </div>
                                         <div class="control">
                                             <span class="button is-static" aria-hidden="true">GB</span>
                                         </div>
                                     </div>
-                                    <p class="help">{{index .t "VM.Create.DiskSizeHelp"}}</p>
+                                    <p class="help">
+                                        {{index .t "VM.Create.DiskSizeHelp"}}<br>
+                                        VM limits: {{$vmDiskMin}}–{{$vmDiskMax}} GB
+                                    </p>
                                 </div>
                             </div>
                         </div>  <!-- End Left Column -->
@@ -170,6 +196,28 @@
                             <!-- Media & Network -->
                             <div class="box mb-5" role="region" aria-labelledby="media-heading">
                                 <h2 id="media-heading" class="title is-5">{{index .t "VM.Create.MediaNetwork"}}</h2>
+
+                                <!-- Node Selector -->
+                                <div class="field">
+                                    <label for="node" class="label">
+                                        <span class="icon-text">
+                                            <span class="icon"><i class="fas fa-server"></i></span>
+                                            <span>Node</span>
+                                        </span>
+                                    </label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth">
+                                            <select id="node" name="node" required aria-required="true">
+                                                {{range .Nodes}}
+                                                <option value="{{.}}" {{if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>
+                                                {{else}}
+                                                <option disabled>No nodes available</option>
+                                                {{end}}
+                                            </select>
+                                        </div>
+                                        <p class="help">Select the target Proxmox node</p>
+                                    </div>
+                                </div>
 
                                 <!-- ISO Image -->
                                 <div class="field">

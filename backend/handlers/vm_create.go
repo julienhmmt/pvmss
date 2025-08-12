@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -17,12 +18,23 @@ import (
 func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	sm := h.stateManager
 	settings := sm.GetSettings()
+	// Get nodes list (best effort)
+	nodes := []string{}
+	activeNode := ""
+	if client := sm.GetProxmoxClient(); client != nil {
+		if list, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil && len(list) > 0 {
+			nodes = list
+			activeNode = list[0]
+		}
+	}
 	data := map[string]interface{}{
 		"Title":         "Create VM",
 		"ISOs":          settings.ISOs,
 		"Bridges":       settings.VMBRs,
 		"AvailableTags": settings.Tags,
 		"Limits":        settings.Limits,
+		"Nodes":         nodes,
+		"ActiveNode":    activeNode,
 		// Empty form values for initial render
 		"FormData": map[string]interface{}{
 			"Tags": []string{"pvmss"},
@@ -53,12 +65,13 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	name := r.FormValue("name")
 	desc := r.FormValue("description")
 	vmidStr := r.FormValue("vmid")
-	sockets := r.FormValue("sockets")
-	cores := r.FormValue("cores")
-	memory := r.FormValue("memory") // MB
-	diskSizeGB := r.FormValue("disk_size")
+	socketsStr := r.FormValue("sockets")
+	coresStr := r.FormValue("cores")
+	memoryStr := r.FormValue("memory") // MB
+	diskSizeGBStr := r.FormValue("disk_size")
 	iso := r.FormValue("iso") // settings provides full volid or path string
 	bridge := r.FormValue("bridge")
+	selectedNode := r.FormValue("node")
 	tags := r.Form["tags"]
 	// Ensure mandatory tag "pvmss" is present and deduplicate
 	seen := map[string]struct{}{}
@@ -77,7 +90,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 	tags = out
 
-	if name == "" || sockets == "" || cores == "" || memory == "" || diskSizeGB == "" || bridge == "" {
+	if name == "" || socketsStr == "" || coresStr == "" || memoryStr == "" || diskSizeGBStr == "" || bridge == "" {
 		localizer := i18n.GetLocalizer(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
@@ -93,7 +106,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	ctx := r.Context()
 
-	// Determine node: pick the first available node
+	// Determine node: use selected if provided, otherwise pick the first available node
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
 	if err != nil || len(nodes) == 0 {
 		log.Error().Err(err).Msg("unable to get Proxmox nodes")
@@ -102,6 +115,117 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		return
 	}
 	node := nodes[0]
+	if selectedNode != "" {
+		// ensure selected node exists
+		for _, n := range nodes {
+			if n == selectedNode {
+				node = selectedNode
+				break
+			}
+		}
+	}
+
+	// Parse numeric fields
+	sockets, err := strconv.Atoi(socketsStr)
+	if err != nil {
+		http.Error(w, "invalid sockets", http.StatusBadRequest)
+		return
+	}
+	cores, err := strconv.Atoi(coresStr)
+	if err != nil {
+		http.Error(w, "invalid cores", http.StatusBadRequest)
+		return
+	}
+	memoryMB, err := strconv.Atoi(memoryStr)
+	if err != nil {
+		http.Error(w, "invalid memory", http.StatusBadRequest)
+		return
+	}
+	diskSizeGB, err := strconv.Atoi(diskSizeGBStr)
+	if err != nil {
+		http.Error(w, "invalid disk size", http.StatusBadRequest)
+		return
+	}
+
+	// Validate against settings limits (vm and optional node-specific)
+	if settings := h.stateManager.GetSettings(); settings != nil && settings.Limits != nil {
+		// Helper to read min/max from map
+		readMinMax := func(m map[string]interface{}, key string) (min, max int, ok bool) {
+			if raw, exists := m[key]; exists {
+				if mm, ok2 := raw.(map[string]interface{}); ok2 {
+					vMin, vMax := 0, 0
+					if v, ok3 := mm["min"]; ok3 {
+						if f, ok4 := v.(float64); ok4 {
+							vMin = int(f)
+						}
+					}
+					if v, ok3 := mm["max"]; ok3 {
+						if f, ok4 := v.(float64); ok4 {
+							vMax = int(f)
+						}
+					}
+					return vMin, vMax, true
+				}
+			}
+			return 0, 0, false
+		}
+
+		// VM limits
+		if rawVM, ok := settings.Limits["vm"].(map[string]interface{}); ok {
+			if min, max, ok2 := readMinMax(rawVM, "sockets"); ok2 {
+				if sockets < min || sockets > max {
+					http.Error(w, fmt.Sprintf("sockets must be between %d and %d", min, max), http.StatusBadRequest)
+					return
+				}
+			}
+			if min, max, ok2 := readMinMax(rawVM, "cores"); ok2 {
+				if cores < min || cores > max {
+					http.Error(w, fmt.Sprintf("cores must be between %d and %d", min, max), http.StatusBadRequest)
+					return
+				}
+			}
+			if minGB, maxGB, ok2 := readMinMax(rawVM, "ram"); ok2 {
+				minMB := minGB * 1024
+				maxMB := maxGB * 1024
+				if memoryMB < minMB || memoryMB > maxMB {
+					http.Error(w, fmt.Sprintf("memory must be between %d and %d MB", minMB, maxMB), http.StatusBadRequest)
+					return
+				}
+			}
+			if min, max, ok2 := readMinMax(rawVM, "disk"); ok2 {
+				if diskSizeGB < min || diskSizeGB > max {
+					http.Error(w, fmt.Sprintf("disk size must be between %d and %d GB", min, max), http.StatusBadRequest)
+					return
+				}
+			}
+		}
+
+		// Node-specific caps (optional)
+		if rawNodes, ok := settings.Limits["nodes"].(map[string]interface{}); ok {
+			if rawNode, ok2 := rawNodes[node].(map[string]interface{}); ok2 {
+				if min, max, ok3 := readMinMax(rawNode, "sockets"); ok3 {
+					if sockets < min || sockets > max {
+						http.Error(w, fmt.Sprintf("sockets exceed node '%s' limits (%d-%d)", node, min, max), http.StatusBadRequest)
+						return
+					}
+				}
+				if min, max, ok3 := readMinMax(rawNode, "cores"); ok3 {
+					if cores < min || cores > max {
+						http.Error(w, fmt.Sprintf("cores exceed node '%s' limits (%d-%d)", node, min, max), http.StatusBadRequest)
+						return
+					}
+				}
+				if minGB, maxGB, ok3 := readMinMax(rawNode, "ram"); ok3 {
+					minMB := minGB * 1024
+					maxMB := maxGB * 1024
+					if memoryMB < minMB || memoryMB > maxMB {
+						http.Error(w, fmt.Sprintf("memory exceeds node '%s' limits (%d-%d MB)", node, minMB, maxMB), http.StatusBadRequest)
+						return
+					}
+				}
+			}
+		}
+	}
 
 	// Ensure VMID
 	vmid := 0
@@ -125,9 +249,9 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	params := map[string]string{
 		"vmid":    strconv.Itoa(vmid),
 		"name":    name,
-		"sockets": sockets,
-		"cores":   cores,
-		"memory":  memory, // MB
+		"sockets": strconv.Itoa(sockets),
+		"cores":   strconv.Itoa(cores),
+		"memory":  strconv.Itoa(memoryMB), // MB
 	}
 
 	// Tags (Proxmox supports 'tags': csv)
@@ -157,8 +281,8 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		if len(settings.EnabledStorages) > 0 {
 			storage = settings.EnabledStorages[0]
 		}
-		if storage != "" && diskSizeGB != "" {
-			params["scsi0"] = storage + ":" + diskSizeGB
+		if storage != "" && diskSizeGBStr != "" {
+			params["scsi0"] = storage + ":" + strconv.Itoa(diskSizeGB)
 			params["scsihw"] = "virtio-scsi-pci"
 		}
 	}
