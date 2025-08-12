@@ -203,23 +203,25 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		// Node-specific caps (optional)
 		if rawNodes, ok := settings.Limits["nodes"].(map[string]interface{}); ok {
 			if rawNode, ok2 := rawNodes[node].(map[string]interface{}); ok2 {
-				if min, max, ok3 := readMinMax(rawNode, "sockets"); ok3 {
-					if sockets < min || sockets > max {
-						http.Error(w, fmt.Sprintf("sockets exceed node '%s' limits (%d-%d)", node, min, max), http.StatusBadRequest)
+				if _, max, ok3 := readMinMax(rawNode, "sockets"); ok3 {
+					// Enforce only upper bound from node limits; VM lower bound is validated earlier
+					if sockets > max {
+						http.Error(w, fmt.Sprintf("sockets exceed node '%s' max (%d)", node, max), http.StatusBadRequest)
 						return
 					}
 				}
-				if min, max, ok3 := readMinMax(rawNode, "cores"); ok3 {
-					if cores < min || cores > max {
-						http.Error(w, fmt.Sprintf("cores exceed node '%s' limits (%d-%d)", node, min, max), http.StatusBadRequest)
+				if _, max, ok3 := readMinMax(rawNode, "cores"); ok3 {
+					// Enforce only upper bound from node limits; VM lower bound is validated earlier
+					if cores > max {
+						http.Error(w, fmt.Sprintf("cores exceed node '%s' max (%d)", node, max), http.StatusBadRequest)
 						return
 					}
 				}
-				if minGB, maxGB, ok3 := readMinMax(rawNode, "ram"); ok3 {
-					minMB := minGB * 1024
+				if _, maxGB, ok3 := readMinMax(rawNode, "ram"); ok3 {
+					// Enforce only upper bound from node limits; VM lower bound is validated earlier
 					maxMB := maxGB * 1024
-					if memoryMB < minMB || memoryMB > maxMB {
-						http.Error(w, fmt.Sprintf("memory exceeds node '%s' limits (%d-%d MB)", node, minMB, maxMB), http.StatusBadRequest)
+					if memoryMB > maxMB {
+						http.Error(w, fmt.Sprintf("memory exceeds node '%s' max (%d MB)", node, maxMB), http.StatusBadRequest)
 						return
 					}
 				}
