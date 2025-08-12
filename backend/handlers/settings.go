@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
@@ -445,11 +446,160 @@ func (h *SettingsHandler) UpdateVMBRSettingsHandler(w http.ResponseWriter, r *ht
 	})
 }
 
+// UpdateLimitsFormHandler handles POST from resource_limits.html to update VM/Node limits
+func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "UpdateLimitsFormHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Logger()
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse form
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	entity := r.FormValue("entityId") // "vm" or "node"
+	if entity == "" {
+		http.Error(w, "Missing entityId", http.StatusBadRequest)
+		return
+	}
+
+	// Helper to parse an int field safely
+	parseInt := func(name string, fallback int) int {
+		v := r.FormValue(name)
+		if v == "" {
+			return fallback
+		}
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+		return fallback
+	}
+
+	// Extract values
+	socketsMin := parseInt("sockets-min", 1)
+	socketsMax := parseInt("sockets-max", socketsMin)
+	coresMin := parseInt("cores-min", 1)
+	coresMax := parseInt("cores-max", coresMin)
+	ramMin := parseInt("ram-min", 1)
+	ramMax := parseInt("ram-max", ramMin)
+	diskMin := parseInt("disk-min", 1)
+	diskMax := parseInt("disk-max", diskMin)
+
+	// Clamp minimums to at least 1 (no zeros/negatives/letters already handled)
+	if socketsMin < 1 {
+		socketsMin = 1
+	}
+	if coresMin < 1 {
+		coresMin = 1
+	}
+	if ramMin < 1 {
+		ramMin = 1
+	}
+	if diskMin < 1 {
+		diskMin = 1
+	}
+
+	// Normalize to ensure min <= max
+	if socketsMin > socketsMax {
+		socketsMin, socketsMax = socketsMax, socketsMin
+	}
+	if coresMin > coresMax {
+		coresMin, coresMax = coresMax, coresMin
+	}
+	if ramMin > ramMax {
+		ramMin, ramMax = ramMax, ramMin
+	}
+	if diskMin > diskMax {
+		diskMin, diskMax = diskMax, diskMin
+	}
+
+	// Ensure max are at least 1 as well
+	if socketsMax < 1 {
+		socketsMax = 1
+	}
+	if coresMax < 1 {
+		coresMax = 1
+	}
+	if ramMax < 1 {
+		ramMax = 1
+	}
+	if diskMax < 1 {
+		diskMax = 1
+	}
+
+	// Load settings
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		http.Error(w, "Settings not available", http.StatusInternalServerError)
+		return
+	}
+	if settings.Limits == nil {
+		settings.Limits = make(map[string]interface{})
+	}
+
+	// Persist limits
+	if entity == "vm" {
+		// Flat VM limits
+		entityMap, _ := settings.Limits["vm"].(map[string]interface{})
+		if entityMap == nil {
+			entityMap = make(map[string]interface{})
+		}
+		entityMap["sockets"] = map[string]int{"min": socketsMin, "max": socketsMax}
+		entityMap["cores"] = map[string]int{"min": coresMin, "max": coresMax}
+		entityMap["ram"] = map[string]int{"min": ramMin, "max": ramMax}
+		entityMap["disk"] = map[string]int{"min": diskMin, "max": diskMax}
+		settings.Limits["vm"] = entityMap
+	} else if entity == "node" || entity == "nodes" {
+		// Per-node limits under limits.nodes[<nodeName>]
+		nodeName := strings.TrimSpace(r.FormValue("nodeName"))
+		if nodeName == "" {
+			http.Error(w, "Missing nodeName for node limits", http.StatusBadRequest)
+			return
+		}
+		nodesMap, _ := settings.Limits["nodes"].(map[string]interface{})
+		if nodesMap == nil {
+			nodesMap = make(map[string]interface{})
+		}
+		nodeEntry, _ := nodesMap[nodeName].(map[string]interface{})
+		if nodeEntry == nil {
+			nodeEntry = make(map[string]interface{})
+		}
+		nodeEntry["sockets"] = map[string]int{"min": socketsMin, "max": socketsMax}
+		nodeEntry["cores"] = map[string]int{"min": coresMin, "max": coresMax}
+		nodeEntry["ram"] = map[string]int{"min": ramMin, "max": ramMax}
+		nodesMap[nodeName] = nodeEntry
+		settings.Limits["nodes"] = nodesMap
+		entity = "nodes" // normalize for redirect
+	}
+
+	if err := h.stateManager.SetSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Failed to save limits settings")
+		http.Error(w, "Failed to save settings", http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to admin with success banner
+	http.Redirect(w, r, "/admin?success=1&action=limits&entity="+url.QueryEscape(entity), http.StatusSeeOther)
+}
+
 // RegisterRoutes enregistre les routes liées aux paramètres
 func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 	// Admin ISO page and toggle (no JS)
 	router.GET("/admin/iso", h.ISOPageHandler)
 	router.POST("/admin/iso/toggle", h.ToggleISOHandler)
+
+	// Server-rendered limits form (no JS)
+	router.POST("/admin/limits", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.UpdateLimitsFormHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 
 	// Routes API protégées par authentification
 	router.GET("/api/settings", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {

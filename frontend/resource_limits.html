@@ -15,254 +15,128 @@
         {{index .t "Admin.Limits.Description"}}
     </div>
 
-    <!-- VM Limits -->
-    <div id="vm-limits" class="mb-4">
-        <form class="limits-form" data-entity-id="vm" action="/api/limits" method="POST">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <input type="hidden" name="entityId" value="vm">
-            <div class="card">
-                <div class="card-content">
-                    <div class="columns">
-                        <!-- Sockets -->
-                        <div class="column is-6">
-                            <div class="box">
-                                <div class="level is-mobile">
-                                    <div class="level-item">
-                                        <h3 class="title is-6">
-                                            <span class="icon-text">
-                                                <span class="icon">
-                                                    <i class="fas fa-microchip"></i>
-                                                </span>
-                                                <span>{{index .t "Admin.Limits.Sockets"}}</span>
-                                            </span>
-                                        </h3>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Min"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control is-expanded">
-                                                <input class="input is-info" type="number" name="sockets-min" id="sockets-min-vm" 
-                                                       value="{{if .Settings.Limits.vm.sockets}}{{.Settings.Limits.vm.sockets.min}}{{else}}1{{end}}" 
-                                                       min="1" 
-                                                       max="{{if .Settings.Limits.vm.sockets}}{{.Settings.Limits.vm.sockets.max}}{{else}}16{{end}}" 
-                                                       readonly>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Max"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control is-expanded">
-                                                <input class="input is-primary" type="number" name="sockets-max" id="sockets-max-vm" 
-                                                       value="{{if .Settings.Limits.vm.sockets}}{{.Settings.Limits.vm.sockets.max}}{{else}}2{{end}}" 
-                                                       min="1" max="16" step="1"
-                                                       data-validate-min="sockets-min-vm">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- VM and Node Limits side-by-side -->
+    <div class="columns">
+        <!-- VM Limits -->
+        <div class="column is-6">
+            <form action="/admin/limits" method="POST">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <input type="hidden" name="entityId" value="vm">
+                <div class="card">
+                    <header class="card-header">
+                        <p class="card-header-title">
+                            <span class="icon"><i class="fas fa-desktop"></i></span>&nbsp;VM
+                        </p>
+                    </header>
+                    <div class="card-content">
+                        <div class="table-container">
+                            <table class="table is-striped is-fullwidth is-hoverable">
+                                <thead>
+                                    <tr>
+                                        <th>{{index .t "Common.Resource" | default "Resource"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Min"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Max"}}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i class="fas fa-microchip"></i></span><span>{{index .t "Admin.Limits.Sockets"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-min" value="{{with index .Limits "vm"}}{{with index . "sockets"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-max" value="{{with index .Limits "vm"}}{{with index . "sockets"}}{{index . "max"}}{{else}}2{{end}}{{else}}2{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i class="fas fa-microchip"></i></span><span>{{index .t "Admin.Limits.Cores"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-min" value="{{with index .Limits "vm"}}{{with index . "cores"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-max" value="{{with index .Limits "vm"}}{{with index . "cores"}}{{index . "max"}}{{else}}32{{end}}{{else}}32{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i class="fas fa-memory"></i></span><span>{{index .t "Admin.Limits.Memory"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="ram-min" value="{{with index .Limits "vm"}}{{with index . "ram"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="ram-max" value="{{with index .Limits "vm"}}{{with index . "ram"}}{{index . "max"}}{{else}}64{{end}}{{else}}64{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i class="fas fa-hdd"></i></span><span>{{index .t "Admin.Limits.Disk"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="disk-min" value="{{with index .Limits "vm"}}{{with index . "disk"}}{{index . "min"}}{{else}}10{{end}}{{else}}10{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="disk-max" value="{{with index .Limits "vm"}}{{with index . "disk"}}{{index . "max"}}{{else}}500{{end}}{{else}}500{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-
-                        <!-- Cores -->
-                        <div class="column is-6">
-                            <div class="box">
-                                <div class="level is-mobile">
-                                    <div class="level-item">
-                                        <h3 class="title is-6">
-                                            <span class="icon-text">
-                                                <span class="icon">
-                                                    <i class="fas fa-microchip"></i>
-                                                </span>
-                                                <span>{{index .t "Admin.Limits.Cores"}}</span>
-                                            </span>
-                                        </h3>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Min"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control is-expanded">
-                                                <input class="input" type="number" name="cores-min" 
-                                                       id="cores-min-vm" 
-                                                       value="{{if .Settings.Limits.vm.cores}}{{.Settings.Limits.vm.cores.min}}{{else}}1{{end}}" 
-                                                       min="1" max="{{if .Settings.Limits.vm.cores}}{{.Settings.Limits.vm.cores.max}}{{else}}32{{end}}" 
-                                                       readonly>
-                                            </div>
-                                            <p class="help">{{index . "Admin.Limits.CoresMinHelp"}}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Max"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control is-expanded">
-                                                <input class="input" type="number" name="cores-max" 
-                                                       id="cores-max-vm" 
-                                                       value="{{if .Settings.Limits.vm.cores}}{{.Settings.Limits.vm.cores.max}}{{else}}32{{end}}" 
-                                                       min="1" max="128" step="1"
-                                                       data-validate-min="cores-min-vm">
-                                            </div>
-                                            <p class="help">{{index . "Admin.Limits.CoresMaxHelp"}}</p>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="field is-grouped is-grouped-right">
+                            <div class="control">
+                                <button type="reset" class="button is-light is-outlined is-small">
+                                    <span>{{index .t "Common.Reset"}}</span>
+                                </button>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Second row for RAM and Disk -->
-                    <div class="columns">
-                        <!-- RAM -->
-                        <div class="column is-6">
-                            <div class="box">
-                                <div class="level is-mobile">
-                                    <div class="level-item">
-                                        <h3 class="title is-6">
-                                            <span class="icon-text">
-                                                <span class="icon">
-                                                    <i class="fas fa-memory"></i>
-                                                </span>
-                                                <span>{{index .t "Admin.Limits.RAM"}}</span>
-                                            </span>
-                                        </h3>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Min"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control has-icons-right is-expanded">
-                                                <input class="input" type="number" name="ram-min" 
-                                                       id="ram-min-vm" 
-                                                       value="{{if .Settings.Limits.vm.ram}}{{.Settings.Limits.vm.ram.min}}{{else}}1{{end}}" 
-                                                       min="1" max="{{if .Settings.Limits.vm.ram}}{{.Settings.Limits.vm.ram.max}}{{else}}64{{end}}" 
-                                                       readonly>
-                                                <span class="icon is-small is-right">Go</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Max"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control has-icons-right is-expanded">
-                                                <input class="input" type="number" name="ram-max" 
-                                                       id="ram-max-vm" 
-                                                       value="{{if .Settings.Limits.vm.ram}}{{.Settings.Limits.vm.ram.max}}{{else}}64{{end}}" 
-                                                       min="1" max="512" step="1"
-                                                       data-validate-min="ram-min-vm">
-                                                <span class="icon is-small is-right">Go</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Disk -->
-                        <div class="column is-6">
-                            <div class="box">
-                                <div class="level is-mobile">
-                                    <div class="level-item">
-                                        <h3 class="title is-6">
-                                            <span class="icon-text">
-                                                <span class="icon">
-                                                    <i class="fas fa-hdd"></i>
-                                                </span>
-                                                <span>{{index .t "Admin.Limits.Disk"}}</span>
-                                            </span>
-                                        </h3>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Min"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control has-icons-right is-expanded">
-                                                <input class="input" type="number" name="disk-min" 
-                                                       id="disk-min-vm" 
-                                                       value="{{if .Settings.Limits.vm.disk}}{{.Settings.Limits.vm.disk.min}}{{else}}10{{end}}" 
-                                                       min="1" max="{{if .Settings.Limits.vm.disk}}{{.Settings.Limits.vm.disk.max}}{{else}}500{{end}}" 
-                                                       readonly>
-                                                <span class="icon is-small is-right">Go</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="field is-horizontal">
-                                    <div class="field-label is-normal">
-                                        <label class="label">{{index .t "Common.Max"}}</label>
-                                    </div>
-                                    <div class="field-body">
-                                        <div class="field">
-                                            <div class="control has-icons-right is-expanded">
-                                                <input class="input" type="number" name="disk-max" 
-                                                       id="disk-max-vm" 
-                                                       value="{{if .Settings.Limits.vm.disk}}{{.Settings.Limits.vm.disk.max}}{{else}}500{{end}}" 
-                                                       min="1" max="2048" step="1"
-                                                       data-validate-min="disk-min-vm">
-                                                <span class="icon is-small is-right">Go</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Form Actions -->
-                    <div class="columns">
-                        <div class="column is-12">
-                            <div class="field is-grouped is-grouped-right">
-                                <div class="control">
-                                    <button type="button" class="button is-light is-outlined mr-2 reset-btn" data-entity-id="vm" title='{{index . "Common.Reset"}}'>
-                                        <span>{{index . "Common.Reset"}}</span>
-                                    </button>
-                                </div>
-                                <div class="control">
-                                    <button type="submit" class="button is-primary">
-                                        <span class="icon">
-                                            <i class="fas fa-save"></i>
-                                        </span>
-                                        <span>{{index .t "Common.Save"}}</span>
-                                    </button>
-                                </div>
+                            <div class="control">
+                                <button type="submit" class="button is-primary is-small">
+                                    <span class="icon"><i class="fas fa-save"></i></span>
+                                    <span>{{index .t "Common.Save"}}</span>
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </form>
-    </div>
+            </form>
+        </div>
+
+        <!-- Node Limits -->
+        <div class="column is-6">
+            <form action="/admin/limits" method="POST">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <input type="hidden" name="entityId" value="node">
+                <input type="hidden" name="nodeName" value="{{.Node}}">
+                <div class="card">
+                    <header class="card-header">
+                        <p class="card-header-title">
+                            <span class="icon"><i class="fas fa-server"></i></span>&nbsp;Node
+                        </p>
+                    </header>
+                    <div class="card-content">
+                        <div class="table-container">
+                            <table class="table is-striped is-fullwidth is-hoverable">
+                                <thead>
+                                    <tr>
+                                        <th>{{index .t "Common.Resource" | default "Resource"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Min"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Max"}}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i class="fas fa-microchip"></i></span><span>{{index .t "Admin.Limits.Sockets"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-min" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "sockets"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-max" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "sockets"}}{{index . "max"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i class="fas fa-microchip"></i></span><span>{{index .t "Admin.Limits.Cores"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-min" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "cores"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-max" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "cores"}}{{index . "max"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i class="fas fa-memory"></i></span><span>{{index .t "Admin.Limits.Memory"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="ram-min" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "ram"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="ram-max" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "ram"}}{{index . "max"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="field is-grouped is-grouped-right">
+                            <div class="control">
+                                <button type="reset" class="button is-light is-outlined is-small">
+                                    <span>{{index .t "Common.Reset"}}</span>
+                                </button>
+                            </div>
+                            <div class="control">
+                                <button type="submit" class="button is-primary is-small">
+                                    <span class="icon"><i class="fas fa-save"></i></span>
+                                    <span>{{index .t "Common.Save"}}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
  </div>
 {{end}}
