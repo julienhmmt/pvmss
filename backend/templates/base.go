@@ -15,9 +15,10 @@ func GetBaseFuncMap() template.FuncMap {
 		"float64": convertToFloat64,
 
 		// Memory and formatting functions
-		"formatMemory": formatMemory,
-		"nodeMemMaxGB": nodeMemMaxGB,
-		"formatBytes":  formatBytes,
+		"formatMemory":  formatMemory,
+		"formatBytes":   formatBytes,
+		"formatBytesSI": formatBytesSI,
+		"formatGiB":     formatGiB,
 
 		// Collection functions
 		"sort":        sortSlice,
@@ -52,8 +53,15 @@ func GetBaseFuncMap() template.FuncMap {
 
 		// Utility functions that don't depend on the request
 		"formatDuration": formatDuration,
+		"since":          since,
+		"untilTime":      untilTime,
 		"dateFormat":     dateFormat,
+		"dateRFC3339":    dateRFC3339,
+		"dateISO8601":    dateISO8601,
+		"dateShort":      dateShort,
+		"dateTimeShort":  dateTimeShort,
 		"toJSON":         toJSON,
+		"toJSONIndent":   toJSONIndent,
 	}
 }
 

@@ -197,7 +197,7 @@ func initProxmoxClient() (*proxmox.Client, error) {
 }
 
 func initTemplates() (*template.Template, error) {
-	// Create base template with functions
+	// Create base template with registered helper functions
 	tmpl := template.New("").Funcs(templates.GetBaseFuncMap())
 
 	// Get template directory path
