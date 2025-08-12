@@ -16,21 +16,21 @@
     </div>
 
     <!-- VM and Node Limits side-by-side -->
-    <div class="columns">
+    <div class="columns is-variable is-5">
         <!-- VM Limits -->
         <div class="column is-6">
             <form action="/admin/limits" method="POST">
                 <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                 <input type="hidden" name="entityId" value="vm">
                 <div class="card">
-                    <header class="card-header">
+                    <header class="card-header is-align-items-center">
                         <p class="card-header-title">
                             <span class="icon"><i class="fas fa-desktop"></i></span>&nbsp;VM
                         </p>
                     </header>
                     <div class="card-content">
                         <div class="table-container">
-                            <table class="table is-striped is-fullwidth is-hoverable">
+                            <table class="table is-striped is-fullwidth is-hoverable is-narrow">
                                 <thead>
                                     <tr>
                                         <th>{{index .t "Common.Resource" | default "Resource"}}</th>
@@ -87,14 +87,32 @@
                 <input type="hidden" name="entityId" value="node">
                 <input type="hidden" name="nodeName" value="{{.Node}}">
                 <div class="card">
-                    <header class="card-header">
+                    <header class="card-header is-align-items-center">
                         <p class="card-header-title">
                             <span class="icon"><i class="fas fa-server"></i></span>&nbsp;Node
                         </p>
+                        <div class="card-header-icon">
+                            <form action="/admin" method="GET">
+                                <div class="field has-addons">
+                                    <p class="control">
+                                        <span class="select is-small">
+                                            <select name="node" aria-label="Select node">
+                                                {{range .NodeNames}}
+                                                <option value="{{.}}" {{if eq . $.Node}}selected{{end}}>{{.}}</option>
+                                                {{end}}
+                                            </select>
+                                        </span>
+                                    </p>
+                                    <p class="control">
+                                        <button class="button is-small" type="submit">{{index .t "Common.Select" | default "Select"}}</button>
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
                     </header>
                     <div class="card-content">
                         <div class="table-container">
-                            <table class="table is-striped is-fullwidth is-hoverable">
+                            <table class="table is-striped is-fullwidth is-hoverable is-narrow">
                                 <thead>
                                     <tr>
                                         <th>{{index .t "Common.Resource" | default "Resource"}}</th>

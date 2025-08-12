@@ -1,6 +1,5 @@
 {{define "vmbr"}}
 <div class="container mt-4">
-  <h2 class="title is-4">{{index .t "Admin.VMBR.Title"}}</h2>
   <div class="notification is-light">
     {{index .t "Admin.VMBR.Description"}}
   </div>
@@ -13,18 +12,22 @@
       </a>
     </div>
   {{else}}
-      <div class="box">
-        <h3 class="subtitle is-5 mb-3">{{index .t "Admin.VMBR.Title"}}</h3>
-        
+      <div class="card">
+        <header class="card-header is-align-items-center">
+          <p class="card-header-title">
+            <span class="icon"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}
+          </p>
+        </header>
+        <div class="card-content">
         {{if .VMBRs}}
           <div class="table-container">
-            <table class="table is-fullwidth is-striped is-hoverable">
+            <table class="table is-fullwidth is-striped is-hoverable is-narrow">
               <thead>
                 <tr>
-                  <th><span class="icon-text"><span class="icon"><i class="fas fa-toggle-on"></i></span> <span>{{index .t "Admin.VMBR.Header.Enabled"}}</span></span></th>
-                  <th><span class="icon-text"><span class="icon"><i class="fas fa-server"></i></span> <span>{{index .t "Admin.VMBR.Header.Node"}}</span></span></th>
-                  <th><span class="icon-text"><span class="icon"><i class="fas fa-network-wired"></i></span> <span>{{index .t "Admin.VMBR.Header.Name"}}</span></span></th>
-                  <th><span class="icon-text"><span class="icon"><i class="fas fa-info-circle"></i></span> <span>{{index .t "Admin.VMBR.Header.Description"}}</span></span></th>
+                  <th scope="col"><span class="icon-text"><span class="icon"><i class="fas fa-toggle-on"></i></span> <span>{{index .t "Admin.VMBR.Header.Enabled"}}</span></span></th>
+                  <th scope="col"><span class="icon-text"><span class="icon"><i class="fas fa-server"></i></span> <span>{{index .t "Admin.VMBR.Header.Node"}}</span></span></th>
+                  <th scope="col"><span class="icon-text"><span class="icon"><i class="fas fa-network-wired"></i></span> <span>{{index .t "Admin.VMBR.Header.Name"}}</span></span></th>
+                  <th scope="col"><span class="icon-text"><span class="icon"><i class="fas fa-info-circle"></i></span> <span>{{index .t "Admin.VMBR.Header.Description"}}</span></span></th>
                 </tr>
               </thead>
               <tbody>
@@ -33,11 +36,11 @@
                   {{$name := index $vmbr "iface"}}
                   <tr>
                     <td>
-                      <form method="POST" action="/admin/vmbr/toggle" style="display:inline">
+                      <form method="POST" action="/admin/vmbr/toggle" class="is-inline">
                         <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                         <input type="hidden" name="vmbr" value="{{$name}}">
                         <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
-                        <button type="submit" class="button is-small {{if index $.EnabledVMBRs $name}}is-success{{else}}is-light{{end}}">
+                        <button type="submit" aria-label="{{if index $.EnabledVMBRs $name}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{$name}}" class="button is-small {{if index $.EnabledVMBRs $name}}is-success{{else}}is-light{{end}}">
                           {{if index $.EnabledVMBRs $name}}
                             {{index $.t "Common.Disable"}}
                           {{else}}
@@ -61,6 +64,7 @@
             {{index .t "Admin.VMBR.NoVMBRs"}}
           </div>
         {{end}}
+        </div>
       </div>
   {{end}}
 </div>

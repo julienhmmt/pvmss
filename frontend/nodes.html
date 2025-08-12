@@ -14,50 +14,66 @@
             {{.Error}}
         </div>
     {{else if .NodeDetails}}
-        <table class="table is-striped is-hoverable is-fullwidth">
-            <thead>
-                <tr>
-                    <th>{{index .t "Nodes.Header.Node"}}</th>
-                    <th>{{index .t "Nodes.Header.Status"}}</th>
-                    <th>{{index .t "Nodes.Header.CPUUsage"}}</th>
-                    <th>{{index .t "Nodes.Header.MemoryUsage"}}</th>
-                    <th>{{index .t "Nodes.Header.DiskUsage"}}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .NodeDetails}}
-                <tr>
-                    <td>{{.Node}}</td>
-                    <td>
-                        {{if $.ProxmoxConnected}}
-                          <span class="tag is-rounded is-success">
-                            {{with (index $.t "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
-                          </span>
-                        {{else}}
-                          <span class="tag is-rounded is-danger">
-                            {{with (index $.t "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
-                          </span>
-                        {{end}}
-                    </td>
-                    <td>
-                        {{$cpu_percent := mul .CPU 100.0}}
-                        <progress class="progress is-small {{if lt $cpu_percent 70.0}}is-primary{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
-                        {{printf "%.0f%%" $cpu_percent}} ({{printf "%.2f" .CPU}} / {{.MaxCPU}})
-                    </td>
-                    <td>
-                        {{$mem_percent := mul (div .Memory .MaxMemory) 100.0}}
-                        <progress class="progress is-small {{if lt $mem_percent 70.0}}is-primary{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100"></progress>
-                        {{printf "%.0f%%" $mem_percent}} ({{.Memory | humanBytes}} / {{.MaxMemory | humanBytes}})
-                    </td>
-                    <td>
-                        {{$disk_percent := mul (div .Disk .MaxDisk) 100.0}}
-                        <progress class="progress is-small {{if lt $disk_percent 70.0}}is-primary{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100"></progress>
-                        {{printf "%.0f%%" $disk_percent}} ({{.Disk | humanBytes}} / {{.MaxDisk | humanBytes}})
-                    </td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+        <div class="card">
+            <header class="card-header is-align-items-center">
+                <p class="card-header-title">
+                    <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}
+                </p>
+            </header>
+            <div class="card-content">
+                <div class="table-container">
+                    <table class="table is-striped is-hoverable is-fullwidth is-narrow">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{index .t "Nodes.Header.Node"}}</th>
+                                <th scope="col">{{index .t "Nodes.Header.Status"}}</th>
+                                <th scope="col">{{index .t "Nodes.Header.CPUUsage"}}</th>
+                                <th scope="col">{{index .t "Nodes.Header.MemoryUsage"}}</th>
+                                <th scope="col">{{index .t "Nodes.Header.DiskUsage"}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .NodeDetails}}
+                            <tr>
+                                <td>{{.Node}}</td>
+                                <td>
+                                    {{if $.ProxmoxConnected}}
+                                      <span class="tag is-rounded is-success">
+                                        {{with (index $.t "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
+                                      </span>
+                                    {{else}}
+                                      <span class="tag is-rounded is-danger">
+                                        {{with (index $.t "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
+                                      </span>
+                                    {{end}}
+                                </td>
+                                <td>
+                                    {{$cpu_percent := mul .CPU 100.0}}
+                                    <progress class="progress is-small {{if lt $cpu_percent 70.0}}is-primary{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100" title="CPU: {{printf "%.0f%%" $cpu_percent}} ({{printf "%.2f" .CPU}}/{{.MaxCPU}})"></progress>
+                                    {{printf "%.0f%%" $cpu_percent}} ({{printf "%.2f" .CPU}} / {{.MaxCPU}})
+                                </td>
+                                <td>
+                                    {{$mem_percent := mul (div .Memory .MaxMemory) 100.0}}
+                                    <progress class="progress is-small {{if lt $mem_percent 70.0}}is-primary{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100" title="RAM: {{printf "%.0f%%" $mem_percent}} ({{.Memory | humanBytes}}/{{.MaxMemory | humanBytes}})"></progress>
+                                    {{printf "%.0f%%" $mem_percent}} ({{.Memory | humanBytes}} / {{.MaxMemory | humanBytes}})
+                                </td>
+                                <td>
+                                    {{$disk_percent := mul (div .Disk .MaxDisk) 100.0}}
+                                    <progress class="progress is-small {{if lt $disk_percent 70.0}}is-primary{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100" title="Disk: {{printf "%.0f%%" $disk_percent}} ({{.Disk | humanBytes}}/{{.MaxDisk | humanBytes}})"></progress>
+                                    {{printf "%.0f%%" $disk_percent}} ({{.Disk | humanBytes}} / {{.MaxDisk | humanBytes}})
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                    <div class="tags is-right mt-2">
+                        <span class="tag is-primary is-light is-rounded is-small">< 70%</span>
+                        <span class="tag is-warning is-light is-rounded is-small">70–89%</span>
+                        <span class="tag is-danger is-light is-rounded is-small">≥ 90%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     {{else}}
         <div class="notification">
             {{index .t "Search.NoResults"}}

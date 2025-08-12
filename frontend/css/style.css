@@ -357,6 +357,50 @@ fieldset[disabled]::after {
   }
 }
 
+/* Smooth scrolling for in-page anchors */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Ensure anchored sections appear fully below the fixed navbar */
+.section-anchor {
+  /* Leave room for fixed navbar + a little spacing */
+  scroll-margin-top: 4.5rem;
+}
+
+/* Sticky tabs bar used on admin sections */
+.tabs.sticky-tabs {
+  position: sticky;
+  /* Height of fixed navbar from Bulma 'is-fixed-top' (approx 3.25rem) */
+  top: 3.25rem;
+  z-index: 90; /* Below notification banner (99), above content */
+  background: #fff;
+  /* Provide a subtle divider when stuck */
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* If the fixed Proxmox status banner is present, push sticky tabs further down */
+#proxmox-status-banner ~ #main-content .tabs.sticky-tabs {
+  top: 6rem; /* navbar + banner */
+}
+
+/* Highlight a section when navigated via hash */
+.section-anchor:target .card {
+  box-shadow: 0 0 0 0.15rem rgba(50, 115, 220, 0.25);
+}
+
+/* Utilities */
+.gap-2 { gap: 0.5rem; }
+.w-100px { width: 100px; }
+
+/* Layout utilities to replace inline styles */
+.min-w-170 { min-width: 170px; }
+.shadow-soft { box-shadow: 0 2px 8px #e3e9f6; }
+.radius-8 { border-radius: 8px; }
+.is-flex-center { display: flex; align-items: center; }
+.inline-block { display: inline-block; }
+.mx-1 { margin-left: 0.25rem; margin-right: 0.25rem; }
+
 /* Warning notification */
 .notification.is-warning.is-light {
   background-color: #fffbeb;

@@ -203,6 +203,16 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
+	// Optional override for selected node via query parameter
+	if qn := r.URL.Query().Get("node"); qn != "" {
+		for _, n := range nodeNames {
+			if n == qn {
+				chosenNode = qn
+				break
+			}
+		}
+	}
+
 	// Préparer les données pour le template (includes storage)
 	data := map[string]interface{}{
 		"Tags":     appSettings.Tags,
@@ -223,6 +233,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 		"EnabledStorages": appSettings.EnabledStorages,
 		"EnabledMap":      enabledStoragesMap,
 		"Node":            chosenNode,
+		"NodeNames":       nodeNames,
 		"Success":         success,
 		"SuccessMessage":  successMsg,
 	}

@@ -1,22 +1,19 @@
 {{define "tags"}}
 <div class="container mt-4">
-  <h2 class="title is-4">{{index .t "Admin.Tags.Title"}}</h2>
   <div class="notification is-light">{{index .t "Admin.Tags.Description"}}</div>
 
   <!-- Liste des tags -->
-  <div class="box">
-    <h3 class="subtitle is-5 mb-4 has-text-grey-dark">
-      <span class="icon-text">
-        <span class="icon">
-          <i class="fas fa-tags"></i>
-        </span>
-        <span>Tags existants</span>
-      </span>
-    </h3>
-    <div id="tags-list" class="is-flex is-flex-wrap-wrap" style="gap: 0.75rem;">
+  <div class="card">
+    <header class="card-header is-align-items-center">
+      <p class="card-header-title">
+        <span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}
+      </p>
+    </header>
+    <div class="card-content">
+    <div id="tags-list" class="is-flex is-flex-wrap-wrap">
       {{if .Tags}}
         {{range .Tags}}
-          <div class="tag-container">
+          <div class="tag-container mr-3 mb-3">
             <span class="tag is-rounded is-medium has-text-weight-semibold {{if eq . "pvmss"}}is-primary{{else}}is-info{{end}}">
               {{.}}
               {{if eq . "pvmss"}}
@@ -27,14 +24,14 @@
                 <form action="/tags/delete" method="POST" class="is-inline">
                   <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                   <input type="hidden" name="tag" value="{{.}}">
-                  <button type="submit" class="delete is-small ml-2" aria-label="delete"></button>
+                  <button type="submit" class="delete is-small ml-2" aria-label="{{index $.t "Common.Delete"}} {{.}}"></button>
                 </form>
               {{end}}
             </span>
           </div>
         {{end}}
       {{else}}
-        <div class="notification is-light is-flex is-align-items-center" style="width: 100%;">
+        <div class="notification is-light is-flex is-align-items-center is-fullwidth">
           <span class="icon-text">
             <span class="icon has-text-grey">
               <i class="fas fa-info-circle"></i>
@@ -44,11 +41,17 @@
         </div>
       {{end}}
     </div>
+    </div>
   </div>
 
   <!-- Formulaire d'ajout de tag -->
-  <div class="box">
-    <h3 class="subtitle is-5 mb-3">Ajouter un tag</h3>
+  <div class="card mt-4">
+    <header class="card-header is-align-items-center">
+      <p class="card-header-title">
+        <span class="icon"><i class="fas fa-plus"></i></span>&nbsp;Ajouter un tag
+      </p>
+    </header>
+    <div class="card-content">
     <form id="add-tag-form" action="/tags" method="POST">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div class="field has-addons">
@@ -72,6 +75,7 @@
         </div>
       </div>
     </form>
+    </div>
   </div>
 </div>
 {{end}}
