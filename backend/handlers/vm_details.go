@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/gomarkdown/markdown"
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
@@ -128,20 +131,58 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return strconv.Itoa(s) + "s"
 	}
 
+	// Attempt to fetch VM config to enrich details (description, tags, network bridges)
+	var desc string
+	var bridgesStr string
+	var tagsStr string
+	if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, found.Node, found.VMID); err != nil {
+		log.Debug().Err(err).Msg("VM config fetch failed; proceeding with basic details")
+	} else {
+		if v, ok := cfg["description"].(string); ok {
+			desc = v
+		}
+		// Proxmox stores tags as semicolon-separated string (e.g., "pvmss;foo;bar").
+		if v, ok := cfg["tags"].(string); ok && v != "" {
+			// Normalize and present comma-separated
+			pieces := strings.Split(v, ";")
+			cleaned := make([]string, 0, len(pieces))
+			for _, p := range pieces {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					cleaned = append(cleaned, p)
+				}
+			}
+			if len(cleaned) > 0 {
+				tagsStr = strings.Join(cleaned, ", ")
+			}
+		}
+		if brs := proxmox.ExtractNetworkBridges(cfg); len(brs) > 0 {
+			bridgesStr = strings.Join(brs, ", ")
+		}
+	}
+
+	// Render description as HTML from Markdown if present
+	var descHTML template.HTML
+	if desc != "" {
+		descHTML = template.HTML(markdown.ToHTML([]byte(desc), nil, nil))
+	}
+
 	data := map[string]interface{}{
-		"Title":          found.Name,
-		"VMID":           vmID,
-		"VMName":         found.Name,
-		"Status":         found.Status,
-		"Uptime":         formatUptime(found.Uptime),
-		"Sockets":        1, // unknown here
-		"Cores":          found.CPUs,
-		"RAM":            formatBytes(found.MaxMem),
-		"DiskCount":      0, // not available from this endpoint
-		"DiskTotalSize":  formatBytes(found.MaxDisk),
-		"NetworkBridges": "", // not available here
-		"Description":    "",
-		"Node":           found.Node,
+		"Title":           found.Name,
+		"VMID":            vmID,
+		"VMName":          found.Name,
+		"Status":          found.Status,
+		"Uptime":          formatUptime(found.Uptime),
+		"Sockets":         1, // unknown here
+		"Cores":           found.CPUs,
+		"RAM":             formatBytes(found.MaxMem),
+		"DiskCount":       0, // not available from this endpoint
+		"DiskTotalSize":   formatBytes(found.MaxDisk),
+		"NetworkBridges":  bridgesStr,
+		"Description":     desc,
+		"DescriptionHTML": descHTML,
+		"Tags":            tagsStr,
+		"Node":            found.Node,
 	}
 
 	log.Debug().Interface("vm_details", data).Msg("VM details fetched from Proxmox")

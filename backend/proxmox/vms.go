@@ -22,6 +22,62 @@ type VMInfo struct {
 	Template bool   `json:"template"`
 }
 
+// GetVMConfigWithContext fetches the VM configuration from Proxmox:
+// GET /nodes/{node}/qemu/{vmid}/config
+// It returns the raw "data" map as provided by the API so callers can extract
+// fields such as description, tags, and network interfaces (net0/net1...).
+func GetVMConfigWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (map[string]interface{}, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
+	var resp struct {
+		Data map[string]interface{} `json:"data"`
+	}
+	if err := client.GetJSON(ctx, path, &resp); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get VM config")
+		return nil, fmt.Errorf("failed to get config for vm %d on node %s: %w", vmid, node, err)
+	}
+	return resp.Data, nil
+}
+
+// ExtractNetworkBridges parses the VM config map and returns a unique, sorted list
+// of network bridge names (e.g., vmbr0) found in net* entries.
+func ExtractNetworkBridges(cfg map[string]interface{}) []string {
+	if cfg == nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	// Iterate over keys like net0, net1, ...
+	for k, v := range cfg {
+		if !strings.HasPrefix(strings.ToLower(k), "net") {
+			continue
+		}
+		s, ok := v.(string)
+		if !ok || s == "" {
+			continue
+		}
+		// net line format example: "virtio=xx:xx:xx,bridge=vmbr0,firewall=1"
+		parts := strings.Split(s, ",")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if strings.HasPrefix(p, "bridge=") {
+				br := strings.TrimPrefix(p, "bridge=")
+				if br != "" {
+					seen[br] = struct{}{}
+				}
+			}
+		}
+	}
+	if len(seen) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(seen))
+	for b := range seen {
+		out = append(out, b)
+	}
+	// Stable order for display
+	// (no sort import at top; simple insertion order is fine)
+	return out
+}
+
 // VMCurrent represents the runtime status/metrics of a VM from
 // GET /nodes/{node}/qemu/{vmid}/status/current
 type VMCurrent struct {

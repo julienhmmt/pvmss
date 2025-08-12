@@ -50,7 +50,17 @@
                     </tr>
                     <tr>
                         <th><i class="fas fa-info-circle"></i> {{index .t "VMDetails.Label.Description"}}</th>
-                        <td>{{.Description}}</td>
+                        <td>
+                            {{if .DescriptionHTML}}
+                                {{.DescriptionHTML}}
+                            {{else}}
+                                {{.Description}}
+                            {{end}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><i class="fas fa-tags"></i> Tags</th>
+                        <td>{{.Tags}}</td>
                     </tr>
                 </tbody>
             </table>
