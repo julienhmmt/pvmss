@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	px "github.com/Telmate/proxmox-api-go/proxmox"
 	"pvmss/logger"
+	"pvmss/metrics"
 )
 
 // Client is a custom wrapper around the standard Proxmox API client.
@@ -184,89 +186,103 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 // It checks the cache first, and if a valid entry is not found, it constructs and executes an HTTP request
 // with the appropriate context and authorization headers, returning the raw response body.
 func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, error) {
-	// Try to get from cache first if caching is enabled
+	// Check cache first
 	if c.cache != nil {
 		c.mux.RLock()
-		cacheEntry, found := c.cache[path]
-		c.mux.RUnlock()
-
-		if found && time.Since(cacheEntry.Timestamp) < c.cacheTTL {
-			logger.Get().Debug().Str("path", path).Msg("Using cached raw response")
-			return cacheEntry.Data, nil
+		if entry, ok := c.cache[path]; ok {
+			// If TTL is set and entry is expired, delete under write lock
+			if c.cacheTTL > 0 && time.Since(entry.Timestamp) > c.cacheTTL {
+				c.mux.RUnlock()
+				c.mux.Lock()
+				delete(c.cache, path)
+				c.mux.Unlock()
+				logger.Get().Debug().Str("path", path).Msg("Cache entry expired")
+			} else {
+				c.mux.RUnlock()
+				return entry.Data, nil
+			}
+		} else {
+			c.mux.RUnlock()
 		}
 	}
 
-	url := c.ApiUrl + path
-	logger.Get().Info().Str("url", url).Msg("Making API request to Proxmox")
+	// Build URL
+	fullURL := c.ApiUrl + path
+	logger.Get().Debug().Str("url", fullURL).Msg("Making GET request to Proxmox")
 
-	// Create request with context
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		logger.Get().Error().Err(err).Str("url", url).Msg("Failed to create HTTP request for Proxmox API")
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	// Set authorization header
-	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
-	req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
-
-	// Execute with simple retries for transient errors
+	// Retry policy
+	const maxAttempts = 3
 	var resp *http.Response
-	var attempt int
-	for attempt = 0; attempt < 3; attempt++ {
+	var body []byte
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		start := time.Now()
+
+		// Create request with context for each attempt
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
+		if err != nil {
+			metrics.ObserveProxmox("GET", path, 0, "request_build_error", start)
+			logger.Get().Error().Err(err).Str("url", fullURL).Msg("Failed to create request for Proxmox API")
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		// Headers
+		req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
+
 		resp, err = c.HttpClient.Do(req)
 		if err != nil {
-			// Network error: backoff and retry
-			backoff := time.Duration(attempt+1) * 300 * time.Millisecond
-			logger.Get().Warn().Err(err).Str("url", url).Dur("backoff", backoff).Msg("HTTP request failed, retrying")
-			select {
-			case <-time.After(backoff):
+			metrics.ObserveProxmox("GET", path, 0, "network_error", start)
+			if attempt < maxAttempts {
+				backoff(attempt)
 				continue
-			case <-ctx.Done():
-				return nil, fmt.Errorf("request canceled: %w", ctx.Err())
 			}
+			logger.Get().Error().Err(err).Str("url", fullURL).Msg("HTTP request to Proxmox API failed")
+			return nil, fmt.Errorf("request failed: %w", err)
 		}
 
-		// Retry on 429 or 5xx
-		if resp.StatusCode == http.StatusTooManyRequests || (resp.StatusCode >= 500 && resp.StatusCode <= 599) {
-			body, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			backoff := time.Duration(attempt+1) * 300 * time.Millisecond
-			logger.Get().Warn().Int("status", resp.StatusCode).Str("url", url).Dur("backoff", backoff).RawJSON("body", body).Msg("Proxmox transient error, retrying")
-			select {
-			case <-time.After(backoff):
+		// Always close on exit of loop body
+		defer resp.Body.Close()
+
+		// Read the response body for status handling and caching
+		var readErr error
+		body, readErr = io.ReadAll(resp.Body)
+		if readErr != nil {
+			metrics.ObserveProxmox("GET", path, resp.StatusCode, "read_error", start)
+			if attempt < maxAttempts {
+				backoff(attempt)
 				continue
-			case <-ctx.Done():
-				return nil, fmt.Errorf("request canceled: %w", ctx.Err())
 			}
+			logger.Get().Error().Err(readErr).Str("url", fullURL).Msg("Failed to read response body from Proxmox API")
+			return nil, fmt.Errorf("failed to read response body: %w", readErr)
 		}
+
+		// Non-2xx: decide retry for 5xx/429
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			// Log truncated body for context without relying on SDK types
+			const maxLog = 512
+			logBody := body
+			if len(logBody) > maxLog {
+				logBody = logBody[:maxLog]
+			}
+			logger.Get().Error().Int("status", resp.StatusCode).Str("url", fullURL).RawJSON("body", logBody).Msg("Proxmox API non-2xx")
+			outcome := "error"
+			if shouldRetryStatus(resp.StatusCode) && attempt < maxAttempts {
+				outcome = "retry"
+				metrics.ObserveProxmox("GET", path, resp.StatusCode, outcome, start)
+				backoff(attempt)
+				continue
+			}
+			metrics.ObserveProxmox("GET", path, resp.StatusCode, outcome, start)
+			return nil, fmt.Errorf("API returned non-200 status: %d - %s", resp.StatusCode, string(body))
+		}
+
+		// Success
+		metrics.ObserveProxmox("GET", path, resp.StatusCode, "success", start)
 		break
 	}
-	if err != nil {
-		logger.Get().Error().Err(err).Str("url", url).Msg("HTTP request to Proxmox API failed")
-		return nil, fmt.Errorf("request failed: %w", err)
-	}
-	defer resp.Body.Close()
 
-	// Check for non-200 status codes
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		// Try to parse Proxmox error response
-		var perr ErrorResponse
-		if err := json.Unmarshal(body, &perr); err == nil && perr.Message != "" {
-			logger.Get().Error().Int("status", resp.StatusCode).Str("url", url).Str("message", perr.Message).Msg("Proxmox API error")
-			return nil, fmt.Errorf("proxmox error (%d): %s", resp.StatusCode, perr.Message)
-		}
-		logger.Get().Error().Int("status", resp.StatusCode).Str("url", url).RawJSON("body", body).Msg("Proxmox API returned non-200 status")
-		return nil, fmt.Errorf("API returned non-200 status: %d - %s", resp.StatusCode, string(body))
-	}
-
-	// Read the response body
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logger.Get().Error().Err(err).Str("url", url).Msg("Failed to read response body from Proxmox API")
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
+	// body holds successful response at this point
+	data := body
 
 	// Cache the response if caching is enabled
 	if c.cache != nil {
@@ -294,35 +310,75 @@ func (c *Client) PostFormWithContext(ctx context.Context, path string, form map[
 		vals.Set(k, v)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, strings.NewReader(vals.Encode()))
-	if err != nil {
-		logger.Get().Error().Err(err).Str("url", urlStr).Msg("Failed to create POST request for Proxmox API")
-		return nil, fmt.Errorf("failed to create POST request: %w", err)
+	const maxAttempts = 3
+	var resp *http.Response
+	var err error
+	var body []byte
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		start := time.Now()
+
+		req, buildErr := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, strings.NewReader(vals.Encode()))
+		if buildErr != nil {
+			metrics.ObserveProxmox("POST", path, 0, "request_build_error", start)
+			return nil, fmt.Errorf("failed to create POST request: %w", buildErr)
+		}
+		req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
+
+		resp, err = c.HttpClient.Do(req)
+		if err != nil {
+			metrics.ObserveProxmox("POST", path, 0, "network_error", start)
+			if attempt < maxAttempts {
+				backoff(attempt)
+				continue
+			}
+			return nil, fmt.Errorf("POST request failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ = io.ReadAll(resp.Body)
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
+			outcome := "error"
+			if shouldRetryStatus(resp.StatusCode) && attempt < maxAttempts {
+				outcome = "retry"
+				metrics.ObserveProxmox("POST", path, resp.StatusCode, outcome, start)
+				backoff(attempt)
+				continue
+			}
+			metrics.ObserveProxmox("POST", path, resp.StatusCode, outcome, start)
+			return nil, fmt.Errorf("API returned non-success status: %d - %s", resp.StatusCode, string(body))
+		}
+		metrics.ObserveProxmox("POST", path, resp.StatusCode, "success", start)
+		break
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
-
-	resp, err := c.HttpClient.Do(req)
-	if err != nil {
-		logger.Get().Error().Err(err).Str("url", urlStr).Msg("HTTP POST to Proxmox API failed")
-		return nil, fmt.Errorf("POST request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	// Proxmox may return 200 OK or 202 Accepted for async tasks (returns UPID)
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-		logger.Get().Error().Int("status", resp.StatusCode).Str("url", urlStr).RawJSON("body", body).Msg("Proxmox API returned error status for POST")
-		return nil, fmt.Errorf("API returned non-success status: %d - %s", resp.StatusCode, string(body))
-	}
-
-	// Invalidate cache for the path and possibly related GET endpoints since state may change
 	c.InvalidateCache("")
-
 	return body, nil
+}
+
+// shouldRetryStatus returns true for transient statuses
+func shouldRetryStatus(status int) bool {
+	switch status {
+	case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
+	}
+}
+
+// backoff sleeps with exponential backoff and jitter
+func backoff(attempt int) {
+	base := 200 * time.Millisecond
+	max := 2 * time.Second
+	d := time.Duration(1<<uint(attempt-1)) * base
+	if d > max {
+		d = max
+	}
+	// jitter +/- 20%
+	jitter := 0.2 - rand.Float64()*0.4
+	sleep := time.Duration(float64(d) * (1 + jitter))
+	time.Sleep(sleep)
 }
 
 // InvalidateCache removes entries from the client's response cache.

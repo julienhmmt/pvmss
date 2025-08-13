@@ -8,6 +8,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
+	"pvmss/metrics"
 	"pvmss/middleware"
 	"pvmss/security"
 	securityMiddleware "pvmss/security/middleware"
@@ -52,6 +53,9 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Create a new router
 	router := httprouter.New()
 
+	// Configure rate limits for sensitive endpoints (e.g., POST /login)
+	middleware.ConfigureLoginRateLimit()
+
 	// Ensure default tag exists
 	if err := EnsureDefaultTag(stateManager); err != nil {
 		log.Error().Err(err).Msg("Failed to ensure default tag")
@@ -78,6 +82,10 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 
 	// Configure static files handler
 	setupStaticFiles(router)
+
+	// Metrics endpoint
+	router.Handler(http.MethodGet, "/metrics", metrics.Handler())
+	router.Handler(http.MethodHead, "/metrics", metrics.Handler())
 
 	// Create middleware chain
 	var handler http.Handler = router
@@ -110,6 +118,12 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 
 	// Proxmox status middleware (after CSRF validation)
 	handler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(handler)
+
+	// Apply rate limiting (runs early)
+	handler = middleware.RateLimitMiddleware(handler)
+
+	// HTTP metrics middleware (outermost to observe complete response)
+	handler = metrics.HTTPMetricsMiddleware(handler)
 
 	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context.
 	// However, to avoid unnecessary session churn on static assets and health checks,
