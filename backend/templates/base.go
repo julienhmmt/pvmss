@@ -62,6 +62,34 @@ func GetBaseFuncMap() template.FuncMap {
 		"dateTimeShort":  dateTimeShort,
 		"toJSON":         toJSON,
 		"toJSONIndent":   toJSONIndent,
+
+		// Request-agnostic fallbacks (overridden by GetFuncMap when request is available)
+		"currentPath": func() string { return "/" },
+		"urlWithLang": func(lang string) string { return "/?lang=" + lang },
+
+		// Path/string helpers
+		"eqPath": func(a, b string) bool {
+			// Normalize trailing slashes except root
+			norm := func(s string) string {
+				if s == "" {
+					return "/"
+				}
+				if s != "/" && s[len(s)-1] == '/' {
+					return s[:len(s)-1]
+				}
+				return s
+			}
+			return norm(a) == norm(b)
+		},
+		"startsWith": func(s, prefix string) bool {
+			if len(prefix) == 0 {
+				return true
+			}
+			if len(s) < len(prefix) {
+				return false
+			}
+			return s[:len(prefix)] == prefix
+		},
 	}
 }
 
@@ -84,6 +112,32 @@ func GetFuncMap(r *http.Request) template.FuncMap {
 		// Add request info functions
 		funcMap["isHTTPS"] = func() bool { return isHTTPS(r) }
 		funcMap["host"] = func() string { return getHost(r) }
+
+		// Path helpers
+		funcMap["currentPath"] = func() string {
+			if r.URL == nil {
+				return "/"
+			}
+			if r.URL.Path == "" {
+				return "/"
+			}
+			return r.URL.Path
+		}
+
+		// Build current URL while overriding only the lang parameter
+		funcMap["urlWithLang"] = func(lang string) string {
+			if r.URL == nil {
+				return "/?lang=" + lang
+			}
+			u := *r.URL // shallow copy
+			q := u.Query()
+			q.Set("lang", lang)
+			u.RawQuery = q.Encode()
+			if u.RawQuery == "" {
+				return u.Path
+			}
+			return u.Path + "?" + u.RawQuery
+		}
 	}
 
 	return funcMap

@@ -45,6 +45,9 @@
                         {{else}}
                             {{index .t "Proxmox.NotConnected"}} {{index .t "Proxmox.Proxmox.NotConnectedMessage"}}
                         {{end}}
+
+    {{/* Optional Flash Messages slot (override with a template defining "flash") */}}
+    {{block "flash" .}}{{end}}
                     </div>
                 </div>
                 <div class="level-right">
@@ -57,6 +60,8 @@
 
     <main id="main-content" class="section">
         <div class="container">
+            {{/* Optional Breadcrumbs slot (override with a template defining "breadcrumbs") */}}
+            {{block "breadcrumbs" .}}{{end}}
             {{if .Content}}
                 {{.Content}}
             {{else}}
@@ -97,8 +102,9 @@
             
             if (burger && menu) {
                 burger.addEventListener('click', function() {
-                    burger.classList.toggle('is-active');
+                    const active = burger.classList.toggle('is-active');
                     menu.classList.toggle('is-active');
+                    burger.setAttribute('aria-expanded', active ? 'true' : 'false');
                 });
             }
         });

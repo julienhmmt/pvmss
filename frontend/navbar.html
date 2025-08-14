@@ -1,5 +1,5 @@
 {{define "navbar"}}
-<nav class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
+<nav class="navbar is-fixed-top is-spaced has-shadow" role="navigation" aria-label="main navigation">
     <div class="container">
         <div class="navbar-brand">
             <a class="navbar-item" href="/?lang={{.Lang}}">
@@ -14,7 +14,7 @@
 
         <div id="navbarMenu" class="navbar-menu">
             <div class="navbar-start">
-                <a class="navbar-item" href="/?lang={{.Lang}}">
+                <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="/?lang={{.Lang}}">
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-home"></i>
@@ -22,7 +22,7 @@
                         <span>{{index .t "Navbar.Home"}}</span>
                     </span>
                 </a>
-                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create" {{if not
+                <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create" {{if not
                     .ProxmoxConnected}}title="Proxmox server is not available" {{end}}>
                     <span class="icon-text">
                         <span class="icon">
@@ -36,7 +36,7 @@
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search" {{if not
+                <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search" {{if not
                     .ProxmoxConnected}}title="Proxmox server is not available" {{end}}>
                     <span class="icon-text">
                         <span class="icon">
@@ -50,7 +50,7 @@
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item" href="/docs/user">
+                <a class="navbar-item {{if eq (currentPath) "/docs/user"}}is-active{{end}}" href="/docs/user">
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-book"></i>
@@ -86,11 +86,11 @@
                         {{end}}
 
                         <div class="buttons has-addons language-buttons">
-                            <a href="?lang=fr" class="button {{if eq .Lang " fr"}}is-selected{{else}}is-light{{end}}"
+                            <a href="{{urlWithLang "fr"}}" class="button {{if eq .Lang "fr"}}is-selected{{else}}is-light{{end}}"
                                 title="Français">
                                 FR 🇫🇷
                             </a>
-                            <a href="?lang=en" class="button {{if eq .Lang " en"}}is-selected{{else}}is-light{{end}}"
+                            <a href="{{urlWithLang "en"}}" class="button {{if eq .Lang "en"}}is-selected{{else}}is-light{{end}}"
                                 title="English">
                                 EN 🇬🇧
                             </a>

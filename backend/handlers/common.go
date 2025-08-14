@@ -13,6 +13,7 @@ import (
 	"pvmss/middleware"
 	"pvmss/security"
 	"pvmss/state"
+	"pvmss/templates"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -179,11 +180,12 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		Str("host", r.Host).
 		Msg("Context variables added")
 
-	// Execute the template
+	// Execute the template (attach request-aware helpers first)
+	rt := tmpl.Funcs(templates.GetFuncMap(r))
 	buf := new(bytes.Buffer)
 	log.Debug().Msg("Executing main template")
 
-	if err := tmpl.ExecuteTemplate(buf, name, data); err != nil {
+	if err := rt.ExecuteTemplate(buf, name, data); err != nil {
 		log.Error().
 			Err(err).
 			Str("template", name).
@@ -208,7 +210,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	log.Debug().Msg("Executing layout template")
 
-	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+	if err := rt.ExecuteTemplate(w, "layout", data); err != nil {
 		log.Error().
 			Err(err).
 			Str("template", "layout").
