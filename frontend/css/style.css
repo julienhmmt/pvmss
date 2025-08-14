@@ -387,3 +387,40 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
   color: #947600;
   border-left: 4px solid #ffdd57;
 }
+
+/* --- Tag selection (Create VM) --- */
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  margin: 0.25rem 0.35rem 0.25rem 0;
+}
+
+.visually-hidden-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+/* default tag appearance */
+.checkbox-label .tag {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+/* when checked, promote to primary color */
+.visually-hidden-checkbox:checked + .tag {
+  background-color: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* disabled mandatory tag remains primary but non-interactive */
+.visually-hidden-checkbox[disabled] + .tag {
+  opacity: 0.9;
+  cursor: not-allowed;
+}

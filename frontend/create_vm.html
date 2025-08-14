@@ -308,21 +308,15 @@
                                                     {{range $tag := .AvailableTags}}
                                                     {{if eq $tag "pvmss"}}
                                                     <label class="tag-option checkbox-label" title="Mandatory tag">
-                                                        <input type="checkbox" name="tags" value="pvmss" checked
-                                                            disabled aria-disabled="true" class="is-hidden">
+                                                        <input type="checkbox" name="tags" value="pvmss" checked disabled aria-disabled="true" class="visually-hidden-checkbox">
                                                         <span class="tag is-primary">pvmss</span>
                                                         <!-- Ensure value is submitted since the checkbox is disabled -->
                                                         <input type="hidden" name="tags" value="pvmss">
                                                     </label>
                                                     {{else}}
                                                     <label class="tag-option checkbox-label">
-                                                        <input type="checkbox" name="tags" value="{{$tag}}" {{if
-                                                            contains $tag $.FormData.Tags}}checked{{end}}
-                                                            class="is-hidden">
-                                                        <span
-                                                            class="tag {{if contains $tag $.FormData.Tags}}is-primary{{else}}is-light{{end}}">
-                                                            {{$tag}}
-                                                        </span>
+                                                        <input type="checkbox" name="tags" value="{{$tag}}" {{if contains $tag $.FormData.Tags}}checked{{end}} class="visually-hidden-checkbox">
+                                                        <span class="tag is-light">{{$tag}}</span>
                                                     </label>
                                                     {{end}}
                                                     {{else}}
