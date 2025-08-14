@@ -38,6 +38,21 @@ func GetVMConfigWithContext(ctx context.Context, client ClientInterface, node st
 	return resp.Data, nil
 }
 
+// UpdateVMConfigWithContext updates VM configuration fields (e.g., description, tags)
+// by POSTing form parameters to:
+//
+//	POST /nodes/{node}/qemu/{vmid}/config
+//
+// Params may include keys like "description" and "tags" (semicolon-separated).
+func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node string, vmid int, params map[string]string) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
+	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to update VM config")
+		return fmt.Errorf("failed to update config for vm %d on node %s: %w", vmid, node, err)
+	}
+	return nil
+}
+
 // ExtractNetworkBridges parses the VM config map and returns a unique, sorted list
 // of network bridge names (e.g., vmbr0) found in net* entries.
 func ExtractNetworkBridges(cfg map[string]interface{}) []string {

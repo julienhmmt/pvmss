@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,108 @@ import (
 type VMStateManager interface {
 	GetProxmoxClient() proxmox.ClientInterface
 	GetSettings() *state.AppSettings
+}
+
+// UpdateVMDescriptionHandler updates the VM description (Markdown supported on display)
+func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().Str("handler", "UpdateVMDescriptionHandler").Logger()
+	if r.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		log.Warn().Err(err).Msg("parse form failed")
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	vmid := strings.TrimSpace(r.FormValue("vmid"))
+	node := strings.TrimSpace(r.FormValue("node"))
+	desc := r.FormValue("description")
+	if vmid == "" || node == "" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	vmidInt, err := strconv.Atoi(vmid)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	// Update description (empty allowed to clear)
+	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"description": desc}); err != nil {
+		log.Error().Err(err).Msg("update description failed")
+		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+		return
+	}
+	http.Redirect(w, r, "/vm/details/"+vmid+"?refresh=1", http.StatusSeeOther)
+}
+
+// UpdateVMTagsHandler updates the VM tags from selected checkboxes
+func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().Str("handler", "UpdateVMTagsHandler").Logger()
+	if r.Method != http.MethodPost {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		log.Warn().Err(err).Msg("parse form failed")
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	vmid := strings.TrimSpace(r.FormValue("vmid"))
+	node := strings.TrimSpace(r.FormValue("node"))
+	if vmid == "" || node == "" {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	vmidInt, err := strconv.Atoi(vmid)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	// Gather tags; ensure stable format for Proxmox: semicolon-separated, unique, trimmed
+	sel := r.Form["tags"]
+	seen := make(map[string]struct{}, len(sel))
+	out := make([]string, 0, len(sel))
+	for _, t := range sel {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+	// Optionally enforce default tag "pvmss" if available in settings
+	if settings := h.stateManager.GetSettings(); settings != nil {
+		for _, at := range settings.Tags {
+			if strings.EqualFold(at, "pvmss") {
+				if _, ok := seen["pvmss"]; !ok {
+					out = append(out, "pvmss")
+				}
+				break
+			}
+		}
+	}
+	tagsParam := strings.Join(out, ";")
+
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"tags": tagsParam}); err != nil {
+		log.Error().Err(err).Msg("update tags failed")
+		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+		return
+	}
+	http.Redirect(w, r, "/vm/details/"+vmid+"?refresh=1", http.StatusSeeOther)
 }
 
 // VMHandler handles routes related to virtual machines
@@ -135,6 +238,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var desc string
 	var bridgesStr string
 	var tagsStr string
+	var currentTags []string
 	if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, found.Node, found.VMID); err != nil {
 		log.Debug().Err(err).Msg("VM config fetch failed; proceeding with basic details")
 	} else {
@@ -143,10 +247,10 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 		// Proxmox stores tags as semicolon-separated string (e.g., "pvmss;foo;bar").
 		if v, ok := cfg["tags"].(string); ok && v != "" {
-			// Normalize and present comma-separated
-			pieces := strings.Split(v, ";")
-			cleaned := make([]string, 0, len(pieces))
-			for _, p := range pieces {
+			// Proxmox tags are typically semicolon-separated, may include spaces or empty segments
+			parts := strings.Split(v, ";")
+			cleaned := make([]string, 0, len(parts))
+			for _, p := range parts {
 				p = strings.TrimSpace(p)
 				if p != "" {
 					cleaned = append(cleaned, p)
@@ -154,6 +258,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			}
 			if len(cleaned) > 0 {
 				tagsStr = strings.Join(cleaned, ", ")
+				currentTags = cleaned
 			}
 		}
 		if brs := proxmox.ExtractNetworkBridges(cfg); len(brs) > 0 {
@@ -182,7 +287,47 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"Description":     desc,
 		"DescriptionHTML": descHTML,
 		"Tags":            tagsStr,
+		"CurrentTags":     currentTags,
 		"Node":            found.Node,
+	}
+
+	// Toggle edit mode via query parameter without JS
+	if q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("edit"))); q != "" {
+		if q == "description" || q == "desc" {
+			data["ShowDescriptionEditor"] = true
+		}
+		if q == "tags" || q == "tag" {
+			data["ShowTagsEditor"] = true
+		}
+	}
+
+	// Expose available tags from settings for selection UIs
+	var availableTags []string
+	if settings := h.stateManager.GetSettings(); settings != nil {
+		availableTags = settings.Tags
+		data["AvailableTags"] = availableTags
+	}
+	// Build union of available tags and currently set tags so users can uncheck tags not in available list
+	if len(currentTags) > 0 || len(availableTags) > 0 {
+		set := make(map[string]struct{}, len(currentTags)+len(availableTags))
+		for _, t := range availableTags {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				set[t] = struct{}{}
+			}
+		}
+		for _, t := range currentTags {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				set[t] = struct{}{}
+			}
+		}
+		all := make([]string, 0, len(set))
+		for k := range set {
+			all = append(all, k)
+		}
+		sort.Strings(all)
+		data["AllTags"] = all
 	}
 
 	log.Debug().Interface("vm_details", data).Msg("VM details fetched from Proxmox")
@@ -249,6 +394,9 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/vm/details/:id", h.VMDetailsHandler)
 	// VM action endpoint (POST only)
 	router.POST("/vm/action", h.VMActionHandler)
+	// VM config update endpoints (POST only)
+	router.POST("/vm/update/description", h.UpdateVMDescriptionHandler)
+	router.POST("/vm/update/tags", h.UpdateVMTagsHandler)
 	// VM creation page and submit
 	router.GET("/vm/create", h.CreateVMPage)
 	router.POST("/api/vm/create", h.CreateVMHandler)

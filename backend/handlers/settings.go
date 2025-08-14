@@ -546,7 +546,8 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 	}
 
 	// Persist limits
-	if entity == "vm" {
+	switch entity {
+	case "vm":
 		// Flat VM limits
 		entityMap, _ := settings.Limits["vm"].(map[string]interface{})
 		if entityMap == nil {
@@ -557,7 +558,8 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		entityMap["ram"] = map[string]int{"min": ramMin, "max": ramMax}
 		entityMap["disk"] = map[string]int{"min": diskMin, "max": diskMax}
 		settings.Limits["vm"] = entityMap
-	} else if entity == "node" || entity == "nodes" {
+
+	case "node", "nodes":
 		// Per-node limits under limits.nodes[<nodeName>]
 		nodeName := strings.TrimSpace(r.FormValue("nodeName"))
 		if nodeName == "" {
@@ -578,6 +580,10 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		nodesMap[nodeName] = nodeEntry
 		settings.Limits["nodes"] = nodesMap
 		entity = "nodes" // normalize for redirect
+
+	default:
+		http.Error(w, "Unsupported entity", http.StatusBadRequest)
+		return
 	}
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
