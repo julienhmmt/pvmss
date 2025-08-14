@@ -228,17 +228,6 @@
   padding: 2rem 1.5rem;
 }
 
-.button.is-orange {
-  background-color: #f80;
-  color: white;
-  border: none;
-  font-weight: 500;
-}
-
-.button.is-orange:hover {
-  background-color: #e67a00;
-  color: white;
-}
 
 .section {
   padding: 4rem 1.5rem;
@@ -368,25 +357,58 @@ html {
   scroll-margin-top: 4.5rem;
 }
 
-/* Sticky tabs bar used on admin sections */
-.tabs.sticky-tabs {
-  position: sticky;
-  /* Height of fixed navbar from Bulma 'is-fixed-top' (approx 3.25rem) */
-  top: 3.25rem;
-  z-index: 90; /* Below notification banner (99), above content */
-  background: #fff;
-  /* Provide a subtle divider when stuck */
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-/* If the fixed Proxmox status banner is present, push sticky tabs further down */
-#proxmox-status-banner ~ #main-content .tabs.sticky-tabs {
-  top: 6rem; /* navbar + banner */
-}
-
 /* Highlight a section when navigated via hash */
 .section-anchor:target .card {
   box-shadow: 0 0 0 0.15rem rgba(50, 115, 220, 0.25);
+}
+
+.admin-menu {
+  position: sticky;
+  top: 3.25rem; /* navbar height */
+}
+
+/* If the notification banner is present, push the sticky menu further down */
+#proxmox-status-banner ~ #main-content .admin-menu {
+  top: 6rem; /* navbar + banner */
+}
+
+.admin-menu .menu-label {
+  font-weight: 700;
+  color: #666;
+}
+
+.admin-menu .menu-list a {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  transition: background-color 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
+}
+
+.admin-menu .menu-list a:hover {
+  background-color: rgba(255, 136, 0, 0.08);
+  color: var(--primary);
+  padding-left: 0.9rem;
+}
+
+/* Active state based on section :target (explicit ids) */
+body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
+body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
+body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
+body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
+body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
+body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
+  background-color: rgba(255, 136, 0, 0.12);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Default active (no hash): first item */
+body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
+  background-color: rgba(255, 136, 0, 0.12);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 /* Utilities */
@@ -400,6 +422,18 @@ html {
 .is-flex-center { display: flex; align-items: center; }
 .inline-block { display: inline-block; }
 .mx-1 { margin-left: 0.25rem; margin-right: 0.25rem; }
+/* Thin divider for subtle separation */
+.divider { border-top: 1px solid #eee; margin: 0.5rem 0 1rem; }
+
+/* Admin professional look */
+.progress.is-slim { height: 6px; border-radius: 999px; }
+.table.is-compact td,
+.table.is-compact th { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+.card.admin-card .card-content { padding: 1.25rem 1rem; }
+.card.admin-card .card-header { padding: 0.5rem 1rem; }
+.tag.admin-badge.is-light { filter: saturate(85%); }
+.tag.admin-badge.is-success.is-light { background-color: #e6f6ee; color: #0f8a5f; }
+.tag.admin-badge.is-danger.is-light { background-color: #fdecea; color: #b42318; }
 
 /* Warning notification */
 .notification.is-warning.is-light {

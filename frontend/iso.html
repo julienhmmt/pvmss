@@ -1,19 +1,21 @@
 {{define "iso"}}
 <div class="container mt-4">
-    <div class="notification is-light">
-        {{index .t "Admin.ISO.Description"}}
-    </div>
-
-    <div class="card">
+    <div class="card admin-card">
         <header class="card-header is-align-items-center">
             <p class="card-header-title">
                 <span class="icon"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}
             </p>
         </header>
         <div class="card-content">
+        <!-- Description integrated into card -->
+        <p class="help mb-2">
+            <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-info-circle"></i></span>
+            {{index .t "Admin.ISO.Description"}}
+        </p>
+        <div class="divider"></div>
         {{if .ISOsList}}
         <div class="table-container">
-            <table class="table is-fullwidth is-striped is-hoverable is-narrow">
+            <table class="table is-fullwidth is-striped is-hoverable is-compact">
                 <thead>
                     <tr>
                         <th scope="col"><span class="icon-text"><span class="icon"><i class="fas fa-toggle-on"></i></span> <span>{{index .t "Admin.ISO.Header.Enabled"}}</span></span></th>
@@ -30,12 +32,13 @@
                                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                                 <input type="hidden" name="volid" value="{{$iso.VolID}}">
                                 <input type="hidden" name="action" value="{{if $iso.Enabled}}disable{{else}}enable{{end}}">
-                                <button type="submit" aria-label="{{if $iso.Enabled}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{$iso.VolID}}" class="button is-small {{if $iso.Enabled}}is-success{{else}}is-light{{end}}">
-                                    {{if $iso.Enabled}}
-                                        {{index $.t "Common.Disable"}}
-                                    {{else}}
-                                        {{index $.t "Common.Enable"}}
-                                    {{end}}
+                                <button type="submit"
+                                        class="button is-small {{if $iso.Enabled}}is-success{{else}}is-light{{end}}"
+                                        aria-label="{{if $iso.Enabled}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{$iso.VolID}}"
+                                        title="{{if $iso.Enabled}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{$iso.VolID}}">
+                                    <span class="icon is-small">
+                                        <i class="fas {{if $iso.Enabled}}fa-toggle-on{{else}}fa-toggle-off{{end}}"></i>
+                                    </span>
                                 </button>
                             </form>
                         </td>

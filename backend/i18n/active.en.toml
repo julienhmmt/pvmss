@@ -524,6 +524,8 @@ other = "Offline"
 other = "No nodes found"
 
 # Admin - ISO Management
+["Admin.Description"]
+other = "PVMSS administration page"
 ["Admin.ISO.Description"]
 other = "Manage available ISO images for virtual machine installation."
 ["Admin.ISO.Header.Enabled"]

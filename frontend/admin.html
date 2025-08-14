@@ -11,16 +11,7 @@
         </a>
       </header>
       <div class="card-content">
-        <div class="tabs is-small is-boxed is-right sticky-tabs">
-          <ul>
-            <li class="is-active"><a href="#section-nodes"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</a></li>
-            <li><a href="#section-tags"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</a></li>
-            <li><a href="#section-storage"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</a></li>
-            <li><a href="#section-iso"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
-            <li><a href="#section-vmbr"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
-            <li><a href="#section-resource-limits"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.ResourceLimits.Title"}}</a></li>
-          </ul>
-        </div>
+        <div class="has-text-grey-light is-size-7">{{index .t "Admin.Description"}}</div>
       </div>
     </div>
 
@@ -30,12 +21,29 @@
     </div>
     {{end}}
 
-    <div id="section-nodes" class="section-anchor mb-5">{{template "nodes" .}}</div>
-    <div id="section-tags" class="section-anchor mb-5">{{template "tags" .}}</div>
-    <div id="section-storage" class="section-anchor mb-5">{{template "storage" .}}</div>
-    <div id="section-iso" class="section-anchor mb-5">{{template "iso" .}}</div>
-    <div id="section-vmbr" class="section-anchor mb-5">{{template "vmbr" .}}</div>
-    <div id="section-resource-limits" class="section-anchor mb-5">{{template "resource_limits" .}}</div>
+    <div class="columns admin-layout">
+      <aside class="column is-3">
+        <nav class="menu admin-menu">
+          <p class="menu-label">{{index .t "Navbar.Admin"}}</p>
+          <ul class="menu-list">
+            <li><a href="#section-nodes"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</a></li>
+            <li><a href="#section-tags"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</a></li>
+            <li><a href="#section-storage"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</a></li>
+            <li><a href="#section-iso"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
+            <li><a href="#section-vmbr"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
+            <li><a href="#section-resource-limits"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}</a></li>
+          </ul>
+        </nav>
+      </aside>
+      <div class="column is-9">
+        <div id="section-nodes" class="section-anchor mb-5">{{template "nodes" .}}</div>
+        <div id="section-tags" class="section-anchor mb-5">{{template "tags" .}}</div>
+        <div id="section-storage" class="section-anchor mb-5">{{template "storage" .}}</div>
+        <div id="section-iso" class="section-anchor mb-5">{{template "iso" .}}</div>
+        <div id="section-vmbr" class="section-anchor mb-5">{{template "vmbr" .}}</div>
+        <div id="section-resource-limits" class="section-anchor mb-5">{{template "resource_limits" .}}</div>
+      </div>
+    </div>
   </div>
 
 </section>

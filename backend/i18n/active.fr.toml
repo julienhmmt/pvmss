@@ -504,6 +504,8 @@ other = "Hors ligne"
 other = "Aucun nœud trouvé"
 
 # Admin - ISO Management
+["Admin.Description"]
+other = "Page d'administration de PVMSS"
 ["Admin.ISO.Description"]
 other = "Gérez les images ISO disponibles pour l'installation des machines virtuelles."
 ["Admin.ISO.Header.Enabled"]
