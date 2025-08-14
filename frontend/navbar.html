@@ -22,7 +22,8 @@
                         <span>{{index .t "Navbar.Home"}}</span>
                     </span>
                 </a>
-                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create" {{if not .ProxmoxConnected}}title="Proxmox server is not available"{{end}}>
+                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create" {{if not
+                    .ProxmoxConnected}}title="Proxmox server is not available" {{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-plus-square"></i>
@@ -35,7 +36,8 @@
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search" {{if not .ProxmoxConnected}}title="Proxmox server is not available"{{end}}>
+                <a class="navbar-item {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search" {{if not
+                    .ProxmoxConnected}}title="Proxmox server is not available" {{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-search"></i>
@@ -62,7 +64,7 @@
                 <div class="navbar-item">
                     <div class="buttons are-small">
                         {{if .IsAuthenticated}}
-                        <a class="button is-orange" href="/admin">
+                        <a class="button is-primary" href="/admin">
                             <span class="icon">
                                 <i class="fas fa-cog"></i>
                             </span>
@@ -75,7 +77,7 @@
                             <span>{{ index .t "Navbar.Logout" }}</span>
                         </a>
                         {{else}}
-                        <a class="button is-orange" href="/login">
+                        <a class="button is-primary" href="/login">
                             <span class="icon">
                                 <i class="fas fa-sign-in-alt"></i>
                             </span>
@@ -84,10 +86,12 @@
                         {{end}}
 
                         <div class="buttons has-addons language-buttons">
-                            <a href="?lang=fr" class="button {{if eq .Lang "fr"}}is-selected{{else}}is-light{{end}}" title="Français">
+                            <a href="?lang=fr" class="button {{if eq .Lang " fr"}}is-selected{{else}}is-light{{end}}"
+                                title="Français">
                                 FR 🇫🇷
                             </a>
-                            <a href="?lang=en" class="button {{if eq .Lang "en"}}is-selected{{else}}is-light{{end}}" title="English">
+                            <a href="?lang=en" class="button {{if eq .Lang " en"}}is-selected{{else}}is-light{{end}}"
+                                title="English">
                                 EN 🇬🇧
                             </a>
                         </div>

@@ -25,8 +25,8 @@
                     <!-- Carte Créer une VM -->
                     <div class="column is-4-desktop is-6-tablet">
                         <div class="card home-card">
-                            <div class="card-header">
-                                <p class="card-header-title has-text-white has-text-centered">
+                            <div class="card-header brand-header">
+                                <p class="card-header-title has-text-centered">
                                     <span class="icon-text">
                                         <span class="icon">
                                             <i class="fas fa-plus-square"></i>
@@ -37,18 +37,18 @@
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
-                                <a href="/vm/create?lang={{.Lang}}" class="button is-orange is-medium home-btn">
+                                <a href="/vm/create?lang={{.Lang}}" class="button is-primary is-medium home-btn">
                                     <span>{{index .t "UI.GetStarted"}}</span>
                                 </a>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Carte Documentation -->
                     <div class="column is-4-desktop is-6-tablet">
                         <div class="card home-card">
-                            <div class="card-header">
-                                <p class="card-header-title has-text-white has-text-centered">
+                            <div class="card-header brand-header">
+                                <p class="card-header-title has-text-centered">
                                     <span class="icon-text">
                                         <span class="icon">
                                             <i class="fas fa-book"></i>
@@ -59,18 +59,18 @@
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{index .t "UI.DocsDescription"}}</p>
-                                <a href="/docs/user?lang={{.Lang}}" class="button is-orange is-medium home-btn">
+                                <a href="/docs/user?lang={{.Lang}}" class="button is-primary is-medium home-btn">
                                     {{index .t "UI.ViewDocumentation"}}
                                 </a>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Carte Admin -->
                     <div class="column is-4-desktop is-6-tablet">
                         <div class="card home-card">
-                            <div class="card-header">
-                                <p class="card-header-title has-text-white has-text-centered">
+                            <div class="card-header brand-header">
+                                <p class="card-header-title has-text-centered">
                                     <span class="icon-text">
                                         <span class="icon">
                                             <i class="fas fa-screwdriver-wrench"></i>
@@ -81,7 +81,7 @@
                             </div>
                             <div class="card-content has-text-centered has-text-centered">
                                 <p class="mb-4">{{index .t "UI.AdminDescription"}}</p>
-                                <a href="/admin?lang={{.Lang}}" class="button is-orange is-medium home-btn">
+                                <a href="/admin?lang={{.Lang}}" class="button is-primary is-medium home-btn">
                                     {{index .t "UI.AccessAdmin"}}
                                 </a>
                             </div>
@@ -96,5 +96,5 @@
 
 {{/* Template principal qui sera inclus dans le layout */}}
 {{define "index"}}
-    {{template "content" .}}
+{{template "content" .}}
 {{end}}

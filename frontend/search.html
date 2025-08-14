@@ -4,124 +4,120 @@
 <!-- Search Page Template -->
 <section class="section">
     <div class="container">
-        <!-- Hero Section -->
-        <div class="hero is-primary is-small has-hero-bg">
-            <div class="hero-body">
-                <div class="container has-text-centered">
-                    <h1 class="title is-2 has-text-white mb-2">
-                        <span class="icon-text">{{index .t "Search.Title"}}</span>
-                    </h1>
-                    <p class="subtitle has-text-white mb-2">
-                        {{index .t "Search.Subtitle"}}
-                    </p>
-                </div>
-            </div>
-        </div>
         <div class="columns is-centered">
-            <div class="column is-10 welcome-block">
-                <!-- Search Form Card -->
-                <form action="/search?lang={{$lang}}" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                    <div class="columns is-multiline">
-                        <div class="column is-6-desktop">
-                            <div class="field">
-                                <label class="label has-text-weight-semibold" for="vmid">
-                                    {{index .t "Search.VMID"}}
-                                </label>
-                                <div class="control">
-                                    <input class="input is-medium" type="number" id="vmid" name="vmid" inputmode="numeric" autocomplete="off"
-                                        placeholder="{{index .t "Search.PlaceholderVMID"}}" min="1" max="999999" {{if
-                                        .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}>
+            <div class="column is-10">
+                <div class="card admin-card">
+                    <header class="card-header brand-header is-align-items-center">
+                        <p class="card-header-title">
+                            <span class="icon"><i class="fas fa-magnifying-glass"></i></span>&nbsp;{{index .t
+                            "Search.Title"}}
+                        </p>
+                    </header>
+                    <div class="card-content">
+                        <p class="mb-4 has-text-grey">{{index .t "Search.Subtitle"}}</p>
+                        <!-- Search Form -->
+                        <form action="/search?lang={{$lang}}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                            <div class="columns is-multiline">
+                                <div class="column is-6-desktop">
+                                    <div class="field">
+                                        <label class="label has-text-weight-semibold" for="vmid">
+                                            {{index .t "Search.VMID"}}
+                                        </label>
+                                        <div class="control">
+                                            <input class="input is-medium" type="number" id="vmid" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{index .t "Search.PlaceholderVMID"}}" min="1" max="999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}>
+                                        </div>
+                                        <p id="vmid-help" class="help has-text-grey">
+                                            <small>{{index .t "Search.TitleVMID"}}</small>
+                                        </p>
+                                    </div>
                                 </div>
-                                <p id="vmid-help" class="help has-text-grey">
-                                    <small>{{index .t "Search.TitleVMID"}}</small>
-                                </p>
+                                <div class="column is-6-desktop">
+                                    <div class="field">
+                                        <label class="label has-text-weight-semibold" for="name">
+                                            {{index .t "Search.Name"}}
+                                        </label>
+                                        <div class="control">
+                                            <input class="input is-medium" type="text" id="name" name="name" autocomplete="off" placeholder="{{index .t "Search.PlaceholderName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="field is-grouped is-grouped-centered mt-5">
+                                <div class="control">
+                                    <button type="submit" class="button is-primary is-medium has-text-weight-semibold">
+                                        {{index .t "Search.Submit"}}
+                                    </button>
+                                </div>
+                                <div class="control">
+                                    <a href="/search?lang={{$lang}}" class="button is-light is-medium">
+                                        {{index .t "Search.Clear"}}
+                                    </a>
+                                </div>
+                            </div>
+                        </form>
+                        <!-- Résultats de recherche -->
+                        {{if .Query}}
+                        <div class="section pt-4 pb-0">
+                            <div class="container">
+                                <h2 class="title is-5 has-text-centered mb-4">
+                                    {{index .t "Search.ResultsFor"}} "{{.Query}}"
+                                </h2>
+                                {{if .Results}}
+                                <div class="table-container">
+                                    <table class="table is-fullwidth is-hoverable is-compact">
+                                        <thead>
+                                            <tr>
+                                                <th class="has-text-centered">{{index .t "Search.VMID"}}</th>
+                                                <th class="has-text-centered">{{index .t "Search.Name"}}</th>
+                                                <th class="has-text-centered">{{index .t "Search.Node"}}</th>
+                                                <th class="has-text-centered">{{index .t "Search.Status"}}</th>
+                                                <th class="has-text-centered">{{index .t "Search.Details"}}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {{range .Results}}
+                                            <tr>
+                                                <td class="has-text-centered">{{.vmid}}</td>
+                                                <td class="has-text-centered">{{.name}}</td>
+                                                <td class="has-text-centered">{{.node}}</td>
+                                                <td class="has-text-centered">
+                                                    <span class="tag {{if eq .status "running"}}is-success{{else if eq .status "stopped"}}is-danger{{else}}is-warning{{end}}">
+                                                        {{with (index $.t (printf "VM.Status.%s" .status))}}{{.}}{{else}}{{if .status}}{{.status}}{{else}}unknown{{end}}{{end}}
+                                                    </span>
+                                                </td>
+                                                <td class="has-text-centered">
+                                                    <a href="/vm/details/{{.vmid}}?lang={{$lang}}"
+                                                        class="button is-small is-link">{{index $.t
+                                                        "Search.Details"}}</a>
+                                                </td>
+                                            </tr>
+                                            {{end}}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {{else if .NoResults}}
+                                <div class="notification is-warning is-light">
+                                    <div class="content has-text-centered">
+                                        <p class="is-size-5 has-text-weight-semibold mt-3">{{index .t
+                                            "Search.NoResults"}}</p>
+                                        <p class="has-text-grey">{{index .t "Search.NoResultsMessage"}}</p>
+                                    </div>
+                                </div>
+                                {{end}}
                             </div>
                         </div>
-                        <div class="column is-6-desktop">
-                            <div class="field">
-                                <label class="label has-text-weight-semibold" for="name">
-                                    {{index .t "Search.Name"}}
-                                </label>
-                                <div class="control">
-                                    <input class="input is-medium" type="text" id="name" name="name" autocomplete="off"
-                                        placeholder="{{index .t "Search.PlaceholderName"}}" maxlength="100" {{if
-                                        .FormData.name}}value="{{.FormData.name}}" {{end}}>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field is-grouped is-grouped-centered mt-5">
-                        <div class="control">
-                            <button type="submit" class="button is-primary is-medium has-text-weight-semibold">
-                                {{index .t "Search.Submit"}}
-                            </button>
-                        </div>
-                        <div class="control">
-                            <a href="/search?lang={{$lang}}" class="button is-light is-medium">
-                                {{index .t "Search.Clear"}}
-                            </a>
-                        </div>
-                    </div>
-                </form>
-                <!-- Résultats de recherche -->
-                {{if .Query}}
-                <div class="section">
-                    <div class="container">
-                        <h2 class="title is-4 has-text-centered mb-5">
-                            {{index .t "Search.ResultsFor"}} "{{.Query}}"
-                        </h2>
-                        {{if .Results}}
-                        <div class="table-container">
-                                <table class="table is-fullwidth is-hoverable">
-                                    <thead>
-                                        <tr>
-                                            <th class="has-text-centered">{{index .t "Search.VMID"}}</th>
-                                            <th class="has-text-centered">{{index .t "Search.Name"}}</th>
-                                            <th class="has-text-centered">{{index .t "Search.Node"}}</th>
-                                            <th class="has-text-centered">{{index .t "Search.Status"}}</th>
-                                            <th class="has-text-centered">{{index .t "Search.Details"}}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {{range .Results}}
-                                        <tr>
-                                            <td class="has-text-centered">{{.vmid}}</td>
-                                            <td class="has-text-centered">{{.name}}</td>
-                                            <td class="has-text-centered">{{.node}}</td>
-                                            <td class="has-text-centered">
-                                                <span class="tag {{if eq .status "running"}}is-success{{else if eq .status "stopped"}}is-danger{{else}}is-warning{{end}}">
-                                                    {{with (index $.t (printf "VM.Status.%s" .status))}}{{.}}{{else}}{{if .status}}{{.status}}{{else}}unknown{{end}}{{end}}
-                                                </span>
-                                            </td>
-                                            <td class="has-text-centered">
-                                                <a href="/vm/details/{{.vmid}}?lang={{$lang}}"
-                                                    class="button is-small is-link">{{index $.t "Search.Details"}}</a>
-                                            </td>
-                                        </tr>
-                                        {{end}}
-                                    </tbody>
-                                </table>
-                        </div>
-                        {{else if .NoResults}}
-                        <div class="notification is-warning is-light">
+                        {{end}}
+                        <!-- Error Messages -->
+                        {{if .Error}}
+                        <div class="notification is-danger is-light mt-4">
                             <div class="content has-text-centered">
-                                <p class="is-size-5 has-text-weight-semibold mt-3">{{index .t "Search.NoResults"}}</p>
-                                <p class="has-text-grey">{{index .t "Search.NoResultsMessage"}}</p>
+                                <p class="is-size-5 has-text-weight-semibold mt-3">{{.Error}}</p>
                             </div>
                         </div>
                         {{end}}
                     </div>
                 </div>
-                {{end}}
-                <!-- Error Messages -->
-                {{if .Error}}
-                <div class="notification is-danger is-light">
-                    <div class="content has-text-centered">
-                        <p class="is-size-5 has-text-weight-semibold mt-3">{{.Error}}</p>
-                    </div>
-                </div>
-                {{end}}
             </div>
         </div>
     </div>
