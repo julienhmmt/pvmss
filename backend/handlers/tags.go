@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/state"
 
@@ -47,7 +48,7 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 	for _, existingTag := range settings.Tags {
 		if strings.EqualFold(existingTag, tagName) {
 			log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
-			http.Redirect(w, r, "/admin?error=exists", http.StatusSeeOther)
+			http.Redirect(w, r, "/admin/tags?error=exists", http.StatusSeeOther)
 			return
 		}
 	}
@@ -60,7 +61,7 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag added successfully")
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/tags?success=1", http.StatusSeeOther)
 }
 
 // DeleteTagHandler handles tag deletion.
@@ -102,7 +103,7 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if !found {
 		log.Warn().Str("tag", tagName).Msg("Tentative de suppression d'un tag inexistant")
-		http.Redirect(w, r, "/admin?error=notfound", http.StatusSeeOther)
+		http.Redirect(w, r, "/admin/tags?error=notfound", http.StatusSeeOther)
 		return
 	}
 
@@ -114,13 +115,32 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag deleted successfully")
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
+}
+
+// TagsPageHandler handles the rendering of the admin tags page.
+func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	gs := h.stateManager
+	settings := gs.GetSettings()
+
+	data := map[string]interface{}{
+		"Tags": settings.Tags,
+	}
+	i18n.LocalizePage(w, r, data)
+	renderTemplateInternal(w, r, "admin_tags", data)
 }
 
 // RegisterRoutes registers the routes for tag management.
 func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
-	router.POST("/tags", h.CreateTagHandler)
-	router.POST("/tags/delete", h.DeleteTagHandler)
+	router.GET("/admin/tags", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.TagsPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	router.POST("/tags", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	router.POST("/tags/delete", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.DeleteTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 }
 
 // EnsureDefaultTag ensures that the default tag "pvmss" exists.

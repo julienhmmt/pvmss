@@ -1,0 +1,44 @@
+{{define "admin_base"}}
+<section class="section">
+  <div class="container">
+    <div class="card mb-5">
+      <header class="card-header brand-header is-align-items-center">
+        <p class="card-header-title">
+          <span class="icon"><i class="fas fa-tools"></i></span>&nbsp;{{index .t "Navbar.Admin"}}
+        </p>
+        <a href="/docs/admin?lang={{.Lang}}" class="card-header-icon" aria-label="{{index .t "Navbar.AdminDocs"}}">
+          <span class="icon"><i class="fas fa-book"></i></span>
+        </a>
+      </header>
+      <div class="card-content">
+        <div class="has-text-grey-light is-size-7">{{index .t "Admin.Description"}}</div>
+      </div>
+    </div>
+
+    {{if .Success}}
+    <div class="notification is-success is-light mb-5">
+      {{.SuccessMessage}}
+    </div>
+    {{end}}
+
+    <div class="columns admin-layout">
+      <aside class="column is-3">
+        <nav class="menu admin-menu">
+          <p class="menu-label">{{index .t "Navbar.Admin"}}</p>
+          <ul class="menu-list">
+            <li><a href="/admin/nodes" class="{{if eqPath (currentPath) "/admin/nodes"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</a></li>
+            <li><a href="/admin/tags" class="{{if eqPath (currentPath) "/admin/tags"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</a></li>
+            <li><a href="/admin/storage" class="{{if eqPath (currentPath) "/admin/storage"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</a></li>
+            <li><a href="/admin/iso" class="{{if eqPath (currentPath) "/admin/iso"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
+            <li><a href="/admin/vmbr" class="{{if eqPath (currentPath) "/admin/vmbr"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
+            <li><a href="/admin/limits" class="{{if eqPath (currentPath) "/admin/limits"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}</a></li>
+          </ul>
+        </nav>
+      </aside>
+      <div class="column is-9">
+        {{block "admin_section" .}}{{end}}
+      </div>
+    </div>
+  </div>
+</section>
+{{end}}

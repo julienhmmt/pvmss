@@ -249,13 +249,20 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		Msg("User logged in successfully")
 
 	// Redirect to admin page or return URL
-	// Prefer 'return' (used by protected routes), fallback to 'redirect'
-	redirectURL := r.URL.Query().Get("return")
+	// Prefer 'return' (used by protected routes), fallback to 'redirect'.
+	// Check form values first (hidden inputs), then query params.
+	redirectURL := r.FormValue("return")
+	if redirectURL == "" {
+		redirectURL = r.URL.Query().Get("return")
+	}
+	if redirectURL == "" {
+		redirectURL = r.FormValue("redirect")
+	}
 	if redirectURL == "" {
 		redirectURL = r.URL.Query().Get("redirect")
 	}
 	if redirectURL == "" {
-		redirectURL = "/admin"
+		redirectURL = "/admin/nodes"
 	}
 
 	// Ensure the URL has a scheme
@@ -315,6 +322,7 @@ func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, er
 		"Error":       errorMsg,
 		"CSRFToken":   csrfToken,
 		"RedirectURL": r.URL.Query().Get("redirect"),
+		"ReturnURL":   r.URL.Query().Get("return"),
 	}
 
 	// Add translations

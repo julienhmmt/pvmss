@@ -17,6 +17,55 @@ type AdminHandler struct {
 	stateManager state.StateManager
 }
 
+// NodesPageHandler renders the Nodes admin page
+func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "NodesPageHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Logger()
+
+	// Proxmox client and node details
+	client := h.stateManager.GetProxmoxClient()
+	proxmoxConnected := client != nil
+	var nodeDetails []*proxmox.NodeDetails
+	var errMsg string
+
+	if client != nil {
+		pc, ok := client.(*proxmox.Client)
+		if !ok {
+			errMsg = "Invalid Proxmox client type"
+		} else {
+			nodes, err := proxmox.GetNodeNames(pc)
+			if err != nil {
+				log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes")
+				errMsg = "Failed to retrieve nodes"
+			} else {
+				for _, nodeName := range nodes {
+					nd, nErr := proxmox.GetNodeDetails(pc, nodeName)
+					if nErr != nil {
+						log.Warn().Err(nErr).Str("node", nodeName).Msg("Failed to retrieve node details; skipping node")
+						continue
+					}
+					nodeDetails = append(nodeDetails, nd)
+				}
+			}
+		}
+	} else {
+		log.Warn().Msg("Proxmox client is not initialized; rendering page without live node data")
+	}
+
+	data := map[string]interface{}{
+		"ProxmoxConnected": proxmoxConnected,
+		"NodeDetails":      nodeDetails,
+	}
+	if errMsg != "" {
+		data["Error"] = errMsg
+	}
+	i18n.LocalizePage(w, r, data)
+	renderTemplateInternal(w, r, "admin_nodes", data)
+}
+
 // NewAdminHandler crée une nouvelle instance de AdminHandler
 func NewAdminHandler(sm state.StateManager) *AdminHandler {
 	return &AdminHandler{stateManager: sm}
@@ -33,18 +82,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 
 	log.Debug().Msg("Attempting to access admin page")
 
-	// Check permissions (uses session)
-	if !IsAuthenticated(r) {
-		errMsg := "Access denied: unauthenticated user"
-		log.Warn().
-			Str("status", "forbidden").
-			Str("remote_addr", r.RemoteAddr).
-			Msg(errMsg)
-
-		// Rediriger vers la page de connexion avec une URL de retour
-		http.Redirect(w, r, "/login?return="+r.URL.Path, http.StatusSeeOther)
-		return
-	}
+	// Authentication is enforced by RequireAuth middleware at route level.
 
 	log.Debug().Msg("Preparing data for admin page")
 
@@ -255,27 +293,16 @@ func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
 		Str("method", "RegisterRoutes").
 		Logger()
 
-	// Définition des routes
-	routes := []struct {
-		method  string
-		path    string
-		handler httprouter.Handle
-		desc    string
-	}{
-		{"GET", "/admin", h.AdminPageHandler, "Page d'administration"},
-	}
+	// Register main admin dashboard (protected)
+	router.GET("/admin", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.AdminPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	log.Debug().Str("method", "GET").Str("path", "/admin").Msg("Route d'administration enregistrée")
 
-	// Enregistrement des routes
-	for _, route := range routes {
-		router.Handle(route.method, route.path, route.handler)
-		log.Debug().
-			Str("method", route.method).
-			Str("path", route.path).
-			Str("description", route.desc).
-			Msg("Route d'administration enregistrée")
-	}
+	// Additional admin subpages (protected)
+	router.GET("/admin/nodes", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.NodesPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 
-	log.Info().
-		Int("routes_count", len(routes)).
-		Msg("Routes d'administration enregistrées avec succès")
+	log.Info().Msg("Routes d'administration enregistrées avec succès")
 }

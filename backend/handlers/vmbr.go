@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/state"
 
@@ -129,7 +130,8 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	}
 
 	// Render the template
-	renderTemplateInternal(w, r, "vmbr", templateData)
+	i18n.LocalizePage(w, r, templateData)
+	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 
 // UpdateVMBRHandler handles updating enabled VMBRs.
@@ -162,7 +164,13 @@ func (h *VMBRHandler) UpdateVMBRHandler(w http.ResponseWriter, r *http.Request, 
 
 // RegisterRoutes registers the routes for VMBR management.
 func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/admin/vmbr", h.VMBRPageHandler)
-	router.POST("/admin/vmbr/update", h.UpdateVMBRHandler)
-	router.POST("/admin/vmbr/toggle", h.ToggleVMBRHandler)
+	router.GET("/admin/vmbr", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.VMBRPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	router.POST("/admin/vmbr/update", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.UpdateVMBRHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	router.POST("/admin/vmbr/toggle", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.ToggleVMBRHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 }

@@ -142,7 +142,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 	// Ajouter les traductions et rendre
 	i18n.LocalizePage(w, r, data)
-	renderTemplateInternal(w, r, "storage", data)
+	renderTemplateInternal(w, r, "admin_storage", data)
 }
 
 // UpdateStorageHandler gère la mise à jour des stockages activés
@@ -186,7 +186,13 @@ func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Req
 
 // RegisterRoutes enregistre les routes liées au stockage
 func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/admin/storage", h.StoragePageHandler)
-	router.POST("/admin/storage/update", h.UpdateStorageHandler)
-	router.POST("/admin/storage/toggle", h.ToggleStorageHandler)
+	router.GET("/admin/storage", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.StoragePageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	router.POST("/admin/storage/update", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.UpdateStorageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	router.POST("/admin/storage/toggle", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.ToggleStorageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 }

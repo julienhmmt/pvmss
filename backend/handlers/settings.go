@@ -247,7 +247,59 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		"EnabledISOs": enabledMap,
 	}
 	i18n.LocalizePage(w, r, data)
-	renderTemplateInternal(w, r, "iso", data)
+	renderTemplateInternal(w, r, "admin_iso", data)
+}
+
+// LimitsPageHandler renders the Resource Limits page (server-rendered)
+func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().
+		Str("handler", "LimitsPageHandler").
+		Str("method", r.Method).
+		Str("path", r.URL.Path).
+		Logger()
+
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		http.Error(w, "Settings not available", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch node names if Proxmox client is available
+	var nodeNames []string
+	selectedNode := ""
+	client := h.stateManager.GetProxmoxClient()
+	if client != nil {
+		if pc, ok := client.(*proxmox.Client); ok {
+			n, err := proxmox.GetNodeNames(pc)
+			if err != nil {
+				log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes; continuing with empty node list")
+			} else {
+				nodeNames = n
+			}
+		}
+	}
+
+	// Selected node from query param if present and exists
+	if qn := r.URL.Query().Get("node"); qn != "" {
+		for _, n := range nodeNames {
+			if n == qn {
+				selectedNode = qn
+				break
+			}
+		}
+	}
+	if selectedNode == "" && len(nodeNames) > 0 {
+		selectedNode = nodeNames[0]
+	}
+
+	data := map[string]interface{}{
+		"Title":     "Resource Limits",
+		"Limits":    settings.Limits,
+		"NodeNames": nodeNames,
+		"Node":      selectedNode,
+	}
+	i18n.LocalizePage(w, r, data)
+	renderTemplateInternal(w, r, "admin_limits", data)
 }
 
 // ToggleISOHandler toggles a single ISO enabled state (auto-save per click, no JS)
@@ -598,13 +650,22 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 
 // RegisterRoutes enregistre les routes liées aux paramètres
 func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
-	// Admin ISO page and toggle (no JS)
-	router.GET("/admin/iso", h.ISOPageHandler)
-	router.POST("/admin/iso/toggle", h.ToggleISOHandler)
+	// Admin ISO page and toggle (protected)
+	router.GET("/admin/iso", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.ISOPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	router.POST("/admin/iso/toggle", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.ToggleISOHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 
 	// Server-rendered limits form (no JS)
 	router.POST("/admin/limits", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.UpdateLimitsFormHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+
+	// Limits page (protected)
+	router.GET("/admin/limits", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.LimitsPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
 	// Routes API protégées par authentification

@@ -14,8 +14,15 @@
             <div class="notification is-danger">{{.Error}}</div>
             {{end}}
 
-            <form method="post" action="/login?lang={{.Lang}}">
+            <form method="post" action="{{urlWithLang .Lang}}">
               <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+              {{/* Preserve intended redirect target across POST */}}
+              {{if .ReturnURL}}
+              <input type="hidden" name="return" value="{{.ReturnURL}}" />
+              {{end}}
+              {{if .RedirectURL}}
+              <input type="hidden" name="redirect" value="{{.RedirectURL}}" />
+              {{end}}
 
               <!-- Password Field -->
               <div class="field">
