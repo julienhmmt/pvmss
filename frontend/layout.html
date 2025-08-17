@@ -18,20 +18,30 @@
     </title>
 
     <link rel="stylesheet" href="/css/bulma.min.css">
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/tokens.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/admin.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="/css/fontawesome.min.css">
     <link rel="stylesheet" href="/css/solid.min.css">
     <link rel="stylesheet" href="/css/regular.min.css">
     <link rel="stylesheet" href="/css/brands.min.css">
+    <!-- Preload local Font Awesome webfonts for faster icon rendering -->
+    <link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
+    <!-- Skip to main content for keyboard and screen reader users -->
+    <a class="skip-link" href="#main-content">Skip to content</a>
     
     {{template "navbar" .}}
 
     {{/* Proxmox Connection Status Banner - Server-side rendered */}}
     {{if not .ProxmoxConnected}}
-    <div class="notification is-danger is-light" id="proxmox-status-banner">
+    <input type="checkbox" id="pmx-dismiss" class="visually-hidden-checkbox" aria-label="Dismiss Proxmox status banner">
+    <div class="notification is-danger is-light" id="proxmox-status-banner" role="alert" aria-live="assertive">
         <div class="container">
             <div class="level is-mobile">
                 <div class="level-left">
@@ -49,11 +59,13 @@
                         {{end}}
 
     {{/* Optional Flash Messages slot (override with a template defining "flash") */}}
+    <div role="status" aria-live="polite">
     {{block "flash" .}}{{end}}
+    </div>
                     </div>
                 </div>
                 <div class="level-right">
-                    <button class="delete" onclick="this.parentElement.parentElement.parentElement.style.display='none';"></button>
+                    <label for="pmx-dismiss" class="delete" role="button" aria-label="Dismiss notification" aria-controls="proxmox-status-banner"></label>
                 </div>
             </div>
         </div>
@@ -89,7 +101,6 @@
         </div>
     </footer>
 
-    <script src="/js/main.js"></script>
   </body>
 </html>
 {{end}}

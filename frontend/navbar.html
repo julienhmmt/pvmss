@@ -1,20 +1,22 @@
 {{define "navbar"}}
 <nav class="navbar is-fixed-top is-spaced has-shadow" role="navigation" aria-label="main navigation">
     <div class="container">
+        <!-- CSS-only navbar toggle control -->
+        <input type="checkbox" id="nav-toggle" class="visually-hidden-checkbox" aria-label="Toggle navigation">
         <div class="navbar-brand">
             <a class="navbar-item" href="/?lang={{.Lang}}">
                 <span class="has-text-weight-bold">{{index .t "UI.Header"}}</span>
             </a>
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
+            <label for="nav-toggle" class="navbar-burger" role="button" aria-label="menu" aria-controls="navbarMenu" tabindex="0">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
-            </a>
+            </label>
         </div>
 
         <div id="navbarMenu" class="navbar-menu">
             <div class="navbar-start">
-                <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="/?lang={{.Lang}}">
+                <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="/?lang={{.Lang}}" {{if eq (currentPath) "/"}}aria-current="page"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-home"></i>
@@ -22,8 +24,9 @@
                         <span>{{index .t "Navbar.Home"}}</span>
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create" {{if not
-                    .ProxmoxConnected}}title="Proxmox server is not available" {{end}}>
+                <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create?lang={{.Lang}}"
+                   {{if eq (currentPath) "/vm/create"}}aria-current="page"{{end}}
+                   {{if not .ProxmoxConnected}}aria-disabled="true" tabindex="-1" title="Proxmox server is not available"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-plus-square"></i>
@@ -36,8 +39,9 @@
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search" {{if not
-                    .ProxmoxConnected}}title="Proxmox server is not available" {{end}}>
+                <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search?lang={{.Lang}}"
+                   {{if eq (currentPath) "/search"}}aria-current="page"{{end}}
+                   {{if not .ProxmoxConnected}}aria-disabled="true" tabindex="-1" title="Proxmox server is not available"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-search"></i>
@@ -50,7 +54,7 @@
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/docs/user"}}is-active{{end}}" href="/docs/user">
+                <a class="navbar-item {{if eq (currentPath) "/docs/user"}}is-active{{end}}" href="/docs/user?lang={{.Lang}}" {{if eq (currentPath) "/docs/user"}}aria-current="page"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-book"></i>
@@ -64,20 +68,20 @@
                 <div class="navbar-item">
                     <div class="buttons are-small">
                         {{if .IsAuthenticated}}
-                        <a class="button is-primary" href="/admin">
+                        <a class="button is-primary" href="/admin?lang={{.Lang}}">
                             <span class="icon">
                                 <i class="fas fa-cog"></i>
                             </span>
                             <span>{{ index .t "Navbar.Admin" }}</span>
                         </a>
-                        <a class="button is-light" href="/logout">
+                        <a class="button is-light" href="/logout?lang={{.Lang}}">
                             <span class="icon">
                                 <i class="fas fa-sign-out-alt"></i>
                             </span>
                             <span>{{ index .t "Navbar.Logout" }}</span>
                         </a>
                         {{else}}
-                        <a class="button is-primary" href="/login">
+                        <a class="button is-primary" href="/login?lang={{.Lang}}">
                             <span class="icon">
                                 <i class="fas fa-sign-in-alt"></i>
                             </span>
@@ -95,13 +99,13 @@
                             </span>
                         </a>
 
-                        <div class="buttons has-addons language-buttons">
-                            <a href="{{urlWithLang "fr"}}" class="button {{if eq .Lang "fr"}}is-selected{{else}}is-light{{end}}"
-                                title="Français">
+                        <div class="buttons has-addons language-buttons" role="group" aria-label="Language">
+                            <a href="{{urlWithLang "fr"}}" hreflang="fr" class="button {{if eq .Lang "fr"}}is-selected{{else}}is-light{{end}}"
+                                title="Français" {{if eq .Lang "fr"}}aria-current="true"{{end}}>
                                 FR 🇫🇷
                             </a>
-                            <a href="{{urlWithLang "en"}}" class="button {{if eq .Lang "en"}}is-selected{{else}}is-light{{end}}"
-                                title="English">
+                            <a href="{{urlWithLang "en"}}" hreflang="en" class="button {{if eq .Lang "en"}}is-selected{{else}}is-light{{end}}"
+                                title="English" {{if eq .Lang "en"}}aria-current="true"{{end}}>
                                 EN 🇬🇧
                             </a>
                         </div>

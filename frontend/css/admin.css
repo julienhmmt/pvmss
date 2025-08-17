@@ -1,0 +1,61 @@
+/* Admin-specific styles: sticky menu, anchors highlighting, admin cards */
+
+/* Smooth anchor offsets for fixed navbar */
+.section-anchor { scroll-margin-top: 4.5rem; }
+
+/* Highlight a section when navigated via hash */
+.section-anchor:target .card { box-shadow: 0 0 0 0.15rem rgba(50, 115, 220, 0.25); }
+
+/* Sticky admin menu, adjusted when banner visible */
+.admin-menu { position: sticky; top: 3.25rem; }
+#proxmox-status-banner ~ #main-content .admin-menu { top: 6rem; }
+
+.admin-menu .menu-label { font-weight: 700; color: var(--muted); }
+.admin-menu .menu-list a {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem;
+  transition: background-color 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
+}
+.admin-menu .menu-list a:hover { background-color: rgba(255,136,0,0.08); color: var(--primary); padding-left: 0.9rem; }
+
+/* Explicit active class */
+.admin-menu .menu-list a.is-active { background-color: var(--surface-2); color: var(--text); font-weight: 600; border-left: 3px solid var(--primary); }
+
+/* Target-based active states */
+body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
+body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
+body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
+body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
+body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
+body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
+  background-color: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  border-left: 3px solid var(--primary);
+}
+
+/* Default active (no hash): first item) */
+body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
+  background-color: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  border-left: 3px solid var(--primary);
+}
+
+/* Dark-mode soft hover/active */
+[data-theme="dark"] .admin-menu .menu-list a:hover { background-color: rgba(255,255,255,0.04); color: var(--text); }
+[data-theme="dark"] body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
+[data-theme="dark"] body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
+[data-theme="dark"] body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
+[data-theme="dark"] body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
+[data-theme="dark"] body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
+[data-theme="dark"] body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"],
+[data-theme="dark"] body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-left: 3px solid var(--primary);
+}
+
+/* Admin cards polish */
+.card.admin-card .card-content { padding: 1.25rem 1rem; }
+.card.admin-card .card-header { padding: 0.5rem 1rem; }
+.card.admin-card:hover { transform: translateY(-2px); box-shadow: 0 0.375rem 1.25rem rgba(0,0,0,0.12); }

@@ -1,0 +1,69 @@
+/* Design tokens: color variables and Bulma brand mapping */
+:root {
+  --primary: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  --primary-hover: hsl(var(--bulma-primary-h) var(--bulma-primary-s) calc(var(--bulma-primary-l) - 6%));
+  /* Light theme tokens */
+  --bg: #f7f8fa;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --border: #e5e7eb;
+  --navbar-bg: #ffffff;
+  --navbar-text: #374151;
+  --card-bg: #ffffff;
+  --link: var(--primary);
+  --link-hover: var(--primary-hover);
+  --shadow-color: 0 10px 30px rgb(2 6 23 / 8%);
+  color-scheme: light;
+
+  /* Bulma v1 brand mapping (primary color in light mode) */
+  /* #ff8800 -> hsl(32, 100%, 50%) */
+  --bulma-primary-h: 32;
+  --bulma-primary-s: 100%;
+  --bulma-primary-l: 50%;
+}
+
+[data-theme="dark"] {
+  /* Dark theme tokens (slightly softer surfaces) */
+  --primary: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l)); /* brand primary */
+  --primary-hover: hsl(var(--bulma-primary-h) var(--bulma-primary-s) calc(var(--bulma-primary-l) - 6%));
+  --bg: #0f0f12;        /* anthracite base */
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --surface: #17181c;   /* anthracite surface */
+  --surface-2: #1f2025; /* slightly raised surface */
+  --border: #2a2b31;    /* neutral graphite border */
+  --navbar-bg: #121316;
+  --navbar-text: #e5e7eb;
+  --card-bg: #17181c;
+  --link: var(--primary);
+  --link-hover: var(--primary-hover);
+  --shadow-color: 0 8px 24px rgb(0 0 0 / 40%);
+
+  /* Bulma v1 dark scheme variables: enable automatic dark theming for Bulma components */
+  --bulma-scheme-brightness: dark;
+  --bulma-scheme-main-l: 11%;
+  --bulma-scheme-main-bis-l: 13%;
+  --bulma-scheme-main-ter-l: 15%;
+  --bulma-background-l: 14%;
+  --bulma-border-weak-l: 21%;
+  --bulma-border-l: 24%;
+  --bulma-text-weak-l: 53%;
+  --bulma-text-l: 71%;
+  --bulma-text-strong-l: 93%;
+  --bulma-text-title-l: 100%;
+  --bulma-hover-background-l-delta: 5%;
+  --bulma-active-background-l-delta: 10%;
+  --bulma-hover-border-l-delta: 10%;
+  --bulma-active-border-l-delta: 20%;
+  --bulma-hover-color-l-delta: 5%;
+  --bulma-active-color-l-delta: 10%;
+
+  /* Bulma v1 brand mapping (primary color in dark mode) */
+  /* #d97706 -> hsl(32, 95%, 44%) */
+  --bulma-primary-h: 32;
+  --bulma-primary-s: 95%;
+  --bulma-primary-l: 44%;
+  color-scheme: dark;
+}

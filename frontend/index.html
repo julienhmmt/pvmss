@@ -3,7 +3,7 @@
 <section class="section">
     <div class="container">
         <!-- Hero Section -->
-        <div class="hero is-primary is-small has-hero-bg">
+        <div class="hero is-primary is-small">
             <div class="hero-body">
                 <div class="container has-text-centered">
                     <h1 class="title is-2 has-text-white mb-2">
@@ -24,7 +24,7 @@
                 <div class="columns is-multiline is-centered">
                     <!-- Carte Créer une VM -->
                     <div class="column is-4-desktop is-6-tablet">
-                        <div class="card home-card">
+                        <div class="card is-hoverable">
                             <div class="card-header brand-header">
                                 <p class="card-header-title has-text-centered">
                                     <span class="icon-text">
@@ -37,7 +37,7 @@
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
-                                <a href="/vm/create?lang={{.Lang}}" class="button is-primary is-medium home-btn">
+                                <a href="/vm/create?lang={{.Lang}}" class="button is-primary is-medium">
                                     <span>{{index .t "UI.GetStarted"}}</span>
                                 </a>
                             </div>
@@ -46,7 +46,7 @@
 
                     <!-- Carte Documentation -->
                     <div class="column is-4-desktop is-6-tablet">
-                        <div class="card home-card">
+                        <div class="card is-hoverable">
                             <div class="card-header brand-header">
                                 <p class="card-header-title has-text-centered">
                                     <span class="icon-text">
@@ -59,7 +59,7 @@
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{index .t "UI.DocsDescription"}}</p>
-                                <a href="/docs/user?lang={{.Lang}}" class="button is-primary is-medium home-btn">
+                                <a href="/docs/user?lang={{.Lang}}" class="button is-primary is-medium">
                                     {{index .t "UI.ViewDocumentation"}}
                                 </a>
                             </div>
@@ -68,7 +68,7 @@
 
                     <!-- Carte Admin -->
                     <div class="column is-4-desktop is-6-tablet">
-                        <div class="card home-card">
+                        <div class="card is-hoverable">
                             <div class="card-header brand-header">
                                 <p class="card-header-title has-text-centered">
                                     <span class="icon-text">
@@ -79,9 +79,9 @@
                                     </span>
                                 </p>
                             </div>
-                            <div class="card-content has-text-centered has-text-centered">
+                            <div class="card-content has-text-centered">
                                 <p class="mb-4">{{index .t "UI.AdminDescription"}}</p>
-                                <a href="/admin?lang={{.Lang}}" class="button is-primary is-medium home-btn">
+                                <a href="/admin?lang={{.Lang}}" class="button is-primary is-medium">
                                     {{index .t "UI.AccessAdmin"}}
                                 </a>
                             </div>
