@@ -1,11 +1,12 @@
 {{define "layout"}}
 <!DOCTYPE html>
-<html lang="{{.Lang}}">
+<html lang="{{.Lang}}" data-theme="{{.Theme}}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{index .t "UI.Header"}} - {{index .t "UI.Subtitle"}}">
     <meta name="csrf-token" content="{{.CSRFToken}}">
+    <meta name="color-scheme" content="{{.Theme}}">
     <title>
         {{- if .Title -}}
             {{.Title}} - {{index .t "UI.Header"}}
@@ -15,6 +16,7 @@
             {{index .t "UI.Header"}}
         {{- end -}}
     </title>
+
     <link rel="stylesheet" href="/css/bulma.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <!-- Font Awesome -->
@@ -87,28 +89,7 @@
         </div>
     </footer>
 
-    <script>
-        // Global helper to read CSRF token from meta tag
-        // Keeps client-side POSTs (e.g., ISO settings) CSRF-compliant
-        function getCSRFToken() {
-            const meta = document.querySelector('meta[name="csrf-token"]');
-            return meta ? meta.getAttribute('content') : '';
-        }
-
-        // Gestion du menu burger
-        document.addEventListener('DOMContentLoaded', function() {
-            const burger = document.querySelector('.navbar-burger');
-            const menu = document.querySelector('.navbar-menu');
-            
-            if (burger && menu) {
-                burger.addEventListener('click', function() {
-                    const active = burger.classList.toggle('is-active');
-                    menu.classList.toggle('is-active');
-                    burger.setAttribute('aria-expanded', active ? 'true' : 'false');
-                });
-            }
-        });
-    </script>
-</body>
+    <script src="/js/main.js"></script>
+  </body>
 </html>
 {{end}}

@@ -176,6 +176,8 @@ other = "Accédez aux paramètres d'administration et à la configuration du sys
 other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
 ["UI.Button.Search"]
 other = "Rechercher"
+["UI.Button.ColorMode"]
+other = "Jour/Nuit"
 ["UI.CreateVMDescription"]
 other = "Créez et déployez de nouvelles machines virtuelles en quelques clics."
 ["UI.DocsDescription"]

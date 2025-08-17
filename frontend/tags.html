@@ -14,7 +14,7 @@
         <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-info-circle"></i></span>
         {{index .t "Admin.Tags.Description"}}
       </p>
-      <div class="divider"></div>
+      <hr class="my-3">
       <!-- Inline add form -->
       <form id="add-tag-form" action="/tags" method="POST" class="mb-3">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
@@ -39,7 +39,7 @@
         {{if .Tags}}
         {{range .Tags}}
         <div class="tag-container mr-2 mb-2">
-          <span class="tag admin-badge is-rounded is-small {{if eq . " pvmss"}}is-primary is-light{{else}}is-info
+          <span class="tag is-rounded is-small {{if eq . " pvmss"}}is-primary is-light{{else}}is-info
             is-light{{end}}">
             {{.}}
             {{if eq . "pvmss"}}

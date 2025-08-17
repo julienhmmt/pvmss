@@ -171,8 +171,23 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	log.Debug().Msg("Applying i18n data and common variables")
 	i18n.LocalizePage(w, r, data)
 	data["CurrentPath"] = r.URL.Path
+	if r.URL.RawQuery != "" {
+		data["CurrentURL"] = r.URL.Path + "?" + r.URL.RawQuery
+	} else {
+		data["CurrentURL"] = r.URL.Path
+	}
 	data["IsHTTPS"] = r.TLS != nil
 	data["Host"] = r.Host
+
+	// Theme from cookie (browser preference). Defaults to light.
+	theme := "light"
+	if c, err := r.Cookie("theme"); err == nil {
+		if c.Value == "dark" || c.Value == "light" {
+			theme = c.Value
+		}
+	}
+	data["Theme"] = theme
+	data["IsDark"] = (theme == "dark")
 
 	log.Debug().
 		Str("current_path", r.URL.Path).

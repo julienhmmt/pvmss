@@ -1,6 +1,70 @@
 :root {
-  --primary: #f80;
-  --primary-hover: #e67300;
+  --primary: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
+  --primary-hover: hsl(var(--bulma-primary-h) var(--bulma-primary-s) calc(var(--bulma-primary-l) - 6%));
+  /* Light theme tokens */
+  --bg: #f7f8fa;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --border: #e5e7eb;
+  --navbar-bg: #ffffff;
+  --navbar-text: #374151;
+  --card-bg: #ffffff;
+  --link: (var(--primary));
+  --link-hover: (var(--primary-hover));
+  --shadow-color: 0 10px 30px rgb(2 6 23 / 8%);
+  color-scheme: light;
+
+  /* Bulma v1 brand mapping (primary color in light mode) */
+  /* #ff8800 -> hsl(32, 100%, 50%) */
+  --bulma-primary-h: 32;
+  --bulma-primary-s: 100%;
+  --bulma-primary-l: 50%;
+}
+
+[data-theme="dark"] {
+  /* Dark theme tokens (slightly softer surfaces) */
+  --primary: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l)); /* brand primary */
+  --primary-hover: hsl(var(--bulma-primary-h) var(--bulma-primary-s) calc(var(--bulma-primary-l) - 6%));
+  --bg: #0f0f12;        /* anthracite base */
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --surface: #17181c;   /* anthracite surface */
+  --surface-2: #1f2025; /* slightly raised surface */
+  --border: #2a2b31;    /* neutral graphite border */
+  --navbar-bg: #121316;
+  --navbar-text: #e5e7eb;
+  --card-bg: #17181c;
+  --link: var(--primary);
+  --link-hover: var(--primary-hover);
+  --shadow-color: 0 8px 24px rgb(0 0 0 / 40%);
+
+  /* Bulma v1 dark scheme variables: enable automatic dark theming for Bulma components */
+  --bulma-scheme-brightness: dark;
+  --bulma-scheme-main-l: 11%;
+  --bulma-scheme-main-bis-l: 13%;
+  --bulma-scheme-main-ter-l: 15%;
+  --bulma-background-l: 14%;
+  --bulma-border-weak-l: 21%;
+  --bulma-border-l: 24%;
+  --bulma-text-weak-l: 53%;
+  --bulma-text-l: 71%;
+  --bulma-text-strong-l: 93%;
+  --bulma-text-title-l: 100%;
+  --bulma-hover-background-l-delta: 5%;
+  --bulma-active-background-l-delta: 10%;
+  --bulma-hover-border-l-delta: 10%;
+  --bulma-active-border-l-delta: 20%;
+  --bulma-hover-color-l-delta: 5%;
+  --bulma-active-color-l-delta: 10%;
+
+  /* Bulma v1 brand mapping (primary color in dark mode) */
+  /* #d97706 -> hsl(32, 95%, 44%) */
+  --bulma-primary-h: 32;
+  --bulma-primary-s: 95%;
+  --bulma-primary-l: 44%;
+  color-scheme: dark;
 }
 
 .hero.is-primary {
@@ -13,6 +77,13 @@
   box-shadow: 0 0.5rem 2rem rgb(50 50 93 / 7%);
   padding: 2.5rem 2.2rem;
   margin-top: -2.5rem;
+}
+
+/* Dark-mode: welcome card should be a dark surface */
+[data-theme="dark"] .welcome-block {
+  background: rgb(23 24 28 / 92%);
+  border: 1px solid var(--border);
+  box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 32%);
 }
 
 .home-card {
@@ -40,40 +111,31 @@
   box-shadow: 0 0.25rem 1rem rgb(255 136 0 / 18%);
 }
 
+[data-theme="dark"] .home-btn:hover {
+  box-shadow: 0 0.25rem 1rem rgba(217, 119, 6, 0.14);
+}
+
 .box {
   border-radius: 0.375rem;
   box-shadow: 0 0.125rem 0.1875rem rgb(10 10 10 / 10%);
   margin-bottom: 1.5rem;
 }
 
-.has-text-primary {
-  color: var(--primary);
-}
+/* Use Bulma's built-in has-text-primary colors computed from --bulma-primary-* */
 
 .box .title {
-  color: #363636;
+  color: var(--text);
   font-size: 1.2rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
   padding-bottom: 0.75rem;
-  border-bottom: 0.125rem solid #f5f5f5;
+  border-bottom: 0.125rem solid var(--border);
 }
 
 .field:not(:last-child) {
   margin-bottom: 1.25rem;
 }
 
-.button.is-primary {
-  background-color: var(--primary);
-  border-color: transparent;
-  color: #fff;
-}
-
-.button.is-primary:hover,
-.button.is-primary.is-hovered {
-  background-color: var(--primary-hover);
-  border-color: transparent;
-}
 
 @media (max-width: 48rem) {
   .columns {
@@ -86,7 +148,7 @@
 }
 
 .help {
-  color: #666;
+  color: var(--muted);
   font-size: 0.85em;
   margin-top: 0.25em;
 }
@@ -102,7 +164,7 @@
 
 .navbar-item {
   font-weight: 600;
-  color: #4a4a4a;
+  color: var(--navbar-text);
   padding: 0.5rem 0.75rem;
   margin: 0;
   border-radius: 0.25rem; /* keep subtle rounding for hover */
@@ -116,7 +178,7 @@
 
 /* Professional active state: brand gradient underline */
 .navbar {
-  background-color: #fff;
+  background-color: var(--navbar-bg);
 }
 .navbar-item.is-active {
   color: var(--primary);
@@ -140,10 +202,14 @@
   background-color: rgb(255 136 0 / 10%);
 }
 
+[data-theme="dark"] .navbar-burger:hover {
+  background-color: rgba(217, 119, 6, 0.08);
+}
+
 .navbar-burger span {
   height: 0.125rem;
   width: 1.25rem;
-  background-color: #666;
+  background-color: var(--muted);
   left: calc(50% - 0.625rem);
 }
 
@@ -173,8 +239,8 @@
 
 @media screen and (max-width: 64rem) {
   .navbar-menu {
-    background-color: white;
-    box-shadow: 0 0.5rem 1rem rgba(0 0 0 10%);
+    background-color: var(--navbar-bg);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
   }
 
   .navbar-end {
@@ -187,7 +253,7 @@
 }
 
 .hero {
-  background: linear-gradient(135deg, #f80 0%, #ff6b00 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   padding-top: 6rem;
   padding-bottom: 4rem;
 }
@@ -211,7 +277,7 @@
 }
 
 .card-header {
-  background-color: #f80;
+  background-color: var(--primary);
   padding: 1.25rem 1.5rem;
 }
 
@@ -338,7 +404,7 @@ html {
 
 .admin-menu .menu-label {
   font-weight: 700;
-  color: #666;
+  color: var(--muted);
 }
 
 .admin-menu .menu-list a {
@@ -356,6 +422,11 @@ html {
   padding-left: 0.9rem;
 }
 
+/* Dark-mode: softer admin menu highlights */
+[data-theme="dark"] .admin-menu .menu-list a:hover {
+  background-color: rgba(217, 119, 6, 0.08);
+}
+
 /* Active state based on section :target (explicit ids) */
 body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
 body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
@@ -368,6 +439,15 @@ body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#sectio
   font-weight: 600;
 }
 
+[data-theme="dark"] body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
+[data-theme="dark"] body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
+[data-theme="dark"] body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
+[data-theme="dark"] body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
+[data-theme="dark"] body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
+[data-theme="dark"] body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
+  background-color: rgba(217, 119, 6, 0.12);
+}
+
 /* Default active (no hash): first item */
 body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
   background-color: rgba(255, 136, 0, 0.12);
@@ -375,29 +455,13 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
   font-weight: 600;
 }
 
-/* Utilities */
-.gap-2 { gap: 0.5rem; }
-.w-100px { width: 100px; }
-
-/* Layout utilities to replace inline styles */
-.min-w-170 { min-width: 170px; }
-.shadow-soft { box-shadow: 0 2px 8px #e3e9f6; }
-.radius-8 { border-radius: 8px; }
-.is-flex-center { display: flex; align-items: center; }
-.inline-block { display: inline-block; }
-.mx-1 { margin-left: 0.25rem; margin-right: 0.25rem; }
-/* Thin divider for subtle separation */
-.divider { border-top: 1px solid #eee; margin: 0.5rem 0 1rem; }
+[data-theme="dark"] body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
+  background-color: rgba(217, 119, 6, 0.12);
+}
 
 /* Admin professional look */
-.progress.is-slim { height: 6px; border-radius: 999px; }
-.table.is-compact td,
-.table.is-compact th { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
 .card.admin-card .card-content { padding: 1.25rem 1rem; }
 .card.admin-card .card-header { padding: 0.5rem 1rem; }
-.tag.admin-badge.is-light { filter: saturate(85%); }
-.tag.admin-badge.is-success.is-light { background-color: #e6f6ee; color: #0f8a5f; }
-.tag.admin-badge.is-danger.is-light { background-color: #fdecea; color: #b42318; }
 
 /* Warning notification */
 .notification.is-warning.is-light {
@@ -442,3 +506,103 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
   opacity: 0.9;
   cursor: not-allowed;
 }
+
+/* Selected tags display */
+.selected-tags .tag {
+  margin: 0 0.35rem 0.35rem 0;
+}
+.selected-tags .tag.is-primary {
+  background-color: var(--primary);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* Let Bulma style .tag.is-primary using its on-scheme derivations */
+
+/* Dark-mode neutral light tag variant */
+[data-theme="dark"] .tag.is-light {
+  background-color: var(--surface-2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+/* === Theme Base & Component Overrides === */
+html, body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+a { color: var(--link); }
+a:hover { color: var(--link-hover); }
+
+.footer {
+  background-color: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+/* Surfaces */
+.box {
+  background-color: var(--surface);
+  box-shadow: var(--shadow-color);
+}
+
+.card {
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow-color);
+}
+
+.card-content { color: var(--text); }
+
+/* Forms */
+.input, .textarea, .select select {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.input::placeholder, .textarea::placeholder { color: var(--muted); }
+.input:focus, .textarea:focus, .select select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.125em rgba(255, 136, 0, 0.2);
+}
+
+[data-theme="dark"] .input:focus,
+[data-theme="dark"] .textarea:focus,
+[data-theme="dark"] .select select:focus {
+  box-shadow: 0 0 0 0.125em rgba(217, 119, 6, 0.18);
+}
+
+/* Tables */
+.table { background-color: transparent; color: var(--text); }
+.table th, .table td { border-color: var(--border); }
+.table thead th { background-color: var(--surface-2); }
+
+/* Notifications (subtle base) */
+.notification { color: var(--text); }
+
+/* Proxmox banner tweak on dark for readability */
+[data-theme="dark"] #proxmox-status-banner {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+
+/* Buttons: rely on Bulma dark scheme for .button.is-light */
+[data-theme="dark"] .button.is-light:hover {
+  background-color: #2a2b31;
+}
+
+/* Bulma notification shades in dark mode */
+[data-theme="dark"] .notification.is-light {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+[data-theme="dark"] .notification.is-light a:not(.button) {
+  color: var(--link);
+}
+[data-theme="dark"] .notification.is-light a:not(.button):hover {
+  color: var(--link-hover);
+}
+[data-theme="dark"] .notification.is-light.is-primary { border-left: 3px solid var(--primary); }
+[data-theme="dark"] .notification.is-light.is-info { border-left: 3px solid #38bdf8; }
+[data-theme="dark"] .notification.is-light.is-success { border-left: 3px solid #22c55e; }
+[data-theme="dark"] .notification.is-light.is-warning { border-left: 3px solid #f59e0b; }
+[data-theme="dark"] .notification.is-light.is-danger { border-left: 3px solid #ef4444; }

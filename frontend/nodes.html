@@ -21,7 +21,7 @@
         </header>
         <div class="card-content">
             <div class="table-container">
-                <table class="table is-striped is-hoverable is-fullwidth is-narrow is-compact">
+                <table class="table is-striped is-hoverable is-fullwidth is-narrow">
                     <thead>
                         <tr>
                             <th scope="col">{{index .t "Nodes.Header.Node"}}</th>
@@ -37,11 +37,11 @@
                             <td>{{.Node}}</td>
                             <td>
                                 {{if $.ProxmoxConnected}}
-                                <span class="tag admin-badge is-success is-light">
+                                <span class="tag is-success is-light">
                                     {{with (index $.t "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
                                 </span>
                                 {{else}}
-                                <span class="tag admin-badge is-danger is-light">
+                                <span class="tag is-danger is-light">
                                     {{with (index $.t "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
                                 </span>
                                 {{end}}
@@ -49,7 +49,7 @@
                             <td>
                                 {{$cpu_percent := mul .CPU 100.0}}
                                 <progress
-                                    class="progress is-small is-slim {{if lt $cpu_percent 70.0}}is-primary{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}"
+                                    class="progress is-small {{if lt $cpu_percent 70.0}}is-primary{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}"
                                     value="{{printf " %.0f" $cpu_percent}}" max="100" title="CPU: {{printf " %.0f%%"
                                     $cpu_percent}} ({{printf "%.2f" .CPU}}/{{.MaxCPU}})"></progress>
                                 <span class="is-size-7 has-text-grey">{{printf "%.0f%%" $cpu_percent}}</span>
@@ -57,7 +57,7 @@
                             <td>
                                 {{$mem_percent := mul (div .Memory .MaxMemory) 100.0}}
                                 <progress
-                                    class="progress is-small is-slim {{if lt $mem_percent 70.0}}is-primary{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}"
+                                    class="progress is-small {{if lt $mem_percent 70.0}}is-primary{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}"
                                     value="{{printf " %.0f" $mem_percent}}" max="100" title="RAM: {{printf " %.0f%%"
                                     $mem_percent}} ({{.Memory | humanBytes}}/{{.MaxMemory | humanBytes}})"></progress>
                                 <span class="is-size-7 has-text-grey">{{printf "%.0f%%" $mem_percent}}</span>
@@ -65,7 +65,7 @@
                             <td>
                                 {{$disk_percent := mul (div .Disk .MaxDisk) 100.0}}
                                 <progress
-                                    class="progress is-small is-slim {{if lt $disk_percent 70.0}}is-primary{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}"
+                                    class="progress is-small {{if lt $disk_percent 70.0}}is-primary{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}"
                                     value="{{printf " %.0f" $disk_percent}}" max="100" title="Disk: {{printf " %.0f%%"
                                     $disk_percent}} ({{.Disk | humanBytes}}/{{.MaxDisk | humanBytes}})"></progress>
                                 <span class="is-size-7 has-text-grey">{{printf "%.0f%%" $disk_percent}}</span>

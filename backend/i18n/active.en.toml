@@ -154,6 +154,8 @@ other = "Access administration settings and system configuration."
 other = "With PVMSS, you can create virtual machines on a Proxmox server."
 ["UI.Button.Search"]
 other = "Search"
+["UI.Button.ColorMode"]
+other = "Light/Dark"
 ["UI.CreateVMDescription"]
 other = "Create and deploy new virtual machines in just a few clicks."
 ["UI.DocsDescription"]

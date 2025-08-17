@@ -12,10 +12,10 @@
             <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-info-circle"></i></span>
             {{index .t "Admin.ISO.Description"}}
         </p>
-        <div class="divider"></div>
+        <hr class="my-3">
         {{if .ISOsList}}
         <div class="table-container">
-            <table class="table is-fullwidth is-striped is-hoverable is-compact">
+            <table class="table is-fullwidth is-striped is-hoverable is-narrow">
                 <thead>
                     <tr>
                         <th scope="col"><span class="icon-text"><span class="icon"><i class="fas fa-toggle-on"></i></span> <span>{{index .t "Admin.ISO.Header.Enabled"}}</span></span></th>

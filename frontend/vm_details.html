@@ -8,7 +8,7 @@
                 </p>
             </header>
             <div class="card-content">
-                <table class="table is-fullwidth is-compact">
+                <table class="table is-fullwidth is-narrow">
                     <tbody>
                         <tr>
                             <th><i class="fas fa-tag"></i> {{index .t "VMDetails.Label.Name"}}</th>
@@ -171,7 +171,7 @@
 
     <!-- Refresh Button -->
     <div class="is-flex is-justify-content-center mb-4 mt-4">
-        <a class="button is-info is-light min-w-170 shadow-soft radius-8 is-flex-center gap-2"
+        <a class="button is-info is-light"
             href="/vm/details/{{.VMID}}?refresh=1">
             <span>{{index .t "VMDetails.Action.Refresh"}}</span>
         </a>
@@ -179,7 +179,7 @@
 
     <!-- Open Console Button -->
     <div class="is-flex is-justify-content-center mb-4">
-        <a class="button is-primary is-light min-w-170 shadow-soft radius-8 is-flex-center gap-2"
+        <a class="button is-primary is-light"
            href="/console/qemu/{{.VMID}}?node={{.Node}}" target="_blank" rel="noopener">
             <span>Open Console</span>
         </a>
@@ -187,7 +187,7 @@
 
     <!-- VM Action Forms (server-side) -->
     <div class="buttons is-centered mt-4">
-        <form action="/vm/action" method="post" class="inline-block mx-1">
+        <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
@@ -196,7 +196,7 @@
                 <span>{{index .t "VMDetails.Action.Start"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="inline-block mx-1">
+        <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
@@ -205,7 +205,7 @@
                 <span>{{index .t "VMDetails.Action.Reboot"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="inline-block mx-1">
+        <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
@@ -214,7 +214,7 @@
                 <span>{{index .t "VMDetails.Action.Shutdown"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="inline-block mx-1">
+        <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
@@ -223,7 +223,7 @@
                 <span>{{index .t "VMDetails.Action.Stop"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="inline-block mx-1">
+        <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
@@ -236,7 +236,7 @@
 
 
     <div class="is-flex is-justify-content-center mb-4 mt-4">
-        <a class="button is-info is-light min-w-170 shadow-soft radius-8 is-flex-center gap-2" href="/search">
+        <a class="button is-info is-light" href="/search">
             <span>{{index .t "Common.BackToSearch"}}</span>
         </a>
     </div>
