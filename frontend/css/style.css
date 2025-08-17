@@ -11,8 +11,8 @@
   --navbar-bg: #ffffff;
   --navbar-text: #374151;
   --card-bg: #ffffff;
-  --link: (var(--primary));
-  --link-hover: (var(--primary-hover));
+  --link: var(--primary);
+  --link-hover: var(--primary-hover);
   --shadow-color: 0 10px 30px rgb(2 6 23 / 8%);
   color-scheme: light;
 
@@ -112,7 +112,9 @@
 }
 
 [data-theme="dark"] .home-btn:hover {
-  box-shadow: 0 0.25rem 1rem rgba(217, 119, 6, 0.14);
+  background: #1f2025;
+  color: var(--text);
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
 }
 
 .box {
@@ -176,6 +178,10 @@
   background-color: transparent;
 }
 
+[data-theme="dark"] .navbar-item:hover {
+  color: var(--text);
+}
+
 /* Professional active state: brand gradient underline */
 .navbar {
   background-color: var(--navbar-bg);
@@ -203,7 +209,7 @@
 }
 
 [data-theme="dark"] .navbar-burger:hover {
-  background-color: rgba(217, 119, 6, 0.08);
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 .navbar-burger span {
@@ -219,6 +225,13 @@
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Global focus-visible for interactive elements */
+:where(a, button, input, select, textarea, .button):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .language-buttons .button {
@@ -271,18 +284,19 @@
 .card {
   height: 100%;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: none;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow: hidden;
 }
 
 .card-header {
-  background-color: var(--primary);
+  background-color: var(--surface-2);
   padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
 
 .card-header-title {
-  color: white;
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -336,6 +350,10 @@ fieldset[disabled]::after {
   position: relative;
   z-index: 100;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .navbar {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* Notification banner */
@@ -422,9 +440,18 @@ html {
   padding-left: 0.9rem;
 }
 
+/* Allow explicit active class to match target-based active */
+.admin-menu .menu-list a.is-active {
+  background-color: var(--surface-2);
+  color: var(--text);
+  font-weight: 600;
+  border-left: 3px solid var(--primary);
+}
+
 /* Dark-mode: softer admin menu highlights */
 [data-theme="dark"] .admin-menu .menu-list a:hover {
-  background-color: rgba(217, 119, 6, 0.08);
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text);
 }
 
 /* Active state based on section :target (explicit ids) */
@@ -434,9 +461,10 @@ body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storag
 body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
 body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
 body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
-  background-color: rgba(255, 136, 0, 0.12);
-  color: var(--primary);
+  background-color: var(--surface-2);
+  color: var(--text);
   font-weight: 600;
+  border-left: 3px solid var(--primary);
 }
 
 [data-theme="dark"] body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
@@ -445,29 +473,46 @@ body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#sectio
 [data-theme="dark"] body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
 [data-theme="dark"] body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
 [data-theme="dark"] body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
-  background-color: rgba(217, 119, 6, 0.12);
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-left: 3px solid var(--primary);
 }
 
 /* Default active (no hash): first item */
 body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
-  background-color: rgba(255, 136, 0, 0.12);
-  color: var(--primary);
+  background-color: var(--surface-2);
+  color: var(--text);
   font-weight: 600;
+  border-left: 3px solid var(--primary);
 }
 
 [data-theme="dark"] body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
-  background-color: rgba(217, 119, 6, 0.12);
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-left: 3px solid var(--primary);
 }
 
 /* Admin professional look */
 .card.admin-card .card-content { padding: 1.25rem 1rem; }
 .card.admin-card .card-header { padding: 0.5rem 1rem; }
 
+.card.admin-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.375rem 1.25rem rgba(0, 0, 0, 0.12);
+}
+
 /* Warning notification */
 .notification.is-warning.is-light {
   background-color: #fffbeb;
   color: #947600;
   border-left: 4px solid #ffdd57;
+}
+
+/* Dark: tone down strong warning backgrounds when not using .is-light */
+[data-theme="dark"] .notification.is-warning:not(.is-light) {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-left: 3px solid #f59e0b;
 }
 
 /* --- Tag selection (Create VM) --- */
@@ -520,6 +565,12 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
 /* Let Bulma style .tag.is-primary using its on-scheme derivations */
 
 /* Dark-mode neutral light tag variant */
+[data-theme="light"] .tag.is-light,
+.tag.is-light {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
 [data-theme="dark"] .tag.is-light {
   background-color: var(--surface-2);
   color: var(--muted);
@@ -534,16 +585,24 @@ html, body {
 
 a { color: var(--link); }
 a:hover { color: var(--link-hover); }
+a { transition: color 0.15s ease; }
 
 .footer {
   background-color: var(--surface);
   border-top: 1px solid var(--border);
 }
 
+/* Horizontal rule color matches border tone */
+hr {
+  background-color: var(--border);
+  height: 1px;
+}
+
 /* Surfaces */
 .box {
   background-color: var(--surface);
   box-shadow: var(--shadow-color);
+  border: 1px solid var(--border);
 }
 
 .card {
@@ -571,10 +630,99 @@ a:hover { color: var(--link-hover); }
   box-shadow: 0 0 0 0.125em rgba(217, 119, 6, 0.18);
 }
 
+/* Dark: static addon buttons should match surfaces */
+[data-theme="dark"] .button.is-static {
+  background-color: var(--surface-2);
+  color: var(--muted);
+  border-color: var(--border);
+}
+
 /* Tables */
 .table { background-color: transparent; color: var(--text); }
 .table th, .table td { border-color: var(--border); }
 .table thead th { background-color: var(--surface-2); }
+
+/* Table container framing and row hover */
+.table-container {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.table.is-hoverable tbody tr:hover {
+  background-color: var(--surface-2);
+}
+
+/* Subtle zebra striping tuned per theme */
+.table.is-striped tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+[data-theme="dark"] .table.is-striped tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Progress bars: compact, pill-shaped */
+.progress {
+  height: 0.5rem;
+  border-radius: 999px;
+  -webkit-appearance: none;
+  appearance: none;
+  overflow: hidden;
+}
+.progress::-webkit-progress-bar {
+  background-color: var(--surface-2);
+  border-radius: 999px;
+}
+.progress::-webkit-progress-value {
+  background-color: var(--primary);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+.progress::-moz-progress-bar {
+  background-color: var(--primary);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+/* Safari/WebKit inner element rounding */
+.progress::-webkit-progress-inner-element {
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+/* Size variants */
+.progress.is-small { height: 0.375rem; }
+
+/* Inline metrics inside table cells: bar + percentage */
+.table td > .progress {
+  display: inline-block;
+  width: 120px;
+  min-width: 96px;
+  margin: 0;
+  vertical-align: middle;
+}
+.table td > .progress + span {
+  display: inline-block;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Color variants (Bulma-compatible) */
+.progress.is-primary::-webkit-progress-value { background-color: var(--primary); }
+.progress.is-primary::-moz-progress-bar { background-color: var(--primary); }
+
+.progress.is-success::-webkit-progress-value { background-color: #22c55e; }
+.progress.is-success::-moz-progress-bar { background-color: #22c55e; }
+
+.progress.is-info::-webkit-progress-value { background-color: #38bdf8; }
+.progress.is-info::-moz-progress-bar { background-color: #38bdf8; }
+
+.progress.is-warning::-webkit-progress-value { background-color: #f59e0b; }
+.progress.is-warning::-moz-progress-bar { background-color: #f59e0b; }
+
+.progress.is-danger::-webkit-progress-value { background-color: #ef4444; }
+.progress.is-danger::-moz-progress-bar { background-color: #ef4444; }
 
 /* Notifications (subtle base) */
 .notification { color: var(--text); }
@@ -585,8 +733,21 @@ a:hover { color: var(--link-hover); }
 }
 
 /* Buttons: rely on Bulma dark scheme for .button.is-light */
+[data-theme="light"] .button.is-light,
+.button.is-light {
+  border-color: var(--border);
+}
+[data-theme="light"] .button.is-light:hover,
+.button.is-light:hover {
+  background-color: var(--surface-2);
+}
 [data-theme="dark"] .button.is-light:hover {
   background-color: #2a2b31;
+}
+
+/* Slightly round all buttons for a modern feel */
+.button {
+  border-radius: 0.5rem;
 }
 
 /* Bulma notification shades in dark mode */
