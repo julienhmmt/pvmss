@@ -177,6 +177,14 @@
         </a>
     </div>
 
+    <!-- Open Console Button -->
+    <div class="is-flex is-justify-content-center mb-4">
+        <a class="button is-primary is-light min-w-170 shadow-soft radius-8 is-flex-center gap-2"
+           href="/console/qemu/{{.VMID}}?node={{.Node}}" target="_blank" rel="noopener">
+            <span>Open Console</span>
+        </a>
+    </div>
+
     <!-- VM Action Forms (server-side) -->
     <div class="buttons is-centered mt-4">
         <form action="/vm/action" method="post" class="inline-block mx-1">
