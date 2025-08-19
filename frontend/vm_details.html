@@ -8,6 +8,20 @@
                 </p>
             </header>
             <div class="card-content">
+                {{if .Error}}
+                <div class="notification is-danger is-light">
+                    <div class="content has-text-centered">
+                        <p class="is-size-5 has-text-weight-semibold mt-2">{{.Error}}</p>
+                    </div>
+                </div>
+                {{end}}
+                {{if .Warning}}
+                <div class="notification is-warning is-light">
+                    <div class="content has-text-centered">
+                        <p class="is-size-5 has-text-weight-semibold mt-2">{{.Warning}}</p>
+                    </div>
+                </div>
+                {{end}}
                 <table class="table is-fullwidth is-narrow">
                     <tbody>
                         <tr>
@@ -54,24 +68,28 @@
                                 {{else}}
                                 {{.Description}}
                                 {{end}}
+                                {{if .ProxmoxConnected}}
                                 <div class="is-pulled-right">
                                     <a class="button is-small is-light" href="/vm/details/{{.VMID}}?edit=description">
                                         <span class="icon is-small"><i class="fas fa-edit"></i></span>
                                         <span>Modify</span>
                                     </a>
                                 </div>
+                                {{end}}
                             </td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-tags"></i> Tags</th>
                             <td>
                                 {{.Tags}}
+                                {{if .ProxmoxConnected}}
                                 <div class="is-pulled-right">
                                     <a class="button is-small is-light" href="/vm/details/{{.VMID}}?edit=tags">
                                         <span class="icon is-small"><i class="fas fa-edit"></i></span>
                                         <span>Modify</span>
                                     </a>
                                 </div>
+                                {{end}}
                             </td>
                         </tr>
                     </tbody>
@@ -100,7 +118,7 @@
                                 </a>
                             </div>
                             <div class="control">
-                                <button type="submit" class="button is-primary">
+                                <button type="submit" class="button is-primary" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
                                     <span class="icon"><i class="fas fa-save"></i></span>
                                     <span>Save Description</span>
                                 </button>
@@ -137,7 +155,7 @@
                                             </label>
                                         {{else}}
                                             <label class="checkbox mr-3">
-                                                <input type="checkbox" name="tags" value="{{$tag}}" {{if contains $.CurrentTags $tag}}checked{{end}} />
+                                                <input type="checkbox" name="tags" value="{{$tag}}" {{if contains $.CurrentTags $tag}}checked{{end}} {{if not $.ProxmoxConnected}}disabled{{end}} />
                                                 <span class="tag is-light">{{$tag}}</span>
                                             </label>
                                         {{end}}
@@ -155,7 +173,7 @@
                                 </a>
                             </div>
                             <div class="control">
-                                <button type="submit" class="button is-primary">
+                                <button type="submit" class="button is-primary" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
                                     <span class="icon"><i class="fas fa-save"></i></span>
                                     <span>Save Tags</span>
                                 </button>
@@ -179,10 +197,16 @@
 
     <!-- Open Console Button -->
     <div class="is-flex is-justify-content-center mb-4">
-        <a class="button is-primary is-light"
-           href="/console/qemu/{{.VMID}}?node={{.Node}}" target="_blank" rel="noopener">
-            <span>Open Console</span>
-        </a>
+        {{if .ProxmoxConnected}}
+            <a class="button is-primary is-light"
+               href="/console/qemu/{{.VMID}}?node={{.Node}}" target="_blank" rel="noopener">
+                <span>Open Console</span>
+            </a>
+        {{else}}
+            <button class="button is-primary is-light" disabled title="Offline mode">
+                <span>Open Console</span>
+            </button>
+        {{end}}
     </div>
 
     <!-- VM Action Forms (server-side) -->
@@ -192,7 +216,7 @@
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="start" />
-            <button class="button is-success is-light" {{if eq .Status "running" }}disabled{{end}}>
+            <button class="button is-success is-light" {{if or (not .ProxmoxConnected) (eq .Status "running")}}disabled{{end}}>
                 <span>{{index .t "VMDetails.Action.Start"}}</span>
             </button>
         </form>
@@ -201,7 +225,7 @@
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="reboot" />
-            <button class="button is-warning is-light" {{if ne .Status "running" }}disabled{{end}}>
+            <button class="button is-warning is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
                 <span>{{index .t "VMDetails.Action.Reboot"}}</span>
             </button>
         </form>
@@ -210,7 +234,7 @@
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="shutdown" />
-            <button class="button is-danger is-light" {{if ne .Status "running" }}disabled{{end}}>
+            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
                 <span>{{index .t "VMDetails.Action.Shutdown"}}</span>
             </button>
         </form>
@@ -219,7 +243,7 @@
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="stop" />
-            <button class="button is-danger is-light" {{if ne .Status "running" }}disabled{{end}}>
+            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
                 <span>{{index .t "VMDetails.Action.Stop"}}</span>
             </button>
         </form>
@@ -228,7 +252,7 @@
             <input type="hidden" name="vmid" value="{{.VMID}}" />
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="reset" />
-            <button class="button is-danger is-light" {{if ne .Status "running" }}disabled{{end}}>
+            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
                 <span>{{index .t "VMDetails.Action.Reset"}}</span>
             </button>
         </form>

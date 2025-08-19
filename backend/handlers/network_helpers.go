@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
+	"time"
 )
 
 // collectAllVMBRs retrieves VMBR bridge information across all nodes via Proxmox.
@@ -17,14 +19,24 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 		return nil, nil
 	}
 
+	// Respect background connectivity monitor: short-circuit when offline
+	if connected, _ := sm.GetProxmoxStatus(); !connected {
+		log.Warn().Msg("Proxmox reported offline by background monitor; skipping VMBR collection")
+		return []map[string]string{}, nil
+	}
+
 	client := sm.GetProxmoxClient()
 	if client == nil {
 		log.Warn().Msg("Proxmox client is not initialized; returning empty VMBR list")
 		return []map[string]string{}, nil
 	}
 
+	// Use a short timeout to keep admin page responsive
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	// Use the interface directly to support real and mock clients
-	nodeNames, err := proxmox.GetNodeNames(client)
+	nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, client)
 	if err != nil {
 		log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes")
 		return []map[string]string{}, nil
@@ -33,7 +45,7 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 
 	allVMBRs := make([]map[string]string, 0)
 	for _, node := range nodeNames {
-		vmbrs, err := proxmox.GetVMBRs(client, node)
+		vmbrs, err := proxmox.GetVMBRsWithContext(ctx, client, node)
 		if err != nil {
 			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node; skipping")
 			continue

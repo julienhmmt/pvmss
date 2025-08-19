@@ -50,7 +50,8 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 	}
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		// Offline/read-only: redirect back to details with warning
+		http.Redirect(w, r, "/vm/details/"+vmid+"?error=offline", http.StatusSeeOther)
 		return
 	}
 	// Update description (empty allowed to clear)
@@ -115,7 +116,8 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		// Offline/read-only: redirect back to details with warning
+		http.Redirect(w, r, "/vm/details/"+vmid+"?error=offline", http.StatusSeeOther)
 		return
 	}
 	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"tags": tagsParam}); err != nil {
@@ -162,9 +164,33 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	// Get Proxmox client and search VM by ID
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		log.Error().Msg("Proxmox client not initialized")
-		localizer := i18n.GetLocalizer(r)
-		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
+		log.Warn().Msg("Proxmox client not available; rendering VM details in offline/read-only mode")
+		// Prepare minimal data for offline render
+		data := map[string]interface{}{
+			"Title":           "VM Details",
+			"VMID":            vmID,
+			"VMName":          "",
+			"Status":          "unknown",
+			"Uptime":          "0s",
+			"Sockets":         0,
+			"Cores":           0,
+			"RAM":             "0 B",
+			"DiskCount":       0,
+			"DiskTotalSize":   "0 B",
+			"NetworkBridges":  "",
+			"Description":     "",
+			"DescriptionHTML": template.HTML(""),
+			"Tags":            "",
+			"CurrentTags":     []string{},
+			"Node":            "",
+			"Offline":         true,
+			"Warning":         "Proxmox connection unavailable. Displaying cached/empty data in read-only mode.",
+		}
+		if settings := h.stateManager.GetSettings(); settings != nil {
+			data["AvailableTags"] = settings.Tags
+		}
+		i18n.LocalizePage(w, r, data)
+		renderTemplateInternal(w, r, "vm_details", data)
 		return
 	}
 
@@ -179,9 +205,31 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	vms, err := proxmox.GetVMsWithContext(r.Context(), client)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch VMs from Proxmox")
-		localizer := i18n.GetLocalizer(r)
-		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
+		log.Warn().Err(err).Msg("Failed to fetch VMs; rendering offline/read-only VM details page")
+		data := map[string]interface{}{
+			"Title":           "VM Details",
+			"VMID":            vmID,
+			"VMName":          "",
+			"Status":          "unknown",
+			"Uptime":          "0s",
+			"Sockets":         0,
+			"Cores":           0,
+			"RAM":             "0 B",
+			"DiskCount":       0,
+			"DiskTotalSize":   "0 B",
+			"NetworkBridges":  "",
+			"Description":     "",
+			"DescriptionHTML": template.HTML(""),
+			"Tags":            "",
+			"CurrentTags":     []string{},
+			"Node":            "",
+			"Warning":         "Could not fetch VM data from Proxmox. Displaying empty data.",
+		}
+		if settings := h.stateManager.GetSettings(); settings != nil {
+			data["AvailableTags"] = settings.Tags
+		}
+		i18n.LocalizePage(w, r, data)
+		renderTemplateInternal(w, r, "vm_details", data)
 		return
 	}
 
@@ -291,6 +339,11 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"Node":            found.Node,
 	}
 
+	// Optional error banner via query params
+	if e := strings.TrimSpace(r.URL.Query().Get("error")); e != "" {
+		data["Error"] = e
+	}
+
 	// Toggle edit mode via query parameter without JS
 	if q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("edit"))); q != "" {
 		if q == "description" || q == "desc" {
@@ -367,9 +420,8 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		log.Error().Msg("Proxmox client not initialized")
-		localizer := i18n.GetLocalizer(r)
-		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
+		log.Warn().Msg("Proxmox client not available; redirecting back to VM details with offline warning")
+		http.Redirect(w, r, "/vm/details/"+vmid+"?error=offline", http.StatusSeeOther)
 		return
 	}
 

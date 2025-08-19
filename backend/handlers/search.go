@@ -43,6 +43,11 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 	// For GET, simply display the search form
 	if r.Method == http.MethodGet {
 		log.Debug().Msg("Rendering search form")
+		// If Proxmox is offline, display a warning but still render the page
+		if h.stateManager.GetProxmoxClient() == nil {
+			localizer := i18n.GetLocalizer(r)
+			data["Warning"] = i18n.Localize(localizer, "Proxmox.NotConnected")
+		}
 		i18n.LocalizePage(w, r, data)
 		data["Title"] = data["Search.Title"]
 		renderTemplateInternal(w, r, "search", data)
@@ -56,6 +61,12 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		vmid := strings.TrimSpace(r.FormValue("vmid"))
 		name := strings.TrimSpace(r.FormValue("name"))
 
+		// Preserve submitted values
+		data["FormData"] = map[string]string{
+			"vmid": vmid,
+			"name": name,
+		}
+
 		log.Info().
 			Str("vmid", vmid).
 			Str("name", name).
@@ -64,7 +75,8 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		// Validate inputs
 		if vmid == "" && name == "" {
 			log.Warn().Msg("No search criteria provided")
-			data["Error"] = "Veuillez fournir au moins un critère de recherche (ID ou nom)"
+			localizer := i18n.GetLocalizer(r)
+			data["Error"] = i18n.Localize(localizer, "Search.Validation.MissingCriteria")
 			i18n.LocalizePage(w, r, data)
 			data["Title"] = data["Search.Title"]
 			renderTemplateInternal(w, r, "search", data)
@@ -89,9 +101,9 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		// Retrieve Proxmox client from state manager
 		client := h.stateManager.GetProxmoxClient()
 		if client == nil {
-			errMsg := "Proxmox client unavailable"
-			log.Error().Msg(errMsg)
-			data["Error"] = errMsg
+			localizer := i18n.GetLocalizer(r)
+			log.Warn().Msg("Proxmox client unavailable; rendering offline-friendly search page")
+			data["Error"] = i18n.Localize(localizer, "Proxmox.NotConnected") + ". " + i18n.Localize(localizer, "Proxmox.CheckConnection")
 			i18n.LocalizePage(w, r, data)
 			data["Title"] = data["Search.Results"]
 			renderTemplateInternal(w, r, "search", data)

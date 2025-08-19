@@ -274,6 +274,8 @@ other = "VM Details"
 other = "VM ID"
 ["Search.YouSearchedFor"]
 other = "You searched for"
+["Search.Validation.MissingCriteria"]
+other = "Please provide at least one search criterion (ID or name)."
 
 # ======
 # Admin

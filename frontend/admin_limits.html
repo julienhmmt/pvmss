@@ -1,7 +1,242 @@
-{{define "admin_section"}}
-  {{template "resource_limits" .}}
-{{end}}
-
 {{define "admin_limits"}}
   {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_section"}}
+  <div class="container mt-4">
+    <div class="card admin-card">
+        <header class="card-header brand-header is-align-items-center">
+            <p class="card-header-title">
+                <span class="icon"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}
+            </p>
+        </header>
+        <div class="card-content">
+            <p class="help mb-2">
+                <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-info-circle"></i></span>
+                {{index .t "Admin.Limits.Description"}}
+            </p>
+            <hr class="my-3">
+            <p class="is-size-7 has-text-grey">{{with (index .t "Admin.Limits.Subtitle")}}{{.}}{{end}}</p>
+        </div>
+    </div>
+
+    <!-- VM and Node Limits side-by-side -->
+    <div class="columns is-variable is-5">
+        <!-- VM Limits -->
+        <div class="column is-6">
+            <form action="/admin/limits" method="POST">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <input type="hidden" name="entityId" value="vm">
+                <div class="card admin-card">
+                    <header class="card-header brand-header is-align-items-center">
+                        <p class="card-header-title">
+                            <span class="icon"><i class="fas fa-desktop"></i></span>&nbsp;VM
+                        </p>
+                    </header>
+                    <div class="card-content">
+                        <p class="is-size-7 has-text-grey mb-2">{{with (index .t
+                            "Admin.Limits.ScopeVM")}}{{.}}{{else}}Applies to all new VMs.{{end}}</p>
+                        <div class="table-container">
+                            <table class="table is-striped is-fullwidth is-hoverable is-narrow">
+                                <thead>
+                                    <tr>
+                                        <th>{{index .t "Common.Resource" | default "Resource"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Min"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Max"}}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i
+                                                        class="fas fa-microchip"></i></span><span>{{index .t
+                                                    "Admin.Limits.Sockets"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-min" value="{{with index .Limits "vm"}}{{with index . "sockets"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-max" value="{{with index .Limits "vm"}}{{with index . "sockets"}}{{index . "max"}}{{else}}2{{end}}{{else}}2{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i
+                                                        class="fas fa-microchip"></i></span><span>{{index .t
+                                                    "Admin.Limits.Cores"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-min" value="{{with index .Limits "vm"}}{{with index . "cores"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-max" value="{{with index .Limits "vm"}}{{with index . "cores"}}{{index . "max"}}{{else}}32{{end}}{{else}}32{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i
+                                                        class="fas fa-memory"></i></span><span>{{index .t
+                                                    "Admin.Limits.Memory"}}</span></span></td>
+                                        <td class="has-text-right">
+                                            <div class="field has-addons is-justify-content-flex-end">
+                                                <div class="control is-expanded">
+                                                    <input class="input is-small has-text-right" type="number" name="ram-min" value="{{with index .Limits "vm"}}{{with index . "ram"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1" aria-label="{{index .t "Admin.Limits.Memory"}} min (GB)">
+                                                </div>
+                                                <div class="control">
+                                                    <span class="button is-static is-small">GB</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="has-text-right">
+                                            <div class="field has-addons is-justify-content-flex-end">
+                                                <div class="control is-expanded">
+                                                    <input class="input is-small has-text-right" type="number" name="ram-max" value="{{with index .Limits "vm"}}{{with index . "ram"}}{{index . "max"}}{{else}}64{{end}}{{else}}64{{end}}" min="1" step="1" aria-label="{{index .t "Admin.Limits.Memory"}} max (GB)">
+                                                </div>
+                                                <div class="control">
+                                                    <span class="button is-static is-small">GB</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i
+                                                        class="fas fa-hdd"></i></span><span>{{index .t
+                                                    "Admin.Limits.Disk"}}</span></span></td>
+                                        <td class="has-text-right">
+                                            <div class="field has-addons is-justify-content-flex-end">
+                                                <div class="control is-expanded">
+                                                    <input class="input is-small has-text-right" type="number" name="disk-min" value="{{with index .Limits "vm"}}{{with index . "disk"}}{{index . "min"}}{{else}}10{{end}}{{else}}10{{end}}" min="1" step="1" aria-label="{{index .t "Admin.Limits.Disk"}} min (GB)">
+                                                </div>
+                                                <div class="control">
+                                                    <span class="button is-static is-small">GB</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="has-text-right">
+                                            <div class="field has-addons is-justify-content-flex-end">
+                                                <div class="control is-expanded">
+                                                    <input class="input is-small has-text-right" type="number" name="disk-max" value="{{with index .Limits "vm"}}{{with index . "disk"}}{{index . "max"}}{{else}}500{{end}}{{else}}500{{end}}" min="1" step="1" aria-label="{{index .t "Admin.Limits.Disk"}} max (GB)">
+                                                </div>
+                                                <div class="control">
+                                                    <span class="button is-static is-small">GB</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="field is-grouped is-grouped-right">
+                            <div class="control">
+                                <button type="reset" class="button is-light is-outlined is-small">
+                                    <span>{{index .t "Common.Reset"}}</span>
+                                </button>
+                            </div>
+                            <div class="control">
+                                <button type="submit" class="button is-primary is-small">
+                                    <span class="icon"><i class="fas fa-save"></i></span>
+                                    <span>{{index .t "Common.Save"}}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Node Limits -->
+        <div class="column is-6">
+            {{/* Node selector (GET) separate from POST form */}}
+            {{if .NodeNames}}
+            <form action="/admin/limits" method="GET" class="mb-3">
+                <div class="field has-addons">
+                    <p class="control">
+                        <span class="select is-small">
+                            <select name="node" aria-label="Select node">
+                                {{range .NodeNames}}
+                                <option value="{{.}}" {{if eq . $.Node}}selected{{end}}>{{.}}</option>
+                                {{end}}
+                            </select>
+                        </span>
+                    </p>
+                    <p class="control">
+                        <button class="button is-small" type="submit">{{index .t "Common.Select" | default "Select"}}</button>
+                    </p>
+                </div>
+            </form>
+            {{end}}
+            <form action="/admin/limits" method="POST">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                <input type="hidden" name="entityId" value="node">
+                <input type="hidden" name="nodeName" value="{{.Node}}">
+                <div class="card admin-card">
+                    <header class="card-header brand-header is-align-items-center">
+                        <p class="card-header-title">
+                            <span class="icon"><i class="fas fa-server"></i></span>&nbsp;Node
+                        </p>
+                    </header>
+                    <div class="card-content">
+                        <p class="is-size-7 has-text-grey mb-2">{{with (index .t
+                            "Admin.Limits.ScopeNode")}}{{.}}{{else}}Applies to node-specific limits for
+                            {{.Node}}.{{end}}</p>
+                        <div class="table-container">
+                            <table class="table is-striped is-fullwidth is-hoverable is-narrow">
+                                <thead>
+                                    <tr>
+                                        <th>{{index .t "Common.Resource" | default "Resource"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Min"}}</th>
+                                        <th class="has-text-right">{{index .t "Common.Max"}}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i
+                                                        class="fas fa-microchip"></i></span><span>{{index .t
+                                                    "Admin.Limits.Sockets"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-min" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "sockets"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="sockets-max" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "sockets"}}{{index . "max"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i
+                                                        class="fas fa-microchip"></i></span><span>{{index .t
+                                                    "Admin.Limits.Cores"}}</span></span></td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-min" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "cores"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1">
+                                        </td>
+                                        <td class="has-text-right"><input class="input is-small has-text-right" type="number" name="cores-max" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "cores"}}{{index . "max"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="icon-text"><span class="icon"><i
+                                                        class="fas fa-memory"></i></span><span>{{index .t
+                                                    "Admin.Limits.Memory"}}</span></span></td>
+                                        <td class="has-text-right">
+                                            <div class="field has-addons is-justify-content-flex-end">
+                                                <div class="control is-expanded">
+                                                    <input class="input is-small has-text-right" type="number" name="ram-min" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "ram"}}{{index . "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1" aria-label="{{index .t "Admin.Limits.Memory"}} min (GB)">
+                                                </div>
+                                                <div class="control">
+                                                    <span class="button is-static is-small">GB</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="has-text-right">
+                                            <div class="field has-addons is-justify-content-flex-end">
+                                                <div class="control is-expanded">
+                                                    <input class="input is-small has-text-right" type="number" name="ram-max" value="{{with index .Limits "nodes"}}{{with index . $.Node}}{{with index . "ram"}}{{index . "max"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}" min="1" step="1" aria-label="{{index .t "Admin.Limits.Memory"}} max (GB)">
+                                                </div>
+                                                <div class="control">
+                                                    <span class="button is-static is-small">GB</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="field is-grouped is-grouped-right">
+                            <div class="control">
+                                <button type="reset" class="button is-light is-outlined is-small">
+                                    <span>{{index .t "Common.Reset"}}</span>
+                                </button>
+                            </div>
+                            <div class="control">
+                                <button type="submit" class="button is-primary is-small">
+                                    <span class="icon"><i class="fas fa-save"></i></span>
+                                    <span>{{index .t "Common.Save"}}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+  </div>
 {{end}}

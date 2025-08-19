@@ -336,6 +336,8 @@ other = "Détails de la VM"
 other = "ID de la VM"
 ["Search.YouSearchedFor"]
 other = "Vous avez recherché"
+["Search.Validation.MissingCriteria"]
+other = "Veuillez fournir au moins un critère de recherche (ID ou nom)."
 
 # ======
 # Login

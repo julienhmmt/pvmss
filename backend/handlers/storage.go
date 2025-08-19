@@ -81,8 +81,8 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	// Redirect back to admin page with context for success banner
-	redirectURL := "/admin?success=1&action=" + action + "&storage=" + url.QueryEscape(storageName)
+	// Redirect back to storage page with context for success banner
+	redirectURL := "/admin/storage?success=1&action=" + action + "&storage=" + url.QueryEscape(storageName)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -109,7 +109,51 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	// Récupérer le client Proxmox
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+		// Offline-friendly: render page with empty storages and existing settings
+		log.Warn().Msg("Proxmox client not available; rendering Storage page in offline/read-only mode")
+
+		// Récupérer les paramètres
+		settings := h.stateManager.GetSettings()
+		if settings.EnabledStorages == nil {
+			settings.EnabledStorages = []string{}
+		}
+
+		// Build enabled map from settings for toggles
+		enabledMap := make(map[string]bool, len(settings.EnabledStorages))
+		for _, s := range settings.EnabledStorages {
+			enabledMap[s] = true
+		}
+
+		// Success banner via query params
+		success := r.URL.Query().Get("success") != ""
+		act := r.URL.Query().Get("action")
+		stor := r.URL.Query().Get("storage")
+		var successMsg string
+		if success {
+			switch act {
+			case "enable":
+				successMsg = "Storage '" + stor + "' enabled"
+			case "disable":
+				successMsg = "Storage '" + stor + "' disabled"
+			default:
+				successMsg = "Storage settings updated"
+			}
+		}
+
+		// Préparer les données pour le template (Storages vide)
+		data := map[string]interface{}{
+			"Title":           "Gestion du stockage",
+			"Node":            "",
+			"Storages":        []map[string]interface{}{},
+			"EnabledStorages": settings.EnabledStorages,
+			"EnabledMap":      enabledMap,
+			"Success":         success,
+			"SuccessMessage":  successMsg,
+		}
+
+		// Ajouter les traductions et rendre
+		i18n.LocalizePage(w, r, data)
+		renderTemplateInternal(w, r, "admin_storage", data)
 		return
 	}
 
@@ -131,6 +175,22 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Success banner via query params
+	success := r.URL.Query().Get("success") != ""
+	act := r.URL.Query().Get("action")
+	stor := r.URL.Query().Get("storage")
+	var successMsg string
+	if success {
+		switch act {
+		case "enable":
+			successMsg = "Storage '" + stor + "' enabled"
+		case "disable":
+			successMsg = "Storage '" + stor + "' disabled"
+		default:
+			successMsg = "Storage settings updated"
+		}
+	}
+
 	// Préparer les données pour le template
 	data := map[string]interface{}{
 		"Title":           "Gestion du stockage",
@@ -138,6 +198,8 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		"Storages":        storages,
 		"EnabledStorages": settings.EnabledStorages,
 		"EnabledMap":      enabledMap,
+		"Success":         success,
+		"SuccessMessage":  successMsg,
 	}
 
 	// Ajouter les traductions et rendre
@@ -180,8 +242,8 @@ func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Rediriger vers la page d'administration principale
-	http.Redirect(w, r, "/admin?success=true", http.StatusSeeOther)
+	// Rediriger vers la page de stockage avec bannière succès
+	http.Redirect(w, r, "/admin/storage?success=1", http.StatusSeeOther)
 }
 
 // RegisterRoutes enregistre les routes liées au stockage

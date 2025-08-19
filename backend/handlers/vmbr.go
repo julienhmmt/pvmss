@@ -75,7 +75,7 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	redirectURL := "/admin?success=1&action=" + action + "&vmbr=" + url.QueryEscape(name)
+	redirectURL := "/admin/vmbr?success=1&action=" + action + "&vmbr=" + url.QueryEscape(name)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -91,23 +91,44 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Get the global state
 	gs := h.stateManager
 	client := gs.GetProxmoxClient()
-	if client == nil {
-		// Proceed gracefully in offline/read-only mode like AdminPageHandler
-		log.Warn().Msg("Proxmox client not available; rendering page with empty VMBR list")
-	}
+	proxmoxConnected, proxmoxMsg := gs.GetProxmoxStatus()
 
-	// Collect all VMBRs using common helper
-	allVMBRs, err := collectAllVMBRs(h.stateManager)
-	if err != nil {
-		log.Warn().Err(err).Msg("collectAllVMBRs returned an error; continuing")
+	// Collect all VMBRs using common helper when online; otherwise short-circuit
+	var allVMBRs []map[string]string
+	var err error
+	if client == nil || !proxmoxConnected {
+		// Proceed gracefully in offline/read-only mode like AdminPageHandler
+		log.Warn().Bool("connected", proxmoxConnected).Msg("Proxmox not available; rendering page with empty VMBR list")
+		allVMBRs = []map[string]string{}
+	} else {
+		allVMBRs, err = collectAllVMBRs(h.stateManager)
+		if err != nil {
+			log.Warn().Err(err).Msg("collectAllVMBRs returned an error; continuing")
+		}
+		log.Info().Int("vmbr_total", len(allVMBRs)).Msg("Total VMBRs prepared for template")
 	}
-	log.Info().Int("vmbr_total", len(allVMBRs)).Msg("Total VMBRs prepared for template")
 
 	// Get current settings to check which VMBRs are enabled
 	settings := gs.GetSettings()
 	enabledVMBRs := make(map[string]bool)
 	for _, vmbr := range settings.VMBRs {
 		enabledVMBRs[vmbr] = true
+	}
+
+	// Success banner via query params
+	success := r.URL.Query().Get("success") != ""
+	act := r.URL.Query().Get("action")
+	vmbrName := r.URL.Query().Get("vmbr")
+	var successMsg string
+	if success {
+		switch act {
+		case "enable":
+			successMsg = "VMBR '" + vmbrName + "' enabled"
+		case "disable":
+			successMsg = "VMBR '" + vmbrName + "' disabled"
+		default:
+			successMsg = "VMBR settings updated"
+		}
 	}
 
 	// Prepare template data
@@ -122,11 +143,18 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	}
 
 	templateData := map[string]interface{}{
-		"VMBRs":        vmbrsForTemplate,
-		"EnabledVMBRs": enabledVMBRs,
+		"VMBRs":          vmbrsForTemplate,
+		"EnabledVMBRs":   enabledVMBRs,
+		"Success":        success,
+		"SuccessMessage": successMsg,
 	}
 	if err != nil {
 		templateData["Error"] = err.Error()
+	}
+	// Pass Proxmox status flags for consistent UI behavior
+	templateData["ProxmoxConnected"] = proxmoxConnected
+	if !proxmoxConnected && proxmoxMsg != "" {
+		templateData["ProxmoxError"] = proxmoxMsg
 	}
 
 	// Render the template
@@ -158,8 +186,8 @@ func (h *VMBRHandler) UpdateVMBRHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// Redirect back to the VMBR page
-	http.Redirect(w, r, "/admin/vmbr", http.StatusSeeOther)
+	// Redirect back to the VMBR page with a success banner
+	http.Redirect(w, r, "/admin/vmbr?success=1", http.StatusSeeOther)
 }
 
 // RegisterRoutes registers the routes for VMBR management.

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -61,7 +62,7 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag added successfully")
-	http.Redirect(w, r, "/admin/tags?success=1", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/tags?success=1&action=create&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
 }
 
 // DeleteTagHandler handles tag deletion.
@@ -115,7 +116,7 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag deleted successfully")
-	http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/tags?success=1&action=delete&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
 }
 
 // TagsPageHandler handles the rendering of the admin tags page.
@@ -123,8 +124,33 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	gs := h.stateManager
 	settings := gs.GetSettings()
 
+	// Success banner via query params
+	success := r.URL.Query().Get("success") != ""
+	act := r.URL.Query().Get("action")
+	tag := r.URL.Query().Get("tag")
+	var successMsg string
+	if success {
+		switch act {
+		case "create":
+			successMsg = "Tag '" + tag + "' created"
+		case "delete":
+			successMsg = "Tag '" + tag + "' deleted"
+		default:
+			successMsg = "Tags updated"
+		}
+	}
+
+	// Proxmox status for consistent UI (even if tags don't need Proxmox)
+	proxmoxConnected, proxmoxMsg := gs.GetProxmoxStatus()
+
 	data := map[string]interface{}{
-		"Tags": settings.Tags,
+		"Tags":           settings.Tags,
+		"Success":        success,
+		"SuccessMessage": successMsg,
+	}
+	data["ProxmoxConnected"] = proxmoxConnected
+	if !proxmoxConnected && proxmoxMsg != "" {
+		data["ProxmoxError"] = proxmoxMsg
 	}
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_tags", data)

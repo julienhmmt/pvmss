@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/i18n"
@@ -52,19 +54,19 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 
 // GetAllISOsHandler récupère toutes les images ISO disponibles
 func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// Short-circuit when offline to keep UI responsive
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		logger.Get().Error().Msg("Proxmox client is not initialized")
-		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+	if client == nil || !proxmoxConnected {
+		logger.Get().Warn().Msg("Proxmox offline or client unavailable; returning empty ISO list")
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string][]ISOInfo{"isos": {}})
 		return
 	}
 
-	proxmoxClient, ok := client.(*proxmox.Client)
-	if !ok {
-		logger.Get().Error().Msg("Failed to convert client to *proxmox.Client")
-		http.Error(w, "Internal error: Invalid client type", http.StatusInternalServerError)
-		return
-	}
+	// Use a short timeout for all Proxmox calls
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
 
 	appSettings := h.stateManager.GetSettings()
 	enabledISOsMap := make(map[string]bool)
@@ -73,7 +75,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get all nodes
-	nodes, err := proxmox.GetNodeNames(proxmoxClient)
+	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get nodes from Proxmox")
 		http.Error(w, "Failed to get nodes", http.StatusInternalServerError)
@@ -81,7 +83,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Get all storages
-	storages, err := proxmox.GetStorages(proxmoxClient)
+	storages, err := proxmox.GetStoragesWithContext(ctx, client)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get storages from Proxmox")
 		http.Error(w, "Failed to get storages", http.StatusInternalServerError)
@@ -100,7 +102,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 
 			logger.Get().Debug().Str("node", nodeName).Str("storage", storage.Storage).Msg("Fetching ISO list for storage")
 			// Get ISO list for this storage
-			isoList, err := proxmox.GetISOList(proxmoxClient, nodeName, storage.Storage)
+			isoList, err := proxmox.GetISOListWithContext(ctx, client, nodeName, storage.Storage)
 			if err != nil {
 				logger.Get().Warn().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Could not get ISO list for storage, skipping")
 				continue
@@ -177,18 +179,51 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		Str("path", r.URL.Path).
 		Logger()
 
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+	if client == nil || !proxmoxConnected {
+		// Offline-friendly: render page with empty ISO list and enabled settings map
+		log.Warn().Msg("Proxmox offline or client unavailable; rendering ISO page in offline/read-only mode")
+
+		settings := h.stateManager.GetSettings()
+		enabledMap := make(map[string]bool)
+		if settings != nil {
+			for _, v := range settings.ISOs {
+				enabledMap[v] = true
+			}
+		}
+
+		// Success banner via query params
+		success := r.URL.Query().Get("success") != ""
+		act := r.URL.Query().Get("action")
+		isoName := r.URL.Query().Get("iso")
+		var successMsg string
+		if success {
+			switch act {
+			case "enable":
+				successMsg = "ISO '" + isoName + "' enabled"
+			case "disable":
+				successMsg = "ISO '" + isoName + "' disabled"
+			default:
+				successMsg = "ISO settings updated"
+			}
+		}
+
+		data := map[string]interface{}{
+			"Title":          "ISO Management",
+			"ISOsList":       []ISOInfo{},
+			"EnabledISOs":    enabledMap,
+			"Success":        success,
+			"SuccessMessage": successMsg,
+		}
+		i18n.LocalizePage(w, r, data)
+		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
-	proxmoxClient, ok := client.(*proxmox.Client)
-	if !ok {
-		log.Error().Msg("Failed to convert client to *proxmox.Client")
-		http.Error(w, "Internal error: Invalid client type", http.StatusInternalServerError)
-		return
-	}
+	// Use a short timeout for all Proxmox calls
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
 
 	settings := h.stateManager.GetSettings()
 	enabledMap := make(map[string]bool)
@@ -197,18 +232,16 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Collect all ISOs (reuse logic from GetAllISOsHandler)
-	nodes, err := proxmox.GetNodeNames(proxmoxClient)
+	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get nodes from Proxmox")
-		http.Error(w, "Failed to get nodes", http.StatusInternalServerError)
-		return
+		log.Warn().Err(err).Msg("Failed to get nodes from Proxmox; continuing with empty node list")
+		nodes = []string{}
 	}
 
-	storages, err := proxmox.GetStorages(proxmoxClient)
+	storages, err := proxmox.GetStoragesWithContext(ctx, client)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get storages from Proxmox")
-		http.Error(w, "Failed to get storages", http.StatusInternalServerError)
-		return
+		log.Warn().Err(err).Msg("Failed to get storages from Proxmox; continuing with empty storage list")
+		storages = []proxmox.Storage{}
 	}
 
 	var allISOs []ISOInfo
@@ -218,7 +251,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 			if !isNodeInStorage || !containsISO(storage.Content) {
 				continue
 			}
-			isoList, err := proxmox.GetISOList(proxmoxClient, nodeName, storage.Storage)
+			isoList, err := proxmox.GetISOListWithContext(ctx, client, nodeName, storage.Storage)
 			if err != nil {
 				log.Warn().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Could not get ISO list for storage, skipping")
 				continue
@@ -240,11 +273,29 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
+	// Success banner via query params
+	success := r.URL.Query().Get("success") != ""
+	act := r.URL.Query().Get("action")
+	isoName := r.URL.Query().Get("iso")
+	var successMsg string
+	if success {
+		switch act {
+		case "enable":
+			successMsg = "ISO '" + isoName + "' enabled"
+		case "disable":
+			successMsg = "ISO '" + isoName + "' disabled"
+		default:
+			successMsg = "ISO settings updated"
+		}
+	}
+
 	// Build data and render
 	data := map[string]interface{}{
-		"Title":       "ISO Management",
-		"ISOsList":    allISOs,
-		"EnabledISOs": enabledMap,
+		"Title":          "ISO Management",
+		"ISOsList":       allISOs,
+		"EnabledISOs":    enabledMap,
+		"Success":        success,
+		"SuccessMessage": successMsg,
 	}
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_iso", data)
@@ -292,11 +343,33 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		selectedNode = nodeNames[0]
 	}
 
+	// Success banner via query params
+	success := r.URL.Query().Get("success") != ""
+	entity := r.URL.Query().Get("entity")
+	nodeParam := r.URL.Query().Get("node")
+	var successMsg string
+	if success {
+		switch entity {
+		case "vm":
+			successMsg = "VM limits updated"
+		case "nodes":
+			if nodeParam != "" {
+				successMsg = "Limits updated for node '" + nodeParam + "'"
+			} else {
+				successMsg = "Node limits updated"
+			}
+		default:
+			successMsg = "Limits updated"
+		}
+	}
+
 	data := map[string]interface{}{
-		"Title":     "Resource Limits",
-		"Limits":    settings.Limits,
-		"NodeNames": nodeNames,
-		"Node":      selectedNode,
+		"Title":          "Resource Limits",
+		"Limits":         settings.Limits,
+		"NodeNames":      nodeNames,
+		"Node":           selectedNode,
+		"Success":        success,
+		"SuccessMessage": successMsg,
 	}
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_limits", data)
@@ -364,141 +437,11 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	redirectURL := "/admin?success=1&action=" + action + "&iso=" + url.QueryEscape(volid)
+	redirectURL := "/admin/iso?success=1&action=" + action + "&iso=" + url.QueryEscape(volid)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
-// UpdateISOSettingsHandler met à jour les paramètres des ISOs
-func (h *SettingsHandler) UpdateISOSettingsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Décoder le corps de la requête
-	var requestData struct {
-		ISOs []string `json:"isos"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to decode request body")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Invalid request format",
-		})
-		return
-	}
-
-	// Récupérer les paramètres actuels
-	stateManager := h.stateManager
-	settings := stateManager.GetSettings()
-	if settings == nil {
-		logger.Get().Error().Msg("Settings not available")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Settings not available",
-		})
-		return
-	}
-
-	// Mettre à jour les ISOs
-	settings.ISOs = requestData.ISOs
-	// Mettre à jour les paramètres dans le state manager
-	if err := stateManager.SetSettings(settings); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to update settings")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to update settings",
-		})
-		return
-	}
-
-	// Persister les paramètres dans le fichier
-	if err := h.stateManager.SetSettings(settings); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to write settings to file")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to write settings to file",
-		})
-		return
-	}
-
-	// Renvoyer la réponse
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "success",
-		"message": "ISO settings updated",
-	})
-}
-
-// UpdateVMBRSettingsHandler met à jour les paramètres des VMBRs
-func (h *SettingsHandler) UpdateVMBRSettingsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Décoder le corps de la requête
-	var requestData struct {
-		VMBRs []string `json:"vmbrs"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to decode request body")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Invalid request format",
-		})
-		return
-	}
-
-	// Récupérer les paramètres actuels
-	stateManager := h.stateManager
-	settings := stateManager.GetSettings()
-	if settings == nil {
-		logger.Get().Error().Msg("Settings not available")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Settings not available",
-		})
-		return
-	}
-
-	// Mettre à jour les VMBRs
-	settings.VMBRs = requestData.VMBRs
-	// Mettre à jour les paramètres dans le state manager
-	if err := stateManager.SetSettings(settings); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to update settings")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to update settings",
-		})
-		return
-	}
-
-	// Persister les paramètres dans le fichier
-	if err := h.stateManager.SetSettings(settings); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to write settings to file")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to write settings to file",
-		})
-		return
-	}
-
-	// Renvoyer la réponse
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "success",
-		"message": "VMBR settings updated",
-	})
-}
-
-// UpdateLimitsFormHandler handles POST from resource_limits.html to update VM/Node limits
+// UpdateLimitsFormHandler handles POST from admin_limits.html to update VM/Node limits
 func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := logger.Get().With().
 		Str("handler", "UpdateLimitsFormHandler").
@@ -644,8 +587,12 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Redirect back to admin with success banner
-	http.Redirect(w, r, "/admin?success=1&action=limits&entity="+url.QueryEscape(entity), http.StatusSeeOther)
+	// Redirect back to limits page with success banner and context
+	redirect := "/admin/limits?success=1&entity=" + url.QueryEscape(entity)
+	if entity == "nodes" {
+		redirect += "&node=" + url.QueryEscape(strings.TrimSpace(r.FormValue("nodeName")))
+	}
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
 // RegisterRoutes enregistre les routes liées aux paramètres
@@ -677,16 +624,13 @@ func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 		h.GetAllISOsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
-	router.POST("/api/iso/settings", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.UpdateISOSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	// Removed unused ISO/VMBR API mutation routes to avoid undefined handler lints.
+	// The modular admin UI uses server-rendered forms with POST redirects.
+	// router.POST("/api/iso/settings", ...)
+	// router.POST("/api/vmbr/settings", ...)
 
 	router.GET("/api/vmbr/all", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.GetAllVMBRsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-
-	router.POST("/api/vmbr/settings", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.UpdateVMBRSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 }
 

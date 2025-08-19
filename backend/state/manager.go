@@ -27,9 +27,43 @@ type appState struct {
 	proxmoxError     string
 	proxmoxMu        sync.RWMutex
 
+	// Background monitor control
+	proxmoxMonitorStarted bool
+
 	// Security-related fields
 	csrfTokens map[string]time.Time
 	securityMu sync.RWMutex // Mutex for CSRF token operations
+}
+
+// startProxmoxMonitor starts a non-blocking background goroutine that periodically
+// checks the Proxmox connectivity and updates the shared status. Runs every 30 seconds.
+func (s *appState) startProxmoxMonitor() {
+	s.proxmoxMu.Lock()
+	if s.proxmoxMonitorStarted {
+		s.proxmoxMu.Unlock()
+		return
+	}
+	s.proxmoxMonitorStarted = true
+	s.proxmoxMu.Unlock()
+
+	log := logger.Get().With().Str("component", "ProxmoxMonitor").Logger()
+	go func() {
+		// Immediate check to ensure status freshness
+		_ = s.CheckProxmoxConnection()
+
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			ok := s.CheckProxmoxConnection()
+			// Keep logs at debug to avoid noise
+			if ok {
+				log.Debug().Msg("Periodic Proxmox connectivity check: connected")
+			} else {
+				_, errMsg := s.GetProxmoxStatus()
+				log.Debug().Str("error", errMsg).Msg("Periodic Proxmox connectivity check: disconnected")
+			}
+		}
+	}()
 }
 
 // NewAppState creates a new instance of the application state manager
@@ -109,6 +143,9 @@ func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 
 	// Check connection when setting a new client
 	s.CheckProxmoxConnection()
+
+	// Start background monitor (only once)
+	s.startProxmoxMonitor()
 	return nil
 }
 
