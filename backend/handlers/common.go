@@ -128,14 +128,6 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		return
 	}
 
-	// Initialiser les données si nécessaire
-	if data == nil {
-		log.Debug().Msg("Initialisation d'une nouvelle map de données vide")
-		data = make(map[string]interface{})
-	} else {
-		log.Debug().Int("data_size", len(data)).Msg("Données fournies pour le rendu")
-	}
-
 	// Récupérer les données de template du contexte si elles existent (utiliser la même clé que le middleware)
 	if ctxData, ok := r.Context().Value(middleware.TemplateDataKey).(map[string]interface{}); ok {
 		log.Debug().Int("context_data_size", len(ctxData)).Msg("Données de contexte récupérées")

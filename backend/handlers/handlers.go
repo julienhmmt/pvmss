@@ -27,6 +27,40 @@ func withStaticCaching(next http.Handler) http.Handler {
 	})
 }
 
+// recoverMiddleware ensures the server returns 500 instead of crashing on unexpected panics.
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logger.Get().Error().Interface("panic", rec).Str("path", r.URL.Path).Msg("Unhandled panic recovered")
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// trailingSlashRedirectMiddleware redirects "/path/" to "/path" (excluding root and static assets)
+// to avoid registering duplicate routes and reduce 404s with strict routers.
+func trailingSlashRedirectMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if len(p) > 1 && p[len(p)-1] == '/' {
+			// Preserve static paths and directories under static mounts
+			if isStaticPath(p) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// Only redirect idempotent requests
+			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+				http.Redirect(w, r, p[:len(p)-1], http.StatusSeeOther)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // serveFavicon serves a tiny transparent PNG at /favicon.ico to satisfy browsers without touching sessions.
 func serveFavicon(w http.ResponseWriter, r *http.Request) {
 	// cache shorter than other assets to allow easy replacement
@@ -123,8 +157,11 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Apply rate limiting (runs early)
 	handler = middleware.RateLimitMiddleware(handler)
 
-	// HTTP metrics middleware (outermost to observe complete response)
-	handler = metrics.HTTPMetricsMiddleware(handler)
+    // Normalize trailing slashes early to reduce duplicate route handlers
+    handler = trailingSlashRedirectMiddleware(handler)
+
+    // HTTP metrics middleware (near-outermost to observe complete response)
+    handler = metrics.HTTPMetricsMiddleware(handler)
 
 	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context.
 	// However, to avoid unnecessary session churn on static assets and health checks,
@@ -144,8 +181,11 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		log.Info().Msgf("Session middleware enabled with conditional bypass for static/health; manager: %p", sessionManager)
 	}
 
-	log.Info().Msg("HTTP handlers and middleware initialized")
-	return handler
+    // Global panic recovery (outermost) to avoid crashing the server on unexpected panics
+    handler = recoverMiddleware(handler)
+
+    log.Info().Msg("HTTP handlers and middleware initialized")
+    return handler
 }
 
 // stateManagerContextMiddleware adds the provided state manager to each request context
