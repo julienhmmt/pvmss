@@ -161,6 +161,11 @@ func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/admin/tags", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.TagsPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
+	// Trailing-slash variant: redirect to canonical path
+	router.GET("/admin/tags/", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/tags/ to /admin/tags")
+		http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
+	})))
 	router.POST("/tags", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))

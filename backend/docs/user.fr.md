@@ -1,17 +1,14 @@
-# Guide Utilisateur PVMSS
-
-## Démarrage
+# Guide utilisateur PVMSS
 
 PVMSS (Proxmox Virtual Machine Self-Service) vous permet de créer et gérer des machines virtuelles via une interface web simple.
 
-## Fonctionnalités Principales
+## Fonctionnalités rincipales
 
-### Création de Machines Virtuelles
+### Création de machines virtuelles
 
-- **Processus simplifié** : Interface web intuitive pour créer de nouvelles VM
-- **Modèles préconfigurés** : Choix parmi les images ISO et modèles OS disponibles
-- **Sélection des ressources** : Définir les besoins en CPU, mémoire et stockage
-- **Configuration réseau** : Sélection parmi les ponts réseau disponibles
+- **Choix du système d'exploitation** : Installez votre système en prenant une image ISO dans une liste pré-définie par les administraeturs ;
+- **Sélection des ressources** : Définissez les besoins en coeurs CPU, mémoire vive et stockage ;
+- **Configuration réseau** : Sélectionnez le pont réseau pour vous connecter au sous-réseau cible.
 
 ### Gestion de vos VM
 

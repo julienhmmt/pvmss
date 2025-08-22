@@ -251,6 +251,10 @@ func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/admin/storage", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.StoragePageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
+    router.GET("/admin/storage/", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+        logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/storage/ to /admin/storage")
+        http.Redirect(w, r, "/admin/storage", http.StatusSeeOther)
+    })))
 	router.POST("/admin/storage/update", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.UpdateStorageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))

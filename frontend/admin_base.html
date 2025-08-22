@@ -36,7 +36,22 @@
         </nav>
       </aside>
       <div class="column is-9">
-        {{block "admin_section" .}}{{end}}
+        {{/* Render the correct admin section based on current path to avoid collisions */}}
+        {{if eqPath (currentPath) "/admin/nodes"}}
+          {{template "admin_nodes_section" .}}
+        {{else if eqPath (currentPath) "/admin/tags"}}
+          {{template "admin_tags_section" .}}
+        {{else if eqPath (currentPath) "/admin/storage"}}
+          {{template "admin_storage_section" .}}
+        {{else if eqPath (currentPath) "/admin/iso"}}
+          {{template "admin_iso_section" .}}
+        {{else if eqPath (currentPath) "/admin/vmbr"}}
+          {{template "admin_vmbr_section" .}}
+        {{else if eqPath (currentPath) "/admin/limits"}}
+          {{template "admin_limits_section" .}}
+        {{else}}
+          {{/* Fallback: nothing */}}
+        {{end}}
       </div>
     </div>
   </div>

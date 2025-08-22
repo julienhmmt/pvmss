@@ -601,6 +601,11 @@ func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/admin/iso", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.ISOPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
+	// Trailing-slash variant: redirect to canonical path
+	router.GET("/admin/iso/", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/iso/ to /admin/iso")
+		http.Redirect(w, r, "/admin/iso", http.StatusSeeOther)
+	})))
 	router.POST("/admin/iso/toggle", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.ToggleISOHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
@@ -613,6 +618,11 @@ func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 	// Limits page (protected)
 	router.GET("/admin/limits", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.LimitsPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+	// Trailing-slash variant: redirect to canonical path
+	router.GET("/admin/limits/", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/limits/ to /admin/limits")
+		http.Redirect(w, r, "/admin/limits", http.StatusSeeOther)
 	})))
 
 	// Routes API protégées par authentification

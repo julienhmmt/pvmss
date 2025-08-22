@@ -108,5 +108,11 @@ func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
 		h.NodesPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
+	// Trailing-slash variant: redirect to canonical path to avoid 404s
+	router.GET("/admin/nodes/", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/nodes/ to /admin/nodes")
+		http.Redirect(w, r, "/admin/nodes", http.StatusSeeOther)
+	})))
+
 	log.Info().Msg("Routes d'administration enregistrées avec succès")
 }
