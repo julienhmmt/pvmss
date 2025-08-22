@@ -36,11 +36,13 @@ func GetBaseFuncMap() template.FuncMap {
 		"lower":      toLower,
 		"truncate":   truncateString,
 		"join":       join,
+		"split":      strings.Split,
 		"humanBytes": formatBytes,
 
 		// Math functions
 		"add":      addNumbers,
 		"subtract": subtractNumbers,
+		"sub":      subtractNumbers,
 		"multiply": multiplyNumbers,
 		"mul":      multiplyNumbers,
 		"divide":   divideNumbers,
@@ -103,6 +105,22 @@ func GetBaseFuncMap() template.FuncMap {
 				return p == "/"
 			}
 			return strings.HasPrefix(p, b+"/")
+		},
+		"basename": func(s string) string {
+			// Find the last slash or colon
+			lastSlash := strings.LastIndex(s, "/")
+			lastColon := strings.LastIndex(s, ":")
+			lastSep := -1
+			if lastSlash > lastColon {
+				lastSep = lastSlash
+			} else {
+				lastSep = lastColon
+			}
+
+			if lastSep == -1 {
+				return s
+			}
+			return s[lastSep+1:]
 		},
 		"startsWith": func(s, prefix string) bool {
 			if len(prefix) == 0 {

@@ -18,61 +18,120 @@
     <h1 class="title is-4"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</h1>
     <p class="subtitle is-6 has-text-grey">{{index .t "Admin.Tags.Description"}}</p>
   </div>
-  <div class="box admin-box">
-      <!-- Inline add form -->
-      <form id="add-tag-form" action="/tags" method="POST" class="mb-3">
-        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-        <div class="field has-addons">
-          <div class="control is-expanded">
-            <input id="tag-input" class="input is-small" type="text" name="tag"
-              placeholder='{{index .t "Admin.Tags.Placeholder"}}' required minlength="1" maxlength="50"
-              pattern="[a-zA-Z0-9_-]+"
-              title="Le nom du tag ne peut contenir que des lettres, chiffres, tirets et underscores">
-          </div>
-          <div class="control">
-            <button type="submit" class="button is-primary is-small">
-              <span class="icon is-small"><i class="fas fa-plus"></i></span>
-              <span>{{index .t "Common.Add"}}</span>
-            </button>
-          </div>
-        </div>
-      </form>
 
-      <!-- Tag list -->
-      <div id="tags-list" class="is-flex is-flex-wrap-wrap">
-        {{if .Tags}}
-        {{range .Tags}}
-        <div class="tag-container mr-2 mb-2">
-          <span class="tag is-rounded is-small {{if eq . "pvmss"}}is-primary is-light{{else}}is-info
-            is-light{{end}}">
-            {{.}}
-            {{if eq . "pvmss"}}
-            <span class="icon is-small ml-1 mr-1">
-              <i class="fas fa-lock"></i>
-            </span>
-            {{else}}
-            <form action="/tags/delete" method="POST" class="is-inline">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="tag" value="{{.}}">
-              <button type="submit" class="delete is-small ml-1" aria-label="{{index $.t "Common.Delete"}}
-                {{.}}"></button>
-            </form>
-            {{end}}
-          </span>
+  <div class="box admin-box">
+    <!-- Add tag -->
+    <form id="add-tag-form" action="/tags" method="POST" class="mb-4">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="field has-addons">
+        <div class="control is-expanded">
+          <input id="tag-input" class="input is-small" type="text" name="tag"
+            placeholder='{{index .t "Admin.Tags.Placeholder"}}' required minlength="1" maxlength="50"
+            pattern="[a-zA-Z0-9_-]+"
+            title="Le nom du tag ne peut contenir que des lettres, chiffres, tirets et underscores">
         </div>
-        {{end}}
-        {{else}}
-        <div class="notification is-light is-flex is-align-items-center is-size-7">
-          <span class="icon-text">
-            <span class="icon has-text-grey">
-              <i class="fas fa-info-circle"></i>
-            </span>
-            <span class="has-text-grey">Aucun tag pour le moment.</span>
-          </span>
+        <div class="control">
+          <button type="submit" class="button is-primary is-small">
+            <span class="icon is-small"><i class="fas fa-plus"></i></span>
+            <span>{{index .t "Common.Add"}}</span>
+          </button>
         </div>
-        {{end}}
       </div>
+    </form>
+
+    <!-- Tools: filter + count -->
+    <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
+      <div class="field has-addons">
+        <p class="control has-icons-left">
+          <input id="tag-filter" class="input is-small" type="text" placeholder="Filter tags…">
+          <span class="icon is-left is-small"><i class="fas fa-search"></i></span>
+        </p>
+      </div>
+      <div class="is-size-7 has-text-grey">
+        {{if .Tags}}{{len .Tags}}{{else}}0{{end}} tags
+      </div>
+    </div>
+
+    <!-- Tag list as table -->
+    {{if .Tags}}
+    <div class="table-container">
+      <table class="table is-fullwidth is-striped is-hoverable is-narrow" id="tags-table">
+        <thead>
+          <tr>
+            <th><span class="icon is-small"><i class="fas fa-tag"></i></span>&nbsp;Tag</th>
+            <th class="has-text-right">{{index .t "Common.Actions"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Tags}}
+          {{$isDefault := eq . "pvmss"}}
+          <tr data-tag-name="{{.}}">
+            <td>
+              <span class="tag is-rounded is-small {{if $isDefault}}is-primary is-light{{else}}is-info is-light{{end}}">
+                {{.}}
+                {{if $isDefault}}
+                  <span class="icon is-small ml-1" title="Default">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                {{end}}
+              </span>
+            </td>
+            <td class="has-text-right">
+              {{if not $isDefault}}
+              <form action="/tags/delete" method="POST" class="is-inline tag-delete-form">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="tag" value="{{.}}">
+                <button type="submit" class="button is-small is-light">
+                  <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                  <span>{{index $.t "Common.Delete"}}</span>
+                </button>
+              </form>
+              {{else}}
+              <span class="tag is-light is-size-7">{{index $.t "Common.Protected"}}</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    <div class="notification is-light is-flex is-align-items-center is-size-7">
+      <span class="icon-text">
+        <span class="icon has-text-grey">
+          <i class="fas fa-info-circle"></i>
+        </span>
+        <span class="has-text-grey">Aucun tag pour le moment.</span>
+      </span>
+    </div>
+    {{end}}
   </div>
+
+  <!-- Minimal JS for filtering and delete confirm (no external deps) -->
+  <script>
+    (function() {
+      var filter = document.getElementById('tag-filter');
+      if (filter) {
+        filter.addEventListener('input', function() {
+          var q = this.value.toLowerCase();
+          var rows = document.querySelectorAll('#tags-table tbody tr');
+          rows.forEach(function(r) {
+            var name = (r.getAttribute('data-tag-name') || '').toLowerCase();
+            r.style.display = name.indexOf(q) !== -1 ? '' : 'none';
+          });
+        });
+      }
+      document.querySelectorAll('.tag-delete-form').forEach(function(f) {
+        f.addEventListener('submit', function(e) {
+          var tag = this.querySelector('input[name="tag"]').value;
+          if (!confirm('Delete tag "' + tag + '" ?')) {
+            e.preventDefault();
+          }
+        });
+      });
+    })();
+  </script>
+
   {{end}}
   </div>
 {{end}}

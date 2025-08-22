@@ -6,6 +6,41 @@
 /* Highlight a section when navigated via hash */
 .section-anchor:target .card { box-shadow: 0 0 0 0.15rem rgba(50, 115, 220, 0.25); }
 
+/* General Admin Box Styling */
+.admin-box {
+    background-color: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1), 0 0 0 1px rgba(10, 10, 10, 0.1);
+    padding: 1.5rem;
+}
+
+/* Node Cards Styling */
+.node-card {
+    height: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.node-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.node-card .card-header-title {
+    font-weight: 600;
+}
+
+.node-card .progress {
+    height: 6px;
+    border-radius: 3px;
+}
+
+.node-card .label {
+    font-weight: 500;
+    color: #7a7a7a;
+}
+
 /* Sticky admin menu, adjusted when banner visible */
 .admin-menu { position: sticky; top: 3.25rem; }
 #proxmox-status-banner ~ #main-content .admin-menu { top: 6rem; }
