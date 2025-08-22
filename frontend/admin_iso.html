@@ -4,19 +4,12 @@
 
 {{define "admin_iso_section"}}
   <div class="container mt-4">
-    <div class="card admin-card">
-        <header class="card-header is-align-items-center">
-            <p class="card-header-title">
-                <span class="icon"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}
-            </p>
-        </header>
-        <div class="card-content">
-        <!-- Description integrated into card -->
-        <p class="help mb-2">
-            <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-info-circle"></i></span>
-            {{index .t "Admin.ISO.Description"}}
-        </p>
-        <hr class="my-3">
+    <div class="content mb-5">
+        <h1 class="title is-4"><span class="icon"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</h1>
+        <p class="subtitle is-6 has-text-grey">{{index .t "Admin.ISO.Description"}}</p>
+    </div>
+
+    <div class="box admin-box">
         {{if .ISOsList}}
         <div class="table-container">
             <table class="table is-fullwidth is-striped is-hoverable is-narrow">
@@ -57,7 +50,6 @@
         {{else}}
         <div class="notification is-warning">{{index .t "Admin.ISO.NoISOs"}}</div>
         {{end}}
-        </div>
     </div>
   </div>
 {{end}}
