@@ -26,31 +26,50 @@
         <nav class="menu admin-menu">
           <p class="menu-label">{{index .t "Navbar.Admin"}}</p>
           <ul class="menu-list">
-            <li><a href="/admin/nodes" class="{{if activeFor (currentPath) "/admin/nodes"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</a></li>
-            <li><a href="/admin/tags" class="{{if activeFor (currentPath) "/admin/tags"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</a></li>
-            <li><a href="/admin/storage" class="{{if activeFor (currentPath) "/admin/storage"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</a></li>
-            <li><a href="/admin/iso" class="{{if activeFor (currentPath) "/admin/iso"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
-            <li><a href="/admin/vmbr" class="{{if activeFor (currentPath) "/admin/vmbr"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
-            <li><a href="/admin/limits" class="{{if activeFor (currentPath) "/admin/limits"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}</a></li>
+            <li><a href="/admin/nodes" class="{{if .AdminActive}}{{if eq .AdminActive "nodes"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/nodes"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</a></li>
+            <li><a href="/admin/tags" class="{{if .AdminActive}}{{if eq .AdminActive "tags"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/tags"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</a></li>
+            <li><a href="/admin/storage" class="{{if .AdminActive}}{{if eq .AdminActive "storage"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/storage"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</a></li>
+            <li><a href="/admin/iso" class="{{if .AdminActive}}{{if eq .AdminActive "iso"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/iso"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
+            <li><a href="/admin/vmbr" class="{{if .AdminActive}}{{if eq .AdminActive "vmbr"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/vmbr"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
+            <li><a href="/admin/limits" class="{{if .AdminActive}}{{if eq .AdminActive "limits"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/limits"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}</a></li>
           </ul>
         </nav>
       </aside>
       <div class="column is-9">
-        {{/* Render the correct admin section based on current path (supports subpaths) */}}
-        {{if activeFor (currentPath) "/admin/nodes"}}
-          {{template "admin_nodes_section" .}}
-        {{else if activeFor (currentPath) "/admin/tags"}}
-          {{template "admin_tags_section" .}}
-        {{else if activeFor (currentPath) "/admin/storage"}}
-          {{template "admin_storage_section" .}}
-        {{else if activeFor (currentPath) "/admin/iso"}}
-          {{template "admin_iso_section" .}}
-        {{else if activeFor (currentPath) "/admin/vmbr"}}
-          {{template "admin_vmbr_section" .}}
-        {{else if activeFor (currentPath) "/admin/limits"}}
-          {{template "admin_limits_section" .}}
+        {{/* Prefer explicit AdminActive flag; fallback to path-based detection */}}
+        {{if .AdminActive}}
+          {{if eq .AdminActive "nodes"}}
+            {{template "admin_nodes_section" .}}
+          {{else if eq .AdminActive "tags"}}
+            {{template "admin_tags_section" .}}
+          {{else if eq .AdminActive "storage"}}
+            {{template "admin_storage_section" .}}
+          {{else if eq .AdminActive "iso"}}
+            {{template "admin_iso_section" .}}
+          {{else if eq .AdminActive "vmbr"}}
+            {{template "admin_vmbr_section" .}}
+          {{else if eq .AdminActive "limits"}}
+            {{template "admin_limits_section" .}}
+          {{else}}
+            {{/* Unknown AdminActive value: render nothing */}}
+          {{end}}
         {{else}}
-          {{/* Fallback: nothing */}}
+          {{/* Fallback based on current path (supports subpaths) */}}
+          {{if activeFor (currentPath) "/admin/nodes"}}
+            {{template "admin_nodes_section" .}}
+          {{else if activeFor (currentPath) "/admin/tags"}}
+            {{template "admin_tags_section" .}}
+          {{else if activeFor (currentPath) "/admin/storage"}}
+            {{template "admin_storage_section" .}}
+          {{else if activeFor (currentPath) "/admin/iso"}}
+            {{template "admin_iso_section" .}}
+          {{else if activeFor (currentPath) "/admin/vmbr"}}
+            {{template "admin_vmbr_section" .}}
+          {{else if activeFor (currentPath) "/admin/limits"}}
+            {{template "admin_limits_section" .}}
+          {{else}}
+            {{/* Fallback: nothing */}}
+          {{end}}
         {{end}}
       </div>
     </div>

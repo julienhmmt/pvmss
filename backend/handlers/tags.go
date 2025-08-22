@@ -147,6 +147,7 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		"Tags":           settings.Tags,
 		"Success":        success,
 		"SuccessMessage": successMsg,
+		"AdminActive":    "tags",
 	}
 	data["ProxmoxConnected"] = proxmoxConnected
 	if !proxmoxConnected && proxmoxMsg != "" {

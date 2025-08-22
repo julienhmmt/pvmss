@@ -215,6 +215,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 			"EnabledISOs":    enabledMap,
 			"Success":        success,
 			"SuccessMessage": successMsg,
+			"AdminActive":    "iso",
 		}
 		i18n.LocalizePage(w, r, data)
 		renderTemplateInternal(w, r, "admin_iso", data)
@@ -296,6 +297,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		"EnabledISOs":    enabledMap,
 		"Success":        success,
 		"SuccessMessage": successMsg,
+		"AdminActive":    "iso",
 	}
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_iso", data)
@@ -370,6 +372,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		"Node":           selectedNode,
 		"Success":        success,
 		"SuccessMessage": successMsg,
+		"AdminActive":    "limits",
 	}
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_limits", data)

@@ -62,6 +62,7 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 	data := map[string]interface{}{
 		"ProxmoxConnected": proxmoxConnected,
 		"NodeDetails":      nodeDetails,
+		"AdminActive":      "nodes",
 	}
 	if errMsg != "" {
 		data["Error"] = errMsg

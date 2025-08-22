@@ -147,6 +147,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		"EnabledVMBRs":   enabledVMBRs,
 		"Success":        success,
 		"SuccessMessage": successMsg,
+		"AdminActive":    "vmbr",
 	}
 	if err != nil {
 		templateData["Error"] = err.Error()

@@ -149,6 +149,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 			"EnabledMap":      enabledMap,
 			"Success":         success,
 			"SuccessMessage":  successMsg,
+			"AdminActive":     "storage",
 		}
 
 		// Ajouter les traductions et rendre
@@ -200,6 +201,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		"EnabledMap":      enabledMap,
 		"Success":         success,
 		"SuccessMessage":  successMsg,
+		"AdminActive":     "storage",
 	}
 
 	// Ajouter les traductions et rendre
