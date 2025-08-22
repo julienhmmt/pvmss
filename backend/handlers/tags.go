@@ -4,10 +4,12 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 
 	"pvmss/i18n"
 	"pvmss/logger"
+	"pvmss/proxmox"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -143,11 +145,39 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Proxmox status for consistent UI (even if tags don't need Proxmox)
 	proxmoxConnected, proxmoxMsg := gs.GetProxmoxStatus()
 
+	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available
+	tagCounts := make(map[string]int)
+	if client := gs.GetProxmoxClient(); client != nil {
+		if vms, err := proxmox.GetVMsWithContext(r.Context(), client); err == nil {
+			for i := range vms {
+				if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, vms[i].Node, vms[i].VMID); err == nil {
+					if v, ok := cfg["tags"].(string); ok && v != "" {
+						parts := strings.Split(v, ";")
+						for _, p := range parts {
+							t := strings.TrimSpace(p)
+							if t != "" {
+								tagCounts[t]++
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Sort tags by name for display
+	tags := make([]string, 0, len(settings.Tags))
+	tags = append(tags, settings.Tags...)
+	sort.Strings(tags)
+
 	data := map[string]interface{}{
-		"Tags":           settings.Tags,
+		"Tags":           tags,
 		"Success":        success,
 		"SuccessMessage": successMsg,
 		"AdminActive":    "tags",
+	}
+	if len(tagCounts) > 0 {
+		data["TagCounts"] = tagCounts
 	}
 	data["ProxmoxConnected"] = proxmoxConnected
 	if !proxmoxConnected && proxmoxMsg != "" {
