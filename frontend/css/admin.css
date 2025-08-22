@@ -20,40 +20,8 @@
 /* Explicit active class */
 .admin-menu .menu-list a.is-active { background-color: var(--surface-2); color: var(--text); font-weight: 600; border-left: 3px solid var(--primary); }
 
-/* Target-based active states */
-body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
-body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
-body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
-body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
-body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
-body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
-  background-color: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
-  border-left: 3px solid var(--primary);
-}
-
-/* Default active (no hash): first item) */
-body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
-  background-color: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
-  border-left: 3px solid var(--primary);
-}
-
 /* Dark-mode soft hover/active */
 [data-theme="dark"] .admin-menu .menu-list a:hover { background-color: rgba(255,255,255,0.04); color: var(--text); }
-[data-theme="dark"] body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
-[data-theme="dark"] body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
-[data-theme="dark"] body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
-[data-theme="dark"] body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
-[data-theme="dark"] body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
-[data-theme="dark"] body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"],
-[data-theme="dark"] body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border-left: 3px solid var(--primary);
-}
 
 /* Admin cards polish */
 .card.admin-card .card-content { padding: 1.25rem 1rem; }

@@ -26,28 +26,28 @@
         <nav class="menu admin-menu">
           <p class="menu-label">{{index .t "Navbar.Admin"}}</p>
           <ul class="menu-list">
-            <li><a href="/admin/nodes" class="{{if eqPath (currentPath) "/admin/nodes"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</a></li>
-            <li><a href="/admin/tags" class="{{if eqPath (currentPath) "/admin/tags"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</a></li>
-            <li><a href="/admin/storage" class="{{if eqPath (currentPath) "/admin/storage"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</a></li>
-            <li><a href="/admin/iso" class="{{if eqPath (currentPath) "/admin/iso"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
-            <li><a href="/admin/vmbr" class="{{if eqPath (currentPath) "/admin/vmbr"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
-            <li><a href="/admin/limits" class="{{if eqPath (currentPath) "/admin/limits"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}</a></li>
+            <li><a href="/admin/nodes" class="{{if activeFor (currentPath) "/admin/nodes"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</a></li>
+            <li><a href="/admin/tags" class="{{if activeFor (currentPath) "/admin/tags"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}</a></li>
+            <li><a href="/admin/storage" class="{{if activeFor (currentPath) "/admin/storage"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</a></li>
+            <li><a href="/admin/iso" class="{{if activeFor (currentPath) "/admin/iso"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
+            <li><a href="/admin/vmbr" class="{{if activeFor (currentPath) "/admin/vmbr"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
+            <li><a href="/admin/limits" class="{{if activeFor (currentPath) "/admin/limits"}}is-active{{end}}"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}</a></li>
           </ul>
         </nav>
       </aside>
       <div class="column is-9">
-        {{/* Render the correct admin section based on current path to avoid collisions */}}
-        {{if eqPath (currentPath) "/admin/nodes"}}
+        {{/* Render the correct admin section based on current path (supports subpaths) */}}
+        {{if activeFor (currentPath) "/admin/nodes"}}
           {{template "admin_nodes_section" .}}
-        {{else if eqPath (currentPath) "/admin/tags"}}
+        {{else if activeFor (currentPath) "/admin/tags"}}
           {{template "admin_tags_section" .}}
-        {{else if eqPath (currentPath) "/admin/storage"}}
+        {{else if activeFor (currentPath) "/admin/storage"}}
           {{template "admin_storage_section" .}}
-        {{else if eqPath (currentPath) "/admin/iso"}}
+        {{else if activeFor (currentPath) "/admin/iso"}}
           {{template "admin_iso_section" .}}
-        {{else if eqPath (currentPath) "/admin/vmbr"}}
+        {{else if activeFor (currentPath) "/admin/vmbr"}}
           {{template "admin_vmbr_section" .}}
-        {{else if eqPath (currentPath) "/admin/limits"}}
+        {{else if activeFor (currentPath) "/admin/limits"}}
           {{template "admin_limits_section" .}}
         {{else}}
           {{/* Fallback: nothing */}}

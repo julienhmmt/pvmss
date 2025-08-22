@@ -4,6 +4,7 @@ package templates
 import (
 	"html/template"
 	"net/http"
+	"strings"
 )
 
 // GetBaseFuncMap returns functions that don't depend on the request
@@ -80,6 +81,28 @@ func GetBaseFuncMap() template.FuncMap {
 				return s
 			}
 			return norm(a) == norm(b)
+		},
+		// activeFor returns true when path matches base exactly (ignoring trailing slash)
+		// or when path is a subpath of base (e.g., /admin/iso/toggle).
+		"activeFor": func(path string, base string) bool {
+			norm := func(s string) string {
+				if s == "" {
+					return "/"
+				}
+				if s != "/" && s[len(s)-1] == '/' {
+					return s[:len(s)-1]
+				}
+				return s
+			}
+			p := norm(path)
+			b := norm(base)
+			if p == b {
+				return true
+			}
+			if b == "/" {
+				return p == "/"
+			}
+			return strings.HasPrefix(p, b+"/")
 		},
 		"startsWith": func(s, prefix string) bool {
 			if len(prefix) == 0 {
