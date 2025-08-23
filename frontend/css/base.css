@@ -106,13 +106,13 @@ hr {
 .input::placeholder, .textarea::placeholder { color: var(--muted); }
 .input:focus, .textarea:focus, .select select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 0.125em rgba(255, 136, 0, 0.2);
+  box-shadow: 0 0 0 0.125em rgb(255 136 0 / 0.2);
 }
 
 [data-theme="dark"] .input:focus,
 [data-theme="dark"] .textarea:focus,
 [data-theme="dark"] .select select:focus {
-  box-shadow: 0 0 0 0.125em rgba(217, 119, 6, 0.18);
+  box-shadow: 0 0 0 0.125em rgb(217 119 6 / 0.18);
 }
 
 /* Dark: static addon buttons should match surfaces */
@@ -157,5 +157,5 @@ hr {
   overflow: hidden;
 }
 .table.is-hoverable tbody tr:hover { background-color: var(--surface-2); }
-.table.is-striped tbody tr:nth-child(even) { background-color: rgba(0, 0, 0, 0.02); }
-[data-theme="dark"] .table.is-striped tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.03); }
+.table.is-striped tbody tr:nth-child(even) { background-color: rgb(0 0 0 / 0.02); }
+[data-theme="dark"] .table.is-striped tbody tr:nth-child(even) { background-color: rgb(255 255 255 / 0.03); }

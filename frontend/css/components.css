@@ -8,7 +8,7 @@
   padding-bottom: 4rem;
 }
 .hero .title { color: white; font-weight: 700; margin-bottom: 1rem; }
-.hero .subtitle { color: rgba(255 255 255 / 90%); }
+.hero .subtitle { color: rgb(255 255 255 / 90%); }
 
 /* Welcome block & home cards */
 .welcome-block {
@@ -50,12 +50,12 @@
 fieldset[disabled] { opacity: 0.7; position: relative; }
 fieldset[disabled]::after {
   content: '';
-  position: absolute; inset: 0; background: rgba(255,255,255,0.5); z-index: 10; pointer-events: none; border-radius: 6px;
+  position: absolute; inset: 0; background: rgb(255 255 255 / 0.5); z-index: 10; pointer-events: none; border-radius: 6px;
 }
 
 /* Navbar */
-.navbar { background-color: var(--navbar-bg); position: relative; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-[data-theme="dark"] .navbar { box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+.navbar { background-color: var(--navbar-bg); position: relative; z-index: 100; box-shadow: 0 2px 4px rgb(0 0 0 / 0.1); }
+[data-theme="dark"] .navbar { box-shadow: 0 2px 8px rgb(0 0 0 / 0.5); }
 .navbar-item { font-weight: 600; color: var(--navbar-text); padding: 0.5rem 0.75rem; margin: 0; border-radius: 0.25rem; transition: all 0.2s ease; }
 .navbar-item:hover { color: var(--primary); background-color: transparent; }
 [data-theme="dark"] .navbar-item:hover { color: var(--text); }
@@ -63,7 +63,7 @@ fieldset[disabled]::after {
 .navbar-brand .navbar-item { font-weight: 700; font-size: 1.25rem; color: var(--primary); padding: 0.5rem 1rem; }
 .navbar-burger { height: 4rem; width: 4rem; }
 .navbar-burger:hover { background-color: rgb(255 136 0 / 10%); }
-[data-theme="dark"] .navbar-burger:hover { background-color: rgba(255,255,255,0.06); }
+[data-theme="dark"] .navbar-burger:hover { background-color: rgb(255 255 255 / 0.06); }
 .navbar-burger span { height: 0.125rem; width: 1.25rem; background-color: var(--muted); left: calc(50% - 0.625rem); }
 .navbar a:focus-visible, .navbar button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
 
@@ -78,7 +78,7 @@ fieldset[disabled]::after {
 .navbar .button { font-weight: 600; transition: all 0.2s ease; }
 
 @media screen and (max-width: 64rem) {
-  .navbar-menu { background-color: var(--navbar-bg); box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1); }
+  .navbar-menu { background-color: var(--navbar-bg); box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 0.1); }
   .navbar-end { padding: 1rem; }
   .navbar-item { padding: 0.75rem 1.5rem; }
 }
@@ -103,9 +103,9 @@ fieldset[disabled]::after {
 
 /* Notification banner */
 #proxmox-status-banner {
-  position: fixed; top: 3.25rem; left: 0; right: 0; z-index: 99; border-radius: 0; margin: 0; padding: 0.75rem 1.5rem; animation: slideDown 0.3s ease-out; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;
+  position: fixed; top: 3.25rem; left: 0; right: 0; z-index: 99; border-radius: 0; margin: 0; padding: 0.75rem 1.5rem; animation: slideDown 0.3s ease-out; box-shadow: 0 2px 4px rgb(0 0 0 / 0.1); transition: all 0.3s ease;
 }
-[data-theme="dark"] #proxmox-status-banner { box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+[data-theme="dark"] #proxmox-status-banner { box-shadow: 0 2px 6px rgb(0 0 0 / 0.5); }
 #main-content { padding-top: 1.5rem; margin-top: 3.25rem; }
 #proxmox-status-banner ~ #main-content { margin-top: 6rem; }
 @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -120,7 +120,7 @@ fieldset[disabled]::after {
 /* Notifications */
 .notification { color: var(--text); }
 .notification.is-warning.is-light { background-color: #fffbeb; color: #947600; border-left: 4px solid #ffdd57; }
-[data-theme="dark"] .notification.is-warning:not(.is-light) { background-color: rgba(245,158,11,0.12); color: #fbbf24; border-left: 3px solid #f59e0b; }
+[data-theme="dark"] .notification.is-warning:not(.is-light) { background-color: rgb(245 158 11 / 0.12); color: #fbbf24; border-left: 3px solid #f59e0b; }
 [data-theme="dark"] .notification.is-light { background-color: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 [data-theme="dark"] .notification.is-light a:not(.button) { color: var(--link); }
 [data-theme="dark"] .notification.is-light a:not(.button):hover { color: var(--link-hover); }
