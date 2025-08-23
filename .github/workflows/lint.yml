@@ -61,6 +61,7 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             DEFAULT_BRANCH: main
             VALIDATE_ALL_CODEBASE: false
-            VALIDATE_GO: true
+            VALIDATE_GO: false
+            VALIDATE_CSS: true
+            VALIDATE_HTML: true
             FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$,.*brands\.min\.css$,.*fontawesome\.min\.css$,.*regular\.min\.css$,.*solid\.min\.css$'
-  
