@@ -46,7 +46,12 @@ func GetVMConfigWithContext(ctx context.Context, client ClientInterface, node st
 // Params may include keys like "description" and "tags" (semicolon-separated).
 func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node string, vmid int, params map[string]string) error {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
-	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
+	values := make(url.Values)
+	for k, v := range params {
+		values.Set(k, v)
+	}
+	_, err := client.PostFormWithContext(ctx, path, values)
+	if err != nil {
 		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to update VM config")
 		return fmt.Errorf("failed to update config for vm %d on node %s: %w", vmid, node, err)
 	}
@@ -243,30 +248,30 @@ func VMActionWithContext(ctx context.Context, client ClientInterface, node strin
 	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", url.PathEscape(node), url.PathEscape(vmid), action)
 
 	// Proxmox typically responds with {"data":"UPID:..."}
-	raw, err := client.PostFormWithContext(ctx, path, map[string]string{})
+	raw, err := client.PostFormWithContext(ctx, path, url.Values{})
 	if err != nil {
 		logger.Get().Error().Err(err).Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action failed")
 		return "", err
 	}
-	// Try to unmarshal typed response
-	var resp struct {
-		Data string `json:"data"`
+
+	// The task ID is returned directly as a string in the 'data' field.
+	if data, ok := raw["data"].(string); ok {
+		return data, nil
 	}
-	if err := json.Unmarshal(raw, &resp); err == nil && resp.Data != "" {
-		// Extra guard: ensure it looks like a UPID
-		if strings.HasPrefix(resp.Data, "UPID:") {
-			return resp.Data, nil
-		}
-		return resp.Data, nil
+
+	// Fallback for different response format
+	rawJSON, err := json.Marshal(raw)
+	if err != nil {
+		return "", fmt.Errorf("could not marshal response to search for UPID: %w", err)
 	}
-	// Fallback: tolerant search
-	s := string(raw)
+	s := string(rawJSON)
 	if idx := strings.Index(s, "UPID:"); idx >= 0 {
 		end := strings.IndexAny(s[idx:], "\"}\n")
 		if end > 0 {
 			return s[idx : idx+end], nil
 		}
-		return s[idx:], nil
+		return s[idx:], nil // Return from UPID to end of string if no clear delimiter
 	}
-	return "", nil
+
+	return "", fmt.Errorf("could not extract task ID from response: %+v", raw)
 }

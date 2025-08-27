@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,13 +14,11 @@ import (
 
 	px "github.com/Telmate/proxmox-api-go/proxmox"
 	"pvmss/logger"
-	"pvmss/metrics"
 )
 
 // Client is a custom wrapper around the standard Proxmox API client.
 // It enhances the base client with features like request timeouts, response caching,
 // and a simplified authentication mechanism using API tokens.
-// It implements the ClientInterface for better testability and abstraction.
 type Client struct {
 	*px.Client
 	HttpClient *http.Client
@@ -31,6 +28,122 @@ type Client struct {
 	cache      map[string]*CacheEntry
 	cacheTTL   time.Duration
 	mux        sync.RWMutex
+
+	// Optional cookie-based auth for console/noVNC flows
+	PVEAuthCookie       string
+	CSRFPreventionToken string
+}
+
+// NewClientCookieAuth constructs a Proxmox API client without requiring an API token.
+// Use Login() to authenticate with username/password and obtain a PVEAuthCookie.
+func NewClientCookieAuth(apiURL string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
+	if apiURL == "" {
+		logger.Get().Error().Msg("Missing required Proxmox API URL")
+		return nil, fmt.Errorf("apiURL is required")
+	}
+
+	// Normalize and validate base API URL
+	normalizedURL, err := normalizeBaseURL(apiURL)
+	if err != nil {
+		logger.Get().Error().Err(err).Str("apiURL", apiURL).Msg("Invalid PROXMOX_URL; must include host and will be normalized to end with /api2/json")
+		return nil, err
+	}
+	apiURL = normalizedURL
+
+	// Set up TLS configuration with connection pooling
+	tr := &http.Transport{
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+		MaxIdleConns:          64,
+		MaxIdleConnsPerHost:   32,
+		IdleConnTimeout:       60 * time.Second,
+		DisableCompression:    false,
+		MaxConnsPerHost:       32,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+	}
+	httpClient := &http.Client{Transport: tr, Timeout: 10 * time.Second}
+
+	// Create the underlying Proxmox client
+	pxClient, err := px.NewClient(apiURL, httpClient, "", nil, "", 300)
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to create Proxmox client (cookie auth)")
+		return nil, fmt.Errorf("failed to create Proxmox client: %w", err)
+	}
+
+	client := &Client{
+		Client:     pxClient,
+		HttpClient: httpClient,
+		ApiUrl:     apiURL,
+		Timeout:    10 * time.Second,
+		cache:      make(map[string]*CacheEntry),
+		cacheTTL:   2 * time.Minute,
+	}
+
+	// Apply any provided options
+	for _, opt := range opts {
+		opt(client)
+	}
+
+	return client, nil
+}
+
+// Login authenticates using username/password and stores the PVEAuthCookie and CSRFPreventionToken.
+// If realm is empty and not already present in the username, defaults to "pam".
+func (c *Client) Login(ctx context.Context, username, password, realm string) error {
+	if c == nil {
+		return fmt.Errorf("nil client")
+	}
+	if username == "" || password == "" {
+		return fmt.Errorf("username and password are required for login")
+	}
+	if !strings.Contains(username, "@") {
+		if realm == "" {
+			realm = "pam"
+		}
+		username = fmt.Sprintf("%s@%s", username, realm)
+	}
+
+	endpoint := c.ApiUrl + "/access/ticket"
+	params := url.Values{}
+	params.Set("username", username)
+	params.Set("password", password)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(params.Encode()))
+	if err != nil {
+		return fmt.Errorf("failed to create login request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("login request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("login failed with status %s: %s", resp.Status, string(b))
+	}
+
+	var decoded map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+		return fmt.Errorf("failed to decode login response: %w", err)
+	}
+	data, ok := decoded["data"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("unexpected login response format: missing data")
+	}
+	ticket, _ := data["ticket"].(string)
+	csrf, _ := data["CSRFPreventionToken"].(string)
+	if ticket == "" {
+		return fmt.Errorf("login response missing ticket")
+	}
+
+	c.PVEAuthCookie = ticket
+	c.CSRFPreventionToken = csrf
+	return nil
 }
 
 // ClientOption defines a function signature for applying configuration options to the Client.
@@ -78,6 +191,14 @@ func NewClientWithOptions(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 		logger.Get().Error().Str("apiURL", apiURL).Str("apiTokenID", apiTokenID).Msg("Missing required Proxmox API credentials")
 		return nil, fmt.Errorf("apiURL, apiTokenID, and apiTokenSecret are required")
 	}
+
+	// Normalize and validate base API URL
+	normalizedURL, err := normalizeBaseURL(apiURL)
+	if err != nil {
+		logger.Get().Error().Err(err).Str("apiURL", apiURL).Msg("Invalid PROXMOX_URL; must include host and will be normalized to end with /api2/json")
+		return nil, err
+	}
+	apiURL = normalizedURL
 
 	// Set up TLS configuration with connection pooling
 	tr := &http.Transport{
@@ -206,228 +327,168 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 		}
 	}
 
-	// Build URL
-	fullURL := c.ApiUrl + path
-	logger.Get().Debug().Str("url", fullURL).Msg("Making GET request to Proxmox")
-
-	// Retry policy
-	const maxAttempts = 3
-	var resp *http.Response
-	var body []byte
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		start := time.Now()
-
-		// Create request with context for each attempt
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
-		if err != nil {
-			metrics.ObserveProxmox("GET", path, 0, "request_build_error", start)
-			logger.Get().Error().Err(err).Str("url", fullURL).Msg("Failed to create request for Proxmox API")
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-		// Headers
-		req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
-
-		resp, err = c.HttpClient.Do(req)
-		if err != nil {
-			metrics.ObserveProxmox("GET", path, 0, "network_error", start)
-			if attempt < maxAttempts {
-				backoff(attempt)
-				continue
-			}
-			logger.Get().Error().Err(err).Str("url", fullURL).Msg("HTTP request to Proxmox API failed")
-			return nil, fmt.Errorf("request failed: %w", err)
-		}
-
-		// Always close on exit of loop body
-		defer resp.Body.Close()
-
-		// Read the response body for status handling and caching
-		var readErr error
-		body, readErr = io.ReadAll(resp.Body)
-		if readErr != nil {
-			metrics.ObserveProxmox("GET", path, resp.StatusCode, "read_error", start)
-			if attempt < maxAttempts {
-				backoff(attempt)
-				continue
-			}
-			logger.Get().Error().Err(readErr).Str("url", fullURL).Msg("Failed to read response body from Proxmox API")
-			return nil, fmt.Errorf("failed to read response body: %w", readErr)
-		}
-
-		// Non-2xx: decide retry for 5xx/429
-		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			// Log truncated body for context without relying on SDK types
-			const maxLog = 512
-			logBody := body
-			if len(logBody) > maxLog {
-				logBody = logBody[:maxLog]
-			}
-			logger.Get().Error().Int("status", resp.StatusCode).Str("url", fullURL).RawJSON("body", logBody).Msg("Proxmox API non-2xx")
-			outcome := "error"
-			if shouldRetryStatus(resp.StatusCode) && attempt < maxAttempts {
-				outcome = "retry"
-				metrics.ObserveProxmox("GET", path, resp.StatusCode, outcome, start)
-				backoff(attempt)
-				continue
-			}
-			metrics.ObserveProxmox("GET", path, resp.StatusCode, outcome, start)
-			return nil, fmt.Errorf("API returned non-200 status: %d - %s", resp.StatusCode, string(body))
-		}
-
-		// Success
-		metrics.ObserveProxmox("GET", path, resp.StatusCode, "success", start)
-		break
+	// Delegate GET to Telmate client with retries
+	var m map[string]any
+	if err := c.Client.GetJsonRetryable(ctx, path, &m, 3); err != nil {
+		logger.Get().Error().Err(err).Str("path", path).Msg("Proxmox GET failed via Telmate client")
+		return nil, err
 	}
-
-	// body holds successful response at this point
-	data := body
+	b, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal Telmate response: %w", err)
+	}
 
 	// Cache the response if caching is enabled
 	if c.cache != nil {
 		c.mux.Lock()
 		c.cache[path] = &CacheEntry{
-			Data:      data,
+			Data:      b,
 			Timestamp: time.Now(),
 		}
 		c.mux.Unlock()
 		logger.Get().Debug().Str("path", path).Msg("Cached raw API response")
 	}
 
-	return data, nil
+	return b, nil
 }
 
 // PostFormWithContext performs a POST request with form-encoded data to the Proxmox API.
 // It is primarily used for VM actions such as start/stop/reset/reboot/shutdown which
 // require POSTing to status endpoints.
-func (c *Client) PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error) {
-	urlStr := c.ApiUrl + path
-	logger.Get().Info().Str("url", urlStr).Msg("Making POST request to Proxmox")
+func (c *Client) PostFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error) {
+	req, err := http.NewRequestWithContext(ctx, "POST", c.ApiUrl+path, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
 
-	vals := url.Values{}
-	for k, v := range form {
-		vals.Set(k, v)
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed with status: %s", resp.Status)
 	}
 
-	const maxAttempts = 3
-	var resp *http.Response
-	var err error
-	var body []byte
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		start := time.Now()
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
 
-		req, buildErr := http.NewRequestWithContext(ctx, http.MethodPost, urlStr, strings.NewReader(vals.Encode()))
-		if buildErr != nil {
-			metrics.ObserveProxmox("POST", path, 0, "request_build_error", start)
-			return nil, fmt.Errorf("failed to create POST request: %w", buildErr)
+	return result, nil
+}
+
+// GetVNCProxy requests a VNC ticket for a specific VM.
+// It makes a POST request to the vncproxy endpoint and returns the ticket details.
+func (c *Client) GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error) {
+	fullURL := fmt.Sprintf("%s/nodes/%s/qemu/%d/vncproxy", c.ApiUrl, node, vmID)
+	params := url.Values{}
+	params.Set("websocket", "1")
+
+	req, err := http.NewRequestWithContext(ctx, "POST", fullURL, strings.NewReader(params.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vncproxy request: %w", err)
+	}
+
+	// Set required headers for Proxmox API
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	// Prefer cookie-based auth when available (needed for noVNC websocket flow)
+	if c.PVEAuthCookie != "" {
+		req.Header.Set("Cookie", fmt.Sprintf("PVEAuthCookie=%s", c.PVEAuthCookie))
+		if c.CSRFPreventionToken != "" {
+			req.Header.Set("CSRFPreventionToken", c.CSRFPreventionToken)
 		}
+	} else if c.AuthToken != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Set("User-Agent", "pvmss-proxmox-client/1.0")
-
-		resp, err = c.HttpClient.Do(req)
-		if err != nil {
-			metrics.ObserveProxmox("POST", path, 0, "network_error", start)
-			if attempt < maxAttempts {
-				backoff(attempt)
-				continue
-			}
-			return nil, fmt.Errorf("POST request failed: %w", err)
-		}
-		defer resp.Body.Close()
-
-		body, _ = io.ReadAll(resp.Body)
-		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-			outcome := "error"
-			if shouldRetryStatus(resp.StatusCode) && attempt < maxAttempts {
-				outcome = "retry"
-				metrics.ObserveProxmox("POST", path, resp.StatusCode, outcome, start)
-				backoff(attempt)
-				continue
-			}
-			metrics.ObserveProxmox("POST", path, resp.StatusCode, outcome, start)
-			return nil, fmt.Errorf("API returned non-success status: %d - %s", resp.StatusCode, string(body))
-		}
-		metrics.ObserveProxmox("POST", path, resp.StatusCode, "success", start)
-		break
 	}
 
-	c.InvalidateCache("")
-	return body, nil
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		logger.Get().Error().Err(err).Str("path", fullURL).Msg("Proxmox vncproxy POST failed")
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("vncproxy request failed with status: %s, body: %s", resp.Status, string(b))
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read vncproxy response body: %w", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		logger.Get().Error().Err(err).Str("path", fullURL).Msg("Failed to unmarshal vncproxy response")
+		return nil, err
+	}
+
+	return result, nil
 }
 
-// shouldRetryStatus returns true for transient statuses
-func shouldRetryStatus(status int) bool {
-	switch status {
-	case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
-		return true
-	default:
-		return false
-	}
+// GetApiUrl returns the base URL of the Proxmox API.
+func (c *Client) GetApiUrl() string {
+	return c.ApiUrl
 }
 
-// backoff sleeps with exponential backoff and jitter
-func backoff(attempt int) {
-	base := 200 * time.Millisecond
-	max := 2 * time.Second
-	d := time.Duration(1<<uint(attempt-1)) * base
-	if d > max {
-		d = max
-	}
-	// jitter +/- 20%
-	jitter := 0.2 - rand.Float64()*0.4
-	sleep := time.Duration(float64(d) * (1 + jitter))
-	time.Sleep(sleep)
+// SetTimeout sets the timeout for the HTTP client.
+func (c *Client) SetTimeout(timeout time.Duration) {
+	c.HttpClient.Timeout = timeout
 }
 
-// InvalidateCache removes entries from the client's response cache.
-// If a specific path is provided, only that entry is deleted.
-// If the path is empty, the entire cache is cleared.
-func (c *Client) InvalidateCache(path string) {
-	if c.cache == nil {
-		return
-	}
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	if path == "" {
-		// Invalidate all cache
-		c.cache = make(map[string]*CacheEntry)
-		logger.Get().Debug().Msg("Cache cleared")
-	} else {
-		// Invalidate specific path
-		delete(c.cache, path)
-		logger.Get().Debug().Str("path", path).Msg("Cache entry invalidated")
-	}
-}
-
-// GetTimeout returns the client's configured timeout duration
+// GetTimeout returns the client's configured timeout.
 func (c *Client) GetTimeout() time.Duration {
 	return c.Timeout
 }
 
-// SetTimeout sets the client's request timeout
-func (c *Client) SetTimeout(timeout time.Duration) {
-	c.Timeout = timeout
-	if c.HttpClient != nil {
-		c.HttpClient.Timeout = timeout
-	}
-}
-
-// GetJSON performs a GET request and unmarshals the response into the target interface
+// GetJSON fetches data from the Proxmox API and unmarshals it into the target interface.
+// It leverages GetRawWithContext to handle caching and data retrieval.
 func (c *Client) GetJSON(ctx context.Context, path string, target interface{}) error {
-	// Get raw response
-	data, err := c.GetRawWithContext(ctx, path)
+	rawData, err := c.GetRawWithContext(ctx, path)
 	if err != nil {
-		return fmt.Errorf("failed to get data: %w", err)
+		return err
 	}
 
-	// Unmarshal into target
-	if err := json.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("failed to unmarshal response: %w", err)
+	if err := json.Unmarshal(rawData, target); err != nil {
+		logger.Get().Error().Err(err).Str("path", path).Msg("Failed to decode API response for GetJSON")
+		return fmt.Errorf("failed to decode response: %w", err)
 	}
 
 	return nil
+}
+
+// InvalidateCache removes a specific entry from the client's cache.
+func (c *Client) InvalidateCache(path string) {
+	if c.cache != nil {
+		c.mux.Lock()
+		delete(c.cache, path)
+		c.mux.Unlock()
+		logger.Get().Debug().Str("path", path).Msg("Cache entry invalidated")
+	}
+}
+
+// normalizeBaseURL ensures the Proxmox API URL is correctly formatted.
+func normalizeBaseURL(rawURL string) (string, error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if u.Scheme == "" {
+		u.Scheme = "https"
+	}
+
+	if u.Path == "" || u.Path == "/" {
+		u.Path = "/api2/json"
+	} else if !strings.HasSuffix(u.Path, "/api2/json") {
+		u.Path = strings.TrimSuffix(u.Path, "/") + "/api2/json"
+	}
+
+	return u.String(), nil
 }

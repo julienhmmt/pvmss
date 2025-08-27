@@ -198,10 +198,12 @@
     <!-- Open Console Button -->
     <div class="is-flex is-justify-content-center mb-4">
         {{if .ProxmoxConnected}}
-            <a class="button is-primary is-light"
-               href="/console/qemu/{{.VMID}}?node={{.Node}}" target="_blank" rel="noopener">
+            <button id="open-console-btn" class="button is-primary is-light"
+                    data-vmid="{{.VMID}}"
+                    data-vmname="{{.VMName}}"
+                    data-node="{{.Node}}">
                 <span>Open Console</span>
-            </a>
+            </button>
         {{else}}
             <button class="button is-primary is-light" disabled title="Offline mode">
                 <span>Open Console</span>
@@ -267,4 +269,53 @@
 
     </div>
 </section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const consoleButton = document.getElementById('open-console-btn');
+    if (consoleButton) {
+        consoleButton.addEventListener('click', function () {
+            const vmid = this.dataset.vmid;
+            const vmname = this.dataset.vmname;
+            const node = this.dataset.node;
+
+            // Add a loading indicator to the button
+            this.classList.add('is-loading');
+
+            fetch(`/api/console/qemu/${vmid}?node=${encodeURIComponent(node)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to get VNC ticket. Status: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    // Open proxied Proxmox noVNC page under our origin (same-origin cookies)
+                    const vncTicket = data.vncticket || data.ticket; // backend may return either key
+                    if (!vncTicket) {
+                        throw new Error('Missing VNC ticket in response');
+                    }
+                    const consoleUrl = `/console/qemu/${encodeURIComponent(vmid)}?node=${encodeURIComponent(node)}&port=${encodeURIComponent(data.port)}&vncticket=${encodeURIComponent(vncTicket)}&vmname=${encodeURIComponent(vmname)}`;
+
+                    // Open the console in a new tab
+                    window.open(consoleUrl, '_blank', 'noopener,noreferrer');
+                })
+                .catch(error => {
+                    console.error('Error opening console:', error);
+                    // You could display a notification to the user here
+                    alert('Could not open console: ' + error.message);
+                })
+                .finally(() => {
+                    // Remove the loading indicator
+                    this.classList.remove('is-loading');
+                });
+        });
+    }
+});
+</script>
+
 {{end}}

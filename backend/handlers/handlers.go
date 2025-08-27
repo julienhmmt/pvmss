@@ -13,6 +13,7 @@ import (
 	"pvmss/security"
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
+	// "pvmss/backend/websocket"
 )
 
 // withStaticCaching wraps a static file handler to add strong caching headers.
@@ -102,7 +103,9 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Initialize handlers
 	authHandler := NewAuthHandler(stateManager)
 	adminHandler := NewAdminHandler(stateManager)
-	vmHandler := NewVMHandler(stateManager)
+	// wsHub := websocket.NewHub()
+	// go wsHub.Run()
+	vmHandler := NewVMHandler(stateManager, nil)
 	storageHandler := NewStorageHandler(stateManager)
 	searchHandler := NewSearchHandler(stateManager)
 	docsHandler := NewDocsHandler()
@@ -157,11 +160,11 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Apply rate limiting (runs early)
 	handler = middleware.RateLimitMiddleware(handler)
 
-    // Normalize trailing slashes early to reduce duplicate route handlers
-    handler = trailingSlashRedirectMiddleware(handler)
+	// Normalize trailing slashes early to reduce duplicate route handlers
+	handler = trailingSlashRedirectMiddleware(handler)
 
-    // HTTP metrics middleware (near-outermost to observe complete response)
-    handler = metrics.HTTPMetricsMiddleware(handler)
+	// HTTP metrics middleware (near-outermost to observe complete response)
+	handler = metrics.HTTPMetricsMiddleware(handler)
 
 	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context.
 	// However, to avoid unnecessary session churn on static assets and health checks,
@@ -181,11 +184,11 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		log.Info().Msgf("Session middleware enabled with conditional bypass for static/health; manager: %p", sessionManager)
 	}
 
-    // Global panic recovery (outermost) to avoid crashing the server on unexpected panics
-    handler = recoverMiddleware(handler)
+	// Global panic recovery (outermost) to avoid crashing the server on unexpected panics
+	handler = recoverMiddleware(handler)
 
-    log.Info().Msg("HTTP handlers and middleware initialized")
-    return handler
+	log.Info().Msg("HTTP handlers and middleware initialized")
+	return handler
 }
 
 // stateManagerContextMiddleware adds the provided state manager to each request context

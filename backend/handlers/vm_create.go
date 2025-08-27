@@ -291,7 +291,13 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	// Perform API call: POST /nodes/{node}/qemu
 	path := "/nodes/" + url.PathEscape(node) + "/qemu"
-	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
+
+	values := make(url.Values)
+	for k, v := range params {
+		values.Set(k, v)
+	}
+
+	if _, err := client.PostFormWithContext(ctx, path, values); err != nil {
 		log.Error().Err(err).Str("node", node).Msg("VM create API call failed")
 		localizer := i18n.GetLocalizer(r)
 		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)

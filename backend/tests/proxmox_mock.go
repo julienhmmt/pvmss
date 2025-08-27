@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sync"
 	"time"
 
@@ -122,11 +123,19 @@ type MockProxmoxClient struct {
 	mux       sync.RWMutex
 
 	// Mock data
-	mockStorages []MockStorage
-	mockVMBRs    []MockVMBR
-	mockISOs     []MockISO
-	mockVMs      []MockVM
-	mockNodes    []MockNode
+	mockStorages     []MockStorage
+	mockVMBRs        []MockVMBR
+	mockISOs         []MockISO
+	mockVMs          []MockVM
+	mockNodes        []MockNode
+	mockVNCProxyData map[string]interface{}
+}
+
+// WithMockVNCProxy returns a MockClientOption that sets mock VNC proxy data
+func WithMockVNCProxy(vncProxyData map[string]interface{}) MockClientOption {
+	return func(c *MockProxmoxClient) {
+		c.mockVNCProxyData = vncProxyData
+	}
 }
 
 // Ensure MockProxmoxClient implements proxmox.ClientInterface
@@ -153,15 +162,6 @@ func NewMockProxmoxClient(apiURL, apiTokenID, apiTokenSecret string, insecureSki
 
 	return client
 }
-
-// Ensure MockProxmoxClient implements the same interface as proxmox.Client
-var _ interface {
-	GetRawWithContext(ctx context.Context, path string) ([]byte, error)
-	GetWithContext(ctx context.Context, path string) (map[string]interface{}, error)
-	Get(path string) (map[string]interface{}, error)
-	InvalidateCache(path string)
-	PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error)
-} = (*MockProxmoxClient)(nil)
 
 // GetRawWithContext is the core method for making GET requests in the mock client
 func (c *MockProxmoxClient) GetRawWithContext(ctx context.Context, path string) ([]byte, error) {
@@ -319,6 +319,10 @@ func (c *MockProxmoxClient) GetTimeout() time.Duration {
 	return c.Timeout
 }
 
+func (c *MockProxmoxClient) GetApiUrl() string {
+	return c.ApiUrl
+}
+
 // SetTimeout sets the client's request timeout
 func (c *MockProxmoxClient) SetTimeout(timeout time.Duration) {
 	c.Timeout = timeout
@@ -341,15 +345,25 @@ func (c *MockProxmoxClient) GetJSON(ctx context.Context, path string, target int
 }
 
 // PostFormWithContext performs a mock POST operation and returns a fake UPID
-func (c *MockProxmoxClient) PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error) {
-	// Optionally, update mock state based on action encoded in path
+func (c *MockProxmoxClient) PostFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error) {
 	// For now, just return a deterministic UPID-like response
-	resp := map[string]string{
+	resp := map[string]interface{}{
 		"data": "UPID:MOCK-12345",
 	}
-	b, err := json.Marshal(resp)
-	if err != nil {
-		return nil, err
+	return resp, nil
+}
+
+// GetVNCProxy returns mock VNC proxy data.
+func (c *MockProxmoxClient) GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error) {
+	if c.mockVNCProxyData != nil {
+		return c.mockVNCProxyData, nil
 	}
-	return b, nil
+	// Return a default mock response if no specific data is set
+	return map[string]interface{}{
+		"data": map[string]interface{}{
+			"port":   5900,
+			"ticket": "mock-ticket",
+			"upid":   "mock-upid",
+		},
+	}, nil
 }

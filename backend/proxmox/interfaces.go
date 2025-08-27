@@ -2,33 +2,20 @@ package proxmox
 
 import (
 	"context"
+	"net/url"
 	"time"
 )
 
-// ClientInterface defines the interface that both the real and mock Proxmox clients must implement
+// ClientInterface defines the methods for interacting with the Proxmox API.
+// It's used for abstraction and testability.
 type ClientInterface interface {
-	// GetRawWithContext performs a raw GET request with context support
-	GetRawWithContext(ctx context.Context, path string) ([]byte, error)
-
-	// GetWithContext performs a GET request with context support and returns the response as a map
-	GetWithContext(ctx context.Context, path string) (map[string]interface{}, error)
-
-	// GetJSON performs a GET request and unmarshals the response into the target interface
-	GetJSON(ctx context.Context, path string, target interface{}) error
-
-	// PostFormWithContext performs a POST request with form-encoded body and returns the raw response
-	// This is primarily used for Proxmox VM actions such as start/stop/reset/reboot/shutdown.
-	PostFormWithContext(ctx context.Context, path string, form map[string]string) ([]byte, error)
-
-	// Get performs a GET request using the client's default timeout
 	Get(path string) (map[string]interface{}, error)
-
-	// InvalidateCache removes entries from the client's response cache
-	InvalidateCache(path string)
-
-	// GetTimeout returns the client's configured timeout duration
-	GetTimeout() time.Duration
-
-	// SetTimeout sets the client's request timeout
+	GetWithContext(ctx context.Context, path string) (map[string]interface{}, error)
+	GetJSON(ctx context.Context, path string, target interface{}) error
+	PostFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error)
+	GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error)
+	GetApiUrl() string
 	SetTimeout(timeout time.Duration)
+	GetTimeout() time.Duration
+	InvalidateCache(path string)
 }
