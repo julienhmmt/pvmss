@@ -157,3 +157,43 @@ func withDefaultTimeout(ctx context.Context, d time.Duration) (context.Context, 
 	c, cancel := context.WithTimeout(ctx, d)
 	return c, cancel
 }
+
+// EnsureRole creates a custom Proxmox role if it does not already exist.
+// This function is idempotent: if the role already exists, it returns nil.
+func EnsureRole(ctx context.Context, client ClientInterface, roleID string, privileges []string) error {
+	if client == nil {
+		return fmt.Errorf("nil proxmox client")
+	}
+	if roleID == "" {
+		return fmt.Errorf("roleID is required")
+	}
+	if len(privileges) == 0 {
+		return fmt.Errorf("at least one privilege is required")
+	}
+
+	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
+	defer cancel()
+
+	// Check if role exists: GET /access/roles/{roleid}
+	checkPath := fmt.Sprintf("/access/roles/%s", url.PathEscape(roleID))
+	var probe map[string]any
+	if err := client.GetJSON(ctx, checkPath, &probe); err == nil {
+		logger.Get().Debug().Str("role", roleID).Msg("Role already exists; EnsureRole noop")
+		return nil
+	}
+
+	// Create role: POST /access/roles
+	form := url.Values{}
+	form.Set("roleid", roleID)
+	form.Set("privs", strings.Join(privileges, ","))
+
+	if _, err := client.PostFormWithContext(ctx, "/access/roles", form); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "409") || strings.Contains(strings.ToLower(err.Error()), "exist") {
+			logger.Get().Warn().Err(err).Str("role", roleID).Msg("Role create raced; treating as existing")
+			return nil
+		}
+		return fmt.Errorf("failed to create role %s: %w", roleID, err)
+	}
+	logger.Get().Info().Str("role", roleID).Strs("privileges", privileges).Msg("Created custom role")
+	return nil
+}

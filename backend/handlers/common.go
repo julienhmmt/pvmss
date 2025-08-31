@@ -144,6 +144,13 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		log.Debug().Msg("Authenticated user detected, adding session data")
 		data["IsAuthenticated"] = true
 		data["IsAdmin"] = IsAdmin(r)
+
+		// Add username for regular users (admin users don't have username in session)
+		if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
+			data["Username"] = username
+		} else if IsAdmin(r) {
+			data["Username"] = "Admin"
+		}
 	} else {
 		log.Debug().Msg("No authenticated user detected")
 		data["IsAdmin"] = false
@@ -429,6 +436,30 @@ func RequireAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 		w.Header().Set("Expires", "0")
 
 		next.ServeHTTP(w, r)
+	}
+}
+
+// RequireAuthHandleWS wraps a handler with session-based authentication check, suitable for WebSockets.
+// It checks for an authenticated session and returns a 401 Unauthorized error if the check fails.
+// This avoids redirects which are not suitable for WebSocket upgrade requests.
+func RequireAuthHandleWS(h httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		stateManager := getStateManager(r)
+		if stateManager == nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		sessionManager := stateManager.GetSessionManager()
+		if sessionManager == nil || !sessionManager.GetBool(r.Context(), "authenticated") {
+			log := logger.Get().With().
+				Str("handler", "RequireAuthHandleWS").
+				Str("path", r.URL.Path).
+				Logger()
+			log.Warn().Msg("WebSocket connection rejected: not authenticated")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		h(w, r, ps)
 	}
 }
 

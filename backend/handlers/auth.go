@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -435,6 +436,25 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		log.Info().Err(err).Str("username", username).Msg("User login failed - Proxmox authentication failed")
 		h.renderLoginForm(w, r, "Invalid credentials.")
 		return
+	}
+
+	// Also establish cookie-based authentication for console access
+	// Create a cookie-auth client for the same user
+	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
+	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
+
+	if proxmoxURL != "" {
+		cookieClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
+		if err == nil {
+			if err := cookieClient.Login(ctx, username, password, "pve"); err == nil {
+				// Store the cookie auth credentials in session for console access
+				sessionManager.Put(r.Context(), "pve_auth_cookie", cookieClient.PVEAuthCookie)
+				sessionManager.Put(r.Context(), "csrf_prevention_token", cookieClient.CSRFPreventionToken)
+				log.Debug().Str("username", username).Msg("Cookie authentication established for console access")
+			} else {
+				log.Warn().Err(err).Str("username", username).Msg("Failed to establish cookie auth for console - console access may be limited")
+			}
+		}
 	}
 
 	log.Debug().Str("username", username).Msg("User authentication successful via Proxmox, creating session")

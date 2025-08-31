@@ -65,15 +65,27 @@
             </div>
 
             <div class="navbar-end">
+                {{if .IsAuthenticated}}
+                <div class="navbar-item">
+                    <span class="icon-text has-text-info">
+                        <span class="icon">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        <span class="has-text-weight-semibold">{{.Username}}</span>
+                    </span>
+                </div>
+                {{end}}
                 <div class="navbar-item">
                     <div class="buttons are-small">
                         {{if .IsAuthenticated}}
+                        {{if .IsAdmin}}
                         <a class="button is-primary" href="/admin/nodes?lang={{.Lang}}">
                             <span class="icon">
                                 <i class="fas fa-cog"></i>
                             </span>
                             <span>{{ index .t "Navbar.Admin" }}</span>
                         </a>
+                        {{end}}
                         <a class="button is-light" href="/logout?lang={{.Lang}}">
                             <span class="icon">
                                 <i class="fas fa-sign-out-alt"></i>

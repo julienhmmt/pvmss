@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"bufio"
 	"context"
 	"encoding/base64"
+	"fmt"
+	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
@@ -319,6 +323,17 @@ func sessionDebugMiddleware(next http.Handler) http.Handler {
 			Interface("cookies", cookies).
 			Msg("Requête reçue - avant traitement")
 
+		// Skip ResponseWriter wrapping for WebSocket requests to avoid hijacking issues
+		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket" ||
+			strings.ToLower(r.Header.Get("Connection")) == "upgrade" ||
+			strings.HasPrefix(r.URL.Path, "/api/console/qemu/") // WebSocket console endpoint
+
+		if isWebSocket {
+			// For WebSocket requests, skip the wrapper to preserve hijacking capability
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Création d'un wrapper pour capturer les en-têtes de réponse
 		ww := &responseWriterWrapper{ResponseWriter: w, status: 200}
 
@@ -349,4 +364,12 @@ type responseWriterWrapper struct {
 func (w *responseWriterWrapper) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
+}
+
+// Hijack implements http.Hijacker interface for WebSocket support
+func (w *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, fmt.Errorf("underlying ResponseWriter does not support hijacking")
 }

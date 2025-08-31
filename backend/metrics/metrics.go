@@ -1,6 +1,9 @@
 package metrics
 
 import (
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -77,6 +80,29 @@ func (s *statusCapturingWriter) Write(b []byte) (int, error) { return s.w.Write(
 func (s *statusCapturingWriter) WriteHeader(code int) {
 	s.status = code
 	s.w.WriteHeader(code)
+}
+
+// Hijack implements http.Hijacker passthrough for WebSocket upgrades
+func (s *statusCapturingWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := s.w.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("underlying ResponseWriter does not support hijacking")
+}
+
+// Flush implements http.Flusher passthrough
+func (s *statusCapturingWriter) Flush() {
+	if f, ok := s.w.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Push implements http.Pusher passthrough (HTTP/2)
+func (s *statusCapturingWriter) Push(target string, opts *http.PushOptions) error {
+	if p, ok := s.w.(http.Pusher); ok {
+		return p.Push(target, opts)
+	}
+	return http.ErrNotSupported
 }
 
 func HTTPMetricsMiddleware(next http.Handler) http.Handler {

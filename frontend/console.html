@@ -1,0 +1,475 @@
+{{define "console"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/css/bulma.min.css">
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/fontawesome.min.css">
+    <style>
+        .console-container {
+            height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
+        }
+        .console-header {
+            padding: 1rem;
+            border-bottom: 1px solid #dbdbdb;
+            background: white;
+        }
+        .console-body {
+            flex: 1;
+            position: relative;
+        }
+        .console-canvas {
+            width: 100%;
+            height: 100%;
+            background: #000;
+        }
+        .status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar is-light" role="navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/">
+                <span class="icon"><i class="fas fa-server"></i></span>
+                <strong>PVMSS</strong>
+            </a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="/vm/details/{{.VMID}}">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    Back to VM Details
+                </a>
+            </div>
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <span class="icon"><i class="fas fa-desktop"></i></span>
+                    {{.VMName}} ({{.VMID}})
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="console-container">
+        <div class="console-header">
+            <div class="level">
+                <div class="level-left">
+                    <div class="level-item">
+                        <h1 class="title is-4">VM Console - {{.VMName}}</h1>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <div class="level-item">
+                        <div class="field is-grouped">
+                            <div class="control">
+                                <button id="fullscreen-btn" class="button is-small">
+                                    <span class="icon"><i class="fas fa-expand"></i></span>
+                                    <span>Fullscreen</span>
+                                </button>
+                            </div>
+                            <div class="control">
+                                <button id="disconnect-btn" class="button is-small is-danger">
+                                    <span class="icon"><i class="fas fa-times"></i></span>
+                                    <span>Disconnect</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="console-body">
+            <div id="status-indicator" class="status-indicator">
+                <span class="tag is-info">Connecting...</span>
+            </div>
+
+            <div id="noVNC-container">
+                <div id="noVNC_screen">
+                    <canvas id="noVNC_canvas" class="console-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // VNC Client implementation
+        class ConsoleClient {
+            constructor(wsUrl, canvas, ticket) {
+                this.wsUrl = wsUrl;
+                this.canvas = canvas;
+                this.ticket = ticket;
+                this.ws = null;
+                this.statusElement = document.getElementById('status-indicator');
+                this.state = 'disconnected';
+                this.queue = [];
+            }
+
+            connect() {
+                this.updateStatus('Connecting...', 'info');
+                this.state = 'connecting';
+                try {
+                    this.ws = new WebSocket(this.wsUrl);
+                    this.ws.binaryType = 'arraybuffer';
+
+                    this.ws.onopen = () => {
+                        console.log('WebSocket connected.');
+                        this.updateStatus('Handshaking...', 'info');
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        this.handleVNCMessage(event.data);
+                    };
+
+                    this.ws.onclose = (event) => {
+                        this.state = 'disconnected';
+                        this.updateStatus('Disconnected', 'danger');
+                        console.log('WebSocket closed:', event.code, event.reason);
+                    };
+
+                    this.ws.onerror = (error) => {
+                        this.state = 'failed';
+                        this.updateStatus('Connection Error', 'danger');
+                        console.error('WebSocket error:', error);
+                    };
+
+                    this.setupInputHandlers();
+                } catch (error) {
+                    this.state = 'failed';
+                    this.updateStatus('Connection Failed', 'danger');
+                    console.error('Failed to connect:', error);
+                }
+            }
+
+            disconnect() {
+                if (this.ws) {
+                    this.ws.close();
+                }
+            }
+
+            send(data) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(data);
+                }
+            }
+
+            handleVNCMessage(data) {
+                this.queue.push(...new Uint8Array(data));
+
+                switch (this.state) {
+                    case 'connecting': // ProtocolVersion
+                        if (this.queue.length >= 12) {
+                            const version = String.fromCharCode.apply(null, this.queue.splice(0, 12));
+                            console.log('Server VNC version:', version.trim());
+                            this.send(version); // Respond with the same version
+                            this.state = 'security';
+                            this.updateStatus('Authenticating...', 'info');
+                        }
+                        break;
+
+                    case 'security': // Security Types
+                        if (this.queue.length >= 1) {
+                            const numTypes = this.queue.shift();
+                            if (this.queue.length >= numTypes) {
+                                const types = this.queue.splice(0, numTypes);
+                                console.log('Supported security types:', types);
+                                if (types.includes(2)) { // VNC Authentication
+                                    this.send(new Uint8Array([2]));
+                                    this.state = 'authentication';
+                                } else {
+                                    console.error('Unsupported security type');
+                                    this.disconnect();
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'authentication': // VNC Auth Challenge
+                        if (this.queue.length >= 16) {
+                            const challenge = this.queue.splice(0, 16);
+                            console.log('Received VNC auth challenge.');
+                            const ticketParts = this.ticket.split('::');
+                            if (ticketParts.length >= 3) {
+                                const base64Ticket = ticketParts[2];
+                                const binaryTicket = Uint8Array.from(atob(base64Ticket), c => c.charCodeAt(0));
+                                this.send(binaryTicket);
+                            } else {
+                                console.error('Invalid ticket format');
+                                this.disconnect();
+                            }
+                            this.state = 'security-result';
+                        }
+                        break;
+
+                    case 'security-result':
+                        if (this.queue.length >= 4) {
+                            const result = new DataView(new Uint8Array(this.queue.splice(0, 4)).buffer).getUint32(0);
+                            if (result === 0) { // OK
+                                console.log('Authentication successful.');
+                                this.state = 'client-init';
+                                this.send(new Uint8Array([1])); // Send ClientInit (shared)
+                                this.updateStatus('Initializing...', 'success');
+                            } else {
+                                console.error('Authentication failed.');
+                                this.updateStatus('Auth Failed', 'danger');
+                                this.disconnect();
+                            }
+                        }
+                        break;
+
+                    case 'client-init': // ServerInit
+                        if (this.queue.length >= 24) {
+                            const serverInit = new DataView(new Uint8Array(this.queue.splice(0, 24)).buffer);
+                            this.fbWidth = serverInit.getUint16(0);
+                            this.fbHeight = serverInit.getUint16(2);
+                            this.pixelFormat = this.parsePixelFormat(this.queue.splice(0, 16));
+
+                            console.log(`ServerInit: ${this.fbWidth}x${this.fbHeight}`);
+                            this.canvas.width = this.fbWidth;
+                            this.canvas.height = this.fbHeight;
+                            this.ctx = this.canvas.getContext('2d');
+
+                            this.queue.splice(0, serverInit.getUint32(20)); // name-length
+
+                            this.state = 'connected';
+                            this.updateStatus('Connected', 'success');
+                            this.requestFramebufferUpdate(false, 0, 0, this.fbWidth, this.fbHeight);
+                        }
+                        break;
+
+                    case 'connected':
+                        while (this.queue.length > 0) {
+                            const messageType = this.queue.shift();
+                            switch (messageType) {
+                                case 0: // FramebufferUpdate
+                                    if (!this.handleFramebufferUpdate()) return;
+                                    break;
+                                case 2: // Bell
+                                    console.log('Bell!');
+                                    break;
+                                case 3: // ServerCutText
+                                    this.handleServerCutText();
+                                    break;
+                                default:
+                                    console.warn(`Unhandled message type: ${messageType}`);
+                                    this.queue = []; // Clear queue to prevent infinite loops
+                                    return;
+                            }
+                        }
+                        break;
+                }
+            }
+
+            setupInputHandlers() {
+                this.mouseButtonMask = 0;
+                this.canvas.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    this.mouseButtonMask |= 1 << e.button;
+                    this.sendPointerEvent(e.offsetX, e.offsetY);
+                });
+                this.canvas.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    this.mouseButtonMask &= ~(1 << e.button);
+                    this.sendPointerEvent(e.offsetX, e.offsetY);
+                });
+                this.canvas.addEventListener('mousemove', (e) => {
+                    e.preventDefault();
+                    this.sendPointerEvent(e.offsetX, e.offsetY);
+                });
+                this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+                document.addEventListener('keydown', (e) => {
+                    if (this.state === 'connected') {
+                        this.sendKeyEvent(e, true);
+                        e.preventDefault();
+                    }
+                });
+                document.addEventListener('keyup', (e) => {
+                    if (this.state === 'connected') {
+                        this.sendKeyEvent(e, false);
+                        e.preventDefault();
+                    }
+                });
+            }
+
+            sendPointerEvent(x, y) {
+                const buffer = new ArrayBuffer(6);
+                const view = new DataView(buffer);
+                view.setUint8(0, 5); // PointerEvent
+                view.setUint8(1, this.mouseButtonMask);
+                view.setUint16(2, x);
+                view.setUint16(4, y);
+                this.send(buffer);
+            }
+
+            sendKeyEvent(e, down) {
+                const keysym = this.getKeysym(e);
+                if (!keysym) {
+                    console.warn('Unknown keysym for key:', e.code);
+                    return;
+                }
+
+                const buffer = new ArrayBuffer(8);
+                const view = new DataView(buffer);
+                view.setUint8(0, 4); // KeyEvent
+                view.setUint8(1, down ? 1 : 0);
+                view.setUint32(4, keysym);
+                this.send(buffer);
+            }
+
+            getKeysym(e) {
+                // This is a simplified mapping. A full implementation is much larger.
+                if (e.key.length === 1) {
+                    return e.key.charCodeAt(0);
+                }
+                const mapping = {
+                    'Enter': 0xff0d, 'Backspace': 0xff08, 'Tab': 0xff09,
+                    'ShiftLeft': 0xffe1, 'ShiftRight': 0xffe2, 'ControlLeft': 0xffe3, 'ControlRight': 0xffe4,
+                    'AltLeft': 0xffe9, 'AltRight': 0xffea, 'MetaLeft': 0xffeb, 'MetaRight': 0xffec,
+                    'Escape': 0xff1b, 'Delete': 0xffff, 'Home': 0xff50, 'End': 0xff57,
+                    'ArrowUp': 0xff52, 'ArrowDown': 0xff54, 'ArrowLeft': 0xff51, 'ArrowRight': 0xff53,
+                    'PageUp': 0xff55, 'PageDown': 0xff56,
+                    'F1': 0xffbe, 'F2': 0xffbf, 'F3': 0xffc0, 'F4': 0xffc1, 'F5': 0xffc2, 'F6': 0xffc3,
+                    'F7': 0xffc4, 'F8': 0xffc5, 'F9': 0xffc6, 'F10': 0xffc7, 'F11': 0xffc8, 'F12': 0xffc9
+                };
+                return mapping[e.code];
+            }
+
+            parsePixelFormat(format) {
+                const pf = new DataView(new Uint8Array(format).buffer);
+                return {
+                    bitsPerPixel: pf.getUint8(0),
+                    depth: pf.getUint8(1),
+                    bigEndian: pf.getUint8(2),
+                    trueColor: pf.getUint8(3),
+                    redMax: pf.getUint16(4),
+                    greenMax: pf.getUint16(6),
+                    blueMax: pf.getUint16(8),
+                    redShift: pf.getUint8(10),
+                    greenShift: pf.getUint8(11),
+                    blueShift: pf.getUint8(12),
+                };
+            }
+
+            requestFramebufferUpdate(incremental, x, y, width, height) {
+                const buffer = new ArrayBuffer(10);
+                const view = new DataView(buffer);
+                view.setUint8(0, 3); // Message type: FramebufferUpdateRequest
+                view.setUint8(1, incremental ? 1 : 0);
+                view.setUint16(2, x);
+                view.setUint16(4, y);
+                view.setUint16(6, width);
+                view.setUint16(8, height);
+                this.send(buffer);
+            }
+
+            handleFramebufferUpdate() {
+                if (this.queue.length < 3) return false;
+                this.queue.shift(); // padding
+                const numRects = new DataView(new Uint8Array(this.queue.splice(0, 2)).buffer).getUint16(0);
+
+                for (let i = 0; i < numRects; i++) {
+                    if (this.queue.length < 12) return false;
+                    const header = new DataView(new Uint8Array(this.queue.splice(0, 12)).buffer);
+                    const x = header.getUint16(0);
+                    const y = header.getUint16(2);
+                    const width = header.getUint16(4);
+                    const height = header.getUint16(6);
+                    const encoding = header.getInt32(8);
+
+                    if (encoding === 0) { // Raw encoding
+                        const bytesPerPixel = this.pixelFormat.bitsPerPixel / 8;
+                        const size = width * height * bytesPerPixel;
+                        if (this.queue.length < size) return false;
+
+                        const data = this.queue.splice(0, size);
+                        this.drawRawRect(x, y, width, height, data);
+                    } else {
+                        console.error(`Unsupported encoding: ${encoding}`);
+                        this.disconnect();
+                        return false;
+                    }
+                }
+                this.requestFramebufferUpdate(true, 0, 0, this.fbWidth, this.fbHeight);
+                return true;
+            }
+
+            drawRawRect(x, y, width, height, data) {
+                const imageData = this.ctx.createImageData(width, height);
+                const canvasData = imageData.data;
+                let i = 0;
+
+                for (let j = 0; j < data.length; j += 4) {
+                    // Assuming 32-bit, true-color, big-endian
+                    canvasData[i++] = data[j + 2]; // Red
+                    canvasData[i++] = data[j + 1]; // Green
+                    canvasData[i++] = data[j];     // Blue
+                    canvasData[i++] = 255;         // Alpha
+                }
+                this.ctx.putImageData(imageData, x, y);
+            }
+
+            handleServerCutText() {
+                if (this.queue.length < 7) return;
+                this.queue.splice(0, 3); // padding
+                const length = new DataView(new Uint8Array(this.queue.splice(0, 4)).buffer).getUint32(0);
+                if (this.queue.length < length) return;
+                const text = new TextDecoder().decode(new Uint8Array(this.queue.splice(0, length)));
+                console.log('ServerCutText:', text);
+                navigator.clipboard.writeText(text);
+            }
+
+            updateStatus(text, type) {
+                if (this.statusElement) {
+                    this.statusElement.innerHTML = `<span class="tag is-${type}">${text}</span>`;
+                }
+            }
+        }
+
+        // Initialize console when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('noVNC_canvas');
+            const ticket = '{{.VNCTicket}}';
+            const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '{{.WSProxyURL}}';
+
+            const consoleClient = new ConsoleClient(wsUrl, canvas, ticket);
+            consoleClient.connect();
+
+            // Fullscreen button
+            document.getElementById('fullscreen-btn').addEventListener('click', function() {
+                const container = document.getElementById('noVNC-container');
+                if (container.requestFullscreen) {
+                    container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    container.webkitRequestFullscreen();
+                } else if (container.msRequestFullscreen) {
+                    container.msRequestFullscreen();
+                }
+            });
+
+            // Disconnect button
+            document.getElementById('disconnect-btn').addEventListener('click', function() {
+                consoleClient.disconnect();
+                window.close();
+            });
+
+            // Handle page unload
+            window.addEventListener('beforeunload', function() {
+                consoleClient.disconnect();
+            });
+        });
+    </script>
+</body>
+</html>
+{{end}}

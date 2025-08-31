@@ -22,30 +22,26 @@ type ConsoleAuthResult struct {
 	CSRFPreventionToken string
 }
 
-// GetConsoleTicket logs into Proxmox using PROXMOX_CONSOLE_USER/PROXMOX_CONSOLE_PASSWORD
-// and requests a VNC proxy ticket for the provided node/vmID. It returns a client
-// preloaded with cookie-based auth, the port and ticket for noVNC, and a normalized
-// base URL (scheme+host) for direct Proxmox redirects if needed.
-func GetConsoleTicket(ctx context.Context, node string, vmID int) (*ConsoleAuthResult, error) {
-	consoleUser := strings.TrimSpace(os.Getenv("PROXMOX_CONSOLE_USER"))
-	consolePass := strings.TrimSpace(os.Getenv("PROXMOX_CONSOLE_PASSWORD"))
-	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
-	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
-
-	if consoleUser == "" || consolePass == "" || proxmoxURL == "" {
-		return nil, fmt.Errorf("console credentials or PROXMOX_URL missing; set PROXMOX_CONSOLE_USER and PROXMOX_CONSOLE_PASSWORD")
+// GetConsoleTicket requests a VNC proxy ticket using the provided authenticated client.
+// It returns the port and ticket for noVNC, and a normalized base URL for redirects.
+// This version uses the user's existing authenticated session instead of separate console credentials.
+func GetConsoleTicket(ctx context.Context, client ClientInterface, node string, vmID int) (*ConsoleAuthResult, error) {
+	if client == nil {
+		return nil, fmt.Errorf("authenticated client is required for console access")
 	}
 
-	// Cookie-auth client then login
-	consoleClient, err := NewClientCookieAuth(proxmoxURL, insecureSkip)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create console Proxmox client: %w", err)
-	}
-	if err := consoleClient.Login(ctx, consoleUser, consolePass, ""); err != nil {
-		return nil, fmt.Errorf("console Proxmox login failed: %w", err)
+	// Cast to concrete client to access cookie auth methods
+	consoleClient, ok := client.(*Client)
+	if !ok {
+		return nil, fmt.Errorf("client must support cookie authentication for console access")
 	}
 
-	// Request VNC ticket
+	// Ensure we have cookie auth for console access
+	if consoleClient.PVEAuthCookie == "" {
+		return nil, fmt.Errorf("client must have valid PVE authentication cookie for console access")
+	}
+
+	// Request VNC ticket using the authenticated client
 	raw, err := consoleClient.GetVNCProxy(ctx, node, vmID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get VNC ticket: %w", err)
@@ -76,7 +72,7 @@ func GetConsoleTicket(ctx context.Context, node string, vmID int) (*ConsoleAuthR
 	}
 
 	// Compute proxmox_base (scheme://host) normalized from client ApiUrl
-	proxmoxBase := proxmoxURL
+	proxmoxBase := consoleClient.GetApiUrl()
 	if u, uErr := url.Parse(strings.TrimSpace(consoleClient.GetApiUrl())); uErr == nil {
 		u.Path = ""
 		proxmoxBase = u.Scheme + "://" + u.Host
@@ -90,4 +86,28 @@ func GetConsoleTicket(ctx context.Context, node string, vmID int) (*ConsoleAuthR
 		PVEAuthCookie:       consoleClient.PVEAuthCookie,
 		CSRFPreventionToken: consoleClient.CSRFPreventionToken,
 	}, nil
+}
+
+// GetConsoleTicketWithUserCredentials creates a console session using username/password.
+// This is a fallback method for admin users or when the main client doesn't have cookie auth.
+// DEPRECATED: Prefer using GetConsoleTicket with an authenticated client.
+func GetConsoleTicketWithUserCredentials(ctx context.Context, username, password, node string, vmID int) (*ConsoleAuthResult, error) {
+	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
+	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
+
+	if username == "" || password == "" || proxmoxURL == "" {
+		return nil, fmt.Errorf("username, password, and PROXMOX_URL are required")
+	}
+
+	// Cookie-auth client then login
+	consoleClient, err := NewClientCookieAuth(proxmoxURL, insecureSkip)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create console Proxmox client: %w", err)
+	}
+	if err := consoleClient.Login(ctx, username, password, ""); err != nil {
+		return nil, fmt.Errorf("console Proxmox login failed: %w", err)
+	}
+
+	// Use the new method with the authenticated client
+	return GetConsoleTicket(ctx, consoleClient, node, vmID)
 }
