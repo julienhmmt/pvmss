@@ -114,9 +114,10 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	tagsHandler := NewTagsHandler(stateManager)
 	vmbrHandler := NewVMBRHandler(stateManager)
 	themeHandler := NewThemeHandler(stateManager)
+	userPoolHandler := NewUserPoolHandler(stateManager)
 
 	// Configure routes
-	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, themeHandler)
+	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, themeHandler, userPoolHandler)
 
 	// Configure static files handler
 	setupStaticFiles(router)
@@ -219,6 +220,7 @@ func setupRoutes(
 	tagsHandler *TagsHandler,
 	vmbrHandler *VMBRHandler,
 	themeHandler *ThemeHandler,
+	userPoolHandler *UserPoolHandler,
 ) {
 	// Enregistrer les routes de chaque gestionnaire
 	authHandler.RegisterRoutes(router)
@@ -232,6 +234,7 @@ func setupRoutes(
 	tagsHandler.RegisterRoutes(router)
 	vmbrHandler.RegisterRoutes(router)
 	themeHandler.RegisterRoutes(router)
+	userPoolHandler.RegisterRoutes(router)
 
 	// Route d'accueil
 	router.GET("/", IndexRouterHandler)

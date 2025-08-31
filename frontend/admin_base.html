@@ -32,6 +32,7 @@
             <li><a href="/admin/iso" class="{{if .AdminActive}}{{if eq .AdminActive "iso"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/iso"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{index .t "Admin.ISO.Title"}}</a></li>
             <li><a href="/admin/vmbr" class="{{if .AdminActive}}{{if eq .AdminActive "vmbr"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/vmbr"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</a></li>
             <li><a href="/admin/limits" class="{{if .AdminActive}}{{if eq .AdminActive "limits"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/limits"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{index .t "Admin.Limits.Title"}}</a></li>
+            <li><a href="/admin/userpool" class="{{if .AdminActive}}{{if eq .AdminActive "userpool"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/userpool"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-user-shield"></i></span>&nbsp;Users & Pools</a></li>
           </ul>
         </nav>
       </aside>
@@ -50,6 +51,8 @@
             {{template "admin_vmbr_section" .}}
           {{else if eq .AdminActive "limits"}}
             {{template "admin_limits_section" .}}
+          {{else if eq .AdminActive "userpool"}}
+            {{template "admin_userpool_section" .}}
           {{else}}
             {{/* Unknown AdminActive value: render nothing */}}
           {{end}}

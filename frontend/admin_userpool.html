@@ -1,0 +1,102 @@
+{{define "admin_userpool"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_userpool_section"}}
+<div class="container mt-4">
+  {{if .Error}}
+  <div class="notification is-danger">
+    <p><strong>{{index .t "Common.Error"}}:</strong> {{.Error}}</p>
+    <a href="/admin/userpool" class="button is-small is-light mt-2">
+      <span>{{index .t "Common.TryAgain"}}</span>
+    </a>
+  </div>
+  {{else}}
+    <div class="content mb-5">
+      <h1 class="title is-4"><span class="icon"><i class="fas fa-user-shield"></i></span>&nbsp;Users & Pools</h1>
+      <p class="subtitle is-6 has-text-grey">Create a PVE user, a dedicated pool (pvmss_&lt;username&gt;), and grant a role on that pool.</p>
+    </div>
+
+    {{if .Success}}
+      <div class="notification is-success is-light">
+        <span class="icon is-small"><i class="fas fa-check"></i></span>
+        <span>{{.SuccessMessage}}</span>
+      </div>
+    {{end}}
+
+    <form method="POST" action="/admin/userpool/create" class="box">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="columns is-multiline">
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">Username</label>
+            <div class="control has-icons-left">
+              <input class="input" type="text" name="username" placeholder="alice" required>
+              <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+            </div>
+            <p class="help">Will create user alice@pve and pool pvmss_alice</p>
+          </div>
+        </div>
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">Password</label>
+            <div class="control has-icons-left">
+              <input class="input" type="password" name="password" placeholder="********" required>
+              <span class="icon is-small is-left"><i class="fas fa-key"></i></span>
+            </div>
+          </div>
+        </div>
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">Email (optional)</label>
+            <div class="control has-icons-left">
+              <input class="input" type="email" name="email" placeholder="alice@example.com">
+              <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
+            </div>
+          </div>
+        </div>
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">Comment (optional)</label>
+            <div class="control">
+              <input class="input" type="text" name="comment" placeholder="Team member, expires end of Q3">
+            </div>
+          </div>
+        </div>
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">Role</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select name="role">
+                  <option value="PVEVMUser">PVEVMUser</option>
+                  <option value="PVESysAdmin">PVESysAdmin</option>
+                  <option value="PVEAuditor">PVEAuditor</option>
+                </select>
+              </div>
+            </div>
+            <p class="help">Default: PVEVMUser. You may define a custom minimal role later.</p>
+          </div>
+        </div>
+        <div class="column is-6">
+          <div class="field">
+            <label class="checkbox">
+              <input type="checkbox" name="propagate" checked>
+              Propagate ACL to contained objects
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field is-grouped is-grouped-right">
+        <div class="control">
+          <button class="button is-primary" type="submit">
+            <span class="icon is-small"><i class="fas fa-plus"></i></span>
+            <span>Create</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  {{end}}
+</div>
+{{end}}
