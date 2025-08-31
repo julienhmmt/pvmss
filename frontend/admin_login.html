@@ -1,4 +1,4 @@
-{{define "login"}}
+{{define "admin_login"}}
 <section class="section">
   <div class="container">
     <div class="columns is-centered">
@@ -6,7 +6,7 @@
         <div class="card admin-card">
           <header class="card-header brand-header is-align-items-center">
             <p class="card-header-title">
-              <span class="icon"><i class="fas fa-sign-in-alt"></i></span>&nbsp;{{index .t "Login.Title"}}
+              <span class="icon"><i class="fas fa-shield-alt"></i></span>&nbsp;{{index .t "AdminLogin.Title"}}
             </p>
           </header>
           <div class="card-content">
@@ -24,62 +24,44 @@
               <input type="hidden" name="redirect" value="{{.RedirectURL}}" />
               {{end}}
 
-              <!-- Username Field -->
-              <div class="field">
-                <label class="label" for="username">
-                  <span class="icon-text">
-                    <span class="icon">
-                      <i class="fas fa-user"></i>
-                    </span>
-                    <span>{{index .t "Login.UsernameLabel"}}</span>
-                  </span>
-                </label>
-                <div class="control has-icons-left">
-                  <input class="input" type="text" id="username" name="username" required autofocus />
-                  <span class="icon is-small is-left">
-                    <i class="fas fa-user"></i>
-                  </span>
-                </div>
-              </div>
-
-              <!-- Password Field -->
+              <!-- Admin Password Field -->
               <div class="field">
                 <label class="label" for="password">
                   <span class="icon-text">
                     <span class="icon">
-                      <i class="fas fa-lock"></i>
+                      <i class="fas fa-key"></i>
                     </span>
-                    <span>{{index .t "Login.PasswordLabel"}}</span>
+                    <span>{{index .t "AdminLogin.PasswordLabel"}}</span>
                   </span>
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input" type="password" id="password" name="password" required />
+                  <input class="input" type="password" id="password" name="password" required autofocus />
                   <span class="icon is-small is-left">
-                    <i class="fas fa-lock"></i>
+                    <i class="fas fa-key"></i>
                   </span>
                 </div>
               </div>
 
               <div class="field">
                 <div class="control">
-                  <button class="button is-primary is-fullwidth" type="submit">
+                  <button class="button is-danger is-fullwidth" type="submit">
                     <span class="icon">
                       <i class="fas fa-sign-in-alt"></i>
                     </span>
-                    <span>{{index .t "Login.Button"}}</span>
+                    <span>{{index .t "AdminLogin.Button"}}</span>
                   </button>
                 </div>
               </div>
             </form>
 
-            <!-- Admin Login Link -->
+            <!-- User Login Link -->
             <div class="has-text-centered mt-4">
               <p class="is-size-7">
-                <a href="/admin/login" class="has-text-grey">
+                <a href="/login" class="has-text-grey">
                   <span class="icon is-small">
-                    <i class="fas fa-cog"></i>
+                    <i class="fas fa-user"></i>
                   </span>
-                  {{index .t "Login.AdminLoginLink"}}
+                  {{index .t "AdminLogin.UserLoginLink"}}
                 </a>
               </p>
             </div>

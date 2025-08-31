@@ -12,6 +12,7 @@ import (
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/security"
 )
 
 // CreateVMPage renders the VM creation form using values from settings.json (ISOs, VMBRs, Tags, Limits)
@@ -27,6 +28,15 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 			activeNode = list[0]
 		}
 	}
+
+	// Get username from session to pre-fill pool
+	defaultPool := ""
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
+			defaultPool = fmt.Sprintf("pvmss_%s", username)
+		}
+	}
+
 	data := map[string]interface{}{
 		"Title":         "Create VM",
 		"ISOs":          settings.ISOs,
@@ -35,6 +45,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		"Limits":        settings.Limits,
 		"Nodes":         nodes,
 		"ActiveNode":    activeNode,
+		"DefaultPool":   defaultPool,
 		// Empty form values for initial render
 		"FormData": map[string]interface{}{
 			"Tags": []string{"pvmss"},

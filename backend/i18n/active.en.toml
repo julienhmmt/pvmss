@@ -300,12 +300,28 @@ other = "Failed to save network bridge settings"
 # ======
 # Login
 # ======
+["Login.AdminLoginLink"]
+other = "Administrator Login"
 ["Login.Button"]
 other = "Login"
 ["Login.PasswordLabel"]
 other = "Password"
 ["Login.Title"]
 other = "Login"
+["Login.UsernameLabel"]
+other = "Username"
+
+# =============
+# Admin Login
+# =============
+["AdminLogin.Button"]
+other = "Admin Login"
+["AdminLogin.PasswordLabel"]
+other = "Admin Password"
+["AdminLogin.Title"]
+other = "Administrator Login"
+["AdminLogin.UserLoginLink"]
+other = "User Login"
 
 # VM Creation
 ["VM.Bridge.Description"]

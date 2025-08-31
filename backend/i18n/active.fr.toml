@@ -342,12 +342,28 @@ other = "Veuillez fournir au moins un critère de recherche (ID ou nom)."
 # ======
 # Login
 # ======
+["Login.AdminLoginLink"]
+other = "Connexion Administrateur"
 ["Login.Button"]
 other = "Se connecter"
 ["Login.PasswordLabel"]
 other = "Mot de passe"
 ["Login.Title"]
 other = "Connexion"
+["Login.UsernameLabel"]
+other = "Nom d'utilisateur"
+
+# =============
+# Admin Login
+# =============
+["AdminLogin.Button"]
+other = "Connexion Admin"
+["AdminLogin.PasswordLabel"]
+other = "Mot de passe Administrateur"
+["AdminLogin.Title"]
+other = "Connexion Administrateur"
+["AdminLogin.UserLoginLink"]
+other = "Connexion Utilisateur"
 
 # VM Creation
 ["VM.Bridge.Description"]
