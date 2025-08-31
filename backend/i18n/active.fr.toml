@@ -342,8 +342,6 @@ other = "Veuillez fournir au moins un critère de recherche (ID ou nom)."
 # ======
 # Login
 # ======
-["Login.AdminLoginLink"]
-other = "Connexion Administrateur"
 ["Login.Button"]
 other = "Se connecter"
 ["Login.PasswordLabel"]
@@ -352,6 +350,16 @@ other = "Mot de passe"
 other = "Connexion"
 ["Login.UsernameLabel"]
 other = "Nom d'utilisateur"
+["Login.UserLogin"]
+other = "Connexion Utilisateur"
+["Login.AdminLoginLink"]
+other = "Connexion Administrateur"
+["Login.LoginAs"]
+other = "Se connecter en tant que"
+["Login.SwitchToAdmin"]
+other = "Basculer vers Connexion Administrateur"
+["Login.SwitchToUser"]
+other = "Basculer vers Connexion Utilisateur"
 
 # =============
 # Admin Login

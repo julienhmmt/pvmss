@@ -6,7 +6,7 @@
         <div class="card admin-card">
           <header class="card-header brand-header is-align-items-center">
             <p class="card-header-title">
-              <span class="icon"><i class="fas fa-sign-in-alt"></i></span>&nbsp;{{index .t "Login.Title"}}
+              <span class="icon"><i class="fas fa-user"></i></span>&nbsp;{{index .t "Login.UserLogin"}}
             </p>
           </header>
           <div class="card-content">
@@ -16,6 +16,7 @@
 
             <form method="post" action="{{urlWithLang .Lang}}">
               <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+              <input type="hidden" name="login_type" value="user" />
               {{/* Preserve intended redirect target across POST */}}
               {{if .ReturnURL}}
               <input type="hidden" name="return" value="{{.ReturnURL}}" />
@@ -77,7 +78,7 @@
               <p class="is-size-7">
                 <a href="/admin/login" class="has-text-grey">
                   <span class="icon is-small">
-                    <i class="fas fa-cog"></i>
+                    <i class="fas fa-shield-alt"></i>
                   </span>
                   {{index .t "Login.AdminLoginLink"}}
                 </a>

@@ -300,8 +300,6 @@ other = "Failed to save network bridge settings"
 # ======
 # Login
 # ======
-["Login.AdminLoginLink"]
-other = "Administrator Login"
 ["Login.Button"]
 other = "Login"
 ["Login.PasswordLabel"]
@@ -310,6 +308,16 @@ other = "Password"
 other = "Login"
 ["Login.UsernameLabel"]
 other = "Username"
+["Login.UserLogin"]
+other = "User Login"
+["Login.AdminLoginLink"]
+other = "Administrator Login"
+["Login.LoginAs"]
+other = "Login as"
+["Login.SwitchToAdmin"]
+other = "Switch to Administrator Login"
+["Login.SwitchToUser"]
+other = "Switch to User Login"
 
 # =============
 # Admin Login
@@ -317,11 +325,11 @@ other = "Username"
 ["AdminLogin.Button"]
 other = "Admin Login"
 ["AdminLogin.PasswordLabel"]
-other = "Admin Password"
+other = "Administrator Password"
 ["AdminLogin.Title"]
 other = "Administrator Login"
 ["AdminLogin.UserLoginLink"]
-other = "User Login"
+other = "Regular User Login"
 
 # VM Creation
 ["VM.Bridge.Description"]

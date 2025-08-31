@@ -110,11 +110,11 @@ func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 	// User login routes (with redirect middleware)
 	router.GET("/login", h.RedirectIfAuthenticated(h.LoginHandler))
 	router.POST("/login", h.LoginHandler)
-	
+
 	// Admin login routes
 	router.GET("/admin/login", h.AdminLoginHandler)
 	router.POST("/admin/login", h.AdminLoginHandler)
-	
+
 	// Logout routes
 	router.GET("/logout", h.LogoutGet)
 	router.POST("/logout", h.LogoutHandler)
