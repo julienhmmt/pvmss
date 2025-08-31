@@ -236,6 +236,20 @@
                                                 </div>
                                             </div>
 
+                                            <!-- Pool (optional) -->
+                                            <div class="field">
+                                                <label for="pool" class="label">
+                                                    <span class="icon-text">
+                                                        <span class="icon"><i class="fas fa-layer-group"></i></span>
+                                                        <span>Pool</span>
+                                                    </span>
+                                                </label>
+                                                <div class="control">
+                                                    <input id="pool" class="input" type="text" name="pool" placeholder="pvmss_<user>" aria-describedby="poolHelp">
+                                                </div>
+                                                <p id="poolHelp" class="help">Optional: assign the VM to a Proxmox pool (requires ACL)</p>
+                                            </div>
+
                                             <!-- ISO Image -->
                                             <div class="field">
                                                 <label for="isoImage" class="label">

@@ -353,6 +353,15 @@ func (c *MockProxmoxClient) PostFormWithContext(ctx context.Context, path string
 	return resp, nil
 }
 
+// PutFormWithContext performs a mock PUT operation and returns a fake UPID
+func (c *MockProxmoxClient) PutFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error) {
+	// Mirror Post mock behaviour
+	resp := map[string]interface{}{
+		"data": "UPID:MOCK-12345",
+	}
+	return resp, nil
+}
+
 // GetVNCProxy returns mock VNC proxy data.
 func (c *MockProxmoxClient) GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error) {
 	if c.mockVNCProxyData != nil {

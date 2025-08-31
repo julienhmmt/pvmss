@@ -14,12 +14,12 @@ import (
 // using cookie-based auth: the client (with PVEAuthCookie), the VNC port and
 // ticket, plus a normalized Proxmox base URL suitable for redirects.
 type ConsoleAuthResult struct {
-	Client                *Client
-	Port                  string
-	Ticket                string
-	ProxmoxBase           string
-	PVEAuthCookie         string
-	CSRFPreventionToken   string
+	Client              *Client
+	Port                string
+	Ticket              string
+	ProxmoxBase         string
+	PVEAuthCookie       string
+	CSRFPreventionToken string
 }
 
 // GetConsoleTicket logs into Proxmox using PROXMOX_CONSOLE_USER/PROXMOX_CONSOLE_PASSWORD

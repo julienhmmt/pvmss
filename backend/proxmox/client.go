@@ -381,6 +381,35 @@ func (c *Client) PostFormWithContext(ctx context.Context, path string, data url.
 	return result, nil
 }
 
+// PutFormWithContext performs a PUT request with form-encoded data to the Proxmox API.
+// Some endpoints such as ACL management require PUT instead of POST.
+func (c *Client) PutFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error) {
+	req, err := http.NewRequestWithContext(ctx, "PUT", c.ApiUrl+path, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s", c.AuthToken))
+
+	resp, err := c.HttpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("request failed with status: %s, body: %s", resp.Status, string(b))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result, nil
+}
+
 // GetVNCProxy requests a VNC ticket for a specific VM.
 // It makes a POST request to the vncproxy endpoint and returns the ticket details.
 func (c *Client) GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error) {

@@ -13,6 +13,7 @@ type ClientInterface interface {
 	GetWithContext(ctx context.Context, path string) (map[string]interface{}, error)
 	GetJSON(ctx context.Context, path string, target interface{}) error
 	PostFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error)
+	PutFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error)
 	GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error)
 	GetApiUrl() string
 	SetTimeout(timeout time.Duration)

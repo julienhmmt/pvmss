@@ -28,7 +28,8 @@ func EnsureUser(ctx context.Context, client ClientInterface, username, password,
 	uid := normalizeUserID(username, realm)
 
 	// Short timeout wrapper if ctx has no deadline
-	ctx = withDefaultTimeout(ctx, client.GetTimeout())
+	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
+	defer cancel()
 
 	// Check if the user already exists: GET /access/users/{userid}
 	path := fmt.Sprintf("/access/users/%s", url.PathEscape(uid))
@@ -75,7 +76,8 @@ func EnsurePool(ctx context.Context, client ClientInterface, poolID, comment str
 		return fmt.Errorf("poolID is required")
 	}
 
-	ctx = withDefaultTimeout(ctx, client.GetTimeout())
+	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
+	defer cancel()
 
 	// Check exist: GET /pools/{poolid}
 	checkPath := fmt.Sprintf("/pools/%s", url.PathEscape(poolID))
@@ -110,7 +112,8 @@ func EnsurePoolACL(ctx context.Context, client ClientInterface, userID, poolID, 
 	if userID == "" || poolID == "" || role == "" {
 		return fmt.Errorf("userID, poolID and role are required")
 	}
-	ctx = withDefaultTimeout(ctx, client.GetTimeout())
+	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
+	defer cancel()
 
 	form := url.Values{}
 	form.Set("path", poolPath(poolID))
@@ -119,7 +122,7 @@ func EnsurePoolACL(ctx context.Context, client ClientInterface, userID, poolID, 
 	if propagate {
 		form.Set("propagate", "1")
 	}
-	if _, err := client.PostFormWithContext(ctx, "/access/acl", form); err != nil {
+	if _, err := client.PutFormWithContext(ctx, "/access/acl", form); err != nil {
 		return fmt.Errorf("failed to grant ACL (%s on %s to %s): %w", role, poolID, userID, err)
 	}
 	logger.Get().Info().Str("user", userID).Str("pool", poolID).Str("role", role).Bool("propagate", propagate).Msg("Granted pool ACL")
@@ -143,13 +146,14 @@ func normalizeUserID(username, realm string) string {
 func poolPath(poolID string) string { return "/pool/" + poolID }
 
 // withDefaultTimeout ensures the context has a deadline; if not, it wraps it with a reasonable timeout.
-func withDefaultTimeout(ctx context.Context, d time.Duration) context.Context {
+func withDefaultTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
 	if _, ok := ctx.Deadline(); ok {
-		return ctx
+		// Return a no-op cancel when caller already has a deadline
+		return ctx, func() {}
 	}
 	if d <= 0 {
 		d = 10 * time.Second
 	}
-	c, _ := context.WithTimeout(ctx, d)
-	return c
+	c, cancel := context.WithTimeout(ctx, d)
+	return c, cancel
 }

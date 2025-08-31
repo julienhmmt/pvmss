@@ -72,6 +72,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	iso := r.FormValue("iso") // settings provides full volid or path string
 	bridge := r.FormValue("bridge")
 	selectedNode := r.FormValue("node")
+	pool := r.FormValue("pool")
 	tags := r.Form["tags"]
 	// Ensure mandatory tag "pvmss" is present and deduplicate
 	seen := map[string]struct{}{}
@@ -254,6 +255,11 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		"sockets": strconv.Itoa(sockets),
 		"cores":   strconv.Itoa(cores),
 		"memory":  strconv.Itoa(memoryMB), // MB
+	}
+
+	// Assign to pool if provided
+	if pool != "" {
+		params["pool"] = pool
 	}
 
 	// Tags (Proxmox supports 'tags': csv)
