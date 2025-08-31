@@ -334,77 +334,21 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
-	// Always use dedicated console user to obtain cookie + ticket
-	consoleUser := strings.TrimSpace(os.Getenv("PROXMOX_CONSOLE_USER"))
-	consolePass := strings.TrimSpace(os.Getenv("PROXMOX_CONSOLE_PASSWORD"))
-	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
-	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
-
-	if consoleUser == "" || consolePass == "" || proxmoxURL == "" {
-		logger.Get().Error().Msg("Console credentials or PROXMOX_URL missing; set PROXMOX_CONSOLE_USER and PROXMOX_CONSOLE_PASSWORD")
-		http.Error(w, "Console credentials not configured", http.StatusInternalServerError)
+	// Obtain console ticket and cookie using helper
+	res, terr := proxmox.GetConsoleTicket(r.Context(), node, vmID)
+	if terr != nil {
+		logger.Get().Error().Err(terr).Msg("Failed to prepare console ticket")
+		// Map auth errors to 401, others to 502/500 as appropriate
+		http.Error(w, "Failed to get VNC ticket", http.StatusBadGateway)
 		return
-	}
-
-	consoleClient, cerr := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
-	if cerr != nil {
-		logger.Get().Error().Err(cerr).Msg("Failed to create console Proxmox client")
-		http.Error(w, "Failed to create console client", http.StatusInternalServerError)
-		return
-	}
-	if err := consoleClient.Login(r.Context(), consoleUser, consolePass, ""); err != nil {
-		logger.Get().Error().Err(err).Msg("Console Proxmox login failed")
-		http.Error(w, "Console authentication failed", http.StatusUnauthorized)
-		return
-	}
-
-	raw, err := consoleClient.GetVNCProxy(r.Context(), node, vmID)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get VNC ticket")
-		http.Error(w, "Failed to get VNC ticket", http.StatusInternalServerError)
-		return
-	}
-
-	// Extract nested data { data: { port, ticket, upid } }
-	var (
-		portVal   string
-		ticketVal string
-	)
-	if d, ok := raw["data"].(map[string]interface{}); ok {
-		// port may be number or string; normalize to string
-		switch pv := d["port"].(type) {
-		case string:
-			portVal = pv
-		case float64:
-			portVal = strconv.Itoa(int(pv))
-		case int:
-			portVal = strconv.Itoa(pv)
-		case json.Number:
-			portVal = pv.String()
-		}
-		if t, ok := d["ticket"].(string); ok {
-			ticketVal = t
-		}
-	}
-	if portVal == "" || ticketVal == "" {
-		logger.Get().Error().Interface("raw", raw).Msg("Unexpected VNC proxy response; missing port or ticket")
-		http.Error(w, "Invalid VNC ticket response", http.StatusBadGateway)
-		return
-	}
-
-	// Compute proxmox_base (scheme://host)
-	proxmoxBase := proxmoxURL
-	if u, uErr := url.Parse(strings.TrimSpace(consoleClient.GetApiUrl())); uErr == nil {
-		u.Path = ""
-		proxmoxBase = u.Scheme + "://" + u.Host
 	}
 
 	// Set PVEAuthCookie for browser so subsequent proxied requests carry auth
 	secureCookie := (r.TLS != nil) || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
-	if consoleClient.PVEAuthCookie != "" {
+	if res.PVEAuthCookie != "" {
 		cookie := &http.Cookie{
 			Name:     "PVEAuthCookie",
-			Value:    consoleClient.PVEAuthCookie,
+			Value:    res.PVEAuthCookie,
 			Path:     "/",
 			Secure:   secureCookie,
 			HttpOnly: false,
@@ -427,15 +371,15 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	// Build normalized, flat response for the frontend
 	resp := map[string]interface{}{
-		"port":         portVal,
-		"vncticket":    ticketVal,
-		"ticket":       ticketVal,
+		"port":         res.Port,
+		"vncticket":    res.Ticket,
+		"ticket":       res.Ticket,
 		"node":         node,
 		"vmid":         vmID,
-		"proxmox_base": proxmoxBase,
+		"proxmox_base": res.ProxmoxBase,
 	}
-	if consoleClient.CSRFPreventionToken != "" {
-		resp["csrf_prevention_token"] = consoleClient.CSRFPreventionToken
+	if res.CSRFPreventionToken != "" {
+		resp["csrf_prevention_token"] = res.CSRFPreventionToken
 	}
 
 	w.Header().Set("Content-Type", "application/json")
