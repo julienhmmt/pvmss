@@ -98,16 +98,17 @@ func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
 		Str("method", "RegisterRoutes").
 		Logger()
 
-	// Register main admin dashboard (protected)
-	router.GET("/admin", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	// Register main admin dashboard (protected with admin privileges)
+	router.GET("/admin", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.AdminPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
-	log.Debug().Str("method", "GET").Str("path", "/admin").Msg("Route d'administration enregistrée")
+	log.Debug().Str("method", "GET").Str("path", "/admin").Msg("Route d'administration enregistrée avec RequireAdminAuth")
 
-	// Additional admin subpages (protected)
-	router.GET("/admin/nodes", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	// Additional admin subpages (protected with admin privileges)
+	router.GET("/admin/nodes", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.NodesPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
+	log.Debug().Str("method", "GET").Str("path", "/admin/nodes").Msg("Route admin/nodes enregistrée avec RequireAdminAuth")
 
-	log.Info().Msg("Routes d'administration enregistrées avec succès")
+	log.Info().Msg("Routes d'administration enregistrées avec succès avec protection admin")
 }

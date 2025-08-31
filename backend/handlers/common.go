@@ -143,8 +143,10 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	if IsAuthenticated(r) {
 		log.Debug().Msg("Authenticated user detected, adding session data")
 		data["IsAuthenticated"] = true
+		data["IsAdmin"] = IsAdmin(r)
 	} else {
 		log.Debug().Msg("No authenticated user detected")
+		data["IsAdmin"] = false
 	}
 
 	// Add/override CSRF token from request context if available (prefer context value set by middleware)
@@ -311,6 +313,102 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// Add security headers for authenticated routes
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+		// Add CSRF token to the response headers for AJAX requests
+		if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
+			stateManager := getStateManager(r)
+			var sessionManager *scs.SessionManager
+			if stateManager != nil {
+				sessionManager = stateManager.GetSessionManager()
+			}
+			if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
+				w.Header().Set("X-CSRF-Token", csrfToken)
+			}
+		}
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+
+		next.ServeHTTP(w, r)
+	}
+}
+
+// IsAdmin checks if the current user is an admin
+func IsAdmin(r *http.Request) bool {
+	log := logger.Get().With().
+		Str("handler", "IsAdmin").
+		Str("path", r.URL.Path).
+		Str("method", r.Method).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
+
+	// First check if user is authenticated
+	if !IsAuthenticated(r) {
+		log.Debug().Msg("User not authenticated, cannot be admin")
+		return false
+	}
+
+	stateManager := getStateManager(r)
+	sessionManager := stateManager.GetSessionManager()
+
+	// Check if the session contains the admin flag
+	isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool)
+	if !ok || !isAdmin {
+		log.Debug().
+			Bool("is_admin", false).
+			Msg("User is authenticated but not admin")
+		return false
+	}
+
+	log.Debug().
+		Bool("is_admin", true).
+		Str("session_id", sessionManager.Token(r.Context())).
+		Msg("Admin access verified")
+
+	return true
+}
+
+// RequireAdminAuth is a middleware that enforces admin authentication for admin routes
+// This function is exported for use by other packages
+func RequireAdminAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.Get().With().
+			Str("handler", "RequireAdminAuth").
+			Str("path", r.URL.Path).
+			Str("method", r.Method).
+			Str("remote_addr", r.RemoteAddr).
+			Logger()
+
+		if !IsAdmin(r) {
+			log.Info().Msg("Admin authentication required")
+
+			// If user is authenticated but not admin, show access denied
+			if IsAuthenticated(r) {
+				log.Warn().Msg("Authenticated user attempted to access admin area without privileges")
+				http.Error(w, "Access Denied: Admin privileges required", http.StatusForbidden)
+				return
+			}
+
+			// Store the original URL for redirection after admin login
+			returnURL := r.URL.Path
+			if r.URL.RawQuery != "" {
+				returnURL = returnURL + "?" + r.URL.RawQuery
+			}
+
+			// Set cache control headers to prevent caching of protected pages
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
+
+			// Redirect to admin login page with return URL
+			http.Redirect(w, r, "/admin/login?return="+url.QueryEscape(returnURL), http.StatusSeeOther)
+			return
+		}
+
+		// Add security headers for admin routes
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("X-XSS-Protection", "1; mode=block")

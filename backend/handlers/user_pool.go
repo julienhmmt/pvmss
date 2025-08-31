@@ -25,10 +25,10 @@ func NewUserPoolHandler(sm state.StateManager) *UserPoolHandler {
 
 // RegisterRoutes registers routes for user/pool admin
 func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/admin/userpool", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.GET("/admin/userpool", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.UserPoolPage(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
-	router.POST("/admin/userpool/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.POST("/admin/userpool/create", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.CreateUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 }

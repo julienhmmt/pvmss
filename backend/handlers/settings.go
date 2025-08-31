@@ -601,29 +601,29 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 // RegisterRoutes enregistre les routes liées aux paramètres
 func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 	// Admin ISO page and toggle (protected)
-	router.GET("/admin/iso", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.GET("/admin/iso", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.ISOPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 	// Trailing-slash variant: redirect to canonical path
-	router.GET("/admin/iso/", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.GET("/admin/iso/", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/iso/ to /admin/iso")
 		http.Redirect(w, r, "/admin/iso", http.StatusSeeOther)
 	})))
-	router.POST("/admin/iso/toggle", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.POST("/admin/iso/toggle", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.ToggleISOHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
 	// Server-rendered limits form (no JS)
-	router.POST("/admin/limits", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.POST("/admin/limits", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.UpdateLimitsFormHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
 	// Limits page (protected)
-	router.GET("/admin/limits", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.GET("/admin/limits", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.LimitsPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 	// Trailing-slash variant: redirect to canonical path
-	router.GET("/admin/limits/", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.GET("/admin/limits/", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/limits/ to /admin/limits")
 		http.Redirect(w, r, "/admin/limits", http.StatusSeeOther)
 	})))
