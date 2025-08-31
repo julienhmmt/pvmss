@@ -314,18 +314,29 @@ func (m *MockProxmoxClient) InvalidateCache(path string) {
 	}
 }
 
-// GetTimeout returns the client's configured timeout duration
-func (c *MockProxmoxClient) GetTimeout() time.Duration {
-	return c.Timeout
+// GetTimeout returns the client's configured timeout duration.
+func (m *MockProxmoxClient) GetTimeout() time.Duration {
+	return m.Timeout
 }
 
-func (c *MockProxmoxClient) GetApiUrl() string {
-	return c.ApiUrl
+// SetTimeout sets the client's request timeout.
+func (m *MockProxmoxClient) SetTimeout(timeout time.Duration) {
+	m.Timeout = timeout
 }
 
-// SetTimeout sets the client's request timeout
-func (c *MockProxmoxClient) SetTimeout(timeout time.Duration) {
-	c.Timeout = timeout
+// GetApiUrl returns the base URL of the Proxmox API.
+func (m *MockProxmoxClient) GetApiUrl() string {
+	return m.ApiUrl
+}
+
+// GetPVEAuthCookie returns a mock PVEAuthCookie.
+func (m *MockProxmoxClient) GetPVEAuthCookie() string {
+	return "mock-pve-auth-cookie"
+}
+
+// GetCSRFPreventionToken returns a mock CSRF token.
+func (m *MockProxmoxClient) GetCSRFPreventionToken() string {
+	return "mock-csrf-token"
 }
 
 // GetJSON performs a GET request and unmarshals the response into the target interface
@@ -360,6 +371,23 @@ func (c *MockProxmoxClient) PutFormWithContext(ctx context.Context, path string,
 		"data": "UPID:MOCK-12345",
 	}
 	return resp, nil
+}
+
+// PostFormAndGetJSON performs a mock POST request and unmarshals the response.
+func (c *MockProxmoxClient) PostFormAndGetJSON(ctx context.Context, path string, data url.Values, v interface{}) error {
+	// For now, just return a deterministic UPID-like response
+	resp := map[string]interface{}{
+		"data": "UPID:MOCK-12345",
+	}
+	// Marshal the mock response and then unmarshal it into v
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return fmt.Errorf("failed to marshal mock response: %w", err)
+	}
+	if err := json.Unmarshal(b, v); err != nil {
+		return fmt.Errorf("failed to unmarshal mock response: %w", err)
+	}
+	return nil
 }
 
 // GetVNCProxy returns mock VNC proxy data.

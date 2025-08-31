@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/subtle"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -18,7 +19,7 @@ import (
 	"pvmss/state"
 )
 
-// AuthHandler gère les routes d'authentification
+// AuthHandler handles authentication routes
 type AuthHandler struct {
 	stateManager state.StateManager
 }
@@ -30,7 +31,7 @@ func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httpro
 
 	// Attempt to get CSRF token from context (populated by CSRFGeneratorMiddleware for GET)
 	var csrfToken string
-	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok && token != "" {
+	if token, ok := security.CSRFTokenFromContext(r.Context()); ok && token != "" {
 		csrfToken = token
 	} else {
 		// Fallback to session
@@ -72,7 +73,7 @@ func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httpro
 </html>`))
 }
 
-// NewAuthHandler crée une nouvelle instance de AuthHandler
+// NewAuthHandler creates a new instance of AuthHandler
 func NewAuthHandler(sm state.StateManager) *AuthHandler {
 	return &AuthHandler{stateManager: sm}
 }
@@ -89,55 +90,33 @@ func (h *AuthHandler) RedirectIfAuthenticated(next httprouter.Handle) httprouter
 	}
 }
 
-// AdminLoginHandler handles admin login page and form submission
-func (h *AuthHandler) AdminLoginHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("method", r.Method).Str("path", r.URL.Path).Str("remote_addr", r.RemoteAddr).Logger()
-
-	switch r.Method {
-	case http.MethodGet:
-		log.Debug().Msg("Displaying admin login form")
-		h.renderAdminLoginForm(w, r, "")
-	case http.MethodPost:
-		log.Debug().Msg("Processing admin login form submission")
-		h.handleAdminLogin(w, r)
-	default:
-		log.Warn().Str("method", r.Method).Msg("Method not allowed")
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+// ShowAdminLoginForm renders the admin login page.
+func (h *AuthHandler) ShowAdminLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().Str("handler", "AuthHandler.ShowAdminLoginForm").Logger()
+	log.Debug().Msg("Displaying admin login form")
+	h.renderAdminLoginForm(w, r, "")
 }
 
-// RegisterRoutes enregistre les routes d'authentification
+// RegisterRoutes registers authentication routes
 func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
-	// User login routes (with redirect middleware)
-	router.GET("/login", h.RedirectIfAuthenticated(h.LoginHandler))
-	router.POST("/login", h.LoginHandler)
+	// User login routes
+	router.GET("/login", h.RedirectIfAuthenticated(h.ShowLoginForm))
+	router.POST("/login", h.handleLogin)
 
 	// Admin login routes
-	router.GET("/admin/login", h.AdminLoginHandler)
-	router.POST("/admin/login", h.AdminLoginHandler)
+	router.GET("/admin/login", h.ShowAdminLoginForm)
+	router.POST("/admin/login", h.handleAdminLogin)
 
 	// Logout routes
 	router.GET("/logout", h.LogoutGet)
 	router.POST("/logout", h.LogoutHandler)
 }
 
-// LoginHandler gère la page de connexion
-func (h *AuthHandler) LoginHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("method", r.Method).Str("path", r.URL.Path).Str("remote_addr", r.RemoteAddr).Logger()
-
-	switch r.Method {
-	case http.MethodGet:
-		log.Debug().Msg("Affichage du formulaire de connexion")
-		// Afficher le formulaire de connexion
-		h.renderLoginForm(w, r, "")
-	case http.MethodPost:
-		log.Debug().Msg("Traitement de la soumission du formulaire de connexion")
-		// Traiter la soumission du formulaire
-		h.handleLogin(w, r)
-	default:
-		log.Warn().Str("method", r.Method).Msg("Méthode HTTP non autorisée")
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+// ShowLoginForm renders the user login page.
+func (h *AuthHandler) ShowLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().With().Str("handler", "AuthHandler.ShowLoginForm").Logger()
+	log.Debug().Msg("Displaying login form")
+	h.renderLoginForm(w, r, "")
 }
 
 // LogoutHandler handles user logout
@@ -178,7 +157,39 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// renderAdminLoginForm renders the admin login form with CSRF token and error message
+// getOrSetCSRFToken retrieves a CSRF token from the request context or session, generating a new one if necessary.
+func getOrSetCSRFToken(r *http.Request) (string, error) {
+	log := logger.Get().With().Str("function", "getOrSetCSRFToken").Logger()
+
+	// Get session manager
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		return "", fmt.Errorf("session manager not available")
+	}
+
+	// Try to get CSRF token from context first (set by middleware)
+	if token, ok := security.CSRFTokenFromContext(r.Context()); ok && token != "" {
+		log.Debug().Msg("Using CSRF token from request context")
+		return token, nil
+	}
+
+	// Fallback to session
+	if token, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && token != "" {
+		log.Debug().Msg("Using CSRF token from session")
+		return token, nil
+	}
+
+	// Generate a new token if none exists
+	token, err := security.GenerateCSRFToken()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate CSRF token: %w", err)
+	}
+	sessionManager.Put(r.Context(), "csrf_token", token)
+	log.Debug().Msg("Generated and stored new CSRF token")
+
+	return token, nil
+}
+
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
 	log := logger.Get().With().
 		Str("handler", "AuthHandler").
@@ -197,26 +208,11 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get CSRF token from context or session
-	var csrfToken string
-	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok && token != "" {
-		csrfToken = token
-		log.Debug().Msg("Using CSRF token from request context")
-	} else {
-		if token, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && token != "" {
-			csrfToken = token
-			log.Debug().Msg("Using CSRF token from session")
-		} else {
-			var err error
-			csrfToken, err = security.GenerateCSRFToken()
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to generate CSRF token")
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			sessionManager.Put(r.Context(), "csrf_token", csrfToken)
-			log.Debug().Msg("Generated new CSRF token")
-		}
+	csrfToken, err := getOrSetCSRFToken(r)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get or set CSRF token")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	// Prepare template data
@@ -235,8 +231,37 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 	renderTemplateInternal(w, r, "admin_login", data)
 }
 
+// validateCSRF checks the CSRF token from the form against the one in the session.
+func validateCSRF(r *http.Request) error {
+	log := logger.Get().With().Str("function", "validateCSRF").Logger()
+
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		return fmt.Errorf("session manager not available")
+	}
+
+	formToken := r.FormValue("csrf_token")
+	if formToken == "" {
+		log.Warn().Msg("CSRF token is missing from form")
+		return fmt.Errorf("invalid request")
+	}
+
+	sessionToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
+	if !ok || sessionToken == "" {
+		log.Warn().Msg("No CSRF token found in session")
+		return fmt.Errorf("session expired")
+	}
+
+	if subtle.ConstantTimeCompare([]byte(formToken), []byte(sessionToken)) != 1 {
+		log.Warn().Msg("CSRF token validation failed")
+		return fmt.Errorf("invalid request")
+	}
+
+	return nil
+}
+
 // handleAdminLogin handles admin login form submission (password-only)
-func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := logger.Get().With().
 		Str("handler", "AuthHandler").
 		Str("method", r.Method).
@@ -251,27 +276,13 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate CSRF token
-	if r.Method == http.MethodPost {
-		csrfToken := r.FormValue("csrf_token")
-		if csrfToken == "" {
-			log.Warn().Msg("CSRF token is missing from form")
-			h.renderAdminLoginForm(w, r, "Invalid request. Please try again.")
-			return
+	if err := validateCSRF(r); err != nil {
+		errMsg := "Invalid request. Please try again."
+		if err.Error() == "session expired" {
+			errMsg = "Session expired. Please try again."
 		}
-
-		sessionToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
-		if !ok || sessionToken == "" {
-			log.Warn().Msg("No CSRF token found in session")
-			h.renderAdminLoginForm(w, r, "Session expired. Please try again.")
-			return
-		}
-
-		if subtle.ConstantTimeCompare([]byte(csrfToken), []byte(sessionToken)) != 1 {
-			log.Warn().Msg("CSRF token validation failed")
-			h.renderAdminLoginForm(w, r, "Invalid request. Please try again.")
-			return
-		}
+		h.renderAdminLoginForm(w, r, errMsg)
+		return
 	}
 
 	// Get admin password hash from environment
@@ -306,54 +317,17 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request) {
 
 	log.Debug().Msg("Admin authentication successful, creating session")
 
-	// Create new session with fresh token
-	if err := sessionManager.RenewToken(r.Context()); err != nil {
-		log.Error().Err(err).Msg("Failed to renew session token")
+	if err := establishSession(w, r, true, ""); err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// Store authentication data in session with admin flag
-	sessionManager.Put(r.Context(), "authenticated", true)
-	sessionManager.Put(r.Context(), "is_admin", true)
-
-	// Generate new CSRF token for the session
-	var newCSRFToken string
-	newCSRFToken, err := security.GenerateCSRFToken()
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to generate CSRF token")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	sessionManager.Put(r.Context(), "csrf_token", newCSRFToken)
-
-	log.Info().Str("session_id", sessionManager.Token(r.Context())).Msg("Admin logged in successfully")
-
-	// Redirect to admin page or return URL
-	redirectURL := r.FormValue("return")
-	if redirectURL == "" {
-		redirectURL = r.URL.Query().Get("return")
-	}
-	if redirectURL == "" {
-		redirectURL = r.FormValue("redirect")
-	}
-	if redirectURL == "" {
-		redirectURL = r.URL.Query().Get("redirect")
-	}
-	if redirectURL == "" {
-		redirectURL = "/admin/nodes"
-	}
-
-	// Ensure the URL has a scheme
-	if len(redirectURL) > 0 && redirectURL[0] != '/' {
-		redirectURL = "/" + redirectURL
-	}
-
+	redirectURL := getRedirectURL(r, "/admin/nodes")
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // handleLogin handles the user login form submission (username + password via Proxmox)
-func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := logger.Get().
 		With().
 		Str("handler", "AuthHandler").
@@ -369,30 +343,13 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// For POST requests, validate CSRF token
-	if r.Method == http.MethodPost {
-		// Get CSRF token from form
-		csrfToken := r.FormValue("csrf_token")
-		if csrfToken == "" {
-			log.Warn().Msg("CSRF token is missing from form")
-			h.renderLoginForm(w, r, "Invalid request. Please try again.")
-			return
+	if err := validateCSRF(r); err != nil {
+		errMsg := "Invalid request. Please try again."
+		if err.Error() == "session expired" {
+			errMsg = "Session expired. Please try again."
 		}
-
-		// Get CSRF token from session
-		sessionToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
-		if !ok || sessionToken == "" {
-			log.Warn().Msg("No CSRF token found in session")
-			h.renderLoginForm(w, r, "Session expired. Please try again.")
-			return
-		}
-
-		// Validate CSRF token
-		if subtle.ConstantTimeCompare([]byte(csrfToken), []byte(sessionToken)) != 1 {
-			log.Warn().Msg("CSRF token validation failed")
-			h.renderLoginForm(w, r, "Invalid request. Please try again.")
-			return
-		}
+		h.renderLoginForm(w, r, errMsg)
+		return
 	}
 
 	// Get username and password from form
@@ -412,18 +369,20 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get Proxmox client for user authentication
-	proxmoxClient := h.stateManager.GetProxmoxClient()
-	if proxmoxClient == nil {
-		log.Error().Msg("Proxmox client not available for user authentication")
+	// Create a new Proxmox client for user authentication
+	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
+	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
+
+	if proxmoxURL == "" {
+		log.Error().Msg("PROXMOX_URL is not configured")
 		h.renderLoginForm(w, r, "Authentication service unavailable. Please try again later.")
 		return
 	}
 
-	// Cast to concrete client to access Login method
-	pxClient, ok := proxmoxClient.(*proxmox.Client)
-	if !ok {
-		log.Error().Msg("Invalid Proxmox client type for user authentication")
+	// We create a new cookie-based client for user/pass login
+	pxClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create Proxmox client for user authentication")
 		h.renderLoginForm(w, r, "Authentication service unavailable. Please try again later.")
 		return
 	}
@@ -439,73 +398,86 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Also establish cookie-based authentication for console access
-	// Create a cookie-auth client for the same user
-	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
-	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
-
-	if proxmoxURL != "" {
-		cookieClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
-		if err == nil {
-			if err := cookieClient.Login(ctx, username, password, "pve"); err == nil {
-				// Store the cookie auth credentials in session for console access
-				sessionManager.Put(r.Context(), "pve_auth_cookie", cookieClient.PVEAuthCookie)
-				sessionManager.Put(r.Context(), "csrf_prevention_token", cookieClient.CSRFPreventionToken)
-				log.Debug().Str("username", username).Msg("Cookie authentication established for console access")
-			} else {
-				log.Warn().Err(err).Str("username", username).Msg("Failed to establish cookie auth for console - console access may be limited")
-			}
-		}
-	}
+	// Store the cookie auth credentials in session for console access
+	sessionManager.Put(r.Context(), "pve_auth_cookie", pxClient.PVEAuthCookie)
+	sessionManager.Put(r.Context(), "csrf_prevention_token", pxClient.CSRFPreventionToken)
+	log.Debug().Str("username", username).Msg("Cookie authentication established for console access")
 
 	log.Debug().Str("username", username).Msg("User authentication successful via Proxmox, creating session")
 
-	// Create new session with fresh token
-	if err := sessionManager.RenewToken(r.Context()); err != nil {
-		log.Error().Err(err).Msg("Failed to renew session token")
+	if err := establishSession(w, r, false, username); err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	// Store authentication data in session (user, not admin)
-	sessionManager.Put(r.Context(), "authenticated", true)
-	sessionManager.Put(r.Context(), "is_admin", false)
-	sessionManager.Put(r.Context(), "username", username)
+	redirectURL := getRedirectURL(r, "/vm/create")
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
 
-	// Generate new CSRF token for the session
+// establishSession renews the session token and sets authentication data.
+func establishSession(_ http.ResponseWriter, r *http.Request, isAdmin bool, username string) error {
+	log := logger.Get().With().Str("function", "establishSession").Logger()
+
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		return fmt.Errorf("session manager not available")
+	}
+
+	// Renew session token to prevent session fixation
+	if err := sessionManager.RenewToken(r.Context()); err != nil {
+		log.Error().Err(err).Msg("Failed to renew session token")
+		return fmt.Errorf("internal server error")
+	}
+
+	// Store authentication data
+	sessionManager.Put(r.Context(), "authenticated", true)
+	sessionManager.Put(r.Context(), "is_admin", isAdmin)
+	if username != "" {
+		sessionManager.Put(r.Context(), "username", username)
+	}
+
+	// Generate a new CSRF token for the new session
 	newCSRFToken, err := security.GenerateCSRFToken()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to generate CSRF token")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
+		log.Error().Err(err).Msg("Failed to generate new CSRF token")
+		return fmt.Errorf("internal server error")
 	}
 	sessionManager.Put(r.Context(), "csrf_token", newCSRFToken)
 
 	log.Info().
 		Str("session_id", sessionManager.Token(r.Context())).
 		Str("username", username).
-		Msg("User logged in successfully via Proxmox")
+		Bool("is_admin", isAdmin).
+		Msg("User session established")
 
-	// Redirect to VM creation page or return URL for regular users
-	redirectURL := r.FormValue("return")
-	if redirectURL == "" {
-		redirectURL = r.URL.Query().Get("return")
-	}
-	if redirectURL == "" {
-		redirectURL = r.FormValue("redirect")
-	}
-	if redirectURL == "" {
-		redirectURL = r.URL.Query().Get("redirect")
-	}
-	if redirectURL == "" {
-		redirectURL = "/vm/create" // Default redirect for users
-	}
+	return nil
+}
 
-	// Ensure the URL has a scheme
-	if len(redirectURL) > 0 && redirectURL[0] != '/' {
-		redirectURL = "/" + redirectURL
+// getRedirectURL determines the redirect URL from form values or query parameters.
+func getRedirectURL(r *http.Request, defaultURL string) string {
+	// Check form values first, then query parameters
+	url := r.FormValue("return")
+	if url == "" {
+		url = r.URL.Query().Get("return")
+	}
+	if url == "" {
+		url = r.FormValue("redirect")
+	}
+	if url == "" {
+		url = r.URL.Query().Get("redirect")
 	}
 
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	// Use default if no URL is found
+	if url == "" {
+		url = defaultURL
+	}
+
+	// Ensure the URL is a local path
+	if len(url) > 0 && url[0] != '/' {
+		url = "/" + url
+	}
+
+	return url
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
@@ -527,28 +499,11 @@ func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, er
 		return
 	}
 
-	// Get CSRF token from context (should be set by CSRFGeneratorMiddleware)
-	var csrfToken string
-	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok && token != "" {
-		csrfToken = token
-		log.Debug().Msg("Using CSRF token from request context")
-	} else {
-		// Fallback to session if not in context
-		if token, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && token != "" {
-			csrfToken = token
-			log.Debug().Msg("Using CSRF token from session")
-		} else {
-			// Generate a new CSRF token as last resort
-			var err error
-			csrfToken, err = security.GenerateCSRFToken()
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to generate CSRF token")
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			sessionManager.Put(r.Context(), "csrf_token", csrfToken)
-			log.Debug().Msg("Generated new CSRF token")
-		}
+	csrfToken, err := getOrSetCSRFToken(r)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get or set CSRF token")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	// Prepare template data with CSRF token

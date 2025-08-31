@@ -2,7 +2,6 @@
 package security
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -146,8 +145,8 @@ func CSRFGeneratorMiddleware(next http.Handler) http.Handler {
 			log.Debug().Msg("CSRF token generated; persisted to session if available")
 		}
 
-		// Add the token to the request context
-		ctx := context.WithValue(r.Context(), CSRFTokenContextKey, csrfToken)
+		// Add the token to the request context using the new helper function.
+		ctx := WithCSRFToken(r.Context(), csrfToken)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)

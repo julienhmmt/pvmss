@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -13,7 +14,7 @@ import (
 	"pvmss/logger"
 )
 
-// AdminHandler gère les routes d'administration
+// AdminHandler handles administration routes
 type AdminHandler struct {
 	stateManager state.StateManager
 }
@@ -45,13 +46,27 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 				log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes")
 				errMsg = "Failed to retrieve nodes"
 			} else {
+				var wg sync.WaitGroup
+				detailsChan := make(chan *proxmox.NodeDetails, len(nodes))
+
 				for _, nodeName := range nodes {
-					nd, nErr := proxmox.GetNodeDetails(pc, nodeName)
-					if nErr != nil {
-						log.Warn().Err(nErr).Str("node", nodeName).Msg("Failed to retrieve node details; skipping node")
-						continue
-					}
-					nodeDetails = append(nodeDetails, nd)
+					wg.Add(1)
+					go func(name string) {
+						defer wg.Done()
+						nd, nErr := proxmox.GetNodeDetails(pc, name)
+						if nErr != nil {
+							log.Warn().Err(nErr).Str("node", name).Msg("Failed to retrieve node details; skipping node")
+							return
+						}
+						detailsChan <- nd
+					}(nodeName)
+				}
+
+				wg.Wait()
+				close(detailsChan)
+
+				for detail := range detailsChan {
+					nodeDetails = append(nodeDetails, detail)
 				}
 			}
 		}
@@ -71,12 +86,12 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 	renderTemplateInternal(w, r, "admin_nodes", data)
 }
 
-// NewAdminHandler crée une nouvelle instance de AdminHandler
+// NewAdminHandler creates a new instance of AdminHandler
 func NewAdminHandler(sm state.StateManager) *AdminHandler {
 	return &AdminHandler{stateManager: sm}
 }
 
-// AdminPageHandler gère la page d'administration
+// AdminPageHandler handles the administration page
 func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := logger.Get().With().
 		Str("handler", "AdminHandler").
@@ -91,7 +106,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	http.Redirect(w, r, "/admin/nodes", http.StatusSeeOther)
 }
 
-// RegisterRoutes enregistre les routes d'administration
+// RegisterRoutes registers administration routes
 func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
 	log := logger.Get().With().
 		Str("component", "AdminHandler").
@@ -102,13 +117,12 @@ func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/admin", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.AdminPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
-	log.Debug().Str("method", "GET").Str("path", "/admin").Msg("Route d'administration enregistrée avec RequireAdminAuth")
+	log.Debug().Str("method", "GET").Str("path", "/admin").Msg("Admin route registered with RequireAdminAuth")
 
 	// Additional admin subpages (protected with admin privileges)
 	router.GET("/admin/nodes", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.NodesPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
-	log.Debug().Str("method", "GET").Str("path", "/admin/nodes").Msg("Route admin/nodes enregistrée avec RequireAdminAuth")
-
-	log.Info().Msg("Routes d'administration enregistrées avec succès avec protection admin")
+	log.Debug().Str("method", "GET").Str("path", "/admin/nodes").Msg("admin/nodes route registered with RequireAdminAuth")
+	log.Info().Msg("Admin routes registered successfully with admin protection")
 }

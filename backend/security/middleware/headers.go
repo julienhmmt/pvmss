@@ -34,11 +34,9 @@ func getSecurityHeaders() map[string]string {
 	headers := map[string]string{
 		"X-Content-Type-Options": "nosniff",
 		"X-Frame-Options":        "DENY",
-		"X-XSS-Protection":       "1; mode=block",
 		"Referrer-Policy":        "strict-origin-when-cross-origin",
 		"Permissions-Policy":     "camera=(), microphone=(), geolocation=()",
-		// Apply a reasonable default CSP in all environments to reduce risk.
-		// In development, this policy is permissive enough for inline styles/scripts already configured below.
+		// Apply a reasonable default CSP. In production, this is made stricter.
 		"Content-Security-Policy": getCSP(),
 	}
 
@@ -49,10 +47,22 @@ func getSecurityHeaders() map[string]string {
 }
 
 func getCSP() string {
-	return "default-src 'self'; " +
-		"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-		"style-src 'self' 'unsafe-inline'; " +
-		"img-src 'self' data:; " +
-		"font-src 'self'; " +
-		"connect-src 'self'"
+	// Base CSP with settings for development and production.
+	baseSrc := "'self'"
+	scriptSrc := "'self' 'unsafe-inline'"
+	styleSrc := "'self' 'unsafe-inline'"
+	connectSrc := "'self'"
+
+	// In development, allow 'unsafe-eval' for faster development cycles (e.g., for hot-reloading or certain libraries).
+	// In production, this is removed to enhance security.
+	if os.Getenv("ENV") != "production" {
+		scriptSrc += " 'unsafe-eval'"
+	}
+
+	return "default-src " + baseSrc + "; " +
+		"script-src " + scriptSrc + "; " +
+		"style-src " + styleSrc + "; " +
+		"img-src " + baseSrc + " data:; " +
+		"font-src " + baseSrc + "; " +
+		"connect-src " + connectSrc
 }

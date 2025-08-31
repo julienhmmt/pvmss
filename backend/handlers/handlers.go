@@ -17,7 +17,6 @@ import (
 	"pvmss/security"
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
-	// "pvmss/backend/websocket"
 )
 
 // withStaticCaching wraps a static file handler to add strong caching headers.
@@ -136,27 +135,24 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Inject state manager into request context for downstream usage
 	handler = stateManagerContextMiddleware(stateManager)(handler)
 
-	// Get the session manager
+	// Get the session manager.
 	sessionManager := stateManager.GetSessionManager()
 	if sessionManager == nil {
 		log.Warn().Msg("Session manager is not available, running with limited functionality")
 	} else {
-		// Add our custom session middleware (diagnostics and headers/CSRF are applied after)
-		handler = securityMiddleware.SessionMiddleware(handler)
+		// IMPORTANT: Middleware order matters (outermost wrapper in code is applied last at runtime).
+		// The desired runtime execution order is: LoadAndSave -> SessionMiddleware -> CSRF -> Headers -> router
 
-		// Debug middleware (after session)
-		handler = sessionDebugMiddleware(handler)
-
-		// IMPORTANT: Order matters (outermost first in code, innermost executes first):
-		// We want runtime order: LoadAndSave -> InjectSession -> CSRFGenerator -> CSRF -> Headers -> CSRFMiddleware -> router
-		// Apply inner to outer accordingly (wrapping inside-out below):
+		// Apply middleware in reverse order of execution (inner to outer).
 		handler = securityMiddleware.CSRF(handler)
 		handler = securityMiddleware.Headers(handler)
-		handler = middleware.CSRFMiddleware(handler)
 		handler = security.CSRFGeneratorMiddleware(handler)
 
-		// Inject scs.SessionManager into context so security.GetSession finds it BEFORE CSRF/headers run at runtime
-		handler = security.InjectSessionManagerMiddleware(sessionManager)(handler)
+		// Inject our custom session manager into the context.
+		handler = securityMiddleware.SessionMiddleware(sessionManager)(handler)
+
+		// Add session debug middleware if needed (after session injection).
+		handler = sessionDebugMiddleware(handler)
 	}
 
 	// Proxmox status middleware (after CSRF validation)
@@ -175,11 +171,12 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// However, to avoid unnecessary session churn on static assets and health checks,
 	// we bypass LoadAndSave for those paths.
 	if sessionManager != nil {
-		// Capture the current handler chain to avoid self-recursion in the closure
+		// Capture the current handler chain to avoid self-recursion in the closure.
 		baseHandler := handler
-		// Pre-wrap once to avoid allocating per-request
+		// Pre-wrap the LoadAndSave middleware to avoid allocating it on every request.
 		withSession := sessionManager.LoadAndSave(baseHandler)
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Bypass session management for static assets and health checks to reduce overhead.
 			if isStaticPath(r.URL.Path) || r.URL.Path == "/health" {
 				baseHandler.ServeHTTP(w, r)
 				return
@@ -210,7 +207,7 @@ func stateManagerContextMiddleware(sm state.StateManager) func(http.Handler) htt
 	}
 }
 
-// setupRoutes configure toutes les routes de l'application
+// setupRoutes configures all application routes
 func setupRoutes(
 	router *httprouter.Router,
 	authHandler *AuthHandler,
@@ -226,7 +223,7 @@ func setupRoutes(
 	themeHandler *ThemeHandler,
 	userPoolHandler *UserPoolHandler,
 ) {
-	// Enregistrer les routes de chaque gestionnaire
+	// Register routes for each handler
 	authHandler.RegisterRoutes(router)
 	adminHandler.RegisterRoutes(router)
 	vmHandler.RegisterRoutes(router)
@@ -240,35 +237,32 @@ func setupRoutes(
 	themeHandler.RegisterRoutes(router)
 	userPoolHandler.RegisterRoutes(router)
 
-	// Route d'accueil
+	// Home route
 	router.GET("/", IndexRouterHandler)
 }
 
-// setupStaticFiles configure le serveur de fichiers statiques
+// setupStaticFiles configures the static file server
 func setupStaticFiles(router *httprouter.Router) {
-	// Récupère le chemin de base du répertoire frontend.
+	// Get the base path of the frontend directory.
 	basePath := state.GetTemplatesPath()
 
-	// Crée des gestionnaires de fichiers spécifiques pour chaque sous-répertoire statique.
+	// Create specific file handlers for each static subdirectory.
 	cssServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "css"))))
 	jsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "js"))))
-	imagesServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "images"))))
 	webfontsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "webfonts"))))
 
-	// Configure les routes pour servir les fichiers statiques en utilisant StripPrefix.
-	// Cela garantit que le serveur de fichiers reçoit le bon chemin relatif.
+	// Configure routes to serve static files using StripPrefix.
+	// This ensures that the file server receives the correct relative path.
 	router.Handler(http.MethodGet, "/css/*filepath", http.StripPrefix("/css/", cssServer))
 	router.Handler(http.MethodHead, "/css/*filepath", http.StripPrefix("/css/", cssServer))
 	router.Handler(http.MethodGet, "/js/*filepath", http.StripPrefix("/js/", jsServer))
 	router.Handler(http.MethodHead, "/js/*filepath", http.StripPrefix("/js/", jsServer))
-	router.Handler(http.MethodGet, "/images/*filepath", http.StripPrefix("/images/", imagesServer))
-	router.Handler(http.MethodHead, "/images/*filepath", http.StripPrefix("/images/", imagesServer))
 	router.Handler(http.MethodGet, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
 	router.Handler(http.MethodHead, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
 	router.Handler(http.MethodGet, "/favicon.ico", http.HandlerFunc(serveFavicon))
 	router.Handler(http.MethodHead, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
-	logger.Get().Info().Str("path", basePath).Msg("Service des fichiers statiques configuré pour css, js, images et webfonts")
+	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured for css, js, images, and webfonts")
 }
 
 // isStaticPath returns true when the request is for a static asset we serve directly
@@ -276,7 +270,7 @@ func isStaticPath(p string) bool {
 	if p == "/favicon.ico" {
 		return true
 	}
-	return hasAnyPrefix(p, "/css/", "/js/", "/images/", "/webfonts/")
+	return hasAnyPrefix(p, "/css/", "/js/", "/webfonts/")
 }
 
 func hasAnyPrefix(s string, prefixes ...string) bool {
@@ -288,7 +282,7 @@ func hasAnyPrefix(s string, prefixes ...string) bool {
 	return false
 }
 
-// sessionDebugMiddleware est un middleware de débogage pour les sessions
+// sessionDebugMiddleware is a debug middleware for sessions
 func sessionDebugMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := logger.Get().With().
@@ -297,13 +291,13 @@ func sessionDebugMiddleware(next http.Handler) http.Handler {
 			Str("path", r.URL.Path).
 			Logger()
 
-		// Log des en-têtes de la requête
+		// Log request headers
 		headers := make(map[string]string)
 		for name, values := range r.Header {
-			headers[name] = values[0] // On ne prend que la première valeur pour simplifier
+			headers[name] = values[0] // We only take the first value for simplicity
 		}
 
-		// Log détaillé des cookies
+		// Detailed cookie logging
 		cookies := make(map[string]string)
 		for _, cookie := range r.Cookies() {
 			cookies[cookie.Name] = cookie.Value
@@ -314,14 +308,14 @@ func sessionDebugMiddleware(next http.Handler) http.Handler {
 				Str("domain", cookie.Domain).
 				Bool("secure", cookie.Secure).
 				Bool("http_only", cookie.HttpOnly).
-				Msg("Cookie reçu dans la requête")
+				Msg("Cookie received in request")
 		}
 
-		// Log avant le prochain middleware
+		// Log before the next middleware
 		log.Debug().
 			Interface("headers", headers).
 			Interface("cookies", cookies).
-			Msg("Requête reçue - avant traitement")
+			Msg("Request received - before processing")
 
 		// Skip ResponseWriter wrapping for WebSocket requests to avoid hijacking issues
 		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket" ||
@@ -334,28 +328,28 @@ func sessionDebugMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Création d'un wrapper pour capturer les en-têtes de réponse
+		// Create a wrapper to capture response headers
 		ww := &responseWriterWrapper{ResponseWriter: w, status: 200}
 
-		// Appel au prochain middleware
+		// Call the next middleware
 		next.ServeHTTP(ww, r)
 
-		// Log des en-têtes de réponse
+		// Log response headers
 		log.Debug().
 			Int("status_code", ww.status).
 			Interface("response_headers", ww.Header()).
-			Msg("Réponse envoyée")
+			Msg("Response sent")
 
-		// Log spécifique pour les cookies de session dans la réponse
+		// Specific log for session cookies in the response
 		for _, cookie := range ww.Header()["Set-Cookie"] {
 			log.Debug().
 				Str("set_cookie", cookie).
-				Msg("Cookie défini dans la réponse")
+				Msg("Cookie set in response")
 		}
 	})
 }
 
-// responseWriterWrapper est un wrapper pour capturer le code de statut HTTP
+// responseWriterWrapper is a wrapper to capture the HTTP status code
 type responseWriterWrapper struct {
 	http.ResponseWriter
 	status int

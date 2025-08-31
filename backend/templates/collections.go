@@ -6,24 +6,40 @@ import (
 	"sort"
 )
 
-// sortSlice sorts a slice of strings
-func sortSlice(slice interface{}) []string {
+// sortSlice sorts a slice. It provides type-specific sorting for []int, []float64,
+// and []string. For all other slice types, it converts elements to their string
+// representation and performs a lexicographical sort.
+func sortSlice(slice interface{}) (interface{}, error) {
 	if slice == nil {
-		return []string{}
+		return nil, nil
 	}
 
 	val := reflect.ValueOf(slice)
 	if val.Kind() != reflect.Slice {
-		return []string{}
+		return nil, fmt.Errorf("sortSlice can only sort slices, got %s", val.Kind())
 	}
 
-	result := make([]string, val.Len())
-	for i := 0; i < val.Len(); i++ {
-		result[i] = fmt.Sprintf("%v", val.Index(i).Interface())
+	// Create a new slice of the same type and copy elements to avoid modifying the original
+	newSlice := reflect.MakeSlice(val.Type(), val.Len(), val.Len())
+	reflect.Copy(newSlice, val)
+
+	switch newSlice.Interface().(type) {
+	case []string:
+		sort.Strings(newSlice.Interface().([]string))
+	case []int:
+		sort.Ints(newSlice.Interface().([]int))
+	case []float64:
+		sort.Float64s(newSlice.Interface().([]float64))
+	default:
+		// Fallback for other types: sort based on string representation
+		sort.SliceStable(newSlice.Interface(), func(i, j int) bool {
+			iStr := fmt.Sprintf("%v", newSlice.Index(i).Interface())
+			jStr := fmt.Sprintf("%v", newSlice.Index(j).Interface())
+			return iStr < jStr
+		})
 	}
 
-	sort.Strings(result)
-	return result
+	return newSlice.Interface(), nil
 }
 
 // reverseSlice reverses a slice

@@ -103,22 +103,22 @@
         </div>
     </div>
 
+    <script src="/js/crypto-js.min.js"></script>
     <script>
         // VNC Client implementation
         class ConsoleClient {
-            constructor(wsUrl, canvas, ticket) {
+            constructor(wsUrl, canvas, password) {
                 this.wsUrl = wsUrl;
                 this.canvas = canvas;
-                this.ticket = ticket;
+                this.password = password; // This is the VNC password
                 this.ws = null;
                 this.statusElement = document.getElementById('status-indicator');
-                this.state = 'disconnected';
+                this.state = 'connecting'; // Start directly in connecting state
                 this.queue = [];
             }
 
             connect() {
                 this.updateStatus('Connecting...', 'info');
-                this.state = 'connecting';
                 try {
                     this.ws = new WebSocket(this.wsUrl);
                     this.ws.binaryType = 'arraybuffer';
@@ -133,15 +133,35 @@
                     };
 
                     this.ws.onclose = (event) => {
-                        this.state = 'disconnected';
-                        this.updateStatus('Disconnected', 'danger');
                         console.log('WebSocket closed:', event.code, event.reason);
+                        // Only update state if we're not already disconnected
+                        if (this.state !== 'disconnected') {
+                            this.state = 'disconnected';
+                            this.updateStatus('Disconnected', 'danger');
+                        }
+                        // Clear the message queue on disconnect
+                        this.queue = [];
+                        // Clear any pending frame requests
+                        if (this.pendingFrameRequest) {
+                            cancelAnimationFrame(this.pendingFrameRequest);
+                            this.pendingFrameRequest = null;
+                        }
                     };
 
                     this.ws.onerror = (error) => {
-                        this.state = 'failed';
-                        this.updateStatus('Connection Error', 'danger');
                         console.error('WebSocket error:', error);
+                        // Only update state if we're not already in a failed state
+                        if (this.state !== 'failed') {
+                            this.state = 'failed';
+                            this.updateStatus('Connection Error', 'danger');
+                        }
+                        // Clear the message queue on error
+                        this.queue = [];
+                        // Clear any pending frame requests
+                        if (this.pendingFrameRequest) {
+                            cancelAnimationFrame(this.pendingFrameRequest);
+                            this.pendingFrameRequest = null;
+                        }
                     };
 
                     this.setupInputHandlers();
@@ -149,6 +169,13 @@
                     this.state = 'failed';
                     this.updateStatus('Connection Failed', 'danger');
                     console.error('Failed to connect:', error);
+                    // Clear the message queue on connection failure
+                    this.queue = [];
+                    // Clear any pending frame requests
+                    if (this.pendingFrameRequest) {
+                        cancelAnimationFrame(this.pendingFrameRequest);
+                        this.pendingFrameRequest = null;
+                    }
                 }
             }
 
@@ -160,114 +187,174 @@
 
             send(data) {
                 if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                    this.ws.send(data);
+                    try {
+                        if (data instanceof Uint8Array) {
+                            this.ws.send(data);
+                        } else if (data instanceof ArrayBuffer) {
+                            this.ws.send(data);
+                        } else if (Array.isArray(data)) {
+                            this.ws.send(new Uint8Array(data));
+                        } else {
+                            console.error('Invalid data type for send:', typeof data);
+                        }
+                    } catch (error) {
+                        console.error('Error sending data:', error);
+                        this.disconnect();
+                    }
+                } else {
+                    console.warn('WebSocket not open, cannot send data');
                 }
             }
 
             handleVNCMessage(data) {
-                this.queue.push(...new Uint8Array(data));
+                // All incoming data is binary VNC data
+                if (data instanceof ArrayBuffer) {
+                    this.queue.push(...new Uint8Array(data));
+                } else {
+                    console.warn('Received non-binary data:', data);
+                }
 
-                switch (this.state) {
-                    case 'connecting': // ProtocolVersion
-                        if (this.queue.length >= 12) {
-                            const version = String.fromCharCode.apply(null, this.queue.splice(0, 12));
-                            console.log('Server VNC version:', version.trim());
-                            this.send(version); // Respond with the same version
-                            this.state = 'security';
-                            this.updateStatus('Authenticating...', 'info');
-                        }
-                        break;
+                // Process VNC protocol messages
+                this.processVNCMessage();
+            }
 
-                    case 'security': // Security Types
-                        if (this.queue.length >= 1) {
-                            const numTypes = this.queue.shift();
-                            if (this.queue.length >= numTypes) {
-                                const types = this.queue.splice(0, numTypes);
-                                console.log('Supported security types:', types);
-                                if (types.includes(2)) { // VNC Authentication
-                                    this.send(new Uint8Array([2]));
-                                    this.state = 'authentication';
-                                } else {
-                                    console.error('Unsupported security type');
-                                    this.disconnect();
+            processVNCMessage() {
+                // Keep processing messages while we have enough data
+                let processed = true;
+                while (processed) {
+                    processed = false;
+                    
+                    switch (this.state) {
+                        case 'connecting': // ProtocolVersion
+                            if (this.queue.length >= 12) {
+                                const version = String.fromCharCode.apply(null, this.queue.splice(0, 12));
+                                console.log('Server VNC version:', version.trim());
+                                this.send(new TextEncoder().encode(version)); // Respond with the same version
+                                this.state = 'security';
+                                this.updateStatus('Authenticating...', 'info');
+                                processed = true;
+                            }
+                            break;
+
+                        case 'security': // Security Types
+                            if (this.queue.length >= 1) {
+                                const numTypes = this.queue[0];
+                                if (this.queue.length >= 1 + numTypes) {
+                                    this.queue.shift(); // Remove the count byte
+                                    const types = this.queue.splice(0, numTypes);
+                                    console.log('Supported security types:', types);
+                                    if (types.includes(2)) { // VNC Authentication
+                                        this.send(new Uint8Array([2]));
+                                        this.state = 'authentication';
+                                        processed = true;
+                                    } else if (types.includes(1)) { // None
+                                        this.send(new Uint8Array([1]));
+                                        this.state = 'security-result';
+                                        processed = true;
+                                    } else {
+                                        console.error('Unsupported security type');
+                                        this.disconnect();
+                                        return;
+                                    }
                                 }
                             }
-                        }
-                        break;
+                            break;
 
-                    case 'authentication': // VNC Auth Challenge
-                        if (this.queue.length >= 16) {
-                            const challenge = this.queue.splice(0, 16);
-                            console.log('Received VNC auth challenge.');
-                            const ticketParts = this.ticket.split('::');
-                            if (ticketParts.length >= 3) {
-                                const base64Ticket = ticketParts[2];
-                                const binaryTicket = Uint8Array.from(atob(base64Ticket), c => c.charCodeAt(0));
-                                this.send(binaryTicket);
-                            } else {
-                                console.error('Invalid ticket format');
-                                this.disconnect();
+                        case 'authentication': // VNC Auth Challenge
+                            if (this.queue.length >= 16) {
+                                const challenge = this.queue.splice(0, 16);
+                                console.log('Debug: Authentication challenge received:', challenge);
+                                const key = CryptoJS.enc.Utf8.parse(this.password);
+                                const wordArray = CryptoJS.lib.WordArray.create(challenge);
+                                const encrypted = CryptoJS.DES.encrypt(wordArray, key, { mode: CryptoJS.mode.ECB });
+                                const responseBytes = new Uint8Array(16);
+                                for (let i = 0; i < 16; i++) {
+                                    responseBytes[i] = (encrypted.ciphertext.words[Math.floor(i / 4)] >>> ((3 - (i % 4)) * 8)) & 0xff;
+                                }
+                                this.send(responseBytes);
+                                this.state = 'security-result';
                             }
-                            this.state = 'security-result';
-                        }
-                        break;
+                            break;
 
-                    case 'security-result':
-                        if (this.queue.length >= 4) {
-                            const result = new DataView(new Uint8Array(this.queue.splice(0, 4)).buffer).getUint32(0);
-                            if (result === 0) { // OK
-                                console.log('Authentication successful.');
-                                this.state = 'client-init';
-                                this.send(new Uint8Array([1])); // Send ClientInit (shared)
-                                this.updateStatus('Initializing...', 'success');
-                            } else {
-                                console.error('Authentication failed.');
-                                this.updateStatus('Auth Failed', 'danger');
-                                this.disconnect();
-                            }
-                        }
-                        break;
-
-                    case 'client-init': // ServerInit
-                        if (this.queue.length >= 24) {
-                            const serverInit = new DataView(new Uint8Array(this.queue.splice(0, 24)).buffer);
-                            this.fbWidth = serverInit.getUint16(0);
-                            this.fbHeight = serverInit.getUint16(2);
-                            this.pixelFormat = this.parsePixelFormat(this.queue.splice(0, 16));
-
-                            console.log(`ServerInit: ${this.fbWidth}x${this.fbHeight}`);
-                            this.canvas.width = this.fbWidth;
-                            this.canvas.height = this.fbHeight;
-                            this.ctx = this.canvas.getContext('2d');
-
-                            this.queue.splice(0, serverInit.getUint32(20)); // name-length
-
-                            this.state = 'connected';
-                            this.updateStatus('Connected', 'success');
-                            this.requestFramebufferUpdate(false, 0, 0, this.fbWidth, this.fbHeight);
-                        }
-                        break;
-
-                    case 'connected':
-                        while (this.queue.length > 0) {
-                            const messageType = this.queue.shift();
-                            switch (messageType) {
-                                case 0: // FramebufferUpdate
-                                    if (!this.handleFramebufferUpdate()) return;
-                                    break;
-                                case 2: // Bell
-                                    console.log('Bell!');
-                                    break;
-                                case 3: // ServerCutText
-                                    this.handleServerCutText();
-                                    break;
-                                default:
-                                    console.warn(`Unhandled message type: ${messageType}`);
-                                    this.queue = []; // Clear queue to prevent infinite loops
+                        case 'security-result':
+                            if (this.queue.length >= 4) {
+                                const result = new DataView(new Uint8Array(this.queue.splice(0, 4)).buffer).getUint32(0);
+                                console.log('Debug: Security result code:', result);
+                                if (result === 0) {
+                                    console.log('Debug: Authentication successful.');
+                                    this.state = 'client-init';
+                                    this.send(new Uint8Array([1])); // Send ClientInit (shared)
+                                    this.updateStatus('Initializing...', 'success');
+                                    processed = true;
+                                } else {
+                                    console.error('Debug: Authentication failed with code:', result);
+                                    this.updateStatus('Auth Failed', 'danger');
+                                    this.disconnect();
                                     return;
+                                }
                             }
-                        }
-                        break;
+                            break;
+
+                        case 'client-init': // ServerInit
+                            if (this.queue.length >= 24) {
+                                const serverInit = new DataView(new Uint8Array(this.queue.splice(0, 24)).buffer);
+                                this.fbWidth = serverInit.getUint16(0);
+                                this.fbHeight = serverInit.getUint16(2);
+                                const pixelFormatData = this.queue.splice(0, 16);
+                                this.pixelFormat = this.parsePixelFormat(pixelFormatData);
+
+                                console.log(`ServerInit: ${this.fbWidth}x${this.fbHeight}`);
+                                this.canvas.width = this.fbWidth;
+                                this.canvas.height = this.fbHeight;
+                                this.ctx = this.canvas.getContext('2d');
+
+                                const nameLength = serverInit.getUint32(20);
+                                if (this.queue.length >= nameLength) {
+                                    this.queue.splice(0, nameLength); // Skip the name
+                                    this.state = 'connected';
+                                    this.updateStatus('Connected', 'success');
+                                    this.requestFramebufferUpdate(false, 0, 0, this.fbWidth, this.fbHeight);
+                                    processed = true;
+                                } else {
+                                    // Put the ServerInit data back in the queue
+                                    this.queue.unshift(...new Uint8Array(pixelFormatData));
+                                    this.queue.unshift(...new Uint8Array(serverInit.buffer));
+                                }
+                            }
+                            break;
+
+                        case 'connected':
+                            if (this.queue.length > 0) {
+                                const messageType = this.queue[0];
+                                switch (messageType) {
+                                    case 0: // FramebufferUpdate
+                                        if (this.handleFramebufferUpdate()) {
+                                            processed = true;
+                                        }
+                                        break;
+                                    case 2: // Bell
+                                        if (this.queue.length >= 1) {
+                                            this.queue.shift();
+                                            console.log('Bell!');
+                                            processed = true;
+                                        }
+                                        break;
+                                    case 3: // ServerCutText
+                                        if (this.handleServerCutText()) {
+                                            processed = true;
+                                        }
+                                        break;
+                                    default:
+                                        if (this.queue.length >= 1) {
+                                            this.queue.shift();
+                                            console.warn(`Unhandled message type: ${messageType}`);
+                                            processed = true;
+                                        }
+                                        break;
+                                }
+                            }
+                            break;
+                    }
                 }
             }
 
@@ -304,6 +391,9 @@
             }
 
             sendPointerEvent(x, y) {
+                // Only send pointer events when connected
+                if (this.state !== 'connected') return;
+                
                 const buffer = new ArrayBuffer(6);
                 const view = new DataView(buffer);
                 view.setUint8(0, 5); // PointerEvent
@@ -314,6 +404,9 @@
             }
 
             sendKeyEvent(e, down) {
+                // Only send key events when connected
+                if (this.state !== 'connected') return;
+                
                 const keysym = this.getKeysym(e);
                 if (!keysym) {
                     console.warn('Unknown keysym for key:', e.code);
@@ -347,6 +440,22 @@
             }
 
             parsePixelFormat(format) {
+                if (format.length < 16) {
+                    console.error('Invalid pixel format data length:', format.length);
+                    // Return a default pixel format to prevent crashes
+                    return {
+                        bitsPerPixel: 32,
+                        depth: 24,
+                        bigEndian: 0,
+                        trueColor: 1,
+                        redMax: 255,
+                        greenMax: 255,
+                        blueMax: 255,
+                        redShift: 16,
+                        greenShift: 8,
+                        blueShift: 0,
+                    };
+                }
                 const pf = new DataView(new Uint8Array(format).buffer);
                 return {
                     bitsPerPixel: pf.getUint8(0),
@@ -391,7 +500,13 @@
                     if (encoding === 0) { // Raw encoding
                         const bytesPerPixel = this.pixelFormat.bitsPerPixel / 8;
                         const size = width * height * bytesPerPixel;
-                        if (this.queue.length < size) return false;
+                        if (this.queue.length < size) {
+                            // Put data back in queue if we don't have enough
+                            this.queue.unshift(...new Uint8Array(header.buffer));
+                            this.queue.unshift(...new Uint8Array(new Uint8Array(2).buffer)); // numRects
+                            this.queue.unshift(0); // padding
+                            return false;
+                        }
 
                         const data = this.queue.splice(0, size);
                         this.drawRawRect(x, y, width, height, data);
@@ -441,9 +556,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             const canvas = document.getElementById('noVNC_canvas');
             const ticket = '{{.VNCTicket}}';
-            const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '{{.WSProxyURL}}';
+            const vncPassword = '{{.VNCPassword}}';
 
-            const consoleClient = new ConsoleClient(wsUrl, canvas, ticket);
+            // Construct the WebSocket URL with the full ticket
+            const wsBaseUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '{{.WSProxyURL}}';
+            const wsUrl = wsBaseUrl + (wsBaseUrl.includes('?') ? '&' : '?') + 'vncticket=' + encodeURIComponent(ticket);
+            
+            console.log('Connecting to WebSocket URL:', wsUrl);
+            const consoleClient = new ConsoleClient(wsUrl, canvas, vncPassword);
             consoleClient.connect();
 
             // Fullscreen button

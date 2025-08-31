@@ -10,7 +10,7 @@ import (
 // GetCSRFToken retrieves the CSRF token from the request context.
 // It returns an empty string if the token is not found.
 func GetCSRFToken(r *http.Request) string {
-	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok {
+	if token, ok := security.CSRFTokenFromContext(r.Context()); ok {
 		return token
 	}
 	return ""
@@ -48,24 +48,10 @@ func CSRF(next http.Handler) http.Handler {
 			return
 		}
 
-		// Helper: safely read token from session without panicking if no session data
-		safeGet := func() (string, bool) {
-			if sessionManager == nil {
-				return "", false
-			}
-			defer func() {
-				if rec := recover(); rec != nil {
-					log.Debug().Interface("recover", rec).Msg("CSRFValidation: session Get panicked; treating as missing token")
-				}
-			}()
-			if v, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && v != "" {
-				return v, true
-			}
-			return "", false
-		}
-
-		sessionToken, ok := safeGet()
-		if !ok {
+		// Retrieve the expected token from the session.
+		// Using GetString is safer than a raw type assertion and avoids panics.
+		sessionToken := sessionManager.GetString(r.Context(), "csrf_token")
+		if sessionToken == "" {
 			log.Warn().Msg("Missing CSRF token in session during validation")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return

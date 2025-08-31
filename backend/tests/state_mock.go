@@ -7,15 +7,14 @@ import (
 	"time"
 
 	"pvmss/proxmox"
+	"pvmss/security"
 	"pvmss/state"
-
-	"github.com/alexedwards/scs/v2"
 )
 
 // MockStateManager is a mock implementation of the StateManager interface for testing
 type MockStateManager struct {
 	templates      *template.Template
-	sessionManager *scs.SessionManager
+	sessionManager *security.SessionManager
 	proxmoxClient  proxmox.ClientInterface // Changed to use interface
 	settings       *state.AppSettings
 	mu             sync.RWMutex
@@ -83,14 +82,14 @@ func (s *MockStateManager) SetTemplates(t *template.Template) error {
 }
 
 // GetSessionManager returns the session manager
-func (s *MockStateManager) GetSessionManager() *scs.SessionManager {
+func (s *MockStateManager) GetSessionManager() *security.SessionManager {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.sessionManager
 }
 
 // SetSessionManager sets the session manager
-func (s *MockStateManager) SetSessionManager(sm *scs.SessionManager) error {
+func (s *MockStateManager) SetSessionManager(sm *security.SessionManager) error {
 	if sm == nil {
 		return fmt.Errorf("session manager cannot be nil")
 	}

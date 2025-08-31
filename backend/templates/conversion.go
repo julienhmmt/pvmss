@@ -5,7 +5,10 @@ import (
 	"strconv"
 )
 
-// convertToInt converts various types to int
+// convertToInt converts a value of various types to an integer.
+// It handles standard integer types, floating-point numbers (with truncation),
+// and strings. If a string cannot be parsed as an integer, or if the input
+// type is unsupported, it returns 0.
 func convertToInt(v interface{}) int {
 	switch v := v.(type) {
 	case int:
@@ -42,12 +45,16 @@ func convertToInt(v interface{}) int {
 	}
 }
 
-// convertToString converts interface to string
+// convertToString converts any given value to its string representation using
+// the default formatting provided by fmt.Sprintf.
 func convertToString(v interface{}) string {
 	return fmt.Sprintf("%v", v)
 }
 
-// convertToFloat64 converts various types to float64
+// convertToFloat64 converts a value of various types to a float64.
+// It handles standard integer and floating-point types, as well as strings.
+// If a string cannot be parsed as a float, or if the input type is
+// unsupported, it returns 0.0.
 func convertToFloat64(v interface{}) float64 {
 	switch v := v.(type) {
 	case float64:

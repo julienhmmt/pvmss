@@ -299,7 +299,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!vncTicket) {
                         throw new Error('Missing VNC ticket in response');
                     }
-                    const consoleUrl = `/console/qemu/${encodeURIComponent(vmid)}?node=${encodeURIComponent(node)}&port=${encodeURIComponent(data.port)}&vncticket=${encodeURIComponent(vncTicket)}&vmname=${encodeURIComponent(vmname)}`;
+                    let consoleUrl = `/console/qemu/${encodeURIComponent(vmid)}?node=${encodeURIComponent(node)}&port=${encodeURIComponent(data.port)}&vncticket=${encodeURIComponent(vncTicket)}&vmname=${encodeURIComponent(vmname)}`;
+                    if (data.vncpassword) {
+                        consoleUrl += `&vncpassword=${encodeURIComponent(data.vncpassword)}`;
+                    }
 
                     // Open the console in a new tab
                     window.open(consoleUrl, '_blank', 'noopener,noreferrer');

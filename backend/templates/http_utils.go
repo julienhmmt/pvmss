@@ -7,36 +7,33 @@ import (
 	"pvmss/security"
 )
 
-// csrfToken generates a CSRF token input field for forms
-func csrfToken(r *http.Request) template.HTML {
+// getCsrfToken retrieves the CSRF token from the user's session.
+// It is a read-only operation and does not generate a token.
+func getCsrfToken(r *http.Request) string {
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
 		return ""
 	}
-
-	// Read-only: do not create/generate tokens in template helpers.
 	// CSRF token should be prepared by middleware and available in session/context.
 	token, _ := sessionManager.Get(r.Context(), "csrf_token").(string)
+	return token
+}
+
+// csrfToken generates a CSRF token input field for forms.
+func csrfToken(r *http.Request) template.HTML {
+	token := getCsrfToken(r)
 	if token == "" {
 		return ""
 	}
-
 	return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, token))
 }
 
-// csrfMeta generates a CSRF meta tag for JavaScript
+// csrfMeta generates a CSRF meta tag for JavaScript.
 func csrfMeta(r *http.Request) template.HTML {
-	sessionManager := security.GetSession(r)
-	if sessionManager == nil {
-		return ""
-	}
-
-	// Read-only: do not create/generate tokens in template helpers.
-	token, _ := sessionManager.Get(r.Context(), "csrf_token").(string)
+	token := getCsrfToken(r)
 	if token == "" {
 		return ""
 	}
-
 	return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, token))
 }
 

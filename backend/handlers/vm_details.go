@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -16,16 +17,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
-	"github.com/gomarkdown/markdown"
-	"github.com/julienschmidt/httprouter"
-
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
+
+	"github.com/gomarkdown/markdown"
+	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
 )
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 // VMStateManager defines the minimal state contract needed by VM details.
 type VMStateManager interface {
@@ -39,8 +48,7 @@ type VMHandler struct {
 	stateManager VMStateManager
 }
 
-// VMConsoleWebSocketProxy proxies noVNC websocket connections to Proxmox's vncwebsocket endpoint.
-// This function uses HTTP reverse proxy with proper WebSocket upgrade handling.
+// VMConsoleWebSocketProxy handles WebSocket connections for VM console access
 func (h *VMHandler) VMConsoleWebSocketProxy(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := logger.Get().With().
 		Str("handler", "VMConsoleWebSocketProxy").
@@ -49,18 +57,42 @@ func (h *VMHandler) VMConsoleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
+	log.Info().Msg("=== WEBSOCKET PROXY HANDLER CALLED ===")
+	log.Info().Str("full_url", r.URL.String()).Msg("Full request URL")
+	log.Info().Str("raw_query", r.URL.RawQuery).Msg("Raw query string")
+
+	// Extract VM ID and node from URL parameters
 	vmIDStr := ps.ByName("vmid")
-	node := strings.TrimSpace(r.URL.Query().Get("node"))
-	port := strings.TrimSpace(r.URL.Query().Get("port"))
-	vncticket := strings.TrimSpace(r.URL.Query().Get("vncticket"))
+	node := r.URL.Query().Get("node")
+	port := r.URL.Query().Get("port")
+	vncticket := r.URL.Query().Get("vncticket")
+
+	log.Info().
+		Str("vmid", vmIDStr).
+		Str("node", node).
+		Str("port", port).
+		Str("vncticket_present", fmt.Sprintf("%t", vncticket != "")).
+		Str("vncticket_length", fmt.Sprintf("%d", len(vncticket))).
+		Msg("WebSocket proxy handler received request parameters")
 
 	if vmIDStr == "" || node == "" || port == "" || vncticket == "" {
-		log.Warn().Msg("Missing required parameters for WebSocket proxy")
+		log.Error().
+			Str("vmid", vmIDStr).
+			Str("node", node).
+			Str("port", port).
+			Str("vncticket", vncticket).
+			Msg("Missing required parameters for WebSocket proxy")
 		http.Error(w, "Missing required parameters", http.StatusBadRequest)
 		return
 	}
 
-	// Determine Proxmox base URL
+	log.Info().Msg("All required parameters present, proceeding with WebSocket upgrade")
+	log.Info().
+		Str("vmid", vmIDStr).
+		Str("node", node).
+		Msg("Setting up WebSocket proxy connection")
+
+	// Build target URL for Proxmox WebSocket
 	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL not configured")
@@ -68,90 +100,288 @@ func (h *VMHandler) VMConsoleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	u, err := url.Parse(proxmoxURL)
+	var u *url.URL
+	var err error
+	u, err = url.Parse(proxmoxURL)
 	if err != nil || u.Host == "" {
 		log.Error().Err(err).Str("proxmoxURL", proxmoxURL).Msg("Invalid Proxmox URL")
 		http.Error(w, "Invalid Proxmox URL", http.StatusInternalServerError)
 		return
 	}
 
-	targetScheme := u.Scheme
-	if targetScheme == "" {
-		targetScheme = "https"
-	}
-
-	// Build target WebSocket URL for Proxmox
-	targetPath := fmt.Sprintf("/api2/json/nodes/%s/qemu/%s/vncwebsocket", node, vmIDStr)
-	targetQuery := url.Values{}
-	targetQuery.Set("port", port)
-	targetQuery.Set("vncticket", vncticket)
-
-	// Create reverse proxy for WebSocket
-	targetHost := &url.URL{Scheme: targetScheme, Host: u.Host}
-	proxy := httputil.NewSingleHostReverseProxy(targetHost)
-
-	// Configure TLS settings
-	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
-	proxy.Transport = &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: insecureSkip},
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	// Customize director to handle WebSocket upgrade properly
-	proxy.Director = func(req *http.Request) {
-		req.URL.Scheme = targetScheme
-		req.URL.Host = u.Host
-		req.URL.Path = targetPath
-		req.URL.RawQuery = targetQuery.Encode()
-		req.Host = u.Host
-
-		// Forward all original headers
-		for key, values := range r.Header {
-			req.Header[key] = values
-		}
-
-		// Add PVEAuthCookie if available
-		if c, err := r.Cookie("PVEAuthCookie"); err == nil && c != nil && c.Value != "" {
-			req.Header.Set("Cookie", "PVEAuthCookie="+c.Value)
-			log.Debug().Msg("Forwarding PVEAuthCookie to Proxmox WebSocket")
-		}
-
-		// Ensure WebSocket upgrade headers are preserved
-		if upgrade := r.Header.Get("Upgrade"); upgrade != "" {
-			req.Header.Set("Upgrade", upgrade)
-		}
-		if connection := r.Header.Get("Connection"); connection != "" {
-			req.Header.Set("Connection", connection)
-		}
-		if wsKey := r.Header.Get("Sec-WebSocket-Key"); wsKey != "" {
-			req.Header.Set("Sec-WebSocket-Key", wsKey)
-		}
-		if wsVersion := r.Header.Get("Sec-WebSocket-Version"); wsVersion != "" {
-			req.Header.Set("Sec-WebSocket-Version", wsVersion)
-		}
-		if wsProtocol := r.Header.Get("Sec-WebSocket-Protocol"); wsProtocol != "" {
-			req.Header.Set("Sec-WebSocket-Protocol", wsProtocol)
-		}
-	}
-
-	// Set up error handling
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Error().Err(err).Str("path", r.URL.Path).Msg("WebSocket proxy error")
-		http.Error(w, "WebSocket proxy error", http.StatusBadGateway)
-	}
-
 	log.Info().
 		Str("vmid", vmIDStr).
 		Str("node", node).
-		Str("target", targetHost.String()+targetPath).
+		Msg("Setting up WebSocket proxy connection")
+
+	// Create WebSocket upgrader
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true // Allow all origins for console access
+		},
+	}
+
+	log.Info().Msg("Attempting WebSocket upgrade")
+
+	// Upgrade the HTTP connection to WebSocket
+	clientConn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to upgrade client connection to WebSocket")
+		return
+	}
+	defer clientConn.Close()
+
+	log.Info().Msg("WebSocket upgrade successful")
+
+	// Now that we have the ticket, connect to Proxmox
+	log.Info().Msg("Connecting to Proxmox WebSocket with ticket")
+
+	// Build target WebSocket URL with correct scheme
+	targetScheme := "ws"
+	if u.Scheme == "https" {
+		targetScheme = "wss"
+	}
+
+	// Log the raw vncticket for debugging (without logging sensitive data)
+	log.Debug().
+		Str("vmid", vmIDStr).
+		Str("node", node).
+		Str("port", port).
+		Int("ticket_length", len(vncticket)).
+		Msg("Creating WebSocket connection to Proxmox")
+
+	targetURL := fmt.Sprintf("%s://%s/api2/json/nodes/%s/qemu/%s/vncwebsocket?port=%s&vncticket=%s",
+		targetScheme, u.Host, node, vmIDStr, port, url.QueryEscape(vncticket))
+
+	log.Info().
+		Str("target", fmt.Sprintf("%s://%s/api2/json/nodes/%s/qemu/%s/vncwebsocket?port=%s&vncticket=[REDACTED]", targetScheme, u.Host, node, vmIDStr, port)).
 		Msg("Proxying WebSocket connection to Proxmox")
 
-	// Serve the WebSocket proxy
-	proxy.ServeHTTP(w, r)
+	// Create dialer with TLS configuration and sensible timeouts
+	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
+	serverName := u.Hostname()
+	tlsCfg := &tls.Config{InsecureSkipVerify: insecureSkip, ServerName: serverName}
+	dialer := websocket.Dialer{
+		TLSClientConfig:   tlsCfg,
+		HandshakeTimeout:  10 * time.Second,
+		Proxy:             http.ProxyFromEnvironment,
+		NetDialContext:    (&net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+		EnableCompression: true,
+		Subprotocols:      []string{"binary"},
+	}
+
+	log.Info().
+		Bool("insecure_skip_verify", insecureSkip).
+		Str("tls_server_name", serverName).
+		Msg("Configured WebSocket TLS dialer")
+
+	// Set up headers for Proxmox connection
+	headers := http.Header{}
+
+	// Parse and propagate subprotocols via dialer (preferred over manual header)
+	if sp := r.Header.Get("Sec-WebSocket-Protocol"); sp != "" {
+		parts := strings.Split(sp, ",")
+		for i := range parts {
+			parts[i] = strings.TrimSpace(parts[i])
+		}
+		dialer.Subprotocols = parts
+	} else {
+		// Set default subprotocol if none provided
+		dialer.Subprotocols = []string{"binary"}
+	}
+
+	// Isolate and forward only the PVEAuthCookie for authentication.
+	// Forwarding all cookies can cause conflicts.
+	if pveAuthCookie, err := r.Cookie("PVEAuthCookie"); err == nil {
+		headers.Set("Cookie", pveAuthCookie.String())
+	} else {
+		log.Warn().Err(err).Msg("PVEAuthCookie not found in request to proxy")
+	}
+
+	// Set Origin explicitly to the Proxmox origin to avoid upstream Origin checks.
+	// This is critical for Proxmox to accept the WebSocket connection.
+	proxmoxOrigin := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	headers.Set("Origin", proxmoxOrigin)
+
+	// Also remove Sec-WebSocket-Key to let the dialer generate a fresh one.
+	headers.Del("Sec-WebSocket-Key")
+
+	// Remove other headers that might cause issues
+	headers.Del("Sec-WebSocket-Version")
+	headers.Del("Sec-WebSocket-Extensions")
+	headers.Del("Connection")
+	headers.Del("Upgrade")
+
+	log.Debug().Msgf("Forwarding headers to Proxmox: %+v", headers)
+
+	// Connect to Proxmox WebSocket
+	proxmoxConn, resp, err := dialer.Dial(targetURL, headers)
+	if err != nil {
+		status := 0
+		statusText := ""
+		if resp != nil {
+			status = resp.StatusCode
+			statusText = resp.Status
+			// Log response body for debugging
+			if resp.Body != nil {
+				body, _ := io.ReadAll(resp.Body)
+				log.Debug().Str("response_body", string(body)).Msg("Proxmox WebSocket dial response body")
+			}
+		}
+		log.Error().Err(err).Int("status", status).Str("status_text", statusText).Msg("Failed to dial Proxmox WebSocket")
+		http.Error(w, "Failed to connect to Proxmox WebSocket", http.StatusBadGateway)
+		return
+	}
+
+	defer proxmoxConn.Close()
+
+	// Start bidirectional proxy with proper message type handling
+	errChan := make(chan error, 2)
+
+	// Client to Proxmox proxy
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Msg("Panic in client->proxmox copy")
+			}
+		}()
+
+		for {
+			messageType, data, err := clientConn.ReadMessage()
+			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					log.Debug().Err(err).Msg("Client connection closed normally")
+				} else {
+					log.Debug().Err(err).Msg("Error reading from client")
+				}
+				errChan <- err
+				return
+			}
+
+			// Log message type and size for debugging
+			log.Debug().
+				Int("message_type", messageType).
+				Int("data_length", len(data)).
+				Msg("Received message from client")
+
+			// Handle special client messages
+			if messageType == websocket.TextMessage {
+				// Handle auth_request message from client
+				if string(data) == "auth_request" {
+					log.Debug().Msg("Received auth_request from client, sending auth_confirm with ticket")
+					// Send the ticket back to the client as a JSON message
+					response := map[string]interface{}{
+						"type":   "auth_confirm",
+						"ticket": vncticket,
+					}
+					responseBytes, err := json.Marshal(response)
+					if err != nil {
+						log.Error().Err(err).Msg("Failed to marshal auth_confirm response")
+						errChan <- err
+						return
+					}
+					if err := clientConn.WriteMessage(websocket.TextMessage, responseBytes); err != nil {
+						log.Error().Err(err).Msg("Failed to send auth_confirm to client")
+						errChan <- err
+						return
+					}
+					continue
+				}
+
+				log.Trace().
+					Int("message_type", messageType).
+					Str("text", string(data)).
+					Msg("Client->Proxmox text message")
+			} else if messageType == websocket.BinaryMessage {
+				if len(data) == 4 && string(data) == "\x01\x00\x00\x00" {
+					log.Info().Msg("VNC handshake: Client init message")
+				} else {
+					log.Trace().
+						Int("message_type", messageType).
+						Int("data_length", len(data)).
+						Msg("Client->Proxmox binary message")
+				}
+			}
+
+			// Forward the message to Proxmox
+			if err := proxmoxConn.WriteMessage(messageType, data); err != nil {
+				log.Error().
+					Err(err).
+					Int("message_type", messageType).
+					Int("data_length", len(data)).
+					Msg("Failed to forward message to Proxmox")
+				errChan <- err
+				return
+			}
+		}
+	}()
+
+	// Proxmox to client proxy
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error().Interface("panic", r).Msg("Panic in proxmox->client copy")
+			}
+		}()
+
+		for {
+			messageType, data, err := proxmoxConn.ReadMessage()
+			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+					log.Debug().Err(err).Msg("Proxmox connection closed normally")
+				} else {
+					log.Debug().Err(err).Msg("Error reading from Proxmox")
+				}
+				errChan <- err
+				return
+			}
+
+			// Debug VNC handshake messages
+			if messageType == websocket.BinaryMessage {
+				if len(data) >= 12 && string(data[:12]) == "RFB 003.008\n" {
+					log.Info().Msg("VNC handshake: Server version received")
+				} else if len(data) >= 2 && len(data) <= 4 {
+					log.Info().
+						Int("security_types_count", int(data[1])).
+						Msg("VNC handshake: Server security types")
+				} else if len(data) == 4 && data[0] == 0 {
+					log.Info().Msg("VNC handshake: Security handshake success")
+				} else if len(data) >= 24 {
+					log.Info().Msg("VNC handshake: Server init message received")
+				} else {
+					log.Trace().
+						Int("message_type", messageType).
+						Int("data_length", len(data)).
+						Msg("Proxmox->Client binary message")
+				}
+			} else if messageType == websocket.TextMessage {
+				log.Trace().
+					Int("message_type", messageType).
+					Str("text", string(data)).
+					Msg("Proxmox->Client text message")
+			}
+
+			// Forward the message to client
+			if err := clientConn.WriteMessage(messageType, data); err != nil {
+				log.Error().
+					Err(err).
+					Int("message_type", messageType).
+					Int("data_length", len(data)).
+					Msg("Failed to forward message to client")
+				errChan <- err
+				return
+			}
+		}
+	}()
+
+	// Wait for either connection to close
+	select {
+	case err := <-errChan:
+		log.Debug().Err(err).Msg("WebSocket proxy connection closed with error")
+	case <-time.After(5 * time.Minute):
+		log.Debug().Msg("WebSocket proxy connection timeout")
+	}
+	log.Debug().Msg("WebSocket proxy connection closed")
 }
 
 // VMConsoleProxyPage serves the noVNC console page from our server instead of redirecting to Proxmox
@@ -168,6 +398,7 @@ func (h *VMHandler) VMConsoleProxyPage(w http.ResponseWriter, r *http.Request, p
 	vmname := strings.TrimSpace(r.URL.Query().Get("vmname"))
 	port := strings.TrimSpace(r.URL.Query().Get("port"))
 	vncticket := strings.TrimSpace(r.URL.Query().Get("vncticket"))
+	vncpassword := strings.TrimSpace(r.URL.Query().Get("vncpassword"))
 
 	if vmID == "" || node == "" || port == "" || vncticket == "" {
 		log.Warn().Msg("Missing required parameters for console proxy")
@@ -199,11 +430,11 @@ func (h *VMHandler) VMConsoleProxyPage(w http.ResponseWriter, r *http.Request, p
 	// Construct the WebSocket proxy URL for the template.
 	// The scheme (ws/wss) and host are handled by the browser's window.location.
 	// We only need to provide the path and query parameters.
-	wsProxyURL := fmt.Sprintf("/api/console/qemu/%s/ws?node=%s&port=%s&vncticket=%s",
+	// Note: vncticket is passed as a separate parameter to avoid URL encoding issues
+	wsProxyURL := fmt.Sprintf("/api/console/qemu/%s/ws?node=%s&port=%s",
 		vmID,
 		url.QueryEscape(node),
-		url.QueryEscape(port),
-		url.QueryEscape(vncticket))
+		url.QueryEscape(port))
 
 	log.Debug().
 		Str("vmid", vmID).
@@ -213,13 +444,14 @@ func (h *VMHandler) VMConsoleProxyPage(w http.ResponseWriter, r *http.Request, p
 
 	// Render the console page with the WebSocket URL
 	data := map[string]interface{}{
-		"Title":      fmt.Sprintf("Console for %s", vmname),
-		"WSProxyURL": wsProxyURL,
-		"VMID":       vmID,
-		"VMName":     vmname,
-		"Node":       node,
-		"Port":       port,
-		"VNCTicket":  vncticket,
+		"Title":       fmt.Sprintf("Console for %s", vmname),
+		"WSProxyURL":  wsProxyURL,
+		"VMID":        vmID,
+		"VMName":      vmname,
+		"Node":        node,
+		"Port":        port,
+		"VNCTicket":   vncticket,
+		"VNCPassword": vncpassword,
 	}
 
 	// Add translation data
@@ -410,55 +642,20 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
-	// Try multiple authentication strategies in order of preference
-
-	// Strategy 1: Use existing PVE cookie from session (for authenticated users)
+	// Use session-based auth directly; remove unnecessary fallbacks.
+	var res *proxmox.ConsoleAuthResult
 	if pveAuthCookie, hasCookie := sessionManager.Get(r.Context(), "pve_auth_cookie").(string); hasCookie && pveAuthCookie != "" {
-		cookiePrefix := pveAuthCookie
-		if len(cookiePrefix) > 10 {
-			cookiePrefix = cookiePrefix[:10]
-		}
-		log.Debug().Str("cookie_prefix", cookiePrefix).Msg("Attempting console access with stored PVE auth cookie")
-		if res, err := h.tryConsoleWithCookie(r.Context(), pveAuthCookie, sessionManager, node, vmID); err == nil {
-			log.Info().Msg("Console ticket generated successfully with stored cookie")
-			h.setConsoleResponse(w, r, res, node, vmID)
+		res, err = h.tryConsoleWithCookie(r.Context(), pveAuthCookie, sessionManager, node, vmID)
+		if err != nil {
+			http.Error(w, "Auth failed", http.StatusUnauthorized)
 			return
-		} else {
-			log.Warn().Err(err).Msg("Console access failed with stored cookie, trying fallback")
-			// Clear invalid cookie from session
-			sessionManager.Remove(r.Context(), "pve_auth_cookie")
-			sessionManager.Remove(r.Context(), "csrf_prevention_token")
 		}
-	} else {
-		log.Debug().Bool("has_cookie", hasCookie).Msg("No valid PVE auth cookie found in session")
+		h.setConsoleResponse(w, r, res, node, vmID)
+		return
 	}
-
-	// Strategy 2: Create fresh authentication session for the user
-	if username, hasUsername := sessionManager.Get(r.Context(), "username").(string); hasUsername && username != "" {
-		log.Debug().Str("username", username).Msg("Attempting to create fresh console session for user")
-		if res, err := h.tryConsoleWithUserAuth(r.Context(), username, sessionManager, node, vmID); err == nil {
-			log.Info().Str("username", username).Msg("Console ticket generated successfully with fresh user auth")
-			h.setConsoleResponse(w, r, res, node, vmID)
-			return
-		} else {
-			log.Warn().Err(err).Str("username", username).Msg("Failed to create fresh console session")
-		}
-	}
-
-	// All strategies failed - provide detailed debugging information
-	username, _ := sessionManager.Get(r.Context(), "username").(string)
-	isAuthenticated, _ := sessionManager.Get(r.Context(), "authenticated").(bool)
-	isAdmin, _ := sessionManager.Get(r.Context(), "is_admin").(bool)
-
-	log.Error().
-		Str("username", username).
-		Bool("authenticated", isAuthenticated).
-		Bool("is_admin", isAdmin).
-		Str("node", node).
-		Int("vmid", vmID).
-		Msg("All console authentication strategies failed")
 
 	// Check if user is even authenticated
+	isAuthenticated, _ := sessionManager.Get(r.Context(), "authenticated").(bool)
 	if !isAuthenticated {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
@@ -476,9 +673,8 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, ps 
 	errorResp := map[string]interface{}{
 		"error":   "console_auth_failed",
 		"message": "Console authentication failed. This may be due to expired session or insufficient permissions.",
-		"details": fmt.Sprintf("User '%s' could not access console for VM %d on node %s. Please log out and log back in to refresh your console session, or contact your administrator to verify console permissions.", username, vmID, node),
+		"details": fmt.Sprintf("User could not access console for VM %d on node %s. Please log out and log back in to refresh your console session, or contact your administrator to verify console permissions.", vmID, node),
 		"troubleshooting": map[string]interface{}{
-			"username":      username,
 			"node":          node,
 			"vmid":          vmID,
 			"authenticated": isAuthenticated,
@@ -494,7 +690,7 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, ps 
 }
 
 // tryConsoleWithCookie attempts to get console ticket using stored PVE auth cookie
-func (h *VMHandler) tryConsoleWithCookie(ctx context.Context, pveAuthCookie string, sessionManager *scs.SessionManager, node string, vmID int) (*proxmox.ConsoleAuthResult, error) {
+func (h *VMHandler) tryConsoleWithCookie(ctx context.Context, pveAuthCookie string, sessionManager *security.SessionManager, node string, vmID int) (*proxmox.ConsoleAuthResult, error) {
 	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
 	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
 
@@ -514,76 +710,6 @@ func (h *VMHandler) tryConsoleWithCookie(ctx context.Context, pveAuthCookie stri
 	}
 
 	return proxmox.GetConsoleTicket(ctx, consoleClient, node, vmID)
-}
-
-// tryConsoleWithUserAuth attempts to create a fresh console session using the user's stored username
-func (h *VMHandler) tryConsoleWithUserAuth(ctx context.Context, username string, sessionManager *scs.SessionManager, node string, vmID int) (*proxmox.ConsoleAuthResult, error) {
-	log := logger.Get().With().
-		Str("handler", "tryConsoleWithUserAuth").
-		Str("username", username).
-		Str("node", node).
-		Int("vmid", vmID).
-		Logger()
-
-	// Get the main Proxmox client to create a fresh console session
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available for fresh console authentication")
-		return nil, fmt.Errorf("proxmox client not available")
-	}
-
-	// Get the Proxmox URL for creating a new client
-	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
-	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
-
-	if proxmoxURL == "" {
-		log.Error().Msg("PROXMOX_URL not configured")
-		return nil, fmt.Errorf("PROXMOX_URL not configured")
-	}
-
-	// Create a fresh client for console authentication
-	consoleClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create fresh console client")
-		return nil, fmt.Errorf("failed to create console client: %w", err)
-	}
-
-	// Use the main client's authentication to get fresh credentials for console access
-	// This leverages the existing authenticated session to create a console-specific session
-	if concreteClient, ok := client.(*proxmox.Client); ok {
-		if concreteClient.PVEAuthCookie != "" {
-			consoleClient.PVEAuthCookie = concreteClient.PVEAuthCookie
-			log.Debug().Msg("Using main client's PVE auth cookie for fresh console session")
-		}
-
-		// Also check if we have CSRF token from the main client
-		if concreteClient.CSRFPreventionToken != "" {
-			consoleClient.CSRFPreventionToken = concreteClient.CSRFPreventionToken
-		}
-	} else {
-		log.Warn().Msg("Could not access main client's authentication cookies - using interface only")
-	}
-
-	// Attempt to get console ticket with the fresh session
-	result, err := proxmox.GetConsoleTicket(ctx, consoleClient, node, vmID)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get console ticket with fresh authentication")
-		return nil, fmt.Errorf("failed to get console ticket: %w", err)
-	}
-
-	// Store the fresh auth cookie in session for future use
-	if result.PVEAuthCookie != "" {
-		sessionManager.Put(ctx, "pve_auth_cookie", result.PVEAuthCookie)
-		log.Debug().Msg("Stored fresh PVE auth cookie in session")
-	}
-
-	if result.CSRFPreventionToken != "" {
-		sessionManager.Put(ctx, "csrf_prevention_token", result.CSRFPreventionToken)
-		log.Debug().Msg("Stored fresh CSRF prevention token in session")
-	}
-
-	log.Info().Msg("Successfully created fresh console session")
-	return result, nil
 }
 
 // setConsoleResponse handles setting the console response including cookies and JSON response
@@ -687,6 +813,7 @@ func (h *VMHandler) setConsoleResponse(w http.ResponseWriter, r *http.Request, r
 		"port":         res.Port,
 		"vncticket":    res.Ticket,
 		"ticket":       res.Ticket,
+		"vncpassword":  res.VNCPassword,
 		"node":         node,
 		"vmid":         vmID,
 		"proxmox_base": res.ProxmoxBase,
@@ -1019,7 +1146,7 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))
 	router.POST("/api/vm/create", RequireAuthHandle(h.CreateVMHandler))
 	router.GET("/api/console/qemu/:vmid", RequireAuthHandle(h.VMConsoleHandler))
-	router.GET("/api/console/qemu/:vmid/ws", RequireAuthHandleWS(h.VMConsoleWebSocketProxy))
+	router.GET("/api/console/qemu/:vmid/ws", RequireAuthHandle(h.VMConsoleWebSocketProxy))
 	router.GET("/console/qemu/:vmid", RequireAuthHandle(h.VMConsoleProxyPage))
 	router.GET("/pve2/*filepath", RequireAuthHandle(h.ProxmoxAssetProxy))
 }

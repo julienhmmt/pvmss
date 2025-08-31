@@ -7,6 +7,18 @@ import (
 	"strings"
 )
 
+// normalizePath ensures a path has a consistent format, removing trailing slashes
+// except for the root path, which is always "/".
+func normalizePath(s string) string {
+	if s == "" {
+		return "/"
+	}
+	if len(s) > 1 && s[len(s)-1] == '/' {
+		return s[:len(s)-1]
+	}
+	return s
+}
+
 // GetBaseFuncMap returns functions that don't depend on the request
 func GetBaseFuncMap() template.FuncMap {
 	return template.FuncMap{
@@ -22,7 +34,9 @@ func GetBaseFuncMap() template.FuncMap {
 		"formatGiB":     formatGiB,
 
 		// Collection functions
-		"sort":        sortSlice,
+		"sort": func(slice interface{}) (interface{}, error) {
+			return sortSlice(slice)
+		},
 		"reverse":     reverseSlice,
 		"contains":    containsValue,
 		"length":      getLength,
@@ -72,37 +86,19 @@ func GetBaseFuncMap() template.FuncMap {
 
 		// Path/string helpers
 		"eqPath": func(a, b string) bool {
-			// Normalize trailing slashes except root
-			norm := func(s string) string {
-				if s == "" {
-					return "/"
-				}
-				if s != "/" && s[len(s)-1] == '/' {
-					return s[:len(s)-1]
-				}
-				return s
-			}
-			return norm(a) == norm(b)
+			return normalizePath(a) == normalizePath(b)
 		},
 		// activeFor returns true when path matches base exactly (ignoring trailing slash)
 		// or when path is a subpath of base (e.g., /admin/iso/toggle).
-		"activeFor": func(path string, base string) bool {
-			norm := func(s string) string {
-				if s == "" {
-					return "/"
-				}
-				if s != "/" && s[len(s)-1] == '/' {
-					return s[:len(s)-1]
-				}
-				return s
-			}
-			p := norm(path)
-			b := norm(base)
+		"activeFor": func(path, base string) bool {
+			p := normalizePath(path)
+			b := normalizePath(base)
 			if p == b {
 				return true
 			}
 			if b == "/" {
-				return p == "/"
+				// Any non-root path is a subpath of the root
+				return true
 			}
 			return strings.HasPrefix(p, b+"/")
 		},

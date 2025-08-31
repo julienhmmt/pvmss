@@ -9,7 +9,7 @@ import (
 	"pvmss/state"
 )
 
-// HealthHandler gère les points de terminaison de santé et d'API
+// HealthHandler handles health and API endpoints
 type HealthHandler struct {
 	stateManager state.StateManager
 }
@@ -20,14 +20,14 @@ type ProxmoxStatusResponse struct {
 	Error     string `json:"error,omitempty"`
 }
 
-// NewHealthHandler crée une nouvelle instance de HealthHandler
+// NewHealthHandler creates a new instance of HealthHandler
 func NewHealthHandler(stateManager state.StateManager) *HealthHandler {
 	return &HealthHandler{
 		stateManager: stateManager,
 	}
 }
 
-// HealthCheckHandler gère les requêtes de vérification de santé
+// HealthCheckHandler handles health check requests
 func (h *HealthHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Check Proxmox connection status
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
@@ -73,7 +73,7 @@ func (h *HealthHandler) ProxmoxStatusHandler(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(response)
 }
 
-// NotFoundHandler gère les routes non trouvées
+// NotFoundHandler handles routes that are not found
 func (h *HealthHandler) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		// JSON response for API routes
@@ -89,7 +89,7 @@ func (h *HealthHandler) NotFoundHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// MethodNotAllowedHandler gère les méthodes HTTP non autorisées
+// MethodNotAllowedHandler handles unauthorized HTTP methods
 func (h *HealthHandler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(r.URL.Path, "/api/") {
 		// JSON response for API routes
@@ -104,7 +104,7 @@ func (h *HealthHandler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.R
 	}
 }
 
-// RegisterRoutes enregistre les routes de santé et d'API
+// RegisterRoutes registers health and API routes
 func (h *HealthHandler) RegisterRoutes(router *httprouter.Router) {
 	// Health endpoints
 	router.GET("/health", h.HealthCheckHandler)

@@ -11,12 +11,11 @@ import (
 func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	log := logger.Get().With().Str("handler", "LogoutHandler").Logger()
 
-	// Prefer session from middleware context
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
-		// Fallback to state manager from context (injected by handlers.InitHandlers)
-		sm := getStateManager(r)
-		sessionManager = sm.GetSessionManager()
+		log.Error().Msg("Session manager not found in context during logout")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	// Clear session data

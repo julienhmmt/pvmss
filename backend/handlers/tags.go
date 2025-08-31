@@ -105,15 +105,15 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	if !found {
-		log.Warn().Str("tag", tagName).Msg("Tentative de suppression d'un tag inexistant")
+		log.Warn().Str("tag", tagName).Msg("Attempted to delete a non-existent tag")
 		http.Redirect(w, r, "/admin/tags?error=notfound", http.StatusSeeOther)
 		return
 	}
 
 	settings.Tags = newTags
 	if err := gs.SetSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Échec de la sauvegarde des paramètres après suppression")
-		http.Error(w, "Erreur interne du serveur.", http.StatusInternalServerError)
+		log.Error().Err(err).Msg("Failed to save settings after deletion")
+		http.Error(w, "Internal server error.", http.StatusInternalServerError)
 		return
 	}
 
@@ -210,20 +210,20 @@ func EnsureDefaultTag(sm state.StateManager) error {
 	gs := sm
 	settings := gs.GetSettings()
 	if settings == nil {
-		// Ne rien faire si les paramètres ne sont pas encore chargés
+		// Do nothing if settings are not yet loaded
 		return nil
 	}
 
 	defaultTag := "pvmss"
 	for _, tag := range settings.Tags {
 		if strings.EqualFold(tag, defaultTag) {
-			return nil // Le tag existe déjà
+			return nil // The tag already exists
 		}
 	}
 
-	// Ajouter le tag par défaut et sauvegarder
+	// Add the default tag and save
 	settings.Tags = append(settings.Tags, defaultTag)
 	log := logger.Get()
-	log.Info().Msg("Tag par défaut 'pvmss' ajouté aux paramètres.")
+	log.Info().Msg("Default tag 'pvmss' added to settings.")
 	return gs.SetSettings(settings)
 }

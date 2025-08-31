@@ -2,6 +2,7 @@ package security
 
 import (
 	"os"
+	"pvmss/logger"
 	"strconv"
 	"sync"
 	"time"
@@ -30,19 +31,32 @@ var (
 // - BCRYPT_COST: integer cost (e.g., 12, 14).
 func GetConfig() *Config {
 	configOnce.Do(func() {
+		log := logger.Get().With().Str("component", "security_config").Logger()
+
 		cfg := &Config{
 			CSRFTokenTTL: CSRFTokenTTL, // default from constants.go
 			BcryptCost:   14,
 		}
 
+		// Load CSRF_TOKEN_TTL from environment, with logging on failure.
 		if v := os.Getenv("CSRF_TOKEN_TTL"); v != "" {
 			if d, err := time.ParseDuration(v); err == nil {
 				cfg.CSRFTokenTTL = d
+			} else {
+				log.Warn().Err(err).Str("value", v).Msg("Invalid CSRF_TOKEN_TTL format; using default")
 			}
 		}
+
+		// Load BCRYPT_COST from environment, with validation and logging.
 		if v := os.Getenv("BCRYPT_COST"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n >= 4 && n <= 31 { // bcrypt cost bounds
-				cfg.BcryptCost = n
+			if n, err := strconv.Atoi(v); err == nil {
+				if n >= 4 && n <= 31 { // bcrypt cost bounds
+					cfg.BcryptCost = n
+				} else {
+					log.Warn().Int("value", n).Msg("BCRYPT_COST out of range (4-31); using default")
+				}
+			} else {
+				log.Warn().Err(err).Str("value", v).Msg("Invalid BCRYPT_COST format; using default")
 			}
 		}
 

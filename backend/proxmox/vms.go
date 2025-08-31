@@ -2,7 +2,6 @@ package proxmox
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -113,11 +112,7 @@ type VMCurrent struct {
 // GetVMCurrentWithContext fetches the current runtime metrics for a VM
 func GetVMCurrentWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (*VMCurrent, error) {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid)
-	// The Proxmox API returns an object: { "data": { ...fields } }
-	type singleResponse[T any] struct {
-		Data T `json:"data"`
-	}
-	var resp singleResponse[VMCurrent]
+	var resp Response[VMCurrent]
 	if err := client.GetJSON(ctx, path, &resp); err != nil {
 		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get current VM status")
 		return nil, fmt.Errorf("failed to get current status for vm %d on node %s: %w", vmid, node, err)
@@ -137,6 +132,11 @@ type VM struct {
 	Status  string  `json:"status"`
 	Uptime  int64   `json:"uptime"`
 	VMID    int     `json:"vmid"`
+}
+
+// VMListResponse represents the response from a VM list endpoint.
+type VMListResponse struct {
+	Data []VM `json:"data"`
 }
 
 // GetVMsWithContext retrieves a comprehensive list of all VMs across all available Proxmox nodes.
@@ -174,7 +174,7 @@ func GetVMsForNodeWithContext(ctx context.Context, client ClientInterface, nodeN
 	path := fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(nodeName))
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response ListResponse[VM]
+	var response VMListResponse
 	if err := client.GetJSON(ctx, path, &response); err != nil {
 		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMs for node from Proxmox API")
 		return nil, fmt.Errorf("failed to get VMs for node %s: %w", nodeName, err)
@@ -248,30 +248,16 @@ func VMActionWithContext(ctx context.Context, client ClientInterface, node strin
 	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", url.PathEscape(node), url.PathEscape(vmid), action)
 
 	// Proxmox typically responds with {"data":"UPID:..."}
-	raw, err := client.PostFormWithContext(ctx, path, url.Values{})
-	if err != nil {
+	var response Response[string]
+	if err := client.PostFormAndGetJSON(ctx, path, url.Values{}, &response); err != nil {
 		logger.Get().Error().Err(err).Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action failed")
 		return "", err
 	}
 
-	// The task ID is returned directly as a string in the 'data' field.
-	if data, ok := raw["data"].(string); ok {
-		return data, nil
+	// The task ID (UPID) is returned in the 'data' field.
+	if response.Data == "" {
+		return "", fmt.Errorf("did not receive a task ID from Proxmox for action '%s' on VM %s", action, vmid)
 	}
 
-	// Fallback for different response format
-	rawJSON, err := json.Marshal(raw)
-	if err != nil {
-		return "", fmt.Errorf("could not marshal response to search for UPID: %w", err)
-	}
-	s := string(rawJSON)
-	if idx := strings.Index(s, "UPID:"); idx >= 0 {
-		end := strings.IndexAny(s[idx:], "\"}\n")
-		if end > 0 {
-			return s[idx : idx+end], nil
-		}
-		return s[idx:], nil // Return from UPID to end of string if no clear delimiter
-	}
-
-	return "", fmt.Errorf("could not extract task ID from response: %+v", raw)
+	return response.Data, nil
 }

@@ -3,6 +3,7 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -12,35 +13,47 @@ func formatMemory(memBytes interface{}) string {
 	return formatBytes(memBytes)
 }
 
-// formatDuration formats a time.Duration to a human-readable string like "1h 2m 3s".
-// Handles negative durations by prefixing with "-".
+// formatDuration formats a time.Duration to a human-readable string like "1d 2h 3m 4s".
+// It intelligently constructs the string from available time units (days, hours, minutes, seconds)
+// and handles negative durations by prefixing with "-".
 func formatDuration(d time.Duration) string {
 	if d == 0 {
 		return "0s"
 	}
-	neg := d < 0
-	if neg {
+
+	var neg string
+	if d < 0 {
+		neg = "-"
 		d = -d
 	}
-	d = d.Round(time.Second)
-	h := d / time.Hour
-	d -= h * time.Hour
-	m := d / time.Minute
-	d -= m * time.Minute
-	s := d / time.Second
 
-	var out string
-	if h > 0 {
-		out = fmt.Sprintf("%dh %dm %ds", h, m, s)
-	} else if m > 0 {
-		out = fmt.Sprintf("%dm %ds", m, s)
-	} else {
-		out = fmt.Sprintf("%ds", s)
+	d = d.Round(time.Second)
+	days := d / (24 * time.Hour)
+	d -= days * (24 * time.Hour)
+	hours := d / time.Hour
+	d -= hours * time.Hour
+	minutes := d / time.Minute
+	d -= minutes * time.Minute
+	seconds := d / time.Second
+
+	parts := []string{}
+	if days > 0 {
+		parts = append(parts, fmt.Sprintf("%dd", days))
 	}
-	if neg {
-		return "-" + out
+	if hours > 0 {
+		parts = append(parts, fmt.Sprintf("%dh", hours))
 	}
-	return out
+	if minutes > 0 {
+		parts = append(parts, fmt.Sprintf("%dm", minutes))
+	}
+	// Always show seconds if it's the only unit or if it's non-zero with other units.
+	if seconds > 0 || len(parts) == 0 {
+		parts = append(parts, fmt.Sprintf("%ds", seconds))
+	}
+
+	// For brevity, you might want to limit the number of parts shown, e.g., parts = parts[:2]
+
+	return neg + strings.Join(parts, " ")
 }
 
 // formatBytes formats bytes to human readable format

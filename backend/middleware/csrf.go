@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 // the context, and calling SessionManager.Get would panic.
 // It returns an empty string if the token is not found.
 func GetCSRFToken(r *http.Request) string {
-	if token, ok := r.Context().Value(security.CSRFTokenContextKey).(string); ok {
+	if token, ok := security.CSRFTokenFromContext(r.Context()); ok {
 		return token
 	}
 	return ""
@@ -50,7 +49,7 @@ func CSRFMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Add CSRF token to context (idempotent)
-		ctx := context.WithValue(r.Context(), security.CSRFTokenContextKey, token)
+		ctx := security.WithCSRFToken(r.Context(), token)
 		r = r.WithContext(ctx)
 
 		// For GET requests, expose token via header so clients can fetch it easily

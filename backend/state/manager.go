@@ -8,16 +8,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
-
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/security"
 )
 
 // appState is the concrete implementation of StateManager
 type appState struct {
 	templates      *template.Template
-	sessionManager *scs.SessionManager
+	sessionManager *security.SessionManager
 	proxmoxClient  proxmox.ClientInterface
 	settings       *AppSettings
 	mu             sync.RWMutex
@@ -108,14 +107,14 @@ func (s *appState) SetTemplates(t *template.Template) error {
 }
 
 // GetSessionManager returns the session manager
-func (s *appState) GetSessionManager() *scs.SessionManager {
+func (s *appState) GetSessionManager() *security.SessionManager {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.sessionManager
 }
 
 // SetSessionManager sets the session manager
-func (s *appState) SetSessionManager(sm *scs.SessionManager) error {
+func (s *appState) SetSessionManager(sm *security.SessionManager) error {
 	if sm == nil {
 		return errors.New("session manager cannot be nil")
 	}

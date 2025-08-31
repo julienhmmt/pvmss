@@ -16,17 +16,17 @@ import (
 	"pvmss/state"
 )
 
-// SettingsHandler gère les routes liées aux paramètres
+// SettingsHandler handles settings-related routes
 type SettingsHandler struct {
 	stateManager state.StateManager
 }
 
-// NewSettingsHandler crée une nouvelle instance de SettingsHandler
+// NewSettingsHandler creates a new instance of SettingsHandler
 func NewSettingsHandler(sm state.StateManager) *SettingsHandler {
 	return &SettingsHandler{stateManager: sm}
 }
 
-// GetSettingsHandler renvoie les paramètres actuels de l'application
+// GetSettingsHandler returns the current application settings
 func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
@@ -40,7 +40,7 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Ne pas renvoyer le mot de passe admin
+	// Do not return the admin password
 	settingsResponse := map[string]interface{}{
 		"tags":   settings.Tags,
 		"isos":   settings.ISOs,
@@ -52,7 +52,7 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 	json.NewEncoder(w).Encode(settingsResponse)
 }
 
-// GetAllISOsHandler récupère toutes les images ISO disponibles
+// GetAllISOsHandler retrieves all available ISO images
 func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Short-circuit when offline to keep UI responsive
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
@@ -70,7 +70,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 
 	appSettings := h.stateManager.GetSettings()
 	enabledISOsMap := make(map[string]bool)
-	for _, enabledISO := range appSettings.ISOs { // Correction: itérer sur ISOs, pas EnabledISOs
+	for _, enabledISO := range appSettings.ISOs { // Correction: iterate over ISOs, not EnabledISOs
 		enabledISOsMap[enabledISO] = true
 	}
 
@@ -109,7 +109,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 			}
 
 			for _, iso := range isoList {
-				// On ne traite que les fichiers .iso, en ignorant les autres formats comme .img
+				// We only process .iso files, ignoring other formats like .img
 				if !strings.HasSuffix(iso.VolID, ".iso") {
 					logger.Get().Debug().Str("volid", iso.VolID).Msg("Skipping non-ISO file")
 					continue
@@ -118,7 +118,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 				_, isEnabled := enabledISOsMap[iso.VolID]
 				isoInfo := ISOInfo{
 					VolID:   iso.VolID,
-					Format:  "iso", // On force le format à "iso" car on a déjà filtré
+					Format:  "iso", // We force the format to "iso" because we have already filtered
 					Size:    iso.Size,
 					Node:    nodeName,
 					Storage: storage.Storage,
@@ -138,7 +138,7 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// GetAllVMBRsHandler récupère tous les bridges réseau disponibles
+// GetAllVMBRsHandler retrieves all available network bridges
 func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Use shared helper to collect VMBRs
 	vmbrs, err := collectAllVMBRs(h.stateManager)
@@ -628,7 +628,7 @@ func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 		http.Redirect(w, r, "/admin/limits", http.StatusSeeOther)
 	})))
 
-	// Routes API protégées par authentification
+	// API routes protected by authentication
 	router.GET("/api/settings", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.GetSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
@@ -637,19 +637,14 @@ func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
 		h.GetAllISOsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
-	// Removed unused ISO/VMBR API mutation routes to avoid undefined handler lints.
-	// The modular admin UI uses server-rendered forms with POST redirects.
-	// router.POST("/api/iso/settings", ...)
-	// router.POST("/api/vmbr/settings", ...)
-
 	router.GET("/api/vmbr/all", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.GetAllVMBRsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 }
 
-// containsISO vérifie si un type de contenu de stockage peut contenir des ISOs
+// containsISO checks if a storage content type can contain ISOs
 func containsISO(content string) bool {
-	// Les types de contenu sont séparés par des virgules
+	// Content types are separated by commas
 	for _, part := range strings.Split(content, ",") {
 		if strings.TrimSpace(part) == "iso" {
 			return true

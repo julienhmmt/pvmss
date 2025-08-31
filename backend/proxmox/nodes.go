@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"time"
 
 	"pvmss/logger"
 )
@@ -49,7 +48,7 @@ type NodeStatus struct {
 // GetNodeDetails is a convenience function that retrieves hardware details for a specific node.
 // It calls GetNodeDetailsWithContext using a default timeout.
 func GetNodeDetails(client ClientInterface, nodeName string) (*NodeDetails, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
 	return GetNodeDetailsWithContext(ctx, client, nodeName)
 }
@@ -89,11 +88,10 @@ func GetNodeDetailsWithContext(ctx context.Context, client ClientInterface, node
 		Uptime:    status.Data.Uptime,
 	}
 
-	// Use the logical core count from cpuinfo.cpus
-	if status.Data.CPUInfo.Cpus > 0 {
-		details.MaxCPU = status.Data.CPUInfo.Cpus
-	} else {
-		// Fallback for older Proxmox versions or unexpected API responses
+	// Determine MaxCPU, preferring the total logical core count 'cpus' when available.
+	details.MaxCPU = status.Data.CPUInfo.Cpus
+	if details.MaxCPU == 0 {
+		// Fallback for older Proxmox versions: calculate from cores and sockets.
 		details.MaxCPU = status.Data.CPUInfo.Cores * status.Data.CPUInfo.Sockets
 	}
 
@@ -133,13 +131,18 @@ type NodeInfo struct {
 	Type   string `json:"type"`
 }
 
+// NodeListResponse represents the response from the node list endpoint.
+type NodeListResponse struct {
+	Data []NodeInfo `json:"data"`
+}
+
 // GetNodeNamesWithContext fetches the list of all configured nodes from the `/nodes` endpoint of the Proxmox API.
 // It parses the response to extract and return a simple slice of node names.
 func GetNodeNamesWithContext(ctx context.Context, client ClientInterface) ([]string, error) {
 	logger.Get().Info().Msg("Fetching node names")
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response ListResponse[NodeInfo]
+	var response NodeListResponse
 	if err := client.GetJSON(ctx, "/nodes", &response); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get node list from Proxmox API")
 		return nil, fmt.Errorf("failed to get node list: %w", err)
@@ -158,8 +161,7 @@ func GetNodeNamesWithContext(ctx context.Context, client ClientInterface) ([]str
 // GetNodeStatus provides a simple health check for a given node.
 // It attempts to fetch the node's status and returns 'online' on success or 'offline' on failure.
 func GetNodeStatus(client ClientInterface, nodeName string) (string, error) {
-	// Use a short timeout since this is a health check
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
 
 	var status NodeStatus

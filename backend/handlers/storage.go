@@ -32,14 +32,14 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Erreur lors de l'analyse du formulaire", http.StatusBadRequest)
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
 	storageName := r.FormValue("storage")
 	action := r.FormValue("action") // "enable" or "disable"
 	if storageName == "" || (action != "enable" && action != "disable") {
-		http.Error(w, "Requête invalide", http.StatusBadRequest)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -75,8 +75,8 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 
 	if changed {
 		if err := h.stateManager.SetSettings(settings); err != nil {
-			log.Error().Err(err).Msg("Erreur lors de la sauvegarde des paramètres")
-			http.Error(w, "Erreur lors de la sauvegarde des paramètres", http.StatusInternalServerError)
+			log.Error().Err(err).Msg("Error saving settings")
+			http.Error(w, "Error saving settings", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -86,19 +86,19 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
-// StorageHandler gère les routes liées au stockage
+// StorageHandler handles storage-related routes
 type StorageHandler struct {
 	stateManager StateManager
 }
 
-// NewStorageHandler crée une nouvelle instance de StorageHandler
+// NewStorageHandler creates a new instance of StorageHandler
 func NewStorageHandler(stateManager state.StateManager) *StorageHandler {
 	return &StorageHandler{
 		stateManager: stateManager,
 	}
 }
 
-// StoragePageHandler gère la page de gestion du stockage
+// StoragePageHandler handles the storage management page
 func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := logger.Get().With().
 		Str("handler", "StorageHandler").
@@ -106,13 +106,13 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		Str("path", r.URL.Path).
 		Logger()
 
-	// Récupérer le client Proxmox
+	// Get the Proxmox client
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		// Offline-friendly: render page with empty storages and existing settings
 		log.Warn().Msg("Proxmox client not available; rendering Storage page in offline/read-only mode")
 
-		// Récupérer les paramètres
+		// Get settings
 		settings := h.stateManager.GetSettings()
 		if settings.EnabledStorages == nil {
 			settings.EnabledStorages = []string{}
@@ -140,9 +140,9 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		// Préparer les données pour le template (Storages vide)
+		// Prepare data for the template (empty Storages)
 		data := map[string]interface{}{
-			"Title":           "Gestion du stockage",
+			"Title":           "Storage Management",
 			"Node":            "",
 			"Storages":        []map[string]interface{}{},
 			"EnabledStorages": settings.EnabledStorages,
@@ -152,27 +152,27 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 			"AdminActive":     "storage",
 		}
 
-		// Ajouter les traductions et rendre
+		// Add translations and render
 		i18n.LocalizePage(w, r, data)
 		renderTemplateInternal(w, r, "admin_storage", data)
 		return
 	}
 
-	// Récupérer les paramètres
+	// Get settings
 	node := r.URL.Query().Get("node")
 	refresh := r.URL.Query().Get("refresh") == "1"
 
-	// Récupérer les paramètres
+	// Get settings
 	settings := h.stateManager.GetSettings()
 	if settings.EnabledStorages == nil {
 		settings.EnabledStorages = []string{}
 	}
 
-	// Utilise l'utilitaire partagé pour récupérer les stockages rendables
+	// Use the shared utility to retrieve renderable storages
 	storages, enabledMap, chosenNode, err := FetchRenderableStorages(client, node, settings.EnabledStorages, refresh)
 	if err != nil {
-		log.Error().Err(err).Msg("Erreur lors de la récupération des stockages")
-		http.Error(w, "Erreur lors de la récupération des stockages: "+err.Error(), http.StatusInternalServerError)
+		log.Error().Err(err).Msg("Error retrieving storages")
+		http.Error(w, "Error retrieving storages: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -192,9 +192,9 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// Préparer les données pour le template
+	// Prepare data for the template
 	data := map[string]interface{}{
-		"Title":           "Gestion du stockage",
+		"Title":           "Storage Management",
 		"Node":            chosenNode,
 		"Storages":        storages,
 		"EnabledStorages": settings.EnabledStorages,
@@ -204,12 +204,12 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		"AdminActive":     "storage",
 	}
 
-	// Ajouter les traductions et rendre
+	// Add translations and render
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_storage", data)
 }
 
-// UpdateStorageHandler gère la mise à jour des stockages activés
+// UpdateStorageHandler handles updating enabled storages
 func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := logger.Get().With().
 		Str("handler", "UpdateStorageHandler").
@@ -222,33 +222,33 @@ func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Lire les paramètres du formulaire
+	// Read form parameters
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Erreur lors de l'analyse du formulaire", http.StatusBadRequest)
+		http.Error(w, "Error parsing form", http.StatusBadRequest)
 		return
 	}
 
-	// Récupérer les stockages cochés depuis le formulaire
+	// Get checked storages from the form
 	enabledStoragesList := r.Form["enabled_storages"]
 
-	// Mettre à jour les paramètres
+	// Update settings
 	settings := h.stateManager.GetSettings()
 
-	// Mettre à jour la liste des stockages activés
+	// Update the list of enabled storages
 	settings.EnabledStorages = enabledStoragesList
 
-	// Sauvegarder les paramètres
+	// Save settings
 	if err := h.stateManager.SetSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Erreur lors de la sauvegarde des paramètres")
-		http.Error(w, "Erreur lors de la sauvegarde des paramètres", http.StatusInternalServerError)
+		log.Error().Err(err).Msg("Error saving settings")
+		http.Error(w, "Error saving settings", http.StatusInternalServerError)
 		return
 	}
 
-	// Rediriger vers la page de stockage avec bannière succès
+	// Redirect to storage page with success banner
 	http.Redirect(w, r, "/admin/storage?success=1", http.StatusSeeOther)
 }
 
-// RegisterRoutes enregistre les routes liées au stockage
+// RegisterRoutes registers storage-related routes
 func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/admin/storage", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.StoragePageHandler(w, r, httprouter.ParamsFromContext(r.Context()))

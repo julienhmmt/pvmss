@@ -47,8 +47,8 @@ func main() {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize security")
 	}
 
-	// Store the session manager in the injected state
-	if err := stateManager.SetSessionManager(sessionManager.SessionManager); err != nil {
+	// Store the session manager in the injected state.
+	if err := stateManager.SetSessionManager(sessionManager); err != nil {
 		logger.Get().Fatal().Err(err).Msg("Failed to set session manager on state")
 	}
 
@@ -209,7 +209,7 @@ func initTemplates() (*template.Template, error) {
 	rootDir := filepath.Dir(filepath.Dir(filename))
 	frontendPath := filepath.Join(rootDir, "frontend")
 
-	// Sauvegarder le chemin pour une utilisation globale (ex: servir les fichiers statiques)
+	// Save the path for global use (e.g., serving static files)
 	state.SetTemplatesPath(frontendPath)
 
 	// Parse all HTML files in the frontend directory

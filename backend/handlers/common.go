@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	// "encoding/json"
-	"github.com/alexedwards/scs/v2"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -18,7 +17,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// ISOInfo représente les informations détaillées sur une image ISO.
+// ISOInfo represents detailed information about an ISO image.
 type ISOInfo struct {
 	VolID   string `json:"volid"`
 	Format  string `json:"format"`
@@ -47,14 +46,8 @@ func getStateManager(r *http.Request) state.StateManager {
 	return nil
 }
 
-// InitState est une fonction de compatibilité qui ne fait plus rien
-// car nous utilisons maintenant le package state
-func InitState() {
-	logger.Get().Info().Msg("Handlers using global state manager")
-}
-
-// RenderTemplate affiche un template avec les données fournies
-// Cette fonction est exportée pour être utilisée par d'autres packages
+// RenderTemplate renders a template with the provided data
+// This function is exported for use by other packages
 func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
 	log := logger.Get().With().
 		Str("handler", "RenderTemplate").
@@ -63,75 +56,45 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 		Str("method", r.Method).
 		Logger()
 
-	log.Debug().Msg("Début du rendu du template")
+	log.Debug().Msg("Starting template rendering")
 
-	// Convertir data en map si nécessaire
+	// Convert data to map if necessary
 	dataMap := make(map[string]interface{})
 	if data != nil {
 		if dm, ok := data.(map[string]interface{}); ok {
 			dataMap = dm
-			log.Debug().Int("data_map_size", len(dm)).Msg("Données fournies sous forme de map")
+			log.Debug().Int("data_map_size", len(dm)).Msg("Data provided as a map")
 		} else {
 			dataMap["Data"] = data
-			log.Debug().Type("data_type", data).Msg("Données fournies sous forme de structure, conversion en map")
+			log.Debug().Type("data_type", data).Msg("Data provided as a struct, converting to map")
 		}
 	} else {
-		log.Debug().Msg("Aucune donnée fournie pour le rendu du template")
+		log.Debug().Msg("No data provided for template rendering")
 	}
 
-	// Utiliser la fonction interne avec la map
+	// Use the internal function with the map
 	renderTemplateInternal(w, r, name, dataMap)
 
 	log.Info().
 		Str("template", name).
-		Msg("Rendu du template terminé avec succès")
+		Msg("Template rendered successfully")
 }
 
-// renderTemplate est la fonction interne pour le rendu des templates
-func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-	log := logger.Get().With().
-		Str("handler", "renderTemplateInternal").
-		Str("template", name).
-		Str("path", r.URL.Path).
-		Logger()
-
-	log.Debug().Msg("Début du rendu interne du template")
-
-	// Initialize data map if nil
-	if data == nil {
-		data = make(map[string]interface{})
-	}
+// populateTemplateData adds common data to the template data map.
+func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
+	log := logger.Get().With().Str("function", "populateTemplateData").Logger()
 
 	// Get CSRF token from session and add to template data
 	stateManager := getStateManager(r)
-	var sessionManager *scs.SessionManager
+	var sessionManager *security.SessionManager
 	if stateManager != nil {
 		sessionManager = stateManager.GetSessionManager()
 	}
-	if sessionManager != nil {
-		if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
-			data["CSRFToken"] = csrfToken
-			log.Debug().Str("token", csrfToken).Msg("CSRF token added to template data")
-		} else {
-			log.Warn().Msg("No CSRF token found in session")
-		}
-	} else {
-		log.Error().Msg("Session manager not available")
-	}
 
-	tmpl := stateManager.GetTemplates()
-
-	if tmpl == nil {
-		errMsg := "Les templates ne sont pas initialisés"
-		log.Error().Msg(errMsg)
-		http.Error(w, "Erreur interne du serveur", http.StatusInternalServerError)
-		return
-	}
-
-	// Récupérer les données de template du contexte si elles existent (utiliser la même clé que le middleware)
+	// Get template data from context if it exists (use the same key as the middleware)
 	if ctxData, ok := r.Context().Value(middleware.TemplateDataKey).(map[string]interface{}); ok {
-		log.Debug().Int("context_data_size", len(ctxData)).Msg("Données de contexte récupérées")
-		// Fusionner les données du contexte avec les données fournies (les données fournies ont la priorité)
+		log.Debug().Int("context_data_size", len(ctxData)).Msg("Context data retrieved")
+		// Merge context data with provided data (provided data has priority)
 		for k, v := range ctxData {
 			if _, exists := data[k]; !exists {
 				data[k] = v
@@ -140,7 +103,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 
 	// Add authentication data
-	if IsAuthenticated(r) {
+	if sessionManager != nil && IsAuthenticated(r) {
 		log.Debug().Msg("Authenticated user detected, adding session data")
 		data["IsAuthenticated"] = true
 		data["IsAdmin"] = IsAdmin(r)
@@ -153,23 +116,17 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		}
 	} else {
 		log.Debug().Msg("No authenticated user detected")
+		data["IsAuthenticated"] = false
 		data["IsAdmin"] = false
 	}
 
 	// Add/override CSRF token from request context if available (prefer context value set by middleware)
-	if v := r.Context().Value(security.CSRFTokenContextKey); v != nil {
-		if token, ok := v.(string); ok && token != "" {
-			data["CSRFToken"] = token
-
-			log.Debug().Msg("CSRF token added to template data from request context")
-		} else {
-			// Do not warn here; absence or non-string is acceptable on static/safe routes
-			log.Debug().Msg("No valid CSRF token in request context (expected for some routes)")
-		}
+	if token, ok := security.CSRFTokenFromContext(r.Context()); ok && token != "" {
+		data["CSRFToken"] = token
+		log.Debug().Msg("CSRF token added to template data from request context")
 	}
 
 	// Add i18n data and common variables
-	log.Debug().Msg("Applying i18n data and common variables")
 	i18n.LocalizePage(w, r, data)
 	data["CurrentPath"] = r.URL.Path
 	if r.URL.RawQuery != "" {
@@ -189,12 +146,35 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 	data["Theme"] = theme
 	data["IsDark"] = (theme == "dark")
+}
 
-	log.Debug().
-		Str("current_path", r.URL.Path).
-		Bool("is_https", r.TLS != nil).
-		Str("host", r.Host).
-		Msg("Context variables added")
+// renderTemplate is the internal function for rendering templates
+func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
+	log := logger.Get().With().
+		Str("handler", "renderTemplateInternal").
+		Str("template", name).
+		Str("path", r.URL.Path).
+		Logger()
+
+	log.Debug().Msg("Starting internal template rendering")
+
+	// Initialize data map if nil
+	if data == nil {
+		data = make(map[string]interface{})
+	}
+
+	// Populate the template data with common values
+	populateTemplateData(w, r, data)
+
+	stateManager := getStateManager(r)
+	tmpl := stateManager.GetTemplates()
+
+	if tmpl == nil {
+		errMsg := "Templates are not initialized"
+		log.Error().Msg(errMsg)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	// Execute the template (attach request-aware helpers first)
 	rt := tmpl.Funcs(templates.GetFuncMap(r))
@@ -263,24 +243,6 @@ func IsAuthenticated(r *http.Request) bool {
 		return false
 	}
 
-	// Verify CSRF token for state-changing requests
-	if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodDelete || r.Method == http.MethodPatch {
-		csrfToken := r.Header.Get("X-CSRF-Token")
-		if csrfToken == "" {
-			// Try to get from form if not in header
-			csrfToken = r.FormValue("csrf_token")
-		}
-
-		sessionToken, _ := sessionManager.Get(r.Context(), "csrf_token").(string)
-		if csrfToken == "" || csrfToken != sessionToken {
-			log.Warn().
-				Str("session_token", sessionToken).
-				Str("provided_token", csrfToken).
-				Msg("CSRF token validation failed")
-			return false
-		}
-	}
-
 	log.Debug().
 		Bool("authenticated", true).
 		Str("session_id", sessionManager.Token(r.Context())).
@@ -309,35 +271,15 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 				returnURL = returnURL + "?" + r.URL.RawQuery
 			}
 
-			// Set cache control headers to prevent caching of protected pages
-			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-			w.Header().Set("Pragma", "no-cache")
-			w.Header().Set("Expires", "0")
+			setNoCacheHeaders(w)
 
 			// Redirect to login page with return URL
 			http.Redirect(w, r, "/login?return="+url.QueryEscape(returnURL), http.StatusSeeOther)
 			return
 		}
 
-		// Add security headers for authenticated routes
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-
-		// Add CSRF token to the response headers for AJAX requests
-		if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
-			stateManager := getStateManager(r)
-			var sessionManager *scs.SessionManager
-			if stateManager != nil {
-				sessionManager = stateManager.GetSessionManager()
-			}
-			if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
-				w.Header().Set("X-CSRF-Token", csrfToken)
-			}
-		}
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
+		// Set security headers for authenticated routes
+		setSecurityHeaders(w, r)
 
 		next.ServeHTTP(w, r)
 	}
@@ -348,20 +290,17 @@ func IsAdmin(r *http.Request) bool {
 	log := logger.Get().With().
 		Str("handler", "IsAdmin").
 		Str("path", r.URL.Path).
-		Str("method", r.Method).
-		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	// First check if user is authenticated
-	if !IsAuthenticated(r) {
-		log.Debug().Msg("User not authenticated, cannot be admin")
+	stateManager := getStateManager(r)
+	if stateManager == nil {
+		return false
+	}
+	sessionManager := stateManager.GetSessionManager()
+	if sessionManager == nil {
 		return false
 	}
 
-	stateManager := getStateManager(r)
-	sessionManager := stateManager.GetSessionManager()
-
-	// Check if the session contains the admin flag
 	isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool)
 	if !ok || !isAdmin {
 		log.Debug().
@@ -376,6 +315,31 @@ func IsAdmin(r *http.Request) bool {
 		Msg("Admin access verified")
 
 	return true
+}
+
+// setNoCacheHeaders sets headers to prevent client-side caching.
+func setNoCacheHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+}
+
+// setSecurityHeaders sets security-related headers for authenticated routes.
+func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
+	// Prevent content sniffing
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	// Prevent clickjacking
+	w.Header().Set("X-Frame-Options", "DENY")
+	// Enable XSS filter
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+
+	// Set no-cache headers for dynamic content
+	setNoCacheHeaders(w)
+
+	// Add CSRF token to the response headers for AJAX requests
+	if token, ok := security.CSRFTokenFromContext(r.Context()); ok {
+		w.Header().Set("X-CSRF-Token", token)
+	}
 }
 
 // RequireAdminAuth is a middleware that enforces admin authentication for admin routes
@@ -405,35 +369,15 @@ func RequireAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 				returnURL = returnURL + "?" + r.URL.RawQuery
 			}
 
-			// Set cache control headers to prevent caching of protected pages
-			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-			w.Header().Set("Pragma", "no-cache")
-			w.Header().Set("Expires", "0")
+			setNoCacheHeaders(w)
 
 			// Redirect to admin login page with return URL
 			http.Redirect(w, r, "/admin/login?return="+url.QueryEscape(returnURL), http.StatusSeeOther)
 			return
 		}
 
-		// Add security headers for admin routes
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-
-		// Add CSRF token to the response headers for AJAX requests
-		if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
-			stateManager := getStateManager(r)
-			var sessionManager *scs.SessionManager
-			if stateManager != nil {
-				sessionManager = stateManager.GetSessionManager()
-			}
-			if csrfToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && csrfToken != "" {
-				w.Header().Set("X-CSRF-Token", csrfToken)
-			}
-		}
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
+		// Set security headers for admin routes
+		setSecurityHeaders(w, r)
 
 		next.ServeHTTP(w, r)
 	}
@@ -477,8 +421,8 @@ func RequireAuthHandle(h func(http.ResponseWriter, *http.Request, httprouter.Par
 	}
 }
 
-// IndexHandler est un handler pour la page d'accueil
-// Cette fonction est exportée pour être utilisée par d'autres packages
+// IndexHandler is a handler for the home page
+// This function is exported for use by other packages
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	log := logger.Get().With().
 		Str("handler", "IndexHandler").
@@ -486,45 +430,45 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
-	log.Debug().Msg("Traitement de la requête pour la page d'accueil")
+	log.Debug().Msg("Processing request for home page")
 
-	// Si ce n'est pas la racine, on renvoie une 404
+	// If it's not the root, return a 404
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
 
-	// Préparer les données pour le template
+	// Prepare data for the template
 	data := map[string]interface{}{
 		"Title": "PVMSS",
-		"Lang":  i18n.GetLanguage(r), // Ajouter la langue détectée
+		"Lang":  i18n.GetLanguage(r), // Add detected language
 	}
 
-	// Ajouter les données de traduction en fonction de la langue
+	// Add translation data based on language
 	i18n.LocalizePage(w, r, data)
 
-	log.Debug().Msg("Rendu du template index")
-	renderTemplateInternal(w, r, "index", data) // Utiliser le nom du template au lieu du nom de fichier
+	log.Debug().Msg("Rendering index template")
+	renderTemplateInternal(w, r, "index", data) // Use the template name instead of the file name
 
-	log.Info().Msg("Page d'accueil affichée avec succès")
+	log.Info().Msg("Home page displayed successfully")
 }
 
-// IndexRouterHandler est un handler pour la page d'accueil compatible avec httprouter
+// IndexRouterHandler is a handler for the home page compatible with httprouter
 func IndexRouterHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	logger.Get().Debug().
 		Str("handler", "IndexRouterHandler").
 		Str("path", r.URL.Path).
-		Msg("Appel du gestionnaire d'index via routeur HTTP")
+		Msg("Calling index handler via HTTP router")
 
-	// Délègue le traitement au gestionnaire principal
+	// Delegates processing to the main handler
 	IndexHandler(w, r)
 }
 
-// HandlerFuncToHTTPrHandle adapte un http.HandlerFunc à une fonction httprouter.Handle.
-// Cette fonction permet d'utiliser des handlers standards avec le routeur httprouter.
+// HandlerFuncToHTTPrHandle adapts an http.HandlerFunc to an httprouter.Handle function.
+// This function allows using standard handlers with the httprouter router.
 func HandlerFuncToHTTPrHandle(h http.HandlerFunc) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		// Créer un logger pour cette requête
+		// Create a logger for this request
 		log := logger.Get().With().
 			Str("adapter", "HandlerFuncToHTTPrHandle").
 			Str("path", r.URL.Path).
@@ -532,38 +476,14 @@ func HandlerFuncToHTTPrHandle(h http.HandlerFunc) httprouter.Handle {
 			Int("params_count", len(ps)).
 			Logger()
 
-		log.Debug().Msg("Adaptation du gestionnaire HTTP standard pour httprouter")
+		log.Debug().Msg("Adapting standard HTTP handler for httprouter")
 
-		// Ajouter les paramètres de route au contexte de la requête
+		// Add route parameters to the request context
 		ctx := context.WithValue(r.Context(), ParamsKey, ps)
 
-		// Appeler le gestionnaire d'origine avec le nouveau contexte
+		// Call the original handler with the new context
 		h(w, r.WithContext(ctx))
 
-		log.Debug().Msg("Traitement du gestionnaire HTTP terminé")
+		log.Debug().Msg("HTTP handler processing finished")
 	}
 }
-
-// jsonOK writes a JSON success payload with content-type set.
-// func jsonOK(w http.ResponseWriter, payload interface{}) {
-// 	w.Header().Set("Content-Type", "application/json")
-// 	_ = json.NewEncoder(w).Encode(payload)
-// }
-
-// jsonErr writes a standardized JSON error response with the given HTTP status code.
-// func jsonErr(w http.ResponseWriter, status int, message string) {
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(status)
-// 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-// 		"status":  "error",
-// 		"message": message,
-// 	})
-// }
-
-// saveSettings persists settings using the provided state manager.
-// func saveSettings(sm state.StateManager, settings *state.AppSettings) error {
-// 	if sm == nil || settings == nil {
-// 		return nil
-// 	}
-// 	return sm.SetSettings(settings)
-// }

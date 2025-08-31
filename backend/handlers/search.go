@@ -89,7 +89,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 			queryParts = append(queryParts, "VMID: "+vmid)
 		}
 		if name != "" {
-			queryParts = append(queryParts, "Nom: "+name)
+			queryParts = append(queryParts, "Name: "+name)
 		}
 		queryString := strings.Join(queryParts, ", ")
 		data["Query"] = queryString
@@ -125,7 +125,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 				Err(err).
 				Msg("VM search failed")
 
-			data["Error"] = fmt.Sprintf("Échec de la recherche de VMs: %v", err)
+			data["Error"] = fmt.Sprintf("Failed to search for VMs: %v", err)
 			i18n.LocalizePage(w, r, data)
 			data["Title"] = data["Search.Results"]
 			renderTemplateInternal(w, r, "search", data)
@@ -161,7 +161,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		Str("method", r.Method).
 		Msg("HTTP method not allowed for search route")
 
-	http.Error(w, "Méthode non autorisée", http.StatusMethodNotAllowed)
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
 // searchVMs searches for VMs based on the provided criteria
