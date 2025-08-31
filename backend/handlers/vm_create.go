@@ -41,6 +41,15 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		},
 	}
 
+	// Proxmox connection status for template (also provided by middleware, but ensure here)
+	if sm != nil {
+		connected, message := sm.GetProxmoxStatus()
+		data["ProxmoxConnected"] = connected
+		if !connected {
+			data["ProxmoxError"] = message
+		}
+	}
+
 	// Add i18n data
 	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "create_vm", data)

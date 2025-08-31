@@ -27,6 +27,7 @@ import (
 type VMStateManager interface {
 	GetProxmoxClient() proxmox.ClientInterface
 	GetSettings() *state.AppSettings
+	GetProxmoxStatus() (bool, string)
 }
 
 // VMHandler handles VM-related pages and API endpoints
@@ -699,14 +700,16 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 // RegisterRoutes registers VM-related routes
 func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/vm/details/:id", h.VMDetailsHandler)
-	router.POST("/vm/update/description", h.UpdateVMDescriptionHandler)
-	router.POST("/vm/update/tags", h.UpdateVMTagsHandler)
-	router.POST("/vm/action", h.VMActionHandler)
-	router.GET("/api/console/qemu/:vmid", h.VMConsoleHandler)
-	router.GET("/api/console/qemu/:vmid/ws", h.VMConsoleWebSocketProxy)
-	router.GET("/console/qemu/:vmid", h.VMConsoleProxyPage)
-	router.GET("/pve2/*filepath", h.ProxmoxAssetProxy)
+	router.GET("/vm/create", RequireAuthHandle(h.CreateVMPage))
+	router.GET("/vm/details/:id", RequireAuthHandle(h.VMDetailsHandler))
+	router.POST("/vm/update/description", RequireAuthHandle(h.UpdateVMDescriptionHandler))
+	router.POST("/vm/update/tags", RequireAuthHandle(h.UpdateVMTagsHandler))
+	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))
+	router.POST("/api/vm/create", RequireAuthHandle(h.CreateVMHandler))
+	router.GET("/api/console/qemu/:vmid", RequireAuthHandle(h.VMConsoleHandler))
+	router.GET("/api/console/qemu/:vmid/ws", RequireAuthHandle(h.VMConsoleWebSocketProxy))
+	router.GET("/console/qemu/:vmid", RequireAuthHandle(h.VMConsoleProxyPage))
+	router.GET("/pve2/*filepath", RequireAuthHandle(h.ProxmoxAssetProxy))
 }
 
 // VMDetailsHandlerFunc is a wrapper function for compatibility with existing code

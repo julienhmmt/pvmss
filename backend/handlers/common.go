@@ -334,6 +334,20 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// RequireAuthHandle adapts a httprouter.Handle with the RequireAuth middleware.
+// It allows protecting router handlers that use the params form.
+func RequireAuthHandle(h func(http.ResponseWriter, *http.Request, httprouter.Params)) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		// Wrap the original handler into an http.HandlerFunc for RequireAuth
+		wrapped := func(w http.ResponseWriter, r *http.Request) {
+			// Also inject params in context for any downstream helper needing it
+			ctx := context.WithValue(r.Context(), ParamsKey, ps)
+			h(w, r.WithContext(ctx), ps)
+		}
+		RequireAuth(wrapped)(w, r)
+	}
+}
+
 // IndexHandler est un handler pour la page d'accueil
 // Cette fonction est exportée pour être utilisée par d'autres packages
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
