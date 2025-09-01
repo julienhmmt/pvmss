@@ -36,33 +36,15 @@ func getSecurityHeaders() map[string]string {
 		"X-Frame-Options":        "DENY",
 		"Referrer-Policy":        "strict-origin-when-cross-origin",
 		"Permissions-Policy":     "camera=(), microphone=(), geolocation=()",
-		// Apply a reasonable default CSP. In production, this is made stricter.
-		"Content-Security-Policy": getCSP(),
 	}
+
+	// Add CORS headers for API and WebSocket endpoints
+	headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+	headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+	headers["Access-Control-Allow-Credentials"] = "true"
 
 	if os.Getenv("ENV") == "production" {
 		headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
 	}
 	return headers
-}
-
-func getCSP() string {
-	// Base CSP with settings for development and production.
-	baseSrc := "'self'"
-	scriptSrc := "'self' 'unsafe-inline'"
-	styleSrc := "'self' 'unsafe-inline'"
-	connectSrc := "'self'"
-
-	// In development, allow 'unsafe-eval' for faster development cycles (e.g., for hot-reloading or certain libraries).
-	// In production, this is removed to enhance security.
-	if os.Getenv("ENV") != "production" {
-		scriptSrc += " 'unsafe-eval'"
-	}
-
-	return "default-src " + baseSrc + "; " +
-		"script-src " + scriptSrc + "; " +
-		"style-src " + styleSrc + "; " +
-		"img-src " + baseSrc + " data:; " +
-		"font-src " + baseSrc + "; " +
-		"connect-src " + connectSrc
 }

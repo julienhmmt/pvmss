@@ -2,11 +2,14 @@ package proxmox
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // ConsoleAuthResult encapsulates the outcome of a console session request.
@@ -61,8 +64,27 @@ func GetConsoleTicket(ctx context.Context, client ClientInterface, node string, 
 	// The VNC ticket from Proxmox is prefixed with user info (e.g., "PVE:user@realm:TICKET_DATA").
 	// The WebSocket proxy needs the full ticket, but the VNC client needs only the password part.
 	vncPassword := ticket
-	if parts := strings.Split(ticket, ":"); len(parts) > 1 {
+	parts := strings.Split(ticket, ":")
+	if len(parts) > 1 {
 		vncPassword = parts[len(parts)-1]
+	}
+
+	// Log the ticket and extracted password for debugging
+	log.Info().
+		Str("full_ticket", ticket).
+		Str("extracted_password", vncPassword).
+		Int("ticket_parts", len(parts)).
+		Bool("is_base64", isBase64(vncPassword)).
+		Msg("Extracted VNC password from ticket")
+
+	// Validate the extracted password
+	if vncPassword == "" {
+		return nil, fmt.Errorf("extracted VNC password is empty")
+	}
+
+	// Ensure the password is valid base64
+	if _, err := base64.StdEncoding.DecodeString(vncPassword); err != nil {
+		return nil, fmt.Errorf("extracted VNC password is not valid base64: %w", err)
 	}
 
 	proxmoxBase, err := extractBaseURL(client.GetApiUrl())
@@ -101,6 +123,12 @@ func GetConsoleTicketWithUserCredentials(ctx context.Context, username, password
 	}
 
 	return GetConsoleTicket(ctx, consoleClient, node, vmID)
+}
+
+// isBase64 checks if a string is valid base64
+func isBase64(s string) bool {
+	_, err := base64.StdEncoding.DecodeString(s)
+	return err == nil
 }
 
 // extractBaseURL parses a raw URL and returns just the scheme and host.

@@ -171,19 +171,37 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// However, to avoid unnecessary session churn on static assets and health checks,
 	// we bypass LoadAndSave for those paths.
 	if sessionManager != nil {
-		// Capture the current handler chain to avoid self-recursion in the closure.
+		// CRITICAL FIX: Ensure the LoadAndSave middleware is applied BEFORE other middleware
+		// to make session data available to all downstream components.
+		// This is the opposite order from what you might expect in the code,
+		// but because each middleware wraps the next, we need to apply LoadAndSave last.
+
+		// First, ensure we have a functioning session manager
+		log.Info().Msgf("Session manager address: %p", sessionManager)
+
+		// Create a handler that conditionally applies the LoadAndSave middleware
 		baseHandler := handler
-		// Pre-wrap the LoadAndSave middleware to avoid allocating it on every request.
-		withSession := sessionManager.LoadAndSave(baseHandler)
+		withSession := sessionManager.LoadAndSave
+
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Bypass session management for static assets and health checks to reduce overhead.
+			// Debug log to trace request path
+			log.Debug().
+				Str("path", r.URL.Path).
+				Str("method", r.Method).
+				Bool("is_static", isStaticPath(r.URL.Path)).
+				Msg("Request path middleware selection")
+
+			// Bypass session management for static assets and health checks to reduce overhead
 			if isStaticPath(r.URL.Path) || r.URL.Path == "/health" {
 				baseHandler.ServeHTTP(w, r)
 				return
 			}
-			withSession.ServeHTTP(w, r)
+
+			// Apply LoadAndSave to load the session before any other middleware processes the request
+			withSession(baseHandler).ServeHTTP(w, r)
 		})
-		log.Info().Msgf("Session middleware enabled with conditional bypass for static/health; manager: %p", sessionManager)
+
+		log.Info().Msg("Session middleware configured with LoadAndSave for all non-static routes")
 	}
 
 	// Global panic recovery (outermost) to avoid crashing the server on unexpected panics

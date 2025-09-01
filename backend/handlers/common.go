@@ -234,18 +234,49 @@ func IsAuthenticated(r *http.Request) bool {
 	stateManager := getStateManager(r)
 	sessionManager := stateManager.GetSessionManager()
 
+	// Check if the session manager is available
+	if sessionManager == nil {
+		log.Error().Msg("Session manager not available in IsAuthenticated")
+		return false
+	}
+
+	// Log the session token to help diagnose issues
+	sessionToken := sessionManager.Token(r.Context())
+	log.Debug().
+		Str("session_token", sessionToken).
+		Msg("Session token in IsAuthenticated")
+
 	// Check if the session contains the authentication flag
 	authenticated, ok := sessionManager.Get(r.Context(), "authenticated").(bool)
+
+	// Log detailed session data for debugging
+	sessionData := map[string]interface{}{
+		"authenticated_found": ok,
+		"authenticated_value": authenticated,
+	}
+
+	// Try to get other session values for diagnostic purposes
+	if username, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+		sessionData["username"] = username
+	}
+
+	if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+		sessionData["is_admin"] = isAdmin
+	}
+
 	if !ok || !authenticated {
 		log.Debug().
 			Bool("authenticated", false).
+			Interface("session_data", sessionData).
+			Str("session_id", sessionToken).
 			Msg("Access denied: user not authenticated")
 		return false
 	}
 
 	log.Debug().
 		Bool("authenticated", true).
-		Str("session_id", sessionManager.Token(r.Context())).
+		Interface("session_data", sessionData).
+		Str("session_id", sessionToken).
 		Msg("Access granted: user authenticated")
 
 	return true
