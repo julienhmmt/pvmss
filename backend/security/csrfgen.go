@@ -1,7 +1,7 @@
-// security/csrfgen.go
 package security
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -12,143 +12,144 @@ import (
 	"pvmss/logger"
 )
 
-// CSRF token length in bytes
-const csrfTokenLength = 32
+// Constants for CSRF protection.
+const (
+	// csrfTokenLength is the byte length of the CSRF token.
+	csrfTokenLength = 32
+	// CSRFTokenTTL defines the default lifetime for CSRF tokens.
+	// This can be overridden by the CSRF_TOKEN_TTL environment variable.
+	CSRFTokenTTL = 30 * time.Minute
+	// csrfSessionKey is the key used to store the token in the session.
+	csrfSessionKey = "csrf_token"
+	// csrfHeader is the HTTP header to check for the token.
+	csrfHeader = "X-CSRF-Token"
+	// csrfFormKey is the form field to check for the token.
+	csrfFormKey = "csrf_token"
+)
 
-// GenerateCSRFToken generates a new CSRF token
+// csrfContextKey is an unexported type for the context key to avoid collisions.
+type csrfContextKey struct{}
+
+// WithCSRFToken returns a new context with the provided CSRF token.
+func WithCSRFToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, csrfContextKey{}, token)
+}
+
+// CSRFTokenFromContext extracts a CSRF token from the context.
+// It returns the token and a boolean indicating if it was found.
+func CSRFTokenFromContext(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(csrfContextKey{}).(string)
+	return token, ok
+}
+
+// GenerateCSRFToken creates a new, cryptographically secure CSRF token.
 func GenerateCSRFToken() (string, error) {
 	b := make([]byte, csrfTokenLength)
-	_, err := rand.Read(b)
-	if err != nil {
+	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-// CompareTokens performs a constant time comparison of two tokens.
+// CompareTokens performs a constant-time comparison of two tokens.
 func CompareTokens(a, b string) bool {
 	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
 }
 
-// ShouldSkipCSRF determines if CSRF validation should be skipped for the request.
-// Rules: safe HTTP methods, health endpoints, and static asset paths.
-func ShouldSkipCSRF(r *http.Request) bool {
-	// Health checks
-	if r.URL.Path == "/health" || r.URL.Path == "/api/health" || r.URL.Path == "/api/healthz" {
-		return true
+// CSRF is a middleware that provides Cross-Site Request Forgery protection.
+// It handles both generating tokens for safe requests (GET, HEAD, etc.) and
+// validating them for unsafe requests (POST, PUT, etc.).
+// This middleware must be placed *after* the session middleware.
+func CSRF(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log := logger.Get().With().Str("middleware", "security.CSRF").Logger()
+
+		// Get the session manager. This must be available in the context.
+		sessionManager := GetSession(r)
+		if sessionManager == nil {
+			log.Error().Msg("CSRF middleware requires session middleware to be active")
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// For safe methods (GET, HEAD, etc.), generate a token if needed and add it to the context.
+		if isSafeMethod(r) {
+			token := getOrCreateSessionToken(r, sessionManager)
+			ctx := WithCSRFToken(r.Context(), token)
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
+		// For unsafe methods, validate the token.
+		requestToken := r.Header.Get(csrfHeader)
+		if requestToken == "" {
+			requestToken = r.FormValue(csrfFormKey)
+		}
+
+		if requestToken == "" {
+			log.Warn().Msg("Missing CSRF token in unsafe request")
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		sessionToken := sessionManager.GetString(r.Context(), csrfSessionKey)
+		if sessionToken == "" {
+			log.Warn().Msg("Missing CSRF token in session for validation")
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		if !CompareTokens(requestToken, sessionToken) {
+			log.Warn().Msg("Invalid CSRF token")
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		log.Debug().Msg("CSRF token validated successfully")
+		next.ServeHTTP(w, r)
+	})
+}
+
+// getOrCreateSessionToken retrieves a CSRF token from the session or generates a new one.
+func getOrCreateSessionToken(r *http.Request, sm sessionManager) string {
+	token := sm.GetString(r.Context(), csrfSessionKey)
+	if token != "" {
+		return token // Reuse existing token
 	}
 
-	// Safe methods
-	switch r.Method {
-	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
-		return true
+	// Generate a new token if one doesn't exist.
+	newToken, err := GenerateCSRFToken()
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to generate CSRF token")
+		return "" // Return empty on error
 	}
 
-	// Static assets
-	if strings.HasPrefix(r.URL.Path, "/css/") ||
+	sm.Put(r.Context(), csrfSessionKey, newToken)
+	return newToken
+}
+
+// isSafeMethod checks if the request uses a safe HTTP method (e.g., GET, HEAD).
+func isSafeMethod(r *http.Request) bool {
+	// Skip CSRF for health checks and static assets.
+	if r.URL.Path == "/health" || r.URL.Path == "/api/health" || r.URL.Path == "/api/healthz" ||
+		strings.HasPrefix(r.URL.Path, "/css/") ||
 		strings.HasPrefix(r.URL.Path, "/js/") ||
 		strings.HasPrefix(r.URL.Path, "/webfonts/") ||
 		r.URL.Path == "/favicon.ico" {
 		return true
 	}
-	return false
+
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
+		return true
+	default:
+		return false
+	}
 }
 
-// CSRFGeneratorMiddleware generates CSRF tokens for GET requests
-func CSRFGeneratorMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip CSRF for health endpoints, API endpoints, and non-GET requests
-		if r.URL.Path == "/health" || r.URL.Path == "/api/health" ||
-			r.URL.Path == "/api/healthz" ||
-			strings.HasPrefix(r.URL.Path, "/api/") ||
-			r.Method != http.MethodGet {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		log := logger.Get().With().
-			Str("middleware", "CSRFGeneratorMiddleware").
-			Str("path", r.URL.Path).
-			Logger()
-
-		// Get the session manager (may not have data loaded yet for some routes)
-		sessionManager := GetSession(r)
-
-		// Helper: safe session get to avoid panics when no session data in context
-		safeGet := func() (string, bool) {
-			if sessionManager == nil {
-				return "", false
-			}
-			defer func() {
-				if rec := recover(); rec != nil {
-					// scs panicked due to missing session data in context
-					log.Debug().Interface("recover", rec).Msg("CSRFGenerator: session Get panicked; treating as no token")
-				}
-			}()
-			if v, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && v != "" {
-				return v, true
-			}
-			return "", false
-		}
-
-		// Helper: safe session put to avoid panics when no session data in context
-		safePut := func(token string, issuedAt time.Time) {
-			if sessionManager == nil {
-				return
-			}
-			defer func() {
-				if rec := recover(); rec != nil {
-					log.Debug().Interface("recover", rec).Msg("CSRFGenerator: session Put panicked; skipping persist")
-				}
-			}()
-			sessionManager.Put(r.Context(), "csrf_token", token)
-			sessionManager.Put(r.Context(), "csrf_issued_at", issuedAt.UTC().Format(time.RFC3339))
-		}
-
-		// Reuse existing token if safely retrievable; else generate
-		var csrfToken string
-		var issuedAt time.Time
-		if existing, ok := safeGet(); ok {
-			// Try to read issued_at and decide if still valid
-			if sessionManager != nil {
-				if v, ok := sessionManager.Get(r.Context(), "csrf_issued_at").(string); ok && v != "" {
-					if t, err := time.Parse(time.RFC3339, v); err == nil {
-						issuedAt = t
-					}
-				}
-			}
-			// Fallback: if no issued_at, consider now
-			if issuedAt.IsZero() {
-				issuedAt = time.Now().UTC()
-			}
-			// Determine TTL from config if available
-			ttl := CSRFTokenTTL
-			if cfg := GetConfig(); cfg.CSRFTokenTTL > 0 {
-				ttl = cfg.CSRFTokenTTL
-			}
-			if time.Since(issuedAt) < ttl {
-				csrfToken = existing
-				log.Debug().Msg("CSRF token found in session; reusing (within TTL)")
-			}
-		}
-		if csrfToken == "" {
-			newToken, err := GenerateCSRFToken()
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to generate CSRF token")
-				next.ServeHTTP(w, r)
-				return
-			}
-			csrfToken = newToken
-			issuedAt = time.Now().UTC()
-			// Try to persist in session if available (safe against panic)
-			safePut(csrfToken, issuedAt)
-			log.Debug().Msg("CSRF token generated; persisted to session if available")
-		}
-
-		// Add the token to the request context using the new helper function.
-		ctx := WithCSRFToken(r.Context(), csrfToken)
-		r = r.WithContext(ctx)
-
-		next.ServeHTTP(w, r)
-	})
+// sessionManager is an interface to abstract the session manager's methods.
+// This helps in testing and keeps the dependency on scs contained.
+type sessionManager interface {
+	Put(ctx context.Context, key string, val interface{})
+	GetString(ctx context.Context, key string) string
 }

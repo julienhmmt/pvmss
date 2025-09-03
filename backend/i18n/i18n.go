@@ -5,10 +5,11 @@
 package i18n
 
 import (
-	"bufio"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +21,6 @@ import (
 	"pvmss/logger"
 )
 
-// Common constants used by the i18n package.
 const (
 	// CookieNameLang is the cookie storing the user's preferred language.
 	CookieNameLang = "pvmss_lang"
@@ -50,19 +50,21 @@ var (
 // Populated once during InitI18n to avoid scanning files on each request.
 var messageIDs []string
 
-// supported language tags and codes
 var (
-	supportedTags  = []language.Tag{language.English, language.French}
-	supportedCodes = map[string]struct{}{"en": {}, "fr": {}}
+	i18nDir        string // Discovered path to the i18n directory.
+	supportedTags  []language.Tag
+	supportedCodes map[string]struct{}
+	langFileRegex  = regexp.MustCompile(`^active\.([a-z]{2}(?:-[a-z]{2})?)\.toml$`)
 )
 
-// setLanguageSwitcher populates LangEN and LangFR URLs into the provided data map.
+// setLanguageSwitcher populates language switcher URLs into the provided data map.
 func setLanguageSwitcher(r *http.Request, data map[string]interface{}) {
 	q := r.URL.Query()
-	q.Set(QueryParamLang, "en")
-	data["LangEN"] = r.URL.Path + "?" + q.Encode()
-	q.Set(QueryParamLang, "fr")
-	data["LangFR"] = r.URL.Path + "?" + q.Encode()
+	for code := range supportedCodes {
+		q.Set(QueryParamLang, code)
+		key := fmt.Sprintf("Lang%s", strings.ToUpper(code))
+		data[key] = r.URL.Path + "?" + q.Encode()
+	}
 }
 
 // getLocalizer creates a new localizer for the specified language.
@@ -171,19 +173,6 @@ func cloneMap(src map[string]string) map[string]string {
 	return dst
 }
 
-// resolveTranslationFilePath returns the first existing path for a translation file
-// using the same search strategy as loadTranslationFile.
-func resolveTranslationFilePath(filename string) (string, bool) {
-	possiblePaths := translationSearchPaths(filename)
-
-	for _, p := range possiblePaths {
-		if _, err := os.Stat(p); err == nil {
-			return p, true
-		}
-	}
-	return "", false
-}
-
 // translationSearchPaths returns the ordered list of locations to look for translation files.
 func translationSearchPaths(filename string) []string {
 	return []string{
@@ -200,114 +189,129 @@ func translationSearchPaths(filename string) []string {
 	}
 }
 
-// extractMessageIDsFromFile scans a TOML translation file and extracts message IDs
-// defined as headings like ["Section.Key"].
-func extractMessageIDsFromFile(path string) []string {
-	f, err := os.Open(path)
+// extractMessageIDsFromMap recursively traverses a map to build a flat list of fully-qualified message IDs.
+func extractMessageIDsFromMap(m map[string]interface{}, prefix string, ids *[]string) {
+	for k, v := range m {
+		newPrefix := k
+		if prefix != "" {
+			newPrefix = prefix + "." + k
+		}
+
+		if subMap, ok := v.(map[string]interface{}); ok {
+			extractMessageIDsFromMap(subMap, newPrefix, ids)
+		} else {
+			*ids = append(*ids, newPrefix)
+		}
+	}
+}
+
+// parseMessageIDsFromFile opens and parses a TOML file, then extracts all message IDs.
+func parseMessageIDsFromFile(path string) []string {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		logger.Get().Warn().Err(err).Str("file", path).Msg("unable to open translation file to extract keys")
+		logger.Get().Warn().Err(err).Str("file", path).Msg("unable to read translation file to extract keys")
 		return nil
 	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	ids := make([]string, 0, 512)
-	seen := make(map[string]struct{})
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if len(line) == 0 || line[0] != '[' {
-			continue
-		}
-		// expect ["..."]
-		if strings.HasPrefix(line, "[\"") && strings.Contains(line, "\"]") {
-			start := len("[\"")
-			end := strings.Index(line[start:], "\"]")
-			if end > 0 {
-				id := line[start : start+end]
-				if id != "" {
-					if _, ok := seen[id]; !ok {
-						seen[id] = struct{}{}
-						ids = append(ids, id)
-					}
-				}
-			}
-		}
+
+	var m map[string]interface{}
+	if err := toml.Unmarshal(data, &m); err != nil {
+		logger.Get().Warn().Err(err).Str("file", path).Msg("failed to parse TOML for key extraction")
+		return nil
 	}
-	if err := scanner.Err(); err != nil {
-		logger.Get().Warn().Err(err).Str("file", path).Msg("scanner error while extracting keys")
-	}
+
+	var ids []string
+	extractMessageIDsFromMap(m, "", &ids)
 	return ids
 }
 
-// getAllMessageIDs tries to read message IDs from available locale files.
+// getAllMessageIDs discovers all unique message IDs from all available translation files.
 func getAllMessageIDs() []string {
-	combined := make([]string, 0, 1024)
-	seen := make(map[string]struct{})
-	// Prefer English file as baseline
-	if p, ok := resolveTranslationFilePath("active.en.toml"); ok {
-		for _, id := range extractMessageIDsFromFile(p) {
-			if _, ex := seen[id]; !ex {
-				seen[id] = struct{}{}
-				combined = append(combined, id)
-			}
+	combined := make(map[string]struct{})
+	files, err := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to glob for translation files")
+		return nil
+	}
+
+	for _, file := range files {
+		for _, id := range parseMessageIDsFromFile(file) {
+			combined[id] = struct{}{}
 		}
 	}
-	// Merge any additional ids from FR
-	if p, ok := resolveTranslationFilePath("active.fr.toml"); ok {
-		for _, id := range extractMessageIDsFromFile(p) {
-			if _, ex := seen[id]; !ex {
-				seen[id] = struct{}{}
-				combined = append(combined, id)
-			}
-		}
+
+	uniqueIDs := make([]string, 0, len(combined))
+	for id := range combined {
+		uniqueIDs = append(uniqueIDs, id)
 	}
-	return combined
+	return uniqueIDs
 }
 
-// loadTranslationFile attempts to load a translation file from several possible
-// locations to accommodate different execution environments (local, container, parent dir).
-func loadTranslationFile(bundle *i18n.Bundle, filename string) {
-	possiblePaths := translationSearchPaths(filename)
-
-	var loaded bool
-	var lastError error
-
-	for _, path := range possiblePaths {
-		absPath, _ := filepath.Abs(path)
-		logger.Get().Debug().Str("path", absPath).Msgf("Attempting to load translation file: %s", filename)
-
-		if _, err := os.Stat(path); err == nil {
-			if _, err := bundle.LoadMessageFile(path); err == nil {
-				logger.Get().Info().Str("file", absPath).Msg("Translation file loaded successfully")
-				loaded = true
-				break
-			} else {
-				lastError = err
-				logger.Get().Warn().Err(err).Str("path", absPath).Msg("Error while loading translation file")
-			}
-		} else {
-			logger.Get().Debug().Str("path", absPath).Msg("Translation file not found at this location")
+// findI18nDirectory searches for the 'i18n' directory in common locations.
+func findI18nDirectory() (string, error) {
+	for _, path := range translationSearchPaths("") {
+		// We are looking for the directory itself, so use filepath.Dir
+		dir := filepath.Dir(path)
+		if _, err := os.Stat(dir); err == nil {
+			absPath, _ := filepath.Abs(dir)
+			logger.Get().Info().Str("path", absPath).Msg("Found i18n directory")
+			return absPath, nil
 		}
 	}
+	return "", fmt.Errorf("i18n directory not found in any search paths")
+}
 
-	if !loaded {
-		logger.Get().Error().
-			Str("file", filename).
-			Err(lastError).
-			Msg("Failed to load translation file from any known location")
+// loadAllTranslations discovers and loads all 'active.*.toml' files.
+func loadAllTranslations(bundle *i18n.Bundle) {
+	files, err := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to glob for translation files")
+		return
+	}
+
+	if len(files) == 0 {
+		logger.Get().Error().Msg("No translation files found.")
+		return
+	}
+
+	for _, file := range files {
+		if _, err := bundle.LoadMessageFile(file); err != nil {
+			logger.Get().Error().Err(err).Str("file", file).Msg("Failed to load translation file")
+		}
+		logger.Get().Info().Str("file", file).Msg("Translation file loaded successfully")
 	}
 }
 
-// InitI18n initializes the internationalization bundle.
-// It sets English as the default language, registers the TOML unmarshal function,
-// and loads translation files for supported locales.
+// InitI18n discovers languages, loads translations, and pre-warms the cache.
 func InitI18n() {
+	var err error
+	i18nDir, err = findI18nDirectory()
+	if err != nil {
+		logger.Get().Fatal().Err(err).Msg("Could not initialize i18n")
+	}
+
+	// Dynamically discover supported languages
+	supportedCodes = make(map[string]struct{})
+	files, _ := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+	for _, file := range files {
+		matches := langFileRegex.FindStringSubmatch(filepath.Base(file))
+		if len(matches) > 1 {
+			code := matches[1]
+			tag, err := language.Parse(code)
+			if err != nil {
+				logger.Get().Warn().Str("code", code).Msg("Skipping invalid language code")
+				continue
+			}
+			supportedTags = append(supportedTags, tag)
+			supportedCodes[code] = struct{}{}
+		}
+	}
+
 	// Create a new bundle with English as default language
 	Bundle = i18n.NewBundle(language.English)
 	Bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 
-	// Load supported locales
-	loadTranslationFile(Bundle, "active.en.toml")
-	loadTranslationFile(Bundle, "active.fr.toml")
+	// Load all discovered translation files
+	loadAllTranslations(Bundle)
 
 	// Discover message IDs once
 	messageIDs = getAllMessageIDs()
@@ -324,15 +328,17 @@ func InitI18n() {
 		cacheMu.Unlock()
 	}
 
-	// Diagnostics: log a few sample keys to confirm catalogs
-	enLoc := i18n.NewLocalizer(Bundle, "en")
-	frLoc := i18n.NewLocalizer(Bundle, "fr", DefaultLang)
-	samples := []string{"Navbar.Home", "Common.Login", "UI.Button.Search"}
-	for _, k := range samples {
-		enVal := Localize(enLoc, k)
-		frVal := Localize(frLoc, k)
-		logger.Get().Debug().Str("key", k).Str("en", enVal).Str("fr", frVal).Msg("i18n sample")
+	// Log diagnostics
+	logger.Get().Info().Int("count", len(messageIDs)).Msg("Discovered message IDs")
+	logger.Get().Info().Strs("languages", mapsKeys(supportedCodes)).Msg("Initialized i18n for languages")
+}
+
+func mapsKeys[M ~map[K]V, K comparable, V any](m M) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, fmt.Sprintf("%v", k))
 	}
+	return keys
 }
 
 // LocalizePage injects all necessary localized strings into the data map for a given request.

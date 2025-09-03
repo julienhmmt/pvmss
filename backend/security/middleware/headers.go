@@ -14,6 +14,7 @@ func Headers(next http.Handler) http.Handler {
 	})
 }
 
+// setSecurityHeaders applies a set of security-related HTTP headers to the response.
 func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 	headers := getSecurityHeaders()
 
@@ -30,6 +31,9 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 		Msg("Processing request with security headers")
 }
 
+// getSecurityHeaders returns a map of standard security headers.
+// These headers help mitigate common web vulnerabilities like XSS and clickjacking.
+// In production, it also adds the Strict-Transport-Security header.
 func getSecurityHeaders() map[string]string {
 	headers := map[string]string{
 		"X-Content-Type-Options": "nosniff",

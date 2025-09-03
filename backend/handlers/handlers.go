@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
@@ -91,8 +92,9 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Create a new router
 	router := httprouter.New()
 
-	// Configure rate limits for sensitive endpoints (e.g., POST /login)
-	middleware.ConfigureLoginRateLimit()
+	// Configure rate limiter
+	rateLimiter := middleware.NewRateLimiter(5*time.Minute, 15*time.Minute)
+	rateLimiter.AddRule("POST", "/login", middleware.Rule{Capacity: 5, Refill: 12 * time.Second})
 
 	// Ensure default tag exists
 	if err := EnsureDefaultTag(stateManager); err != nil {
@@ -144,9 +146,8 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		// The desired runtime execution order is: LoadAndSave -> SessionMiddleware -> CSRF -> Headers -> router
 
 		// Apply middleware in reverse order of execution (inner to outer).
-		handler = securityMiddleware.CSRF(handler)
+		handler = security.CSRF(handler)
 		handler = securityMiddleware.Headers(handler)
-		handler = security.CSRFGeneratorMiddleware(handler)
 
 		// Inject our custom session manager into the context.
 		handler = securityMiddleware.SessionMiddleware(sessionManager)(handler)
@@ -159,7 +160,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	handler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(handler)
 
 	// Apply rate limiting (runs early)
-	handler = middleware.RateLimitMiddleware(handler)
+	handler = middleware.RateLimitMiddleware(rateLimiter)(handler)
 
 	// Normalize trailing slashes early to reduce duplicate route handlers
 	handler = trailingSlashRedirectMiddleware(handler)

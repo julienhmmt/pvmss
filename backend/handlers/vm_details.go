@@ -23,6 +23,7 @@ import (
 	"pvmss/security"
 	"pvmss/state"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/gomarkdown/markdown"
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
@@ -855,7 +856,7 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, ps 
 }
 
 // tryConsoleWithCookie attempts to get console ticket using stored PVE auth cookie
-func (h *VMHandler) tryConsoleWithCookie(ctx context.Context, pveAuthCookie string, sessionManager *security.SessionManager, node string, vmID int) (*proxmox.ConsoleAuthResult, error) {
+func (h *VMHandler) tryConsoleWithCookie(ctx context.Context, pveAuthCookie string, sessionManager *scs.SessionManager, node string, vmID int) (*proxmox.ConsoleAuthResult, error) {
 	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
 	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
 

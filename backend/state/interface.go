@@ -6,8 +6,8 @@ import (
 	"html/template"
 	"time"
 
+	"github.com/alexedwards/scs/v2"
 	"pvmss/proxmox"
-	"pvmss/security"
 )
 
 // StateManager defines the interface for managing application state
@@ -17,8 +17,8 @@ type StateManager interface {
 	SetTemplates(t *template.Template) error
 
 	// Session management
-	GetSessionManager() *security.SessionManager
-	SetSessionManager(sm *security.SessionManager) error
+	GetSessionManager() *scs.SessionManager
+	SetSessionManager(sm *scs.SessionManager) error
 
 	// Proxmox client management
 	GetProxmoxClient() proxmox.ClientInterface

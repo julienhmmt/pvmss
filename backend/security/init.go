@@ -12,8 +12,10 @@ import (
 	"pvmss/logger"
 )
 
-// InitSecurity initializes all security components and returns a session manager.
-func InitSecurity() (*SessionManager, error) {
+// InitSecurity initializes the session manager and other security components.
+// It configures the session store, lifetime, and cookie settings based on the
+// environment (production or development).
+func InitSecurity() (*scs.SessionManager, error) {
 	log := logger.Get()
 	log.Info().Msg("Initializing security components")
 
@@ -47,10 +49,7 @@ func InitSecurity() (*SessionManager, error) {
 		log.Warn().Msg("Secure session cookies disabled (not in production environment)")
 	}
 
-	// Create our custom session manager.
-	sessionManager := NewSessionManager(scsm)
-
 	log.Info().Msg("Security components initialized successfully")
 
-	return sessionManager, nil
+	return scsm, nil
 }

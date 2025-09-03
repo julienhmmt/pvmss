@@ -8,15 +8,20 @@ import (
 	"time"
 )
 
+const (
+	// defaultCSRFTokenTTL is the default lifetime for CSRF tokens if not specified via environment variable.
+	defaultCSRFTokenTTL = 30 * time.Minute
+	// defaultBcryptCost is the default cost for bcrypt password hashing if not specified via environment variable.
+	defaultBcryptCost = 14
+)
+
 // Config holds configurable security parameters.
 // Values are loaded once from environment variables with sensible defaults.
 type Config struct {
 	// CSRFTokenTTL controls the maximum lifetime of CSRF tokens before rotation.
-	// Default is the value from CSRFTokenTTL constant if not overridden via env.
 	CSRFTokenTTL time.Duration
 
 	// BcryptCost controls the hashing cost for passwords.
-	// Default 14 if not overridden via env BCRYPT_COST.
 	BcryptCost int
 }
 
@@ -34,8 +39,8 @@ func GetConfig() *Config {
 		log := logger.Get().With().Str("component", "security_config").Logger()
 
 		cfg := &Config{
-			CSRFTokenTTL: CSRFTokenTTL, // default from constants.go
-			BcryptCost:   14,
+			CSRFTokenTTL: defaultCSRFTokenTTL,
+			BcryptCost:   defaultBcryptCost,
 		}
 
 		// Load CSRF_TOKEN_TTL from environment, with logging on failure.

@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -23,25 +24,13 @@ func Init(level string) {
 	// Set the global logger
 	log.Logger = log.Output(output)
 
-	// Set log level based on environment variable
-	switch strings.ToLower(level) {
-	case "trace":
-		zerolog.SetGlobalLevel(zerolog.TraceLevel)
-	case "debug":
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case "warn":
-		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case "error":
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
-	case "fatal":
-		zerolog.SetGlobalLevel(zerolog.FatalLevel)
-	case "panic":
-		zerolog.SetGlobalLevel(zerolog.PanicLevel)
-	case "info", "":
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	default:
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	// Set log level, defaulting to InfoLevel if parsing fails.
+	lvl, err := zerolog.ParseLevel(strings.ToLower(level))
+	if err != nil {
+		lvl = zerolog.InfoLevel
+		log.Warn().Str("log_level_in", level).Msg("Invalid log level, defaulting to 'info'")
 	}
+	zerolog.SetGlobalLevel(lvl)
 
 	log.Info().
 		Str("level", zerolog.GlobalLevel().String()).
@@ -51,4 +40,10 @@ func Init(level string) {
 // Get returns a pointer to the configured logger instance
 func Get() *zerolog.Logger {
 	return &log.Logger
+}
+
+// SetOutput changes the destination for log output.
+// This is useful for redirecting logs to a file or a buffer during testing.
+func SetOutput(w io.Writer) {
+	log.Logger = log.Output(w)
 }

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -9,110 +8,121 @@ import (
 	"pvmss/logger"
 )
 
-// Simple in-memory token bucket per IP+path.
-// Not distributed; suitable for a single-instance deployment.
+// Package middleware provides rate-limiting functionality using an in-memory token bucket algorithm.
+// This implementation is designed for single-instance deployments and is not distributed.
 
+// bucket represents a token bucket for a specific client and route.
 type bucket struct {
 	capacity   int
 	tokens     float64
 	ratePerSec float64
-	lastRefill time.Time
+	lastAccess time.Time // Used to identify and clean up stale buckets.
 }
 
-type limiter struct {
+// Rule defines the rate-limiting parameters for a specific route.
+type Rule struct {
+	Capacity int           // The maximum number of tokens the bucket can hold.
+	Refill   time.Duration // The time it takes to generate one new token.
+}
+
+// Limiter manages rate-limiting rules and active token buckets.
+type Limiter struct {
 	mu      sync.Mutex
-	rules   map[string]rule // path -> rule
-	buckets map[string]*bucket
+	rules   map[string]Rule    // Key: "METHOD /path"
+	buckets map[string]*bucket // Key: "METHOD /path|ip_address"
 }
 
-type rule struct {
-	Capacity int
-	Refill   time.Duration // time to refill 1 token
+// NewRateLimiter creates a new Limiter and starts a background goroutine to clean up stale buckets.
+func NewRateLimiter(cleanupInterval, staleThreshold time.Duration) *Limiter {
+	l := &Limiter{
+		rules:   make(map[string]Rule),
+		buckets: make(map[string]*bucket),
+	}
+
+	// Start a background goroutine to periodically remove old buckets.
+	go l.cleanupStaleBuckets(cleanupInterval, staleThreshold)
+
+	return l
 }
 
-var defaultLimiter = &limiter{
-	rules:   make(map[string]rule),
-	buckets: make(map[string]*bucket),
+// AddRule adds a new rate-limiting rule for a given method and path.
+func (l *Limiter) AddRule(method, path string, rule Rule) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	key := method + " " + path
+	l.rules[key] = rule
 }
 
-// ConfigureLoginRateLimit sets a sane default for POST /login, e.g., 5 req/min per IP.
-func ConfigureLoginRateLimit() {
-	// 5 tokens capacity, refill 12s per token ~ 5/minute
-	defaultLimiter.mu.Lock()
-	defer defaultLimiter.mu.Unlock()
-	defaultLimiter.rules["POST /login"] = rule{Capacity: 5, Refill: 12 * time.Second}
-}
+// Allow checks if a request is permitted under the configured rate limits.
+// It returns true if the request should be allowed, and false otherwise.
+func (l *Limiter) Allow(method, path, ip string) bool {
+	key := method + " " + path
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
-// RateLimitMiddleware enforces per-IP rate limits for configured routes.
-func RateLimitMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := r.Method + " " + r.URL.Path
-		defaultLimiter.mu.Lock()
-		rl, ok := defaultLimiter.rules[key]
-		defaultLimiter.mu.Unlock()
-		if !ok {
-			// No rule, just pass through
-			next.ServeHTTP(w, r)
-			return
+	rule, ok := l.rules[key]
+	if !ok {
+		return true // No rule for this path, so allow the request.
+	}
+
+	bucketKey := key + "|" + ip
+	bk, exists := l.buckets[bucketKey]
+	if !exists {
+		bk = &bucket{
+			capacity:   rule.Capacity,
+			tokens:     float64(rule.Capacity),
+			ratePerSec: 1.0 / rule.Refill.Seconds(),
 		}
+		l.buckets[bucketKey] = bk
+	}
 
-		ip := clientIP(r)
-		bkKey := key + "|" + ip
+	// Refill the bucket with new tokens based on the elapsed time.
+	now := time.Now()
+	elapsed := now.Sub(bk.lastAccess).Seconds()
+	bk.tokens += elapsed * bk.ratePerSec
+	if bk.tokens > float64(bk.capacity) {
+		bk.tokens = float64(bk.capacity)
+	}
+	bk.lastAccess = now
 
-		defaultLimiter.mu.Lock()
-		bk, exists := defaultLimiter.buckets[bkKey]
-		if !exists {
-			bk = &bucket{
-				capacity:   rl.Capacity,
-				tokens:     float64(rl.Capacity),
-				ratePerSec: 1.0 / rl.Refill.Seconds(),
-				lastRefill: time.Now(),
+	// Check if there are enough tokens to allow the request.
+	if bk.tokens >= 1.0 {
+		bk.tokens--
+		return true
+	}
+
+	return false
+}
+
+// cleanupStaleBuckets periodically removes buckets that haven't been accessed
+// for a duration greater than the staleThreshold.
+func (l *Limiter) cleanupStaleBuckets(interval, threshold time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		l.mu.Lock()
+		for key, bk := range l.buckets {
+			if time.Since(bk.lastAccess) > threshold {
+				delete(l.buckets, key)
 			}
-			defaultLimiter.buckets[bkKey] = bk
 		}
-
-		// Refill
-		now := time.Now()
-		elapsed := now.Sub(bk.lastRefill).Seconds()
-		bk.tokens = minFloat(float64(bk.capacity), bk.tokens+elapsed*bk.ratePerSec)
-		bk.lastRefill = now
-
-		allowed := bk.tokens >= 1.0
-		if allowed {
-			bk.tokens -= 1.0
-		}
-		defaultLimiter.mu.Unlock()
-
-		if !allowed {
-			logger.Get().Warn().Str("ip", ip).Str("path", r.URL.Path).Msg("Rate limit exceeded")
-			w.Header().Set("Retry-After", "10")
-			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
+		l.mu.Unlock()
+	}
 }
 
-func clientIP(r *http.Request) string {
-	// Try common proxy headers, then RemoteAddr
-	// Note: You mentioned not behind proxy for HTTPS currently; still safe.
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return xff
+// RateLimitMiddleware returns a middleware that enforces rate limits using the provided Limiter.
+func RateLimitMiddleware(limiter *Limiter) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := clientIP(r)
+			if !limiter.Allow(r.Method, r.URL.Path, ip) {
+				logger.Get().Warn().Str("ip", ip).Str("path", r.URL.Path).Msg("Rate limit exceeded")
+				w.Header().Set("Retry-After", "10") // Inform the client to wait.
+				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
-	if xr := r.Header.Get("X-Real-IP"); xr != "" {
-		return xr
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
-}
-
-func minFloat(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
 }

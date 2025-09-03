@@ -14,6 +14,7 @@ import (
 	"pvmss/state"
 	"pvmss/templates"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -86,7 +87,7 @@ func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[strin
 
 	// Get CSRF token from session and add to template data
 	stateManager := getStateManager(r)
-	var sessionManager *security.SessionManager
+	var sessionManager *scs.SessionManager
 	if stateManager != nil {
 		sessionManager = stateManager.GetSessionManager()
 	}
