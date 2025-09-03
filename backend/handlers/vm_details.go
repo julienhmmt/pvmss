@@ -17,25 +17,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alexedwards/scs/v2"
+	"github.com/gomarkdown/markdown"
+	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
+	"github.com/rs/zerolog"
+
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
-
-	"github.com/alexedwards/scs/v2"
-	"github.com/gomarkdown/markdown"
-	"github.com/gorilla/websocket"
-	"github.com/julienschmidt/httprouter"
 )
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
 
 // VMStateManager defines the minimal state contract needed by VM details.
 type VMStateManager interface {
@@ -494,29 +487,25 @@ func (h *VMHandler) VMConsoleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 				return
 			}
 
-			// Debug VNC handshake messages
-			if messageType == websocket.BinaryMessage {
-				if len(data) >= 12 && string(data[:12]) == "RFB 003.008\n" {
-					log.Info().Msg("VNC handshake: Server version received")
-				} else if len(data) >= 2 && len(data) <= 4 {
-					log.Info().
-						Int("security_types_count", int(data[1])).
-						Msg("VNC handshake: Server security types")
-				} else if len(data) == 4 && data[0] == 0 {
-					log.Info().Msg("VNC handshake: Security handshake success")
-				} else if len(data) >= 24 {
-					log.Info().Msg("VNC handshake: Server init message received")
-				} else {
-					log.Trace().
-						Int("message_type", messageType).
-						Int("data_length", len(data)).
-						Msg("Proxmox->Client binary message")
+			// Debug VNC handshake messages (only in debug builds)
+			if log.GetLevel() <= zerolog.DebugLevel {
+				switch messageType {
+				case websocket.BinaryMessage:
+					switch {
+					case len(data) >= 12 && string(data[:12]) == "RFB 003.008\n":
+						log.Debug().Msg("VNC handshake: Server version received")
+					case len(data) >= 2 && len(data) <= 4:
+						log.Debug().Int("security_types_count", int(data[1])).Msg("VNC handshake: Server security types")
+					case len(data) == 4 && data[0] == 0:
+						log.Debug().Msg("VNC handshake: Security handshake success")
+					case len(data) >= 24:
+						log.Debug().Msg("VNC handshake: Server init message received")
+					default:
+						log.Trace().Int("data_length", len(data)).Msg("Proxmox->Client binary message")
+					}
+				case websocket.TextMessage:
+					log.Trace().Str("text", string(data)).Msg("Proxmox->Client text message")
 				}
-			} else if messageType == websocket.TextMessage {
-				log.Trace().
-					Int("message_type", messageType).
-					Str("text", string(data)).
-					Msg("Proxmox->Client text message")
 			}
 
 			// Forward the message to client

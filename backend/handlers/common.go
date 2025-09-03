@@ -471,11 +471,6 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 
 // IndexRouterHandler is a handler for the home page compatible with httprouter
 func IndexRouterHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	logger.Get().Debug().
-		Str("handler", "IndexRouterHandler").
-		Str("path", r.URL.Path).
-		Msg("Calling index handler via HTTP router")
-
 	// Delegates processing to the main handler
 	IndexHandler(w, r)
 }

@@ -59,12 +59,13 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr: ":" + port,
-		// Security-related timeouts
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
-		Handler:      handlers.InitHandlers(stateManager),
+		Addr:              ":" + port,
+		Handler:           handlers.InitHandlers(stateManager),
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second, // Prevent slow loris attacks
+		MaxHeaderBytes:    1 << 20,         // 1MB max header size
 	}
 
 	// Start server
