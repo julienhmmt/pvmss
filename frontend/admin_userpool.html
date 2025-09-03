@@ -6,9 +6,9 @@
 <div class="container mt-4">
   {{if .Error}}
   <div class="notification is-danger">
-    <p><strong>{{index .t "Common.Error"}}:</strong> {{.Error}}</p>
+    <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
     <a href="/admin/userpool" class="button is-small is-light mt-2">
-      <span>{{index .t "Common.TryAgain"}}</span>
+      <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
   {{else}}

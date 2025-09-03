@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 
 	"github.com/gomarkdown/markdown"
@@ -164,7 +163,6 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 		Msg("Preparing data for template rendering")
 
 	// Load translations
-	i18n.LocalizePage(w, r, data)
 	data["Title"] = data["Docs.Title"]
 
 	log.Debug().Msg("Calling documentation template renderer")

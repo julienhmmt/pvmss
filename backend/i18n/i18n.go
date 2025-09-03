@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -39,17 +38,7 @@ const (
 // It is used by localizers to find and format translated strings.
 var Bundle *i18n.Bundle
 
-// translationsCache stores the fully built translation map per language to avoid
-// rebuilding it on every request. Treat the cached maps as read-only.
-var (
-	cacheMu           sync.RWMutex
-	translationsCache = make(map[string]map[string]string)
-)
-
 // messageIDs holds the set of all translation keys discovered from the TOML files.
-// Populated once during InitI18n to avoid scanning files on each request.
-var messageIDs []string
-
 var (
 	i18nDir        string // Discovered path to the i18n directory.
 	supportedTags  []language.Tag
@@ -58,7 +47,7 @@ var (
 )
 
 // setLanguageSwitcher populates language switcher URLs into the provided data map.
-func setLanguageSwitcher(r *http.Request, data map[string]interface{}) {
+func SetLanguageSwitcher(r *http.Request, data map[string]interface{}) {
 	q := r.URL.Query()
 	for code := range supportedCodes {
 		q.Set(QueryParamLang, code)
@@ -67,9 +56,8 @@ func setLanguageSwitcher(r *http.Request, data map[string]interface{}) {
 	}
 }
 
-// getLocalizer creates a new localizer for the specified language.
-// If no language is provided, it falls back to the default language.
-func getLocalizer(lang string) *i18n.Localizer {
+// GetLocalizer returns a localizer for the given language.
+func GetLocalizer(lang string) *i18n.Localizer {
 	if lang == "" {
 		lang = DefaultLang
 	}
@@ -81,18 +69,29 @@ func getLocalizer(lang string) *i18n.Localizer {
 	return i18n.NewLocalizer(Bundle, lang, DefaultLang)
 }
 
-// GetLocalizer creates a new localizer for the language specified in the request.
-func GetLocalizer(r *http.Request) *i18n.Localizer {
-	return getLocalizer(GetLanguage(r))
+// GetLocalizerFromRequest creates a new localizer for the language specified in the request.
+func GetLocalizerFromRequest(r *http.Request) *i18n.Localizer {
+	return GetLocalizer(GetLanguage(r))
 }
 
 // Localize translates a message ID to the specified language via the provided localizer.
 // If the translation fails, it returns the message ID and logs a warning.
-func Localize(localizer *i18n.Localizer, messageID string) string {
+func Localize(localizer *i18n.Localizer, messageID string, count ...int) string {
 	if localizer == nil || messageID == "" {
 		return messageID
 	}
 
+	if len(count) > 0 {
+		// Handle pluralization if a count is provided.
+		localized, err := localizer.Localize(&i18n.LocalizeConfig{MessageID: messageID, PluralCount: count[0]})
+		if err != nil {
+			logger.Get().Warn().Err(err).Str("message_id", messageID).Msg("Plural translation not found")
+			return messageID
+		}
+		return localized
+	}
+
+	// Handle simple, non-plural translation.
 	localized, err := localizer.Localize(&i18n.LocalizeConfig{MessageID: messageID})
 	if err != nil {
 		logger.Get().Warn().Err(err).Str("message_id", messageID).Msg("Translation not found")
@@ -159,33 +158,22 @@ func GetI18nData(lang string) map[string]interface{} {
 	q.Add(QueryParamLang, lang)
 	req.URL.RawQuery = q.Encode()
 
-	LocalizePage(nil, req, data)
 	data["Lang"] = lang
 	return data
-}
-
-// cloneMap creates a shallow copy of a string map.
-func cloneMap(src map[string]string) map[string]string {
-	dst := make(map[string]string, len(src))
-	for k, v := range src {
-		dst[k] = v
-	}
-	return dst
 }
 
 // translationSearchPaths returns the ordered list of locations to look for translation files.
 func translationSearchPaths(filename string) []string {
 	return []string{
-		// Local execution from project root
-		filepath.Join("backend", "i18n", filename),
-		// Local execution from backend/
-		filepath.Join("i18n", filename),
-		// Container default path
-		filepath.Join("/app", "i18n", filename),
-		// Container path when repo kept under /app/backend
+		// --- Container paths ---
+		// Canonical path in the final Docker image.
 		filepath.Join("/app", "backend", "i18n", filename),
-		// Parent dir (when starting inside backend/)
-		filepath.Join("..", "i18n", filename),
+
+		// --- Local development paths ---
+		// From project root (e.g., `go run ./backend`)
+		filepath.Join("backend", "i18n", filename),
+		// From inside backend/ (e.g., `go run .`)
+		filepath.Join("i18n", filename),
 	}
 }
 
@@ -205,54 +193,13 @@ func extractMessageIDsFromMap(m map[string]interface{}, prefix string, ids *[]st
 	}
 }
 
-// parseMessageIDsFromFile opens and parses a TOML file, then extracts all message IDs.
-func parseMessageIDsFromFile(path string) []string {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		logger.Get().Warn().Err(err).Str("file", path).Msg("unable to read translation file to extract keys")
-		return nil
-	}
-
-	var m map[string]interface{}
-	if err := toml.Unmarshal(data, &m); err != nil {
-		logger.Get().Warn().Err(err).Str("file", path).Msg("failed to parse TOML for key extraction")
-		return nil
-	}
-
-	var ids []string
-	extractMessageIDsFromMap(m, "", &ids)
-	return ids
-}
-
-// getAllMessageIDs discovers all unique message IDs from all available translation files.
-func getAllMessageIDs() []string {
-	combined := make(map[string]struct{})
-	files, err := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to glob for translation files")
-		return nil
-	}
-
-	for _, file := range files {
-		for _, id := range parseMessageIDsFromFile(file) {
-			combined[id] = struct{}{}
-		}
-	}
-
-	uniqueIDs := make([]string, 0, len(combined))
-	for id := range combined {
-		uniqueIDs = append(uniqueIDs, id)
-	}
-	return uniqueIDs
-}
-
 // findI18nDirectory searches for the 'i18n' directory in common locations.
 func findI18nDirectory() (string, error) {
 	for _, path := range translationSearchPaths("") {
-		// We are looking for the directory itself, so use filepath.Dir
-		dir := filepath.Dir(path)
-		if _, err := os.Stat(dir); err == nil {
-			absPath, _ := filepath.Abs(dir)
+		// The path from translationSearchPaths is the directory we want to check.
+		info, err := os.Stat(path)
+		if (err == nil || !os.IsNotExist(err)) && info.IsDir() {
+			absPath, _ := filepath.Abs(path)
 			logger.Get().Info().Str("path", absPath).Msg("Found i18n directory")
 			return absPath, nil
 		}
@@ -313,23 +260,6 @@ func InitI18n() {
 	// Load all discovered translation files
 	loadAllTranslations(Bundle)
 
-	// Discover message IDs once
-	messageIDs = getAllMessageIDs()
-
-	// Pre-warm cache for supported languages
-	for code := range supportedCodes {
-		loc := i18n.NewLocalizer(Bundle, code, DefaultLang)
-		t := make(map[string]string, len(messageIDs))
-		for _, id := range messageIDs {
-			t[id] = Localize(loc, id)
-		}
-		cacheMu.Lock()
-		translationsCache[code] = cloneMap(t)
-		cacheMu.Unlock()
-	}
-
-	// Log diagnostics
-	logger.Get().Info().Int("count", len(messageIDs)).Msg("Discovered message IDs")
 	logger.Get().Info().Strs("languages", mapsKeys(supportedCodes)).Msg("Initialized i18n for languages")
 }
 
@@ -339,79 +269,4 @@ func mapsKeys[M ~map[K]V, K comparable, V any](m M) []string {
 		keys = append(keys, fmt.Sprintf("%v", k))
 	}
 	return keys
-}
-
-// LocalizePage injects all necessary localized strings into the data map for a given request.
-// This function is called by renderTemplate before executing a template to ensure all UI text is translated.
-// It uses the Localize function to safely handle missing translations.
-func LocalizePage(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
-	if data == nil {
-		data = make(map[string]interface{})
-	}
-
-	// Get language from request and set cookie if needed
-	lang := GetLanguage(r)
-	if langParam := strings.TrimSpace(r.URL.Query().Get(QueryParamLang)); langParam != "" {
-		if w != nil {
-			http.SetCookie(w, &http.Cookie{
-				Name:     CookieNameLang,
-				Value:    langParam,
-				Path:     "/",
-				Expires:  time.Now().Add(CookieMaxAge),
-				SameSite: http.SameSiteLaxMode,
-			})
-		}
-		lang = langParam
-	}
-
-	// Expose current language and log resolution source for diagnostics
-	data["Lang"] = lang
-	source := "default"
-	if strings.TrimSpace(r.URL.Query().Get(QueryParamLang)) != "" {
-		source = "param"
-	} else if cookie, err := r.Cookie(CookieNameLang); err == nil && strings.TrimSpace(cookie.Value) != "" {
-		source = "cookie"
-	} else if strings.TrimSpace(r.Header.Get(HeaderAcceptLanguage)) != "" {
-		source = "header"
-	}
-	logger.Get().Debug().Str("lang", lang).Str("source", source).Msg("Resolved language")
-
-	// Set Content-Language header for clients/proxies
-	if w != nil {
-		w.Header().Set("Content-Language", lang)
-	}
-
-	// Serve from cache if available
-	cacheMu.RLock()
-	if cached, ok := translationsCache[lang]; ok {
-		cacheMu.RUnlock()
-		data["t"] = cloneMap(cached)
-		setLanguageSwitcher(r, data)
-		return
-	}
-	cacheMu.RUnlock()
-
-	// Create localizer for the current language
-	localizer := getLocalizer(lang)
-
-	// Safety net: if messageIDs were not discovered at init (e.g., unusual runtime path), recompute once
-	if len(messageIDs) == 0 {
-		messageIDs = getAllMessageIDs()
-	}
-	t := make(map[string]string, len(messageIDs))
-
-	// Populate translation keys discovered at init
-	for _, id := range messageIDs {
-		t[id] = Localize(localizer, id)
-	}
-
-	// Add the completed translation map to the main data map
-	data["t"] = t
-
-	// Store in cache for this language
-	cacheMu.Lock()
-	translationsCache[lang] = cloneMap(t)
-	cacheMu.Unlock()
-
-	setLanguageSwitcher(r, data)
 }

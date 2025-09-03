@@ -42,11 +42,6 @@ COPY --from=builder /app/frontend/ /app/frontend/
 COPY --from=builder /app/backend/i18n/ /app/backend/i18n/
 COPY --from=builder /app/backend/docs/ /app/backend/docs/
 
-# Create necessary directories and symlinks
-RUN mkdir -p /app/i18n && \
-    ln -sf /app/backend/i18n/* /app/i18n/ && \
-    ln -sf /app/backend/i18n /app/i18n
-
 # Set proper permissions
 RUN chown -R pvmssuser:pvmssuser /app
 

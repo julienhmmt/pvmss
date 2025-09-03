@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -183,7 +182,6 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	if !proxmoxConnected && proxmoxMsg != "" {
 		data["ProxmoxError"] = proxmoxMsg
 	}
-	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_tags", data)
 }
 

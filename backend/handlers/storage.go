@@ -5,7 +5,6 @@ import (
 	"net/url"
 
 	"github.com/julienschmidt/httprouter"
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -153,7 +152,6 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		}
 
 		// Add translations and render
-		i18n.LocalizePage(w, r, data)
 		renderTemplateInternal(w, r, "admin_storage", data)
 		return
 	}
@@ -205,7 +203,6 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Add translations and render
-	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_storage", data)
 }
 

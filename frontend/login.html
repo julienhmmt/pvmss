@@ -6,7 +6,7 @@
         <div class="card admin-card">
           <header class="card-header brand-header is-align-items-center">
             <p class="card-header-title">
-              <span class="icon"><i class="fas fa-user"></i></span>&nbsp;{{index .t "Login.UserLogin"}}
+              <span class="icon"><i class="fas fa-user"></i></span>&nbsp;{{T "Login.UserLogin"}}
             </p>
           </header>
           <div class="card-content">
@@ -14,7 +14,7 @@
             <div class="notification is-danger">{{.Error}}</div>
             {{end}}
 
-            <form method="post" action="{{urlWithLang .Lang}}">
+            <form method="post" action="/login">
               <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
               <input type="hidden" name="login_type" value="user" />
               {{/* Preserve intended redirect target across POST */}}
@@ -32,11 +32,11 @@
                     <span class="icon">
                       <i class="fas fa-user"></i>
                     </span>
-                    <span>{{index .t "Login.UsernameLabel"}}</span>
+                    <span>{{T "Login.UsernameLabel"}}</span>
                   </span>
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input" type="text" id="username" name="username" required autofocus />
+                  <input class="input" type="text" id="username" name="username" required autofocus autocomplete="username" />
                   <span class="icon is-small is-left">
                     <i class="fas fa-user"></i>
                   </span>
@@ -50,11 +50,11 @@
                     <span class="icon">
                       <i class="fas fa-lock"></i>
                     </span>
-                    <span>{{index .t "Login.PasswordLabel"}}</span>
+                    <span>{{T "Login.PasswordLabel"}}</span>
                   </span>
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input" type="password" id="password" name="password" required />
+                  <input class="input" type="password" id="password" name="password" required autocomplete="current-password" />
                   <span class="icon is-small is-left">
                     <i class="fas fa-lock"></i>
                   </span>
@@ -67,7 +67,7 @@
                     <span class="icon">
                       <i class="fas fa-sign-in-alt"></i>
                     </span>
-                    <span>{{index .t "Login.Button"}}</span>
+                    <span>{{T "Login.Button"}}</span>
                   </button>
                 </div>
               </div>
@@ -80,7 +80,7 @@
                   <span class="icon is-small">
                     <i class="fas fa-shield-alt"></i>
                   </span>
-                  {{index .t "Login.AdminLoginLink"}}
+                  {{T "Login.AdminLoginLink"}}
                 </a>
               </p>
             </div>

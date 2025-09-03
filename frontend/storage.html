@@ -3,23 +3,23 @@
 
   {{if .Error}}
   <div class="notification is-danger">
-    <p><strong>{{index .t "Common.Error"}}:</strong> {{.Error}}</p>
+    <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
     <a href="/admin/storage" class="button is-small is-light mt-2">
-      <span>{{index .t "Common.TryAgain"}}</span>
+      <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
   {{else}}
   <div class="card admin-card">
     <header class="card-header brand-header is-align-items-center">
       <p class="card-header-title">
-        <span class="icon"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}
+        <span class="icon"><i class="fas fa-hdd"></i></span>&nbsp;{{T "Admin.Storage.Title"}}
       </p>
     </header>
     <div class="card-content">
       <!-- Description integrated into card -->
       <p class="help mb-2">
         <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-info-circle"></i></span>
-        {{index .t "Admin.Storage.Description"}}
+        {{T "Admin.Storage.Description"}}
       </p>
       <hr class="my-3">
       {{if .Storages}}
@@ -32,7 +32,7 @@
                   <span class="icon">
                     <i class="fas fa-toggle-on"></i>
                   </span>
-                  <span>{{index .t "Admin.Storage.Header.Enabled"}}</span>
+                  <span>{{T "Admin.Storage.Header.Enabled"}}</span>
                 </span>
               </th>
               <th scope="col">
@@ -40,7 +40,7 @@
                   <span class="icon">
                     <i class="fas fa-hdd"></i>
                   </span>
-                  <span>{{index .t "Admin.Storage.Header.Name"}}</span>
+                  <span>{{T "Admin.Storage.Header.Name"}}</span>
                 </span>
               </th>
               <th scope="col">
@@ -48,7 +48,7 @@
                   <span class="icon">
                     <i class="fas fa-tag"></i>
                   </span>
-                  <span>{{index .t "Admin.Storage.Header.Type"}}</span>
+                  <span>{{T "Admin.Storage.Header.Type"}}</span>
                 </span>
               </th>
               <th scope="col">
@@ -56,7 +56,7 @@
                   <span class="icon">
                     <i class="fas fa-file-alt"></i>
                   </span>
-                  <span>{{index .t "Admin.Storage.Header.Content"}}</span>
+                  <span>{{T "Admin.Storage.Header.Content"}}</span>
                 </span>
               </th>
               <th scope="col">
@@ -64,7 +64,7 @@
                   <span class="icon">
                     <i class="fas fa-database"></i>
                   </span>
-                  <span>{{index .t "Admin.Storage.Header.Usage"}}</span>
+                  <span>{{T "Admin.Storage.Header.Usage"}}</span>
                 </span>
               </th>
               <th scope="col">
@@ -72,7 +72,7 @@
                   <span class="icon">
                     <i class="fas fa-info-circle"></i>
                   </span>
-                  <span>{{index .t "Admin.Storage.Header.Description"}}</span>
+                  <span>{{T "Admin.Storage.Header.Description"}}</span>
                 </span>
               </th>
             </tr>
@@ -89,10 +89,8 @@
                     value="{{if index $.EnabledMap $storage.Storage}}disable{{else}}enable{{end}}">
                   <button type="submit"
                     class="button is-small {{if index $.EnabledMap $storage.Storage}}is-success is-light{{else}}is-light{{end}}"
-                    aria-label="{{if index $.EnabledMap $storage.Storage}}{{index $.t " Common.Disable"}}{{else}}{{index
-                    $.t "Common.Enable" }}{{end}} {{$storage.Storage}}"
-                    title="{{if index $.EnabledMap $storage.Storage}}{{index $.t " Common.Disable"}}{{else}}{{index
-                    $.t "Common.Enable" }}{{end}} {{$storage.Storage}}">
+                    aria-label="{{if index $.EnabledMap $storage.Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storage.Storage}}"
+                    title="{{if index $.EnabledMap $storage.Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storage.Storage}}">
                     <span class="icon is-small">
                       <i
                         class="fas {{if index $.EnabledMap $storage.Storage}}fa-toggle-on{{else}}fa-toggle-off{{end}}"></i>
@@ -132,7 +130,7 @@
       {{/* No bulk save button: auto-save per toggle */}}
       {{else}}
       <div class="notification is-warning">
-        {{index .t "Admin.Storage.NoStorages"}}
+        {{T "Admin.Storage.NoStorages"}}
       </div>
       {{end}}
     </div>

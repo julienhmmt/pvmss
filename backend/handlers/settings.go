@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"pvmss/i18n"
+
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -217,7 +217,6 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 			"SuccessMessage": successMsg,
 			"AdminActive":    "iso",
 		}
-		i18n.LocalizePage(w, r, data)
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
@@ -299,7 +298,6 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		"SuccessMessage": successMsg,
 		"AdminActive":    "iso",
 	}
-	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_iso", data)
 }
 
@@ -374,7 +372,6 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		"SuccessMessage": successMsg,
 		"AdminActive":    "limits",
 	}
-	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_limits", data)
 }
 

@@ -5,7 +5,7 @@
     <div class="notification is-warning">
         <span class="icon-text">
             <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
-            <span>{{index .t "Proxmox.NotConnected"}} {{index .t "Proxmox.CheckConnection"}}</span>
+            <span>{{T "Proxmox.NotConnected"}} {{T "Proxmox.CheckConnection"}}</span>
         </span>
     </div>
     {{else if .Error}}
@@ -16,7 +16,7 @@
     <div class="card admin-card">
         <header class="card-header brand-header is-align-items-center">
             <p class="card-header-title">
-                <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}
+                <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{T "Nodes.Title"}}
             </p>
         </header>
         <div class="card-content">
@@ -24,11 +24,11 @@
                 <table class="table is-striped is-hoverable is-fullwidth is-narrow">
                     <thead>
                         <tr>
-                            <th scope="col">{{index .t "Nodes.Header.Node"}}</th>
-                            <th scope="col">{{index .t "Nodes.Header.Status"}}</th>
-                            <th scope="col">{{index .t "Nodes.Header.CPUUsage"}}</th>
-                            <th scope="col">{{index .t "Nodes.Header.MemoryUsage"}}</th>
-                            <th scope="col">{{index .t "Nodes.Header.DiskUsage"}}</th>
+                            <th scope="col">{{T "Nodes.Header.Node"}}</th>
+                            <th scope="col">{{T "Nodes.Header.Status"}}</th>
+                            <th scope="col">{{T "Nodes.Header.CPUUsage"}}</th>
+                            <th scope="col">{{T "Nodes.Header.MemoryUsage"}}</th>
+                            <th scope="col">{{T "Nodes.Header.DiskUsage"}}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -38,11 +38,11 @@
                             <td>
                                 {{if $.ProxmoxConnected}}
                                 <span class="tag is-success is-light">
-                                    {{with (index $.t "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
+                                    {{with (T "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
                                 </span>
                                 {{else}}
                                 <span class="tag is-danger is-light">
-                                    {{with (index $.t "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
+                                    {{with (T "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
                                 </span>
                                 {{end}}
                             </td>
@@ -85,7 +85,7 @@
     </div>
     {{else}}
     <div class="notification">
-        {{index .t "Search.NoResults"}}
+        {{T "Search.NoResults"}}
     </div>
     {{end}}
 </div>

@@ -7,13 +7,13 @@
             <div class="hero-body">
                 <div class="container has-text-centered">
                     <h1 class="title is-2 has-text-white mb-2">
-                        {{index .t "UI.Header"}}
+                        {{T "UI.Header"}}
                     </h1>
                     <p class="subtitle has-text-white mb-2">
-                        {{index .t "UI.Subtitle"}}
+                        {{T "UI.Subtitle"}}
                     </p>
                     <p class="subtitle has-text-white is-size-5">
-                        {{index .t "UI.Body"}}
+                        {{T "UI.Body"}}
                     </p>
                 </div>
             </div>
@@ -31,14 +31,14 @@
                                         <span class="icon">
                                             <i class="fas fa-plus-square"></i>
                                         </span>
-                                        <span>{{index .t "Navbar.CreateVM"}}</span>
+                                        <span>{{T "Navbar.CreateVM"}}</span>
                                     </span>
                                 </p>
                             </div>
                             <div class="card-content has-text-centered">
-                                <p class="mb-4">{{index .t "UI.CreateVMDescription"}}</p>
+                                <p class="mb-4">{{T "UI.CreateVMDescription"}}</p>
                                 <a href="/vm/create?lang={{.Lang}}" class="button is-primary is-medium">
-                                    <span>{{index .t "UI.GetStarted"}}</span>
+                                    <span>{{T "UI.GetStarted"}}</span>
                                 </a>
                             </div>
                         </div>
@@ -53,14 +53,14 @@
                                         <span class="icon">
                                             <i class="fas fa-book"></i>
                                         </span>
-                                        <span>{{index .t "Docs.User.Title"}}</span>
+                                        <span>{{T "Docs.User.Title"}}</span>
                                     </span>
                                 </p>
                             </div>
                             <div class="card-content has-text-centered">
-                                <p class="mb-4">{{index .t "UI.DocsDescription"}}</p>
+                                <p class="mb-4">{{T "UI.DocsDescription"}}</p>
                                 <a href="/docs/user?lang={{.Lang}}" class="button is-primary is-medium">
-                                    {{index .t "UI.ViewDocumentation"}}
+                                    {{T "UI.ViewDocumentation"}}
                                 </a>
                             </div>
                         </div>
@@ -75,14 +75,14 @@
                                         <span class="icon">
                                             <i class="fas fa-screwdriver-wrench"></i>
                                         </span>
-                                        <span>{{index .t "Navbar.Admin"}}</span>
+                                        <span>{{T "Navbar.Admin"}}</span>
                                     </span>
                                 </p>
                             </div>
                             <div class="card-content has-text-centered">
-                                <p class="mb-4">{{index .t "UI.AdminDescription"}}</p>
+                                <p class="mb-4">{{T "UI.AdminDescription"}}</p>
                                 <a href="/admin/nodes?lang={{.Lang}}" class="button is-primary is-medium">
-                                    {{index .t "UI.AccessAdmin"}}
+                                    {{T "UI.AccessAdmin"}}
                                 </a>
                             </div>
                         </div>

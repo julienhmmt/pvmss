@@ -62,7 +62,6 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	// Add i18n data
-	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "create_vm", data)
 }
 
@@ -76,7 +75,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	if err := r.ParseForm(); err != nil {
 		log.Error().Err(err).Msg("failed to parse form")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
 	}
@@ -112,7 +111,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	tags = out
 
 	if name == "" || socketsStr == "" || coresStr == "" || memoryStr == "" || diskSizeGBStr == "" || bridge == "" {
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
 	}
@@ -120,7 +119,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not initialized")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
@@ -131,7 +130,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
 	if err != nil || len(nodes) == 0 {
 		log.Error().Err(err).Msg("unable to get Proxmox nodes")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
 		return
 	}
@@ -261,7 +260,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		v, err := proxmox.GetNextVMID(ctx, client)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to get next VMID")
-			localizer := i18n.GetLocalizer(r)
+			localizer := i18n.GetLocalizerFromRequest(r)
 			http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
@@ -325,7 +324,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	if _, err := client.PostFormWithContext(ctx, path, values); err != nil {
 		log.Error().Err(err).Str("node", node).Msg("VM create API call failed")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
 		return
 	}

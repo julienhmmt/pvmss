@@ -45,11 +45,10 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		log.Debug().Msg("Rendering search form")
 		// If Proxmox is offline, display a warning but still render the page
 		if h.stateManager.GetProxmoxClient() == nil {
-			localizer := i18n.GetLocalizer(r)
+			localizer := i18n.GetLocalizerFromRequest(r)
 			data["Warning"] = i18n.Localize(localizer, "Proxmox.NotConnected")
 		}
-		i18n.LocalizePage(w, r, data)
-		data["Title"] = data["Search.Title"]
+		data["Title"] = "Search"
 		renderTemplateInternal(w, r, "search", data)
 		log.Info().Msg("Search form rendered successfully")
 		return
@@ -75,10 +74,9 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		// Validate inputs
 		if vmid == "" && name == "" {
 			log.Warn().Msg("No search criteria provided")
-			localizer := i18n.GetLocalizer(r)
+			localizer := i18n.GetLocalizerFromRequest(r)
 			data["Error"] = i18n.Localize(localizer, "Search.Validation.MissingCriteria")
-			i18n.LocalizePage(w, r, data)
-			data["Title"] = data["Search.Title"]
+			data["Title"] = "Search"
 			renderTemplateInternal(w, r, "search", data)
 			return
 		}
@@ -101,11 +99,10 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		// Retrieve Proxmox client from state manager
 		client := h.stateManager.GetProxmoxClient()
 		if client == nil {
-			localizer := i18n.GetLocalizer(r)
+			localizer := i18n.GetLocalizerFromRequest(r)
 			log.Warn().Msg("Proxmox client unavailable; rendering offline-friendly search page")
 			data["Error"] = i18n.Localize(localizer, "Proxmox.NotConnected") + ". " + i18n.Localize(localizer, "Proxmox.CheckConnection")
-			i18n.LocalizePage(w, r, data)
-			data["Title"] = data["Search.Results"]
+			data["Title"] = "Search Results"
 			renderTemplateInternal(w, r, "search", data)
 			return
 		}
@@ -126,8 +123,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 				Msg("VM search failed")
 
 			data["Error"] = fmt.Sprintf("Failed to search for VMs: %v", err)
-			i18n.LocalizePage(w, r, data)
-			data["Title"] = data["Search.Results"]
+			data["Title"] = "Search Results"
 			renderTemplateInternal(w, r, "search", data)
 			return
 		}
@@ -147,8 +143,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 				Msg("VMs found successfully")
 		}
 
-		i18n.LocalizePage(w, r, data)
-		data["Title"] = data["Search.Results"]
+		data["Title"] = "Search Results"
 
 		log.Debug().Msg("Rendering results page")
 		renderTemplateInternal(w, r, "search", data)

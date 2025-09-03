@@ -8,12 +8,12 @@
                 <div class="card admin-card">
                     <header class="card-header brand-header is-align-items-center">
                         <p class="card-header-title">
-                            <span class="icon"><i class="fas fa-plus-square"></i></span>&nbsp;{{index .t
+                            <span class="icon"><i class="fas fa-plus-square"></i></span>&nbsp;{{T
                             "VM.Create.Title"}}
                         </p>
                     </header>
                     <div class="card-content">
-                        <p class="mb-4 has-text-grey">{{index .t "UI.CreateVMDescription"}}</p>
+                        <p class="mb-4 has-text-grey">{{T "UI.CreateVMDescription"}}</p>
                         {{if not .ProxmoxConnected}}
                         <div class="notification is-warning is-light mb-5" role="alert">
                             <div class="level is-mobile">
@@ -24,7 +24,7 @@
                                         </span>
                                     </div>
                                     <div class="level-item">
-                                        <p>{{index .t "VM.Create.ProxmoxNotConnected" | default "Cannot create VM: Proxmox server is not connected."}}</p>
+                                        <p>{{T "VM.Create.ProxmoxNotConnected" | default "Cannot create VM: Proxmox server is not connected."}}</p>
                                         {{if .ProxmoxError}}
                                         <p class="has-text-danger mt-2">{{.ProxmoxError}}</p>
                                         {{end}}
@@ -58,31 +58,31 @@
                                     <div class="column is-6">
                                         <!-- Basic Information -->
                                         <div class="box mb-5" role="region" aria-labelledby="basic-info-heading">
-                                            <h2 id="basic-info-heading" class="title is-5">{{index .t
+                                            <h2 id="basic-info-heading" class="title is-5">{{T
                                                 "VM.Create.BasicInfo"}}</h2>
                                             <!-- VM Name -->
                                             <div class="field">
                                                 <label for="vmName" class="label">
                                                     <span class="icon-text">
                                                         <span class="icon"><i class="fas fa-tag"></i></span>
-                                                        <span>{{index .t "Common.Name"}}</span>
+                                                        <span>{{T "Common.Name"}}</span>
                                                     </span>
                                                 </label>
                                                 <div class="control">
                                                     <input id="vmName" class="input" type="text" name="name"
-                                                        placeholder='{{index .t "VM.Create.VMNamePlaceholder"}}'
+                                                        placeholder='{{T "VM.Create.VMNamePlaceholder"}}'
                                                         required aria-required="true" aria-describedby="nameHelp">
-                                                    <p id="nameHelp" class="help">{{index .t "VM.Create.VMNameHelp"}}
+                                                    <p id="nameHelp" class="help">{{T "VM.Create.VMNameHelp"}}
                                                     </p>
                                                 </div>
                                             </div>
                                             <!-- Description -->
                                             <div class="field">
-                                                <label for="vmDescription" class="label">{{index .t
+                                                <label for="vmDescription" class="label">{{T
                                                     "VM.Create.Description"}}</label>
                                                 <div class="control">
                                                     <textarea id="vmDescription" class="textarea" name="description"
-                                                        placeholder='{{index .t "VM.Create.DescriptionPlaceholder"}}'
+                                                        placeholder='{{T "VM.Create.DescriptionPlaceholder"}}'
                                                         rows="2" aria-describedby="descHelp"></textarea>
                                                     <p id="descHelp" class="help is-hidden" aria-hidden="true">Optional
                                                         description for your virtual machine</p>
@@ -91,20 +91,20 @@
                                             <!-- VM ID -->
                                             <div class="field">
                                                 <label for="vmId" class="label">
-                                                    {{index .t "VM.Create.VMID"}}
+                                                    {{T "VM.Create.VMID"}}
                                                 </label>
                                                 <div class="control">
                                                     <input id="vmId" class="input" type="number" name="vmid" min="100"
                                                         max="999999999"
-                                                        placeholder='{{index .t "VM.Create.VMIDPlaceholder"}}'
+                                                        placeholder='{{T "VM.Create.VMIDPlaceholder"}}'
                                                         aria-describedby="vmidHelp">
-                                                    <p id="vmidHelp" class="help">{{index .t "VM.Create.VMID.Help"}}</p>
+                                                    <p id="vmidHelp" class="help">{{T "VM.Create.VMID.Help"}}</p>
                                                 </div>
                                             </div>
                                         </div>
                                         <!-- Resources -->
                                         <div class="box mb-5" role="region" aria-labelledby="resources-heading">
-                                            <h2 id="resources-heading" class="title is-5">{{index .t
+                                            <h2 id="resources-heading" class="title is-5">{{T
                                                 "VM.Create.Resources"}}</h2>
                                             <div class="columns">
                                                 <!-- CPU Sockets -->
@@ -114,7 +114,7 @@
                                                             <span class="icon-text">
                                                                 <span class="icon"><i
                                                                         class="fas fa-microchip"></i></span>
-                                                                <span>{{index .t "VM.Create.CPUSockets"}}</span>
+                                                                <span>{{T "VM.Create.CPUSockets"}}</span>
                                                             </span>
                                                         </label>
                                                         <div class="control">
@@ -140,7 +140,7 @@
                                                 <!-- CPU Cores -->
                                                 <div class="column is-6">
                                                     <div class="field">
-                                                        <label for="cpuCores" class="label">{{index .t
+                                                        <label for="cpuCores" class="label">{{T
                                                             "VM.Create.CPUCores"}}</label>
                                                         <div class="control">
                                                             <div class="select is-fullwidth">
@@ -165,7 +165,7 @@
 
                                             <!-- Memory -->
                                             <div class="field">
-                                                <label for="memory" class="label">{{index .t "Common.Memory"}}</label>
+                                                <label for="memory" class="label">{{T "Common.Memory"}}</label>
                                                 <div class="field has-addons">
                                                     <div class="control is-expanded">
                                                         <input id="memory" class="input" type="number" name="memory"
@@ -177,7 +177,7 @@
                                                     </div>
                                                 </div>
                                                 <p class="help">
-                                                    {{index .t "VM.Create.MemoryHelp"}}<br>
+                                                    {{T "VM.Create.MemoryHelp"}}<br>
                                                     VM limits: {{$vmRamMinGB}}–{{$vmRamMaxGB}} GB
                                                     ({{$vmRamMinMB}}–{{$vmRamMaxMB}} MB)
                                                 </p>
@@ -185,7 +185,7 @@
 
                                             <!-- Disk Size -->
                                             <div class="field">
-                                                <label for="diskSize" class="label">{{index .t
+                                                <label for="diskSize" class="label">{{T
                                                     "VM.Create.DiskSize"}}</label>
                                                 <div class="field has-addons">
                                                     <div class="control is-expanded">
@@ -199,7 +199,7 @@
                                                     </div>
                                                 </div>
                                                 <p class="help">
-                                                    {{index .t "VM.Create.DiskSizeHelp"}}<br>
+                                                    {{T "VM.Create.DiskSizeHelp"}}<br>
                                                     VM limits: {{$vmDiskMin}}–{{$vmDiskMax}} GB
                                                 </p>
                                             </div>
@@ -210,7 +210,7 @@
                                     <div class="column is-6">
                                         <!-- Media & Network -->
                                         <div class="box mb-5" role="region" aria-labelledby="media-heading">
-                                            <h2 id="media-heading" class="title is-5">{{index .t
+                                            <h2 id="media-heading" class="title is-5">{{T
                                                 "VM.Create.MediaNetwork"}}</h2>
 
                                             <!-- Node Selector -->
@@ -255,30 +255,30 @@
                                                 <label for="isoImage" class="label">
                                                     <span class="icon-text">
                                                         <span class="icon"><i class="fas fa-compact-disc"></i></span>
-                                                        <span>{{index .t "VM.Create.ISOImage"}}</span>
+                                                        <span>{{T "VM.Create.ISOImage"}}</span>
                                                     </span>
                                                 </label>
                                                 <div class="control">
                                                     <div class="select is-fullwidth">
                                                         <select id="isoImage" name="iso" aria-describedby="isoHelp">
-                                                            <option value="">-- {{index .t "VM.Create.SelectISO"}} --
+                                                            <option value="">-- {{T "VM.Create.SelectISO"}} --
                                                             </option>
                                                             {{range .ISOs}}
                                                             <option value="{{.}}">{{.}}</option>
                                                             {{else}}
-                                                            <option disabled>{{index .t "VM.Create.NoISOsAvailable"}}
+                                                            <option disabled>{{T "VM.Create.NoISOsAvailable"}}
                                                             </option>
                                                             {{end}}
                                                         </select>
                                                     </div>
-                                                    <p id="isoHelp" class="help">{{index .t "VM.Create.ISOImageHelp"}}
+                                                    <p id="isoHelp" class="help">{{T "VM.Create.ISOImageHelp"}}
                                                     </p>
                                                 </div>
                                             </div>
 
                                             <!-- Network Bridge -->
                                             <div class="field">
-                                                <label for="networkBridge" class="label">{{index .t
+                                                <label for="networkBridge" class="label">{{T
                                                     "VM.Create.Network"}}</label>
                                                 <div class="control">
                                                     <div class="select is-fullwidth">
@@ -288,12 +288,12 @@
                                                             <option value="{{.}}" {{if eq . "vmbr0" }}selected{{end}}>
                                                                 {{.}}</option>
                                                             {{else}}
-                                                            <option disabled>{{index .t "VM.Create.NoBridgesAvailable"}}
+                                                            <option disabled>{{T "VM.Create.NoBridgesAvailable"}}
                                                             </option>
                                                             {{end}}
                                                         </select>
                                                     </div>
-                                                    <p class="help">{{index .t "VM.Create.NetworkBridgeHelp"}}</p>
+                                                    <p class="help">{{T "VM.Create.NetworkBridgeHelp"}}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -303,7 +303,7 @@
                                             <div class="field">
                                                 <div class="tags-label">
                                                     <span class="icon"><i class="fas fa-tags"></i></span>
-                                                    <span>{{index .t "VM.Create.Tags"}}</span>
+                                                    <span>{{T "VM.Create.Tags"}}</span>
                                                 </div>
 
                                                 <!-- Selected Tags (for visual feedback) -->
@@ -334,11 +334,11 @@
                                                     </label>
                                                     {{end}}
                                                     {{else}}
-                                                    <p class="has-text-grey">{{index .t "VM.Create.NoTagsAvailable"}}
+                                                    <p class="has-text-grey">{{T "VM.Create.NoTagsAvailable"}}
                                                     </p>
                                                     {{end}}
                                                 </div>
-                                                <p class="help">{{index .t "VM.Create.TagsHelp"}}</p>
+                                                <p class="help">{{T "VM.Create.TagsHelp"}}</p>
                                             </div>
                                         </div>
 
@@ -348,13 +348,13 @@
                                                 <div class="control">
                                                     <button type="reset" class="button is-light is-fullwidth">
                                                         <span class="icon"><i class="fas fa-undo"></i></span>
-                                                        <span>{{index .t "Common.Reset"}}</span>
+                                                        <span>{{T "Common.Reset"}}</span>
                                                     </button>
                                                 </div>
                                                 <div class="control">
                                                     <button type="submit" class="button is-primary is-fullwidth">
                                                         <span class="icon"><i class="fas fa-save"></i></span>
-                                                        <span>{{index .t "Common.Create"}}</span>
+                                                        <span>{{T "Common.Create"}}</span>
                                                     </button>
                                                 </div>
                                             </div>

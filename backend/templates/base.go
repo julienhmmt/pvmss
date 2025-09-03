@@ -5,6 +5,8 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+
+	"pvmss/i18n"
 )
 
 // normalizePath ensures a path has a consistent format, removing trailing slashes
@@ -174,6 +176,26 @@ func GetFuncMap(r *http.Request) template.FuncMap {
 				return u.Path
 			}
 			return u.Path + "?" + u.RawQuery
+		}
+
+		// Add translation function
+		funcMap["T"] = func(key string, args ...interface{}) string {
+			localizer := i18n.GetLocalizerFromRequest(r)
+
+			var count []int
+			if len(args) > 0 {
+				// The template engine might pass numbers as int, int64 or float64
+				switch c := args[0].(type) {
+				case int:
+					count = append(count, c)
+				case int64:
+					count = append(count, int(c))
+				case float64:
+					count = append(count, int(c))
+				}
+			}
+
+			return i18n.Localize(localizer, key, count...)
 		}
 	}
 

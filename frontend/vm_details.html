@@ -25,15 +25,15 @@
                 <table class="table is-fullwidth is-narrow">
                     <tbody>
                         <tr>
-                            <th><i class="fas fa-tag"></i> {{index .t "VMDetails.Label.Name"}}</th>
+                            <th><i class="fas fa-tag"></i> {{T "VMDetails.Label.Name"}}</th>
                             <td>{{.VMName}}</td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-hashtag"></i> {{index .t "VMDetails.Label.ID"}}</th>
+                            <th><i class="fas fa-hashtag"></i> {{T "VMDetails.Label.ID"}}</th>
                             <td>{{.VMID}}</td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-power-off"></i> {{index .t "VMDetails.Label.Status"}}</th>
+                            <th><i class="fas fa-power-off"></i> {{T "VMDetails.Label.Status"}}</th>
                             <td>
                                 <span id="vm-status-badge" class="tag is-medium {{if eq .Status "running"}}is-success{{else if eq .Status "stopped"}}is-danger{{else}}is-light{{end}}">
                                     <span id="vm-status-text">{{.Status}}</span>
@@ -41,27 +41,27 @@
                             </td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-clock"></i> {{index .t "VMDetails.Label.Uptime"}}</th>
+                            <th><i class="fas fa-clock"></i> {{T "VMDetails.Label.Uptime"}}</th>
                             <td>{{.Uptime}}</td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-microchip"></i> {{index .t "VMDetails.Label.CPU"}}</th>
+                            <th><i class="fas fa-microchip"></i> {{T "VMDetails.Label.CPU"}}</th>
                             <td>{{.Sockets}} sockets / {{.Cores}} cores</td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-memory"></i> {{index .t "VMDetails.Label.RAM"}}</th>
+                            <th><i class="fas fa-memory"></i> {{T "VMDetails.Label.RAM"}}</th>
                             <td>{{.RAM}}</td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-hdd"></i> {{index .t "VMDetails.Label.Disk"}}</th>
+                            <th><i class="fas fa-hdd"></i> {{T "VMDetails.Label.Disk"}}</th>
                             <td>{{.DiskCount}} ({{.DiskTotalSize}})</td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-network-wired"></i> {{index .t "VMDetails.Label.Network"}}</th>
+                            <th><i class="fas fa-network-wired"></i> {{T "VMDetails.Label.Network"}}</th>
                             <td>{{.NetworkBridges}}</td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-info-circle"></i> {{index .t "VMDetails.Label.Description"}}</th>
+                            <th><i class="fas fa-info-circle"></i> {{T "VMDetails.Label.Description"}}</th>
                             <td>
                                 {{if .DescriptionHTML}}
                                 {{.DescriptionHTML}}
@@ -191,7 +191,7 @@
     <div class="is-flex is-justify-content-center mb-4 mt-4">
         <a class="button is-info is-light"
             href="/vm/details/{{.VMID}}?refresh=1">
-            <span>{{index .t "VMDetails.Action.Refresh"}}</span>
+            <span>{{T "VMDetails.Action.Refresh"}}</span>
         </a>
     </div>
 
@@ -219,7 +219,7 @@
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="start" />
             <button class="button is-success is-light" {{if or (not .ProxmoxConnected) (eq .Status "running")}}disabled{{end}}>
-                <span>{{index .t "VMDetails.Action.Start"}}</span>
+                <span>{{T "VMDetails.Action.Start"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
@@ -228,7 +228,7 @@
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="reboot" />
             <button class="button is-warning is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
-                <span>{{index .t "VMDetails.Action.Reboot"}}</span>
+                <span>{{T "VMDetails.Action.Reboot"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
@@ -237,7 +237,7 @@
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="shutdown" />
             <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
-                <span>{{index .t "VMDetails.Action.Shutdown"}}</span>
+                <span>{{T "VMDetails.Action.Shutdown"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
@@ -246,7 +246,7 @@
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="stop" />
             <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
-                <span>{{index .t "VMDetails.Action.Stop"}}</span>
+                <span>{{T "VMDetails.Action.Stop"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
@@ -255,7 +255,7 @@
             <input type="hidden" name="node" value="{{.Node}}" />
             <input type="hidden" name="action" value="reset" />
             <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
-                <span>{{index .t "VMDetails.Action.Reset"}}</span>
+                <span>{{T "VMDetails.Action.Reset"}}</span>
             </button>
         </form>
     </div>
@@ -263,7 +263,7 @@
 
     <div class="is-flex is-justify-content-center mb-4 mt-4">
         <a class="button is-info is-light" href="/search">
-            <span>{{index .t "Common.BackToSearch"}}</span>
+            <span>{{T "Common.BackToSearch"}}</span>
         </a>
     </div>
 

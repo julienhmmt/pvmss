@@ -12,7 +12,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
@@ -27,7 +26,7 @@ type AuthHandler struct {
 // LogoutGet serves a minimal page that auto-submits a POST request to /logout including CSRF token.
 // This preserves CSRF protection while allowing logout links to be simple GETs.
 func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "AuthHandler.LogoutGet").Str("path", r.URL.Path).Logger()
+	ctx := NewHandlerContext(w, r, "AuthHandler.LogoutGet")
 
 	// Attempt to get CSRF token from context (populated by CSRFGeneratorMiddleware for GET)
 	var csrfToken string
@@ -35,19 +34,19 @@ func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httpro
 		csrfToken = token
 	} else {
 		// Fallback to session
-		if sm := security.GetSession(r); sm != nil {
-			if t, ok := sm.Get(r.Context(), "csrf_token").(string); ok && t != "" {
+		if ctx.SessionManager != nil {
+			if t, ok := ctx.SessionManager.Get(r.Context(), "csrf_token").(string); ok && t != "" {
 				csrfToken = t
 			}
 		}
 	}
 
 	if csrfToken == "" {
-		log.Warn().Msg("No CSRF token available for logout form; generating new one")
-		if sm := security.GetSession(r); sm != nil {
+		ctx.Log.Warn().Msg("No CSRF token available for logout form; generating new one")
+		if ctx.SessionManager != nil {
 			if t, err := security.GenerateCSRFToken(); err == nil {
 				csrfToken = t
-				sm.Put(r.Context(), "csrf_token", csrfToken)
+				ctx.SessionManager.Put(r.Context(), "csrf_token", csrfToken)
 			}
 		}
 	}
@@ -191,27 +190,16 @@ func getOrSetCSRFToken(r *http.Request) (string, error) {
 }
 
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	log := logger.Get().With().
-		Str("handler", "AuthHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	ctx := NewHandlerContext(w, r, "AuthHandler.renderAdminLoginForm")
+	ctx.Log.Debug().Msg("Rendering admin login form")
 
-	log.Debug().Msg("Rendering admin login form")
-
-	// Get session manager
-	sessionManager := security.GetSession(r)
-	if sessionManager == nil {
-		log.Error().Msg("Session manager not available")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if !ctx.ValidateSessionManager() {
 		return
 	}
 
-	csrfToken, err := getOrSetCSRFToken(r)
+	csrfToken, err := ctx.GetCSRFToken()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get or set CSRF token")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		ctx.HandleError(err, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -224,11 +212,7 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 		"ReturnURL":   r.URL.Query().Get("return"),
 	}
 
-	// Add translations
-	i18n.LocalizePage(w, r, data)
-
-	log.Debug().Msg("Rendering admin_login template")
-	renderTemplateInternal(w, r, "admin_login", data)
+	ctx.RenderTemplate("admin_login", data)
 }
 
 // validateCSRF checks the CSRF token from the form against the one in the session.
@@ -262,17 +246,9 @@ func validateCSRF(r *http.Request) error {
 
 // handleAdminLogin handles admin login form submission (password-only)
 func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "AuthHandler").
-		Str("method", r.Method).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	ctx := NewHandlerContext(w, r, "AuthHandler.handleAdminLogin")
 
-	// Get session manager
-	sessionManager := security.GetSession(r)
-	if sessionManager == nil {
-		log.Error().Msg("Session manager not available")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if !ctx.ValidateSessionManager() {
 		return
 	}
 
@@ -288,7 +264,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	// Get admin password hash from environment
 	adminHash := os.Getenv("ADMIN_PASSWORD_HASH")
 	if adminHash == "" {
-		log.Error().Msg("ADMIN_PASSWORD_HASH is not set in environment variables")
+		ctx.Log.Error().Msg("ADMIN_PASSWORD_HASH is not set in environment variables")
 		http.Error(w, "Server configuration error", http.StatusInternalServerError)
 		return
 	}
@@ -296,26 +272,26 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	// Get password from form
 	password := r.FormValue("password")
 	if password == "" {
-		log.Debug().Msg("Admin login attempt with empty password")
+		ctx.Log.Debug().Msg("Admin login attempt with empty password")
 		h.renderAdminLoginForm(w, r, "Password cannot be empty.")
 		return
 	}
 
 	// Basic input validation
 	if len(password) > 200 {
-		log.Warn().Int("password_length", len(password)).Msg("Admin login attempt with too long password")
+		ctx.Log.Warn().Int("password_length", len(password)).Msg("Admin login attempt with too long password")
 		h.renderAdminLoginForm(w, r, "Invalid credentials.")
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(adminHash), []byte(password)); err != nil {
-		log.Info().Err(err).Msg("Admin login failed - incorrect password")
+		ctx.Log.Info().Err(err).Msg("Admin login failed - incorrect password")
 		h.renderAdminLoginForm(w, r, "Invalid credentials.")
 		return
 	}
 
-	log.Debug().Msg("Admin authentication successful, creating session")
+	ctx.Log.Debug().Msg("Admin authentication successful, creating session")
 
 	if err := establishSession(w, r, true, ""); err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -481,28 +457,16 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	log := logger.Get().
-		With().
-		Str("handler", "AuthHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	ctx := NewHandlerContext(w, r, "AuthHandler.renderLoginForm")
+	ctx.Log.Debug().Msg("Rendering login form")
 
-	log.Debug().Msg("Rendering login form")
-
-	// Get session manager
-	sessionManager := security.GetSession(r)
-	if sessionManager == nil {
-		log.Error().Msg("Session manager not available")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if !ctx.ValidateSessionManager() {
 		return
 	}
 
-	csrfToken, err := getOrSetCSRFToken(r)
+	csrfToken, err := ctx.GetCSRFToken()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get or set CSRF token")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		ctx.HandleError(err, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -515,9 +479,5 @@ func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, er
 		"ReturnURL":   r.URL.Query().Get("return"),
 	}
 
-	// Add translations
-	i18n.LocalizePage(w, r, data)
-
-	log.Debug().Msg("Rendering login template")
-	renderTemplateInternal(w, r, "login", data)
+	ctx.RenderTemplate("login", data)
 }

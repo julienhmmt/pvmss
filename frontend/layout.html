@@ -4,16 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{{index .t "UI.Header"}} - {{index .t "UI.Subtitle"}}">
+    <meta name="description" content="{{T "UI.Header"}} - {{T "UI.Subtitle"}}">
     <meta name="csrf-token" content="{{.CSRFToken}}">
     <meta name="color-scheme" content="{{.Theme}}">
     <title>
         {{- if .Title -}}
-            {{.Title}} - {{index .t "UI.Header"}}
+            {{.Title}} - {{T "UI.Header"}}
         {{- else if .TitleKey -}}
-            {{index .t .TitleKey}} - {{index .t "UI.Header"}}
+            {{T .TitleKey}} - {{T "UI.Header"}}
         {{- else -}}
-            {{index .t "UI.Header"}}
+            {{T "UI.Header"}}
         {{- end -}}
     </title>
 
@@ -51,11 +51,11 @@
                         </span>
                     </div>
                     <div class="level-item status-text">
-                        <strong>{{index .t "Proxmox.ConnectionError"}} : </strong> 
+                        <strong>{{T "Proxmox.ConnectionError"}} : </strong> 
                         {{if .ProxmoxError}}
                             {{.ProxmoxError}}
                         {{else}}
-                            {{index .t "Proxmox.NotConnected"}} {{index .t "Proxmox.Proxmox.NotConnectedMessage"}}
+                            {{T "Proxmox.NotConnected"}} {{T "Proxmox.NotConnectedMessage"}}
                         {{end}}
 
     {{/* Optional Flash Messages slot (override with a template defining "flash") */}}
@@ -80,7 +80,7 @@
                 {{.Content}}
             {{else}}
                 {{/* Default content if no content template is defined */}}
-                <h1 class="title">{{index .t "UI.Header"}}</h1>
+                <h1 class="title">{{T "UI.Header"}}</h1>
                 <p>No content available</p>
             {{end}}
         </div>
@@ -94,7 +94,7 @@
                         <span class="icon">
                             <i class="fas fa-server"></i>
                         </span>
-                        <span>{{index .t "UI.Footer"}}</span>
+                        <span>{{T "UI.Footer"}}</span>
                     </span>
                 </p>
             </div>

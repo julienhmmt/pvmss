@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	// "encoding/json"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -12,7 +11,8 @@ import (
 	"pvmss/middleware"
 	"pvmss/security"
 	"pvmss/state"
-	"pvmss/templates"
+
+	i18n_bundle "github.com/nicksnyder/go-i18n/v2/i18n"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
@@ -127,8 +127,11 @@ func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[strin
 		log.Debug().Msg("CSRF token added to template data from request context")
 	}
 
-	// Add i18n data and common variables
-	i18n.LocalizePage(w, r, data)
+	// Add language to data for template rendering
+	data["Lang"] = i18n.GetLanguage(r)
+
+	// Add language switcher URLs
+	i18n.SetLanguageSwitcher(r, data)
 	data["CurrentPath"] = r.URL.Path
 	if r.URL.RawQuery != "" {
 		data["CurrentURL"] = r.URL.Path + "?" + r.URL.RawQuery
@@ -149,77 +152,68 @@ func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[strin
 	data["IsDark"] = (theme == "dark")
 }
 
-// renderTemplate is the internal function for rendering templates
+// renderTemplateInternal renders a template with a layout, injecting translation functions.
 func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-	log := logger.Get().With().
-		Str("handler", "renderTemplateInternal").
-		Str("template", name).
-		Str("path", r.URL.Path).
-		Logger()
+	log := logger.Get().With().Str("template", name).Logger()
 
-	log.Debug().Msg("Starting internal template rendering")
-
-	// Initialize data map if nil
 	if data == nil {
 		data = make(map[string]interface{})
 	}
-
-	// Populate the template data with common values
 	populateTemplateData(w, r, data)
 
 	stateManager := getStateManager(r)
 	tmpl := stateManager.GetTemplates()
-
 	if tmpl == nil {
-		errMsg := "Templates are not initialized"
-		log.Error().Msg(errMsg)
+		log.Error().Msg("Templates not initialized")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Execute the template (attach request-aware helpers first)
-	rt := tmpl.Funcs(templates.GetFuncMap(r))
-	buf := new(bytes.Buffer)
-	log.Debug().Msg("Executing main template")
-
-	if err := rt.ExecuteTemplate(buf, name, data); err != nil {
-		log.Error().
-			Err(err).
-			Str("template", name).
-			Msg("Failed to execute template")
+	// Clone the template set for this request to avoid concurrency issues and
+	// allow adding request-specific functions.
+	instance, err := tmpl.Clone()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to clone template set")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	log.Debug().
-		Int("content_length", buf.Len()).
-		Msg("Main template executed successfully")
+	// Add the translation function to the template instance for this request.
+	localizer := i18n.GetLocalizerFromRequest(r)
+	instance.Funcs(template.FuncMap{
+		"T": func(messageID string, args ...interface{}) template.HTML {
+			config := &i18n_bundle.LocalizeConfig{MessageID: messageID}
+			if len(args) > 0 {
+				if count, ok := args[0].(int); ok {
+					config.PluralCount = count
+				}
+			}
+			localized, err := localizer.Localize(config)
+			if err != nil || localized == "" {
+				return template.HTML(messageID)
+			}
+			return template.HTML(localized)
+		},
+	})
 
-	// Add content to layout
-	content := buf.String()
-	data["Content"] = template.HTML(content)
-
-	log.Debug().
-		Int("content_length", len(content)).
-		Msg("Template content prepared for layout")
-
-	// Execute the layout
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	log.Debug().Msg("Executing layout template")
-
-	if err := rt.ExecuteTemplate(w, "layout", data); err != nil {
-		log.Error().
-			Err(err).
-			Str("template", "layout").
-			Msg("Failed to execute layout template")
+	// Render the main content template to a buffer.
+	var buf bytes.Buffer
+	if err := instance.ExecuteTemplate(&buf, name, data); err != nil {
+		log.Error().Err(err).Str("template", name).Msg("Error executing content template")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	log.Info().
-		Str("template", name).
-		Int("response_size", len(content)).
-		Msg("Page rendering completed successfully")
+	// Inject the rendered content into the main data map for the layout.
+	data["Content"] = template.HTML(buf.String())
+
+	// Execute the layout template with the combined data.
+	if err := instance.ExecuteTemplate(w, "layout", data); err != nil {
+		log.Error().Err(err).Msg("Error executing layout template")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+
+	log.Info().Msg("Page rendered successfully")
 }
 
 // IsAuthenticated checks if the user is authenticated
@@ -456,13 +450,8 @@ func RequireAuthHandle(h func(http.ResponseWriter, *http.Request, httprouter.Par
 // IndexHandler is a handler for the home page
 // This function is exported for use by other packages
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	log := logger.Get().With().
-		Str("handler", "IndexHandler").
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
-
-	log.Debug().Msg("Processing request for home page")
+	ctx := NewHandlerContext(w, r, "IndexHandler")
+	ctx.Log.Debug().Msg("Processing request for home page")
 
 	// If it's not the root, return a 404
 	if r.URL.Path != "/" {
@@ -473,16 +462,11 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	// Prepare data for the template
 	data := map[string]interface{}{
 		"Title": "PVMSS",
-		"Lang":  i18n.GetLanguage(r), // Add detected language
+		"Lang":  i18n.GetLanguage(r),
 	}
 
-	// Add translation data based on language
-	i18n.LocalizePage(w, r, data)
-
-	log.Debug().Msg("Rendering index template")
-	renderTemplateInternal(w, r, "index", data) // Use the template name instead of the file name
-
-	log.Info().Msg("Home page displayed successfully")
+	ctx.RenderTemplate("index", data)
+	ctx.Log.Info().Msg("Home page displayed successfully")
 }
 
 // IndexRouterHandler is a handler for the home page compatible with httprouter

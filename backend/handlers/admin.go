@@ -10,7 +10,6 @@ import (
 	"pvmss/proxmox"
 	"pvmss/state"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 )
 
@@ -82,7 +81,6 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 	if errMsg != "" {
 		data["Error"] = errMsg
 	}
-	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_nodes", data)
 }
 

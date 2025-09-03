@@ -131,82 +131,50 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	router.Handler(http.MethodGet, "/metrics", metrics.Handler())
 	router.Handler(http.MethodHead, "/metrics", metrics.Handler())
 
-	// Create middleware chain
-	var handler http.Handler = router
+	// Create a new ServeMux to route requests to different middleware stacks.
+	// This allows us to have separate middleware for public/static routes vs. the main application.
+	mux := http.NewServeMux()
 
-	// Inject state manager into request context for downstream usage
-	handler = stateManagerContextMiddleware(stateManager)(handler)
+	// --- Public/Static Middleware Chain (no session) ---
+	var publicHandler http.Handler = router
+	publicHandler = metrics.HTTPMetricsMiddleware(publicHandler)
+	publicHandler = recoverMiddleware(publicHandler)
 
-	// Get the session manager.
+	// --- Main App Middleware Chain (with session, CSRF, etc.) ---
+	var appHandler http.Handler = router
+	appHandler = stateManagerContextMiddleware(stateManager)(appHandler)
+
 	sessionManager := stateManager.GetSessionManager()
-	if sessionManager == nil {
-		log.Warn().Msg("Session manager is not available, running with limited functionality")
-	} else {
-		// IMPORTANT: Middleware order matters (outermost wrapper in code is applied last at runtime).
-		// The desired runtime execution order is: LoadAndSave -> SessionMiddleware -> CSRF -> Headers -> router
-
-		// Apply middleware in reverse order of execution (inner to outer).
-		handler = security.CSRF(handler)
-		handler = securityMiddleware.Headers(handler)
-
-		// Inject our custom session manager into the context.
-		handler = securityMiddleware.SessionMiddleware(sessionManager)(handler)
-
-		// Add session debug middleware if needed (after session injection).
-		handler = sessionDebugMiddleware(handler)
-	}
-
-	// Proxmox status middleware (after CSRF validation)
-	handler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(handler)
-
-	// Apply rate limiting (runs early)
-	handler = middleware.RateLimitMiddleware(rateLimiter)(handler)
-
-	// Normalize trailing slashes early to reduce duplicate route handlers
-	handler = trailingSlashRedirectMiddleware(handler)
-
-	// HTTP metrics middleware (near-outermost to observe complete response)
-	handler = metrics.HTTPMetricsMiddleware(handler)
-
-	// IMPORTANT: scs LoadAndSave must be the OUTERMOST wrapper so downstream middlewares see session data in context.
-	// However, to avoid unnecessary session churn on static assets and health checks,
-	// we bypass LoadAndSave for those paths.
 	if sessionManager != nil {
-		// CRITICAL FIX: Ensure the LoadAndSave middleware is applied BEFORE other middleware
-		// to make session data available to all downstream components.
-		// This is the opposite order from what you might expect in the code,
-		// but because each middleware wraps the next, we need to apply LoadAndSave last.
-
-		// First, ensure we have a functioning session manager
-		log.Info().Msgf("Session manager address: %p", sessionManager)
-
-		// Create a handler that conditionally applies the LoadAndSave middleware
-		baseHandler := handler
-		withSession := sessionManager.LoadAndSave
-
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Debug log to trace request path
-			log.Debug().
-				Str("path", r.URL.Path).
-				Str("method", r.Method).
-				Bool("is_static", isStaticPath(r.URL.Path)).
-				Msg("Request path middleware selection")
-
-			// Bypass session management for static assets and health checks to reduce overhead
-			if isStaticPath(r.URL.Path) || r.URL.Path == "/health" {
-				baseHandler.ServeHTTP(w, r)
-				return
-			}
-
-			// Apply LoadAndSave to load the session before any other middleware processes the request
-			withSession(baseHandler).ServeHTTP(w, r)
-		})
-
-		log.Info().Msg("Session middleware configured with LoadAndSave for all non-static routes")
+		// Apply session-dependent middleware only to the app handler
+		appHandler = security.CSRF(appHandler)
+		appHandler = securityMiddleware.Headers(appHandler)
+		appHandler = securityMiddleware.SessionMiddleware(sessionManager)(appHandler)
+		appHandler = sessionDebugMiddleware(appHandler)
+		appHandler = sessionManager.LoadAndSave(appHandler) // Outermost session middleware
+	} else {
+		log.Warn().Msg("Session manager not available, running with limited functionality")
 	}
 
-	// Global panic recovery (outermost) to avoid crashing the server on unexpected panics
-	handler = recoverMiddleware(handler)
+	// Apply middleware that should run for the main app but after sessions
+	appHandler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(appHandler)
+	appHandler = middleware.RateLimitMiddleware(rateLimiter)(appHandler)
+	appHandler = trailingSlashRedirectMiddleware(appHandler)
+	appHandler = metrics.HTTPMetricsMiddleware(appHandler)
+	appHandler = recoverMiddleware(appHandler) // Innermost recovery for the app
+
+	// Route requests to the appropriate middleware chain.
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Route static assets, /health, and /metrics to the public handler (no session)
+		if isStaticPath(r.URL.Path) || r.URL.Path == "/health" || r.URL.Path == "/metrics" {
+			publicHandler.ServeHTTP(w, r)
+		} else {
+			// All other requests go to the main app handler with the full middleware stack
+			appHandler.ServeHTTP(w, r)
+		}
+	})
+
+	var handler http.Handler = mux
 
 	log.Info().Msg("HTTP handlers and middleware initialized")
 	return handler

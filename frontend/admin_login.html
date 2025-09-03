@@ -6,7 +6,7 @@
         <div class="card admin-card">
           <header class="card-header brand-header is-align-items-center">
             <p class="card-header-title">
-              <span class="icon"><i class="fas fa-shield-alt"></i></span>&nbsp;{{index .t "AdminLogin.Title"}}
+              <span class="icon"><i class="fas fa-shield-alt"></i></span>&nbsp;{{T "AdminLogin.Title"}}
             </p>
           </header>
           <div class="card-content">
@@ -14,7 +14,7 @@
             <div class="notification is-danger">{{.Error}}</div>
             {{end}}
 
-            <form method="post" action="{{urlWithLang .Lang}}">
+            <form method="post" action="/admin/login">
               <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
               {{/* Preserve intended redirect target across POST */}}
               {{if .ReturnURL}}
@@ -31,11 +31,11 @@
                     <span class="icon">
                       <i class="fas fa-key"></i>
                     </span>
-                    <span>{{index .t "AdminLogin.PasswordLabel"}}</span>
+                    <span>{{T "AdminLogin.PasswordLabel"}}</span>
                   </span>
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input" type="password" id="password" name="password" required autofocus />
+                  <input class="input" type="password" id="password" name="password" required autofocus autocomplete="current-password" />
                   <span class="icon is-small is-left">
                     <i class="fas fa-key"></i>
                   </span>
@@ -48,7 +48,7 @@
                     <span class="icon">
                       <i class="fas fa-sign-in-alt"></i>
                     </span>
-                    <span>{{index .t "AdminLogin.Button"}}</span>
+                    <span>{{T "AdminLogin.Button"}}</span>
                   </button>
                 </div>
               </div>
@@ -61,7 +61,7 @@
                   <span class="icon is-small">
                     <i class="fas fa-user"></i>
                   </span>
-                  {{index .t "AdminLogin.UserLoginLink"}}
+                  {{T "AdminLogin.UserLoginLink"}}
                 </a>
               </p>
             </div>

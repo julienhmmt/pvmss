@@ -5,14 +5,14 @@
   <div class="card admin-card">
     <header class="card-header brand-header is-align-items-center">
       <p class="card-header-title">
-        <span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{index .t "Admin.Tags.Title"}}
+        <span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "Admin.Tags.Title"}}
       </p>
     </header>
     <div class="card-content">
       <!-- Description integrated into card -->
       <p class="help mb-2">
         <span class="icon is-small has-text-grey-light mr-1"><i class="fas fa-info-circle"></i></span>
-        {{index .t "Admin.Tags.Description"}}
+        {{T "Admin.Tags.Description"}}
       </p>
       <hr class="my-3">
       <!-- Inline add form -->
@@ -21,14 +21,14 @@
         <div class="field has-addons">
           <div class="control is-expanded">
             <input id="tag-input" class="input is-small" type="text" name="tag"
-              placeholder='{{index .t "Admin.Tags.Placeholder"}}' required minlength="1" maxlength="50"
+              placeholder='{{T "Admin.Tags.Placeholder"}}' required minlength="1" maxlength="50"
               pattern="[a-zA-Z0-9_-]+"
               title="Le nom du tag ne peut contenir que des lettres, chiffres, tirets et underscores">
           </div>
           <div class="control">
             <button type="submit" class="button is-primary is-small">
               <span class="icon is-small"><i class="fas fa-plus"></i></span>
-              <span>{{index .t "Common.Add"}}</span>
+              <span>{{T "Common.Add"}}</span>
             </button>
           </div>
         </div>
@@ -50,7 +50,7 @@
             <form action="/tags/delete" method="POST" class="is-inline">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="tag" value="{{.}}">
-              <button type="submit" class="delete is-small ml-1" aria-label="{{index $.t " Common.Delete"}}
+              <button type="submit" class="delete is-small ml-1" aria-label="{{T "Common.Delete"}}
                 {{.}}"></button>
             </form>
             {{end}}
@@ -63,7 +63,7 @@
             <span class="icon has-text-grey">
               <i class="fas fa-info-circle"></i>
             </span>
-            <span class="has-text-grey">Aucun tag pour le moment.</span>
+            <span class="has-text-grey">{{T "Admin.Tags.NoTags"}}</span>
           </span>
         </div>
         {{end}}

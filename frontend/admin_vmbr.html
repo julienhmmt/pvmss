@@ -7,25 +7,25 @@
 
   {{if .Error}}
   <div class="notification is-danger">
-    <p><strong>{{index .t "Common.Error"}}:</strong> {{.Error}}</p>
+    <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
     <a href="/admin/vmbr" class="button is-small is-light mt-2">
-      <span>{{index .t "Common.TryAgain"}}</span>
+      <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
   {{else}}
   <div class="content mb-5">
-    <h1 class="title is-4"><span class="icon"><i class="fas fa-network-wired"></i></span>&nbsp;{{index .t "Admin.VMBR.Title"}}</h1>
-    <p class="subtitle is-6 has-text-grey">{{index .t "Admin.VMBR.Description"}}</p>
+    <h1 class="title is-4"><span class="icon"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "Admin.VMBR.Title"}}</h1>
+    <p class="subtitle is-6 has-text-grey">{{T "Admin.VMBR.Description"}}</p>
   </div>
   {{if .VMBRs}}
   <div class="table-container">
     <table class="table is-fullwidth is-striped is-hoverable is-narrow">
       <thead>
         <tr>
-          <th><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{index $.t "Admin.VMBR.Title"}}</th>
-          <th>{{index $.t "Admin.VMBR.Header.Node"}}</th>
-          <th>{{index $.t "Admin.VMBR.Header.Description"}}</th>
-          <th class="has-text-right">{{index $.t "Common.Actions"}}</th>
+          <th><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "Admin.VMBR.Title"}}</th>
+          <th>{{T "Admin.VMBR.Header.Node"}}</th>
+          <th>{{T "Admin.VMBR.Header.Description"}}</th>
+          <th class="has-text-right">{{T "Common.Actions"}}</th>
         </tr>
       </thead>
       <tbody>
@@ -41,8 +41,8 @@
               <input type="hidden" name="vmbr" value="{{$name}}">
               <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
               <button type="submit" class="button is-small {{if index $.EnabledVMBRs $name}}is-success{{else}}is-light{{end}}"
-                aria-label="{{if index $.EnabledVMBRs $name}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{$name}}"
-                title="{{if index $.EnabledVMBRs $name}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{$name}}">
+                aria-label="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
+                title="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
                 <span class="icon is-small">
                   {{if index $.EnabledVMBRs $name}}
                     <i class="fas fa-toggle-on"></i>
@@ -50,7 +50,7 @@
                     <i class="fas fa-toggle-off"></i>
                   {{end}}
                 </span>
-                <span>{{if index $.EnabledVMBRs $name}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}}</span>
+                <span>{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}}</span>
               </button>
             </form>
           </td>
@@ -61,7 +61,7 @@
   </div>
   {{else}}
   <div class="notification is-warning">
-    {{index .t "Admin.VMBR.NoVMBRs"}}
+    {{T "Admin.VMBR.NoVMBRs"}}
   </div>
   {{end}}
   {{end}}

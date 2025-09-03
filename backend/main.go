@@ -14,9 +14,10 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 
 	"pvmss/handlers"
-	"pvmss/i18n"
+	custom_i18n "pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
@@ -97,8 +98,7 @@ func initLogger() {
 	if level == "" {
 		level = "info"
 	}
-	// Forcer le niveau de log en DEBUG pour le diagnostic
-	logger.Init("debug")
+	logger.Init(level)
 }
 
 func initializeApp(stateManager state.StateManager) error {
@@ -113,6 +113,9 @@ func initializeApp(stateManager state.StateManager) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize Proxmox client: %w", err)
 	}
+
+	// 6. Initialize i18n, which depends on the logger.
+	custom_i18n.InitI18n()
 
 	templates, err := initTemplates()
 	if err != nil {
@@ -147,9 +150,6 @@ func initializeApp(stateManager state.StateManager) error {
 		logger.Get().Info().Msg("Settings loaded without modifications, updating state only.")
 		stateManager.SetSettingsWithoutSave(settings)
 	}
-
-	// 6. Initialize i18n, which depends on the logger.
-	i18n.InitI18n()
 
 	return nil
 }
@@ -197,8 +197,21 @@ func initProxmoxClient() (*proxmox.Client, error) {
 }
 
 func initTemplates() (*template.Template, error) {
-	// Create base template with registered helper functions
-	tmpl := template.New("").Funcs(templates.GetBaseFuncMap())
+	funcMap := templates.GetBaseFuncMap()
+	bundle := custom_i18n.Bundle
+
+	funcMap["T"] = func(messageID string, args ...interface{}) template.HTML {
+		// The default language is used here, as we don't have a request context
+		// at initialization time. The actual language will be determined at render time.
+		localizeConfig := &i18n.LocalizeConfig{MessageID: messageID}
+		localizer := i18n.NewLocalizer(bundle, bundle.LanguageTags()[0].String())
+		localized, err := localizer.Localize(localizeConfig)
+		if err != nil {
+			// Fallback to message ID if translation fails
+			return template.HTML(messageID)
+		}
+		return template.HTML(localized)
+	}
 
 	// Get template directory path
 	_, filename, _, ok := runtime.Caller(0)
@@ -214,38 +227,30 @@ func initTemplates() (*template.Template, error) {
 
 	// Parse all HTML files in the frontend directory
 	var templateFiles []string
-	err := filepath.Walk(frontendPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	templateFiles, err := templates.FindTemplateFiles(frontendPath)
+	if err != nil {
+		return nil, fmt.Errorf("error finding template files: %w", err)
+	}
+
+	tmpl, err := template.New("main").Funcs(funcMap).ParseFiles(templateFiles...)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing template files: %w", err)
+	}
+
+	// Log des templates chargés
+	loadedTemplateNames := make([]string, 0, len(templateFiles))
+	for _, t := range tmpl.Templates() {
+		// We only want to log the base names of the files, not the full definition
+		if t.Name() != "" && strings.HasSuffix(t.Name(), ".html") {
+			loadedTemplateNames = append(loadedTemplateNames, t.Name())
 		}
-		if !info.IsDir() && strings.HasSuffix(info.Name(), ".html") {
-			relPath, _ := filepath.Rel(frontendPath, path)
-			templateFiles = append(templateFiles, relPath)
-			_, err = tmpl.ParseFiles(path)
-			if err != nil {
-				logger.Get().Error().
-					Err(err).
-					Str("template", relPath).
-					Msg("Erreur lors du chargement du template")
-			} else {
-				logger.Get().Debug().
-					Str("template", relPath).
-					Msg("Template chargé avec succès")
-			}
-			return err
-		}
-		return nil
-	})
+	}
 
 	// Log des templates chargés
 	logger.Get().Info().
 		Strs("templates", templateFiles).
 		Int("count", len(templateFiles)).
 		Msg("Templates chargés")
-
-	if err != nil {
-		return nil, fmt.Errorf("error parsing templates: %w", err)
-	}
 
 	return tmpl, nil
 }

@@ -7,25 +7,25 @@
 
   {{if .Error}}
   <div class="notification is-danger">
-    <p><strong>{{index .t "Common.Error"}}:</strong> {{.Error}}</p>
+    <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
     <a href="/admin/storage" class="button is-small is-light mt-2">
-      <span>{{index .t "Common.TryAgain"}}</span>
+      <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
   {{else}}
   <div class="content mb-5">
-      <h1 class="title is-4"><span class="icon"><i class="fas fa-hdd"></i></span>&nbsp;{{index .t "Admin.Storage.Title"}}</h1>
-      <p class="subtitle is-6 has-text-grey">{{index .t "Admin.Storage.Description"}}</p>
+      <h1 class="title is-4"><span class="icon"><i class="fas fa-hdd"></i></span>&nbsp;{{T "Admin.Storage.Title"}}</h1>
+      <p class="subtitle is-6 has-text-grey">{{T "Admin.Storage.Description"}}</p>
   </div>
   {{if .Storages}}
   <div class="table-container">
     <table class="table is-fullwidth is-striped is-hoverable is-narrow">
       <thead>
         <tr>
-          <th><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{index $.t "Admin.Storage.Title"}}</th>
-          <th>{{index $.t "Admin.Storage.Header.Usage"}}</th>
-          <th>{{index $.t "Admin.Storage.Header.Content"}}</th>
-          <th class="has-text-right">{{index $.t "Common.Actions"}}</th>
+          <th><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{T "Admin.Storage.Title"}}</th>
+          <th>{{T "Admin.Storage.Header.Usage"}}</th>
+          <th>{{T "Admin.Storage.Header.Type"}}</th>
+          <th class="has-text-right">{{T "Common.Actions"}}</th>
         </tr>
       </thead>
       <tbody>
@@ -55,8 +55,8 @@
               <input type="hidden" name="storage" value="{{.Storage}}">
               <input type="hidden" name="action" value="{{if index $.EnabledMap .Storage}}disable{{else}}enable{{end}}">
               <button type="submit" class="button is-small {{if index $.EnabledMap .Storage}}is-success{{else}}is-light{{end}}"
-                aria-label="{{if index $.EnabledMap .Storage}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{.Storage}}"
-                title="{{if index $.EnabledMap .Storage}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}} {{.Storage}}">
+                aria-label="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}"
+                title="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}">
                 <span class="icon is-small">
                   {{if index $.EnabledMap .Storage}}
                     <i class="fas fa-toggle-on"></i>
@@ -64,7 +64,7 @@
                     <i class="fas fa-toggle-off"></i>
                   {{end}}
                 </span>
-                <span>{{if index $.EnabledMap .Storage}}{{index $.t "Common.Disable"}}{{else}}{{index $.t "Common.Enable"}}{{end}}</span>
+                <span>{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}}</span>
               </button>
             </form>
           </td>
@@ -75,7 +75,7 @@
   </div>
   {{else}}
   <div class="notification is-warning">
-    {{index .t "Admin.Storage.NoStorages"}}
+    {{T "Admin.Storage.NoStorages"}}
   </div>
   {{end}}
   {{end}}

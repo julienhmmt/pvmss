@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/state"
 
@@ -159,7 +158,6 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	}
 
 	// Render the template
-	i18n.LocalizePage(w, r, templateData)
 	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 

@@ -620,9 +620,6 @@ func (h *VMHandler) VMConsoleProxyPage(w http.ResponseWriter, r *http.Request, p
 		"VNCPassword": vncpassword,
 	}
 
-	// Add translation data
-	i18n.LocalizePage(w, r, data)
-
 	// Render the console page template
 	renderTemplateInternal(w, r, "console", data)
 }
@@ -670,26 +667,27 @@ func (h *VMHandler) ProxmoxAssetProxy(w http.ResponseWriter, r *http.Request, ps
 
 // UpdateVMDescriptionHandler updates the VM description (Markdown supported on display)
 func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "UpdateVMDescriptionHandler").Logger()
+	ctx := NewHandlerContext(w, r, "UpdateVMDescriptionHandler")
+
 	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		ctx.HandleError(nil, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	if err := r.ParseForm(); err != nil {
-		log.Warn().Err(err).Msg("parse form failed")
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		ctx.HandleError(err, "Bad request", http.StatusBadRequest)
 		return
 	}
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	desc := r.FormValue("description")
 	if vmid == "" || node == "" {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
 		return
 	}
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		ctx.HandleError(err, "Bad request", http.StatusBadRequest)
 		return
 	}
 	client := h.stateManager.GetProxmoxClient()
@@ -700,7 +698,7 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 	}
 	// Update description (empty allowed to clear)
 	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"description": desc}); err != nil {
-		log.Error().Err(err).Msg("update description failed")
+		ctx.Log.Error().Err(err).Msg("update description failed")
 		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
 		return
 	}
@@ -709,25 +707,26 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 
 // UpdateVMTagsHandler updates the VM tags from selected checkboxes
 func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "UpdateVMTagsHandler").Logger()
+	ctx := NewHandlerContext(w, r, "UpdateVMTagsHandler")
+
 	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		ctx.HandleError(nil, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
 	if err := r.ParseForm(); err != nil {
-		log.Warn().Err(err).Msg("parse form failed")
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		ctx.HandleError(err, "Bad request", http.StatusBadRequest)
 		return
 	}
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	if vmid == "" || node == "" {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
 		return
 	}
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		ctx.HandleError(err, "Bad request", http.StatusBadRequest)
 		return
 	}
 	// Gather tags; ensure stable format for Proxmox: semicolon-separated, unique, trimmed
@@ -765,7 +764,7 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"tags": tagsParam}); err != nil {
-		log.Error().Err(err).Msg("update tags failed")
+		ctx.Log.Error().Err(err).Msg("update tags failed")
 		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
 		return
 	}
@@ -1005,7 +1004,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	if vmID == "" {
 		log.Warn().Msg("VM ID not provided in request")
 		// Localized generic error for bad request
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
 	}
@@ -1041,7 +1040,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		if settings := h.stateManager.GetSettings(); settings != nil {
 			data["AvailableTags"] = settings.Tags
 		}
-		i18n.LocalizePage(w, r, data)
 		renderTemplateInternal(w, r, "vm_details", data)
 		return
 	}
@@ -1051,9 +1049,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		log.Debug().Msg("Refresh requested, invalidating Proxmox client cache")
 		client.InvalidateCache("")
 	}
-
-	// Always auto-refresh this page every 5 seconds, navigating to the same VM with refresh=1
-	w.Header().Set("Refresh", fmt.Sprintf("5; url=/vm/details/%s?refresh=1", vmID))
 
 	vms, err := proxmox.GetVMsWithContext(r.Context(), client)
 	if err != nil {
@@ -1080,7 +1075,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		if settings := h.stateManager.GetSettings(); settings != nil {
 			data["AvailableTags"] = settings.Tags
 		}
-		i18n.LocalizePage(w, r, data)
 		renderTemplateInternal(w, r, "vm_details", data)
 		return
 	}
@@ -1094,9 +1088,15 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	}
 	if found == nil {
 		log.Warn().Str("vm_id", vmID).Msg("VM not found")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.NotFound"), http.StatusNotFound)
 		return
+	}
+
+	// Only refresh the page if the VM is in a transitional state (not running or stopped)
+	if found.Status != "running" && found.Status != "stopped" {
+		log.Debug().Str("status", found.Status).Msg("VM is in a transitional state, setting refresh header")
+		w.Header().Set("Refresh", fmt.Sprintf("5; url=/vm/details/%s?refresh=1", vmID))
 	}
 
 	// Format a few fields for the template
@@ -1238,7 +1238,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	log.Debug().Interface("vm_details", data).Msg("VM details fetched from Proxmox")
 
 	// Add translation data
-	i18n.LocalizePage(w, r, data)
 
 	log.Debug().Msg("Rendering template vm_details")
 	renderTemplateInternal(w, r, "vm_details", data)
@@ -1255,7 +1254,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	// Parse posted form values
 	if err := r.ParseForm(); err != nil {
 		log.Error().Err(err).Msg("failed to parse form")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
 	}
@@ -1265,7 +1264,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	action := r.FormValue("action")
 	if vmid == "" || node == "" || action == "" {
 		log.Warn().Str("vmid", vmid).Str("node", node).Str("action", action).Msg("missing required fields")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
 	}
@@ -1283,7 +1282,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	// Execute action against Proxmox
 	if _, err := proxmox.VMActionWithContext(r.Context(), client, node, vmid, action); err != nil {
 		log.Error().Err(err).Msg("VM action failed")
-		localizer := i18n.GetLocalizer(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
 		return
 	}

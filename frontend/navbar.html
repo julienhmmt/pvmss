@@ -5,7 +5,7 @@
         <input type="checkbox" id="nav-toggle" class="visually-hidden-checkbox" aria-label="Toggle navigation">
         <div class="navbar-brand">
             <a class="navbar-item" href="/?lang={{.Lang}}">
-                <span class="has-text-weight-bold">{{index .t "UI.Header"}}</span>
+                <span class="has-text-weight-bold">{{T "UI.Header"}}</span>
             </a>
             <label for="nav-toggle" class="navbar-burger" role="button" aria-label="menu" aria-controls="navbarMenu" tabindex="0">
                 <span aria-hidden="true"></span>
@@ -21,7 +21,7 @@
                         <span class="icon">
                             <i class="fas fa-home"></i>
                         </span>
-                        <span>{{index .t "Navbar.Home"}}</span>
+                        <span>{{T "Navbar.Home"}}</span>
                     </span>
                 </a>
                 <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create?lang={{.Lang}}"
@@ -31,7 +31,7 @@
                         <span class="icon">
                             <i class="fas fa-plus-square"></i>
                         </span>
-                        <span>{{ index .t "Navbar.CreateVM" }}</span>
+                        <span>{{T "Navbar.CreateVM"}}</span>
                         {{if not .ProxmoxConnected}}
                         <span class="icon has-text-danger ml-1">
                             <i class="fas fa-exclamation-triangle"></i>
@@ -46,7 +46,7 @@
                         <span class="icon">
                             <i class="fas fa-search"></i>
                         </span>
-                        <span>{{ index .t "Navbar.SearchVM" }}</span>
+                        <span>{{T "Navbar.SearchVM"}}</span>
                         {{if not .ProxmoxConnected}}
                         <span class="icon has-text-danger ml-1">
                             <i class="fas fa-exclamation-triangle"></i>
@@ -59,7 +59,7 @@
                         <span class="icon">
                             <i class="fas fa-book"></i>
                         </span>
-                        <span>{{ index .t "Navbar.Documentation" }}</span>
+                        <span>{{T "Navbar.Documentation"}}</span>
                     </span>
                 </a>
             </div>
@@ -83,21 +83,21 @@
                             <span class="icon">
                                 <i class="fas fa-cog"></i>
                             </span>
-                            <span>{{ index .t "Navbar.Admin" }}</span>
+                            <span>{{T "Navbar.Admin"}}</span>
                         </a>
                         {{end}}
                         <a class="button is-light" href="/logout?lang={{.Lang}}">
                             <span class="icon">
                                 <i class="fas fa-sign-out-alt"></i>
                             </span>
-                            <span>{{ index .t "Navbar.Logout" }}</span>
+                            <span>{{T "Navbar.Logout"}}</span>
                         </a>
                         {{else}}
                         <a class="button is-primary" href="/login?lang={{.Lang}}">
                             <span class="icon">
                                 <i class="fas fa-sign-in-alt"></i>
                             </span>
-                            <span>{{ index .t "Navbar.Login" }}</span>
+                            <span>{{T "Navbar.Login"}}</span>
                         </a>
                         {{end}}
 

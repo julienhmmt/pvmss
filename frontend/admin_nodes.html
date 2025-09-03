@@ -9,7 +9,7 @@
     <div class="notification is-warning">
         <span class="icon-text">
             <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
-            <span>{{index .t "Proxmox.NotConnected"}} {{index .t "Proxmox.CheckConnection"}}</span>
+            <span>{{T "Proxmox.NotConnected"}} {{T "Proxmox.CheckConnection"}}</span>
         </span>
     </div>
     {{else if .Error}}
@@ -18,7 +18,7 @@
     </div>
     {{else if .NodeDetails}}
     <div class="content mb-5">
-        <h1 class="title is-4"><span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{index .t "Nodes.Title"}}</h1>
+        <h1 class="title is-4"><span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{T "Nodes.Title"}}</h1>
     </div>
     <div class="columns is-multiline">
         {{range .NodeDetails}}
@@ -32,11 +32,11 @@
                     <div class="card-header-icon">
                         {{if $.ProxmoxConnected}}
                         <span class="tag is-success is-light">
-                            {{with (index $.t "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
+                            {{with (T "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
                         </span>
                         {{else}}
                         <span class="tag is-danger is-light">
-                            {{with (index $.t "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
+                            {{with (T "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
                         </span>
                         {{end}}
                     </div>
@@ -44,7 +44,7 @@
                 <div class="card-content">
                     <!-- CPU Usage -->
                     <div class="mb-4">
-                        <label class="label is-small has-text-grey">{{index $.t "Nodes.Header.CPUUsage"}}</label>
+                        <label class="label is-small has-text-grey">{{T "Nodes.Header.CPUUsage"}}</label>
                         {{$cpu_percent := mul .CPU 100.0}}
                         <progress class="progress is-small {{if lt $cpu_percent 70.0}}is-success{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
                         <div class="is-flex is-justify-content-space-between is-size-7">
@@ -54,7 +54,7 @@
                     </div>
                     <!-- Memory Usage -->
                     <div class="mb-4">
-                        <label class="label is-small has-text-grey">{{index $.t "Nodes.Header.MemoryUsage"}}</label>
+                        <label class="label is-small has-text-grey">{{T "Nodes.Header.MemoryUsage"}}</label>
                         {{$mem_percent := mul (div .Memory .MaxMemory) 100.0}}
                         <progress class="progress is-small {{if lt $mem_percent 70.0}}is-success{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100"></progress>
                         <div class="is-flex is-justify-content-space-between is-size-7">
@@ -64,7 +64,7 @@
                     </div>
                     <!-- Disk Usage -->
                     <div>
-                        <label class="label is-small has-text-grey">{{index $.t "Nodes.Header.DiskUsage"}}</label>
+                        <label class="label is-small has-text-grey">{{T "Nodes.Header.DiskUsage"}}</label>
                         {{$disk_percent := mul (div .Disk .MaxDisk) 100.0}}
                         <progress class="progress is-small {{if lt $disk_percent 70.0}}is-success{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100"></progress>
                         <div class="is-flex is-justify-content-space-between is-size-7">
@@ -79,7 +79,7 @@
     </div>
     {{else}}
     <div class="notification">
-        {{index .t "Search.NoResults"}}
+        {{T "Search.NoResults"}}
     </div>
     {{end}}
   </div>

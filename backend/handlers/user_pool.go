@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"pvmss/i18n"
+
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -55,7 +55,6 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		"SuccessMessage": successMsg,
 		"AdminActive":    "userpool",
 	}
-	i18n.LocalizePage(w, r, data)
 	renderTemplateInternal(w, r, "admin_userpool", data)
 }
 
