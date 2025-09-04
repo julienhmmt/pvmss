@@ -72,33 +72,14 @@
                         </a>
                         {{end}}
                         <div class="navbar-item is-hidden-mobile">
-                            <div class="dropdown is-right is-hoverable">
-                                <div class="dropdown-trigger">
-                                    <button class="button is-ghost is-small" aria-haspopup="true" aria-controls="user-dropdown-menu" title="{{.Username}}">
-                                        <span class="icon">
-                                            <i class="fas fa-user-circle"></i>
-                                        </span>
-                                        <span class="icon is-small">
-                                            <i class="fas fa-angle-down"></i>
-                                        </span>
-                                    </button>
-                                </div>
-                                <div class="dropdown-menu" id="user-dropdown-menu" role="menu">
-                                    <div class="dropdown-content">
-                                        <div class="dropdown-item has-text-centered">
-                                            <strong>{{.Username}}</strong>
-                                        </div>
-                                        <hr class="dropdown-divider">
-                                        <a href="/logout?lang={{.Lang}}" class="dropdown-item">
-                                            <span class="icon-text">
-                                                <span class="icon">
-                                                    <i class="fas fa-sign-out-alt"></i>
-                                                </span>
-                                                <span>{{T "Navbar.Logout"}}</span>
-                                            </span>
-                                        </a>
-                                    </div>
-                                </div>
+                            <div class="is-flex is-align-items-center is-justify-content-center">
+                                <span class="has-text-grey is-size-7 mr-2">Connected as {{.Username}}</span>
+                                <a href="/logout?lang={{.Lang}}" class="button is-small is-danger is-light">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                    </span>
+                                    <span>Disconnect</span>
+                                </a>
                             </div>
                         </div>
                         {{else}}
