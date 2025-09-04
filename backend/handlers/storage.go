@@ -223,19 +223,14 @@ func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Req
 
 // RegisterRoutes registers storage-related routes
 func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/admin/storage", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.StoragePageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-	router.GET("/admin/storage/", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/storage/ to /admin/storage")
-		http.Redirect(w, r, "/admin/storage", http.StatusSeeOther)
-	})))
-	router.POST("/admin/storage/update", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.UpdateStorageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-	router.POST("/admin/storage/toggle", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.ToggleStorageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	routeHelpers := NewAdminPageRoutes()
+
+	// Register admin storage routes using helper
+	routeHelpers.RegisterCRUDRoutes(router, "/admin/storage", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		"page":   h.StoragePageHandler,
+		"update": h.UpdateStorageHandler,
+		"toggle": h.ToggleStorageHandler,
+	})
 }
 
 // Storage utility functions (moved from storage_utils.go)

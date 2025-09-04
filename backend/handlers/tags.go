@@ -183,14 +183,12 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 // RegisterRoutes registers the routes for tag management.
 func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/admin/tags", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.TagsPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-	// Trailing-slash variant: redirect to canonical path
-	router.GET("/admin/tags/", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		logger.Get().Debug().Str("path", r.URL.Path).Msg("Redirecting /admin/tags/ to /admin/tags")
-		http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
-	})))
+	routeHelpers := NewAdminPageRoutes()
+
+	// Register admin tags routes using helper
+	routeHelpers.RegisterCRUDRoutes(router, "/admin/tags", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		"page": h.TagsPageHandler,
+	})
 	router.POST("/tags", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))

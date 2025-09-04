@@ -181,13 +181,12 @@ func (h *VMBRHandler) UpdateVMBRHandler(w http.ResponseWriter, r *http.Request, 
 
 // RegisterRoutes registers the routes for VMBR management.
 func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/admin/vmbr", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.VMBRPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-	router.POST("/admin/vmbr/update", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.UpdateVMBRHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-	router.POST("/admin/vmbr/toggle", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.ToggleVMBRHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	routeHelpers := NewAdminPageRoutes()
+
+	// Register admin VMBR routes using helper
+	routeHelpers.RegisterCRUDRoutes(router, "/admin/vmbr", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		"page":   h.VMBRPageHandler,
+		"update": h.UpdateVMBRHandler,
+		"toggle": h.ToggleVMBRHandler,
+	})
 }

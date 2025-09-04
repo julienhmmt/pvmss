@@ -29,13 +29,13 @@ func ValidateMethodAndParseForm(w http.ResponseWriter, r *http.Request, required
 // CreateHandlerLogger creates a standardized logger for handlers
 func CreateHandlerLogger(handlerName string, r *http.Request) zerolog.Logger {
 	logContext := logger.Get().With().Str("handler", handlerName)
-	
+
 	if r != nil {
 		logContext = logContext.
 			Str("method", r.Method).
 			Str("path", r.URL.Path)
 	}
-	
+
 	return logContext.Logger()
 }
 
