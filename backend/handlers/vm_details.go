@@ -44,12 +44,7 @@ type VMHandler struct {
 
 // VMConsoleWebSocketProxy handles WebSocket connections for VM console access
 func (h *VMHandler) VMConsoleWebSocketProxy(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "VMConsoleWebSocketProxy").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	log := CreateHandlerLogger("VMConsoleWebSocketProxy", r)
 
 	log.Info().Msg("=== WEBSOCKET PROXY HANDLER CALLED ===")
 	log.Info().Str("full_url", r.URL.String()).Msg("Full request URL")
@@ -543,12 +538,7 @@ func (h *VMHandler) VMConsoleWebSocketProxy(w http.ResponseWriter, r *http.Reque
 
 // VMConsoleProxyPage serves the noVNC console page from our server instead of redirecting to Proxmox
 func (h *VMHandler) VMConsoleProxyPage(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "VMConsoleProxyPage").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	log := CreateHandlerLogger("VMConsoleProxyPage", r)
 
 	vmID := ps.ByName("vmid")
 	node := strings.TrimSpace(r.URL.Query().Get("node"))
@@ -658,13 +648,7 @@ func (h *VMHandler) ProxmoxAssetProxy(w http.ResponseWriter, r *http.Request, ps
 func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := NewHandlerContext(w, r, "UpdateVMDescriptionHandler")
 
-	if r.Method != http.MethodPost {
-		ctx.HandleError(nil, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		ctx.HandleError(err, "Bad request", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
@@ -698,13 +682,7 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := NewHandlerContext(w, r, "UpdateVMTagsHandler")
 
-	if r.Method != http.MethodPost {
-		ctx.HandleError(nil, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		ctx.HandleError(err, "Bad request", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
@@ -763,12 +741,7 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 // VMConsoleHandler handles requests for a noVNC console ticket.
 // It calls the Proxmox API to get a ticket and returns it as JSON.
 func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "VMConsoleHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	log := CreateHandlerLogger("VMConsoleHandler", r)
 
 	vmIDStr := ps.ByName("vmid")
 	node := r.URL.Query().Get("node")
@@ -868,7 +841,7 @@ func (h *VMHandler) tryConsoleWithCookie(ctx context.Context, pveAuthCookie stri
 
 // setConsoleResponse handles setting the console response including cookies and JSON response
 func (h *VMHandler) setConsoleResponse(w http.ResponseWriter, r *http.Request, res *proxmox.ConsoleAuthResult, node string, vmID int) {
-	log := logger.Get().With().Str("handler", "VMHandler.setConsoleResponse").Logger()
+	log := CreateHandlerLogger("VMHandler.setConsoleResponse", r)
 
 	// Get Proxmox URL to determine if WebSocket will be wss
 	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
@@ -982,12 +955,7 @@ func NewVMHandler(stateManager VMStateManager, wsHub interface{}) *VMHandler {
 
 // VMDetailsHandler handles the VM details page
 func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "VMHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	log := CreateHandlerLogger("VMDetailsHandler", r)
 
 	vmID := ps.ByName("id")
 	if vmID == "" {
@@ -1234,17 +1202,9 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 // VMActionHandler handles VM lifecycle actions via server-side POST forms
 func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "VMActionHandler").Str("method", r.Method).Str("path", r.URL.Path).Logger()
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
+	log := CreateHandlerLogger("VMActionHandler", r)
 
-	// Parse posted form values
-	if err := r.ParseForm(); err != nil {
-		log.Error().Err(err).Msg("failed to parse form")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 

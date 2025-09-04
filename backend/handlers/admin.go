@@ -9,8 +9,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"pvmss/proxmox"
 	"pvmss/state"
-
-	"pvmss/logger"
 )
 
 // AdminHandler handles administration routes
@@ -20,11 +18,7 @@ type AdminHandler struct {
 
 // NodesPageHandler renders the Nodes admin page
 func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "NodesPageHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("NodesPageHandler", r)
 
 	// Proxmox connection status from background monitor
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
@@ -73,14 +67,9 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 		log.Warn().Msg("Proxmox client is not initialized; rendering page without live node data")
 	}
 
-	data := map[string]interface{}{
-		"ProxmoxConnected": proxmoxConnected,
-		"NodeDetails":      nodeDetails,
-		"AdminActive":      "nodes",
-	}
-	if errMsg != "" {
-		data["Error"] = errMsg
-	}
+	data := AdminPageDataWithMessage("Node Management", "nodes", "", errMsg)
+	data["ProxmoxConnected"] = proxmoxConnected
+	data["NodeDetails"] = nodeDetails
 	renderTemplateInternal(w, r, "admin_nodes", data)
 }
 
@@ -91,12 +80,7 @@ func NewAdminHandler(sm state.StateManager) *AdminHandler {
 
 // AdminPageHandler handles the administration page
 func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "AdminHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	log := CreateHandlerLogger("AdminPageHandler", r)
 
 	// Authentication is enforced by RequireAuth middleware at route level.
 	// Legacy combined admin page is deprecated: redirect to the Nodes subpage.
@@ -106,10 +90,7 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 
 // RegisterRoutes registers administration routes
 func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
-	log := logger.Get().With().
-		Str("component", "AdminHandler").
-		Str("method", "RegisterRoutes").
-		Logger()
+	log := CreateHandlerLogger("AdminHandler.RegisterRoutes", nil)
 
 	// Register main admin dashboard (protected with admin privileges)
 	router.GET("/admin", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {

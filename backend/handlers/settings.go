@@ -173,11 +173,7 @@ func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Requ
 
 // ISOPageHandler renders the ISO management page (server-rendered, no JS required)
 func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "ISOPageHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("ISOPageHandler", r)
 
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
@@ -303,11 +299,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 
 // LimitsPageHandler renders the Resource Limits page (server-rendered)
 func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "LimitsPageHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("LimitsPageHandler", r)
 
 	settings := h.stateManager.GetSettings()
 	if settings == nil {

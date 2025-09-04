@@ -4,10 +4,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"pvmss/logger"
-	"pvmss/state"
-
 	"github.com/julienschmidt/httprouter"
+	"pvmss/state"
 )
 
 // VMBRHandler handles VMBR-related operations.
@@ -79,7 +77,7 @@ func NewVMBRHandler(sm state.StateManager) *VMBRHandler {
 
 // VMBRPageHandler renders the VMBR management page.
 func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "VMBRPageHandler").Logger()
+	log := CreateHandlerLogger("VMBRPageHandler", r)
 
 	// Get the global state
 	gs := h.stateManager

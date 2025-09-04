@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 	"time"
@@ -12,7 +11,7 @@ import (
 // It returns a slice of maps to minimize churn in existing templates/callers.
 // Each map contains: node, iface, type, method, address, netmask, gateway, description("").
 func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
-	log := logger.Get().With().Str("helper", "collectAllVMBRs").Logger()
+	log := CreateHandlerLogger("collectAllVMBRs", nil)
 
 	if sm == nil {
 		log.Error().Msg("state manager is nil")

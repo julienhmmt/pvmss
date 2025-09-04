@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"pvmss/logger"
 	"pvmss/security"
 	"pvmss/state"
 
@@ -23,12 +22,7 @@ type HandlerContext struct {
 
 // NewHandlerContext creates a new handler context with common setup
 func NewHandlerContext(w http.ResponseWriter, r *http.Request, handlerName string) *HandlerContext {
-	log := logger.Get().With().
-		Str("handler", handlerName).
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
+	log := CreateHandlerLogger(handlerName, r)
 
 	stateManager := getStateManager(r)
 	var sessionManager *scs.SessionManager

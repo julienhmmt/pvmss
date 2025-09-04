@@ -10,7 +10,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
-	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 )
@@ -67,16 +66,9 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 // CreateVMHandler handles POST /api/vm/create to create a VM in Proxmox
 func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "CreateVMHandler").Logger()
-	if r.Method != http.MethodPost {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
+	log := CreateHandlerLogger("CreateVMHandler", r)
 
-	if err := r.ParseForm(); err != nil {
-		log.Error().Err(err).Msg("failed to parse form")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 

@@ -66,11 +66,9 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 // DeleteTagHandler handles tag deletion.
 func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "DeleteTagHandler").Logger()
+	log := CreateHandlerLogger("DeleteTagHandler", r)
 
-	if err := r.ParseForm(); err != nil {
-		log.Warn().Err(err).Msg("Error parsing delete form")
-		http.Error(w, "Invalid request.", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 
