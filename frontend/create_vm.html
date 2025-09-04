@@ -15,19 +15,22 @@
                     <div class="card-content">
                         <p class="mb-4 has-text-grey">{{T "UI.CreateVMDescription"}}</p>
                         {{if not .ProxmoxConnected}}
-                        <div class="notification is-warning is-light mb-5" role="alert">
+                        <div class="notification is-warning is-pulse mb-5" role="alert" aria-live="polite">
                             <div class="level is-mobile">
                                 <div class="level-left">
                                     <div class="level-item">
-                                        <span class="icon has-text-warning">
+                                        <span class="icon has-text-white">
                                             <i class="fas fa-exclamation-triangle"></i>
                                         </span>
                                     </div>
                                     <div class="level-item">
-                                        <p>{{T "VM.Create.ProxmoxNotConnected" | default "Cannot create VM: Proxmox server is not connected."}}</p>
-                                        {{if .ProxmoxError}}
-                                        <p class="has-text-danger mt-2">{{.ProxmoxError}}</p>
-                                        {{end}}
+                                        <div>
+                                            <strong>{{T "Proxmox.ConnectionRequired" | default "Connection Required"}}</strong>
+                                            <p>{{T "VM.Create.ProxmoxNotConnected" | default "Cannot create VM: Proxmox server is not connected."}}</p>
+                                            {{if .ProxmoxError}}
+                                            <p class="has-text-orange mt-2">{{.ProxmoxError}}</p>
+                                            {{end}}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

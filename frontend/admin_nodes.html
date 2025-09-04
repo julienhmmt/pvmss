@@ -6,15 +6,40 @@
   <div class="container mt-4">
 
     {{if not .ProxmoxConnected}}
-    <div class="notification is-warning">
-        <span class="icon-text">
-            <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
-            <span>{{T "Proxmox.NotConnected"}} {{T "Proxmox.CheckConnection"}}</span>
-        </span>
+    <div class="notification is-warning is-pulse mb-5" role="alert" aria-live="polite">
+      <div class="level is-mobile">
+        <div class="level-left">
+          <div class="level-item">
+            <span class="icon has-text-white">
+              <i class="fas fa-exclamation-triangle"></i>
+            </span>
+          </div>
+          <div class="level-item">
+            <div>
+              <strong>{{T "Proxmox.ConnectionRequired" | default "Connection Required"}}</strong>
+              <p>{{T "Proxmox.NotConnected"}} {{T "Proxmox.CheckConnection"}}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     {{else if .Error}}
-    <div class="notification is-danger">
-        {{.Error}}
+    <div class="notification is-danger mb-5" role="alert" aria-live="assertive">
+      <div class="level is-mobile">
+        <div class="level-left">
+          <div class="level-item">
+            <span class="icon has-text-white">
+              <i class="fas fa-times-circle"></i>
+            </span>
+          </div>
+          <div class="level-item">
+            <div>
+              <strong>{{T "Common.Error" | default "Error"}}</strong>
+              <p>{{.Error}}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     {{else if .NodeDetails}}
     <div class="content mb-5">

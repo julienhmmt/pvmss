@@ -18,9 +18,22 @@
     </div>
 
     {{if .Success}}
-      <div class="notification is-success is-light">
-        <span class="icon is-small"><i class="fas fa-check"></i></span>
-        <span>{{.SuccessMessage}}</span>
+      <div class="notification is-success is-pulse mb-4" role="alert" aria-live="polite">
+        <div class="level is-mobile">
+          <div class="level-left">
+            <div class="level-item">
+              <span class="icon has-text-white">
+                <i class="fas fa-user-plus"></i>
+              </span>
+            </div>
+            <div class="level-item">
+              <div>
+                <strong>{{T "Common.Success" | default "Success"}}</strong>
+                <p>{{.SuccessMessage}}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     {{end}}
 
