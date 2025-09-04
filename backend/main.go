@@ -102,9 +102,15 @@ func initLogger() {
 	logger.Init(level)
 }
 
+// loadSettingsFromFile loads settings using the state package's LoadSettings function
+// This wraps the deprecated function to maintain backward compatibility during migration
+func loadSettingsFromFile() (*state.AppSettings, bool, error) {
+	return state.LoadSettings()
+}
+
 func initializeApp(stateManager state.StateManager) error {
 	// 1. Load settings first, as they are needed by the state manager.
-	settings, modified, err := state.LoadSettings()
+	settings, modified, err := loadSettingsFromFile()
 	if err != nil {
 		return fmt.Errorf("failed to load settings: %w", err)
 	}
@@ -223,9 +229,6 @@ func initTemplates() (*template.Template, error) {
 	rootDir := filepath.Dir(filepath.Dir(filename))
 	frontendPath := filepath.Join(rootDir, "frontend")
 
-	// Save the path for global use (e.g., serving static files)
-	state.SetTemplatesPath(frontendPath)
-
 	// Parse all HTML files in the frontend directory
 	var templateFiles []string
 	templateFiles, err := templates.FindTemplateFiles(frontendPath)
@@ -235,8 +238,11 @@ func initTemplates() (*template.Template, error) {
 
 	tmpl, err := template.New("main").Funcs(funcMap).ParseFiles(templateFiles...)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing template files: %w", err)
+		return nil, fmt.Errorf("error parsing templates: %w", err)
 	}
+
+	// Store the frontend path for later use by static file serving
+	handlers.SetFrontendPath(frontendPath)
 
 	// Log des templates chargés
 	loadedTemplateNames := make([]string, 0, len(templateFiles))

@@ -20,6 +20,20 @@ import (
 	"pvmss/state"
 )
 
+// Global variable to store frontend path for static file serving
+// This is set during initialization and used for serving static files
+var frontendPath string
+
+// SetFrontendPath stores the frontend path for static file serving
+func SetFrontendPath(path string) {
+	frontendPath = path
+}
+
+// getFrontendPath returns the stored frontend path
+func getFrontendPath() string {
+	return frontendPath
+}
+
 // withStaticCaching wraps a static file handler to add strong caching headers.
 // We use a long max-age with immutable as these assets are expected to be fingerprinted or rarely change.
 func withStaticCaching(next http.Handler) http.Handler {
@@ -233,7 +247,7 @@ func setupRoutes(
 // setupStaticFiles configures the static file server
 func setupStaticFiles(router *httprouter.Router) {
 	// Get the base path of the frontend directory.
-	basePath := state.GetTemplatesPath()
+	basePath := getFrontendPath()
 
 	// Create specific file handlers for each static subdirectory.
 	cssServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "css"))))

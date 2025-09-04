@@ -14,13 +14,6 @@ import (
 	"pvmss/state"
 )
 
-// StateManager is an interface that both real and mock state managers implement
-type StateManager interface {
-	GetProxmoxClient() proxmox.ClientInterface
-	GetSettings() *state.AppSettings
-	SetSettings(settings *state.AppSettings) error
-}
-
 // ToggleStorageHandler toggles a single storage enabled state (auto-save per click, no JS)
 func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("ToggleStorageHandler", r)
@@ -79,9 +72,9 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
-// StorageHandler handles storage-related routes
+// StorageHandler handles storage-related operations.
 type StorageHandler struct {
-	stateManager StateManager
+	stateManager state.StateManager
 }
 
 // NewStorageHandler creates a new instance of StorageHandler
