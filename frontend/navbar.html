@@ -7,11 +7,6 @@
             <a class="navbar-item" href="/?lang={{.Lang}}">
                 <span class="has-text-weight-bold">{{T "UI.Header"}}</span>
             </a>
-            <label for="nav-toggle" class="navbar-burger" role="button" aria-label="menu" aria-controls="navbarMenu" tabindex="0">
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-            </label>
         </div>
 
         <div id="navbarMenu" class="navbar-menu">
@@ -65,16 +60,6 @@
             </div>
 
             <div class="navbar-end">
-                {{if .IsAuthenticated}}
-                <div class="navbar-item">
-                    <span class="icon-text has-text-info">
-                        <span class="icon">
-                            <i class="fas fa-user"></i>
-                        </span>
-                        <span class="has-text-weight-semibold">{{.Username}}</span>
-                    </span>
-                </div>
-                {{end}}
                 <div class="navbar-item">
                     <div class="buttons are-small">
                         {{if .IsAuthenticated}}
@@ -86,12 +71,36 @@
                             <span>{{T "Navbar.Admin"}}</span>
                         </a>
                         {{end}}
-                        <a class="button is-light" href="/logout?lang={{.Lang}}">
-                            <span class="icon">
-                                <i class="fas fa-sign-out-alt"></i>
-                            </span>
-                            <span>{{T "Navbar.Logout"}}</span>
-                        </a>
+                        <div class="navbar-item is-hidden-mobile">
+                            <div class="dropdown is-right is-hoverable">
+                                <div class="dropdown-trigger">
+                                    <button class="button is-ghost is-small" aria-haspopup="true" aria-controls="user-dropdown-menu" title="{{.Username}}">
+                                        <span class="icon">
+                                            <i class="fas fa-user-circle"></i>
+                                        </span>
+                                        <span class="icon is-small">
+                                            <i class="fas fa-angle-down"></i>
+                                        </span>
+                                    </button>
+                                </div>
+                                <div class="dropdown-menu" id="user-dropdown-menu" role="menu">
+                                    <div class="dropdown-content">
+                                        <div class="dropdown-item has-text-centered">
+                                            <strong>{{.Username}}</strong>
+                                        </div>
+                                        <hr class="dropdown-divider">
+                                        <a href="/logout?lang={{.Lang}}" class="dropdown-item">
+                                            <span class="icon-text">
+                                                <span class="icon">
+                                                    <i class="fas fa-sign-out-alt"></i>
+                                                </span>
+                                                <span>{{T "Navbar.Logout"}}</span>
+                                            </span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         {{else}}
                         <a class="button is-primary" href="/login?lang={{.Lang}}">
                             <span class="icon">

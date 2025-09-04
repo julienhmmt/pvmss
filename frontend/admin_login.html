@@ -54,16 +54,14 @@
               </div>
             </form>
 
-            <!-- User Login Link -->
+            <!-- User Login Button -->
             <div class="has-text-centered mt-4">
-              <p class="is-size-7">
-                <a href="/login" class="has-text-grey">
-                  <span class="icon is-small">
-                    <i class="fas fa-user"></i>
-                  </span>
-                  {{T "AdminLogin.UserLoginLink"}}
-                </a>
-              </p>
+              <a href="/login" class="button is-light is-outlined is-medium" style="transition: all 0.3s ease; border-color: #dbdbdb;" onmouseover="this.style.backgroundColor='#f5f5f5'; this.style.color='#363636'; this.style.borderColor='#b5b5b5'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)';" onmouseout="this.style.backgroundColor=''; this.style.color=''; this.style.borderColor='#dbdbdb'; this.style.transform=''; this.style.boxShadow='';">
+                <span class="icon">
+                  <i class="fas fa-user"></i>
+                </span>
+                <span class="has-text-weight-semibold">{{T "AdminLogin.UserLoginLink"}}</span>
+              </a>
             </div>
           </div>
         </div>
