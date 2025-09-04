@@ -28,11 +28,15 @@ func ValidateMethodAndParseForm(w http.ResponseWriter, r *http.Request, required
 
 // CreateHandlerLogger creates a standardized logger for handlers
 func CreateHandlerLogger(handlerName string, r *http.Request) zerolog.Logger {
-	return logger.Get().With().
-		Str("handler", handlerName).
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	logContext := logger.Get().With().Str("handler", handlerName)
+	
+	if r != nil {
+		logContext = logContext.
+			Str("method", r.Method).
+			Str("path", r.URL.Path)
+	}
+	
+	return logContext.Logger()
 }
 
 // AdminPageData creates common data structure for admin pages

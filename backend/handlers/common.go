@@ -85,7 +85,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 }
 
 // populateTemplateData adds common data to the template data map.
-func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
+func populateTemplateData(_ http.ResponseWriter, r *http.Request, data map[string]interface{}) {
 	log := logger.Get().With().Str("function", "populateTemplateData").Logger()
 
 	// Get CSRF token from session and add to template data
