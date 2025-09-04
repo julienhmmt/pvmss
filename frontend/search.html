@@ -82,7 +82,7 @@
                                                 <td class="has-text-centered">{{.node}}</td>
                                                 <td class="has-text-centered">
                                                     <span class="tag {{if eq .status "running"}}is-success{{else if eq .status "stopped"}}is-danger{{else}}is-warning{{end}}">
-                                                        {{with (T (printf "VM.Status.%s" .status))}}{{.}}{{else}}{{if .status}}{{.status}}{{else}}unknown{{end}}{{end}}
+                                                        {{if eq .status "running"}}{{T "Status.Running"}}{{else if eq .status "stopped"}}{{T "Status.Stopped"}}{{else if eq .status "paused"}}{{T "Status.Paused"}}{{else if eq .status "suspended"}}{{T "Status.Paused"}}{{else}}{{T "Status.Unknown"}}{{end}}
                                                     </span>
                                                 </td>
                                                 <td class="has-text-centered">

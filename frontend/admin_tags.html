@@ -29,10 +29,6 @@
       </div>
     </form>
 
-    {{if or .Tags .FilterQuery}}
-    <!-- Server-side filtering using reusable component -->
-    {{template "table_filter" (dict "Action" "/admin/tags" "FilterQuery" .FilterQuery "SortOrder" .SortOrder "Placeholder" (T "Admin.Tags.FilterPlaceholder") "TotalItems" .TotalTags "FilteredItems" .FilteredTags "ItemName" "tags")}}
-
     {{if .Tags}}
     <div class="table-container">
       <table class="table is-fullwidth is-striped is-hoverable">
@@ -104,22 +100,6 @@
       </table>
     </div>
     {{else}}
-    <div class="notification is-warning is-light">
-      <div class="level is-mobile">
-        <div class="level-left">
-          <div class="level-item">
-            <span class="icon has-text-warning">
-              <i class="fas fa-search"></i>
-            </span>
-          </div>
-          <div class="level-item">
-            <p>No tags found matching your filter "{{.FilterQuery}}"</p>
-          </div>
-        </div>
-      </div>
-    </div>
-    {{end}}
-    {{else}}
     <div class="notification is-info is-light">
       <div class="level is-mobile">
         <div class="level-left">
@@ -135,6 +115,5 @@
       </div>
     </div>
     {{end}}
-  </div>
   </div>
 {{end}}

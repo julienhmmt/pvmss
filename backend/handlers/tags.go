@@ -121,8 +121,6 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	gs := h.stateManager
 	settings := gs.GetSettings()
 
-	// Server-side filtering support
-	filterQuery := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("filter")))
 	sortOrder := r.URL.Query().Get("sort") // "asc" or "desc"
 	if sortOrder != "desc" {
 		sortOrder = "asc" // default to ascending
@@ -170,10 +168,7 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Filter and sort tags by name for display
 	tags := make([]string, 0, len(settings.Tags))
 	for _, tag := range settings.Tags {
-		// Apply server-side filtering if filter query is provided
-		if filterQuery == "" || strings.Contains(strings.ToLower(tag), filterQuery) {
-			tags = append(tags, tag)
-		}
+		tags = append(tags, tag)
 	}
 
 	// Sort based on requested order
@@ -185,7 +180,6 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 	data := AdminPageDataWithMessage("Tag Management", "tags", successMsg, "")
 	data["Tags"] = tags
-	data["FilterQuery"] = r.URL.Query().Get("filter") // Keep original case for form input
 	data["SortOrder"] = sortOrder
 	data["TotalTags"] = len(settings.Tags)
 	data["FilteredTags"] = len(tags)

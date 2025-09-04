@@ -932,7 +932,7 @@ fieldset[disabled]::after {
   left: 0;
   right: 0;
   z-index: 30;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--navbar-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
@@ -944,14 +944,14 @@ fieldset[disabled]::after {
 
 /* Enhanced scroll-based shadow */
 .navbar.scrolled {
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--navbar-bg);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(16px);
 }
 
 /* Keep glass effect but remove hover changes */
 .navbar:hover {
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--navbar-bg);
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
 }
 
@@ -1296,14 +1296,319 @@ fieldset[disabled]::after {
   border-radius: 0 2px 2px 0;
 }
 
-/* Tabs */
-.tabs { margin-bottom: 1rem; }
-.tabs li a { color: var(--muted); transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease; }
-.tabs li a:hover { color: var(--text); }
-.tabs:not(.is-toggle):not(.is-toggle-rounded) li.is-active a { border-bottom-color: var(--primary); color: var(--primary); }
-.tabs.is-boxed li a { border-radius: 0.375rem 0.375rem 0 0; }
-.tabs.is-boxed li.is-active a { background-color: var(--surface-2); border-color: var(--border); color: var(--text); }
-.tabs.is-toggle li.is-active a, .tabs.is-toggle.is-toggle-rounded li.is-active a { background-color: var(--primary); border-color: var(--primary); color: #fff; }
+/* Smooth transitions for all dark theme elements */
+[data-theme="dark"] * {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.15s ease;
+}
+
+/* Enhanced Card Styling - Simple and Elegant */
+[data-theme="dark"] .card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 4px 16px hsla(217, 35%, 8%, 0.3),
+    0 2px 8px hsla(217, 25%, 6%, 0.2);
+  transition: all 0.25s ease;
+}
+
+[data-theme="dark"] .card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px hsla(217, 35%, 8%, 0.4),
+    0 4px 12px hsla(217, 25%, 6%, 0.3);
+  border-color: hsl(217, 25%, 25%);
+}
+
+/* Clean Button Styling */
+[data-theme="dark"] .button {
+  background: linear-gradient(135deg,
+    hsl(217, 32%, 16%) 0%,
+    hsl(217, 35%, 18%) 100%);
+  color: hsl(210, 15%, 88%);
+  border-radius: 0.5rem;
+  border: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px hsla(217, 35%, 8%, 0.3);
+}
+
+[data-theme="dark"] .button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg,
+    hsl(217, 35%, 18%) 0%,
+    hsl(217, 32%, 16%) 100%);
+  color: hsl(210, 15%, 92%);
+  box-shadow: 0 4px 12px hsla(217, 35%, 8%, 0.4);
+}
+
+/* Primary Button - Clean and Focused */
+[data-theme="dark"] .button.is-primary {
+  background: linear-gradient(135deg,
+    hsl(32, 95%, 54%) 0%,
+    hsl(32, 95%, 48%) 100%);
+  color: #fff;
+  box-shadow:
+    0 4px 16px hsla(32, 95%, 20%, 0.4),
+    0 2px 8px hsla(32, 95%, 15%, 0.2);
+}
+
+[data-theme="dark"] .button.is-primary:hover {
+  background: linear-gradient(135deg,
+    hsl(32, 95%, 48%) 0%,
+    hsl(32, 95%, 54%) 100%);
+  box-shadow:
+    0 6px 20px hsla(32, 95%, 20%, 0.5),
+    0 3px 12px hsla(32, 95%, 15%, 0.3);
+}
+
+/* Success Button */
+[data-theme="dark"] .button.is-success {
+  background: linear-gradient(135deg,
+    hsl(142, 76%, 45%) 0%,
+    hsl(142, 76%, 40%) 100%);
+  color: #fff;
+  box-shadow:
+    0 4px 16px hsla(142, 76%, 20%, 0.4),
+    0 2px 8px hsla(142, 76%, 15%, 0.2);
+}
+
+[data-theme="dark"] .button.is-success:hover {
+  background: linear-gradient(135deg,
+    hsl(142, 76%, 40%) 0%,
+    hsl(142, 76%, 45%) 100%);
+  box-shadow:
+    0 6px 20px hsla(142, 76%, 20%, 0.5),
+    0 3px 12px hsla(142, 76%, 15%, 0.3);
+}
+
+/* Info Button */
+[data-theme="dark"] .button.is-info {
+  background: linear-gradient(135deg,
+    hsl(199, 89%, 55%) 0%,
+    hsl(199, 89%, 50%) 100%);
+  color: #fff;
+  box-shadow:
+    0 4px 16px hsla(199, 89%, 20%, 0.4),
+    0 2px 8px hsla(199, 89%, 15%, 0.2);
+}
+
+[data-theme="dark"] .button.is-info:hover {
+  background: linear-gradient(135deg,
+    hsl(199, 89%, 50%) 0%,
+    hsl(199, 89%, 55%) 100%);
+  box-shadow:
+    0 6px 20px hsla(199, 89%, 20%, 0.5),
+    0 3px 12px hsla(199, 89%, 15%, 0.3);
+}
+
+/* Danger Button */
+[data-theme="dark"] .button.is-danger {
+  background: linear-gradient(135deg,
+    hsl(0, 84%, 60%) 0%,
+    hsl(0, 84%, 55%) 100%);
+  color: #fff;
+  box-shadow:
+    0 4px 16px hsla(0, 84%, 20%, 0.4),
+    0 2px 8px hsla(0, 84%, 15%, 0.2);
+}
+
+[data-theme="dark"] .button.is-danger:hover {
+  background: linear-gradient(135deg,
+    hsl(0, 84%, 55%) 0%,
+    hsl(0, 84%, 60%) 100%);
+  box-shadow:
+    0 6px 20px hsla(0, 84%, 20%, 0.5),
+    0 3px 12px hsla(0, 84%, 15%, 0.3);
+}
+
+/* Light Button */
+[data-theme="dark"] .button.is-light {
+  background: linear-gradient(135deg,
+    hsl(217, 35%, 20%) 0%,
+    hsl(217, 32%, 18%) 100%);
+  border: 1px solid hsl(217, 25%, 25%);
+  color: hsl(210, 15%, 88%);
+}
+
+[data-theme="dark"] .button.is-light:hover {
+  background: linear-gradient(135deg,
+    hsl(217, 32%, 18%) 0%,
+    hsl(217, 35%, 20%) 100%);
+  border-color: hsl(217, 25%, 30%);
+  color: hsl(210, 15%, 92%);
+}
+
+/* Clean Input Styling */
+[data-theme="dark"] .input,
+[data-theme="dark"] .textarea,
+[data-theme="dark"] .select select {
+  background: hsl(217, 32%, 16%);
+  border: 1px solid hsl(217, 25%, 22%);
+  color: hsl(210, 15%, 88%);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .input:focus,
+[data-theme="dark"] .textarea:focus,
+[data-theme="dark"] .select select:focus {
+  border-color: hsl(32, 95%, 54%);
+  box-shadow: 0 0 0 0.125em hsla(32, 95%, 54%, 0.2);
+  background: hsl(217, 35%, 18%);
+}
+
+[data-theme="dark"] .input::placeholder,
+[data-theme="dark"] .textarea::placeholder {
+  color: hsl(210, 12%, 55%);
+}
+
+/* Elegant Notification Styling */
+[data-theme="dark"] .notification {
+  background: linear-gradient(135deg,
+    hsl(217, 32%, 16%) 0%,
+    hsl(217, 35%, 18%) 100%);
+  border: 1px solid hsl(217, 25%, 22%);
+  border-radius: 0.75rem;
+  box-shadow:
+    0 4px 16px hsla(217, 35%, 8%, 0.3),
+    0 2px 8px hsla(217, 25%, 6%, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .notification::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    hsl(32, 95%, 54%) 0%,
+    hsl(199, 89%, 55%) 50%,
+    hsl(142, 76%, 45%) 100%);
+  border-radius: 0.75rem 0.75rem 0 0;
+}
+
+/* Clean Table Styling */
+[data-theme="dark"] .table {
+  background: linear-gradient(135deg,
+    hsl(217, 32%, 14%) 0%,
+    hsl(217, 35%, 16%) 100%);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow:
+    0 4px 16px hsla(217, 35%, 8%, 0.3),
+    0 2px 8px hsla(217, 25%, 6%, 0.2);
+}
+
+[data-theme="dark"] .table thead th {
+  background: linear-gradient(135deg,
+    hsl(217, 35%, 16%) 0%,
+    hsl(217, 32%, 14%) 100%);
+  color: hsl(210, 15%, 92%);
+  font-weight: 600;
+  border-bottom: 2px solid hsl(217, 25%, 25%);
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+  background: linear-gradient(135deg,
+    hsl(217, 32%, 16%) 0%,
+    hsl(217, 35%, 18%) 100%);
+}
+
+[data-theme="dark"] .table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Clean Pagination */
+[data-theme="dark"] .pagination {
+  background: linear-gradient(135deg,
+    hsl(217, 32%, 14%) 0%,
+    hsl(217, 35%, 16%) 100%);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  box-shadow: 0 2px 8px hsla(217, 35%, 8%, 0.2);
+}
+
+[data-theme="dark"] .pagination .pagination-previous,
+[data-theme="dark"] .pagination .pagination-next,
+[data-theme="dark"] .pagination .pagination-link {
+  background: hsl(217, 32%, 16%);
+  border-color: hsl(217, 25%, 22%);
+  color: hsl(210, 15%, 88%);
+  transition: all 0.2s ease;
+  border-radius: 0.5rem;
+}
+
+[data-theme="dark"] .pagination .pagination-link:hover {
+  background: linear-gradient(135deg,
+    hsl(217, 35%, 18%) 0%,
+    hsl(217, 32%, 16%) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px hsla(217, 35%, 8%, 0.3);
+}
+
+[data-theme="dark"] .pagination .pagination-link.is-current {
+  background: linear-gradient(135deg,
+    hsl(32, 95%, 54%) 0%,
+    hsl(32, 95%, 48%) 100%);
+  border-color: hsl(32, 95%, 54%);
+  color: #fff;
+  box-shadow: 0 4px 12px hsla(32, 95%, 20%, 0.4);
+}
+
+/* Enhanced Modal */
+[data-theme="dark"] .modal-background {
+  background: hsla(217, 35%, 8%, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="dark"] .modal-content {
+  background: linear-gradient(135deg,
+    hsl(217, 32%, 14%) 0%,
+    hsl(217, 35%, 16%) 100%);
+  border-radius: 0.875rem;
+  box-shadow: 0 20px 60px hsla(217, 35%, 8%, 0.5);
+  border: 1px solid hsl(217, 25%, 22%);
+}
+
+/* Focus States */
+[data-theme="dark"] :focus-visible {
+  outline: 2px solid hsl(32, 95%, 54%);
+  outline-offset: 2px;
+  border-radius: 4px;
+  box-shadow: 0 0 0 4px hsla(32, 95%, 54%, 0.2);
+}
+
+/* Enhanced Scroll-to-Top */
+[data-theme="dark"] .scroll-to-top {
+  background: linear-gradient(135deg,
+    hsl(32, 95%, 54%) 0%,
+    hsl(32, 95%, 48%) 100%);
+  color: #fff;
+  box-shadow: 0 4px 16px hsla(32, 95%, 20%, 0.4);
+}
+
+[data-theme="dark"] .scroll-to-top:hover {
+  box-shadow: 0 6px 20px hsla(32, 95%, 20%, 0.5);
+  background: linear-gradient(135deg,
+    hsl(32, 95%, 48%) 0%,
+    hsl(32, 95%, 54%) 100%);
+}
+
+/* Enhanced Progress Indicator */
+[data-theme="dark"] .page-progress {
+  background: hsl(217, 25%, 15%);
+}
+
+[data-theme="dark"] .page-progress .progress-bar {
+  background: linear-gradient(90deg,
+    hsl(32, 95%, 54%) 0%,
+    hsl(199, 89%, 55%) 50%,
+    hsl(142, 76%, 45%) 100%);
+}
 
 /* Pagination */
 .pagination .pagination-previous,

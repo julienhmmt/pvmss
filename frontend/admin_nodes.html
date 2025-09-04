@@ -56,12 +56,14 @@
                     </p>
                     <div class="card-header-icon">
                         {{if $.ProxmoxConnected}}
-                        <span class="tag is-success is-light">
-                            {{with (T "Nodes.StatusOnline")}}{{.}}{{else}}Online{{end}}
+                        <span class="tag is-success">
+                            <span class="icon is-small mr-1"><i class="fas fa-circle"></i></span>
+                            {{T "Nodes.Status.Online"}}
                         </span>
                         {{else}}
-                        <span class="tag is-danger is-light">
-                            {{with (T "Nodes.StatusOffline")}}{{.}}{{else}}Offline{{end}}
+                        <span class="tag is-danger">
+                            <span class="icon is-small mr-1"><i class="fas fa-circle"></i></span>
+                            {{T "Nodes.Status.Offline"}}
                         </span>
                         {{end}}
                     </div>
@@ -70,12 +72,20 @@
                     <!-- CPU Usage -->
                     <div class="mb-4">
                         <label class="label is-small has-text-grey">{{T "Nodes.Header.CPUUsage"}}</label>
+                        {{if gt .CPU 1.0}}
+                        <progress class="progress is-small {{if lt .CPU 70.0}}is-success{{else if lt .CPU 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" .CPU}}" max="100"></progress>
+                        <div class="is-flex is-justify-content-space-between is-size-7">
+                            <span>{{printf "%.2f" .CPU}} / {{.MaxCPU}} Cores</span>
+                            <span class="has-text-weight-bold">{{printf "%.0f" .CPU}}%</span>
+                        </div>
+                        {{else}}
                         {{$cpu_percent := mul .CPU 100.0}}
                         <progress class="progress is-small {{if lt $cpu_percent 70.0}}is-success{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
                         <div class="is-flex is-justify-content-space-between is-size-7">
                             <span>{{printf "%.2f" .CPU}} / {{.MaxCPU}} Cores</span>
                             <span class="has-text-weight-bold">{{printf "%.0f" $cpu_percent}}%</span>
                         </div>
+                        {{end}}
                     </div>
                     <!-- Memory Usage -->
                     <div class="mb-4">
