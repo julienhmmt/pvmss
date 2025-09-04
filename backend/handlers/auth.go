@@ -156,39 +156,6 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// getOrSetCSRFToken retrieves a CSRF token from the request context or session, generating a new one if necessary.
-func getOrSetCSRFToken(r *http.Request) (string, error) {
-	log := logger.Get().With().Str("function", "getOrSetCSRFToken").Logger()
-
-	// Get session manager
-	sessionManager := security.GetSession(r)
-	if sessionManager == nil {
-		return "", fmt.Errorf("session manager not available")
-	}
-
-	// Try to get CSRF token from context first (set by middleware)
-	if token, ok := security.CSRFTokenFromContext(r.Context()); ok && token != "" {
-		log.Debug().Msg("Using CSRF token from request context")
-		return token, nil
-	}
-
-	// Fallback to session
-	if token, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && token != "" {
-		log.Debug().Msg("Using CSRF token from session")
-		return token, nil
-	}
-
-	// Generate a new token if none exists
-	token, err := security.GenerateCSRFToken()
-	if err != nil {
-		return "", fmt.Errorf("failed to generate CSRF token: %w", err)
-	}
-	sessionManager.Put(r.Context(), "csrf_token", token)
-	log.Debug().Msg("Generated and stored new CSRF token")
-
-	return token, nil
-}
-
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
 	ctx := NewHandlerContext(w, r, "AuthHandler.renderAdminLoginForm")
 	ctx.Log.Debug().Msg("Rendering admin login form")

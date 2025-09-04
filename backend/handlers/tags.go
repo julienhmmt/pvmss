@@ -28,11 +28,9 @@ var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
 
 // CreateTagHandler handles the creation of a new tag via an HTML form.
 func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "CreateTagHandler").Logger()
+	log := CreateHandlerLogger("CreateTagHandler", r)
 
-	if err := r.ParseForm(); err != nil {
-		log.Warn().Err(err).Msg("Error parsing form data")
-		http.Error(w, "Invalid form data.", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 

@@ -9,7 +9,6 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -49,20 +48,15 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		}
 	}
 
-	data := map[string]any{
-		"Title":          "Proxmox Users & Pools",
-		"Success":        success,
-		"SuccessMessage": successMsg,
-		"AdminActive":    "userpool",
-	}
+	data := AdminPageDataWithMessage("Proxmox Users & Pools", "userpool", successMsg, "")
 	renderTemplateInternal(w, r, "admin_userpool", data)
 }
 
 // CreateUserPool handles POST to create a user in PVE realm, create pool pvmss_<username>, and grant ACL
 func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "CreateUserPool").Logger()
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "invalid form", http.StatusBadRequest)
+	log := CreateHandlerLogger("CreateUserPool", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 

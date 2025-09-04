@@ -377,19 +377,9 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 
 // ToggleISOHandler toggles a single ISO enabled state (auto-save per click, no JS)
 func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "ToggleISOHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("ToggleISOHandler", r)
 
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 
@@ -443,20 +433,9 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 
 // UpdateLimitsFormHandler handles POST from admin_limits.html to update VM/Node limits
 func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "UpdateLimitsFormHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("UpdateLimitsFormHandler", r)
 
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Parse form
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 

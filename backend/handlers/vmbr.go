@@ -17,15 +17,9 @@ type VMBRHandler struct {
 
 // ToggleVMBRHandler toggles a single VMBR enable state (auto-save without JS)
 func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "ToggleVMBRHandler").Logger()
+	log := CreateHandlerLogger("ToggleVMBRHandler", r)
 
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form data.", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 
@@ -163,11 +157,9 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 // UpdateVMBRHandler handles updating enabled VMBRs.
 func (h *VMBRHandler) UpdateVMBRHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "UpdateVMBRHandler").Logger()
+	log := CreateHandlerLogger("UpdateVMBRHandler", r)
 
-	if err := r.ParseForm(); err != nil {
-		log.Warn().Err(err).Msg("Error parsing form data")
-		http.Error(w, "Invalid form data.", http.StatusBadRequest)
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 
