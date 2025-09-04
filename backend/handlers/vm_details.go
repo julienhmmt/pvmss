@@ -33,7 +33,7 @@ func NewVMHandler(stateManager VMStateManager) *VMHandler {
 // RegisterRoutes registers VM-related routes
 func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	// VM creation routes
-	router.GET("/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.GET("/vm/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.CreateVMPage(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 	router.POST("/api/vm/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
