@@ -576,6 +576,8 @@ other = "Error retrieving storage information. Please check the backend logs."
 other = "Content"
 ["Admin.Storage.Header.Name"]
 other = "Name"
+["Admin.Storage.Header.Usage"]
+other = "Usage"
 ["Admin.Storage.Header.Type"]
 other = "Type"
 ["Admin.Storage.NoStorages"]
@@ -602,6 +604,18 @@ other = "Manage tags for your virtual machines. Tags must be between 3 and 24 ch
 other = "Tag name"
 ["Admin.Tags.Title"]
 other = "Tags Management"
+["Admin.Tags.Header.Name"]
+other = "Name"
+["Admin.Tags.Header.Usage"]
+other = "Usage"
+["Admin.Tags.DefaultTag"]
+other = "Default Tag"
+["Admin.Tags.AddTag"]
+other = "Add Tag"
+["Admin.Tags.DeleteTag"]
+other = "Delete Tag"
+["Admin.Tags.NoTags"]
+other = "No tags found. Add your first tag using the form above."
 
 # Admin - Resource Limits
 ["Admin.Limits.Cores"]

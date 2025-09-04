@@ -575,14 +575,14 @@ func HandlerFuncToHTTPrHandle(h http.HandlerFunc) httprouter.Handle {
 }
 
 // detectNeedsRegularIcons determines if regular Font Awesome icons are needed
-func detectNeedsRegularIcons(templateName string, data map[string]interface{}) bool {
+func detectNeedsRegularIcons(_ string, _ map[string]interface{}) bool {
 	// Add logic to detect if regular icons are needed based on template or data
 	// For now, return false to optimize CSS loading
 	return false
 }
 
 // detectNeedsBrandIcons determines if brand Font Awesome icons are needed
-func detectNeedsBrandIcons(templateName string, data map[string]interface{}) bool {
+func detectNeedsBrandIcons(_ string, _ map[string]interface{}) bool {
 	// Add logic to detect if brand icons are needed based on template or data
 	// For now, return false to optimize CSS loading
 	return false

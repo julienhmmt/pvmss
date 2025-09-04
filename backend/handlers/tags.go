@@ -183,16 +183,12 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sort.Strings(tags)
 	}
 
-	data := map[string]interface{}{
-		"Tags":           tags,
-		"Success":        success,
-		"SuccessMessage": successMsg,
-		"AdminActive":    "tags",
-		"FilterQuery":    r.URL.Query().Get("filter"), // Keep original case for form input
-		"SortOrder":      sortOrder,
-		"TotalTags":      len(settings.Tags),
-		"FilteredTags":   len(tags),
-	}
+	data := AdminPageDataWithMessage("Tag Management", "tags", successMsg, "")
+	data["Tags"] = tags
+	data["FilterQuery"] = r.URL.Query().Get("filter") // Keep original case for form input
+	data["SortOrder"] = sortOrder
+	data["TotalTags"] = len(settings.Tags)
+	data["FilteredTags"] = len(tags)
 	if len(tagCounts) > 0 {
 		data["TagCounts"] = tagCounts
 	}

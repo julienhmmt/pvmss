@@ -61,7 +61,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	// Add i18n data
-	renderTemplateInternal(w, r, "create_vm", data)
+	RenderTemplate(w, r, "create_vm", data)
 }
 
 // CreateVMHandler handles POST /api/vm/create to create a VM in Proxmox

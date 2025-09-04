@@ -556,6 +556,8 @@ other = "Erreur lors de la récupération des stockages. Veuillez vérifier les 
 other = "Contenu"
 ["Admin.Storage.Header.Name"]
 other = "Nom"
+["Admin.Storage.Header.Usage"]
+other = "Utilisation"
 ["Admin.Storage.Header.Type"]
 other = "Type"
 ["Admin.Storage.NoStorages"]
@@ -610,6 +612,18 @@ other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir
 other = "Nom du tag"
 ["Admin.Tags.Title"]
 other = "Gestion des tags"
+["Admin.Tags.Header.Name"]
+other = "Nom"
+["Admin.Tags.Header.Usage"]
+other = "Utilisation"
+["Admin.Tags.DefaultTag"]
+other = "Tag par défaut"
+["Admin.Tags.AddTag"]
+other = "Ajouter un tag"
+["Admin.Tags.DeleteTag"]
+other = "Supprimer le tag"
+["Admin.Tags.NoTags"]
+other = "Aucun tag trouvé. Ajoutez votre premier tag en utilisant le formulaire ci-dessus."
 
 # Admin - Resource Limits
 ["Admin.Limits.Cores"]

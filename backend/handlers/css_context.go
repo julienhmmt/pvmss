@@ -11,6 +11,10 @@ import (
 	"pvmss/logger"
 )
 
+type themeContextKey string
+
+const ThemeContextKey themeContextKey = "theme"
+
 // CSS Context7 handler for serving CSS with context-aware optimizations
 type CSSContext7Handler struct {
 	basePath string
@@ -39,7 +43,6 @@ func (h *CSSContext7Handler) ServeCSSWithContext7(w http.ResponseWriter, r *http
 	}
 
 	// Get context information from request headers or query params
-	ctx := r.Context()
 	theme := r.Header.Get("X-Theme")
 	if theme == "" {
 		theme = r.URL.Query().Get("theme")
@@ -57,7 +60,7 @@ func (h *CSSContext7Handler) ServeCSSWithContext7(w http.ResponseWriter, r *http
 	w.Header().Set("X-Theme-Context", theme)
 
 	// Serve different CSS variants based on context
-	if err := h.serveContextualCSS(ctx, w, r, cssPath, theme); err != nil {
+	if err := h.serveContextualCSS(w, r, cssPath, theme); err != nil {
 		logger.Get().Error().Err(err).Str("css_path", cssPath).Msg("Failed to serve CSS with context7")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -65,7 +68,7 @@ func (h *CSSContext7Handler) ServeCSSWithContext7(w http.ResponseWriter, r *http
 }
 
 // serveContextualCSS serves CSS with contextual optimizations
-func (h *CSSContext7Handler) serveContextualCSS(ctx context.Context, w http.ResponseWriter, r *http.Request, cssPath, theme string) error {
+func (h *CSSContext7Handler) serveContextualCSS(w http.ResponseWriter, r *http.Request, cssPath, theme string) error {
 	fullPath := filepath.Join(h.basePath, cssPath)
 
 	// Check if file exists
@@ -76,7 +79,7 @@ func (h *CSSContext7Handler) serveContextualCSS(ctx context.Context, w http.Resp
 
 	// For bulma.min.css, we can potentially serve different variants
 	if cssPath == "bulma.min.css" {
-		return h.serveBulmaWithContext(ctx, w, r, fullPath, theme)
+		return h.serveBulmaWithContext(w, r, fullPath, theme)
 	}
 
 	// For other CSS files, serve normally but with context headers
@@ -85,7 +88,7 @@ func (h *CSSContext7Handler) serveContextualCSS(ctx context.Context, w http.Resp
 }
 
 // serveBulmaWithContext serves Bulma CSS with theme context
-func (h *CSSContext7Handler) serveBulmaWithContext(ctx context.Context, w http.ResponseWriter, r *http.Request, fullPath, theme string) error {
+func (h *CSSContext7Handler) serveBulmaWithContext(w http.ResponseWriter, r *http.Request, fullPath, theme string) error {
 	// Add theme-specific CSS variables or modifications
 	w.Header().Set("X-Bulma-Theme", theme)
 
@@ -117,14 +120,6 @@ func fileExists(path string) bool {
 	return !info.IsDir()
 }
 
-// CSS Resource optimization utilities
-func optimizeCSSForContext(cssContent []byte, context map[string]string) []byte {
-	// This could implement CSS optimization based on context
-	// For example: removing unused CSS classes, minification, etc.
-	// For now, return as-is
-	return cssContent
-}
-
 // GetCSSContext7Middleware returns middleware for CSS context handling
 func GetCSSContext7Middleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -135,7 +130,7 @@ func GetCSSContext7Middleware() func(http.Handler) http.Handler {
 			// Extract theme from various sources
 			theme := extractThemeFromRequest(r)
 			if theme != "" {
-				ctx = context.WithValue(ctx, "theme", theme)
+				ctx = context.WithValue(ctx, ThemeContextKey, theme)
 				r = r.WithContext(ctx)
 			}
 

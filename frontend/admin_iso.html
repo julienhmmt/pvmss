@@ -9,7 +9,7 @@
         <p class="subtitle is-6 has-text-grey">{{T "Admin.ISO.Description"}}</p>
     </div>
 
-    {{if .ISOsList}}
+    {{if .AllISOs}}
     <div class="table-container">
       <table class="table is-fullwidth is-striped is-hoverable is-narrow">
         <thead>
@@ -21,12 +21,12 @@
           </tr>
         </thead>
         <tbody>
-          {{range .ISOsList}}
-          {{$name := .VolID}}
+          {{range .AllISOs}}
+          {{$name := .volid}}
           <tr>
-            <td>{{$name | basename}}</td>
-            <td>{{.Storage}}</td>
-            <td>{{.Size | humanBytes}}</td>
+            <td>{{if $name}}{{$name | basename}}{{else}}Unknown ISO{{end}}</td>
+            <td>{{.storage}}</td>
+            <td>{{.size | humanBytes}}</td>
             <td class="has-text-right">
               <form method="POST" action="/admin/iso/toggle" class="is-inline">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">

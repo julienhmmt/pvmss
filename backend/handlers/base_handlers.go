@@ -63,10 +63,7 @@ func NewBaseFormHandler(sm state.StateManager) *BaseFormHandler {
 
 // ValidateForm validates common form requirements
 func (b *BaseFormHandler) ValidateForm(w http.ResponseWriter, r *http.Request) bool {
-	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
-		return false
-	}
-	return true
+	return ValidateMethodAndParseForm(w, r, http.MethodPost)
 }
 
 // ParseIntField safely parses an integer field from form data

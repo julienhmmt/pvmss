@@ -1,16 +1,19 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/proxmox"
 )
 
 // LimitsPageHandler renders the Resource Limits page (server-rendered)
 func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	_ = CreateHandlerLogger("LimitsPageHandler", r)
+	log := CreateHandlerLogger("LimitsPageHandler", r)
 
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
@@ -38,13 +41,40 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	data := map[string]interface{}{
-		"Title":          "Resource Limits",
-		"Limits":         settings.Limits,
-		"Success":        success,
-		"SuccessMessage": successMsg,
-		"AdminActive":    "limits",
+	// Use standard admin page helper
+	data := AdminPageDataWithMessage("Resource Limits", "limits", successMsg, "")
+
+	// Add limits data
+	data["Limits"] = settings.Limits
+
+	// Add selected node from query params
+	data["Node"] = nodeParam
+
+	// Get node names for dropdown
+	var nodeNames []string
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	client := h.stateManager.GetProxmoxClient()
+
+	if proxmoxConnected && client != nil {
+		pc, ok := client.(*proxmox.Client)
+		if ok {
+			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			defer cancel()
+			nodes, err := proxmox.GetNodeNamesWithContext(ctx, pc)
+			if err != nil {
+				log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes for limits page")
+			} else {
+				nodeNames = nodes
+			}
+		}
 	}
+
+	// Always provide NodeNames (empty array if no nodes available)
+	if nodeNames == nil {
+		nodeNames = []string{}
+	}
+	data["NodeNames"] = nodeNames
+
 	renderTemplateInternal(w, r, "admin_limits", data)
 }
 

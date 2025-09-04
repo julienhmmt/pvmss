@@ -170,19 +170,12 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// Prepare data for the template
-	data := map[string]interface{}{
-		"Title":           "Storage Management",
-		"Node":            chosenNode,
-		"Storages":        storages,
-		"EnabledStorages": settings.EnabledStorages,
-		"EnabledMap":      enabledMap,
-		"Success":         success,
-		"SuccessMessage":  successMsg,
-		"AdminActive":     "storage",
-	}
+	data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
+	data["Node"] = chosenNode
+	data["Storages"] = storages
+	data["EnabledStorages"] = settings.EnabledStorages
+	data["EnabledMap"] = enabledMap
 
-	// Add translations and render
 	renderTemplateInternal(w, r, "admin_storage", data)
 }
 

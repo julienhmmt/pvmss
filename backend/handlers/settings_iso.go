@@ -124,20 +124,16 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	}
 
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
-	data := map[string]interface{}{
-		"Title":          "ISO Management",
-		"ISOsList":       []ISOInfo{},
-		"EnabledISOs":    enabledMap,
-		"Success":        success,
-		"SuccessMessage": successMsg,
-		"AdminActive":    "iso",
-	}
+
+	data := AdminPageDataWithMessage("ISO Management", "iso", successMsg, "")
+	data["ISOsList"] = []ISOInfo{}
+	data["EnabledISOs"] = enabledMap
 	data["ProxmoxConnected"] = proxmoxConnected
 
 	if !proxmoxConnected {
 		data["Warning"] = "Proxmox connection unavailable. Displaying cached ISO data."
 		data["AllISOs"] = []interface{}{}
-		renderTemplateInternal(w, r, "admin_isos", data)
+		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
@@ -146,7 +142,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		log.Error().Msg("Proxmox client is nil despite connection status being true")
 		data["Warning"] = "Proxmox client unavailable."
 		data["AllISOs"] = []interface{}{}
-		renderTemplateInternal(w, r, "admin_isos", data)
+		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
@@ -159,7 +155,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		log.Error().Err(err).Msg("Failed to get nodes for ISO page")
 		data["Warning"] = "Failed to fetch nodes from Proxmox."
 		data["AllISOs"] = []interface{}{}
-		renderTemplateInternal(w, r, "admin_isos", data)
+		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
@@ -169,7 +165,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		log.Error().Err(err).Msg("Failed to get storages for ISO page")
 		data["Warning"] = "Failed to fetch storages from Proxmox."
 		data["AllISOs"] = []interface{}{}
-		renderTemplateInternal(w, r, "admin_isos", data)
+		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
@@ -217,7 +213,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	data["AllISOs"] = allISOs
 
 	log.Debug().Int("iso_count", len(allISOs)).Msg("ISO page rendered")
-	renderTemplateInternal(w, r, "admin_isos", data)
+	renderTemplateInternal(w, r, "admin_iso", data)
 }
 
 // ToggleISOHandler toggles a single ISO enabled state (auto-save per click, no JS)

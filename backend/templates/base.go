@@ -130,7 +130,7 @@ func GetBaseFuncMap() template.FuncMap {
 			}
 			return s[:len(prefix)] == prefix
 		},
-		
+
 		// Template helper functions for creating maps and slices
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {
 			if len(values)%2 != 0 {

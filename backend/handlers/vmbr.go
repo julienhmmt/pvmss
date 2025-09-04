@@ -133,13 +133,9 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		})
 	}
 
-	templateData := map[string]interface{}{
-		"VMBRs":          vmbrsForTemplate,
-		"EnabledVMBRs":   enabledVMBRs,
-		"Success":        success,
-		"SuccessMessage": successMsg,
-		"AdminActive":    "vmbr",
-	}
+	templateData := AdminPageDataWithMessage("VMBR Management", "vmbr", successMsg, "")
+	templateData["VMBRs"] = vmbrsForTemplate
+	templateData["EnabledVMBRs"] = enabledVMBRs
 	if err != nil {
 		templateData["Error"] = err.Error()
 	}
@@ -149,7 +145,6 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		templateData["ProxmoxError"] = proxmoxMsg
 	}
 
-	// Render the template
 	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 
