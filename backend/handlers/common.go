@@ -164,6 +164,11 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 	populateTemplateData(w, r, data)
 
+	// Add CSS context information for context7 optimization
+	data["IsAdminPage"] = strings.HasPrefix(r.URL.Path, "/admin")
+	data["NeedsRegularIcons"] = detectNeedsRegularIcons(name, data)
+	data["NeedsBrandIcons"] = detectNeedsBrandIcons(name, data)
+
 	stateManager := getStateManager(r)
 	tmpl := stateManager.GetTemplates()
 	if tmpl == nil {
@@ -567,4 +572,18 @@ func HandlerFuncToHTTPrHandle(h http.HandlerFunc) httprouter.Handle {
 
 		log.Debug().Msg("HTTP handler processing finished")
 	}
+}
+
+// detectNeedsRegularIcons determines if regular Font Awesome icons are needed
+func detectNeedsRegularIcons(templateName string, data map[string]interface{}) bool {
+	// Add logic to detect if regular icons are needed based on template or data
+	// For now, return false to optimize CSS loading
+	return false
+}
+
+// detectNeedsBrandIcons determines if brand Font Awesome icons are needed
+func detectNeedsBrandIcons(templateName string, data map[string]interface{}) bool {
+	// Add logic to detect if brand icons are needed based on template or data
+	// For now, return false to optimize CSS loading
+	return false
 }

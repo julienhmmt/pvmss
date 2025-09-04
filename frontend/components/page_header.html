@@ -1,0 +1,80 @@
+{{define "page_header"}}
+{{/* 
+  Reusable page header component
+  Usage: {{template "page_header" (dict "Title" "Page Title" "Subtitle" "Page description" "Icon" "fas fa-cog" "BreadcrumbItems" .BreadcrumbItems "Actions" .Actions)}}
+*/}}
+<div class="content mb-5">
+  <h1 class="title is-4">
+    {{if .Icon}}<span class="icon"><i class="{{.Icon}}"></i></span>&nbsp;{{end}}
+    {{.Title}}
+  </h1>
+  {{if .Subtitle}}
+  <p class="subtitle is-6 has-text-grey">{{.Subtitle}}</p>
+  {{end}}
+</div>
+
+{{if .BreadcrumbItems}}
+<nav class="breadcrumb mb-4" aria-label="breadcrumbs">
+  <ul>
+    {{range $index, $item := .BreadcrumbItems}}
+    <li {{if $item.IsActive}}class="is-active"{{end}}>
+      {{if $item.IsActive}}
+      <span aria-current="page">{{$item.Text}}</span>
+      {{else}}
+      <a href="{{$item.Link}}">{{$item.Text}}</a>
+      {{end}}
+    </li>
+    {{end}}
+  </ul>
+</nav>
+{{end}}
+
+{{if .Actions}}
+<div class="level mb-4">
+  <div class="level-left">
+    {{range .Actions.Left}}
+    <div class="level-item">
+      {{if .Link}}
+      <a href="{{.Link}}" class="button is-{{or .Type "primary"}}{{if .IsOutlined}} is-outlined{{end}}">
+        {{if .Icon}}<span class="icon"><i class="{{.Icon}}"></i></span>{{end}}
+        <span>{{.Text}}</span>
+      </a>
+      {{else if .Form}}
+      <form method="{{or .Form.Method "POST"}}" action="{{.Form.Action}}" class="is-inline">
+        {{range .Form.Fields}}
+        <input type="hidden" name="{{.Name}}" value="{{.Value}}">
+        {{end}}
+        <button type="submit" class="button is-{{or $.Type "primary"}}{{if $.IsOutlined}} is-outlined{{end}}">
+          {{if $.Icon}}<span class="icon"><i class="{{$.Icon}}"></i></span>{{end}}
+          <span>{{$.Text}}</span>
+        </button>
+      </form>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  <div class="level-right">
+    {{range .Actions.Right}}
+    <div class="level-item">
+      {{if .Link}}
+      <a href="{{.Link}}" class="button is-{{or .Type "light"}}{{if .IsOutlined}} is-outlined{{end}}">
+        {{if .Icon}}<span class="icon"><i class="{{.Icon}}"></i></span>{{end}}
+        <span>{{.Text}}</span>
+      </a>
+      {{else if .Form}}
+      <form method="{{or .Form.Method "POST"}}" action="{{.Form.Action}}" class="is-inline">
+        {{range .Form.Fields}}
+        <input type="hidden" name="{{.Name}}" value="{{.Value}}">
+        {{end}}
+        <button type="submit" class="button is-{{or $.Type "light"}}{{if $.IsOutlined}} is-outlined{{end}}">
+          {{if $.Icon}}<span class="icon"><i class="{{$.Icon}}"></i></span>{{end}}
+          <span>{{$.Text}}</span>
+        </button>
+      </form>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+</div>
+{{end}}
+{{end}}

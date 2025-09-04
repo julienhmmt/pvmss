@@ -3,16 +3,8 @@
 {{end}}
 
 {{define "admin_tags_section"}}
+<section class="section">
   <div class="container mt-4">
-
-  {{if .Error}}
-  <div class="notification is-danger">
-    <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="/admin/tags" class="button is-small is-light mt-2">
-      <span>{{T "Common.TryAgain"}}</span>
-    </a>
-  </div>
-  {{else}}
 
   <div class="content mb-5">
     <h1 class="title is-4"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "Admin.Tags.Title"}}</h1>
@@ -20,84 +12,90 @@
   </div>
 
   <div class="box admin-box">
-    <!-- Add tag -->
-    <form id="add-tag-form" action="/tags" method="POST" class="mb-4">
+    <form method="POST" action="/tags" class="mb-4">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div class="field has-addons">
         <div class="control is-expanded">
-          <input id="tag-input" class="input is-small" type="text" name="tag"
-            placeholder='{{T "Admin.Tags.Placeholder"}}' required minlength="1" maxlength="50"
-            pattern="[a-zA-Z0-9_-]+"
-            title="Le nom du tag ne peut contenir que des lettres, chiffres, tirets et underscores">
+          <input type="text" id="new-tag" name="tag" class="input" maxlength="50" 
+                 placeholder='{{T "Admin.Tags.NewTagPlaceholder"}}' required pattern="[a-zA-Z0-9_-]+" 
+                 title="Only letters, numbers, hyphens, and underscores allowed">
         </div>
         <div class="control">
-          <button type="submit" class="button is-primary is-small">
-            <span class="icon is-small"><i class="fas fa-plus"></i></span>
-            <span>{{T "Common.Add"}}</span>
+          <button type="submit" class="button is-primary">
+            <span class="icon"><i class="fas fa-plus"></i></span>
+            <span>{{T "Admin.Tags.AddTag"}}</span>
           </button>
         </div>
       </div>
     </form>
 
-    <!-- Tools: filter + count -->
-    <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
-      <div class="field has-addons">
-        <p class="control has-icons-left">
-          <input id="tag-filter" class="input is-small" type="text" placeholder="Filter tags…">
-          <span class="icon is-left is-small"><i class="fas fa-search"></i></span>
-        </p>
-      </div>
-      <div class="is-size-7 has-text-grey">
-        {{if .Tags}}{{len .Tags}}{{else}}0{{end}} tags
-      </div>
-    </div>
+    {{if or .Tags .FilterQuery}}
+    <!-- Server-side filtering using reusable component -->
+    {{template "table_filter" (dict "Action" "/admin/tags" "FilterQuery" .FilterQuery "SortOrder" .SortOrder "Placeholder" (T "Admin.Tags.FilterPlaceholder") "TotalItems" .TotalTags "FilteredItems" .FilteredTags "ItemName" "tags")}}
 
-    <!-- Tag list as table -->
     {{if .Tags}}
     <div class="table-container">
-      <table class="table is-fullwidth is-striped is-hoverable is-narrow" id="tags-table">
+      <table class="table is-fullwidth is-striped is-hoverable">
         <thead>
           <tr>
-            <th id="th-name" data-sort="name" data-order="asc" style="cursor:pointer">
-              <span class="icon is-small"><i class="fas fa-tag"></i></span>&nbsp;Tag
-              <span class="icon is-small has-text-grey ml-1"><i class="fas fa-sort"></i></span>
+            <th>
+              <div class="field has-addons mb-0">
+                <div class="control">
+                  <span class="icon-text">
+                    <span class="icon is-small"><i class="fas fa-tag"></i></span>
+                    <span>{{T "Admin.Tags.Header.Name"}}</span>
+                  </span>
+                </div>
+                <div class="control">
+                  {{if eq .SortOrder "asc"}}
+                  <a href="/admin/tags?sort=desc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}" 
+                     class="button is-small is-ghost" title="Sort descending">
+                    <span class="icon is-small"><i class="fas fa-sort-up"></i></span>
+                  </a>
+                  {{else}}
+                  <a href="/admin/tags?sort=asc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}" 
+                     class="button is-small is-ghost" title="Sort ascending">
+                    <span class="icon is-small"><i class="fas fa-sort-down"></i></span>
+                  </a>
+                  {{end}}
+                </div>
+              </div>
             </th>
-            <th class="has-text-right is-narrow">Count</th>
+            {{if .TagCounts}}
+            <th>{{T "Admin.Tags.Header.Usage"}}</th>
+            {{end}}
             <th class="has-text-right">{{T "Common.Actions"}}</th>
           </tr>
         </thead>
         <tbody>
           {{range .Tags}}
-          {{$isDefault := eq . "pvmss"}}
-          <tr data-tag-name="{{.}}">
+          <tr>
             <td>
-              <span class="tag is-rounded is-small {{if $isDefault}}is-primary is-light{{else}}is-info is-light{{end}}">
-                {{.}}
-                {{if $isDefault}}
-                  <span class="icon is-small ml-1" title="Default">
-                    <i class="fas fa-lock"></i>
-                  </span>
-                {{end}}
-              </span>
+              <span class="tag is-info is-light">{{.}}</span>
             </td>
-            <td class="has-text-right is-narrow">
-              {{$tag := .}}
-              <span class="tag is-light is-info is-rounded is-size-7">
-                {{with (index $.TagCounts $tag)}}{{.}}{{else}}0{{end}}
-              </span>
+            {{if $.TagCounts}}
+            <td>
+              {{$count := index $.TagCounts .}}
+              {{if $count}}
+                <span class="tag is-success is-light">{{$count}} VMs</span>
+              {{else}}
+                <span class="tag is-light">0 VMs</span>
+              {{end}}
             </td>
+            {{end}}
             <td class="has-text-right">
-              {{if not $isDefault}}
-              <form action="/tags/delete" method="POST" class="is-inline tag-delete-form">
+              {{if ne . "pvmss"}}
+              <form method="POST" action="/tags/delete" class="is-inline" 
+                    onsubmit="return confirm('Delete tag &quot;{{.}}&quot;?')">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                 <input type="hidden" name="tag" value="{{.}}">
-                <button type="submit" class="button is-small is-light">
+                <button type="submit" class="button is-small is-danger is-outlined" 
+                        title='{{T "Admin.Tags.DeleteTag"}} "{{.}}"'>
                   <span class="icon is-small"><i class="fas fa-trash"></i></span>
-                  <span>{{T "Common.Delete"}}</span>
                 </button>
               </form>
               {{else}}
-              <span class="tag is-light is-size-7">{{T "Common.Protected"}}</span>
+              <span class="tag is-light">{{T "Admin.Tags.DefaultTag"}}</span>
               {{end}}
             </td>
           </tr>
@@ -106,62 +104,37 @@
       </table>
     </div>
     {{else}}
-    <div class="notification is-light is-flex is-align-items-center is-size-7">
-      <span class="icon-text">
-        <span class="icon has-text-grey">
-          <i class="fas fa-info-circle"></i>
-        </span>
-        <span class="has-text-grey">Aucun tag pour le moment.</span>
-      </span>
+    <div class="notification is-warning is-light">
+      <div class="level is-mobile">
+        <div class="level-left">
+          <div class="level-item">
+            <span class="icon has-text-warning">
+              <i class="fas fa-search"></i>
+            </span>
+          </div>
+          <div class="level-item">
+            <p>No tags found matching your filter "{{.FilterQuery}}"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="notification is-info is-light">
+      <div class="level is-mobile">
+        <div class="level-left">
+          <div class="level-item">
+            <span class="icon has-text-info">
+              <i class="fas fa-info-circle"></i>
+            </span>
+          </div>
+          <div class="level-item">
+            <p>{{T "Admin.Tags.NoTags"}}</p>
+          </div>
+        </div>
+      </div>
     </div>
     {{end}}
   </div>
-
-  <!-- Minimal JS for filtering and delete confirm (no external deps) -->
-  <script>
-    (function() {
-      var filter = document.getElementById('tag-filter');
-      if (filter) {
-        filter.addEventListener('input', function() {
-          var q = this.value.toLowerCase();
-          var rows = document.querySelectorAll('#tags-table tbody tr');
-          rows.forEach(function(r) {
-            var name = (r.getAttribute('data-tag-name') || '').toLowerCase();
-            r.style.display = name.indexOf(q) !== -1 ? '' : 'none';
-          });
-        });
-      }
-      // Sort by name (asc/desc) on header click
-      var thName = document.getElementById('th-name');
-      if (thName) {
-        thName.addEventListener('click', function() {
-          var tbody = document.querySelector('#tags-table tbody');
-          if (!tbody) return;
-          var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
-          var order = this.getAttribute('data-order') === 'asc' ? 'desc' : 'asc';
-          rows.sort(function(a, b) {
-            var an = (a.getAttribute('data-tag-name') || '').toLowerCase();
-            var bn = (b.getAttribute('data-tag-name') || '').toLowerCase();
-            if (an < bn) return order === 'asc' ? -1 : 1;
-            if (an > bn) return order === 'asc' ? 1 : -1;
-            return 0;
-          });
-          // Re-append in new order
-          rows.forEach(function(r) { tbody.appendChild(r); });
-          this.setAttribute('data-order', order);
-        });
-      }
-      document.querySelectorAll('.tag-delete-form').forEach(function(f) {
-        f.addEventListener('submit', function(e) {
-          var tag = this.querySelector('input[name="tag"]').value;
-          if (!confirm('Delete tag "' + tag + '" ?')) {
-            e.preventDefault();
-          }
-        });
-      });
-    })();
-  </script>
-
-  {{end}}
   </div>
 {{end}}

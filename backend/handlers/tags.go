@@ -121,6 +121,13 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	gs := h.stateManager
 	settings := gs.GetSettings()
 
+	// Server-side filtering support
+	filterQuery := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("filter")))
+	sortOrder := r.URL.Query().Get("sort") // "asc" or "desc"
+	if sortOrder != "desc" {
+		sortOrder = "asc" // default to ascending
+	}
+
 	// Success banner via query params
 	success := r.URL.Query().Get("success") != ""
 	act := r.URL.Query().Get("action")
@@ -160,16 +167,31 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		}
 	}
 
-	// Sort tags by name for display
+	// Filter and sort tags by name for display
 	tags := make([]string, 0, len(settings.Tags))
-	tags = append(tags, settings.Tags...)
-	sort.Strings(tags)
+	for _, tag := range settings.Tags {
+		// Apply server-side filtering if filter query is provided
+		if filterQuery == "" || strings.Contains(strings.ToLower(tag), filterQuery) {
+			tags = append(tags, tag)
+		}
+	}
+
+	// Sort based on requested order
+	if sortOrder == "desc" {
+		sort.Sort(sort.Reverse(sort.StringSlice(tags)))
+	} else {
+		sort.Strings(tags)
+	}
 
 	data := map[string]interface{}{
 		"Tags":           tags,
 		"Success":        success,
 		"SuccessMessage": successMsg,
 		"AdminActive":    "tags",
+		"FilterQuery":    r.URL.Query().Get("filter"), // Keep original case for form input
+		"SortOrder":      sortOrder,
+		"TotalTags":      len(settings.Tags),
+		"FilteredTags":   len(tags),
 	}
 	if len(tagCounts) > 0 {
 		data["TagCounts"] = tagCounts

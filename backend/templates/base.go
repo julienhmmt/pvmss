@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"strings"
@@ -129,6 +130,26 @@ func GetBaseFuncMap() template.FuncMap {
 			}
 			return s[:len(prefix)] == prefix
 		},
+		
+		// Template helper functions for creating maps and slices
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values)%2 != 0 {
+				return nil, fmt.Errorf("dict requires an even number of arguments")
+			}
+			result := make(map[string]interface{}, len(values)/2)
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+				if !ok {
+					return nil, fmt.Errorf("dict keys must be strings")
+				}
+				result[key] = values[i+1]
+			}
+			return result, nil
+		},
+		"slice": func(values ...interface{}) []interface{} {
+			return values
+		},
+		"printf": fmt.Sprintf,
 	}
 }
 

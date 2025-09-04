@@ -1,0 +1,123 @@
+{{define "enhanced_admin_base"}}
+<section class="section">
+  <div class="container">
+    <!-- Admin Header with dynamic actions -->
+    {{template "page_header" (dict 
+      "Title" (T "Navbar.Admin") 
+      "Subtitle" (T "Admin.Description")
+      "Icon" "fas fa-tools"
+      "Actions" (dict 
+        "Right" (slice 
+          (dict "Link" (printf "/docs/admin?lang=%s" .Lang) "Text" (T "Navbar.AdminDocs") "Icon" "fas fa-book" "Type" "light" "IsOutlined" true)
+        )
+      )
+    )}}
+
+    <!-- Success/Error notifications -->
+    {{if .Success}}
+    {{template "notification" (dict 
+      "Type" "success" 
+      "Message" .SuccessMessage 
+      "Icon" "fas fa-check" 
+      "Dismissible" true
+    )}}
+    {{end}}
+
+    {{if .Error}}
+    {{template "notification" (dict 
+      "Type" "danger" 
+      "Message" .ErrorMessage 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" true
+    )}}
+    {{end}}
+
+    {{if .Warning}}
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Message" .Warning 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" true
+    )}}
+    {{end}}
+
+    <div class="columns admin-layout">
+      <aside class="column is-3">
+        <nav class="menu admin-menu">
+          <p class="menu-label">{{T "Navbar.Admin"}}</p>
+          <ul class="menu-list">
+            {{$adminActive := .AdminActive}}
+            {{$currentPath := currentPath}}
+            {{range $item := slice 
+              (dict "key" "nodes" "path" "/admin/nodes" "icon" "fas fa-server" "title" (T "Nodes.Title"))
+              (dict "key" "tags" "path" "/admin/tags" "icon" "fas fa-tags" "title" (T "Admin.Tags.Title"))
+              (dict "key" "storage" "path" "/admin/storage" "icon" "fas fa-hdd" "title" (T "Admin.Storage.Title"))
+              (dict "key" "iso" "path" "/admin/iso" "icon" "fas fa-compact-disc" "title" (T "Admin.ISO.Title"))
+              (dict "key" "vmbr" "path" "/admin/vmbr" "icon" "fas fa-network-wired" "title" (T "Admin.VMBR.Title"))
+              (dict "key" "limits" "path" "/admin/limits" "icon" "fas fa-sliders-h" "title" (T "Admin.Limits.Title"))
+              (dict "key" "userpool" "path" "/admin/userpool" "icon" "fas fa-user-shield" "title" "Users & Pools")
+            }}
+            <li>
+              <a href="{{$item.path}}" class="{{if $adminActive}}{{if eq $adminActive $item.key}}is-active{{end}}{{else}}{{if activeFor $currentPath $item.path}}is-active{{end}}{{end}}">
+                <span class="icon is-small"><i class="{{$item.icon}}"></i></span>&nbsp;{{$item.title}}
+              </a>
+            </li>
+            {{end}}
+          </ul>
+        </nav>
+      </aside>
+      <div class="column is-9">
+        {{/* Dynamic section rendering based on AdminActive */}}
+        {{if .AdminActive}}
+          {{if eq .AdminActive "nodes"}}
+            {{template "admin_nodes_section" .}}
+          {{else if eq .AdminActive "tags"}}
+            {{template "admin_tags_section" .}}
+          {{else if eq .AdminActive "storage"}}
+            {{template "admin_storage_section" .}}
+          {{else if eq .AdminActive "iso"}}
+            {{template "admin_iso_section" .}}
+          {{else if eq .AdminActive "vmbr"}}
+            {{template "admin_vmbr_section" .}}
+          {{else if eq .AdminActive "limits"}}
+            {{template "admin_limits_section" .}}
+          {{else if eq .AdminActive "userpool"}}
+            {{template "admin_userpool_section" .}}
+          {{else}}
+            <!-- Unknown AdminActive value: show default message -->
+            {{template "notification" (dict 
+              "Type" "info" 
+              "Message" "Select an admin section from the menu to get started." 
+              "Icon" "fas fa-info-circle"
+            )}}
+          {{end}}
+        {{else}}
+          {{/* Fallback based on current path */}}
+          {{if activeFor (currentPath) "/admin/nodes"}}
+            {{template "admin_nodes_section" .}}
+          {{else if activeFor (currentPath) "/admin/tags"}}
+            {{template "admin_tags_section" .}}
+          {{else if activeFor (currentPath) "/admin/storage"}}
+            {{template "admin_storage_section" .}}
+          {{else if activeFor (currentPath) "/admin/iso"}}
+            {{template "admin_iso_section" .}}
+          {{else if activeFor (currentPath) "/admin/vmbr"}}
+            {{template "admin_vmbr_section" .}}
+          {{else if activeFor (currentPath) "/admin/limits"}}
+            {{template "admin_limits_section" .}}
+          {{else if activeFor (currentPath) "/admin/userpool"}}
+            {{template "admin_userpool_section" .}}
+          {{else}}
+            <!-- Default admin dashboard -->
+            {{template "notification" (dict 
+              "Type" "info" 
+              "Message" "Welcome to the admin panel. Select a section from the menu to get started." 
+              "Icon" "fas fa-info-circle"
+            )}}
+          {{end}}
+        {{end}}
+      </div>
+    </div>
+  </div>
+</section>
+{{end}}

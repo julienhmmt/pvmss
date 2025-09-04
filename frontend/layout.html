@@ -17,16 +17,23 @@
         {{- end -}}
     </title>
 
-    <link rel="stylesheet" href="/css/bulma.min.css">
-    <link rel="stylesheet" href="/css/tokens.css">
-    <link rel="stylesheet" href="/css/base.css">
-    <link rel="stylesheet" href="/css/components.css">
-    <link rel="stylesheet" href="/css/admin.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="/css/fontawesome.min.css">
-    <link rel="stylesheet" href="/css/solid.min.css">
-    <link rel="stylesheet" href="/css/regular.min.css">
-    <link rel="stylesheet" href="/css/brands.min.css">
+    <!-- Context7 optimized CSS loading -->
+    <link rel="stylesheet" href="/css/bulma.min.css?theme={{.Theme}}" data-css-context="bulma">
+    <link rel="stylesheet" href="/css/tokens.css" data-css-context="tokens">
+    <link rel="stylesheet" href="/css/base.css" data-css-context="base">
+    <link rel="stylesheet" href="/css/components.css" data-css-context="components">
+    {{if .IsAdminPage}}
+    <link rel="stylesheet" href="/css/admin.css" data-css-context="admin">
+    {{end}}
+    <!-- Font Awesome optimized loading -->
+    <link rel="stylesheet" href="/css/fontawesome.min.css" data-css-context="fa-core">
+    <link rel="stylesheet" href="/css/solid.min.css" data-css-context="fa-solid">
+    {{if .NeedsRegularIcons}}
+    <link rel="stylesheet" href="/css/regular.min.css" data-css-context="fa-regular">
+    {{end}}
+    {{if .NeedsBrandIcons}}
+    <link rel="stylesheet" href="/css/brands.min.css" data-css-context="fa-brands">
+    {{end}}
     <!-- Preload local Font Awesome webfonts for faster icon rendering -->
     <link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>

@@ -1,0 +1,48 @@
+{{define "table_filter"}}
+{{/* 
+  Reusable table filter component for server-side filtering
+  Usage: {{template "table_filter" (dict "Action" "/admin/tags" "FilterQuery" .FilterQuery "SortOrder" .SortOrder "Placeholder" "Filter tags..." "TotalItems" .TotalTags "FilteredItems" .FilteredTags "ItemName" "tags")}}
+*/}}
+<form method="GET" action="{{.Action}}" class="mb-4">
+  <div class="field has-addons">
+    <div class="control is-expanded has-icons-left">
+      <input type="text" name="filter" class="input" value="{{.FilterQuery}}" 
+             placeholder="{{or .Placeholder "Filter..."}}">
+      <span class="icon is-small is-left">
+        <i class="fas fa-search"></i>
+      </span>
+    </div>
+    <div class="control">
+      <button type="submit" class="button is-light">
+        <span class="icon"><i class="fas fa-filter"></i></span>
+        <span>Filter</span>
+      </button>
+    </div>
+    {{if .FilterQuery}}
+    <div class="control">
+      <a href="{{.Action}}" class="button is-outlined">
+        <span class="icon"><i class="fas fa-times"></i></span>
+        <span>Clear</span>
+      </a>
+    </div>
+    {{end}}
+  </div>
+  {{if .SortOrder}}
+  <input type="hidden" name="sort" value="{{.SortOrder}}">
+  {{end}}
+  {{range .HiddenFields}}
+  <input type="hidden" name="{{.Name}}" value="{{.Value}}">
+  {{end}}
+</form>
+
+{{if .FilterQuery}}
+<div class="notification is-info is-light mb-4">
+  <p>
+    <strong>{{.FilteredItems}}</strong> of <strong>{{.TotalItems}}</strong> {{or .ItemName "items"}} shown 
+    {{if ne .FilteredItems .TotalItems}}
+      (filtered by "{{.FilterQuery}}")
+    {{end}}
+  </p>
+</div>
+{{end}}
+{{end}}
