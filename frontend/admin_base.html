@@ -1,11 +1,12 @@
 {{define "admin_base"}}
-<section class="section">
+<section class="section admin-section">
   <div class="container">
     <!-- Admin Header with dynamic actions -->
     {{template "page_header" (dict 
       "Title" (T "Navbar.Admin") 
       "Subtitle" (T "Admin.Description")
       "Icon" "fas fa-tools"
+      "Compact" true
       "Actions" (dict 
         "Right" (slice 
           (dict "Link" (printf "/docs/admin?lang=%s" .Lang) "Text" (T "Navbar.AdminDocs") "Icon" "fas fa-book" "Type" "primary")

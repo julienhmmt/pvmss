@@ -62,3 +62,13 @@
 .card.admin-card .card-content { padding: 1.25rem 1rem; }
 .card.admin-card .card-header { padding: 0.5rem 1rem; }
 .card.admin-card:hover { transform: translateY(-2px); box-shadow: 0 0.375rem 1.25rem rgb(0 0 0 / 0.12); }
+
+/* Compact spacing for admin pages */
+.section.admin-section {
+  /* Bulma's default is 3rem top/bottom; reduce to tighten header-to-content gap */
+  padding-top: 1.25rem;
+  padding-bottom: 1.5rem;
+}
+
+/* Slightly reduce gap between header actions and the main columns */
+.admin-layout { margin-top: 0.25rem; }

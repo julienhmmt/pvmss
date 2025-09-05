@@ -3,7 +3,7 @@
   Reusable page header component
   Usage: {{template "page_header" (dict "Title" "Page Title" "Subtitle" "Page description" "Icon" "fas fa-cog" "BreadcrumbItems" .BreadcrumbItems "Actions" .Actions)}}
 */}}
-<div class="content mb-5">
+<div class="content {{if .Compact}}mb-3{{else}}mb-5{{end}}">
   <h1 class="title is-4">
     {{if .Icon}}<span class="icon"><i class="{{.Icon}}"></i></span>&nbsp;{{end}}
     {{.Title}}
@@ -30,7 +30,7 @@
 {{end}}
 
 {{if .Actions}}
-<div class="level mb-4">
+<div class="level {{if .Compact}}mb-2{{else}}mb-4{{end}}">
   <div class="level-left">
     {{range .Actions.Left}}
     <div class="level-item">
