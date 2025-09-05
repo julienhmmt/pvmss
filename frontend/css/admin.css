@@ -50,7 +50,7 @@
   display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem;
   transition: background-color 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
 }
-.admin-menu .menu-list a:hover { background-color: var(--surface-1); color: var(--text); }
+.admin-menu .menu-list a:hover { background-color: var(--surface-2); color: var(--text); }
 .admin-menu .menu-list a:focus { box-shadow: none; }
 
 /* Explicit active class */
@@ -78,7 +78,7 @@
 .table.modern {
   border-radius: 10px;
   overflow: hidden;
-  background: var(--surface-1);
+  background: var(--surface-2);
 }
 .table.modern thead th {
   background: var(--surface-2) !important;

@@ -1,389 +1,89 @@
-/* Tokens are defined in tokens.css (:root and [data-theme="dark"]) */
-
-/* Dark theme tokens live in tokens.css */
-
-/* Hero & welcome-block moved to components.css */
-
-.box {
-  border-radius: 0.375rem;
-  margin-bottom: 1.5rem;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-color);
+/* Visually hidden checkbox - always hidden, used for CSS-only burger menu toggle */
+.visually-hidden-checkbox {
+  position: absolute !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  overflow: hidden !important;
 }
 
-.box .title {
-  color: var(--text);
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 0.125rem solid var(--border);
-}
+/* Mobile Navigation */
+@media screen and (max-width: 1023px) {
 
-.field:not(:last-child) {
-  margin-bottom: 1.25rem;
-}
-
-
-@media (max-width: 48rem) {
-  .columns {
-    flex-direction: column;
+  .navbar-burger {
+    display: block !important;
+    cursor: pointer;
+    position: relative;
+    width: 3.25rem;
+    height: 3.25rem;
+    margin-left: auto;
+    padding: 0.5rem;
   }
 
-  .column {
+  .navbar-burger span {
+    background-color: currentColor;
+    display: block;
+    height: 3px;
+    left: calc(50% - 8px);
+    position: absolute;
+    transform-origin: center;
+    transition-duration: 86ms;
+    transition-property: background-color, opacity, transform;
+    transition-timing-function: ease-out;
+    width: 16px;
+  }
+
+  .navbar-burger span:nth-child(1) {
+    top: calc(50% - 6px);
+  }
+
+  .navbar-burger span:nth-child(2) {
+    top: calc(50% - 1px);
+  }
+
+  .navbar-burger span:nth-child(3) {
+    top: calc(50% + 4px);
+  }
+
+  #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(1) {
+    transform: translateY(5px) rotate(45deg);
+  }
+
+  #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(2) {
+    opacity: 0;
+  }
+
+  #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(3) {
+    transform: translateY(-5px) rotate(-45deg);
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .navbar-burger {
+    display: none !important;
+  }
+}
+
+/* Additional mobile improvements */
+@media screen and (max-width: 768px) {
+  .navbar-item {
+    padding: 0.75rem;
+  }
+
+  .buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .language-buttons {
+    margin-top: 0.5rem;
+  }
+
+  .navbar-end .navbar-item .buttons {
     width: 100%;
   }
 }
-
-.help {
-  color: var(--muted);
-  font-size: 0.85em;
-  margin-top: 0.25em;
-}
-
-.section {
-  padding: 1.5rem 0;
-}
-
-.section > .container > .section {
-  padding: 0.5rem 0;
-  min-height: auto;
-}
-
-/* Global focus-visible for interactive elements */
-:where(a, button, input, select, textarea, .button):focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-.card {
-  height: 100%;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  overflow: hidden;
-  background-color: var(--card-bg);
-  box-shadow: var(--shadow-color);
-}
-
-.card-header {
-  background-color: var(--surface-2);
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.card-header-title {
-  color: var(--text);
-  font-weight: 600;
-}
-
-/* Disabled form state */
-fieldset[disabled] {
-  opacity: 0.7;
-  position: relative;
-}
-
-fieldset[disabled]::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgb(255 255 255 / 0.5);
-  z-index: 10;
-  pointer-events: none;
-  border-radius: 6px;
-}
-
-/* Navbar container moved to components.css */
-
-/* Notification banner moved to components.css */
-
-/* Adjust main content to account for fixed navbar and notification */
-#main-content {
-  padding-top: 2.5rem;
-  margin-top: 4.5rem; /* Height of the navbar + extra spacing */
-}
-
-/* Adjust admin pages to account for fixed navbar - more specific rule */
-.admin-layout {
-  padding-top: 2.5rem;
-  margin-top: 4.5rem;
-}
-
-/* Override for admin pages specifically */
-body:has(.admin-layout) #main-content {
-  padding-top: 2.5rem !important;
-  margin-top: 4.5rem !important;
-}
-
-/* If notification is visible, add extra margin to main content */
-#proxmox-status-banner ~ #main-content {
-  margin-top: 6rem; /* Navbar height + notification height */
-}
-
-/* slideDown animation moved to components.css */
-
-/* Smooth scrolling for in-page anchors */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Ensure anchored sections appear fully below the fixed navbar */
-.section-anchor {
-  /* Leave room for fixed navbar + a little spacing */
-  scroll-margin-top: 4.5rem;
-}
-
-/* Highlight a section when navigated via hash */
-.section-anchor:target .card {
-  box-shadow: 0 0 0 0.15rem rgb(50 115 220 / 0.25);
-}
-
-.admin-menu {
-  position: sticky;
-  top: 3.25rem; /* navbar height */
-}
-
-/* If the notification banner is present, push the sticky menu further down */
-#proxmox-status-banner ~ #main-content .admin-menu {
-  top: 6rem; /* navbar + banner */
-}
-
-.admin-menu .menu-label {
-  font-weight: 700;
-  color: var(--muted);
-}
-
-.admin-menu .menu-list a {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
-}
-
-.admin-menu .menu-list a:hover {
-  background-color: rgb(255 136 0 / 0.08);
-  color: var(--primary);
-  padding-left: 0.9rem;
-}
-
-/* Allow explicit active class to match target-based active */
-.admin-menu .menu-list a.is-active {
-  background-color: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
-  border-left: 3px solid var(--primary);
-}
-
-/* Dark-mode: softer admin menu highlights */
-[data-theme="dark"] .admin-menu .menu-list a:hover {
-  background-color: rgb(255 255 255 / 0.04);
-  color: var(--text);
-}
-
-/* Active state based on section :target (explicit ids) */
-body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
-body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
-body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
-body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
-body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
-body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
-  background-color: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
-  border-left: 3px solid var(--primary);
-}
-
-/* Default active (no hash): first item */
-body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
-  background-color: var(--surface-2);
-  color: var(--text);
-  font-weight: 600;
-  border-left: 3px solid var(--primary);
-}
-
-/* Admin limits reset button hover fix */
-.button.is-light.is-outlined:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: var(--border);
-  color: var(--text);
-  opacity: 1;
-}
-
-/* Fix delete button hover effects in admin tags */
-.button.is-small.is-danger.is-outlined {
-  border-color: #db1f1f;
-  color: #db1f1f;
-}
-
-.button.is-small.is-danger.is-outlined:hover {
-  background-color: transparent;
-  border-color: #db1f1f;
-  color: #db1f1f;
-  transform: none;
-  box-shadow: none;
-}
-
-.button.is-small.is-danger.is-outlined:hover .icon {
-  color: #db1f1f !important;
-}
-
-.visually-hidden-checkbox {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  margin: 0;
-  padding: 0;
-  pointer-events: none;
-}
-
-/* Dark-mode neutral light tag variant */
-[data-theme="light"] .tag.is-light,
-.tag.is-light {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-[data-theme="dark"] .tag.is-light {
-  background-color: var(--surface-2);
-  color: var(--muted);
-  border: 1px solid var(--border);
-}
-
-/* === Theme Base & Component Overrides === */
-a { color: var(--link); }
-a:hover { color: var(--link-hover); }
-a { transition: color 0.15s ease; }
-
-.footer {
-  background-color: var(--surface);
-  border-top: 1px solid var(--border);
-}
-
-/* Forms */
-.input, .textarea, .select select {
-  background-color: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
-}
-.input::placeholder, .textarea::placeholder { color: var(--muted); }
-.input:focus, .textarea:focus, .select select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 0.125em rgb(255 136 0 / 0.2);
-}
-
-[data-theme="dark"] .input:focus,
-[data-theme="dark"] .textarea:focus,
-[data-theme="dark"] .select select:focus {
-  box-shadow: 0 0 0 0.125em rgb(217 119 6 / 0.18);
-}
-
-/* Dark: static addon buttons should match surfaces */
-[data-theme="dark"] .button.is-static {
-  background-color: var(--surface-2);
-  color: var(--muted);
-  border-color: var(--border);
-}
-
-/* Tables */
-.table { background-color: transparent; color: var(--text); }
-.table th, .table td { border-color: var(--border); }
-.table thead th { background-color: var(--surface-2); }
-
-/* Table container framing and row hover */
-.table-container {
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-.table.is-hoverable tbody tr:hover {
-  background-color: var(--surface-2);
-}
-
-/* Subtle zebra striping tuned per theme */
-.table.is-striped tbody tr:nth-child(even) {
-  background-color: rgb(0 0 0 / 0.02);
-}
-[data-theme="dark"] .table.is-striped tbody tr:nth-child(even) {
-  background-color: rgb(255 255 255 / 0.03);
-}
-
-/* Progress bars: compact, pill-shaped */
-.progress {
-  height: 0.5rem;
-  border-radius: 999px;
-  -webkit-appearance: none;
-  appearance: none;
-  overflow: hidden;
-}
-.progress::-webkit-progress-bar {
-  background-color: var(--surface-2);
-  border-radius: 999px;
-}
-.progress::-webkit-progress-value {
-  background-color: var(--primary);
-  border-radius: 999px;
-  transition: width 0.2s ease;
-}
-.progress::-moz-progress-bar {
-  background-color: var(--primary);
-  border-radius: 999px;
-  transition: width 0.2s ease;
-}
-
-/* Safari/WebKit inner element rounding */
-.progress::-webkit-progress-inner-element {
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-/* Size variants */
-.progress.is-small { height: 0.375rem; }
-
-/* Inline metrics inside table cells: bar + percentage */
-.table td > .progress {
-  display: inline-block;
-  width: 120px;
-  min-width: 96px;
-  margin: 0;
-  vertical-align: middle;
-}
-.table td > .progress + span {
-  display: inline-block;
-  margin-left: 0.5rem;
-  vertical-align: middle;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Color variants (Bulma-compatible) */
-.progress.is-primary::-webkit-progress-value { background-color: var(--primary); }
-.progress.is-primary::-moz-progress-bar { background-color: var(--primary); }
-
-.progress.is-success::-webkit-progress-value { background-color: #22c55e; }
-.progress.is-success::-moz-progress-bar { background-color: #22c55e; }
-
-.progress.is-info::-webkit-progress-value { background-color: #38bdf8; }
-.progress.is-info::-moz-progress-bar { background-color: #38bdf8; }
-
-.progress.is-warning::-webkit-progress-value { background-color: #f59e0b; }
-.progress.is-warning::-moz-progress-bar { background-color: #f59e0b; }
-
-.progress.is-danger::-webkit-progress-value { background-color: #ef4444; }
-.progress.is-danger::-moz-progress-bar { background-color: #ef4444; }
-
-/* Form controls: checkboxes and radios use brand color (modern browsers) */
-input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
-
-/* Range slider rules removed (unused) */
-
-/* File input rules removed (unused) */
-
-/* Message component handled in components.css */

@@ -12,6 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
 
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
@@ -82,7 +83,11 @@ func (h *AuthHandler) RedirectIfAuthenticated(next httprouter.Handle) httprouter
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if IsAuthenticated(r) {
 			// Redirect authenticated users to VM creation page
-			http.Redirect(w, r, "/vm/create", http.StatusSeeOther)
+			redirectURL := "/vm/create"
+			if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
+				redirectURL += "?lang=" + lang
+			}
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 			return
 		}
 		next(w, r, ps)
@@ -153,7 +158,11 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 	headers.Set("Expires", "0")
 
 	// Redirect to login page with a fresh session
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	redirectURL := "/login"
+	if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
+		redirectURL += "?lang=" + lang
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
@@ -177,6 +186,7 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 		"CSRFToken":   csrfToken,
 		"RedirectURL": r.URL.Query().Get("redirect"),
 		"ReturnURL":   r.URL.Query().Get("return"),
+		"Lang":        i18n.GetLanguage(r),
 	}
 
 	ctx.RenderTemplate("admin_login", data)
@@ -266,6 +276,13 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	}
 
 	redirectURL := getRedirectURL(r, "/admin/nodes")
+	if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
+		if strings.Contains(redirectURL, "?") {
+			redirectURL += "&lang=" + lang
+		} else {
+			redirectURL += "?lang=" + lang
+		}
+	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -354,6 +371,13 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	}
 
 	redirectURL := getRedirectURL(r, "/vm/create")
+	if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
+		if strings.Contains(redirectURL, "?") {
+			redirectURL += "&lang=" + lang
+		} else {
+			redirectURL += "?lang=" + lang
+		}
+	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -444,6 +468,7 @@ func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, er
 		"CSRFToken":   csrfToken,
 		"RedirectURL": r.URL.Query().Get("redirect"),
 		"ReturnURL":   r.URL.Query().Get("return"),
+		"Lang":        i18n.GetLanguage(r),
 	}
 
 	ctx.RenderTemplate("login", data)

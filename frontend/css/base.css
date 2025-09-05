@@ -13,27 +13,6 @@ html { scroll-behavior: smooth; }
   }
 }
 
-/* Links */
-a { color: var(--link); }
-a:hover { color: var(--link-hover); }
-a { transition: color 0.15s ease; }
-
-/* Skip link for keyboard users */
-.skip-link {
-  position: absolute;
-  left: -999px;
-  top: 0;
-  background: var(--primary);
-  color: #fff;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0 0 6px 6px;
-  z-index: 10000;
-}
-.skip-link:focus {
-  left: 0;
-  outline: 2px solid var(--primary);
-}
-
 /* Footer and separators */
 .footer {
   background-color: var(--surface);

@@ -309,27 +309,27 @@ other = "Login"
 ["Login.UsernameLabel"]
 other = "Username"
 ["Login.UserLogin"]
-other = "User Login"
+other = "User login"
 ["Login.AdminLoginLink"]
-other = "Administrator Login"
+other = "Administrator login"
 ["Login.LoginAs"]
 other = "Login as"
 ["Login.SwitchToAdmin"]
-other = "Switch to Administrator Login"
+other = "Switch to administrator login"
 ["Login.SwitchToUser"]
-other = "Switch to User Login"
+other = "Switch to user login"
 
 # =============
 # Admin Login
 # =============
 ["AdminLogin.Button"]
-other = "Admin Login"
+other = "Administrator login"
 ["AdminLogin.PasswordLabel"]
-other = "Administrator Password"
+other = "Administrator password"
 ["AdminLogin.Title"]
-other = "Administrator Login"
+other = "Administrator login"
 ["AdminLogin.UserLoginLink"]
-other = "Regular User Login"
+other = "Regular user login"
 
 # VM Creation
 ["VM.Bridge.Description"]

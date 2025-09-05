@@ -333,5 +333,9 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 
 	// Redirect to details
-	http.Redirect(w, r, "/vm/details/"+strconv.Itoa(vmid)+"?refresh=1", http.StatusSeeOther)
+	redirectURL := "/vm/details/" + strconv.Itoa(vmid) + "?refresh=1"
+	if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
+		redirectURL += "&lang=" + lang
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }

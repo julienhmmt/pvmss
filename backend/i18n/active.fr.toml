@@ -351,27 +351,27 @@ other = "Connexion"
 ["Login.UsernameLabel"]
 other = "Nom d'utilisateur"
 ["Login.UserLogin"]
-other = "Connexion Utilisateur"
+other = "Connexion utilisateur"
 ["Login.AdminLoginLink"]
-other = "Connexion Administrateur"
+other = "Connexion administrateur"
 ["Login.LoginAs"]
 other = "Se connecter en tant que"
 ["Login.SwitchToAdmin"]
-other = "Basculer vers Connexion Administrateur"
+other = "Basculer vers l'administration"
 ["Login.SwitchToUser"]
-other = "Basculer vers Connexion Utilisateur"
+other = "Basculer en compte utilisateur"
 
 # =============
 # Admin Login
 # =============
 ["AdminLogin.Button"]
-other = "Connexion Admin"
+other = "Connexion administrateur"
 ["AdminLogin.PasswordLabel"]
-other = "Mot de passe Administrateur"
+other = "Mot de passe administrateur"
 ["AdminLogin.Title"]
-other = "Connexion Administrateur"
+other = "Connexion administrateur"
 ["AdminLogin.UserLoginLink"]
-other = "Connexion Utilisateur"
+other = "Connexion utilisateur"
 
 # VM Creation
 ["VM.Bridge.Description"]
