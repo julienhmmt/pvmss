@@ -86,37 +86,6 @@
   box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 32%);
 }
 
-.home-card {
-  border-radius: 0.875rem;
-  box-shadow: 0 0.25rem 1rem rgb(50 50 93 / 10%);
-  transition: transform 0.15s, box-shadow 0.15s;
-  border: none;
-}
-
-.home-card:hover {
-  transform: translateY(-0.25rem) scale(1.03);
-  box-shadow: 0 0.5rem 1.75rem rgb(50 50 93 / 18%);
-  z-index: 2;
-}
-
-.home-btn {
-  transition: background 0.15s, box-shadow 0.15s;
-  box-shadow: 0 0.125rem 0.5rem rgb(50 50 93 / 10%);
-  border-radius: 0.5rem;
-}
-
-.home-btn:hover {
-  background: var(--primary-hover);
-  color: #fff;
-  box-shadow: 0 0.25rem 1rem rgb(255 136 0 / 18%);
-}
-
-[data-theme="dark"] .home-btn:hover {
-  background: #1f2025;
-  color: var(--text);
-  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.35);
-}
-
 .box {
   border-radius: 0.375rem;
   box-shadow: 0 0.125rem 0.1875rem rgb(10 10 10 / 10%);
@@ -373,8 +342,20 @@ fieldset[disabled]::after {
 
 /* Adjust main content to account for fixed navbar and notification */
 #main-content {
-  padding-top: 1.5rem;
-  margin-top: 3.25rem; /* Height of the navbar */
+  padding-top: 2.5rem;
+  margin-top: 4.5rem; /* Height of the navbar + extra spacing */
+}
+
+/* Adjust admin pages to account for fixed navbar - more specific rule */
+.admin-layout {
+  padding-top: 2.5rem;
+  margin-top: 4.5rem;
+}
+
+/* Override for admin pages specifically */
+body:has(.admin-layout) #main-content {
+  padding-top: 2.5rem !important;
+  margin-top: 4.5rem !important;
 }
 
 /* If notification is visible, add extra margin to main content */
@@ -492,13 +473,34 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
   border-left: 3px solid var(--primary);
 }
 
-/* Admin professional look */
-.card.admin-card .card-content { padding: 1.25rem 1rem; }
-.card.admin-card .card-header { padding: 0.5rem 1rem; }
+/* Admin limits reset button hover fix */
+.button.is-light.is-outlined:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--border);
+  color: var(--text);
+  opacity: 1;
+}
 
-.card.admin-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0.375rem 1.25rem rgb(0 0 0 / 0.12);
+/* Fix delete button hover effects in admin tags */
+.button.is-small.is-danger.is-outlined {
+  border-color: #db1f1f;
+  color: #db1f1f;
+}
+
+.button.is-small.is-danger.is-outlined:hover {
+  background-color: transparent;
+  border-color: #db1f1f;
+  color: #db1f1f;
+  transform: none;
+  box-shadow: none;
+}
+
+.button.is-small.is-danger.is-outlined .icon {
+  color: #db1f1f !important;
+}
+
+.button.is-small.is-danger.is-outlined:hover .icon {
+  color: #db1f1f !important;
 }
 
 /* Warning notification */

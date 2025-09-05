@@ -1,4 +1,4 @@
-{{define "enhanced_admin_base"}}
+{{define "admin_base"}}
 <section class="section">
   <div class="container">
     <!-- Admin Header with dynamic actions -->
@@ -8,7 +8,7 @@
       "Icon" "fas fa-tools"
       "Actions" (dict 
         "Right" (slice 
-          (dict "Link" (printf "/docs/admin?lang=%s" .Lang) "Text" (T "Navbar.AdminDocs") "Icon" "fas fa-book" "Type" "light" "IsOutlined" true)
+          (dict "Link" (printf "/docs/admin?lang=%s" .Lang) "Text" (T "Navbar.AdminDocs") "Icon" "fas fa-book" "Type" "primary")
         )
       )
     )}}
