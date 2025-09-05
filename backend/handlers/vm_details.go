@@ -12,6 +12,7 @@ import (
 )
 
 // VMStateManager defines the minimal state contract needed by VM details.
+// Provides access to Proxmox client and application settings.
 type VMStateManager interface {
 	GetProxmoxClient() proxmox.ClientInterface
 	GetSettings() *state.AppSettings

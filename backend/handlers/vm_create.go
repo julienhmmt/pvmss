@@ -14,7 +14,8 @@ import (
 	"pvmss/security"
 )
 
-// CreateVMPage renders the VM creation form using values from settings.json (ISOs, VMBRs, Tags, Limits)
+// CreateVMPage renders the VM creation form with pre-populated settings from settings.json
+// This includes ISOs, VMBRs, Tags, Limits, and available nodes from Proxmox
 func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	sm := h.stateManager
 	settings := sm.GetSettings()
@@ -64,7 +65,8 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	RenderTemplate(w, r, "create_vm", data)
 }
 
-// CreateVMHandler handles POST /api/vm/create to create a VM in Proxmox
+// CreateVMHandler processes POST /api/vm/create to create a VM in Proxmox
+// Validates form data, applies limits from settings, and creates the VM via Proxmox API
 func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("CreateVMHandler", r)
 
@@ -72,37 +74,37 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		return
 	}
 
-	// Extract fields
+	// Extract form fields
 	name := r.FormValue("name")
-	desc := r.FormValue("description")
+	description := r.FormValue("description")
 	vmidStr := r.FormValue("vmid")
 	socketsStr := r.FormValue("sockets")
 	coresStr := r.FormValue("cores")
-	memoryStr := r.FormValue("memory") // MB
+	memoryMBStr := r.FormValue("memory") // MB
 	diskSizeGBStr := r.FormValue("disk_size")
-	iso := r.FormValue("iso") // settings provides full volid or path string
-	bridge := r.FormValue("bridge")
+	isoPath := r.FormValue("iso") // settings provides full volid or path string
+	bridgeName := r.FormValue("bridge")
 	selectedNode := r.FormValue("node")
-	pool := r.FormValue("pool")
-	tags := r.Form["tags"]
+	poolName := r.FormValue("pool")
+	selectedTags := r.Form["tags"]
 	// Ensure mandatory tag "pvmss" is present and deduplicate
 	seen := map[string]struct{}{}
-	out := make([]string, 0, len(tags)+1)
+	out := make([]string, 0, len(selectedTags)+1)
 	// Always include pvmss first
 	if _, ok := seen["pvmss"]; !ok {
 		seen["pvmss"] = struct{}{}
 		out = append(out, "pvmss")
 	}
-	for _, t := range tags {
+	for _, t := range selectedTags {
 		if _, ok := seen[t]; ok {
 			continue
 		}
 		seen[t] = struct{}{}
 		out = append(out, t)
 	}
-	tags = out
+	tags := out
 
-	if name == "" || socketsStr == "" || coresStr == "" || memoryStr == "" || diskSizeGBStr == "" || bridge == "" {
+	if name == "" || socketsStr == "" || coresStr == "" || memoryMBStr == "" || diskSizeGBStr == "" || bridgeName == "" {
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
@@ -148,7 +150,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		http.Error(w, "invalid cores", http.StatusBadRequest)
 		return
 	}
-	memoryMB, err := strconv.Atoi(memoryStr)
+	memoryMB, err := strconv.Atoi(memoryMBStr)
 	if err != nil {
 		http.Error(w, "invalid memory", http.StatusBadRequest)
 		return
@@ -269,29 +271,29 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 
 	// Assign to pool if provided
-	if pool != "" {
-		params["pool"] = pool
+	if poolName != "" {
+		params["pool"] = poolName
 	}
 
 	// Tags (Proxmox supports 'tags': csv)
 	if len(tags) > 0 {
 		params["tags"] = strings.Join(tags, ",")
 	}
-	if desc != "" {
-		params["description"] = desc
+	if description != "" {
+		params["description"] = description
 	}
 
 	// Attach ISO if provided (ide2 with media=cdrom)
-	if iso != "" {
+	if isoPath != "" {
 		// Expect iso to be a Proxmox volid like 'local:iso/debian.iso'
-		params["ide2"] = iso + ",media=cdrom"
+		params["ide2"] = isoPath + ",media=cdrom"
 		// Set boot order to cdrom first then disk
 		params["boot"] = "order=ide2;scsi0"
 	}
 
 	// Network: virtio on selected bridge
-	if bridge != "" {
-		params["net0"] = "virtio,bridge=" + bridge
+	if bridgeName != "" {
+		params["net0"] = "virtio,bridge=" + bridgeName
 	}
 
 	// Disk: allocate on first enabled storage when available
