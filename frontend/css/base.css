@@ -1,11 +1,5 @@
 /* Base styles: global colors, surfaces, forms, spacing, accessibility */
 
-/* Theme base */
-html, body {
-  background-color: var(--bg);
-  color: var(--text);
-}
-
 /* Smooth scrolling for in-page anchors */
 html { scroll-behavior: smooth; }
 
@@ -79,11 +73,6 @@ hr {
 .card-header-title {
   color: var(--text);
   font-weight: 600;
-}
-
-.card-content {
-  padding: 2rem 1.5rem;
-  color: var(--text);
 }
 
 /* Box title styling */

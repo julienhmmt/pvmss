@@ -12,30 +12,32 @@
   </div>
 
   <div class="box admin-box">
-    <form method="POST" action="/tags" class="mb-4">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <div class="field has-addons">
-        <div class="control is-expanded">
-          <input type="text" id="new-tag" name="tag" class="input" maxlength="50" 
-                 placeholder='Tag' required pattern="[a-zA-Z0-9_-]+" 
-                 title="Only letters, numbers, hyphens, and underscores allowed">
+    <div class="toolbar mb-3">
+      <form method="POST" action="/tags" class="is-flex is-align-items-center">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div class="field has-addons mb-0">
+          <div class="control is-expanded">
+            <input type="text" id="new-tag" name="tag" class="input is-rounded" maxlength="50"
+                   placeholder='Tag' required pattern="[a-zA-Z0-9_-]+"
+                   title="Only letters, numbers, hyphens, and underscores allowed">
+          </div>
+          <div class="control">
+            <button type="submit" class="button is-primary is-rounded">
+              <span class="icon"><i class="fas fa-plus"></i></span>
+              <span>{{T "Admin.Tags.AddTag"}}</span>
+            </button>
+          </div>
         </div>
-        <div class="control">
-          <button type="submit" class="button is-primary">
-            <span class="icon"><i class="fas fa-plus"></i></span>
-            <span>{{T "Admin.Tags.AddTag"}}</span>
-          </button>
-        </div>
-      </div>
-    </form>
+      </form>
+    </div>
 
     {{if .Tags}}
     <div class="table-container">
-      <table class="table is-fullwidth is-striped is-hoverable">
+      <table class="table is-fullwidth is-striped is-hoverable modern">
         <thead>
           <tr>
             <th>
-              <div class="field has-addons mb-0">
+              <div class="field has-addons mb-0 is-align-items-center">
                 <div class="control">
                   <span class="icon-text">
                     <span class="icon is-small"><i class="fas fa-tag"></i></span>

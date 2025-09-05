@@ -79,16 +79,6 @@
   font-weight: 600;
 }
 
-.card-content {
-  padding: 2rem 1.5rem;
-  color: var(--text);
-}
-
-/* Brand gradient header moved to components.css */
-
-/* Disabled navbar items */
-/* Navbar disabled styles moved to components.css */
-
 /* Disabled form state */
 fieldset[disabled] {
   opacity: 0.7;
@@ -268,12 +258,6 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
 }
 
 /* === Theme Base & Component Overrides === */
-html, body {
-  /* Support gradient dark backgrounds from tokens.css */
-  background: var(--bg);
-  color: var(--text);
-}
-
 a { color: var(--link); }
 a:hover { color: var(--link-hover); }
 a { transition: color 0.15s ease; }
@@ -282,14 +266,6 @@ a { transition: color 0.15s ease; }
   background-color: var(--surface);
   border-top: 1px solid var(--border);
 }
-
-/* Horizontal rule color matches border tone */
-hr {
-  background-color: var(--border);
-  height: 1px;
-}
-
-/* Surfaces (consolidated above in primary definitions) */
 
 /* Forms */
 .input, .textarea, .select select {

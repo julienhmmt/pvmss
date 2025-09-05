@@ -59,7 +59,7 @@
               (dict "key" "userpool" "path" "/admin/userpool" "icon" "fas fa-user-shield" "title" "Users & Pools")
             }}
             <li>
-              <a href="{{$item.path}}" class="{{if $adminActive}}{{if eq $adminActive $item.key}}is-active{{end}}{{else}}{{if activeFor $currentPath $item.path}}is-active{{end}}{{end}}">
+              <a href="{{$item.path}}" class="{{if $adminActive}}{{if eq $adminActive $item.key}}is-active{{end}}{{else}}{{if eq $currentPath $item.path}}is-active{{end}}{{end}}">
                 <span class="icon is-small"><i class="{{$item.icon}}"></i></span>&nbsp;{{$item.title}}
               </a>
             </li>

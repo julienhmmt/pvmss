@@ -50,7 +50,8 @@
   display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem;
   transition: background-color 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
 }
-.admin-menu .menu-list a:hover { background-color: rgb(255 136 0 / 0.08); color: var(--primary); padding-left: 0.9rem; }
+.admin-menu .menu-list a:hover { background-color: var(--surface-1); color: var(--text); }
+.admin-menu .menu-list a:focus { box-shadow: none; }
 
 /* Explicit active class */
 .admin-menu .menu-list a.is-active { background-color: var(--surface-2); color: var(--text); font-weight: 600; border-left: 3px solid var(--primary); }
@@ -72,3 +73,25 @@
 
 /* Slightly reduce gap between header actions and the main columns */
 .admin-layout { margin-top: 0.25rem; }
+
+/* Modernized tables */
+.table.modern {
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface-1);
+}
+.table.modern thead th {
+  background: var(--surface-2) !important;
+  color: var(--text-strong);
+  border: none;
+}
+.table.modern tbody tr:hover {
+  background: rgba(0,0,0,0.02);
+}
+.table.modern td, .table.modern th {
+  vertical-align: middle;
+}
+
+/* Toolbar polish */
+.admin-box .toolbar .input.is-rounded { border-radius: 9999px; }
+.admin-box .toolbar .button.is-rounded { border-radius: 9999px; }
