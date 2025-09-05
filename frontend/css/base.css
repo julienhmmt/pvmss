@@ -13,17 +13,6 @@ html { scroll-behavior: smooth; }
   }
 }
 
-/* Footer and separators */
-.footer {
-  background-color: var(--surface);
-  border-top: 1px solid var(--border);
-}
-
-hr {
-  background-color: var(--border);
-  height: 1px;
-}
-
 /* Surfaces */
 .box {
   background-color: var(--surface);
