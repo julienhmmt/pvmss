@@ -1,13 +1,10 @@
 {{define "notification"}}
-{{/* 
+{{/*
   Reusable notification component
-  Usage: {{template "notification" (dict "Type" "success" "Message" "Operation completed successfully" "Icon" "fas fa-check" "Dismissible" true)}}
+  Usage: {{template "notification" (dict "Type" "success" "Message" "Operation completed successfully" "Icon" "fas fa-check")}}
 */}}
-<div class="notification is-{{or .Type "info"}} is-light{{if .Dismissible}} is-dismissible{{end}}" role="alert" 
+<div class="notification is-{{or .Type "info"}} is-light" role="alert"
      {{if .Live}}aria-live="{{.Live}}"{{else}}aria-live="polite"{{end}}>
-  {{if .Dismissible}}
-  <button class="delete" aria-label="Close notification"></button>
-  {{end}}
   <div class="level is-mobile">
     <div class="level-left">
       {{if .Icon}}

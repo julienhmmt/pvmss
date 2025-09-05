@@ -98,3 +98,8 @@
 .card:hover .card-content {
   transform: none !important;
 }
+
+/* Override pointer-events for notification dismiss checkboxes */
+input.notification-dismiss-toggle.visually-hidden-checkbox {
+  pointer-events: auto !important;
+}
