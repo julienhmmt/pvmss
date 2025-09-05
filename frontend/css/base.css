@@ -32,6 +32,11 @@ html { scroll-behavior: smooth; }
   overflow: hidden;
 }
 
+.card.no-hover:hover {
+  transform: none;
+  box-shadow: var(--shadow-color);
+}
+
 .card-header {
   background-color: var(--surface-2);
   padding: 1.25rem 1.5rem;

@@ -6,20 +6,14 @@
         <div class="columns is-centered">
             <div class="column is-12-tablet is-10-desktop">
                 <!-- Main Form Container -->
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title is-flex is-align-items-center">
-                            <span class="icon has-text-primary mr-3">
-                                <i class="fas fa-plus-square fa-lg"></i>
-                            </span>
-                            <div>
-                                <h1 class="title is-4 mb-1">{{T "VM.Create.Title"}}</h1>
-                                <p class="subtitle is-6 has-text-grey">{{T "UI.CreateVMDescription"}}</p>
-                            </div>
-                        </div>
-                    </div>
-
+                <div class="card admin-card">
+                    <header class="card-header brand-header is-align-items-center">
+                        <p class="card-header-title">
+                            <span class="icon"><i class="fas fa-plus-square"></i></span>&nbsp;{{T "VM.Create.Title"}}
+                        </p>
+                    </header>
                     <div class="card-content">
+                        <p class="mb-4 has-text-grey">{{T "UI.CreateVMDescription"}}</p>
                         {{if not .ProxmoxConnected}}
                         <div class="notification is-warning is-light mb-4" role="alert" aria-live="polite">
                             <div class="level is-mobile">
@@ -66,21 +60,19 @@
                                 {{/* Node limits map for later inline lookups */}}
                                 {{$nodesLimits := index .Limits "nodes"}}
 
-                                <!-- Configuration Section -->
+                                <!-- Configuration Sections -->
                                 <div class="columns is-multiline">
+
                                     <!-- Basic Configuration -->
                                     <div class="column is-12-tablet is-6-desktop">
-                                        <div class="card mb-5">
-                                            <div class="card-header">
-                                                <div class="card-header-title is-flex is-align-items-center">
-                                                    <span class="icon has-text-info mr-2">
-                                                        <i class="fas fa-info-circle"></i>
-                                                    </span>
-                                                    <span class="has-text-weight-medium">{{T "VM.Create.BasicInfo"}}</span>
-                                                </div>
-                                            </div>
+                                        <div class="card no-hover mb-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-info-circle"></i></span>&nbsp;{{T "VM.Create.BasicInfo"}}
+                                                </p>
+                                            </header>
                                             <div class="card-content">
-                                                <!-- VM Name -->
+                                                <!-- VM Name, Description, VM ID fields... -->
                                                 <div class="field">
                                                     <label for="vmName" class="label has-text-weight-normal">
                                                         <span class="icon-text">
@@ -89,59 +81,40 @@
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <input id="vmName" class="input" type="text" name="name"
-                                                            placeholder='{{T "VM.Create.VMNamePlaceholder"}}'
-                                                            required aria-required="true" aria-describedby="nameHelp">
+                                                        <input id="vmName" class="input" type="text" name="name" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true">
                                                     </div>
-                                                    <p id="nameHelp" class="help has-text-grey-light">{{T "VM.Create.VMNameHelp"}}</p>
                                                 </div>
-
-                                                <!-- Description -->
                                                 <div class="field">
                                                     <label for="vmDescription" class="label has-text-weight-normal">{{T "VM.Create.Description"}}</label>
                                                     <div class="control">
-                                                        <textarea id="vmDescription" class="textarea" name="description"
-                                                            placeholder='{{T "VM.Create.DescriptionPlaceholder"}}'
-                                                            rows="3" aria-describedby="descHelp"></textarea>
+                                                        <textarea id="vmDescription" class="textarea" name="description" placeholder='{{T "VM.Create.DescriptionPlaceholder"}}' rows="3"></textarea>
                                                     </div>
-                                                    <p id="descHelp" class="help is-hidden" aria-hidden="true">Optional description for your virtual machine</p>
                                                 </div>
-
-                                                <!-- VM ID -->
                                                 <div class="field">
-                                                    <label for="vmId" class="label has-text-weight-normal">
-                                                        {{T "VM.Create.VMID"}}
-                                                    </label>
+                                                    <label for="vmId" class="label has-text-weight-normal">{{T "VM.Create.VMID"}}</label>
                                                     <div class="control">
-                                                        <input id="vmId" class="input" type="number" name="vmid" min="100"
-                                                            max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}'
-                                                            aria-describedby="vmidHelp">
+                                                        <input id="vmId" class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}'>
                                                     </div>
-                                                    <p id="vmidHelp" class="help has-text-grey-light">{{T "VM.Create.VMID.Help"}}</p>
+                                                    <p class="help has-text-grey-light">{{T "VM.Create.VMID.Help"}}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <!-- Resources Configuration -->
-                                <div class="column is-12-tablet is-6-desktop">
-                                    <div class="card mb-5">
-                                        <div class="card-header">
-                                            <div class="card-header-title is-flex is-align-items-center">
-                                                <span class="icon has-text-success mr-2">
-                                                    <i class="fas fa-server"></i>
-                                                </span>
-                                                <span class="has-text-weight-medium">{{T "VM.Create.Resources"}}</span>
-                                            </div>
-                                        </div>
-                                        <div class="card-content">
-                                            <!-- CPU Configuration -->
-                                            <div class="field">
-                                                <label class="label has-text-weight-normal mb-3">{{T "VM.Create.CPUCores"}}</label>
-                                                <div class="columns is-mobile">
-                                                    <div class="column">
-                                                        <div class="field">
+                                    <!-- Resources Configuration -->
+                                    <div class="column is-12-tablet is-6-desktop">
+                                        <div class="card no-hover mb-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{T "VM.Create.Resources"}}
+                                                </p>
+                                            </header>
+                                            <div class="card-content">
+                                                <!-- CPU, Memory, Disk, Storage fields... -->
+                                                <div class="field">
+                                                    <label class="label has-text-weight-normal">{{T "VM.Create.CPUCores"}}</label>
+                                                    <div class="columns is-mobile">
+                                                        <div class="column">
                                                             <label for="cpuSockets" class="label is-small has-text-grey">{{T "VM.Create.CPUSockets"}}</label>
                                                             <div class="control">
                                                                 <div class="select is-small is-fullwidth">
@@ -153,9 +126,7 @@
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div class="column">
-                                                        <div class="field">
+                                                        <div class="column">
                                                             <label for="cpuCores" class="label is-small has-text-grey">Cores per Socket</label>
                                                             <div class="control">
                                                                 <div class="select is-small is-fullwidth">
@@ -169,164 +140,85 @@
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <p class="help has-text-grey-light">
-                                                    Sockets: {{$vmSockMin}}–{{$vmSockMax}} | Cores: {{$vmCoreMin}}–{{$vmCoreMax}}
-                                                </p>
-                                            </div>
-
-                                            <!-- Memory -->
-                                            <div class="field">
-                                                <label for="memory" class="label has-text-weight-normal">{{T "Common.Memory"}}</label>
-                                                <div class="field has-addons">
-                                                    <div class="control is-expanded">
-                                                        <input id="memory" class="input" type="number" name="memory"
-                                                            min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128"
-                                                            value="{{$vmRamMinMB}}" required aria-required="true">
+                                                <div class="field">
+                                                    <label for="memory" class="label has-text-weight-normal">{{T "Common.Memory"}}</label>
+                                                    <div class="field has-addons">
+                                                        <div class="control is-expanded">
+                                                            <input id="memory" class="input" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required aria-required="true">
+                                                        </div>
+                                                        <div class="control"><span class="button is-static">MB</span></div>
                                                     </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="diskSize" class="label has-text-weight-normal">{{T "VM.Create.DiskSize"}}</label>
+                                                    <div class="field has-addons">
+                                                        <div class="control is-expanded">
+                                                            <input id="diskSize" class="input" type="number" name="disk_size" min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required aria-required="true">
+                                                        </div>
+                                                        <div class="control"><span class="button is-static">GB</span></div>
+                                                    </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="storage" class="label has-text-weight-normal">{{T "VM.Create.Storage"}}</label>
                                                     <div class="control">
-                                                        <span class="button is-static has-text-grey">MB</span>
+                                                        <div class="select is-fullwidth">
+                                                            <select id="storage" name="storage" required aria-required="true">
+                                                                <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
+                                                                {{range .Storages}}<option value="{{.}}">{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>{{end}}
+                                                            </select>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <p class="help has-text-grey-light">
-                                                    Range: {{$vmRamMinGB}}–{{$vmRamMaxGB}} GB ({{$vmRamMinMB}}–{{$vmRamMaxMB}} MB)
-                                                </p>
-                                            </div>
-
-                                            <!-- Disk Size -->
-                                            <div class="field">
-                                                <label for="diskSize" class="label has-text-weight-normal">{{T "VM.Create.DiskSize"}}</label>
-                                                <div class="field has-addons">
-                                                    <div class="control is-expanded">
-                                                        <input id="diskSize" class="input" type="number" name="disk_size"
-                                                            min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1"
-                                                            value="{{$vmDiskMax}}" required aria-required="true">
-                                                    </div>
-                                                    <div class="control">
-                                                        <span class="button is-static has-text-grey">GB</span>
-                                                    </div>
-                                                </div>
-                                                <p class="help has-text-grey-light">
-                                                    Range: {{$vmDiskMin}}–{{$vmDiskMax}} GB
-                                                </p>
-                                            </div>
-
-                                            <!-- Storage Selection -->
-                                            <div class="field">
-                                                <label for="storage" class="label has-text-weight-normal">
-                                                    <span class="icon-text">
-                                                        <span class="icon has-text-grey"><i class="fas fa-hdd"></i></span>
-                                                        <span>{{T "VM.Create.Storage"}}</span>
-                                                    </span>
-                                                </label>
-                                                <div class="control">
-                                                    <div class="select is-fullwidth">
-                                                        <select id="storage" name="storage" required aria-required="true">
-                                                            <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
-                                                            {{range .Storages}}
-                                                            <option value="{{.}}">{{.}}</option>
-                                                            {{else}}
-                                                            <option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>
-                                                            {{end}}
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                                <p class="help has-text-grey-light">{{T "VM.Create.StorageHelp"}}</p>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                                </div>
 
-                                <!-- Media & Network Configuration -->
-                                <div class="columns is-multiline">
+                                    <!-- Media & Network Configuration -->
                                     <div class="column is-12-tablet is-6-desktop">
-                                        <div class="card mb-5">
-                                            <div class="card-header">
-                                                <div class="card-header-title is-flex is-align-items-center">
-                                                    <span class="icon has-text-link mr-2">
-                                                        <i class="fas fa-network-wired"></i>
-                                                    </span>
-                                                    <span class="has-text-weight-medium">{{T "VM.Create.MediaNetwork"}}</span>
-                                                </div>
-                                            </div>
-
+                                        <div class="card no-hover mb-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "VM.Create.MediaNetwork"}}
+                                                </p>
+                                            </header>
                                             <div class="card-content">
-                                                <!-- Node Selector -->
+                                                <!-- Node, Pool, ISO, Bridge fields... -->
                                                 <div class="field">
-                                                    <label for="node" class="label has-text-weight-normal">
-                                                        <span class="icon-text">
-                                                            <span class="icon has-text-grey"><i class="fas fa-server"></i></span>
-                                                            <span>Proxmox Node</span>
-                                                        </span>
-                                                    </label>
+                                                    <label for="node" class="label has-text-weight-normal">Proxmox Node</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="node" name="node" required aria-required="true">
-                                                                {{range .Nodes}}
-                                                                <option value="{{.}}" {{if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>
-                                                                {{else}}
-                                                                <option disabled>No nodes available</option>
-                                                                {{end}}
+                                                                {{range .Nodes}}<option value="{{.}}" {{if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>{{else}}<option disabled>No nodes available</option>{{end}}
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <p class="help has-text-grey-light">Select the target Proxmox node</p>
                                                 </div>
-
-                                                <!-- Pool -->
                                                 <div class="field">
-                                                    <label for="pool" class="label has-text-weight-normal">
-                                                        <span class="icon-text">
-                                                            <span class="icon has-text-grey"><i class="fas fa-layer-group"></i></span>
-                                                            <span>Resource Pool</span>
-                                                        </span>
-                                                    </label>
+                                                    <label for="pool" class="label has-text-weight-normal">Resource Pool</label>
                                                     <div class="control">
-                                                        <input id="pool" class="input" type="text" name="pool"
-                                                            value="{{.DefaultPool}}" placeholder="pvmss_<user>"
-                                                            aria-describedby="poolHelp">
+                                                        <input id="pool" class="input" type="text" name="pool" value="{{.DefaultPool}}" placeholder="pvmss_<user>">
                                                     </div>
-                                                    <p id="poolHelp" class="help has-text-grey-light">Optional: assign the VM to a Proxmox pool (requires ACL permissions)</p>
                                                 </div>
-
-                                                <!-- ISO Image -->
                                                 <div class="field">
-                                                    <label for="isoImage" class="label has-text-weight-normal">
-                                                        <span class="icon-text">
-                                                            <span class="icon has-text-grey"><i class="fas fa-compact-disc"></i></span>
-                                                            <span>{{T "VM.Create.ISOImage"}}</span>
-                                                        </span>
-                                                    </label>
+                                                    <label for="isoImage" class="label has-text-weight-normal">{{T "VM.Create.ISOImage"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
-                                                            <select id="isoImage" name="iso" aria-describedby="isoHelp">
+                                                            <select id="isoImage" name="iso">
                                                                 <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
-                                                                {{range sort .ISOs}}
-                                                                <option value="{{.}}">{{.}}</option>
-                                                                {{else}}
-                                                                <option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>
-                                                                {{end}}
+                                                                {{range sort .ISOs}}<option value="{{.}}">{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <p id="isoHelp" class="help has-text-grey-light">{{T "VM.Create.ISOImageHelp"}}</p>
                                                 </div>
-
-                                                <!-- Network Bridge -->
                                                 <div class="field">
                                                     <label for="networkBridge" class="label has-text-weight-normal">{{T "VM.Create.Network"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="networkBridge" name="bridge" required aria-required="true">
-                                                                {{range sort .Bridges}}
-                                                                <option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>
-                                                                {{else}}
-                                                                <option disabled>{{T "VM.Create.NoBridgesAvailable"}}</option>
-                                                                {{end}}
+                                                                {{range sort .Bridges}}<option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoBridgesAvailable"}}</option>{{end}}
                                                             </select>
                                                         </div>
                                                     </div>
-                                                    <p class="help has-text-grey-light">{{T "VM.Create.NetworkBridgeHelp"}}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -334,24 +226,19 @@
 
                                     <!-- Tags Section -->
                                     <div class="column is-12-tablet is-6-desktop">
-                                        <div class="card mb-5">
-                                            <div class="card-header">
-                                                <div class="card-header-title is-flex is-align-items-center">
-                                                    <span class="icon has-text-warning mr-2">
-                                                        <i class="fas fa-tags"></i>
-                                                    </span>
-                                                    <span class="has-text-weight-medium">{{T "VM.Create.Tags"}}</span>
-                                                </div>
-                                            </div>
+                                        <div class="card no-hover mb-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "VM.Create.Tags"}}
+                                                </p>
+                                            </header>
                                             <div class="card-content">
                                                 <div class="field">
                                                     <label class="label has-text-weight-normal">Available Tags</label>
                                                     <div class="tags are-medium">
                                                         {{if .AvailableTags}}
-                                                        <!-- Mandatory tag always submitted -->
                                                         <span class="tag is-primary">pvmss</span>
                                                         <input type="hidden" name="tags" value="pvmss">
-
                                                         {{range sort .AvailableTags}}
                                                         {{if ne . "pvmss"}}
                                                         <label>
@@ -368,31 +255,27 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    </fieldset>
-                                </form>
-                            </div>
+                                    </div>
 
-                        <!-- Action Buttons -->
-                        <div class="field is-grouped is-justify-content-flex-end">
-                            <div class="control">
-                                <button type="reset" class="button is-light is-medium">
-                                            <span class="icon">
-                                                <i class="fas fa-undo"></i>
-                                            </span>
-                                            <span>{{T "Common.Reset"}}</span>
-                                        </button>
-                                    </div>
-                                    <div class="control">
-                                        <button type="submit" class="button is-primary is-medium">
-                                            <span class="icon">
-                                                <i class="fas fa-save"></i>
-                                            </span>
-                                            <span>{{T "Common.Create"}}</span>
-                                        </button>
-                                    </div>
                                 </div>
                             </fieldset>
-                    </form>
+
+                            <!-- Action Buttons -->
+                            <div class="field is-grouped is-justify-content-flex-end pt-5">
+                                <div class="control">
+                                    <button type="reset" form="vmCreateForm" class="button is-light is-medium">
+                                        <span class="icon"><i class="fas fa-undo"></i></span>
+                                        <span>{{T "Common.Reset"}}</span>
+                                    </button>
+                                </div>
+                                <div class="control">
+                                    <button type="submit" form="vmCreateForm" class="button is-primary is-medium">
+                                        <span class="icon"><i class="fas fa-save"></i></span>
+                                        <span>{{T "Common.Create"}}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
                 </div>
             </div>
         </div>
