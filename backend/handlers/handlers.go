@@ -132,11 +132,10 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	settingsHandler := NewSettingsHandler(stateManager)
 	tagsHandler := NewTagsHandler(stateManager)
 	vmbrHandler := NewVMBRHandler(stateManager)
-	themeHandler := NewThemeHandler(stateManager)
 	userPoolHandler := NewUserPoolHandler(stateManager)
 
 	// Configure routes
-	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, themeHandler, userPoolHandler)
+	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, userPoolHandler)
 
 	// Configure static files handler
 	setupStaticFiles(router)
@@ -221,7 +220,6 @@ func setupRoutes(
 	settingsHandler *SettingsHandler,
 	tagsHandler *TagsHandler,
 	vmbrHandler *VMBRHandler,
-	themeHandler *ThemeHandler,
 	userPoolHandler *UserPoolHandler,
 ) {
 	// Register routes for each handler
@@ -237,7 +235,6 @@ func setupRoutes(
 	settingsHandler.RegisterLimitsRoutes(router)
 	tagsHandler.RegisterRoutes(router)
 	vmbrHandler.RegisterRoutes(router)
-	themeHandler.RegisterRoutes(router)
 	userPoolHandler.RegisterRoutes(router)
 
 	// Home route

@@ -96,16 +96,6 @@
                         </a>
                         {{end}}
 
-                        <a class="button is-light" href="/theme/toggle?return={{.CurrentURL}}" title="Toggle theme" aria-label="Toggle theme">
-                            <span class="icon">
-                                {{if .IsDark}}
-                                <i class="fas fa-sun"></i>
-                                {{else}}
-                                <i class="fas fa-moon"></i>
-                                {{end}}
-                            </span>
-                        </a>
-
                         <div class="buttons has-addons language-buttons" role="group" aria-label="Language">
                             <a href="{{urlWithLang "fr"}}" hreflang="fr" class="button {{if eq .Lang "fr"}}is-selected{{else}}is-light{{end}}"
                                 title="Français" {{if eq .Lang "fr"}}aria-current="true"{{end}}>

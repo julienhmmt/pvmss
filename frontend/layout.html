@@ -1,12 +1,12 @@
 {{define "layout"}}
 <!DOCTYPE html>
-<html lang="{{.Lang}}" data-theme="{{.Theme}}">
+<html lang="{{.Lang}}" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{{T "UI.Header"}} - {{T "UI.Subtitle"}}">
     <meta name="csrf-token" content="{{.CSRFToken}}">
-    <meta name="color-scheme" content="{{.Theme}}">
+    <meta name="color-scheme" content="light">
     <title>
         {{- if .Title -}}
             {{.Title}} - {{T "UI.Header"}}
