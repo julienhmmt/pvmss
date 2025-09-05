@@ -87,3 +87,14 @@
     width: 100%;
   }
 }
+
+/* Remove hover effects from cards */
+.card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+.card:hover .card-content {
+  transform: none !important;
+}
