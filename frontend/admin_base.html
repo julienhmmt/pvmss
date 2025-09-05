@@ -1,38 +1,44 @@
-{{define "admin_base"}}
+{{define "enhanced_admin_base"}}
 <section class="section">
   <div class="container">
-    <div class="card mb-5">
-      <header class="card-header brand-header is-align-items-center">
-        <p class="card-header-title">
-          <span class="icon"><i class="fas fa-tools"></i></span>&nbsp;{{T "Navbar.Admin"}}
-        </p>
-        <a href="/docs/admin?lang={{.Lang}}" class="card-header-icon" aria-label="{{T "Navbar.AdminDocs"}}">
-          <span class="icon"><i class="fas fa-book"></i></span>
-        </a>
-      </header>
-      <div class="card-content">
-        <div class="has-text-grey-light is-size-7">{{T "Admin.Description"}}</div>
-      </div>
-    </div>
+    <!-- Admin Header with dynamic actions -->
+    {{template "page_header" (dict 
+      "Title" (T "Navbar.Admin") 
+      "Subtitle" (T "Admin.Description")
+      "Icon" "fas fa-tools"
+      "Actions" (dict 
+        "Right" (slice 
+          (dict "Link" (printf "/docs/admin?lang=%s" .Lang) "Text" (T "Navbar.AdminDocs") "Icon" "fas fa-book" "Type" "light" "IsOutlined" true)
+        )
+      )
+    )}}
 
+    <!-- Success/Error notifications -->
     {{if .Success}}
-    <div class="notification is-success is-pulse mb-5" role="alert" aria-live="polite">
-      <div class="level is-mobile">
-        <div class="level-left">
-          <div class="level-item">
-            <span class="icon has-text-white">
-              <i class="fas fa-check-circle"></i>
-            </span>
-          </div>
-          <div class="level-item">
-            <div>
-              <strong>{{T "Common.Success" | default "Success"}}</strong>
-              <p>{{.SuccessMessage}}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    {{template "notification" (dict 
+      "Type" "success" 
+      "Message" .SuccessMessage 
+      "Icon" "fas fa-check" 
+      "Dismissible" true
+    )}}
+    {{end}}
+
+    {{if .Error}}
+    {{template "notification" (dict 
+      "Type" "danger" 
+      "Message" .ErrorMessage 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" true
+    )}}
+    {{end}}
+
+    {{if .Warning}}
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Message" .Warning 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" true
+    )}}
     {{end}}
 
     <div class="columns admin-layout">
@@ -40,18 +46,28 @@
         <nav class="menu admin-menu">
           <p class="menu-label">{{T "Navbar.Admin"}}</p>
           <ul class="menu-list">
-            <li><a href="/admin/nodes" class="{{if .AdminActive}}{{if eq .AdminActive "nodes"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/nodes"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-server"></i></span>&nbsp;{{T "Nodes.Title"}}</a></li>
-            <li><a href="/admin/tags" class="{{if .AdminActive}}{{if eq .AdminActive "tags"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/tags"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-tags"></i></span>&nbsp;{{T "Admin.Tags.Title"}}</a></li>
-            <li><a href="/admin/storage" class="{{if .AdminActive}}{{if eq .AdminActive "storage"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/storage"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{T "Admin.Storage.Title"}}</a></li>
-            <li><a href="/admin/iso" class="{{if .AdminActive}}{{if eq .AdminActive "iso"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/iso"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;{{T "Admin.ISO.Title"}}</a></li>
-            <li><a href="/admin/vmbr" class="{{if .AdminActive}}{{if eq .AdminActive "vmbr"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/vmbr"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "Admin.VMBR.Title"}}</a></li>
-            <li><a href="/admin/limits" class="{{if .AdminActive}}{{if eq .AdminActive "limits"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/limits"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-sliders-h"></i></span>&nbsp;{{T "Admin.Limits.Title"}}</a></li>
-            <li><a href="/admin/userpool" class="{{if .AdminActive}}{{if eq .AdminActive "userpool"}}is-active{{end}}{{else}}{{if activeFor (currentPath) "/admin/userpool"}}is-active{{end}}{{end}}"><span class="icon is-small"><i class="fas fa-user-shield"></i></span>&nbsp;Users & Pools</a></li>
+            {{$adminActive := .AdminActive}}
+            {{$currentPath := currentPath}}
+            {{range $item := slice 
+              (dict "key" "nodes" "path" "/admin/nodes" "icon" "fas fa-server" "title" (T "Nodes.Title"))
+              (dict "key" "tags" "path" "/admin/tags" "icon" "fas fa-tags" "title" (T "Admin.Tags.Title"))
+              (dict "key" "storage" "path" "/admin/storage" "icon" "fas fa-hdd" "title" (T "Admin.Storage.Title"))
+              (dict "key" "iso" "path" "/admin/iso" "icon" "fas fa-compact-disc" "title" (T "Admin.ISO.Title"))
+              (dict "key" "vmbr" "path" "/admin/vmbr" "icon" "fas fa-network-wired" "title" (T "Admin.VMBR.Title"))
+              (dict "key" "limits" "path" "/admin/limits" "icon" "fas fa-sliders-h" "title" (T "Admin.Limits.Title"))
+              (dict "key" "userpool" "path" "/admin/userpool" "icon" "fas fa-user-shield" "title" "Users & Pools")
+            }}
+            <li>
+              <a href="{{$item.path}}" class="{{if $adminActive}}{{if eq $adminActive $item.key}}is-active{{end}}{{else}}{{if activeFor $currentPath $item.path}}is-active{{end}}{{end}}">
+                <span class="icon is-small"><i class="{{$item.icon}}"></i></span>&nbsp;{{$item.title}}
+              </a>
+            </li>
+            {{end}}
           </ul>
         </nav>
       </aside>
       <div class="column is-9">
-        {{/* Prefer explicit AdminActive flag; fallback to path-based detection */}}
+        {{/* Dynamic section rendering based on AdminActive */}}
         {{if .AdminActive}}
           {{if eq .AdminActive "nodes"}}
             {{template "admin_nodes_section" .}}
@@ -68,10 +84,15 @@
           {{else if eq .AdminActive "userpool"}}
             {{template "admin_userpool_section" .}}
           {{else}}
-            {{/* Unknown AdminActive value: render nothing */}}
+            <!-- Unknown AdminActive value: show default message -->
+            {{template "notification" (dict 
+              "Type" "info" 
+              "Message" "Select an admin section from the menu to get started." 
+              "Icon" "fas fa-info-circle"
+            )}}
           {{end}}
         {{else}}
-          {{/* Fallback based on current path (supports subpaths) */}}
+          {{/* Fallback based on current path */}}
           {{if activeFor (currentPath) "/admin/nodes"}}
             {{template "admin_nodes_section" .}}
           {{else if activeFor (currentPath) "/admin/tags"}}
@@ -84,8 +105,15 @@
             {{template "admin_vmbr_section" .}}
           {{else if activeFor (currentPath) "/admin/limits"}}
             {{template "admin_limits_section" .}}
+          {{else if activeFor (currentPath) "/admin/userpool"}}
+            {{template "admin_userpool_section" .}}
           {{else}}
-            {{/* Fallback: nothing */}}
+            <!-- Default admin dashboard -->
+            {{template "notification" (dict 
+              "Type" "info" 
+              "Message" "Welcome to the admin panel. Select a section from the menu to get started." 
+              "Icon" "fas fa-info-circle"
+            )}}
           {{end}}
         {{end}}
       </div>
