@@ -461,10 +461,22 @@ func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, er
 		return
 	}
 
+	// Optional friendly warning (e.g., redirected from VM details to login)
+	warning := ""
+	if r.URL.Query().Get("warning") == "login_required" {
+		switch r.URL.Query().Get("context") {
+		case "update_description":
+			warning = "Please log in to update the VM description."
+		default:
+			warning = "Please log in to continue."
+		}
+	}
+
 	// Prepare template data with CSRF token
 	data := map[string]interface{}{
 		"Title":       "Login",
 		"Error":       errorMsg,
+		"Warning":     warning,
 		"CSRFToken":   csrfToken,
 		"RedirectURL": r.URL.Query().Get("redirect"),
 		"ReturnURL":   r.URL.Query().Get("return"),

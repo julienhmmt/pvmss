@@ -50,11 +50,11 @@
                         </tr>
                         <tr>
                             <th><i class="fas fa-memory"></i> {{T "VMDetails.Label.RAM"}}</th>
-                            <td>{{.VM.MaxMem}}</td>
+                            <td>{{.FormattedMaxMem}}</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-hdd"></i> {{T "VMDetails.Label.Disk"}}</th>
-                            <td>{{.VM.MaxDisk}}</td>
+                            <td>{{.FormattedMaxDisk}}</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-network-wired"></i> {{T "VMDetails.Label.Network"}}</th>
@@ -64,7 +64,7 @@
                             <th><i class="fas fa-info-circle"></i> {{T "VMDetails.Label.Description"}}</th>
                             <td>
                                 {{if .DescriptionHTML}}
-                                {{.DescriptionHTML}}
+                                {{safeHTML .DescriptionHTML}}
                                 {{else}}
                                 {{.Description}}
                                 {{end}}

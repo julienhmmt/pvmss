@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -21,6 +23,15 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	desc := r.FormValue("description")
+	// If user is not authenticated, redirect to login with return + context to show a friendly notice
+	if !IsAuthenticated(r) {
+		returnTo := "/"
+		if vmid != "" {
+			returnTo = "/vm/details/" + vmid + "?edit=description"
+		}
+		http.Redirect(w, r, "/login?warning=login_required&context=update_description&return="+url.QueryEscape(returnTo), http.StatusSeeOther)
+		return
+	}
 	if vmid == "" || node == "" {
 		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
 		return
@@ -42,7 +53,10 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
 		return
 	}
-	http.Redirect(w, r, "/vm/details/"+vmid+"?refresh=1", http.StatusSeeOther)
+	ctx.Log.Info().Str("vmid", vmid).Str("node", node).Msg("VM description updated successfully")
+	// Add a cache-busting timestamp to ensure the next GET fetches fresh data
+	ts := time.Now().Unix()
+	http.Redirect(w, r, "/vm/details/"+vmid+"?refresh=1&ts="+strconv.FormatInt(ts, 10), http.StatusSeeOther)
 }
 
 // UpdateVMTagsHandler updates the VM tags from selected checkboxes

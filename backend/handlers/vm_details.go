@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gomarkdown/markdown"
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/proxmox"
@@ -43,11 +44,9 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 
 	// VM details and actions routes
 	router.GET("/vm/details/:vmid", h.VMDetailsHandler)
-
-	// VM action handlers
-	router.POST("/vm/update-description", h.UpdateVMDescriptionHandler)
-	router.POST("/vm/update-tags", h.UpdateVMTagsHandler)
-	router.POST("/vm/action", h.VMActionHandler)
+	router.POST("/vm/update/description", RequireAuthHandle(h.UpdateVMDescriptionHandler))
+	router.POST("/vm/update/tags", RequireAuthHandle(h.UpdateVMTagsHandler))
+	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))
 }
 
 // VMDetailsHandler displays detailed information about a specific VM
@@ -105,6 +104,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	// Get VM config to fetch description and tags
 	var tags []string
+	var description string
+	var networkBridges []string
 	if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, vm.Node, vm.VMID); err == nil {
 		if tagsStr, ok := cfg["tags"].(string); ok && tagsStr != "" {
 			parts := strings.Split(tagsStr, ";")
@@ -114,13 +115,62 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 				}
 			}
 		}
+		if desc, ok := cfg["description"].(string); ok {
+			description = desc
+		}
+		networkBridges = proxmox.ExtractNetworkBridges(cfg)
+	}
+
+	// Get Proxmox connection status
+	connected, _ := stateManager.GetProxmoxStatus()
+
+	// Get CSRF token
+	handlerCtx := NewHandlerContext(w, r, "VMDetailsHandler")
+	csrfToken, _ := handlerCtx.GetCSRFToken()
+
+	// Check for edit modes
+	showDescriptionEditor := r.URL.Query().Get("edit") == "description"
+	showTagsEditor := r.URL.Query().Get("edit") == "tags"
+
+	// Optional warning messages (e.g., when user must login to update)
+	warningMsg := ""
+	if r.URL.Query().Get("warning") == "login_required" {
+		warningMsg = "Please log in to update the VM description."
+	}
+
+	// Get available tags from settings
+	settings := stateManager.GetSettings()
+	allTags := settings.Tags
+
+	// Format network bridges as string
+	networkBridgesStr := ""
+	if len(networkBridges) > 0 {
+		networkBridgesStr = strings.Join(networkBridges, ", ")
+	}
+
+	// Process description as markdown
+	descriptionHTML := ""
+	if description != "" {
+		descriptionHTML = string(markdown.ToHTML([]byte(description), nil, nil))
 	}
 
 	// Render template
 	data := map[string]interface{}{
-		"Title":  "VM Details",
-		"VM":     vm,
-		"VMTags": tags,
+		"Title":                 "VM Details",
+		"VM":                    vm,
+		"Tags":                  strings.Join(tags, ", "),
+		"Description":           description,
+		"DescriptionHTML":       descriptionHTML,
+		"NetworkBridges":        networkBridgesStr,
+		"ProxmoxConnected":      connected,
+		"CSRFToken":             csrfToken,
+		"ShowDescriptionEditor": showDescriptionEditor,
+		"ShowTagsEditor":        showTagsEditor,
+		"CurrentTags":           tags,
+		"AllTags":               allTags,
+		"FormattedMaxMem":       FormatBytes(vm.MaxMem),
+		"FormattedMaxDisk":      FormatBytes(vm.MaxDisk),
+		"Warning":               warningMsg,
 	}
 
 	renderTemplateInternal(w, r, "vm_details", data)

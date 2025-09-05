@@ -11,6 +11,25 @@
             </p>
           </header>
           <div class="card-content">
+            {{if .Warning}}
+            <div class="notification is-info is-light mb-4" role="status" aria-live="polite">
+              <div class="level is-mobile">
+                <div class="level-left">
+                  <div class="level-item">
+                    <span class="icon has-text-info">
+                      <i class="fas fa-info-circle"></i>
+                    </span>
+                  </div>
+                  <div class="level-item">
+                    <div>
+                      <strong>{{T "Common.Information" | default "Information"}}</strong>
+                      <p>{{.Warning}}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {{end}}
             {{if .Error}}
             <div class="notification is-danger mb-4" role="alert" aria-live="assertive">
               <div class="level is-mobile">

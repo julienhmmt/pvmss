@@ -150,6 +150,8 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	if data == nil {
 		data = make(map[string]interface{})
 	}
+	// Ensure dynamic pages are not cached by browsers or proxies
+	setNoCacheHeaders(w)
 	populateTemplateData(w, r, data)
 
 	// Add CSS context information for context7 optimization
@@ -293,10 +295,32 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 				returnURL = returnURL + "?" + r.URL.RawQuery
 			}
 
+			// Special-case POST actions that should return to a GET page after login
+			if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/vm/update/description") {
+				// Try to parse form to extract vmid for a better redirect target
+				if err := r.ParseForm(); err == nil {
+					if vmid := r.FormValue("vmid"); vmid != "" {
+						returnURL = "/vm/details/" + vmid + "?edit=description"
+					} else {
+						// Fallback to VM list/create page if vmid isn't available
+						returnURL = "/vm/create"
+					}
+				} else {
+					// If form can't be parsed, still avoid redirecting back to a POST-only endpoint
+					returnURL = "/vm/create"
+				}
+			}
+
 			setNoCacheHeaders(w)
 
-			// Redirect to login page with return URL
-			http.Redirect(w, r, "/login?return="+url.QueryEscape(returnURL), http.StatusSeeOther)
+			// Build login redirect with return URL
+			loginURL := "/login?return=" + url.QueryEscape(returnURL)
+			// If user was trying to update a VM (e.g., description), add a friendly warning/context
+			if strings.HasPrefix(r.URL.Path, "/vm/update/description") {
+				loginURL += "&warning=login_required&context=update_description"
+			}
+			// Redirect to login page with enriched context
+			http.Redirect(w, r, loginURL, http.StatusSeeOther)
 			return
 		}
 

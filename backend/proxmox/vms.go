@@ -54,6 +54,10 @@ func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node
 		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to update VM config")
 		return fmt.Errorf("failed to update config for vm %d on node %s: %w", vmid, node, err)
 	}
+	// Invalidate the cached GET for this VM's config so the next fetch returns fresh data
+	if c, ok := client.(*Client); ok && c != nil {
+		c.InvalidateCache(path)
+	}
 	return nil
 }
 

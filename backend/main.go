@@ -220,6 +220,11 @@ func initTemplates() (*template.Template, error) {
 		return template.HTML(localized)
 	}
 
+	// Add safeHTML function for rendering unescaped HTML
+	funcMap["safeHTML"] = func(s string) template.HTML {
+		return template.HTML(s)
+	}
+
 	// Get template directory path
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
