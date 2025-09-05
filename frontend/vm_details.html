@@ -4,7 +4,7 @@
         <div class="card admin-card">
             <header class="card-header brand-header is-align-items-center">
                 <p class="card-header-title">
-                    <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{.VMName}} (ID: {{.VMID}})
+                    <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{.VM.Name}} (ID: {{.VM.VMID}})
                 </p>
             </header>
             <div class="card-content">
@@ -26,35 +26,35 @@
                     <tbody>
                         <tr>
                             <th><i class="fas fa-tag"></i> {{T "VMDetails.Label.Name"}}</th>
-                            <td>{{.VMName}}</td>
+                            <td>{{.VM.Name}}</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-hashtag"></i> {{T "VMDetails.Label.ID"}}</th>
-                            <td>{{.VMID}}</td>
+                            <td>{{.VM.VMID}}</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-power-off"></i> {{T "VMDetails.Label.Status"}}</th>
                             <td>
-                                <span id="vm-status-badge" class="tag is-medium {{if eq .Status "running"}}is-success{{else if eq .Status "stopped"}}is-danger{{else}}is-light{{end}}">
-                                    <span id="vm-status-text">{{.Status}}</span>
+                                <span id="vm-status-badge" class="tag is-medium {{if eq .VM.Status "running"}}is-success{{else if eq .VM.Status "stopped"}}is-danger{{else}}is-light{{end}}">
+                                    <span id="vm-status-text">{{.VM.Status}}</span>
                                 </span>
                             </td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-clock"></i> {{T "VMDetails.Label.Uptime"}}</th>
-                            <td>{{.Uptime}}</td>
+                            <td>{{.VM.Uptime}}</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-microchip"></i> {{T "VMDetails.Label.CPU"}}</th>
-                            <td>{{.Sockets}} sockets / {{.Cores}} cores</td>
+                            <td>{{.VM.CPUs}} cores</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-memory"></i> {{T "VMDetails.Label.RAM"}}</th>
-                            <td>{{.RAM}}</td>
+                            <td>{{.VM.MaxMem}}</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-hdd"></i> {{T "VMDetails.Label.Disk"}}</th>
-                            <td>{{.DiskCount}} ({{.DiskTotalSize}})</td>
+                            <td>{{.VM.MaxDisk}}</td>
                         </tr>
                         <tr>
                             <th><i class="fas fa-network-wired"></i> {{T "VMDetails.Label.Network"}}</th>
@@ -70,7 +70,7 @@
                                 {{end}}
                                 {{if .ProxmoxConnected}}
                                 <div class="is-pulled-right">
-                                    <a class="button is-small is-light" href="/vm/details/{{.VMID}}?edit=description">
+                                    <a class="button is-small is-light" href="/vm/details/{{.VM.VMID}}?edit=description">
                                         <span class="icon is-small"><i class="fas fa-edit"></i></span>
                                         <span>Modify</span>
                                     </a>
@@ -84,7 +84,7 @@
                                 {{.Tags}}
                                 {{if .ProxmoxConnected}}
                                 <div class="is-pulled-right">
-                                    <a class="button is-small is-light" href="/vm/details/{{.VMID}}?edit=tags">
+                                    <a class="button is-small is-light" href="/vm/details/{{.VM.VMID}}?edit=tags">
                                         <span class="icon is-small"><i class="fas fa-edit"></i></span>
                                         <span>Modify</span>
                                     </a>
@@ -101,8 +101,8 @@
                     <h2 class="title is-5"><span class="icon"><i class="fas fa-edit"></i></span>&nbsp;Edit Description</h2>
                     <form action="/vm/update/description" method="post">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                        <input type="hidden" name="vmid" value="{{.VMID}}" />
-                        <input type="hidden" name="node" value="{{.Node}}" />
+                        <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                        <input type="hidden" name="node" value="{{.VM.Node}}" />
                         <div class="field">
                             <label for="description" class="label">Description (Markdown supported)</label>
                             <div class="control">
@@ -112,7 +112,7 @@
                         </div>
                         <div class="field is-grouped is-justify-content-space-between">
                             <div class="control">
-                                <a class="button" href="/vm/details/{{.VMID}}">
+                                <a class="button" href="/vm/details/{{.VM.VMID}}">
                                     <span class="icon"><i class="fas fa-times"></i></span>
                                     <span>Cancel</span>
                                 </a>
@@ -134,8 +134,8 @@
                     <h2 class="title is-5"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;Manage Tags</h2>
                     <form action="/vm/update/tags" method="post">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                        <input type="hidden" name="vmid" value="{{.VMID}}" />
-                        <input type="hidden" name="node" value="{{.Node}}" />
+                        <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                        <input type="hidden" name="node" value="{{.VM.Node}}" />
                         {{if .CurrentTags}}
                         <p class="mb-3 is-size-7 has-text-grey">
                             <strong>Currently applied:</strong> {{join .CurrentTags ", "}}
@@ -167,7 +167,7 @@
                         </div>
                         <div class="field is-grouped is-justify-content-space-between">
                             <div class="control">
-                                <a class="button" href="/vm/details/{{.VMID}}">
+                                <a class="button" href="/vm/details/{{.VM.VMID}}">
                                     <span class="icon"><i class="fas fa-times"></i></span>
                                     <span>Cancel</span>
                                 </a>
@@ -190,7 +190,7 @@
     <!-- Refresh Button -->
     <div class="is-flex is-justify-content-center mb-4 mt-4">
         <a class="button is-info is-light"
-            href="/vm/details/{{.VMID}}?refresh=1">
+            href="/vm/details/{{.VM.VMID}}?refresh=1">
             <span>{{T "VMDetails.Action.Refresh"}}</span>
         </a>
     </div>
@@ -199,9 +199,9 @@
     <div class="is-flex is-justify-content-center mb-4">
         {{if .ProxmoxConnected}}
             <button id="open-console-btn" class="button is-primary is-light"
-                    data-vmid="{{.VMID}}"
-                    data-vmname="{{.VMName}}"
-                    data-node="{{.Node}}">
+                    data-vmid="{{.VM.VMID}}"
+                    data-vmname="{{.VM.Name}}"
+                    data-node="{{.VM.Node}}">
                 <span>Open Console</span>
             </button>
         {{else}}
@@ -215,46 +215,46 @@
     <div class="buttons is-centered mt-4">
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VMID}}" />
-            <input type="hidden" name="node" value="{{.Node}}" />
+            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+            <input type="hidden" name="node" value="{{.VM.Node}}" />
             <input type="hidden" name="action" value="start" />
-            <button class="button is-success is-light" {{if or (not .ProxmoxConnected) (eq .Status "running")}}disabled{{end}}>
+            <button class="button is-success is-light" {{if or (not .ProxmoxConnected) (eq .VM.Status "running")}}disabled{{end}}>
                 <span>{{T "VMDetails.Action.Start"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VMID}}" />
-            <input type="hidden" name="node" value="{{.Node}}" />
+            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+            <input type="hidden" name="node" value="{{.VM.Node}}" />
             <input type="hidden" name="action" value="reboot" />
-            <button class="button is-warning is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
+            <button class="button is-warning is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
                 <span>{{T "VMDetails.Action.Reboot"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VMID}}" />
-            <input type="hidden" name="node" value="{{.Node}}" />
+            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+            <input type="hidden" name="node" value="{{.VM.Node}}" />
             <input type="hidden" name="action" value="shutdown" />
-            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
+            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
                 <span>{{T "VMDetails.Action.Shutdown"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VMID}}" />
-            <input type="hidden" name="node" value="{{.Node}}" />
+            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+            <input type="hidden" name="node" value="{{.VM.Node}}" />
             <input type="hidden" name="action" value="stop" />
-            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
+            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
                 <span>{{T "VMDetails.Action.Stop"}}</span>
             </button>
         </form>
         <form action="/vm/action" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VMID}}" />
-            <input type="hidden" name="node" value="{{.Node}}" />
+            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+            <input type="hidden" name="node" value="{{.VM.Node}}" />
             <input type="hidden" name="action" value="reset" />
-            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .Status "running")}}disabled{{end}}>
+            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
                 <span>{{T "VMDetails.Action.Reset"}}</span>
             </button>
         </form>

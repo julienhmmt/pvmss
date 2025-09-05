@@ -610,8 +610,6 @@ other = "Nœud"
 other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
 ["Admin.Tags.Placeholder"]
 other = "Nom du tag"
-["Admin.Tags.NewTagPlaceHolder"]
-other = "Entrez le nom du nouveau tag"
 ["Admin.Tags.Title"]
 other = "Gestion des tags"
 ["Admin.Tags.Header.Name"]

@@ -1,98 +1,16 @@
-:root {
-  --primary: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
-  --primary-hover: hsl(var(--bulma-primary-h) var(--bulma-primary-s) calc(var(--bulma-primary-l) - 6%));
-  /* Light theme tokens */
-  --bg: #f7f8fa;
-  --text: #1f2937;
-  --muted: #6b7280;
-  --surface: #ffffff;
-  --surface-2: #f3f4f6;
-  --border: #e5e7eb;
-  --navbar-bg: #ffffff;
-  --navbar-text: #374151;
-  --card-bg: #ffffff;
-  --link: var(--primary);
-  --link-hover: var(--primary-hover);
-  --shadow-color: 0 10px 30px rgb(2 6 23 / 8%);
-  color-scheme: light;
+/* Tokens are defined in tokens.css (:root and [data-theme="dark"]) */
 
-  /* Bulma v1 brand mapping (primary color in light mode) */
-  /* #ff8800 -> hsl(32, 100%, 50%) */
-  --bulma-primary-h: 32;
-  --bulma-primary-s: 100%;
-  --bulma-primary-l: 50%;
-}
+/* Dark theme tokens live in tokens.css */
 
-[data-theme="dark"] {
-  /* Dark theme tokens (slightly softer surfaces) */
-  --primary: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l)); /* brand primary */
-  --primary-hover: hsl(var(--bulma-primary-h) var(--bulma-primary-s) calc(var(--bulma-primary-l) - 6%));
-  --bg: #0f0f12;        /* anthracite base */
-  --text: #e5e7eb;
-  --muted: #9ca3af;
-  --surface: #17181c;   /* anthracite surface */
-  --surface-2: #1f2025; /* slightly raised surface */
-  --border: #2a2b31;    /* neutral graphite border */
-  --navbar-bg: #121316;
-  --navbar-text: #e5e7eb;
-  --card-bg: #17181c;
-  --link: var(--primary);
-  --link-hover: var(--primary-hover);
-  --shadow-color: 0 8px 24px rgb(0 0 0 / 40%);
-
-  /* Bulma v1 dark scheme variables: enable automatic dark theming for Bulma components */
-  --bulma-scheme-brightness: dark;
-  --bulma-scheme-main-l: 11%;
-  --bulma-scheme-main-bis-l: 13%;
-  --bulma-scheme-main-ter-l: 15%;
-  --bulma-background-l: 14%;
-  --bulma-border-weak-l: 21%;
-  --bulma-border-l: 24%;
-  --bulma-text-weak-l: 53%;
-  --bulma-text-l: 71%;
-  --bulma-text-strong-l: 93%;
-  --bulma-text-title-l: 100%;
-  --bulma-hover-background-l-delta: 5%;
-  --bulma-active-background-l-delta: 10%;
-  --bulma-hover-border-l-delta: 10%;
-  --bulma-active-border-l-delta: 20%;
-  --bulma-hover-color-l-delta: 5%;
-  --bulma-active-color-l-delta: 10%;
-
-  /* Bulma v1 brand mapping (primary color in dark mode) */
-  /* #d97706 -> hsl(32, 95%, 44%) */
-  --bulma-primary-h: 32;
-  --bulma-primary-s: 95%;
-  --bulma-primary-l: 44%;
-  color-scheme: dark;
-}
-
-.hero.is-primary {
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-}
-
-.welcome-block {
-  background: rgb(255 255 255 / 96%);
-  border-radius: 1.125rem;
-  box-shadow: 0 0.5rem 2rem rgb(50 50 93 / 7%);
-  padding: 2.5rem 2.2rem;
-  margin-top: -2.5rem;
-}
-
-/* Dark-mode: welcome card should be a dark surface */
-[data-theme="dark"] .welcome-block {
-  background: rgb(23 24 28 / 92%);
-  border: 1px solid var(--border);
-  box-shadow: 0 0.5rem 1.25rem rgb(0 0 0 / 32%);
-}
+/* Hero & welcome-block moved to components.css */
 
 .box {
   border-radius: 0.375rem;
-  box-shadow: 0 0.125rem 0.1875rem rgb(10 10 10 / 10%);
   margin-bottom: 1.5rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-color);
 }
-
-/* Use Bulma's built-in has-text-primary colors computed from --bulma-primary-* */
 
 .box .title {
   color: var(--text);
@@ -133,121 +51,11 @@
   min-height: auto;
 }
 
-.navbar-item {
-  font-weight: 600;
-  color: var(--navbar-text);
-  padding: 0.5rem 0.75rem;
-  margin: 0;
-  border-radius: 0.25rem; /* keep subtle rounding for hover */
-  transition: all 0.2s ease;
-}
-
-.navbar-item:hover {
-  color: var(--primary);
-  background-color: transparent;
-}
-
-[data-theme="dark"] .navbar-item:hover {
-  color: var(--text);
-}
-
-/* Professional active state: brand gradient underline */
-.navbar {
-  background-color: var(--navbar-bg);
-}
-.navbar-item.is-active {
-  color: var(--primary);
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover)) bottom / 100% 3px no-repeat;
-  border-radius: 0; /* underline look */
-}
-
-.navbar-brand .navbar-item {
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: var(--primary);
-  padding: 0.5rem 1rem;
-}
-
-.navbar-burger {
-  height: 4rem;
-  width: 4rem;
-}
-
-.navbar-burger:hover {
-  background-color: rgb(255 136 0 / 10%);
-}
-
-[data-theme="dark"] .navbar-burger:hover {
-  background-color: rgb(255 255 255 / 0.06);
-}
-
-.navbar-burger span {
-  height: 0.125rem;
-  width: 1.25rem;
-  background-color: var(--muted);
-  left: calc(50% - 0.625rem);
-}
-
-/* Focus styles for accessibility */
-.navbar a:focus-visible,
-.navbar button:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
 /* Global focus-visible for interactive elements */
 :where(a, button, input, select, textarea, .button):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: 6px;
-}
-
-.language-buttons .button {
-  min-width: 2.5em;
-  padding: 0 0.5em;
-}
-
-.language-buttons .is-selected {
-  background-color: var(--primary);
-  color: white;
-  border-color: var(--primary);
-}
-
-.navbar .button {
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-@media screen and (max-width: 64rem) {
-  .navbar-menu {
-    background-color: var(--navbar-bg);
-    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 0.1);
-  }
-
-  .navbar-end {
-    padding: 1rem;
-  }
-
-  .navbar-item {
-    padding: 0.75rem 1.5rem;
-  }
-}
-
-.hero {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
-  padding-top: 6rem;
-  padding-bottom: 4rem;
-}
-
-.hero .title {
-  color: white;
-  font-weight: 700;
-  margin-bottom: 1rem;
-}
-
-.hero .subtitle {
-  color: rgb(255 255 255 / 90%);
 }
 
 .card {
@@ -256,6 +64,8 @@
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow: hidden;
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow-color);
 }
 
 .card-header {
@@ -271,29 +81,13 @@
 
 .card-content {
   padding: 2rem 1.5rem;
+  color: var(--text);
 }
 
-/* Brand gradient header (opt-in) */
-.card-header.brand-header {
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-}
-.card-header.brand-header .card-header-title,
-.card-header.brand-header .card-header-icon,
-.card-header.brand-header .icon {
-  color: #fff;
-}
+/* Brand gradient header moved to components.css */
 
 /* Disabled navbar items */
-.navbar-item.is-disabled {
-  pointer-events: none;
-  opacity: 0.6;
-  cursor: not-allowed;
-  background-color: transparent !important;
-}
-
-.navbar-item.is-disabled .icon-text {
-  opacity: 0.7;
-}
+/* Navbar disabled styles moved to components.css */
 
 /* Disabled form state */
 fieldset[disabled] {
@@ -314,31 +108,9 @@ fieldset[disabled]::after {
   border-radius: 6px;
 }
 
-/* Navbar and notification positioning */
-.navbar {
-  position: relative;
-  z-index: 100;
-  box-shadow: 0 2px 4px rgb(0 0 0 / 0.1);
-}
+/* Navbar container moved to components.css */
 
-[data-theme="dark"] .navbar {
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
-}
-
-/* Notification banner */
-#proxmox-status-banner {
-  position: fixed;
-  top: 3.25rem; /* Height of the navbar */
-  left: 0;
-  right: 0;
-  z-index: 99;
-  border-radius: 0;
-  margin: 0;
-  padding: 0.75rem 1.5rem;
-  animation: slideDown 0.3s ease-out;
-  box-shadow: 0 2px 4px rgb(0 0 0 / 0.1);
-  transition: all 0.3s ease;
-}
+/* Notification banner moved to components.css */
 
 /* Adjust main content to account for fixed navbar and notification */
 #main-content {
@@ -363,17 +135,7 @@ body:has(.admin-layout) #main-content {
   margin-top: 6rem; /* Navbar height + notification height */
 }
 
-/* Animation for notification */
-@keyframes slideDown {
-  from {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
+/* slideDown animation moved to components.css */
 
 /* Smooth scrolling for in-page anchors */
 html {
@@ -448,28 +210,11 @@ body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#sectio
   border-left: 3px solid var(--primary);
 }
 
-[data-theme="dark"] body:has(#section-nodes:target) .admin-menu .menu-list a[href="#section-nodes"],
-[data-theme="dark"] body:has(#section-tags:target) .admin-menu .menu-list a[href="#section-tags"],
-[data-theme="dark"] body:has(#section-storage:target) .admin-menu .menu-list a[href="#section-storage"],
-[data-theme="dark"] body:has(#section-iso:target) .admin-menu .menu-list a[href="#section-iso"],
-[data-theme="dark"] body:has(#section-vmbr:target) .admin-menu .menu-list a[href="#section-vmbr"],
-[data-theme="dark"] body:has(#section-resource-limits:target) .admin-menu .menu-list a[href="#section-resource-limits"] {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border-left: 3px solid var(--primary);
-}
-
 /* Default active (no hash): first item */
 body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
   background-color: var(--surface-2);
   color: var(--text);
   font-weight: 600;
-  border-left: 3px solid var(--primary);
-}
-
-[data-theme="dark"] body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a {
-  background-color: var(--surface-2);
-  color: var(--text);
   border-left: 3px solid var(--primary);
 }
 
@@ -495,35 +240,8 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
   box-shadow: none;
 }
 
-.button.is-small.is-danger.is-outlined .icon {
-  color: #db1f1f !important;
-}
-
 .button.is-small.is-danger.is-outlined:hover .icon {
   color: #db1f1f !important;
-}
-
-/* Warning notification */
-.notification.is-warning.is-light {
-  background-color: #fffbeb;
-  color: #947600;
-  border-left: 4px solid #ffdd57;
-}
-
-/* Dark: tone down strong warning backgrounds when not using .is-light */
-[data-theme="dark"] .notification.is-warning:not(.is-light) {
-  background-color: rgb(245 158 11 / 0.12);
-  color: #fbbf24;
-  border-left: 3px solid #f59e0b;
-}
-
-/* --- Tag selection (Create VM) --- */
-.checkbox-label {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  user-select: none;
-  margin: 0.25rem 0.35rem 0.25rem 0;
 }
 
 .visually-hidden-checkbox {
@@ -535,36 +253,6 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
   padding: 0;
   pointer-events: none;
 }
-
-/* default tag appearance */
-.checkbox-label .tag {
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-/* when checked, promote to primary color */
-.visually-hidden-checkbox:checked + .tag {
-  background-color: var(--primary);
-  color: #fff;
-  border-color: transparent;
-}
-
-/* disabled mandatory tag remains primary but non-interactive */
-.visually-hidden-checkbox[disabled] + .tag {
-  opacity: 0.9;
-  cursor: not-allowed;
-}
-
-/* Selected tags display */
-.selected-tags .tag {
-  margin: 0 0.35rem 0.35rem 0;
-}
-.selected-tags .tag.is-primary {
-  background-color: var(--primary);
-  color: #fff;
-  border-color: transparent;
-}
-
-/* Let Bulma style .tag.is-primary using its on-scheme derivations */
 
 /* Dark-mode neutral light tag variant */
 [data-theme="light"] .tag.is-light,
@@ -581,7 +269,8 @@ body:not(:has(.section-anchor:target)) .admin-menu .menu-list li:first-child > a
 
 /* === Theme Base & Component Overrides === */
 html, body {
-  background-color: var(--bg);
+  /* Support gradient dark backgrounds from tokens.css */
+  background: var(--bg);
   color: var(--text);
 }
 
@@ -600,19 +289,7 @@ hr {
   height: 1px;
 }
 
-/* Surfaces */
-.box {
-  background-color: var(--surface);
-  box-shadow: var(--shadow-color);
-  border: 1px solid var(--border);
-}
-
-.card {
-  background-color: var(--card-bg);
-  box-shadow: var(--shadow-color);
-}
-
-.card-content { color: var(--text); }
+/* Surfaces (consolidated above in primary definitions) */
 
 /* Forms */
 .input, .textarea, .select select {
@@ -726,179 +403,11 @@ hr {
 .progress.is-danger::-webkit-progress-value { background-color: #ef4444; }
 .progress.is-danger::-moz-progress-bar { background-color: #ef4444; }
 
-/* Notifications (subtle base) */
-.notification { color: var(--text); }
-
-/* Proxmox banner tweak on dark for readability */
-[data-theme="dark"] #proxmox-status-banner {
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
-}
-
-/* Buttons: rely on Bulma dark scheme for .button.is-light */
-[data-theme="light"] .button.is-light,
-.button.is-light {
-  border-color: var(--border);
-}
-[data-theme="light"] .button.is-light:hover,
-.button.is-light:hover {
-  background-color: var(--surface-2);
-}
-[data-theme="dark"] .button.is-light:hover {
-  background-color: #2a2b31;
-}
-
-/* Slightly round all buttons for a modern feel */
-.button {
-  border-radius: 0.5rem;
-}
-
-/* Bulma notification shades in dark mode */
-[data-theme="dark"] .notification.is-light {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-[data-theme="dark"] .notification.is-light a:not(.button) {
-  color: var(--link);
-}
-[data-theme="dark"] .notification.is-light a:not(.button):hover {
-  color: var(--link-hover);
-}
-[data-theme="dark"] .notification.is-light.is-primary { border-left: 3px solid var(--primary); }
-[data-theme="dark"] .notification.is-light.is-info { border-left: 3px solid #38bdf8; }
-[data-theme="dark"] .notification.is-light.is-success { border-left: 3px solid #22c55e; }
-[data-theme="dark"] .notification.is-light.is-warning { border-left: 3px solid #f59e0b; }
-[data-theme="dark"] .notification.is-light.is-danger { border-left: 3px solid #ef4444; }
-
-/* Tabs polish (Bulma) */
-.tabs { margin-bottom: 1rem; }
-.tabs li a {
-  color: var(--muted);
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
-}
-.tabs li a:hover { color: var(--text); }
-.tabs:not(.is-toggle):not(.is-toggle-rounded) li.is-active a {
-  border-bottom-color: var(--primary);
-  color: var(--primary);
-}
-.tabs.is-boxed li a { border-radius: 0.375rem 0.375rem 0 0; }
-.tabs.is-boxed li.is-active a {
-  background-color: var(--surface-2);
-  border-color: var(--border);
-  color: var(--text);
-}
-.tabs.is-toggle li.is-active a,
-.tabs.is-toggle.is-toggle-rounded li.is-active a {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-
-/* Pagination (Bulma) */
-.pagination .pagination-previous,
-.pagination .pagination-next,
-.pagination .pagination-link,
-.pagination .pagination-ellipsis {
-  background-color: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
-  border-radius: 0.5rem;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.pagination a:hover { background-color: var(--surface-2); }
-.pagination .pagination-link.is-current {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-
-/* Breadcrumb (Bulma) */
-.breadcrumb a { color: var(--muted); transition: color 0.15s ease; }
-.breadcrumb a:hover { color: var(--text); }
-.breadcrumb li.is-active a { color: var(--text); }
-.breadcrumb .icon { color: var(--muted); }
-
 /* Form controls: checkboxes and radios use brand color (modern browsers) */
 input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
 
-/* Range slider (compact, brand thumb) */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 0.375rem;
-  background: var(--surface-2);
-  border-radius: 999px;
-}
-input[type="range"]:focus { outline: none; }
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 0.375rem;
-  background: var(--surface-2);
-  border-radius: 999px;
-}
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  height: 1rem;
-  width: 1rem;
-  border-radius: 50%;
-  background: var(--primary);
-  border: 2px solid #fff;
-  margin-top: -0.3125rem; /* center on track */
-}
-input[type="range"]::-moz-range-track {
-  height: 0.375rem;
-  background: var(--surface-2);
-  border-radius: 999px;
-}
-input[type="range"]::-moz-range-thumb {
-  height: 1rem;
-  width: 1rem;
-  border-radius: 50%;
-  background: var(--primary);
-  border: 2px solid #fff;
-}
-[data-theme="dark"] input[type="range"]::-webkit-slider-thumb,
-[data-theme="dark"] input[type="range"]::-moz-range-thumb {
-  border-color: var(--surface);
-}
+/* Range slider rules removed (unused) */
 
-/* File input (Bulma .file) */
-.file .file-cta, .file .file-name {
-  background-color: var(--surface);
-  border-color: var(--border);
-  color: var(--text);
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-.file .file-cta:hover { background-color: var(--surface-2); }
-.file.is-primary .file-cta {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-[data-theme="dark"] .file .file-name {
-  background-color: var(--surface-2);
-  color: var(--muted);
-}
+/* File input rules removed (unused) */
 
-/* Message component (Bulma) */
-.message { background: transparent; }
-.message .message-header {
-  background-color: var(--surface-2);
-  color: var(--text);
-  border-color: var(--border);
-}
-.message .message-body {
-  background-color: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-top: none;
-}
-.message.is-primary .message-header {
-  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-  color: #fff;
-}
-.message.is-primary .message-body { border-left: 3px solid var(--primary); }
-.message.is-info .message-body { border-left: 3px solid #38bdf8; }
-.message.is-success .message-body { border-left: 3px solid #22c55e; }
-.message.is-warning .message-body { border-left: 3px solid #f59e0b; }
-.message.is-danger .message-body { border-left: 3px solid #ef4444; }
+/* Message component handled in components.css */

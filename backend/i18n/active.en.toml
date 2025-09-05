@@ -602,8 +602,6 @@ other = "Node"
 other = "Manage tags for your virtual machines. Tags must be between 3 and 24 characters long and can only contain alphanumeric characters."
 ["Admin.Tags.Placeholder"]
 other = "Tag name"
-["Admin.Tags.NewTagPlaceHolder"]
-other = "Enter new tag name"
 ["Admin.Tags.Title"]
 other = "Tags Management"
 ["Admin.Tags.Header.Name"]

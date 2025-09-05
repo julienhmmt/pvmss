@@ -146,17 +146,29 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	proxmoxConnected, proxmoxMsg := gs.GetProxmoxStatus()
 
 	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available
+	// Proxmox typically separates tags with ';' but some environments may contain
+	// comma-separated lists inside a single part (e.g. "pvmss,test"). We split on
+	// both ';' and ',' to ensure each individual tag is counted.
 	tagCounts := make(map[string]int)
 	if client := gs.GetProxmoxClient(); client != nil {
 		if vms, err := proxmox.GetVMsWithContext(r.Context(), client); err == nil {
 			for i := range vms {
 				if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, vms[i].Node, vms[i].VMID); err == nil {
 					if v, ok := cfg["tags"].(string); ok && v != "" {
-						parts := strings.Split(v, ";")
-						for _, p := range parts {
-							t := strings.TrimSpace(p)
-							if t != "" {
-								tagCounts[t]++
+						// First split by ';'
+						semiParts := strings.Split(v, ";")
+						for _, sp := range semiParts {
+							sp = strings.TrimSpace(sp)
+							if sp == "" {
+								continue
+							}
+							// Then split each part by ','
+							commaParts := strings.Split(sp, ",")
+							for _, cp := range commaParts {
+								t := strings.TrimSpace(cp)
+								if t != "" {
+									tagCounts[t]++
+								}
 							}
 						}
 					}
@@ -164,6 +176,10 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 			}
 		}
 	}
+
+	// Debug logging for tag counts
+	log := logger.Get()
+	log.Info().Interface("tag_counts", tagCounts).Msg("Tag counts calculated")
 
 	// Filter and sort tags by name for display
 	tags := make([]string, 0, len(settings.Tags))
@@ -183,13 +199,13 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	data["SortOrder"] = sortOrder
 	data["TotalTags"] = len(settings.Tags)
 	data["FilteredTags"] = len(tags)
-	if len(tagCounts) > 0 {
-		data["TagCounts"] = tagCounts
-	}
+	// Always expose TagCounts so the template can safely render a value (including zero)
+	data["TagCounts"] = tagCounts
 	data["ProxmoxConnected"] = proxmoxConnected
 	if !proxmoxConnected && proxmoxMsg != "" {
 		data["ProxmoxError"] = proxmoxMsg
 	}
+
 	renderTemplateInternal(w, r, "admin_tags", data)
 }
 

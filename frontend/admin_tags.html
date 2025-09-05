@@ -17,7 +17,7 @@
       <div class="field has-addons">
         <div class="control is-expanded">
           <input type="text" id="new-tag" name="tag" class="input" maxlength="50" 
-                 placeholder='{{T "Admin.Tags.NewTagPlaceholder"}}' required pattern="[a-zA-Z0-9_-]+" 
+                 placeholder='Tag' required pattern="[a-zA-Z0-9_-]+" 
                  title="Only letters, numbers, hyphens, and underscores allowed">
         </div>
         <div class="control">
@@ -74,9 +74,11 @@
               {{$count := index $.TagCounts .}}
               {{if $count}}
                 <span class="tag is-success is-light">{{$count}} VMs</span>
-              {{else}}
-                <span class="tag is-light">0 VMs</span>
               {{end}}
+            </td>
+            {{else}}
+            <td>
+              <span class="tag is-light">0 VMs</span>
             </td>
             {{end}}
             <td class="has-text-right">

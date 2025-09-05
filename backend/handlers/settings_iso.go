@@ -233,11 +233,22 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	enabled, err := strconv.ParseBool(enabledStr)
-	if err != nil {
-		log.Error().Err(err).Str("enabled", enabledStr).Msg("Invalid enabled parameter")
-		http.Error(w, "Invalid enabled parameter", http.StatusBadRequest)
-		return
+	// Robust checkbox parsing:
+	// HTML checkboxes submit nothing when unchecked, and "on" when checked (by default).
+	// Accept common truthy values: on, true, 1, yes. Missing/empty means false.
+	enabled := false
+	if enabledStr != "" {
+		if b, err := strconv.ParseBool(enabledStr); err == nil {
+			enabled = b
+		} else if strings.EqualFold(enabledStr, "on") || strings.EqualFold(enabledStr, "yes") || enabledStr == "1" {
+			enabled = true
+		} else if strings.EqualFold(enabledStr, "off") || strings.EqualFold(enabledStr, "no") || enabledStr == "0" {
+			enabled = false
+		} else {
+			log.Error().Err(err).Str("enabled", enabledStr).Msg("Invalid enabled parameter")
+			http.Error(w, "Invalid enabled parameter", http.StatusBadRequest)
+			return
+		}
 	}
 
 	log.Debug().Str("volid", volid).Bool("enabled", enabled).Msg("Toggling ISO")
@@ -280,8 +291,8 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 
 	log.Info().Str("volid", volid).Bool("enabled", enabled).Msg("ISO toggle completed")
 
-	// Redirect back to ISOs page
-	http.Redirect(w, r, "/admin/isos", http.StatusSeeOther)
+	// Redirect back to ISOs page (route base is /admin/iso)
+	http.Redirect(w, r, "/admin/iso", http.StatusSeeOther)
 }
 
 // RegisterRoutes registers ISO-related routes
