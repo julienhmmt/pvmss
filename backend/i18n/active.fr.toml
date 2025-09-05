@@ -454,6 +454,12 @@ other = "ID VM (Optionnel)"
 other = "Si vous laissez ce champ vide, le prochain ID de VM disponible sera automatiquement attribué."
 ["VM.Create.VMIDPlaceholder"]
 other = "Auto-attribué si vide"
+["VM.Create.SelectStorage"]
+other = "Sélectionnez un stockage"
+["VM.Create.NoStoragesAvailable"]
+other = "Aucun stockage disponible"
+["VM.Create.StorageHelp"]
+other = "Sélectionnez un stockage pour votre machine virtuelle"
 
 # ===========
 # VM Details

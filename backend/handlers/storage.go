@@ -128,7 +128,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 		// Prepare data for the template (empty Storages)
 		data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
-		data["StorageList"] = []map[string]interface{}{}
+		data["Storages"] = []map[string]interface{}{}
 		data["EnabledStorages"] = enabledMap
 
 		// Add translations and render

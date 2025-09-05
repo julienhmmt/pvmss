@@ -209,6 +209,29 @@
                                                     Range: {{$vmDiskMin}}–{{$vmDiskMax}} GB
                                                 </p>
                                             </div>
+
+                                            <!-- Storage Selection -->
+                                            <div class="field">
+                                                <label for="storage" class="label has-text-weight-normal">
+                                                    <span class="icon-text">
+                                                        <span class="icon has-text-grey"><i class="fas fa-hdd"></i></span>
+                                                        <span>{{T "VM.Create.Storage"}}</span>
+                                                    </span>
+                                                </label>
+                                                <div class="control">
+                                                    <div class="select is-fullwidth">
+                                                        <select id="storage" name="storage" required aria-required="true">
+                                                            <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
+                                                            {{range .Storages}}
+                                                            <option value="{{.}}">{{.}}</option>
+                                                            {{else}}
+                                                            <option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>
+                                                            {{end}}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <p class="help has-text-grey-light">{{T "VM.Create.StorageHelp"}}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -412,6 +412,12 @@ other = "VM ID (Optional)"
 other = "If you leave this field empty, the next available VM ID will be automatically assigned."
 ["VM.Create.VMIDPlaceholder"]
 other = "Auto-assigned if empty"
+["VM.Create.SelectStorage"]
+other = "Select a storage"
+["VM.Create.NoStoragesAvailable"]
+other = "No storage available"
+["VM.Create.StorageHelp"]
+other = "Select a storage for your virtual machine"
 
 # ===========
 # VM Details

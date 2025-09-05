@@ -52,6 +52,26 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		},
 	}
 
+	// Get available storages for the selected node
+	storages := []string{}
+	if sm.GetProxmoxClient() != nil && activeNode != "" {
+		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), sm.GetProxmoxClient(), activeNode); err == nil {
+			// Create a map of enabled storages for quick lookup
+			enabledStorageMap := make(map[string]bool)
+			for _, enabledStorage := range settings.EnabledStorages {
+				enabledStorageMap[enabledStorage] = true
+			}
+
+			for _, storage := range storageList {
+				// Only include storages that are in enabled_storages list, enabled, and can hold VM disks
+				if enabledStorageMap[storage.Storage] && storage.Enabled == 1 && strings.Contains(storage.Content, "images") {
+					storages = append(storages, storage.Storage)
+				}
+			}
+		}
+	}
+	data["Storages"] = storages
+
 	// Proxmox connection status for template (also provided by middleware, but ensure here)
 	if sm != nil {
 		connected, message := sm.GetProxmoxStatus()
@@ -87,6 +107,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	selectedNode := r.FormValue("node")
 	poolName := r.FormValue("pool")
 	selectedTags := r.Form["tags"]
+	selectedStorage := r.FormValue("storage")
 	// Ensure mandatory tag "pvmss" is present and deduplicate
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(selectedTags)+1)
@@ -104,7 +125,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 	tags := out
 
-	if name == "" || socketsStr == "" || coresStr == "" || memoryMBStr == "" || diskSizeGBStr == "" || bridgeName == "" {
+	if name == "" || socketsStr == "" || coresStr == "" || memoryMBStr == "" || diskSizeGBStr == "" || bridgeName == "" || selectedStorage == "" {
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
@@ -296,16 +317,10 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		params["net0"] = "virtio,bridge=" + bridgeName
 	}
 
-	// Disk: allocate on first enabled storage when available
-	if settings := h.stateManager.GetSettings(); settings != nil {
-		storage := ""
-		if len(settings.EnabledStorages) > 0 {
-			storage = settings.EnabledStorages[0]
-		}
-		if storage != "" && diskSizeGBStr != "" {
-			params["scsi0"] = storage + ":" + strconv.Itoa(diskSizeGB)
-			params["scsihw"] = "virtio-scsi-pci"
-		}
+	// Disk: use selected storage for VM disk
+	if selectedStorage != "" && diskSizeGBStr != "" {
+		params["scsi0"] = selectedStorage + ":" + strconv.Itoa(diskSizeGB)
+		params["scsihw"] = "virtio-scsi-pci"
 	}
 
 	// Perform API call: POST /nodes/{node}/qemu
