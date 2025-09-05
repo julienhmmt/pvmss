@@ -318,7 +318,7 @@
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="networkBridge" name="bridge" required aria-required="true">
-                                                                {{range .Bridges}}
+                                                                {{range sort .Bridges}}
                                                                 <option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>
                                                                 {{else}}
                                                                 <option disabled>{{T "VM.Create.NoBridgesAvailable"}}</option>
@@ -352,19 +352,19 @@
                                                         <span class="tag is-primary">pvmss</span>
                                                         <input type="hidden" name="tags" value="pvmss">
 
-                                                        {{range $tag := .AvailableTags}}
-                                                        {{if ne $tag "pvmss"}}
+                                                        {{range sort .AvailableTags}}
+                                                        {{if ne . "pvmss"}}
                                                         <label>
-                                                            <input type="checkbox" name="tags" value="{{$tag}}" class="is-hidden">
-                                                            <span class="tag is-light">{{$tag}}</span>
+                                                            <input type="checkbox" name="tags" value="{{.}}" class="is-hidden">
+                                                            <span class="tag is-light">{{.}}</span>
                                                         </label>
                                                         {{end}}
                                                         {{end}}
                                                         {{else}}
-                                                        <span class="tag is-light is-medium">No tags available</span>
+                                                        <span class="tag is-light is-medium">{{T "VM.Create.NoTagsAvailable"}}</span>
                                                         {{end}}
                                                     </div>
-                                                    <p class="help has-text-grey-light">Click tags to select/deselect them (PVMSS is required)</p>
+                                                    <p class="help has-text-grey-light">{{T "VM.Create.TagsHelp"}}</p>
                                                 </div>
                                             </div>
                                         </div>
