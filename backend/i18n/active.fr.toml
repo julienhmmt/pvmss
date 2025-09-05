@@ -622,8 +622,12 @@ other = "Tag par défaut"
 other = "Ajouter un tag"
 ["Admin.Tags.DeleteTag"]
 other = "Supprimer le tag"
-["Admin.Tags.NoTags"]
-other = "Aucun tag trouvé. Ajoutez votre premier tag en utilisant le formulaire ci-dessus."
+["Admin.Tags.DeleteConfirmTitle"]
+other = "Confirmation de suppression du tag"
+["Admin.Tags.DeleteConfirmMessage"]
+other = "Êtes-vous sûr de vouloir supprimer ce tag ? Cette action ne peut pas être annulée."
+["Admin.Tags.DeleteConfirmTitleShort"]
+other = "Supprimer le tag"
 
 # Admin - Resource Limits
 ["Admin.Limits.Cores"]

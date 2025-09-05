@@ -74,6 +74,8 @@
             {{template "admin_nodes_section" .}}
           {{else if eq .AdminActive "tags"}}
             {{template "admin_tags_section" .}}
+          {{else if eq .AdminActive "tags_delete"}}
+            {{template "admin_tags_delete_section" .}}
           {{else if eq .AdminActive "storage"}}
             {{template "admin_storage_section" .}}
           {{else if eq .AdminActive "iso"}}
@@ -96,6 +98,8 @@
           {{/* Fallback based on current path */}}
           {{if activeFor (currentPath) "/admin/nodes"}}
             {{template "admin_nodes_section" .}}
+          {{else if activeFor (currentPath) "/admin/tags/delete"}}
+            {{template "admin_tags_delete_section" .}}
           {{else if activeFor (currentPath) "/admin/tags"}}
             {{template "admin_tags_section" .}}
           {{else if activeFor (currentPath) "/admin/storage"}}

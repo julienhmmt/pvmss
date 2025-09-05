@@ -18,7 +18,7 @@
         <div class="field has-addons mb-0">
           <div class="control is-expanded">
             <input type="text" id="new-tag" name="tag" class="input is-rounded" maxlength="50"
-                   placeholder='Tag' required pattern="[a-zA-Z0-9_-]+"
+                   placeholder='Tag' required pattern="[a-zA-Z0-9_\-]+"
                    title="Only letters, numbers, hyphens, and underscores allowed">
           </div>
           <div class="control">
@@ -85,15 +85,10 @@
             {{end}}
             <td class="has-text-right">
               {{if ne . "pvmss"}}
-              <form method="POST" action="/tags/delete" class="is-inline" 
-                    onsubmit="return confirm('Delete tag &quot;{{.}}&quot;?')">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="tag" value="{{.}}">
-                <button type="submit" class="button is-small is-danger is-outlined" 
-                        title='{{T "Admin.Tags.DeleteTag"}} "{{.}}"'>
-                  <span class="icon is-small"><i class="fas fa-trash"></i></span>
-                </button>
-              </form>
+              <a href="/admin/tags/delete?tag={{.}}" class="button is-small is-danger is-outlined"
+                 title='{{T "Admin.Tags.DeleteTag"}} "{{.}}"'>
+                <span class="icon is-small"><i class="fas fa-trash"></i></span>
+              </a>
               {{else}}
               <span class="tag is-light">{{T "Admin.Tags.DefaultTag"}}</span>
               {{end}}
@@ -120,4 +115,65 @@
     </div>
     {{end}}
   </div>
+{{end}}
+
+{{define "admin_tags_delete"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_tags_delete_section"}}
+<section class="section">
+  <div class="container mt-4">
+
+  <div class="content mb-5">
+    <h1 class="title is-4"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "Admin.Tags.Title"}}</h1>
+    <p class="subtitle is-6 has-text-grey">{{T "Admin.Tags.Description"}}</p>
+  </div>
+
+  <div class="box admin-box">
+    <div class="notification is-warning is-light">
+      <div class="level is-mobile">
+        <div class="level-left">
+          <div class="level-item">
+            <span class="icon has-text-warning">
+              <i class="fas fa-exclamation-triangle"></i>
+            </span>
+          </div>
+          <div class="level-item">
+            <div>
+              <strong>{{T "Admin.Tags.DeleteConfirmTitle"}}</strong>
+              <p>{{T "Admin.Tags.DeleteConfirmMessage" .Tag}}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="level">
+      <div class="level-left">
+        <div class="level-item">
+          <span class="tag is-info is-large">{{.Tag}}</span>
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          <form method="POST" action="/tags/delete" class="is-inline">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="tag" value="{{.Tag}}">
+            <button type="submit" class="button is-danger">
+              <span class="icon"><i class="fas fa-trash"></i></span>
+              <span>{{T "Common.Yes"}}</span>
+            </button>
+          </form>
+        </div>
+        <div class="level-item">
+          <a href="/admin/tags" class="button">
+            <span class="icon"><i class="fas fa-times"></i></span>
+            <span>{{T "Common.No"}}</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 {{end}}

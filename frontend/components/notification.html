@@ -1,7 +1,7 @@
 {{define "notification"}}
 {{/*
   Reusable notification component
-  Usage: {{template "notification" (dict "Type" "success" "Message" "Operation completed successfully" "Icon" "fas fa-check")}}
+  Usage: {{template "notification" (dict "Type" "success" "Message" "Operation completed successfully" "Icon" "fas fa-check" "Dismissible" true)}}
 */}}
 <div class="notification is-{{or .Type "info"}} is-light" role="alert"
      {{if .Live}}aria-live="{{.Live}}"{{else}}aria-live="polite"{{end}}>
@@ -25,8 +25,8 @@
         {{end}}
       </div>
     </div>
-    {{if .Action}}
     <div class="level-right">
+      {{if .Action}}
       <div class="level-item">
         {{if .Action.Link}}
         <a href="{{.Action.Link}}" class="button is-{{or .Action.Type "primary"}} is-small">
@@ -40,13 +40,18 @@
           {{end}}
           <button type="submit" class="button is-{{or $.Action.Type "primary"}} is-small">
             {{if $.Action.Icon}}<span class="icon"><i class="{{$.Action.Icon}}"></i></span>{{end}}
-            <span>{{$.Action.Text}}</span>
+            <span>{{.Action.Text}}</span>
           </button>
         </form>
         {{end}}
       </div>
+      {{end}}
+      {{if .Dismissible}}
+      <div class="level-item">
+        <button class="delete" aria-label="Dismiss notification" onclick="this.closest('.notification').style.display='none'"></button>
+      </div>
+      {{end}}
     </div>
-    {{end}}
   </div>
 </div>
 {{end}}

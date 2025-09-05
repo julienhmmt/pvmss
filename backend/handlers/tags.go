@@ -26,6 +26,47 @@ func NewTagsHandler(sm state.StateManager) *TagsHandler {
 
 var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
 
+// validateTagDeletion validates tag deletion parameters and returns the validated tag name
+func (h *TagsHandler) validateTagDeletion(tagName string, checkExists bool) (string, bool) {
+	log := logger.Get().With().Str("handler", "TagsValidation").Logger()
+
+	tagName = strings.TrimSpace(tagName)
+	if tagName == "" {
+		log.Warn().Msg("No tag specified for deletion")
+		return "", false
+	}
+
+	if !tagNameRegex.MatchString(tagName) {
+		log.Warn().Str("tag", tagName).Msg("Invalid tag name format")
+		return "", false
+	}
+
+	if strings.EqualFold(tagName, "pvmss") {
+		log.Warn().Msg("Attempted to delete the default tag")
+		return "", false
+	}
+
+	if checkExists {
+		gs := h.stateManager
+		settings := gs.GetSettings()
+
+		found := false
+		for _, tag := range settings.Tags {
+			if strings.EqualFold(tag, tagName) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			log.Warn().Str("tag", tagName).Msg("Tag not found")
+			return "", false
+		}
+	}
+
+	return tagName, true
+}
+
 // CreateTagHandler handles the creation of a new tag via an HTML form.
 func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("CreateTagHandler", r)
@@ -72,37 +113,21 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	tagName := strings.TrimSpace(r.FormValue("tag"))
-
-	if !tagNameRegex.MatchString(tagName) {
-		log.Warn().Str("tag", tagName).Msg("Attempted to delete a tag with invalid format")
-		http.Error(w, "Invalid tag name.", http.StatusBadRequest)
-		return
-	}
-
-	if strings.EqualFold(tagName, "pvmss") {
-		log.Warn().Msg("Attempted to delete the default tag")
-		http.Error(w, "The default tag 'pvmss' cannot be deleted.", http.StatusForbidden)
+	tagName, valid := h.validateTagDeletion(r.FormValue("tag"), true)
+	if !valid {
+		http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
 		return
 	}
 
 	gs := h.stateManager
 	settings := gs.GetSettings()
 
-	found := false
+	// Remove the tag from settings
 	var newTags []string
 	for _, tag := range settings.Tags {
 		if !strings.EqualFold(tag, tagName) {
 			newTags = append(newTags, tag)
-		} else {
-			found = true
 		}
-	}
-
-	if !found {
-		log.Warn().Str("tag", tagName).Msg("Attempted to delete a non-existent tag")
-		http.Redirect(w, r, "/admin/tags?error=notfound", http.StatusSeeOther)
-		return
 	}
 
 	settings.Tags = newTags
@@ -114,6 +139,20 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	log.Info().Str("tag", tagName).Msg("Tag deleted successfully")
 	http.Redirect(w, r, "/admin/tags?success=1&action=delete&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
+}
+
+// DeleteTagConfirmHandler handles the GET request for tag deletion confirmation page.
+func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	tagName, valid := h.validateTagDeletion(r.URL.Query().Get("tag"), true)
+	if !valid {
+		http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
+		return
+	}
+
+	data := AdminPageDataWithMessage("Delete Tag", "tags_delete", "", "")
+	data["Tag"] = tagName
+
+	renderTemplateInternal(w, r, "admin_tags_delete", data)
 }
 
 // TagsPageHandler handles the rendering of the admin tags page.
@@ -217,10 +256,16 @@ func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/tags", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
 		"page": h.TagsPageHandler,
 	})
-	router.POST("/tags", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+
+	// Register delete confirmation page
+	router.GET("/admin/tags/delete", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.DeleteTagConfirmHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+
+	router.POST("/tags", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
-	router.POST("/tags/delete", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+	router.POST("/tags/delete", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.DeleteTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 }

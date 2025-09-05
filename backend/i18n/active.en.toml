@@ -614,8 +614,12 @@ other = "Default Tag"
 other = "Add Tag"
 ["Admin.Tags.DeleteTag"]
 other = "Delete Tag"
-["Admin.Tags.NoTags"]
-other = "No tags found. Add your first tag using the form above."
+["Admin.Tags.DeleteConfirmTitle"]
+other = "Delete Tag Confirmation"
+["Admin.Tags.DeleteConfirmMessage"]
+other = "Are you sure you want to delete this tag? This action cannot be undone."
+["Admin.Tags.DeleteConfirmTitleShort"]
+other = "Delete Tag"
 
 # Admin - Resource Limits
 ["Admin.Limits.Cores"]

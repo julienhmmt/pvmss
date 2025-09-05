@@ -32,7 +32,8 @@ type AppSettings struct {
 }
 
 // getSettingsFilePath returns the absolute path to the settings file.
-// It uses PVMSS_SETTINGS_PATH if set; otherwise, it resolves to settings.json next to the executable.
+// It uses PVMSS_SETTINGS_PATH if set; otherwise, it looks for settings.json
+// in the backend directory relative to the executable.
 func getSettingsFilePath() (string, error) {
 	if v := os.Getenv("PVMSS_SETTINGS_PATH"); v != "" {
 		return v, nil
@@ -41,7 +42,15 @@ func getSettingsFilePath() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("could not get executable path: %w", err)
 	}
-	return filepath.Join(filepath.Dir(exePath), "settings.json"), nil
+	// Look for settings.json in the backend directory
+	exeDir := filepath.Dir(exePath)
+	// Check if we're running from the project root (development)
+	settingsPath := filepath.Join(exeDir, "backend", "settings.json")
+	if _, err := os.Stat(settingsPath); err == nil {
+		return settingsPath, nil
+	}
+	// Fallback to next to executable (production)
+	return filepath.Join(exeDir, "settings.json"), nil
 }
 
 // WriteSettings serializes the provided AppSettings struct into a well-formatted JSON string
