@@ -301,7 +301,7 @@
                                                         <div class="select is-fullwidth">
                                                             <select id="isoImage" name="iso" aria-describedby="isoHelp">
                                                                 <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
-                                                                {{range .ISOs}}
+                                                                {{range sort .ISOs}}
                                                                 <option value="{{.}}">{{.}}</option>
                                                                 {{else}}
                                                                 <option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>

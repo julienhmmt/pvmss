@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -225,7 +224,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	volid := strings.TrimSpace(r.FormValue("volid"))
-	enabledStr := strings.TrimSpace(r.FormValue("enabled"))
+	action := strings.TrimSpace(r.FormValue("action"))
 
 	if volid == "" {
 		log.Error().Msg("Missing volid parameter")
@@ -233,22 +232,23 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Robust checkbox parsing:
-	// HTML checkboxes submit nothing when unchecked, and "on" when checked (by default).
-	// Accept common truthy values: on, true, 1, yes. Missing/empty means false.
-	enabled := false
-	if enabledStr != "" {
-		if b, err := strconv.ParseBool(enabledStr); err == nil {
-			enabled = b
-		} else if strings.EqualFold(enabledStr, "on") || strings.EqualFold(enabledStr, "yes") || enabledStr == "1" {
-			enabled = true
-		} else if strings.EqualFold(enabledStr, "off") || strings.EqualFold(enabledStr, "no") || enabledStr == "0" {
-			enabled = false
-		} else {
-			log.Error().Err(err).Str("enabled", enabledStr).Msg("Invalid enabled parameter")
-			http.Error(w, "Invalid enabled parameter", http.StatusBadRequest)
-			return
-		}
+	if action == "" {
+		log.Error().Msg("Missing action parameter")
+		http.Error(w, "Missing action parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Convert action to enabled boolean
+	var enabled bool
+	switch action {
+	case "enable":
+		enabled = true
+	case "disable":
+		enabled = false
+	default:
+		log.Error().Str("action", action).Msg("Invalid action parameter")
+		http.Error(w, "Invalid action parameter", http.StatusBadRequest)
+		return
 	}
 
 	log.Debug().Str("volid", volid).Bool("enabled", enabled).Msg("Toggling ISO")
