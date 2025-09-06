@@ -144,7 +144,27 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var tags []string
 	var description string
 	var networkBridges []string
-	if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, vm.Node, vm.VMID); err == nil {
+	// First attempt using vm.Node (fast path)
+	cfg, cfgErr := proxmox.GetVMConfigWithContext(r.Context(), client, vm.Node, vm.VMID)
+	if cfgErr != nil {
+		// Log and attempt a robust fallback by discovering the node
+		log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Primary VM config fetch failed, attempting node discovery fallback")
+		if nodes, nErr := proxmox.GetNodeNamesWithContext(r.Context(), client); nErr == nil {
+			for _, n := range nodes {
+				if altCfg, altErr := proxmox.GetVMConfigWithContext(r.Context(), client, n, vm.VMID); altErr == nil {
+					cfg = altCfg
+					vm.Node = n // update node for subsequent actions
+					cfgErr = nil
+					log.Info().Str("resolved_node", n).Int("vmid", vm.VMID).Msg("Resolved VM node via fallback and fetched config")
+					break
+				}
+			}
+		} else {
+			log.Warn().Err(nErr).Msg("Unable to list nodes during VM config fallback")
+		}
+	}
+
+	if cfgErr == nil && cfg != nil {
 		if tagsStr, ok := cfg["tags"].(string); ok && tagsStr != "" {
 			parts := strings.Split(tagsStr, ";")
 			for _, p := range parts {
@@ -157,6 +177,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			description = desc
 		}
 		networkBridges = proxmox.ExtractNetworkBridges(cfg)
+	} else if cfgErr != nil {
+		log.Warn().Err(cfgErr).Int("vmid", vm.VMID).Msg("Unable to fetch VM config; description and tags may be empty")
 	}
 
 	// Get Proxmox connection status
