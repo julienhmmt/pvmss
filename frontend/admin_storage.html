@@ -8,7 +8,7 @@
   {{if .Error}}
   <div class="notification is-danger">
     <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="/admin/storage" class="button is-small is-light mt-2">
+    <a href="/admin/storage?lang={{.Lang}}" class="button is-small is-light mt-2">
       <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>

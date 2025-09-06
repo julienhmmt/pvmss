@@ -46,12 +46,12 @@
                 </div>
                 <div class="control">
                   {{if eq .SortOrder "asc"}}
-                  <a href="/admin/tags?sort=desc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}" 
+                  <a href="/admin/tags?sort=desc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}&lang={{$.Lang}}" 
                      class="button is-small is-ghost" title="Sort descending">
                     <span class="icon is-small"><i class="fas fa-sort-up"></i></span>
                   </a>
                   {{else}}
-                  <a href="/admin/tags?sort=asc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}" 
+                  <a href="/admin/tags?sort=asc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}&lang={{$.Lang}}" 
                      class="button is-small is-ghost" title="Sort ascending">
                     <span class="icon is-small"><i class="fas fa-sort-down"></i></span>
                   </a>
@@ -85,7 +85,7 @@
             {{end}}
             <td class="has-text-right">
               {{if ne . "pvmss"}}
-              <a href="/admin/tags/delete?tag={{.}}" class="button is-small is-danger is-outlined"
+              <a href="/admin/tags/delete?tag={{.}}&lang={{$.Lang}}" class="button is-small is-danger is-outlined"
                  title='{{T "Admin.Tags.DeleteTag"}} "{{.}}"'>
                 <span class="icon is-small"><i class="fas fa-trash"></i></span>
               </a>
@@ -167,7 +167,7 @@
           </form>
         </div>
         <div class="level-item">
-          <a href="/admin/tags" class="button">
+          <a href="/admin/tags?lang={{$.Lang}}" class="button">
             <span class="icon"><i class="fas fa-times"></i></span>
             <span>{{T "Common.No"}}</span>
           </a>

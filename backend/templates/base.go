@@ -86,6 +86,13 @@ func GetBaseFuncMap() template.FuncMap {
 		// Request-agnostic fallbacks (overridden by GetFuncMap when request is available)
 		"currentPath": func() string { return "/" },
 		"urlWithLang": func(lang string) string { return "/?lang=" + lang },
+		// Append lang parameter to an arbitrary path, handling existing query strings
+		"withLang": func(path, lang string) string {
+			if strings.Contains(path, "?") {
+				return path + "&lang=" + lang
+			}
+			return path + "?lang=" + lang
+		},
 
 		// Path/string helpers
 		"eqPath": func(a, b string) bool {

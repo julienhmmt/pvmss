@@ -7,7 +7,7 @@
   {{if .Error}}
   <div class="notification is-danger">
     <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="/admin/userpool" class="button is-small is-light mt-2">
+    <a href="/admin/userpool?lang={{.Lang}}" class="button is-small is-light mt-2">
       <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
@@ -141,7 +141,7 @@
               <td>{{.VMCount}}</td>
               <td>
                 <div class="buttons are-small mb-3">
-                  <a class="button is-light" href="/admin/userpool?pool={{.Pool}}" title="Refresh pool">
+                  <a class="button is-light" href="/admin/userpool?pool={{.Pool}}&lang={{$root.Lang}}" title="Refresh pool">
                     <span class="icon"><i class="fas fa-sync"></i></span>
                     <span>Refresh</span>
                   </a>
