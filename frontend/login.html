@@ -50,7 +50,7 @@
             </div>
             {{end}}
 
-            <form method="post" action="/login">
+            <form method="post" action="{{withLang "/login" .Lang}}">
               <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
               <input type="hidden" name="login_type" value="user" />
               {{/* Preserve intended redirect target across POST */}}
@@ -111,7 +111,7 @@
 
             <!-- Admin Login Button -->
             <div class="has-text-centered mt-4">
-              <a class="button is-light is-fullwidth" href="/admin/login?lang={{.Lang}}">
+              <a class="button is-light is-fullwidth" href="{{withLang "/admin/login" .Lang}}">
                 <span class="icon">
                   <i class="fas fa-shield-alt"></i>
                 </span>

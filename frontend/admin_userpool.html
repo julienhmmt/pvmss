@@ -7,7 +7,7 @@
   {{if .Error}}
   <div class="notification is-danger">
     <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="/admin/userpool?lang={{.Lang}}" class="button is-small is-light mt-2">
+    <a href="{{withLang "/admin/userpool" .Lang}}" class="button is-small is-light mt-2">
       <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
@@ -37,7 +37,7 @@
       </div>
     {{end}}
 
-    <form method="POST" action="/admin/userpool/create" class="box">
+    <form method="POST" action="{{withLang "/admin/userpool/create" .Lang}}" class="box">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div class="columns is-multiline">
         <div class="column is-6">
@@ -141,13 +141,13 @@
               <td>{{.VMCount}}</td>
               <td>
                 <div class="buttons are-small mb-3">
-                  <a class="button is-light" href="/admin/userpool?pool={{.Pool}}&lang={{$root.Lang}}" title="Refresh pool">
+                  <a class="button is-light" href="{{withLang (printf "/admin/userpool?pool=%s" .Pool) $root.Lang}}" title="Refresh pool">
                     <span class="icon"><i class="fas fa-sync"></i></span>
                     <span>Refresh</span>
                   </a>
                 </div>
 
-                <form method="POST" action="/admin/userpool/delete" onsubmit="return confirm('Delete ALL VMs in this pool, the user, then the pool? This cannot be undone.');">
+                <form method="POST" action="{{withLang "/admin/userpool/delete" $root.Lang}}" onsubmit="return confirm('Delete ALL VMs in this pool, the user, then the pool? This cannot be undone.');">
                   <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}">
                   <input type="hidden" name="pool" value="{{.Pool}}">
                   <div class="field mt-2">

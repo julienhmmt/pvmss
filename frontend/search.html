@@ -15,7 +15,7 @@
                     <div class="card-content">
                         <p class="mb-4 has-text-grey">{{T "Search.Subtitle"}}</p>
                         <!-- Search Form -->
-                        <form action="/search?lang={{$lang}}" method="POST">
+                        <form action="{{withLang "/search" $lang}}" method="POST">
                             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                             <div class="columns is-multiline">
                                 <div class="column is-6-desktop">
@@ -49,7 +49,7 @@
                                     </button>
                                 </div>
                                 <div class="control">
-                                    <a href="/search?lang={{$lang}}" class="button is-light is-medium">
+                                    <a href="{{withLang "/search" $lang}}" class="button is-light is-medium">
                                         {{T "Search.Clear"}}
                                     </a>
                                 </div>
@@ -86,7 +86,7 @@
                                                     </span>
                                                 </td>
                                                 <td class="has-text-centered">
-                                                    <a href="/vm/details/{{.vmid}}?lang={{$lang}}"
+                                                    <a href="{{withLang (printf "/vm/details/%d" .vmid) $lang}}"
                                                         class="button is-small is-primary">{{T "Search.Details"}}</a>
                                                 </td>
                                             </tr>

@@ -37,7 +37,7 @@
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{T "UI.CreateVMDescription"}}</p>
-                                <a href="/vm/create?lang={{.Lang}}" class="button is-primary is-medium is-fullwidth">
+                                <a href="{{withLang "/vm/create" .Lang}}" class="button is-primary is-medium is-fullwidth">
                                     <span>{{T "UI.GetStarted"}}</span>
                                 </a>
                             </div>
@@ -59,7 +59,7 @@
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{T "UI.DocsDescription"}}</p>
-                                <a href="/docs/user?lang={{.Lang}}" class="button is-primary is-medium is-fullwidth">
+                                <a href="{{withLang "/docs/user" .Lang}}" class="button is-primary is-medium is-fullwidth">
                                     {{T "UI.ViewDocumentation"}}
                                 </a>
                             </div>
@@ -81,7 +81,7 @@
                             </div>
                             <div class="card-content has-text-centered">
                                 <p class="mb-4">{{T "UI.AdminDescription"}}</p>
-                                <a href="/admin/nodes?lang={{.Lang}}" class="button is-primary is-medium is-fullwidth">
+                                <a href="{{withLang "/admin/nodes" .Lang}}" class="button is-primary is-medium is-fullwidth">
                                     {{T "UI.AccessAdmin"}}
                                 </a>
                             </div>

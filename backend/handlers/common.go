@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"pvmss/i18n"
 	"pvmss/logger"
@@ -84,7 +85,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 }
 
 // populateTemplateData adds common data to the template data map.
-func populateTemplateData(_ http.ResponseWriter, r *http.Request, data map[string]interface{}) {
+func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
 	log := logger.Get().With().Str("function", "populateTemplateData").Logger()
 
 	// Get CSRF token from session and add to template data
@@ -145,9 +146,20 @@ func populateTemplateData(_ http.ResponseWriter, r *http.Request, data map[strin
 			log.Debug().Msg("CSRF token added to template data from session fallback")
 		}
 	}
-
 	// Add language to data for template rendering
-	data["Lang"] = i18n.GetLanguage(r)
+	lang := i18n.GetLanguage(r)
+	data["Lang"] = lang
+
+	// Persist selected language in cookie when explicitly provided via query param
+	if qLang := strings.TrimSpace(r.URL.Query().Get(i18n.QueryParamLang)); qLang != "" {
+		// Normalize to the effective language code and set cookie on this response
+		http.SetCookie(w, &http.Cookie{
+			Name:   i18n.CookieNameLang,
+			Value:  lang,
+			Path:   "/",
+			MaxAge: int(i18n.CookieMaxAge / time.Second),
+		})
+	}
 
 	// Add language switcher URLs
 	i18n.SetLanguageSwitcher(r, data)

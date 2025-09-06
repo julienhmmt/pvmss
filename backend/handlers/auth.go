@@ -275,12 +275,23 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
+	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/admin/nodes")
-	if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
-		if strings.Contains(redirectURL, "?") {
-			redirectURL += "&lang=" + lang
-		} else {
-			redirectURL += "?lang=" + lang
+	if lang := i18n.GetLanguage(r); lang != "" {
+		// Set language cookie
+		http.SetCookie(w, &http.Cookie{
+			Name:  i18n.CookieNameLang,
+			Value: lang,
+			Path:  "/",
+			MaxAge: int(i18n.CookieMaxAge / time.Second),
+		})
+		// Append lang to redirect for explicit propagation
+		if lang != i18n.DefaultLang {
+			if strings.Contains(redirectURL, "?") {
+				redirectURL += "&lang=" + lang
+			} else {
+				redirectURL += "?lang=" + lang
+			}
 		}
 	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
@@ -370,12 +381,23 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 		return
 	}
 
+	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/vm/create")
-	if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
-		if strings.Contains(redirectURL, "?") {
-			redirectURL += "&lang=" + lang
-		} else {
-			redirectURL += "?lang=" + lang
+	if lang := i18n.GetLanguage(r); lang != "" {
+		// Set language cookie
+		http.SetCookie(w, &http.Cookie{
+			Name:  i18n.CookieNameLang,
+			Value: lang,
+			Path:  "/",
+			MaxAge: int(i18n.CookieMaxAge / time.Second),
+		})
+		// Append lang to redirect for explicit propagation
+		if lang != i18n.DefaultLang {
+			if strings.Contains(redirectURL, "?") {
+				redirectURL += "&lang=" + lang
+			} else {
+				redirectURL += "?lang=" + lang
+			}
 		}
 	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)

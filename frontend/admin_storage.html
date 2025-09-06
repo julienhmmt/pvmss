@@ -8,7 +8,7 @@
   {{if .Error}}
   <div class="notification is-danger">
     <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="/admin/storage?lang={{.Lang}}" class="button is-small is-light mt-2">
+    <a href="{{withLang "/admin/storage" .Lang}}" class="button is-small is-light mt-2">
       <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
@@ -50,7 +50,7 @@
             </div>
           </td>
           <td class="has-text-right">
-            <form method="POST" action="/admin/storage/toggle" class="is-inline">
+            <form method="POST" action="{{withLang "/admin/storage/toggle" .Lang}}" class="is-inline">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="storage" value="{{.Storage}}">
               <input type="hidden" name="action" value="{{if index $.EnabledMap .Storage}}disable{{else}}enable{{end}}">

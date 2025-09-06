@@ -9,7 +9,7 @@
       "Compact" true
       "Actions" (dict 
         "Right" (slice 
-          (dict "Link" (printf "/docs/admin?lang=%s" .Lang) "Text" (T "Navbar.AdminDocs") "Icon" "fas fa-book" "Type" "primary")
+          (dict "Link" (withLang "/docs/admin" .Lang) "Text" (T "Navbar.AdminDocs") "Icon" "fas fa-book" "Type" "primary")
         )
       )
     )}}

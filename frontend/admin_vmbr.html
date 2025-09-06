@@ -8,7 +8,7 @@
   {{if .Error}}
   <div class="notification is-danger">
     <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="/admin/vmbr?lang={{.Lang}}" class="button is-small is-light mt-2">
+    <a href="{{withLang "/admin/vmbr" .Lang}}" class="button is-small is-light mt-2">
       <span>{{T "Common.TryAgain"}}</span>
     </a>
   </div>
@@ -36,7 +36,7 @@
           <td>{{index . "node"}}</td>
           <td>{{index . "description"}}</td>
           <td class="has-text-right">
-            <form method="POST" action="/admin/vmbr/toggle" class="is-inline">
+            <form method="POST" action="{{withLang "/admin/vmbr/toggle" .Lang}}" class="is-inline">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="vmbr" value="{{$name}}">
               <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">

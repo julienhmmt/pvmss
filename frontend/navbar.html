@@ -4,7 +4,7 @@
         <!-- CSS-only navbar toggle control -->
         <input type="checkbox" id="nav-toggle" class="visually-hidden-checkbox" aria-label="Toggle navigation">
         <div class="navbar-brand">
-            <a class="navbar-item" href="/?lang={{.Lang}}">
+            <a class="navbar-item" href="{{withLang "/" .Lang}}">
                 <span class="has-text-weight-bold">{{T "UI.Header"}}</span>
             </a>
             <label for="nav-toggle" class="navbar-burger burger" data-target="navbarMenu" role="button" aria-label="menu" aria-expanded="false">
@@ -16,7 +16,7 @@
 
         <div id="navbarMenu" class="navbar-menu">
             <div class="navbar-start">
-                <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="/?lang={{.Lang}}" {{if eq (currentPath) "/"}}aria-current="page"{{end}}>
+                <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="{{withLang "/" .Lang}}" {{if eq (currentPath) "/"}}aria-current="page"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-home"></i>
@@ -24,7 +24,7 @@
                         <span>{{T "Navbar.Home"}}</span>
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/vm/create?lang={{.Lang}}"
+                <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="{{withLang "/vm/create" .Lang}}"
                    {{if eq (currentPath) "/vm/create"}}aria-current="page"{{end}}
                    {{if not .ProxmoxConnected}}aria-disabled="true" tabindex="-1" title="Proxmox server is not available"{{end}}>
                     <span class="icon-text">
@@ -39,7 +39,7 @@
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="/search?lang={{.Lang}}"
+                <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="{{withLang "/search" .Lang}}"
                    {{if eq (currentPath) "/search"}}aria-current="page"{{end}}
                    {{if not .ProxmoxConnected}}aria-disabled="true" tabindex="-1" title="Proxmox server is not available"{{end}}>
                     <span class="icon-text">
@@ -54,7 +54,7 @@
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/docs/user"}}is-active{{end}}" href="/docs/user?lang={{.Lang}}" {{if eq (currentPath) "/docs/user"}}aria-current="page"{{end}}>
+                <a class="navbar-item {{if eq (currentPath) "/docs/user"}}is-active{{end}}" href="{{withLang "/docs/user" .Lang}}" {{if eq (currentPath) "/docs/user"}}aria-current="page"{{end}}>
                     <span class="icon-text">
                         <span class="icon">
                             <i class="fas fa-book"></i>
@@ -69,7 +69,7 @@
                     <div class="buttons are-small">
                         {{if .IsAuthenticated}}
                         {{if .IsAdmin}}
-                        <a class="button is-primary" href="/admin/nodes?lang={{.Lang}}">
+                        <a class="button is-primary" href="{{withLang "/admin/nodes" .Lang}}">
                             <span class="icon">
                                 <i class="fas fa-cog"></i>
                             </span>
@@ -79,7 +79,7 @@
                         <div class="navbar-item is-hidden-mobile">
                             <div class="is-flex is-align-items-center is-justify-content-center">
                                 <span class="has-text-grey is-size-7 mr-2"><icon class="fas fa-user"></icon> {{.Username}}</span>
-                                <a href="/logout?lang={{.Lang}}" class="button is-small is-danger is-light">
+                                <a href="{{withLang "/logout" .Lang}}" class="button is-small is-danger is-light">
                                     <span class="icon is-small">
                                         <i class="fas fa-sign-out-alt"></i>
                                     </span>
@@ -88,7 +88,7 @@
                             </div>
                         </div>
                         {{else}}
-                        <a class="button is-primary" href="/login?lang={{.Lang}}">
+                        <a class="button is-primary" href="{{withLang "/login" .Lang}}">
                             <span class="icon">
                                 <i class="fas fa-sign-in-alt"></i>
                             </span>
