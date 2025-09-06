@@ -503,6 +503,30 @@ other = "Statut"
 ["VMDetails.Label.Uptime"]
 other = "Temps de fonctionnement"
 
+# Chaînes supplémentaires pour l'interface des détails de VM
+["VMDetails.Modify"]
+other = "Modifier"
+["VMDetails.EditDescriptionTitle"]
+other = "Modifier la description"
+["VMDetails.DescriptionLabel"]
+other = "Description (Markdown supporté)"
+["VMDetails.DescriptionPlaceholder"]
+other = "Entrez une description en Markdown..."
+["VMDetails.DescriptionHelp"]
+other = "Utilisez le Markdown pour la mise en forme. La version rendue s'affiche dans le tableau ci-dessus."
+["VMDetails.SaveDescription"]
+other = "Enregistrer la description"
+["VMDetails.TagsCurrentlyAppliedPrefix"]
+other = "Actuellement appliqués :"
+["VMDetails.SelectTags"]
+other = "Sélectionner des étiquettes"
+["VMDetails.NoTagsAvailable"]
+other = "Aucune étiquette disponible"
+["VMDetails.SaveTags"]
+other = "Enregistrer les étiquettes"
+["VMDetails.OpenConsole"]
+other = "Ouvrir la console"
+
 # ==============
 # Documentation
 # ==============

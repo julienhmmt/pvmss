@@ -8,19 +8,30 @@
                 </p>
             </header>
             <div class="card-content">
+                {{/* Standard notifications */}}
+                {{if .Success}}
+                {{template "notification" (dict 
+                  "Type" "success" 
+                  "Message" .SuccessMessage 
+                  "Icon" "fas fa-check" 
+                  "Dismissible" true
+                )}}
+                {{end}}
                 {{if .Error}}
-                <div class="notification is-danger is-light">
-                    <div class="content has-text-centered">
-                        <p class="is-size-5 has-text-weight-semibold mt-2">{{.Error}}</p>
-                    </div>
-                </div>
+                {{template "notification" (dict 
+                  "Type" "danger" 
+                  "Message" .ErrorMessage 
+                  "Icon" "fas fa-exclamation-triangle" 
+                  "Dismissible" true
+                )}}
                 {{end}}
                 {{if .Warning}}
-                <div class="notification is-warning is-light">
-                    <div class="content has-text-centered">
-                        <p class="is-size-5 has-text-weight-semibold mt-2">{{.Warning}}</p>
-                    </div>
-                </div>
+                {{template "notification" (dict 
+                  "Type" "warning" 
+                  "Message" .WarningMessage 
+                  "Icon" "fas fa-exclamation-triangle" 
+                  "Dismissible" true
+                )}}
                 {{end}}
                 <table class="table is-fullwidth is-narrow">
                     <tbody>
@@ -70,23 +81,23 @@
                                 {{end}}
                                 {{if .ProxmoxConnected}}
                                 <div class="is-pulled-right">
-                                    <a class="button is-small is-light" href="/vm/details/{{.VM.VMID}}?edit=description">
+                                    <a class="button is-small is-light" href="{{withLang (printf "/vm/details/%d?edit=description" .VM.VMID) .Lang}}">
                                         <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                                        <span>Modify</span>
+                                        <span>{{T "VMDetails.Modify"}}</span>
                                     </a>
                                 </div>
                                 {{end}}
                             </td>
                         </tr>
                         <tr>
-                            <th><i class="fas fa-tags"></i> Tags</th>
+                            <th><i class="fas fa-tags"></i> {{T "Common.Tags"}}</th>
                             <td>
                                 {{.Tags}}
                                 {{if .ProxmoxConnected}}
                                 <div class="is-pulled-right">
-                                    <a class="button is-small is-light" href="/vm/details/{{.VM.VMID}}?edit=tags">
+                                    <a class="button is-small is-light" href="{{withLang (printf "/vm/details/%d?edit=tags" .VM.VMID) .Lang}}">
                                         <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                                        <span>Modify</span>
+                                        <span>{{T "VMDetails.Modify"}}</span>
                                     </a>
                                 </div>
                                 {{end}}
@@ -98,29 +109,29 @@
                 <!-- Edit Description (Markdown) -->
                 {{if .ShowDescriptionEditor}}
                 <div class="box mt-5">
-                    <h2 class="title is-5"><span class="icon"><i class="fas fa-edit"></i></span>&nbsp;Edit Description</h2>
-                    <form action="/vm/update/description" method="post">
+                    <h2 class="title is-5"><span class="icon"><i class="fas fa-edit"></i></span>&nbsp;{{T "VMDetails.EditDescriptionTitle"}}</h2>
+                    <form action="{{withLang "/vm/update/description" .Lang}}" method="post">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
                         <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
                         <input type="hidden" name="node" value="{{.VM.Node}}" />
                         <div class="field">
-                            <label for="description" class="label">Description (Markdown supported)</label>
+                            <label for="description" class="label">{{T "VMDetails.DescriptionLabel"}}</label>
                             <div class="control">
-                                <textarea id="description" name="description" class="textarea" rows="6" placeholder="Enter Markdown description...">{{.Description}}</textarea>
+                                <textarea id="description" name="description" class="textarea" rows="6" placeholder="{{T "VMDetails.DescriptionPlaceholder"}}">{{.Description}}</textarea>
                             </div>
-                            <p class="help">Use Markdown for formatting. The rendered version shows in the table above.</p>
+                            <p class="help">{{T "VMDetails.DescriptionHelp"}}</p>
                         </div>
                         <div class="field is-grouped is-justify-content-space-between">
                             <div class="control">
-                                <a class="button" href="/vm/details/{{.VM.VMID}}">
+                                <a class="button" href="{{withLang (printf "/vm/details/%d" .VM.VMID) .Lang}}">
                                     <span class="icon"><i class="fas fa-times"></i></span>
-                                    <span>Cancel</span>
+                                    <span>{{T "Common.Cancel"}}</span>
                                 </a>
                             </div>
                             <div class="control">
                                 <button type="submit" class="button is-primary" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
                                     <span class="icon"><i class="fas fa-save"></i></span>
-                                    <span>Save Description</span>
+                                    <span>{{T "VMDetails.SaveDescription"}}</span>
                                 </button>
                             </div>
                         </div>
@@ -131,18 +142,18 @@
                 <!-- Manage Tags -->
                 {{if .ShowTagsEditor}}
                 <div class="box mt-5">
-                    <h2 class="title is-5"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;Manage Tags</h2>
-                    <form action="/vm/update/tags" method="post">
+                    <h2 class="title is-5"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "Common.Tags"}}</h2>
+                    <form action="{{withLang "/vm/update/tags" .Lang}}" method="post">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
                         <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
                         <input type="hidden" name="node" value="{{.VM.Node}}" />
                         {{if .CurrentTags}}
                         <p class="mb-3 is-size-7 has-text-grey">
-                            <strong>Currently applied:</strong> {{join .CurrentTags ", "}}
+                            <strong>{{T "VMDetails.TagsCurrentlyAppliedPrefix"}}</strong> {{join .CurrentTags ", "}}
                         </p>
                         {{end}}
                         <div class="field">
-                            <label class="label">Select tags</label>
+                            <label class="label">{{T "VMDetails.SelectTags"}}</label>
                             <div class="tags">
                                 {{if .AllTags}}
                                     {{range $tag := .AllTags}}
@@ -161,21 +172,21 @@
                                         {{end}}
                                     {{end}}
                                 {{else}}
-                                    <span class="has-text-grey">No tags available</span>
+                                    <span class="has-text-grey">{{T "VMDetails.NoTagsAvailable"}}</span>
                                 {{end}}
                             </div>
                         </div>
                         <div class="field is-grouped is-justify-content-space-between">
                             <div class="control">
-                                <a class="button" href="/vm/details/{{.VM.VMID}}">
+                                <a class="button" href="{{withLang (printf "/vm/details/%d" .VM.VMID) .Lang}}">
                                     <span class="icon"><i class="fas fa-times"></i></span>
-                                    <span>Cancel</span>
+                                    <span>{{T "Common.Cancel"}}</span>
                                 </a>
                             </div>
                             <div class="control">
                                 <button type="submit" class="button is-primary" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
                                     <span class="icon"><i class="fas fa-save"></i></span>
-                                    <span>Save Tags</span>
+                                    <span>{{T "VMDetails.SaveTags"}}</span>
                                 </button>
                             </div>
                         </div>
@@ -190,7 +201,7 @@
     <!-- Refresh Button -->
     <div class="is-flex is-justify-content-center mb-4 mt-4">
         <a class="button is-info is-light"
-            href="/vm/details/{{.VM.VMID}}?refresh=1">
+            href="{{withLang (printf "/vm/details/%d?refresh=1" .VM.VMID) .Lang}}">
             <span>{{T "VMDetails.Action.Refresh"}}</span>
         </a>
     </div>
@@ -202,18 +213,18 @@
                     data-vmid="{{.VM.VMID}}"
                     data-vmname="{{.VM.Name}}"
                     data-node="{{.VM.Node}}">
-                <span>Open Console</span>
+                <span>{{T "VMDetails.OpenConsole"}}</span>
             </button>
         {{else}}
             <button class="button is-primary is-light" disabled title="Offline mode">
-                <span>Open Console</span>
+                <span>{{T "VMDetails.OpenConsole"}}</span>
             </button>
         {{end}}
     </div>
 
     <!-- VM Action Forms (server-side) -->
     <div class="buttons is-centered mt-4">
-        <form action="/vm/action" method="post" class="is-inline-block mx-1">
+        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
             <input type="hidden" name="node" value="{{.VM.Node}}" />
@@ -222,7 +233,7 @@
                 <span>{{T "VMDetails.Action.Start"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="is-inline-block mx-1">
+        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
             <input type="hidden" name="node" value="{{.VM.Node}}" />
@@ -231,7 +242,7 @@
                 <span>{{T "VMDetails.Action.Reboot"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="is-inline-block mx-1">
+        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
             <input type="hidden" name="node" value="{{.VM.Node}}" />
@@ -240,7 +251,7 @@
                 <span>{{T "VMDetails.Action.Shutdown"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="is-inline-block mx-1">
+        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
             <input type="hidden" name="node" value="{{.VM.Node}}" />
@@ -249,7 +260,7 @@
                 <span>{{T "VMDetails.Action.Stop"}}</span>
             </button>
         </form>
-        <form action="/vm/action" method="post" class="is-inline-block mx-1">
+        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
             <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
             <input type="hidden" name="node" value="{{.VM.Node}}" />
@@ -262,7 +273,7 @@
 
 
     <div class="is-flex is-justify-content-center mb-4 mt-4">
-        <a class="button is-info is-light" href="/search">
+        <a class="button is-info is-light" href="{{withLang "/search" .Lang}}">
             <span>{{T "Common.BackToSearch"}}</span>
         </a>
     </div>

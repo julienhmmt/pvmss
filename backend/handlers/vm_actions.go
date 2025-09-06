@@ -50,13 +50,25 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 
 	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"description": desc}); err != nil {
 		ctx.Log.Error().Err(err).Msg("update description failed")
-		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+		mh := NewMessageHandlers()
+		// Build error URL and append lang
+		errURL := mh.helper.BuildErrorURL("/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
+		u, _ := url.Parse(errURL)
+		q := u.Query()
+		q.Set("lang", i18n.GetLanguage(r))
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 	ctx.Log.Info().Str("vmid", vmid).Str("node", node).Msg("VM description updated successfully")
-	// Add a cache-busting timestamp to ensure the next GET fetches fresh data
 	ts := time.Now().Unix()
-	http.Redirect(w, r, "/vm/details/"+vmid+"?refresh=1&ts="+strconv.FormatInt(ts, 10), http.StatusSeeOther)
+	mh := NewMessageHandlers()
+	params := map[string]string{
+		"refresh": "1",
+		"ts":      strconv.FormatInt(ts, 10),
+		"lang":    i18n.GetLanguage(r),
+	}
+	mh.RedirectWithSuccess(w, r, "/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.UpdatedSuccessfully"), params)
 }
 
 // UpdateVMTagsHandler updates the VM tags from selected checkboxes
@@ -91,10 +103,23 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 	// Update tags in Proxmox
 	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"tags": tagsStr}); err != nil {
 		ctx.Log.Error().Err(err).Msg("update tags failed")
-		http.Error(w, http.StatusText(http.StatusBadGateway), http.StatusBadGateway)
+		mh := NewMessageHandlers()
+		// Build error URL and append lang
+		errURL := mh.helper.BuildErrorURL("/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
+		u, _ := url.Parse(errURL)
+		q := u.Query()
+		q.Set("lang", i18n.GetLanguage(r))
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
-	http.Redirect(w, r, "/vm/details/"+vmid+"?refresh=1", http.StatusSeeOther)
+	mh := NewMessageHandlers()
+	params := map[string]string{
+		"refresh": "1",
+		"ts":      strconv.FormatInt(time.Now().Unix(), 10),
+		"lang":    i18n.GetLanguage(r),
+	}
+	mh.RedirectWithSuccess(w, r, "/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.UpdatedSuccessfully"), params)
 }
 
 // VMActionHandler handles VM lifecycle actions via server-side POST forms
@@ -145,14 +170,25 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	_, err = proxmox.VMActionWithContext(r.Context(), client, node, vmid, action)
 	if err != nil {
 		log.Error().Err(err).Str("action", action).Int("vmid", vmidInt).Msg("VM action failed")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusInternalServerError)
+		mh := NewMessageHandlers()
+		// Build error URL and append lang
+		errURL := mh.helper.BuildErrorURL("/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
+		u, _ := url.Parse(errURL)
+		q := u.Query()
+		q.Set("lang", i18n.GetLanguage(r))
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
 	log.Info().Str("action", action).Int("vmid", vmidInt).Msg("VM action completed successfully")
 
-	// Redirect back to VM details page with refresh
-	redirectURL := "/vm/details/" + vmid + "?refresh=1&action=" + action
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	mh := NewMessageHandlers()
+	params := map[string]string{
+		"refresh": "1",
+		"action":  action,
+		"ts":      strconv.FormatInt(time.Now().Unix(), 10),
+		"lang":    i18n.GetLanguage(r),
+	}
+	mh.RedirectWithSuccess(w, r, "/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "VMDetails.Action.Success"), params)
 }

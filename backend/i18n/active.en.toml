@@ -461,6 +461,30 @@ other = "Status"
 ["VMDetails.Label.Uptime"]
 other = "Uptime"
 
+# Additional VM Details UI strings
+["VMDetails.Modify"]
+other = "Modify"
+["VMDetails.EditDescriptionTitle"]
+other = "Edit Description"
+["VMDetails.DescriptionLabel"]
+other = "Description (Markdown supported)"
+["VMDetails.DescriptionPlaceholder"]
+other = "Enter Markdown description..."
+["VMDetails.DescriptionHelp"]
+other = "Use Markdown for formatting. The rendered version shows in the table above."
+["VMDetails.SaveDescription"]
+other = "Save Description"
+["VMDetails.TagsCurrentlyAppliedPrefix"]
+other = "Currently applied:"
+["VMDetails.SelectTags"]
+other = "Select tags"
+["VMDetails.NoTagsAvailable"]
+other = "No tags available"
+["VMDetails.SaveTags"]
+other = "Save Tags"
+["VMDetails.OpenConsole"]
+other = "Open Console"
+
 # ===========
 # Status
 # ===========

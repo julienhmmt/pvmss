@@ -181,9 +181,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		log.Warn().Err(cfgErr).Int("vmid", vm.VMID).Msg("Unable to fetch VM config; description and tags may be empty")
 	}
 
-	// Get Proxmox connection status
-	connected, _ := stateManager.GetProxmoxStatus()
-
 	// Get CSRF token
 	handlerCtx := NewHandlerContext(w, r, "VMDetailsHandler")
 	csrfToken, _ := handlerCtx.GetCSRFToken()
@@ -191,12 +188,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	// Check for edit modes
 	showDescriptionEditor := r.URL.Query().Get("edit") == "description"
 	showTagsEditor := r.URL.Query().Get("edit") == "tags"
-
-	// Optional warning messages (e.g., when user must login to update)
-	warningMsg := ""
-	if r.URL.Query().Get("warning") == "login_required" {
-		warningMsg = "Please log in to update the VM description."
-	}
 
 	// Get available tags from settings
 	settings := stateManager.GetSettings()
@@ -214,15 +205,13 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		descriptionHTML = string(markdown.ToHTML([]byte(description), nil, nil))
 	}
 
-	// Render template
-	data := map[string]interface{}{
-		"Title":                 "VM Details",
+	// Build custom data for template
+	custom := map[string]interface{}{
 		"VM":                    vm,
 		"Tags":                  strings.Join(tags, ", "),
 		"Description":           description,
 		"DescriptionHTML":       descriptionHTML,
 		"NetworkBridges":        networkBridgesStr,
-		"ProxmoxConnected":      connected,
 		"CSRFToken":             csrfToken,
 		"ShowDescriptionEditor": showDescriptionEditor,
 		"ShowTagsEditor":        showTagsEditor,
@@ -230,8 +219,9 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"AllTags":               allTags,
 		"FormattedMaxMem":       FormatBytes(vm.MaxMem),
 		"FormattedMaxDisk":      FormatBytes(vm.MaxDisk),
-		"Warning":               warningMsg,
 	}
 
-	renderTemplateInternal(w, r, "vm_details", data)
+	// Render using standardized user page helper to include Success/Warning/Error messages
+	th := NewTemplateHelpers()
+	th.RenderUserPage(w, r, "vm_details", "VM Details", stateManager, custom)
 }
