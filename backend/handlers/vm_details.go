@@ -79,6 +79,20 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
+	// If 'refresh=1' is present, proactively invalidate caches for nodes and VM lists
+	// to avoid race conditions right after VM creation where cached lists don't include the new VM yet.
+	if r.URL.Query().Get("refresh") == "1" {
+		// Invalidate node list
+		client.InvalidateCache("/nodes")
+		if nodes, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil {
+			for _, n := range nodes {
+				client.InvalidateCache("/nodes/" + n + "/qemu")
+			}
+		} else {
+			log.Warn().Err(err).Msg("Unable to get nodes while invalidating cache for refresh")
+		}
+	}
+
 	// Get all VMs and find the one we want
 	vms, err := proxmox.GetVMsWithContext(r.Context(), client)
 	if err != nil {
@@ -97,9 +111,33 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	}
 
 	if vm == nil {
-		log.Error().Int("vmid", vmidInt).Msg("VM not found")
-		http.Error(w, "VM not found", http.StatusNotFound)
-		return
+		// As a fallback (especially right after creation), try to locate the VM by querying
+		// each node's current status endpoint which is uncached per-VM.
+		if nodes, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil {
+			for _, n := range nodes {
+				if cur, err2 := proxmox.GetVMCurrentWithContext(r.Context(), client, n, vmidInt); err2 == nil && cur != nil {
+					// Found the VM on node 'n', synthesize a minimal VM struct for display
+					vm = &proxmox.VM{
+						VMID:   vmidInt,
+						Node:   n,
+						Name:   cur.Name,
+						Status: cur.Status,
+						CPUs:   cur.CPUs,
+						MaxMem: cur.MaxMem,
+						Mem:    cur.Mem,
+					}
+					break
+				}
+			}
+		} else {
+			log.Warn().Err(err).Msg("Unable to get nodes for VM fallback lookup")
+		}
+
+		if vm == nil {
+			log.Error().Int("vmid", vmidInt).Msg("VM not found")
+			http.Error(w, "VM not found", http.StatusNotFound)
+			return
+		}
 	}
 
 	// Get VM config to fetch description and tags

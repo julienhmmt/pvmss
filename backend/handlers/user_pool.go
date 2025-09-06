@@ -50,7 +50,7 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		userID = userID + "@pve"
 	}
 
-	// Always delete all VMs in the pool first (purge)
+	// Always stop and delete all VMs in the pool first (purge)
 	var detailResp struct {
 		Data struct {
 			Members []struct {
@@ -65,7 +65,32 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "failed to resolve pool members: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// Delete each VM with purge=1
+	// First, stop each VM (qemu) in bulk (concurrently), then wait a short fixed delay
+	{
+		var wg sync.WaitGroup
+		for _, m := range detailResp.Data.Members {
+			if !strings.EqualFold(m.Type, "qemu") || m.VMID <= 0 {
+				continue
+			}
+			if m.Node == "" {
+				log.Warn().Int("vmid", m.VMID).Msg("Skipping VM stop due to missing node")
+				continue
+			}
+			m := m // capture loop var
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				if _, err := proxmox.VMActionWithContext(ctx, client, m.Node, strconv.Itoa(m.VMID), "stop"); err != nil {
+					log.Warn().Err(err).Int("vmid", m.VMID).Str("node", m.Node).Msg("Failed to issue VM stop; will continue and attempt deletion")
+				}
+			}()
+		}
+		wg.Wait()
+		// Fixed small wait to give Proxmox time to transition state
+		time.Sleep(3 * time.Second)
+	}
+
+	// Then delete each VM with purge=1
 	for _, m := range detailResp.Data.Members {
 		if !strings.EqualFold(m.Type, "qemu") || m.VMID <= 0 {
 			continue
@@ -83,12 +108,10 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	// Delete the user next
+	// Delete the user next (non-fatal). Pool deletion will proceed even if user deletion fails or user is missing.
 	if userID != "" {
 		if _, err := client.DeleteWithContext(ctx, "/access/users/"+url.PathEscape(userID), nil); err != nil {
-			log.Error().Err(err).Str("user", userID).Msg("Failed to delete user")
-			http.Error(w, "failed to delete user "+userID+": "+err.Error(), http.StatusInternalServerError)
-			return
+			log.Warn().Err(err).Str("user", userID).Msg("Failed to delete user; proceeding to delete pool")
 		}
 	}
 
@@ -206,19 +229,27 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 					}
 
 					// Fetch pool members to count VMs: GET /pools/{poolid}
+					if c, ok := client.(*proxmox.Client); ok && c != nil {
+						c.InvalidateCache("/pools/" + p.PoolID)
+					}
 					var detailResp struct {
 						Data struct {
 							Members []struct {
-								Type string `json:"type"`
-								VMID int    `json:"vmid"`
+								Type     string `json:"type"`
+								VMID     int    `json:"vmid"`
+								Template int    `json:"template"`
 							} `json:"members"`
 						} `json:"data"`
 					}
 					if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(p.PoolID), &detailResp); err == nil {
 						vmCount := 0
 						for _, m := range detailResp.Data.Members {
-							if strings.EqualFold(m.Type, "qemu") || m.VMID > 0 {
-								vmCount++
+							// Count QEMU or LXC guests (exclude storage and other types). Prefer presence of vmid>0.
+							// Skip templates when Template flag is set (1).
+							if m.VMID > 0 && m.Template != 1 {
+								if strings.EqualFold(m.Type, "qemu") || strings.EqualFold(m.Type, "lxc") || m.Type == "" {
+									vmCount++
+								}
 							}
 						}
 						row.VMCount = vmCount
