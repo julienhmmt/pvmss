@@ -13,6 +13,7 @@ import (
 	"pvmss/middleware"
 	"pvmss/security"
 	"pvmss/state"
+	"pvmss/templates"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
@@ -193,7 +194,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 		return
 	}
 
-	// Add the translation function to the template instance for this request.
+	// Add the translation function and request-aware helpers to the template instance for this request.
 	localizer := i18n.GetLocalizerFromRequest(r)
 	instance.Funcs(template.FuncMap{
 		"T": func(messageID string, args ...interface{}) template.HTML {
@@ -210,6 +211,9 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 			return template.HTML(localized)
 		},
 	})
+
+	// Merge in request-aware functions (currentPath, urlWithLang, withLang, etc.)
+	instance.Funcs(templates.GetFuncMap(r))
 
 	// Render the main content template to a buffer.
 	var buf bytes.Buffer
