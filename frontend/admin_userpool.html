@@ -110,6 +110,49 @@
         </div>
       </div>
     </form>
+
+    {{/* List existing pvmss_* pools if available */}}
+    {{if .UserPools}}
+    <div class="box mt-5">
+      <h2 class="title is-5">Existing User Pools</h2>
+      <div class="table-container">
+        <table class="table is-fullwidth is-hoverable is-striped">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Pool</th>
+              <th># VMs in pool</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .UserPools}}
+            <tr>
+              <td>
+                <span class="has-text-weight-medium">{{.User}}</span>
+              </td>
+              <td>
+                <code>{{.Pool}}</code>
+                {{if .Comment}}
+                  <div class="has-text-grey is-size-7">{{.Comment}}</div>
+                {{end}}
+              </td>
+              <td>{{.VMCount}}</td>
+              <td>
+                <div class="buttons are-small mt-2">
+                  <a class="button is-light" href="/admin/userpool?pool={{.Pool}}" title="Refresh pool">
+                    <span class="icon"><i class="fas fa-sync"></i></span>
+                    <span>Refresh</span>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
   {{end}}
 </div>
 {{end}}

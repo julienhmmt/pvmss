@@ -49,7 +49,97 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		}
 	}
 
+	// Build base template data
 	data := AdminPageDataWithMessage("Proxmox Users & Pools", "userpool", successMsg, "")
+
+	// Fetch pools that match pattern pvmss_*
+	client := h.stateManager.GetProxmoxClient()
+	if client != nil {
+		type poolListItem struct {
+			PoolID  string `json:"poolid"`
+			Comment string `json:"comment"`
+		}
+		var listResp struct {
+			Data []poolListItem `json:"data"`
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		defer cancel()
+
+		// GET /pools to list all pools
+		if err := client.GetJSON(ctx, "/pools", &listResp); err == nil {
+			// Prepare detailed info per pool
+			type poolTableRow struct {
+				User     string
+				Pool     string
+				VMCount  int
+				Users    []string
+				Comment  string
+			}
+			rows := make([]poolTableRow, 0)
+
+			for _, p := range listResp.Data {
+				if !strings.HasPrefix(p.PoolID, "pvmss_") {
+					continue
+				}
+
+				row := poolTableRow{
+					User:    strings.TrimPrefix(p.PoolID, "pvmss_"),
+					Pool:    p.PoolID,
+					Comment: p.Comment,
+				}
+
+				// Fetch pool members to count VMs: GET /pools/{poolid}
+				var detailResp struct {
+					Data struct {
+						Members []struct {
+							Type string `json:"type"`
+							VMID int    `json:"vmid"`
+						} `json:"members"`
+					} `json:"data"`
+				}
+				if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(p.PoolID), &detailResp); err == nil {
+					vmCount := 0
+					for _, m := range detailResp.Data.Members {
+						// Count QEMU VMs; Proxmox uses type "qemu" for KVM VMs
+						if strings.EqualFold(m.Type, "qemu") || m.VMID > 0 {
+							vmCount++
+						}
+					}
+					row.VMCount = vmCount
+				}
+
+				// Fetch ACL users on this pool: GET /access/acl?path=/pool/{poolid}
+				var aclResp struct {
+					Data []struct {
+						Path  string `json:"path"`
+						Type  string `json:"type"`
+						Ugid  string `json:"ugid"`
+						Role  string `json:"roleid"`
+						Prop  int    `json:"propagate"`
+					} `json:"data"`
+				}
+				q := "/access/acl?path=" + url.QueryEscape("/pool/"+p.PoolID)
+				if err := client.GetJSON(ctx, q, &aclResp); err == nil {
+					users := make([]string, 0)
+					for _, a := range aclResp.Data {
+						// Only include user bindings (type=="user"); ugid is userid like name@pve
+						if strings.EqualFold(a.Type, "user") && a.Ugid != "" {
+							users = append(users, a.Ugid)
+						}
+					}
+					row.Users = users
+				}
+
+				rows = append(rows, row)
+			}
+
+			if len(rows) > 0 {
+				data["UserPools"] = rows
+			}
+		}
+	}
+
 	renderTemplateInternal(w, r, "admin_userpool", data)
 }
 
