@@ -52,7 +52,7 @@ func recoverMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if rec := recover(); rec != nil {
 				logger.Get().Error().Interface("panic", rec).Str("path", r.URL.Path).Msg("Unhandled panic recovered")
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				RenderErrorPage(w, r, http.StatusInternalServerError, "Internal Server Error")
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -136,6 +136,23 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 
 	// Configure routes
 	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, userPoolHandler)
+
+	// Friendly NotFound and MethodNotAllowed handlers (when state is available)
+	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if getStateManager(r) != nil {
+			RenderErrorPage(w, r, http.StatusNotFound, "Page not found")
+			return
+		}
+		http.NotFound(w, r)
+	})
+	router.MethodNotAllowed = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if getStateManager(r) != nil {
+			RenderErrorPage(w, r, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_, _ = w.Write([]byte("Method not allowed"))
+	})
 
 	// Configure static files handler
 	setupStaticFiles(router)

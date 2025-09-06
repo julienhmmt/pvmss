@@ -65,23 +65,28 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "failed to resolve pool members: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	// First, stop each VM (qemu) in bulk (concurrently), then wait a short fixed delay
+	// First, stop each guest in bulk (concurrently), then wait a short fixed delay
 	{
 		var wg sync.WaitGroup
 		for _, m := range detailResp.Data.Members {
-			if !strings.EqualFold(m.Type, "qemu") || m.VMID <= 0 {
+			if m.VMID <= 0 {
 				continue
 			}
 			if m.Node == "" {
-				log.Warn().Int("vmid", m.VMID).Msg("Skipping VM stop due to missing node")
+				log.Warn().Int("vmid", m.VMID).Msg("Skipping stop due to missing node")
 				continue
 			}
 			m := m // capture loop var
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				if _, err := proxmox.VMActionWithContext(ctx, client, m.Node, strconv.Itoa(m.VMID), "stop"); err != nil {
-					log.Warn().Err(err).Int("vmid", m.VMID).Str("node", m.Node).Msg("Failed to issue VM stop; will continue and attempt deletion")
+				switch strings.ToLower(m.Type) {
+				case "qemu":
+					if _, err := proxmox.VMActionWithContext(ctx, client, m.Node, strconv.Itoa(m.VMID), "stop"); err != nil {
+						log.Warn().Err(err).Int("vmid", m.VMID).Str("node", m.Node).Msg("Failed to stop QEMU VM; continuing")
+					}
+				default:
+					// ignore other member types
 				}
 			}()
 		}
@@ -90,42 +95,71 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		time.Sleep(3 * time.Second)
 	}
 
-	// Then delete each VM with purge=1
+	// Then delete each guest (qemu + lxc)
 	for _, m := range detailResp.Data.Members {
-		if !strings.EqualFold(m.Type, "qemu") || m.VMID <= 0 {
+		if m.VMID <= 0 {
 			continue
 		}
 		if m.Node == "" {
-			// If node is missing, we cannot form the path; skip with warning
-			log.Warn().Int("vmid", m.VMID).Msg("Skipping VM deletion due to missing node")
+			log.Warn().Int("vmid", m.VMID).Msg("Skipping deletion due to missing node")
 			continue
 		}
-		path := "/nodes/" + url.PathEscape(m.Node) + "/qemu/" + url.PathEscape(strconv.Itoa(m.VMID)) + "?purge=1"
-		if _, err := client.DeleteWithContext(ctx, path, nil); err != nil {
-			log.Error().Err(err).Str("path", path).Msg("Failed to delete VM")
-			http.Error(w, "failed to delete VM "+strconv.Itoa(m.VMID)+": "+err.Error(), http.StatusInternalServerError)
-			return
+		switch strings.ToLower(m.Type) {
+		case "qemu":
+			path := "/nodes/" + url.PathEscape(m.Node) + "/qemu/" + url.PathEscape(strconv.Itoa(m.VMID)) + "?purge=1"
+			if _, err := client.DeleteWithContext(ctx, path, nil); err != nil {
+				log.Error().Err(err).Str("path", path).Msg("Failed to delete VM")
+				http.Error(w, "failed to delete VM "+strconv.Itoa(m.VMID)+": "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		default:
+			// ignore other member types
 		}
 	}
 
-	// Delete the user next (non-fatal). Pool deletion will proceed even if user deletion fails or user is missing.
-	if userID != "" {
-		if _, err := client.DeleteWithContext(ctx, "/access/users/"+url.PathEscape(userID), nil); err != nil {
-			log.Warn().Err(err).Str("user", userID).Msg("Failed to delete user; proceeding to delete pool")
+	// Verify pool is now empty before attempting to delete it (short polling with cache invalidation)
+	{
+		emptyDeadline := time.Now().Add(15 * time.Second)
+		for {
+			if c, ok := client.(*proxmox.Client); ok && c != nil {
+				c.InvalidateCache("/pools/" + poolID)
+			}
+			var check struct {
+				Data struct {
+					Members []any `json:"members"`
+				} `json:"data"`
+			}
+			if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(poolID), &check); err == nil {
+				if len(check.Data.Members) == 0 {
+					break
+				}
+			}
+			if time.Now().After(emptyDeadline) {
+				log.Warn().Str("pool", poolID).Msg("Pool still not empty after deletions; proceeding to try delete anyway")
+				break
+			}
+			time.Sleep(1 * time.Second)
 		}
 	}
 
-	// Always delete the pool as the last step
+	// Delete the pool first
 	if _, err := client.DeleteWithContext(ctx, "/pools/"+url.PathEscape(poolID), nil); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("Failed to delete pool")
 		http.Error(w, "failed to delete pool "+poolID+": "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Invalidate caches so the next page load reflects fresh state
+	// Invalidate caches for fresh state after pool deletion
 	if c, ok := client.(*proxmox.Client); ok && c != nil {
 		c.InvalidateCache("/pools")
 		c.InvalidateCache("/pools/" + poolID)
+	}
+
+	// Then attempt to delete the user (non-fatal)
+	if userID != "" {
+		if _, err := client.DeleteWithContext(ctx, "/access/users/"+url.PathEscape(userID), nil); err != nil {
+			log.Warn().Err(err).Str("user", userID).Msg("Failed to delete user; deletion completed without user removal")
+		}
 	}
 
 	// Redirect with success

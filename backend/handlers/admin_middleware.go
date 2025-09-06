@@ -19,7 +19,7 @@ func (am *AdminMiddleware) WithAdminAuth(handler httprouter.Handle) httprouter.H
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		// Check if user is authenticated and has admin privileges
 		if !IsAdmin(r) {
-			http.Error(w, "Admin access required", http.StatusForbidden)
+			RenderErrorPage(w, r, http.StatusForbidden, "Admin access required")
 			return
 		}
 
@@ -33,7 +33,7 @@ func (am *AdminMiddleware) WithAdminAuthHTTP(handler http.HandlerFunc) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if user is authenticated and has admin privileges
 		if !IsAdmin(r) {
-			http.Error(w, "Admin access required", http.StatusForbidden)
+			RenderErrorPage(w, r, http.StatusForbidden, "Admin access required")
 			return
 		}
 
