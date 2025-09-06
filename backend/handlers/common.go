@@ -126,6 +126,23 @@ func populateTemplateData(_ http.ResponseWriter, r *http.Request, data map[strin
 	if token, ok := security.CSRFTokenFromContext(r.Context()); ok && token != "" {
 		data["CSRFToken"] = token
 		log.Debug().Msg("CSRF token added to template data from request context")
+	} else if sessionManager != nil {
+		// Fallback: ensure a CSRF token exists in session for templates even if middleware/context didn't set it.
+		// This covers cases where a GET page is rendered without the CSRF middleware injecting the token in context.
+		sessToken := sessionManager.GetString(r.Context(), "csrf_token")
+		if sessToken == "" {
+			if newToken, err := security.GenerateCSRFToken(); err == nil {
+				sessionManager.Put(r.Context(), "csrf_token", newToken)
+				sessToken = newToken
+				log.Debug().Msg("Generated new CSRF token and stored in session for template rendering")
+			} else {
+				log.Error().Err(err).Msg("Failed to generate CSRF token for template rendering")
+			}
+		}
+		if sessToken != "" {
+			data["CSRFToken"] = sessToken
+			log.Debug().Msg("CSRF token added to template data from session fallback")
+		}
 	}
 
 	// Add language to data for template rendering

@@ -201,12 +201,18 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 			}
 			// Determine status: use list status, and if empty try status/current
 			status := vm.Status
-			if status == "" {
-				if cur, err := proxmox.GetVMCurrentWithContext(ctx, clientInterface, vm.Node, vm.VMID); err == nil && cur != nil {
-					if cur.Status != "" {
-						status = cur.Status
-					} else if cur.QMPStatus != "" {
-						status = cur.QMPStatus
+			nameForDisplay := vm.Name
+			if status == "" || nameForDisplay == "" {
+				if c, err := proxmox.GetVMCurrentWithContext(ctx, clientInterface, vm.Node, vm.VMID); err == nil && c != nil {
+					if status == "" {
+						if c.Status != "" {
+							status = c.Status
+						} else if c.QMPStatus != "" {
+							status = c.QMPStatus
+						}
+					}
+					if nameForDisplay == "" && c.Name != "" {
+						nameForDisplay = c.Name
 					}
 				}
 			}
@@ -215,7 +221,7 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 			}
 			results = append(results, map[string]interface{}{
 				"vmid":   vm.VMID,
-				"name":   vm.Name,
+				"name":   nameForDisplay,
 				"node":   vm.Node,
 				"status": strings.ToLower(status),
 			})
@@ -232,25 +238,43 @@ func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmi
 			continue
 		}
 
+		// Derive display name: prefer list name; if empty, try status/current
+		nameForDisplay := vm.Name
+		var cur *proxmox.VMCurrent
+		if nameForDisplay == "" || vm.Status == "" {
+			if c, err := proxmox.GetVMCurrentWithContext(ctx, clientInterface, vm.Node, vm.VMID); err == nil && c != nil {
+				cur = c
+				if nameForDisplay == "" && c.Name != "" {
+					nameForDisplay = c.Name
+				}
+			}
+		}
+
 		// Name contains check (if provided)
-		if lowerNameQuery != "" && !strings.Contains(strings.ToLower(vm.Name), lowerNameQuery) {
+		if lowerNameQuery != "" && !strings.Contains(strings.ToLower(nameForDisplay), lowerNameQuery) {
 			continue
 		}
 
-		// Derive status: prefer list status; if empty, try status/current
+		// Derive status: prefer list status; if empty, try status/current (reuse cur if available)
 		status := vm.Status
 		if status == "" {
-			if cur, err := proxmox.GetVMCurrentWithContext(ctx, clientInterface, vm.Node, vm.VMID); err == nil && cur != nil {
+			if cur != nil {
 				if cur.Status != "" {
 					status = cur.Status
 				} else if cur.QMPStatus != "" {
 					status = cur.QMPStatus
 				}
+			} else if c, err := proxmox.GetVMCurrentWithContext(ctx, clientInterface, vm.Node, vm.VMID); err == nil && c != nil {
+				if c.Status != "" {
+					status = c.Status
+				} else if c.QMPStatus != "" {
+					status = c.QMPStatus
+				}
 			}
 		}
 		results = append(results, map[string]interface{}{
 			"vmid":   vm.VMID,
-			"name":   vm.Name,
+			"name":   nameForDisplay,
 			"node":   vm.Node,
 			"status": strings.ToLower(status),
 		})
