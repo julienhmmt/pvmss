@@ -99,20 +99,12 @@
       </table>
     </div>
     {{else}}
-    <div class="notification is-info is-light">
-      <div class="level is-mobile">
-        <div class="level-left">
-          <div class="level-item">
-            <span class="icon has-text-info">
-              <i class="fas fa-info-circle"></i>
-            </span>
-          </div>
-          <div class="level-item">
-            <p>{{T "Admin.Tags.NoTags"}}</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    {{template "notification" (dict 
+      "Type" "info" 
+      "Message" (T "Admin.Tags.NoTags") 
+      "Icon" "fas fa-info-circle" 
+      "Dismissible" true
+    )}}
     {{end}}
   </div>
 {{end}}
@@ -131,23 +123,13 @@
   </div>
 
   <div class="box admin-box">
-    <div class="notification is-warning is-light">
-      <div class="level is-mobile">
-        <div class="level-left">
-          <div class="level-item">
-            <span class="icon has-text-warning">
-              <i class="fas fa-exclamation-triangle"></i>
-            </span>
-          </div>
-          <div class="level-item">
-            <div>
-              <strong>{{T "Admin.Tags.DeleteConfirmTitle"}}</strong>
-              <p>{{T "Admin.Tags.DeleteConfirmMessage" .Tag}}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Title" (T "Admin.Tags.DeleteConfirmTitle") 
+      "Message" (T "Admin.Tags.DeleteConfirmMessage" .Tag) 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" true
+    )}}
 
     <div class="level">
       <div class="level-left">

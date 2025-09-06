@@ -6,41 +6,27 @@
   <div class="container mt-4">
 
     {{if not .ProxmoxConnected}}
-    <div class="notification is-warning is-pulse mb-5" role="alert" aria-live="polite">
-      <div class="level is-mobile">
-        <div class="level-left">
-          <div class="level-item">
-            <span class="icon has-text-white">
-              <i class="fas fa-exclamation-triangle"></i>
-            </span>
-          </div>
-          <div class="level-item">
-            <div>
-              <strong>{{T "Proxmox.ConnectionRequired" | default "Connection Required"}}</strong>
-              <p>{{T "Proxmox.NotConnected"}} {{T "Proxmox.CheckConnection"}}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Title" (T "Proxmox.ConnectionRequired") 
+      "Message" (printf "%s %s" (T "Proxmox.NotConnected") (T "Proxmox.CheckConnection")) 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" false 
+      "Light" false 
+      "ExtraClasses" "is-pulse mb-5" 
+      "Live" "polite"
+    )}}
     {{else if .Error}}
-    <div class="notification is-danger mb-5" role="alert" aria-live="assertive">
-      <div class="level is-mobile">
-        <div class="level-left">
-          <div class="level-item">
-            <span class="icon has-text-white">
-              <i class="fas fa-times-circle"></i>
-            </span>
-          </div>
-          <div class="level-item">
-            <div>
-              <strong>{{T "Common.Error" | default "Error"}}</strong>
-              <p>{{.Error}}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    {{template "notification" (dict 
+      "Type" "danger" 
+      "Title" (T "Common.Error") 
+      "Message" .Error 
+      "Icon" "fas fa-times-circle" 
+      "Dismissible" true 
+      "Light" false 
+      "ExtraClasses" "mb-5" 
+      "Live" "assertive"
+    )}}
     {{else if .NodeDetails}}
     <div class="content mb-5">
         <h1 class="title is-4"><span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{T "Nodes.Title"}}</h1>
@@ -113,9 +99,11 @@
         {{end}}
     </div>
     {{else}}
-    <div class="notification">
-        {{T "Search.NoResults"}}
-    </div>
+    {{template "notification" (dict 
+      "Type" "info" 
+      "Message" (T "Search.NoResults") 
+      "Dismissible" false 
+    )}}
     {{end}}
   </div>
 {{end}}

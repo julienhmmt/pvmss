@@ -95,23 +95,27 @@
                                     </table>
                                 </div>
                                 {{else if .NoResults}}
-                                <div class="notification is-warning is-light">
-                                    <div class="content has-text-centered">
-                                        <p class="is-size-5 has-text-weight-semibold mt-3">{{T "Search.NoResults"}}</p>
-                                        <p class="has-text-grey">{{T "Search.NoResultsMessage"}}</p>
-                                    </div>
-                                </div>
+                                {{template "notification" (dict 
+                                  "Type" "warning" 
+                                  "Title" (T "Search.NoResults") 
+                                  "Message" (T "Search.NoResultsMessage") 
+                                  "Icon" "fas fa-circle-info" 
+                                  "Dismissible" false 
+                                  "Live" "polite"
+                                )}}
                                 {{end}}
                             </div>
                         </div>
                         {{end}}
                         <!-- Error Messages -->
                         {{if .Error}}
-                        <div class="notification is-danger is-light mt-4">
-                            <div class="content has-text-centered">
-                                <p class="is-size-5 has-text-weight-semibold mt-3">{{.Error}}</p>
-                            </div>
-                        </div>
+                        {{template "notification" (dict 
+                          "Type" "danger" 
+                          "Message" .Error 
+                          "Icon" "fas fa-exclamation-triangle" 
+                          "Dismissible" true 
+                          "Live" "assertive"
+                        )}}
                         {{end}}
                     </div>
                 </div>

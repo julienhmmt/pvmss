@@ -6,12 +6,19 @@
 <div class="container mt-4">
 
   {{if .Error}}
-  <div class="notification is-danger">
-    <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="{{withLang "/admin/storage" .Lang}}" class="button is-small is-light mt-2">
-      <span>{{T "Common.TryAgain"}}</span>
-    </a>
-  </div>
+  {{template "notification" (dict 
+    "Type" "danger" 
+    "Title" (T "Common.Error") 
+    "Message" .Error 
+    "Icon" "fas fa-exclamation-triangle" 
+    "Dismissible" true 
+    "Light" false 
+    "Action" (dict 
+      "Link" (withLang "/admin/storage" .Lang) 
+      "Text" (T "Common.TryAgain") 
+      "Icon" "fas fa-rotate-right" 
+      "Type" "light")
+  )}}
   {{else}}
   <div class="content mb-5">
       <h1 class="title is-4"><span class="icon"><i class="fas fa-hdd"></i></span>&nbsp;{{T "Admin.Storage.Title"}}</h1>
@@ -74,9 +81,12 @@
     </table>
   </div>
   {{else}}
-  <div class="notification is-warning">
-    {{T "Admin.Storage.NoStorages"}}
-  </div>
+  {{template "notification" (dict 
+    "Type" "warning" 
+    "Message" (T "Admin.Storage.NoStorages") 
+    "Icon" "fas fa-circle-info" 
+    "Dismissible" false 
+  )}}
   {{end}}
   {{end}}
 </div>

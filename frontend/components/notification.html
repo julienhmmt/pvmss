@@ -3,13 +3,13 @@
   Reusable notification component
   Usage: {{template "notification" (dict "Type" "success" "Message" "Operation completed successfully" "Icon" "fas fa-check" "Dismissible" true)}}
 */}}
-<div class="notification is-{{or .Type "info"}} is-light" role="alert"
+<div class="notification is-{{or .Type "info"}} {{if ne .Light false}}is-light{{end}} {{.ExtraClasses}}" role="alert"
      {{if .Live}}aria-live="{{.Live}}"{{else}}aria-live="polite"{{end}}>
   <div class="level is-mobile">
     <div class="level-left">
       {{if .Icon}}
       <div class="level-item">
-        <span class="icon has-text-{{or .Type "info"}}">
+        <span class="icon has-text-{{if ne .Light false}}{{or .Type "info"}}{{else}}white{{end}}">
           <i class="{{.Icon}}"></i>
         </span>
       </div>
@@ -40,7 +40,7 @@
           {{end}}
           <button type="submit" class="button is-{{or $.Action.Type "primary"}} is-small">
             {{if $.Action.Icon}}<span class="icon"><i class="{{$.Action.Icon}}"></i></span>{{end}}
-            <span>{{.Action.Text}}</span>
+            <span>{{$.Action.Text}}</span>
           </button>
         </form>
         {{end}}

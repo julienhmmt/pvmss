@@ -52,9 +52,12 @@
       </table>
     </div>
     {{else}}
-    <div class="notification is-warning">
-      {{T "Admin.ISO.NoISOs"}}
-    </div>
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Message" (T "Admin.ISO.NoISOs") 
+      "Icon" "fas fa-circle-info" 
+      "Dismissible" false 
+    )}}
     {{end}}
   </div>
 {{end}}

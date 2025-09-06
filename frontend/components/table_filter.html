@@ -36,13 +36,12 @@
 </form>
 
 {{if .FilterQuery}}
-<div class="notification is-info is-light mb-4">
-  <p>
-    <strong>{{.FilteredItems}}</strong> of <strong>{{.TotalItems}}</strong> {{or .ItemName "items"}} shown 
-    {{if ne .FilteredItems .TotalItems}}
-      (filtered by "{{.FilterQuery}}")
-    {{end}}
-  </p>
-</div>
+{{template "notification" (dict 
+  "Type" "info" 
+  "Message" (printf "%d of %d %s shown (filtered by \"%s\")" .FilteredItems .TotalItems (or .ItemName "items") .FilterQuery) 
+  "Icon" "fas fa-filter" 
+  "Dismissible" true 
+  "ExtraClasses" "mb-4" 
+)}}
 {{end}}
 {{end}}

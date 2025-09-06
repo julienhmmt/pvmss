@@ -12,23 +12,16 @@
           </header>
           <div class="card-content">
             {{if .Error}}
-            <div class="notification is-danger mb-4" role="alert" aria-live="assertive">
-              <div class="level is-mobile">
-                <div class="level-left">
-                  <div class="level-item">
-                    <span class="icon has-text-white">
-                      <i class="fas fa-exclamation-triangle"></i>
-                    </span>
-                  </div>
-                  <div class="level-item">
-                    <div>
-                      <strong>{{T "Common.Error" | default "Error"}}</strong>
-                      <p>{{.Error}}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {{template "notification" (dict 
+              "Type" "danger" 
+              "Title" (T "Common.Error") 
+              "Message" .Error 
+              "Icon" "fas fa-exclamation-triangle" 
+              "Dismissible" true 
+              "Light" false 
+              "ExtraClasses" "mb-4" 
+              "Live" "assertive"
+            )}}
             {{end}}
 
             <form method="post" action="{{withLang "/admin/login" .Lang}}">

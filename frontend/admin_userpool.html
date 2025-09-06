@@ -5,12 +5,19 @@
 {{define "admin_userpool_section"}}
 <div class="container mt-4">
   {{if .Error}}
-  <div class="notification is-danger">
-    <p><strong>{{T "Common.Error"}}:</strong> {{.Error}}</p>
-    <a href="{{withLang "/admin/userpool" .Lang}}" class="button is-small is-light mt-2">
-      <span>{{T "Common.TryAgain"}}</span>
-    </a>
-  </div>
+  {{template "notification" (dict 
+    "Type" "danger" 
+    "Title" (T "Common.Error") 
+    "Message" .Error 
+    "Icon" "fas fa-exclamation-triangle" 
+    "Dismissible" true 
+    "Light" false 
+    "Action" (dict 
+      "Link" (withLang "/admin/userpool" .Lang) 
+      "Text" (T "Common.TryAgain") 
+      "Icon" "fas fa-rotate-right" 
+      "Type" "light")
+  )}}
   {{else}}
     <div class="content mb-5">
       <h1 class="title is-4"><span class="icon"><i class="fas fa-user-shield"></i></span>&nbsp;Users & Pools</h1>
@@ -18,23 +25,15 @@
     </div>
 
     {{if .Success}}
-      <div class="notification is-success is-pulse mb-4" role="alert" aria-live="polite">
-        <div class="level is-mobile">
-          <div class="level-left">
-            <div class="level-item">
-              <span class="icon has-text-white">
-                <i class="fas fa-user-plus"></i>
-              </span>
-            </div>
-            <div class="level-item">
-              <div>
-                <strong>{{T "Common.Success" | default "Success"}}</strong>
-                <p>{{.SuccessMessage}}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {{template "notification" (dict 
+        "Type" "success" 
+        "Title" (T "Common.Success") 
+        "Message" .SuccessMessage 
+        "Icon" "fas fa-user-plus" 
+        "Dismissible" true 
+        "ExtraClasses" "is-pulse mb-4" 
+        "Live" "polite"
+      )}}
     {{end}}
 
     <form method="POST" action="{{withLang "/admin/userpool/create" .Lang}}" class="box">
