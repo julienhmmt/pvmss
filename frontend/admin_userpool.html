@@ -126,6 +126,7 @@
             </tr>
           </thead>
           <tbody>
+            {{$root := .}}
             {{range .UserPools}}
             <tr>
               <td>
@@ -139,12 +140,25 @@
               </td>
               <td>{{.VMCount}}</td>
               <td>
-                <div class="buttons are-small mt-2">
+                <div class="buttons are-small mb-3">
                   <a class="button is-light" href="/admin/userpool?pool={{.Pool}}" title="Refresh pool">
                     <span class="icon"><i class="fas fa-sync"></i></span>
                     <span>Refresh</span>
                   </a>
                 </div>
+
+                <form method="POST" action="/admin/userpool/delete" onsubmit="return confirm('Delete ALL VMs in this pool, the user, then the pool? This cannot be undone.');">
+                  <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}">
+                  <input type="hidden" name="pool" value="{{.Pool}}">
+                  <div class="field mt-2">
+                    <div class="control">
+                      <button type="submit" class="button is-danger is-small" title="Delete VMs, user, then pool">
+                        <span class="icon"><i class="fas fa-trash"></i></span>
+                        <span>Delete (purge)</span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
               </td>
             </tr>
             {{end}}

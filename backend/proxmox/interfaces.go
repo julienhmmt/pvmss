@@ -15,6 +15,7 @@ type ClientInterface interface {
 	PostFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error)
 	PostFormAndGetJSON(ctx context.Context, path string, data url.Values, v interface{}) error
 	PutFormWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error)
+	DeleteWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error)
 	GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error)
 	GetApiUrl() string
 	SetTimeout(timeout time.Duration)

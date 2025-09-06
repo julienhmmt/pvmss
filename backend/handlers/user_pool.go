@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -16,6 +18,97 @@ import (
 // UserPoolHandler handles Proxmox user/pool admin flows
 type UserPoolHandler struct {
 	stateManager state.StateManager
+}
+
+// DeleteUserPool deletes all VMs in the pool (purge), then the derived user, then the pool itself.
+func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("DeleteUserPool", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	poolID := strings.TrimSpace(r.FormValue("pool"))
+	if poolID == "" {
+		http.Error(w, "pool is required", http.StatusBadRequest)
+		return
+	}
+
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		http.Error(w, "Proxmox client not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	// Derive user from pool id: pvmss_<username>
+	username := strings.TrimPrefix(poolID, "pvmss_")
+	userID := username
+	if userID != "" && !strings.Contains(userID, "@") {
+		userID = userID + "@pve"
+	}
+
+	// Always delete all VMs in the pool first (purge)
+	var detailResp struct {
+		Data struct {
+			Members []struct {
+				Type string `json:"type"`
+				VMID int    `json:"vmid"`
+				Node string `json:"node"`
+			} `json:"members"`
+		} `json:"data"`
+	}
+	if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(poolID), &detailResp); err != nil {
+		log.Error().Err(err).Str("pool", poolID).Msg("Failed to get pool members before deletion")
+		http.Error(w, "failed to resolve pool members: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Delete each VM with purge=1
+	for _, m := range detailResp.Data.Members {
+		if !strings.EqualFold(m.Type, "qemu") || m.VMID <= 0 {
+			continue
+		}
+		if m.Node == "" {
+			// If node is missing, we cannot form the path; skip with warning
+			log.Warn().Int("vmid", m.VMID).Msg("Skipping VM deletion due to missing node")
+			continue
+		}
+		path := "/nodes/" + url.PathEscape(m.Node) + "/qemu/" + url.PathEscape(strconv.Itoa(m.VMID)) + "?purge=1"
+		if _, err := client.DeleteWithContext(ctx, path, nil); err != nil {
+			log.Error().Err(err).Str("path", path).Msg("Failed to delete VM")
+			http.Error(w, "failed to delete VM "+strconv.Itoa(m.VMID)+": "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Delete the user next
+	if userID != "" {
+		if _, err := client.DeleteWithContext(ctx, "/access/users/"+url.PathEscape(userID), nil); err != nil {
+			log.Error().Err(err).Str("user", userID).Msg("Failed to delete user")
+			http.Error(w, "failed to delete user "+userID+": "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Always delete the pool as the last step
+	if _, err := client.DeleteWithContext(ctx, "/pools/"+url.PathEscape(poolID), nil); err != nil {
+		log.Error().Err(err).Str("pool", poolID).Msg("Failed to delete pool")
+		http.Error(w, "failed to delete pool "+poolID+": "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Invalidate caches so the next page load reflects fresh state
+	if c, ok := client.(*proxmox.Client); ok && c != nil {
+		c.InvalidateCache("/pools")
+		c.InvalidateCache("/pools/" + poolID)
+	}
+
+	// Redirect with success
+	msg := "Deleted pool, user, and VMs for '" + poolID + "'"
+	redir := "/admin/userpool?success=1&message=" + url.QueryEscape(msg)
+	http.Redirect(w, r, redir, http.StatusSeeOther)
 }
 
 func NewUserPoolHandler(sm state.StateManager) *UserPoolHandler {
@@ -30,6 +123,7 @@ func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/userpool", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
 		"page":   h.UserPoolPage,
 		"create": h.CreateUserPool,
+		"delete": h.DeleteUserPool,
 	})
 }
 
@@ -49,6 +143,11 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		}
 	}
 
+	// Instruct browser not to cache this page; data must reflect current PVE state
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	// Build base template data
 	data := AdminPageDataWithMessage("Proxmox Users & Pools", "userpool", successMsg, "")
 
@@ -66,73 +165,72 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 
+		// Ensure we fetch fresh data for pool listing
+		if c, ok := client.(*proxmox.Client); ok && c != nil {
+			c.InvalidateCache("/pools")
+		}
+
 		// GET /pools to list all pools
 		if err := client.GetJSON(ctx, "/pools", &listResp); err == nil {
 			// Prepare detailed info per pool
 			type poolTableRow struct {
-				User     string
-				Pool     string
-				VMCount  int
-				Users    []string
-				Comment  string
+				User    string
+				Pool    string
+				VMCount int
+				Comment string
 			}
 			rows := make([]poolTableRow, 0)
+			var rowsMux sync.Mutex
+
+			// Concurrency limiter
+			workerLimit := 6
+			sem := make(chan struct{}, workerLimit)
+			var wg sync.WaitGroup
 
 			for _, p := range listResp.Data {
 				if !strings.HasPrefix(p.PoolID, "pvmss_") {
 					continue
 				}
 
-				row := poolTableRow{
-					User:    strings.TrimPrefix(p.PoolID, "pvmss_"),
-					Pool:    p.PoolID,
-					Comment: p.Comment,
-				}
+				p := p // capture loop var
+				wg.Add(1)
+				sem <- struct{}{}
+				go func() {
+					defer wg.Done()
+					defer func() { <-sem }()
 
-				// Fetch pool members to count VMs: GET /pools/{poolid}
-				var detailResp struct {
-					Data struct {
-						Members []struct {
-							Type string `json:"type"`
-							VMID int    `json:"vmid"`
-						} `json:"members"`
-					} `json:"data"`
-				}
-				if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(p.PoolID), &detailResp); err == nil {
-					vmCount := 0
-					for _, m := range detailResp.Data.Members {
-						// Count QEMU VMs; Proxmox uses type "qemu" for KVM VMs
-						if strings.EqualFold(m.Type, "qemu") || m.VMID > 0 {
-							vmCount++
-						}
+					row := poolTableRow{
+						User:    strings.TrimPrefix(p.PoolID, "pvmss_"),
+						Pool:    p.PoolID,
+						Comment: p.Comment,
 					}
-					row.VMCount = vmCount
-				}
 
-				// Fetch ACL users on this pool: GET /access/acl?path=/pool/{poolid}
-				var aclResp struct {
-					Data []struct {
-						Path  string `json:"path"`
-						Type  string `json:"type"`
-						Ugid  string `json:"ugid"`
-						Role  string `json:"roleid"`
-						Prop  int    `json:"propagate"`
-					} `json:"data"`
-				}
-				q := "/access/acl?path=" + url.QueryEscape("/pool/"+p.PoolID)
-				if err := client.GetJSON(ctx, q, &aclResp); err == nil {
-					users := make([]string, 0)
-					for _, a := range aclResp.Data {
-						// Only include user bindings (type=="user"); ugid is userid like name@pve
-						if strings.EqualFold(a.Type, "user") && a.Ugid != "" {
-							users = append(users, a.Ugid)
-						}
+					// Fetch pool members to count VMs: GET /pools/{poolid}
+					var detailResp struct {
+						Data struct {
+							Members []struct {
+								Type string `json:"type"`
+								VMID int    `json:"vmid"`
+							} `json:"members"`
+						} `json:"data"`
 					}
-					row.Users = users
-				}
+					if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(p.PoolID), &detailResp); err == nil {
+						vmCount := 0
+						for _, m := range detailResp.Data.Members {
+							if strings.EqualFold(m.Type, "qemu") || m.VMID > 0 {
+								vmCount++
+							}
+						}
+						row.VMCount = vmCount
+					}
 
-				rows = append(rows, row)
+					rowsMux.Lock()
+					rows = append(rows, row)
+					rowsMux.Unlock()
+				}()
 			}
+
+			wg.Wait()
 
 			if len(rows) > 0 {
 				data["UserPools"] = rows

@@ -217,12 +217,17 @@ func (c *Client) PutFormWithContext(ctx context.Context, path string, data url.V
 	return c.doFormRequest(ctx, http.MethodPut, path, data)
 }
 
+// DeleteWithContext performs a DELETE request with optional form-encoded data.
+func (c *Client) DeleteWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error) {
+	return c.doFormRequest(ctx, http.MethodDelete, path, data)
+}
+
 // PostFormAndGetJSON sends a POST request with form data and unmarshals the JSON response into the provided struct.
 func (c *Client) PostFormAndGetJSON(ctx context.Context, path string, data url.Values, v interface{}) error {
 	return c.doJSONRequest(ctx, http.MethodPost, path, data, v)
 }
 
-// doFormRequest is a generic helper for form-based POST and PUT requests.
+// doFormRequest is a generic helper for form-based POST, PUT, and DELETE requests.
 func (c *Client) doFormRequest(ctx context.Context, method, path string, data url.Values) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	if err := c.doJSONRequest(ctx, method, path, data, &result); err != nil {
