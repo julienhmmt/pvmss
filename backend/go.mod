@@ -7,11 +7,10 @@ require (
 	github.com/Telmate/proxmox-api-go v0.0.0-20250904210955-f62dc12feb7e
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a
-	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.0
-	github.com/prometheus/client_golang v1.23.1
+	github.com/prometheus/client_golang v1.23.2
 	github.com/rs/zerolog v1.34.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.41.0

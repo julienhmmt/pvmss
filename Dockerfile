@@ -10,10 +10,10 @@ RUN apk add --no-cache gcc musl-dev
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
 
-# Copy backend files (including i18n and docs)
+# Copy backend files (including i18n and docs) and frontend files
 COPY backend/ ./backend/
-# Copy frontend files to the correct location
 COPY frontend/ /app/frontend/
+
 # Ensure docs directory exists
 RUN mkdir -p /app/backend/docs
 

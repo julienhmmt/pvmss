@@ -484,6 +484,8 @@ other = "No tags available"
 other = "Save Tags"
 ["VMDetails.OpenConsole"]
 other = "Open Console"
+["VMDetails.Console"]
+other = "Console"
 
 # ===========
 # Status

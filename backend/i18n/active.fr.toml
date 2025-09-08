@@ -526,6 +526,8 @@ other = "Aucune étiquette disponible"
 other = "Enregistrer les étiquettes"
 ["VMDetails.OpenConsole"]
 other = "Ouvrir la console"
+["VMDetails.Console"]
+other = "Console"
 
 # ==============
 # Documentation

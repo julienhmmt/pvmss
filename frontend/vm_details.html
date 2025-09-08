@@ -206,20 +206,33 @@
         </a>
     </div>
 
-    <!-- Open Console Button -->
-    <div class="is-flex is-justify-content-center mb-4">
-        {{if .ProxmoxConnected}}
-            <button id="open-console-btn" class="button is-primary is-light"
-                    data-vmid="{{.VM.VMID}}"
-                    data-vmname="{{.VM.Name}}"
-                    data-node="{{.VM.Node}}">
-                <span>{{T "VMDetails.OpenConsole"}}</span>
-            </button>
-        {{else}}
-            <button class="button is-primary is-light" disabled title="Offline mode">
-                <span>{{T "VMDetails.OpenConsole"}}</span>
-            </button>
-        {{end}}
+    <!-- Console Section -->
+    <div class="box mb-4">
+        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+            <h3 class="title is-5 mb-0">{{T "VMDetails.Console"}}</h3>
+            {{if .ProxmoxConnected}}
+                <button id="toggle-console-btn" class="button is-primary is-light"
+                        data-vmid="{{.VM.VMID}}"
+                        data-vmname="{{.VM.Name}}"
+                        data-node="{{.VM.Node}}">
+                    <span id="console-btn-text">{{T "VMDetails.OpenConsole"}}</span>
+                </button>
+            {{else}}
+                <button class="button is-primary is-light" disabled title="Offline mode">
+                    <span>{{T "VMDetails.OpenConsole"}}</span>
+                </button>
+            {{end}}
+        </div>
+        
+        <!-- Console Container -->
+        <div id="console-container" class="is-hidden">
+            <div id="console-status" class="notification is-info is-light mb-3">
+                <span>{{T "VMDetails.Console.Loading"}}</span>
+            </div>
+            <div id="console-content" style="width: 100%; height: 600px; border: 1px solid #ddd; background: #000;">
+                <!-- noVNC will be loaded here -->
+            </div>
+        </div>
     </div>
 
     <!-- VM Action Forms (server-side) -->
@@ -280,56 +293,5 @@
 
     </div>
 </section>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const consoleButton = document.getElementById('open-console-btn');
-    if (consoleButton) {
-        consoleButton.addEventListener('click', function () {
-            const vmid = this.dataset.vmid;
-            const vmname = this.dataset.vmname;
-            const node = this.dataset.node;
-
-            // Add a loading indicator to the button
-            this.classList.add('is-loading');
-
-            fetch(`/api/console/qemu/${vmid}?node=${encodeURIComponent(node)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to get VNC ticket. Status: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        throw new Error(data.error);
-                    }
-
-                    // Open proxied Proxmox noVNC page under our origin (same-origin cookies)
-                    const vncTicket = data.vncticket || data.ticket; // backend may return either key
-                    if (!vncTicket) {
-                        throw new Error('Missing VNC ticket in response');
-                    }
-                    let consoleUrl = `/console/qemu/${encodeURIComponent(vmid)}?node=${encodeURIComponent(node)}&port=${encodeURIComponent(data.port)}&vncticket=${encodeURIComponent(vncTicket)}&vmname=${encodeURIComponent(vmname)}`;
-                    if (data.vncpassword) {
-                        consoleUrl += `&vncpassword=${encodeURIComponent(data.vncpassword)}`;
-                    }
-
-                    // Open the console in a new tab
-                    window.open(consoleUrl, '_blank', 'noopener,noreferrer');
-                })
-                .catch(error => {
-                    console.error('Error opening console:', error);
-                    // You could display a notification to the user here
-                    alert('Could not open console: ' + error.message);
-                })
-                .finally(() => {
-                    // Remove the loading indicator
-                    this.classList.remove('is-loading');
-                });
-        });
-    }
-});
-</script>
 
 {{end}}
