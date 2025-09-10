@@ -1,0 +1,210 @@
+{{define "base_data"}}
+{{/*
+  Standardized base data structure for all templates
+  This ensures consistent data structure across all components
+*/}}
+
+{{/*
+  Standard Page Data Structure:
+  {
+    "Title": string,
+    "Lang": string,
+    "CSRFToken": string,
+    "IsAuthenticated": bool,
+    "Username": string,
+    "IsAdmin": bool,
+    "ProxmoxConnected": bool,
+    "ProxmoxError": string,
+    "Theme": string,
+    "Messages": {
+      "Success": string,
+      "Error": string,
+      "Warning": string,
+      "Info": string
+    },
+    "Navigation": {
+      "CurrentPath": string,
+      "Breadcrumbs": array,
+      "Actions": array
+    },
+    "Meta": {
+      "Description": string,
+      "Keywords": array,
+      "CanonicalURL": string
+    }
+  }
+*/}}
+
+{{/*
+  Form Field Data Structure:
+  {
+    "Name": string,
+    "Type": string,
+    "Label": string,
+    "Value": any,
+    "Placeholder": string,
+    "Required": bool,
+    "Min": number,
+    "Max": number,
+    "Step": number,
+    "Pattern": string,
+    "Options": array,
+    "Error": string,
+    "Help": string,
+    "Attributes": object
+  }
+*/}}
+
+{{/*
+  Table Data Structure:
+  {
+    "Headers": array,
+    "Rows": array,
+    "EmptyMessage": string,
+    "Loading": bool,
+    "Actions": array
+  }
+*/}}
+
+{{/*
+  Notification Data Structure:
+  {
+    "Type": string, // success, error, warning, info
+    "Title": string,
+    "Message": string,
+    "Icon": string,
+    "Dismissible": bool,
+    "AutoClose": number,
+    "Actions": array
+  }
+*/}}
+
+{{/* Helper function to create standardized form field data */}}
+<div class="field{{if .Error}} has-error{{end}}">
+  {{if .Label}}
+  <label for="{{.Name}}" class="label">
+    {{.Label}}
+    {{if .Required}}<span class="has-text-danger" aria-label="required">*</span>{{end}}
+  </label>
+  {{end}}
+  
+  <div class="control{{if .Icon}} has-icons-left{{end}}{{if .IconRight}} has-icons-right{{end}}">
+    {{if eq .Type "textarea"}}
+    <textarea 
+      id="{{.Name}}" 
+      name="{{.Name}}" 
+      class="textarea{{if .Error}} is-danger{{end}}"
+      {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}
+      {{if .Required}}required aria-required="true"{{end}}
+      {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}
+      {{if .Rows}}rows="{{.Rows}}"{{end}}
+      {{if .Help}}aria-describedby="{{.Name}}-help"{{end}}
+      {{range $key, $value := .Attributes}}{{$key}}="{{$value}}" {{end}}
+    >{{.Value}}</textarea>
+    
+    {{else if eq .Type "select"}}
+    <div class="select{{if .Error}} is-danger{{end}}{{if .Multiple}} is-multiple{{end}}">
+      <select 
+        id="{{.Name}}" 
+        name="{{.Name}}"
+        {{if .Required}}required aria-required="true"{{end}}
+        {{if .Multiple}}multiple{{end}}
+        {{if .Help}}aria-describedby="{{.Name}}-help"{{end}}
+        {{range $key, $value := .Attributes}}{{$key}}="{{$value}}" {{end}}
+      >
+        {{if .Placeholder}}
+        <option value="">{{.Placeholder}}</option>
+        {{end}}
+        {{range $option := .Options}}
+        <option value="{{$option.Value}}" {{if eq $option.Value $.Value}}selected{{end}}>{{$option.Label}}</option>
+        {{end}}
+      </select>
+    </div>
+    
+    {{else}}
+    <input 
+      id="{{.Name}}" 
+      name="{{.Name}}" 
+      type="{{or .Type "text"}}" 
+      class="input{{if .Error}} is-danger{{end}}"
+      {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}
+      {{if .Value}}value="{{.Value}}"{{end}}
+      {{if .Required}}required aria-required="true"{{end}}
+      {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}
+      {{if .MinLength}}minlength="{{.MinLength}}"{{end}}
+      {{if .Pattern}}pattern="{{.Pattern}}"{{end}}
+      {{if .Min}}min="{{.Min}}"{{end}}
+      {{if .Max}}max="{{.Max}}"{{end}}
+      {{if .Step}}step="{{.Step}}"{{end}}
+      {{if .Help}}aria-describedby="{{.Name}}-help"{{end}}
+      {{range $key, $value := .Attributes}}{{$key}}="{{$value}}" {{end}}
+    >
+    {{end}}
+    
+    {{if .Icon}}
+    <span class="icon is-small is-left">
+      <i class="{{.Icon}}"></i>
+    </span>
+    {{end}}
+    
+    {{if .IconRight}}
+    <span class="icon is-small is-right">
+      <i class="{{.IconRight}}"></i>
+    </span>
+    {{end}}
+  </div>
+  
+  {{if .Help}}
+  <p id="{{.Name}}-help" class="help{{if .Error}} is-danger{{else}} has-text-grey{{end}}">
+    {{if .Error}}{{.Error}}{{else}}{{.Help}}{{end}}
+  </p>
+  {{end}}
+</div>
+
+{{/* Helper function to create standardized button data */}}
+<button 
+  type="{{or .Type "button"}}" 
+  class="button is-{{or .Style "primary"}}{{if .Size}} is-{{.Size}}{{end}}{{if .Disabled}} is-disabled{{end}}{{if .Loading}} is-loading{{end}}"
+  {{if .Disabled}}disabled aria-disabled="true"{{end}}
+  {{if .AriaLabel}}aria-label="{{.AriaLabel}}"{{end}}
+  {{if .DataAction}}data-action="{{.DataAction}}"{{end}}
+  {{range $key, $value := .Attributes}}{{$key}}="{{$value}}" {{end}}
+>
+  {{if .Icon}}
+  <span class="icon" aria-hidden="true">
+    <i class="{{.Icon}}"></i>
+  </span>
+  {{end}}
+  <span>{{.Text}}</span>
+</button>
+
+{{/* Helper function to create standardized table data */}}
+{{if .Loading}}
+  {{template "loading_state" (dict "Message" (T "Common.Loading"))}}
+{{else if not .Rows}}
+  {{template "empty_state" (dict "Message" .EmptyMessage)}}
+{{else}}
+<div class="table-container">
+  <table class="table is-fullwidth is-striped is-hoverable is-narrow">
+    {{if .Headers}}
+    <thead>
+      <tr>
+        {{range $header := .Headers}}
+        <th{{if $header.Class}} class="{{$header.Class}}"{{end}}>{{$header.Text}}</th>
+        {{end}}
+      </tr>
+    </thead>
+    {{end}}
+    <tbody>
+      {{range $row := .Rows}}
+      <tr{{if $row.Class}} class="{{$row.Class}}"{{end}}>
+        {{range $cell := $row.Cells}}
+        <td{{if $cell.Class}} class="{{$cell.Class}}"{{end}}>{{$cell.Content}}</td>
+        {{end}}
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+{{end}}

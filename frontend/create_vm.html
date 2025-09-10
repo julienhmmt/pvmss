@@ -81,19 +81,19 @@
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <input id="vmName" class="input" type="text" name="name" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true">
+                                                        <input id="vmName" class="input" type="text" name="name" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true" aria-describedby="vmName-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" />
                                                     </div>
                                                 </div>
                                                 <div class="field">
                                                     <label for="vmDescription" class="label has-text-weight-normal">{{T "VM.Create.Description"}}</label>
                                                     <div class="control">
-                                                        <textarea id="vmDescription" class="textarea" name="description" placeholder='{{T "VM.Create.DescriptionPlaceholder"}}' rows="3"></textarea>
+                                                        <textarea id="vmDescription" class="textarea" name="description" placeholder='{{T "VM.Create.DescriptionPlaceholder"}}' rows="3" aria-describedby="vmDescription-help" maxlength="500"></textarea>
                                                     </div>
                                                 </div>
                                                 <div class="field">
                                                     <label for="vmId" class="label has-text-weight-normal">{{T "VM.Create.VMID"}}</label>
                                                     <div class="control">
-                                                        <input id="vmId" class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}'>
+                                                        <input id="vmId" class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
                                                     </div>
                                                     <p class="help has-text-grey-light">{{T "VM.Create.VMID.Help"}}</p>
                                                 </div>
@@ -118,7 +118,7 @@
                                                             <label for="cpuSockets" class="label is-small has-text-grey">{{T "VM.Create.CPUSockets"}}</label>
                                                             <div class="control">
                                                                 <div class="select is-small is-fullwidth">
-                                                                    <select id="cpuSockets" name="sockets" required aria-required="true">
+                                                                    <select id="cpuSockets" name="sockets" required aria-required="true" aria-describedby="cpuSockets-help">
                                                                         {{range $i := seq $vmSockMin (int (add $vmSockMax 1))}}
                                                                         <option value="{{$i}}" {{if eq $i $vmSockMin}}selected{{end}}>{{$i}}</option>
                                                                         {{end}}
@@ -130,7 +130,7 @@
                                                             <label for="cpuCores" class="label is-small has-text-grey">Cores per Socket</label>
                                                             <div class="control">
                                                                 <div class="select is-small is-fullwidth">
-                                                                    <select id="cpuCores" name="cores" required aria-required="true">
+                                                                    <select id="cpuCores" name="cores" required aria-required="true" aria-describedby="cpuCores-help">
                                                                         {{range $i := seq $vmCoreMin (int (add $vmCoreMax 1))}}
                                                                         <option value="{{$i}}" {{if eq $i $vmCoreMin}}selected{{end}}>{{$i}}</option>
                                                                         {{end}}
@@ -144,7 +144,7 @@
                                                     <label for="memory" class="label has-text-weight-normal">{{T "Common.Memory"}}</label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="memory" class="input" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required aria-required="true">
+                                                            <input id="memory" class="input" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric">
                                                         </div>
                                                         <div class="control"><span class="button is-static">MB</span></div>
                                                     </div>
@@ -153,7 +153,7 @@
                                                     <label for="diskSize" class="label has-text-weight-normal">{{T "VM.Create.DiskSize"}}</label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="diskSize" class="input" type="number" name="disk_size" min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required aria-required="true">
+                                                            <input id="diskSize" class="input" type="number" name="disk_size" min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required aria-required="true" aria-describedby="diskSize-help" inputmode="numeric">
                                                         </div>
                                                         <div class="control"><span class="button is-static">GB</span></div>
                                                     </div>
@@ -162,7 +162,7 @@
                                                     <label for="storage" class="label has-text-weight-normal">{{T "VM.Create.Storage"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
-                                                            <select id="storage" name="storage" required aria-required="true">
+                                                            <select id="storage" name="storage" required aria-required="true" aria-describedby="storage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
                                                                 {{range .Storages}}<option value="{{.}}">{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>{{end}}
                                                             </select>
@@ -187,7 +187,7 @@
                                                     <label for="node" class="label has-text-weight-normal">Proxmox Node</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
-                                                            <select id="node" name="node" required aria-required="true">
+                                                            <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
                                                                 {{range .Nodes}}<option value="{{.}}" {{if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>{{else}}<option disabled>No nodes available</option>{{end}}
                                                             </select>
                                                         </div>
@@ -203,7 +203,7 @@
                                                     <label for="isoImage" class="label has-text-weight-normal">{{T "VM.Create.ISOImage"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
-                                                            <select id="isoImage" name="iso">
+                                                            <select id="isoImage" name="iso" aria-describedby="isoImage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
                                                                 {{range sort .ISOs}}<option value="{{.}}">{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
                                                             </select>
@@ -214,7 +214,7 @@
                                                     <label for="networkBridge" class="label has-text-weight-normal">{{T "VM.Create.Network"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
-                                                            <select id="networkBridge" name="bridge" required aria-required="true">
+                                                            <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
                                                                 {{range sort .Bridges}}<option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoBridgesAvailable"}}</option>{{end}}
                                                             </select>
                                                         </div>

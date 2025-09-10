@@ -48,7 +48,13 @@
       {{end}}
       {{if .Dismissible}}
       <div class="level-item">
-        <button class="delete" aria-label="Dismiss notification" onclick="this.closest('.notification').style.display='none'"></button>
+        <button class="delete" 
+                aria-label="Dismiss notification" 
+                data-action="dismiss" 
+                data-target="notification"
+                type="button">
+          <span class="visually-hidden">Dismiss notification</span>
+        </button>
       </div>
       {{end}}
     </div>

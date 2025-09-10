@@ -54,7 +54,7 @@
                   </span>
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input" type="text" id="username" name="username" required autofocus autocomplete="username" />
+                  <input class="input" type="text" id="username" name="username" required autofocus autocomplete="username" aria-required="true" aria-describedby="username-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" />
                   <span class="icon is-small is-left">
                     <i class="fas fa-user"></i>
                   </span>
@@ -72,7 +72,7 @@
                   </span>
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input" type="password" id="password" name="password" required autocomplete="current-password" />
+                  <input class="input" type="password" id="password" name="password" required autocomplete="current-password" aria-required="true" aria-describedby="password-help" minlength="6" maxlength="128" />
                   <span class="icon is-small is-left">
                     <i class="fas fa-lock"></i>
                   </span>
@@ -81,8 +81,8 @@
 
               <div class="field">
                 <div class="control">
-                  <button class="button is-primary is-fullwidth" type="submit">
-                    <span class="icon">
+                  <button class="button is-primary is-fullwidth" type="submit" aria-label="{{T "Login.Button"}}">
+                    <span class="icon" aria-hidden="true">
                       <i class="fas fa-sign-in-alt"></i>
                     </span>
                     <span>{{T "Login.Button"}}</span>

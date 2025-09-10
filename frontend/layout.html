@@ -7,6 +7,9 @@
     <meta name="description" content="{{T "UI.Header"}} - {{T "UI.Subtitle"}}">
     <meta name="csrf-token" content="{{.CSRFToken}}">
     <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>
         {{- if .Title -}}
             {{.Title}} - {{T "UI.Header"}}
@@ -17,36 +20,67 @@
         {{- end -}}
     </title>
 
-    <!-- Context7 optimized CSS loading -->
-    <link rel="stylesheet" href="/css/bulma.min.css?theme={{.Theme}}" data-css-context="bulma">
-    <link rel="stylesheet" href="/css/tokens.css" data-css-context="tokens">
-    <link rel="stylesheet" href="/css/base.css" data-css-context="base">
-    <link rel="stylesheet" href="/css/components.css" data-css-context="components">
-    <link rel="stylesheet" href="/css/style.css" data-css-context="style">
+    <!-- Critical CSS -->
+    <style>
+      /* Critical styles for initial paint */
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; line-height: 1.5; }
+      .navbar { background: #fff; border-bottom: 1px solid #e1e5e9; }
+      .section { padding: 3rem 1.5rem; }
+      .container { max-width: 1344px; margin: 0 auto; }
+      .notification { padding: 1.25rem; margin-bottom: 1.5rem; }
+      .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
+    </style>
+    
+    <!-- Async CSS loading -->
+    <link rel="preload" href="/css/bulma.min.css?theme={{.Theme}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/bulma.min.css?theme={{.Theme}}"></noscript>
+    
+    <link rel="preload" href="/css/tokens.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/tokens.css"></noscript>
+    
+    <link rel="preload" href="/css/base.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/base.css"></noscript>
+    
+    <link rel="preload" href="/css/components.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/components.css"></noscript>
+    
+    <link rel="preload" href="/css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/style.css"></noscript>
+    
     {{if .IsAdminPage}}
-    <link rel="stylesheet" href="/css/admin.css" data-css-context="admin">
+    <link rel="preload" href="/css/admin.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/admin.css"></noscript>
     {{end}}
-    <!-- Font Awesome optimized loading -->
-    <link rel="stylesheet" href="/css/fontawesome.min.css" data-css-context="fa-core">
-    <link rel="stylesheet" href="/css/solid.min.css" data-css-context="fa-solid">
+    
+    <!-- Font Awesome - only load what's needed -->
+    <link rel="preload" href="/css/fontawesome.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/fontawesome.min.css"></noscript>
+    
+    <link rel="preload" href="/css/solid.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/solid.min.css"></noscript>
+    
     {{if .NeedsRegularIcons}}
-    <link rel="stylesheet" href="/css/regular.min.css" data-css-context="fa-regular">
+    <link rel="preload" href="/css/regular.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/regular.min.css"></noscript>
     {{end}}
     {{if .NeedsBrandIcons}}
-    <link rel="stylesheet" href="/css/brands.min.css" data-css-context="fa-brands">
+    <link rel="preload" href="/css/brands.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/brands.min.css"></noscript>
     {{end}}
-    <!-- Preload local Font Awesome webfonts for faster icon rendering -->
-    <link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
+    
+    <!-- Font preloading -->
+    <link rel="preconnect" href="/webfonts/">
+    <link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+    {{if .NeedsRegularIcons}}<link rel="preload" href="/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin="anonymous">{{end}}
+    {{if .NeedsBrandIcons}}<link rel="preload" href="/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin="anonymous">{{end}}
   </head>
 <body>
     {{template "navbar" .}}
 
     {{/* Proxmox Connection Status Banner - Server-side rendered */}}
     {{if not .ProxmoxConnected}}
-    <input type="checkbox" id="pmx-dismiss" class="visually-hidden-checkbox" aria-label="Dismiss Proxmox status banner">
-    <div class="notification is-danger is-light" id="proxmox-status-banner" role="alert" aria-live="assertive">
+    <input type="checkbox" id="pmx-dismiss" class="visually-hidden" aria-label="Dismiss Proxmox status banner" data-action="dismiss" data-target="proxmox-status-banner">
+    <div class="notification is-danger is-light" id="proxmox-status-banner" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="container">
             <div class="level is-mobile">
                 <div class="level-left">
@@ -70,7 +104,7 @@
                     </div>
                 </div>
                 <div class="level-right">
-                    <label for="pmx-dismiss" class="delete" role="button" aria-label="Dismiss notification" aria-controls="proxmox-status-banner"></label>
+                    <label for="pmx-dismiss" class="delete" role="button" aria-label="Dismiss Proxmox connection error notification" aria-controls="proxmox-status-banner"></label>
                 </div>
             </div>
         </div>
@@ -97,6 +131,8 @@
         </div>
     </footer>
 
+    <!-- Accessibility and Progressive Enhancement JavaScript -->
+    <script src="/js/accessibility.js" defer></script>
   </body>
 </html>
 {{end}}

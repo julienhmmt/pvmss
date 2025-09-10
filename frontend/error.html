@@ -21,7 +21,7 @@
               {{end}}
             </div>
             <div class="buttons mt-4">
-              <button class="button is-light" type="button" onclick="if (history.length > 1) { history.back(); } else { window.location.href='/' }">
+              <button class="button is-light" type="button" id="back-button" data-action="back">
                 ← Back
               </button>
               <a class="button is-primary" href="/">
