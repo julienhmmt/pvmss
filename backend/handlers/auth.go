@@ -280,9 +280,9 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	if lang := i18n.GetLanguage(r); lang != "" {
 		// Set language cookie
 		http.SetCookie(w, &http.Cookie{
-			Name:  i18n.CookieNameLang,
-			Value: lang,
-			Path:  "/",
+			Name:   i18n.CookieNameLang,
+			Value:  lang,
+			Path:   "/",
 			MaxAge: int(i18n.CookieMaxAge / time.Second),
 		})
 		// Append lang to redirect for explicit propagation
@@ -386,9 +386,9 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	if lang := i18n.GetLanguage(r); lang != "" {
 		// Set language cookie
 		http.SetCookie(w, &http.Cookie{
-			Name:  i18n.CookieNameLang,
-			Value: lang,
-			Path:  "/",
+			Name:   i18n.CookieNameLang,
+			Value:  lang,
+			Path:   "/",
 			MaxAge: int(i18n.CookieMaxAge / time.Second),
 		})
 		// Append lang to redirect for explicit propagation

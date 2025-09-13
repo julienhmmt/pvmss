@@ -4,7 +4,6 @@
 
 {{define "admin_nodes_section"}}
   <div class="container mt-4">
-
     {{if not .ProxmoxConnected}}
     {{template "notification" (dict 
       "Type" "warning" 
@@ -13,8 +12,8 @@
       "Icon" "fas fa-exclamation-triangle" 
       "Dismissible" false 
       "Light" false 
-      "ExtraClasses" "is-pulse mb-5" 
-      "Live" "polite"
+      "ExtraClasses" "mb-5" 
+      "Live" "assertive"
     )}}
     {{else if .Error}}
     {{template "notification" (dict 
@@ -29,81 +28,111 @@
     )}}
     {{else if .NodeDetails}}
     <div class="content mb-5">
-        <h1 class="title is-4"><span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{T "Nodes.Title"}}</h1>
+      <h1 class="title is-4">
+        <span class="icon"><i class="fas fa-server"></i></span>
+        <span>{{T "Nodes.Title"}}</span>
+      </h1>
     </div>
+    
     <div class="columns is-multiline">
-        {{range .NodeDetails}}
-        <div class="column is-one-third">
-            <div class="card node-card">
-                <header class="card-header">
-                    <p class="card-header-title is-size-6">
-                        <span class="icon mr-2"><i class="fas fa-server"></i></span>
-                        {{.Node}}
-                    </p>
-                    <div class="card-header-icon">
-                        {{if $.ProxmoxConnected}}
-                        <span class="tag is-success">
-                            <span class="icon is-small mr-1"><i class="fas fa-circle"></i></span>
-                            {{T "Nodes.Status.Online"}}
-                        </span>
-                        {{else}}
-                        <span class="tag is-danger">
-                            <span class="icon is-small mr-1"><i class="fas fa-circle"></i></span>
-                            {{T "Nodes.Status.Offline"}}
-                        </span>
-                        {{end}}
-                    </div>
-                </header>
-                <div class="card-content">
-                    <!-- CPU Usage -->
-                    <div class="mb-4">
-                        <label class="label is-small has-text-grey">{{T "Nodes.Header.CPUUsage"}}</label>
-                        {{if gt .CPU 1.0}}
-                        <progress class="progress is-small {{if lt .CPU 70.0}}is-success{{else if lt .CPU 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" .CPU}}" max="100"></progress>
-                        <div class="is-flex is-justify-content-space-between is-size-7">
-                            <span>{{printf "%.2f" .CPU}} / {{.MaxCPU}} Cores</span>
-                            <span class="has-text-weight-bold">{{printf "%.0f" .CPU}}%</span>
-                        </div>
-                        {{else}}
-                        {{$cpu_percent := mul .CPU 100.0}}
-                        <progress class="progress is-small {{if lt $cpu_percent 70.0}}is-success{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $cpu_percent}}" max="100"></progress>
-                        <div class="is-flex is-justify-content-space-between is-size-7">
-                            <span>{{printf "%.2f" .CPU}} / {{.MaxCPU}} Cores</span>
-                            <span class="has-text-weight-bold">{{printf "%.0f" $cpu_percent}}%</span>
-                        </div>
-                        {{end}}
-                    </div>
-                    <!-- Memory Usage -->
-                    <div class="mb-4">
-                        <label class="label is-small has-text-grey">{{T "Nodes.Header.MemoryUsage"}}</label>
-                        {{$mem_percent := mul (div .Memory .MaxMemory) 100.0}}
-                        <progress class="progress is-small {{if lt $mem_percent 70.0}}is-success{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $mem_percent}}" max="100"></progress>
-                        <div class="is-flex is-justify-content-space-between is-size-7">
-                            <span>{{.Memory | humanBytes}} / {{.MaxMemory | humanBytes}}</span>
-                            <span class="has-text-weight-bold">{{printf "%.0f" $mem_percent}}%</span>
-                        </div>
-                    </div>
-                    <!-- Disk Usage -->
-                    <div>
-                        <label class="label is-small has-text-grey">{{T "Nodes.Header.DiskUsage"}}</label>
-                        {{$disk_percent := mul (div .Disk .MaxDisk) 100.0}}
-                        <progress class="progress is-small {{if lt $disk_percent 70.0}}is-success{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $disk_percent}}" max="100"></progress>
-                        <div class="is-flex is-justify-content-space-between is-size-7">
-                            <span>{{.Disk | humanBytes}} / {{.MaxDisk | humanBytes}}</span>
-                            <span class="has-text-weight-bold">{{printf "%.0f" $disk_percent}}%</span>
-                        </div>
-                    </div>
-                </div>
+      {{range .NodeDetails}}
+      <div class="column is-12-mobile is-6-tablet is-4-desktop">
+        <div class="card node-card">
+          <header class="card-header">
+            <p class="card-header-title">
+              <span class="icon mr-2"><i class="fas fa-server"></i></span>
+              <span>{{.Node}}</span>
+            </p>
+            <div class="card-header-icon">
+              {{if $.ProxmoxConnected}}
+              <span class="tag is-success">
+                <span class="icon is-small"><i class="fas fa-circle"></i></span>
+                <span class="ml-1">{{T "Nodes.Status.Online"}}</span>
+              </span>
+              {{else}}
+              <span class="tag is-danger">
+                <span class="icon is-small"><i class="fas fa-circle"></i></span>
+                <span class="ml-1">{{T "Nodes.Status.Offline"}}</span>
+              </span>
+              {{end}}
             </div>
+          </header>
+          
+          <div class="card-content">
+            <!-- CPU Usage -->
+            <div class="field mb-4">
+              <label class="label is-small has-text-grey">
+                <span class="icon is-small"><i class="fas fa-microchip"></i></span>
+                <span>{{T "Nodes.Header.CPUUsage"}}</span>
+              </label>
+              
+              {{$cpu_usage := .CPU}}
+              {{$cpu_percent := mul $cpu_usage 100.0}}
+              {{$used_cores := mul $cpu_usage .MaxCPU}}
+              {{$max_cores := .MaxCPU}}
+              
+              <div class="control">
+                <progress class="progress is-small {{if lt $cpu_percent 70.0}}is-success{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" 
+                  value="{{printf "%.0f" $cpu_percent}}" max="100" 
+                  title="{{printf "%.1f%% CPU Usage"}}">
+                </progress>
+              </div>
+              
+              <div class="is-flex is-justify-content-space-between is-size-7">
+                <span class="has-text-weight-bold">{{printf "%.1f%%" $cpu_percent}}</span>
+              </div>
+            </div>
+
+            <!-- Memory Usage -->
+            <div class="field mb-4">
+              <label class="label is-small has-text-grey">
+                <span class="icon is-small"><i class="fas fa-memory"></i></span>
+                <span>{{T "Nodes.Header.MemoryUsage"}}</span>
+              </label>
+              
+              {{$mem_percent := mul (div .Memory .MaxMemory) 100.0}}
+              
+              <div class="control">
+                <progress class="progress is-small {{if lt $mem_percent 70.0}}is-success{{else if lt $mem_percent 90.0}}is-warning{{else}}is-danger{{end}}" 
+                  value="{{printf "%.0f" $mem_percent}}" max="100">
+                </progress>
+              </div>
+              
+              <div class="is-flex is-justify-content-space-between is-size-7">
+                <span>{{printf "%.0f" .Memory | humanBytes}} / {{printf "%.0f" .MaxMemory | humanBytes}}</span>
+                <span class="has-text-weight-bold">{{printf "%.0f%%" $mem_percent}}</span>
+              </div>
+            </div>
+
+            <!-- Disk Usage -->
+            <div class="field">
+              <label class="label is-small has-text-grey">
+                <span class="icon is-small"><i class="fas fa-hdd"></i></span>
+                <span>{{T "Nodes.Header.DiskUsage"}}</span>
+              </label>
+              
+              {{$disk_percent := mul (div .Disk .MaxDisk) 100.0}}
+              
+              <div class="control">
+                <progress class="progress is-small {{if lt $disk_percent 70.0}}is-success{{else if lt $disk_percent 90.0}}is-warning{{else}}is-danger{{end}}" 
+                  value="{{printf "%.0f" $disk_percent}}" max="100">
+                </progress>
+              </div>
+              
+              <div class="is-flex is-justify-content-space-between is-size-7">
+                <span>{{printf "%.0f" .Disk | humanBytes}} / {{printf "%.0f" .MaxDisk | humanBytes}}</span>
+                <span class="has-text-weight-bold">{{printf "%.0f%%" $disk_percent}}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        {{end}}
+      </div>
+      {{end}}
     </div>
     {{else}}
-    {{template "notification" (dict 
-      "Type" "info" 
-      "Message" (T "Search.NoResults") 
-      "Dismissible" false 
-    )}}
+    <div class="content has-text-centered">
+      <p class="subtitle has-text-grey">{{T "Nodes.NoNodes"}}</p>
+    </div>
     {{end}}
   </div>
 {{end}}

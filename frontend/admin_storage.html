@@ -14,7 +14,7 @@
     "Dismissible" true 
     "Light" false 
     "Action" (dict 
-      "Link" (withLang "/admin/storage" .Lang) 
+      "Link" (withLang "/admin/storage" $.Lang) 
       "Text" (T "Common.TryAgain") 
       "Icon" "fas fa-rotate-right" 
       "Type" "light")
@@ -57,7 +57,7 @@
             </div>
           </td>
           <td class="has-text-right">
-            <form method="POST" action="{{withLang "/admin/storage/toggle" .Lang}}" class="is-inline">
+            <form method="POST" action="{{withLang "/admin/storage/toggle" $.Lang}}" class="is-inline">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="storage" value="{{.Storage}}">
               <input type="hidden" name="action" value="{{if index $.EnabledMap .Storage}}disable{{else}}enable{{end}}">

@@ -14,7 +14,7 @@
     "Dismissible" true 
     "Light" false 
     "Action" (dict 
-      "Link" (withLang "/admin/vmbr" .Lang) 
+      "Link" (withLang "/admin/vmbr" $.Lang) 
       "Text" (T "Common.TryAgain") 
       "Icon" "fas fa-rotate-right" 
       "Type" "light")
@@ -43,7 +43,7 @@
           <td>{{index . "node"}}</td>
           <td>{{index . "description"}}</td>
           <td class="has-text-right">
-            <form method="POST" action="{{withLang "/admin/vmbr/toggle" .Lang}}" class="is-inline">
+            <form method="POST" action="{{withLang "/admin/vmbr/toggle" $.Lang}}" class="is-inline">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="vmbr" value="{{$name}}">
               <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
