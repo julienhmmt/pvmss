@@ -1,37 +1,62 @@
-# Guide utilisateur PVMSS
+# Guide de l'utilisateur de PVMSS
 
-PVMSS (Proxmox Virtual Machine Self-Service) vous permet de créer et gérer des machines virtuelles via une interface web simple.
+PVMSS (Proxmox Virtual Machine Self-Service) est une application web intuitive permettant de créer, gérer et accéder aux consoles des machines virtuelles de manière simplifiée.
 
-## Fonctionnalités rincipales
+L'application est disponible en français et en anglais.
 
-### Création de machines virtuelles
+Pour accéder aux fonctionnalités principales, telles que la création de machines virtuelles et l'accès à leur console, vous devez vous connecter à l'aide des identifiants fournis par l'administrateur de votre organisation.
 
-- **Choix du système d'exploitation** : Installez votre système en prenant une image ISO dans une liste pré-définie par les administraeturs ;
-- **Sélection des ressources** : Définissez les besoins en coeurs CPU, mémoire vive et stockage ;
-- **Configuration réseau** : Sélectionnez le pont réseau pour vous connecter au sous-réseau cible.
+## Guide de démarrage rapide
 
-### Gestion de vos VM
+1. **Connexion à l'application** : Connectez-vous à PVMSS à l'aide de vos identifiants pour accéder aux fonctionnalités de création et de gestion des machines virtuelles.
+2. **Recherche de machines virtuelles** : Utilisez la fonction de recherche pour localiser une machine virtuelle spécifique et consulter ses détails.
+3. **Création d'une machine virtuelle** : Cliquez sur le bouton "Créer une machine virtuelle" pour ouvrir le formulaire de configuration, puis renseignez les paramètres requis.
+4. **Accès à la console** : Une fois la machine virtuelle créée, cliquez sur le bouton "Console" pour vous connecter à son interface.
 
-- **Recherche de VM** : Trouvez vos machines par nom ou ID via la fonction de recherche
-- **Contrôle des VM** : Démarrer, arrêter, redémarrer et éteindre vos machines virtuelles
-- **Surveillance du statut** : Voir l'état en temps réel, le temps de fonctionnement et l'utilisation des ressources
-- **Détails des VM** : Accéder aux informations détaillées de la configuration de vos machines
+## Fonctionnalités principales
 
-### Guide de Démarrage Rapide
+### Création d'une machine virtuelle
 
-1. **Rechercher des VM** : Utilisez la page de recherche pour trouver les machines virtuelles existantes
-2. **Créer une nouvelle VM** : Cliquez sur "Créer VM" pour démarrer le processus de création
-3. **Configurer la VM** : Sélectionnez le modèle OS, définissez les limites de ressources et configurez le réseau
-4. **Surveiller les VM** : Utilisez la page de détails VM pour surveiller l'état et gérer vos machines
+Pour créer une machine virtuelle, accédez au formulaire de configuration via le bouton "Créer une VM" après vous être connecté à PVMSS. Les paramètres suivants doivent être définis :
 
-### Bonnes Pratiques
+- **Nom et description** : Saisissez un nom unique et une description pour identifier votre machine virtuelle.
+- **Système d'exploitation** : Sélectionnez une image ISO parmi une liste prédéfinie par les administrateurs pour installer le système d'exploitation.
+- **Ressources** : Configurez les ressources nécessaires, notamment le nombre de cœurs CPU, la mémoire vive, le stockage et le pont réseau.
+- **Tags** : Ajoutez des tags prédéfinis pour organiser et faciliter la recherche de vos machines virtuelles.
 
-- Toujours éteindre proprement les VM avant de les arrêter pour éviter la perte de données
-- Surveiller l'utilisation des ressources pour assurer des performances optimales
-- Utiliser des noms descriptifs pour vos VM pour faciliter l'identification
-- Contacter votre administrateur si vous avez besoin de ressources supplémentaires ou d'images ISO
+Vous ne pouvez créer qu'une seule machine à la fois, et vous ne pouvez pas modifier les ressources d'une machine virtuelle existante.
 
-### Obtenir de l'Aide
+### Recherche d'une machine virtuelle
 
-- Contactez votre administrateur système pour le support technique
-- Signalez tout problème via les canaux de support de votre organisation
+Utilisez la fonction de recherche pour localiser une machine virtuelle par son *nom* ou son *VMID* (identifiant unique attribué à chaque machine virtuelle). Une liste de résultats s'affichera en fonction des critères saisis. Cliquez sur le bouton "*Détails*" pour consulter les informations de la machine virtuelle et gérer son statut.
+
+### Gestion d'une machine virtuelle
+
+Un panneau intuitif permet de gérer vos machines virtuelles, d'accéder à leurs détails et de surveiller leur utilisation.
+
+- **Contrôle** : Démarrez, arrêtez ou redémarrez la machine virtuelle.
+- **Surveillance** : Consultez en temps réel l'état, le temps de fonctionnement et l'utilisation des ressources (CPU, mémoire, stockage).
+- **Détails et modifications** : Accédez aux informations de configuration et modifiez la description ou les tags si nécessaire.
+
+## Bonnes pratiques
+
+- Arrêtez proprement vos machines virtuelles pour éviter toute perte de données.
+- Utilisez des noms clairs et conformes aux normes de votre organisation pour vos machines virtuelles.
+- Contactez votre administrateur pour toute demande de ressources supplémentaires.
+- Ne partagez jamais vos identifiants de connexion afin de garantir la sécurité de votre compte et de vos machines virtuelles.
+
+## Support
+
+L'application PVMSS est gérée par l'équipe informatique de votre organisation. Pour toute assistance, contactez votre administrateur dans les cas suivants :
+
+- Perte de votre mot de passe (la réinitialisation n'est pas disponible en libre-service).
+- Difficultés lors de la création d'une machine virtuelle.
+- Problèmes d'accès à la console.
+
+## Limites connues
+
+L'application PVMSS ne permet pas de :
+
+- Modifier les ressources (CPU, mémoire, stockage, pont réseau) d'une machine virtuelle.
+- Changer votre identifiant et mot de passe de connexion.
+- Créer des conteneurs LXC.
