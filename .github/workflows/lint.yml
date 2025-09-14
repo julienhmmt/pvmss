@@ -37,3 +37,31 @@ jobs:
             VALIDATE_HTML: true
             VALIDATE_YAML: true
             FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$,.*brands\.min\.css$,.*fontawesome\.min\.css$,.*regular\.min\.css$,.*solid\.min\.css$'
+
+    golangci-lint:
+      name: Go Lint
+      runs-on: ubuntu-latest
+      timeout-minutes: 10
+
+      permissions:
+        contents: read
+        packages: read
+        statuses: write
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v5
+          with:
+            fetch-depth: 0
+
+        - name: Set up Go
+          uses: actions/setup-go@v6
+          with:
+            go-version-file: backend/go.mod
+
+        - name: Run golangci-lint
+          uses: golangci/golangci-lint-action@v8
+          with:
+            version: latest
+            working-directory: backend
+            args: --timeout=3m
