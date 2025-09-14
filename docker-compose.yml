@@ -9,14 +9,12 @@ services:
     env_file:
       - .env
     ports:
-      - "50000:50000"
+      - "50000:50000/tcp"
     environment:
-      - PORT=50000
-      - TZ=Europe/Paris
+      PORT: "50000"
+      TZ: "Europe/Paris"
     volumes:
-      - pvmss_data:/app/data
       - ./backend/settings.json:/app/settings.json
-      - ./backend/docs:/app/backend/docs:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:50000/health"]
       interval: 30s
@@ -26,9 +24,5 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 1G
-
-volumes:
-  pvmss_data:
-    driver: local
+          cpus: '1'
+          memory: 256M
