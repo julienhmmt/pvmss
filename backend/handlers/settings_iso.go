@@ -21,10 +21,12 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 	if !proxmoxConnected || client == nil {
 		logger.Get().Info().Msg("GetAllISOsHandler: Proxmox not connected, returning empty ISO list")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "offline",
 			"isos":   []interface{}{},
-		})
+		}); err != nil {
+			logger.Get().Error().Err(err).Msg("Failed to encode offline ISO response")
+		}
 		return
 	}
 
@@ -37,10 +39,12 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 		logger.Get().Error().Err(err).Msg("Failed to get nodes")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "error",
 			"message": "Failed to get nodes",
-		})
+		}); err != nil {
+			logger.Get().Error().Err(err).Msg("Failed to encode nodes error response")
+		}
 		return
 	}
 
@@ -50,10 +54,12 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 		logger.Get().Error().Err(err).Msg("Failed to get storages")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "error",
 			"message": "Failed to get storages",
-		})
+		}); err != nil {
+			logger.Get().Error().Err(err).Msg("Failed to encode storages error response")
+		}
 		return
 	}
 
@@ -88,10 +94,13 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status": "success",
 		"isos":   allISOs,
-	})
+	}); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to encode ISO list response")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 // ISOPageHandler renders the ISO management page (server-rendered, no JS required)
