@@ -198,5 +198,7 @@ func (b *BaseAPIHandler) HandleOfflineMode(w http.ResponseWriter, fallbackData i
 		}
 	}
 
-	b.WriteJSONResponse(w, response)
+	if err := b.WriteJSONResponse(w, response); err != nil {
+		logger.Get().Error().Err(err).Msg("failed to write offline JSON response")
+	}
 }

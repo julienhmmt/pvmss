@@ -258,10 +258,10 @@ func initTemplates() (*template.Template, error) {
 		}
 	}
 
-	// Log des templates chargés
+	// Log des templates chargés (use base names that were collected)
 	logger.Get().Info().
-		Strs("templates", templateFiles).
-		Int("count", len(templateFiles)).
+		Strs("templates", loadedTemplateNames).
+		Int("count", len(loadedTemplateNames)).
 		Msg("Templates chargés")
 
 	return tmpl, nil

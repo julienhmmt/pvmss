@@ -57,7 +57,7 @@ func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify boo
 		return nil, err
 	}
 
-	client.Client.SetAPIToken(apiTokenID, apiTokenSecret)
+	client.SetAPIToken(apiTokenID, apiTokenSecret)
 	client.AuthToken = fmt.Sprintf("%s=%s", apiTokenID, apiTokenSecret)
 
 	return client, nil
@@ -189,7 +189,7 @@ func (c *Client) GetRawWithContext(ctx context.Context, path string) ([]byte, er
 
 	logger.Get().Debug().Str("path", path).Msg("Fetching from Proxmox API")
 	var m map[string]any
-	if err := c.Client.GetJsonRetryable(ctx, path, &m, 3); err != nil {
+	if err := c.GetJsonRetryable(ctx, path, &m, 3); err != nil {
 		return nil, fmt.Errorf("proxmox GET request failed for %s: %w", path, err)
 	}
 

@@ -222,9 +222,7 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 	// Filter and sort tags by name for display
 	tags := make([]string, 0, len(settings.Tags))
-	for _, tag := range settings.Tags {
-		tags = append(tags, tag)
-	}
+	tags = append(tags, settings.Tags...)
 
 	// Sort based on requested order
 	if sortOrder == "desc" {

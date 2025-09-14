@@ -27,13 +27,13 @@ func TestMain(m *testing.M) {
 func TestSearchEn(t *testing.T) {
 	resp, err := http.Get("http://localhost:50000/search?lang=en")
 	assert.NoError(t, err, "Should be able to get search?lang=en")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Should return 200 for search?lang=en")
 }
 
 func TestSearchFr(t *testing.T) {
 	resp, err := http.Get("http://localhost:50000/search?lang=fr")
 	assert.NoError(t, err, "Should be able to get search?lang=fr")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusOK, resp.StatusCode, "Should return 200 for search?lang=fr")
 }

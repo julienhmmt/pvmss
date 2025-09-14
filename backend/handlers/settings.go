@@ -27,10 +27,12 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 		logger.Get().Error().Msg("Settings not available")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "error",
 			"message": "Settings not available",
-		})
+		}); err != nil {
+			logger.Get().Error().Err(err).Msg("Failed to encode JSON error response")
+		}
 		return
 	}
 
@@ -43,7 +45,10 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(settingsResponse)
+	if err := json.NewEncoder(w).Encode(settingsResponse); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to encode JSON response")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 // GetAllVMBRsHandler retrieves all available network bridges
@@ -86,10 +91,12 @@ func (h *SettingsHandler) GetAllSettingsHandler(w http.ResponseWriter, r *http.R
 		logger.Get().Error().Msg("Settings not available")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "error",
 			"message": "Settings not available",
-		})
+		}); err != nil {
+			logger.Get().Error().Err(err).Msg("Failed to encode JSON error response")
+		}
 		return
 	}
 
@@ -102,7 +109,10 @@ func (h *SettingsHandler) GetAllSettingsHandler(w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(settingsResponse)
+	if err := json.NewEncoder(w).Encode(settingsResponse); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to encode JSON response")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
 
 // RegisterRoutes registers routes for settings-related endpoints

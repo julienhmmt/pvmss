@@ -68,8 +68,8 @@ func (s *appState) startProxmoxMonitor() {
 // NewAppState creates a new instance of the application state manager
 func NewAppState() StateManager {
 	state := &appState{
-		settings:     &AppSettings{},
-		csrfTokens:   make(map[string]time.Time),
+		settings:   &AppSettings{},
+		csrfTokens: make(map[string]time.Time),
 	}
 
 	// Start background cleanup goroutines
@@ -301,7 +301,6 @@ func (s *appState) GetStorages() []string {
 	}
 	return s.settings.EnabledStorages
 }
-
 
 // Security Methods
 // AddCSRFToken adds a new CSRF token with an expiry time

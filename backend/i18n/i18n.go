@@ -177,22 +177,6 @@ func translationSearchPaths(filename string) []string {
 	}
 }
 
-// extractMessageIDsFromMap recursively traverses a map to build a flat list of fully-qualified message IDs.
-func extractMessageIDsFromMap(m map[string]interface{}, prefix string, ids *[]string) {
-	for k, v := range m {
-		newPrefix := k
-		if prefix != "" {
-			newPrefix = prefix + "." + k
-		}
-
-		if subMap, ok := v.(map[string]interface{}); ok {
-			extractMessageIDsFromMap(subMap, newPrefix, ids)
-		} else {
-			*ids = append(*ids, newPrefix)
-		}
-	}
-}
-
 // findI18nDirectory searches for the 'i18n' directory in common locations.
 func findI18nDirectory() (string, error) {
 	for _, path := range translationSearchPaths("") {

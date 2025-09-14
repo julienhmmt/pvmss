@@ -116,7 +116,7 @@ func GetBaseFuncMap() template.FuncMap {
 			// Find the last slash or colon
 			lastSlash := strings.LastIndex(s, "/")
 			lastColon := strings.LastIndex(s, ":")
-			lastSep := -1
+			var lastSep int
 			if lastSlash > lastColon {
 				lastSep = lastSlash
 			} else {
