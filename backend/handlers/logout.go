@@ -13,7 +13,9 @@ func LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Clear session data
-	ctx.SessionManager.Clear(r.Context())
+	if err := ctx.SessionManager.Clear(r.Context()); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to clear session during logout")
+	}
 
 	// Regenerate session token to prevent session fixation
 	err := ctx.SessionManager.RenewToken(r.Context())

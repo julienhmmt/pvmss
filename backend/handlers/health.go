@@ -51,7 +51,10 @@ func (h *HealthHandler) HealthCheckHandler(w http.ResponseWriter, r *http.Reques
 
 	// Send JSON response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 }
 
 // ProxmoxStatusHandler handles requests to check Proxmox connection status
@@ -70,7 +73,10 @@ func (h *HealthHandler) ProxmoxStatusHandler(w http.ResponseWriter, r *http.Requ
 
 	// Send JSON response
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 }
 
 // NotFoundHandler handles routes that are not found
@@ -79,10 +85,13 @@ func (h *HealthHandler) NotFoundHandler(w http.ResponseWriter, r *http.Request) 
 		// JSON response for API routes
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
+		if err := json.NewEncoder(w).Encode(map[string]string{
 			"error":   "Not Found",
 			"message": "The requested resource was not found",
-		})
+		}); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 	} else {
 		// Redirect to home page for non-API routes (for client-side routing)
 		http.Redirect(w, r, "/", http.StatusFound)
@@ -95,10 +104,13 @@ func (h *HealthHandler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.R
 		// JSON response for API routes
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		json.NewEncoder(w).Encode(map[string]string{
+		if err := json.NewEncoder(w).Encode(map[string]string{
 			"error":   "Method Not Allowed",
 			"message": "The requested method is not allowed for this resource",
-		})
+		}); err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 	} else {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}

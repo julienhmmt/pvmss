@@ -124,17 +124,23 @@ func NewBaseAPIHandler(sm state.StateManager) *BaseAPIHandler {
 // WriteJSONResponse writes a JSON response with proper headers
 func (b *BaseAPIHandler) WriteJSONResponse(w http.ResponseWriter, data interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		logger.Get().Error().Err(err).Msg("failed to write JSON response")
+		return err
+	}
+	return nil
 }
 
 // WriteJSONError writes a JSON error response
 func (b *BaseAPIHandler) WriteJSONError(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "error",
 		"message": message,
-	})
+	}); err != nil {
+		logger.Get().Error().Err(err).Msg("failed to write JSON error response")
+	}
 }
 
 // WriteJSONSuccess writes a JSON success response
@@ -153,7 +159,9 @@ func (b *BaseAPIHandler) WriteJSONSuccess(w http.ResponseWriter, data interface{
 		}
 	}
 
-	b.WriteJSONResponse(w, response)
+	if err := b.WriteJSONResponse(w, response); err != nil {
+		logger.Get().Error().Err(err).Msg("failed to write JSON success response")
+	}
 }
 
 // ValidateAPIAccess checks API access requirements
