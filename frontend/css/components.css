@@ -45,6 +45,11 @@
 .card-header.brand-header .card-header-icon,
 .card-header.brand-header .icon { color: #fff; }
 
+/* Ensure primary buttons in cards have white text */
+.card .button.is-primary {
+  color: #fff !important;
+}
+
 /* Forms: disabled fieldset overlay */
 fieldset[disabled] { opacity: 0.7; position: relative; }
 fieldset[disabled]::after {

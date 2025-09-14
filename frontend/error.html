@@ -12,24 +12,24 @@
           <div class="card-content">
             <div class="content">
               {{if .StatusCode}}
-                <p><strong>Status:</strong> {{.StatusCode}}</p>
+              <p><strong>{{T "Common.Status"}}:</strong> {{.StatusCode}}</p>
               {{end}}
               {{if .Error}}
-                <p>{{.Error}}</p>
+              <p>{{.Error}}</p>
               {{else}}
-                <p>An unexpected error occurred.</p>
+              <p>{{T "Error.Unexpected"}}</p>
               {{end}}
             </div>
             <div class="buttons mt-4">
               <button class="button is-light" type="button" id="back-button" data-action="back">
-                ← Back
+                ← {{T "Common.Back"}}
               </button>
               <a class="button is-primary" href="/">
-                Home
+                {{T "Common.Home"}}
               </a>
             </div>
             {{if .ReturnURL}}
-            <p class="is-size-7 has-text-grey mt-3">Previous page: <a href="{{.ReturnURL}}">{{.ReturnURL}}</a></p>
+            <p class="is-size-7 has-text-grey mt-3">{{T "Error.PreviousPage"}}: <a href="{{.ReturnURL}}">{{.ReturnURL}}</a></p>
             {{end}}
           </div>
         </div>
@@ -40,5 +40,5 @@
 {{end}}
 
 {{define "content"}}
-  {{template "error" .}}
+{{template "error" .}}
 {{end}}

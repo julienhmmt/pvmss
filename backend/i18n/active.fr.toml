@@ -6,6 +6,18 @@
 # ======
 # Common
 # ======
+["Common.Status"]
+other = "Statut"
+["Common.Home"]
+other = "Accueil"
+
+# ======
+# Error
+# ======
+["Error.Unexpected"]
+other = "Une erreur inattendue s'est produite."
+["Error.PreviousPage"]
+other = "Page précédente"
 ["Common.Actions"]
 other = "Actions"
 ["Common.Add"]

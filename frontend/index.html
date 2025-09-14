@@ -2,7 +2,7 @@
 {{$lang := .Lang}}
 <section class="section">
     <div class="container">
-        <!-- Hero Section -->
+
         <div class="hero is-primary is-small">
             <div class="hero-body">
                 <div class="container has-text-centered">
@@ -22,7 +22,8 @@
         <div class="columns is-centered">
             <div class="column is-10 welcome-block">
                 <div class="columns is-multiline is-centered">
-                    <!-- Carte Créer une VM -->
+
+                    <!-- Create VM card -->
                     <div class="column is-4-desktop is-6-tablet">
                         <div class="card is-hoverable">
                             <div class="card-header brand-header">
@@ -44,7 +45,7 @@
                         </div>
                     </div>
 
-                    <!-- Carte Documentation -->
+                    <!-- Documentation card -->
                     <div class="column is-4-desktop is-6-tablet">
                         <div class="card is-hoverable">
                             <div class="card-header brand-header">
@@ -66,7 +67,7 @@
                         </div>
                     </div>
 
-                    <!-- Carte Admin -->
+                    <!-- Admin card -->
                     <div class="column is-4-desktop is-6-tablet">
                         <div class="card is-hoverable">
                             <div class="card-header brand-header">
@@ -94,7 +95,6 @@
 </section>
 {{end}}
 
-{{/* Template principal qui sera inclus dans le layout */}}
 {{define "index"}}
 {{template "content" .}}
 {{end}}
