@@ -100,6 +100,12 @@ other = "✓ Saved"
 other = "Saving..."
 ["Common.Search"]
 other = "Search"
+["Common.Select"]
+other = "Select"
+["Common.Refresh"]
+other = "Refresh"
+["Common.TryAgain"]
+other = "Try again"
 ["Common.SelectAll"]
 other = "Select All"
 ["Common.Selected"]
@@ -128,6 +134,8 @@ other = "Update"
 other = "User"
 ["Common.Users"]
 other = "Users"
+["Common.Pool"]
+other = "Pool"
 ["Common.Yes"]
 other = "Yes"
 
@@ -668,6 +676,8 @@ other = "Disk Space (GB)"
 other = "Error"
 ["Admin.Limits.GB"]
 other = "GB"
+["Admin.Limits.Node"]
+other = "Node"
 ["Admin.Limits.Memory"]
 other = "Memory (GB)"
 ["Admin.Limits.NodeLabel"]
@@ -686,6 +696,18 @@ other = "Saving..."
 other = "Sockets"
 ["Admin.Limits.Title"]
 other = "Resource Limits"
+["Admin.Limits.VM"]
+other = "VM Limits"
+["Admin.Limits.ScopeVM"]
+other = "Global limits for all VMs"
+["Admin.Limits.ScopeNode"]
+other = "Node-specific resource limits"
+["Admin.Limits.NoNodeSelected"]
+other = "No node selected"
+["Admin.Limits.SelectNodePrompt"]
+other = "Please select a node to configure its limits:"
+["Admin.Limits.SelectNode"]
+other = "Select a node..."
 ["Admin.Limits.VMSection"]
 other = "Default VM Resource Limits"
 ["Admin.Limits.DefaultsRestored"]
@@ -702,3 +724,39 @@ other = "This field is required"
 other = "Value must be a positive number"
 ["Admin.Limits.NetworkError"]
 other = "A network error occurred. Please try again"
+
+# Admin - Users & Pools
+["Admin.UserPool.Title"]
+other = "Users & Pools"
+["Admin.UserPool.Description"]
+other = "Create a PVE user, a dedicated pool (pvmss_<username>), and grant a role on that pool."
+["Admin.UserPool.UsernamePlaceholder"]
+other = "alice"
+["Admin.UserPool.UsernameHelp"]
+other = "Will create user alice@pve and pool pvmss_alice"
+["Admin.UserPool.EmailOptional"]
+other = "Email (optional)"
+["Admin.UserPool.EmailPlaceholder"]
+other = "alice@example.com"
+["Admin.UserPool.CommentOptional"]
+other = "Comment (optional)"
+["Admin.UserPool.CommentPlaceholder"]
+other = "Team member, expires end of Q3"
+["Admin.UserPool.RoleLabel"]
+other = "Role"
+["Admin.UserPool.RoleHelp"]
+other = "Default: PVEVMUser. You may define a custom minimal role later."
+["Admin.UserPool.PropagateACL"]
+other = "Propagate ACL to contained objects"
+["Admin.UserPool.ExistingTitle"]
+other = "Existing User Pools"
+["Admin.UserPool.VMCountHeader"]
+other = "# VMs in pool"
+["Admin.UserPool.RefreshPoolTitle"]
+other = "Refresh pool"
+["Admin.UserPool.DeleteConfirm"]
+other = "Delete ALL VMs in this pool, the user, then the pool? This cannot be undone."
+["Admin.UserPool.DeleteTitle"]
+other = "Delete VMs, user, then pool"
+["Admin.UserPool.DeletePurge"]
+other = "Delete (purge)"

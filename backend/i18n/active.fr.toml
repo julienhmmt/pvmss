@@ -72,6 +72,10 @@ other = "Max"
 other = "Mémoire"
 ["Common.Min"]
 other = "Min"
+["Common.Select"]
+other = "Sélectionner"
+["Common.Refresh"]
+other = "Actualiser"
 ["Common.Name"]
 other = "Nom"
 ["Common.Network"]
@@ -116,6 +120,8 @@ other = "Statut"
 other = "Stockage"
 ["Common.Submit"]
 other = "Envoyer"
+["Common.TryAgain"]
+other = "Réessayer"
 ["Common.Success"]
 other = "Succès"
 ["Common.Tags"]
@@ -128,6 +134,8 @@ other = "Mettre à jour"
 other = "Utilisateur"
 ["Common.Users"]
 other = "Utilisateurs"
+["Common.Pool"]
+other = "Pool"
 ["Common.Yes"]
 other = "Oui"
 
@@ -676,6 +684,8 @@ other = "Espace disque (Go)"
 other = "Erreur"
 ["Admin.Limits.GB"]
 other = "Go"
+["Admin.Limits.Node"]
+other = "Nœud"
 ["Admin.Limits.Memory"]
 other = "Mémoire (Go)"
 ["Admin.Limits.NodeLabel"]
@@ -694,6 +704,18 @@ other = "Enregistrement..."
 other = "Sockets"
 ["Admin.Limits.Title"]
 other = "Limites des ressources"
+["Admin.Limits.VM"]
+other = "Limites de VM"
+["Admin.Limits.ScopeVM"]
+other = "Limites globales pour toutes les VMs"
+["Admin.Limits.ScopeNode"]
+other = "Limites de ressources spécifiques au nœud"
+["Admin.Limits.NoNodeSelected"]
+other = "Aucun nœud sélectionné"
+["Admin.Limits.SelectNodePrompt"]
+other = "Veuillez sélectionner un nœud pour configurer ses limites :"
+["Admin.Limits.SelectNode"]
+other = "Sélectionnez un nœud..."
 ["Admin.Limits.VMSection"]
 other = "Limites de ressources par défaut des VMs"
 ["Admin.Limits.DefaultsRestored"]
@@ -710,3 +732,39 @@ other = "Ce champ est obligatoire"
 other = "La valeur doit être un nombre positif"
 ["Admin.Limits.NetworkError"]
 other = "Une erreur réseau s'est produite. Veuillez réessayer"
+
+# Admin - Utilisateurs & Pools
+["Admin.UserPool.Title"]
+other = "Utilisateurs & Pools"
+["Admin.UserPool.Description"]
+other = "Créer un utilisateur PVE, un pool dédié (pvmss_<username>), et accorder un rôle sur ce pool."
+["Admin.UserPool.UsernamePlaceholder"]
+other = "alice"
+["Admin.UserPool.UsernameHelp"]
+other = "Créera l'utilisateur alice@pve et le pool pvmss_alice"
+["Admin.UserPool.EmailOptional"]
+other = "Email (optionnel)"
+["Admin.UserPool.EmailPlaceholder"]
+other = "alice@example.com"
+["Admin.UserPool.CommentOptional"]
+other = "Commentaire (optionnel)"
+["Admin.UserPool.CommentPlaceholder"]
+other = "Membre de l'équipe, expire fin T3"
+["Admin.UserPool.RoleLabel"]
+other = "Rôle"
+["Admin.UserPool.RoleHelp"]
+other = "Par défaut : PVEVMUser. Vous pourrez définir plus tard un rôle minimal personnalisé."
+["Admin.UserPool.PropagateACL"]
+other = "Propager l'ACL aux objets contenus"
+["Admin.UserPool.ExistingTitle"]
+other = "Pools d'utilisateurs existants"
+["Admin.UserPool.VMCountHeader"]
+other = "# VMs dans le pool"
+["Admin.UserPool.RefreshPoolTitle"]
+other = "Actualiser le pool"
+["Admin.UserPool.DeleteConfirm"]
+other = "Supprimer TOUTES les VMs de ce pool, l'utilisateur, puis le pool ? Cette action est irréversible."
+["Admin.UserPool.DeleteTitle"]
+other = "Supprimer les VMs, l'utilisateur, puis le pool"
+["Admin.UserPool.DeletePurge"]
+other = "Supprimer (purge)"

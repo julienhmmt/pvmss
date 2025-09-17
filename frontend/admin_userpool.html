@@ -20,8 +20,8 @@
   )}}
   {{else}}
     <div class="content mb-5">
-      <h1 class="title is-4"><span class="icon"><i class="fas fa-user-shield"></i></span>&nbsp;Users & Pools</h1>
-      <p class="subtitle is-6 has-text-grey">Create a PVE user, a dedicated pool (pvmss_&lt;username&gt;), and grant a role on that pool.</p>
+      <h1 class="title is-4"><span class="icon"><i class="fas fa-user-shield"></i></span>&nbsp;{{T "Admin.UserPool.Title"}}</h1>
+      <p class="subtitle is-6 has-text-grey">{{T "Admin.UserPool.Description"}}</p>
     </div>
 
     {{if .Success}}
@@ -41,17 +41,17 @@
       <div class="columns is-multiline">
         <div class="column is-6">
           <div class="field">
-            <label class="label">Username</label>
+            <label class="label">{{T "Login.UsernameLabel"}}</label>
             <div class="control has-icons-left">
-              <input class="input" type="text" name="username" placeholder="alice" required>
+              <input class="input" type="text" name="username" placeholder="{{T "Admin.UserPool.UsernamePlaceholder"}}" required>
               <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
             </div>
-            <p class="help">Will create user alice@pve and pool pvmss_alice</p>
+            <p class="help">{{T "Admin.UserPool.UsernameHelp"}}</p>
           </div>
         </div>
         <div class="column is-6">
           <div class="field">
-            <label class="label">Password</label>
+            <label class="label">{{T "Login.PasswordLabel"}}</label>
             <div class="control has-icons-left">
               <input class="input" type="password" name="password" placeholder="********" required>
               <span class="icon is-small is-left"><i class="fas fa-key"></i></span>
@@ -60,24 +60,24 @@
         </div>
         <div class="column is-6">
           <div class="field">
-            <label class="label">Email (optional)</label>
+            <label class="label">{{T "Admin.UserPool.EmailOptional"}}</label>
             <div class="control has-icons-left">
-              <input class="input" type="email" name="email" placeholder="alice@example.com">
+              <input class="input" type="email" name="email" placeholder="{{T "Admin.UserPool.EmailPlaceholder"}}">
               <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
             </div>
           </div>
         </div>
         <div class="column is-6">
           <div class="field">
-            <label class="label">Comment (optional)</label>
+            <label class="label">{{T "Admin.UserPool.CommentOptional"}}</label>
             <div class="control">
-              <input class="input" type="text" name="comment" placeholder="Team member, expires end of Q3">
+              <input class="input" type="text" name="comment" placeholder="{{T "Admin.UserPool.CommentPlaceholder"}}">
             </div>
           </div>
         </div>
         <div class="column is-6">
           <div class="field">
-            <label class="label">Role</label>
+            <label class="label">{{T "Admin.UserPool.RoleLabel"}}</label>
             <div class="control">
               <div class="select is-fullwidth">
                 <select name="role">
@@ -87,14 +87,14 @@
                 </select>
               </div>
             </div>
-            <p class="help">Default: PVEVMUser. You may define a custom minimal role later.</p>
+            <p class="help">{{T "Admin.UserPool.RoleHelp"}}</p>
           </div>
         </div>
         <div class="column is-6">
           <div class="field">
             <label class="checkbox">
               <input type="checkbox" name="propagate" checked>
-              Propagate ACL to contained objects
+              {{T "Admin.UserPool.PropagateACL"}}
             </label>
           </div>
         </div>
@@ -104,7 +104,7 @@
         <div class="control">
           <button class="button is-primary" type="submit">
             <span class="icon is-small"><i class="fas fa-plus"></i></span>
-            <span>Create</span>
+            <span>{{T "Common.Create"}}</span>
           </button>
         </div>
       </div>
@@ -113,15 +113,15 @@
     {{/* List existing pvmss_* pools if available */}}
     {{if .UserPools}}
     <div class="box mt-5">
-      <h2 class="title is-5">Existing User Pools</h2>
+      <h2 class="title is-5">{{T "Admin.UserPool.ExistingTitle"}}</h2>
       <div class="table-container">
         <table class="table is-fullwidth is-hoverable is-striped">
           <thead>
             <tr>
-              <th>User</th>
-              <th>Pool</th>
-              <th># VMs in pool</th>
-              <th>Actions</th>
+              <th>{{T "Common.User"}}</th>
+              <th>{{T "Common.Pool"}}</th>
+              <th>{{T "Admin.UserPool.VMCountHeader"}}</th>
+              <th>{{T "Common.Actions"}}</th>
             </tr>
           </thead>
           <tbody>
@@ -140,20 +140,20 @@
               <td>{{.VMCount}}</td>
               <td>
                 <div class="buttons are-small mb-3">
-                  <a class="button is-light" href="{{withLang (printf "/admin/userpool?pool=%s" .Pool) $root.Lang}}" title="Refresh pool">
+                  <a class="button is-light" href="{{withLang (printf "/admin/userpool?pool=%s" .Pool) $root.Lang}}" title="{{T "Admin.UserPool.RefreshPoolTitle"}}">
                     <span class="icon"><i class="fas fa-sync"></i></span>
-                    <span>Refresh</span>
+                    <span>{{T "Common.Refresh"}}</span>
                   </a>
                 </div>
 
-                <form method="POST" action="{{withLang "/admin/userpool/delete" $root.Lang}}" onsubmit="return confirm('Delete ALL VMs in this pool, the user, then the pool? This cannot be undone.');">
+                <form method="POST" action="{{withLang "/admin/userpool/delete" $root.Lang}}" data-confirm="{{T "Admin.UserPool.DeleteConfirm"}}" onsubmit="return confirm(this.dataset.confirm);">
                   <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}">
                   <input type="hidden" name="pool" value="{{.Pool}}">
                   <div class="field mt-2">
                     <div class="control">
-                      <button type="submit" class="button is-danger is-small" title="Delete VMs, user, then pool">
+                      <button type="submit" class="button is-danger is-small" title="{{T "Admin.UserPool.DeleteTitle"}}">
                         <span class="icon"><i class="fas fa-trash"></i></span>
-                        <span>Delete (purge)</span>
+                        <span>{{T "Admin.UserPool.DeletePurge"}}</span>
                       </button>
                     </div>
                   </div>

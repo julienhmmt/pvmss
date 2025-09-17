@@ -25,8 +25,8 @@
                                     </div>
                                     <div class="level-item">
                                         <div>
-                                            <strong>{{T "Proxmox.ConnectionRequired" | default "Connection Required"}}</strong>
-                                            <p>{{T "VM.Create.ProxmoxNotConnected" | default "Cannot create VM: Proxmox server is not connected."}}</p>
+                                            <strong>{{T "Proxmox.ConnectionRequired"}}</strong>
+                                            <p>{{T "VM.Create.ProxmoxNotConnected"}}</p>
                                             {{if .ProxmoxError}}
                                             <p class="has-text-danger-dark mt-2">{{.ProxmoxError}}</p>
                                             {{end}}
