@@ -4,20 +4,14 @@
 # Organized alphabetically by section and key
 
 # ======
-# Common
-# ======
-["Common.Status"]
-other = "Statut"
-["Common.Home"]
-other = "Accueil"
-
-# ======
 # Error
 # ======
 ["Error.Unexpected"]
 other = "Une erreur inattendue s'est produite."
 ["Error.PreviousPage"]
 other = "Page précédente"
+["Common.Home"]
+other = "Accueil"
 ["Common.Actions"]
 other = "Actions"
 ["Common.Add"]
@@ -64,8 +58,6 @@ other = "Le serveur Proxmox est éteint ou n'est pas connecté"
 other = "Impossible de créer une VM : le serveur Proxmox n'est pas connecté."
 ["Proxmox.CheckConnection"]
 other = "Veuillez vérifier la connexion au serveur Proxmox et réessayer."
-["Common.Home"]
-other = "Accueil"
 ["Common.ID"]
 other = "ID"
 ["Common.Loading"]

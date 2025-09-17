@@ -4,14 +4,6 @@
 # Organized alphabetically by section and key
 
 # ======
-# Common
-# ======
-["Common.Status"]
-other = "Status"
-["Common.Home"]
-other = "Home"
-
-# ======
 # Error
 # ======
 ["Error.Unexpected"]
@@ -64,8 +56,6 @@ other = "Proxmox host is down or not connected"
 other = "Cannot create VM: Proxmox host is not connected."
 ["Proxmox.CheckConnection"]
 other = "Please check the Proxmox host connection and try again."
-["Common.Home"]
-other = "Home"
 ["Common.ID"]
 other = "ID"
 ["Common.Loading"]
@@ -118,6 +108,8 @@ other = "selected"
 other = "Select None"
 ["Common.Settings"]
 other = "Settings"
+["Common.Home"]
+other = "Home"
 ["Common.Status"]
 other = "Status"
 ["Common.Storage"]
