@@ -768,3 +768,61 @@ other = "Supprimer TOUTES les VMs de ce pool, l'utilisateur, puis le pool ? Cett
 other = "Supprimer les VMs, l'utilisateur, puis le pool"
 ["Admin.UserPool.DeletePurge"]
 other = "Supprimer (purge)"
+
+# ======
+# Console Test
+# ======
+["ConsoleTest.Title"]
+other = "Test Console"
+["ConsoleTest.Description"]
+other = "Tester l'accès console noVNC pour les machines virtuelles"
+["ConsoleTest.FormTitle"]
+other = "Tester l'Accès Console"
+["ConsoleTest.UsernameLabel"]
+other = "Nom d'utilisateur"
+["ConsoleTest.UsernamePlaceholder"]
+other = "user1"
+["ConsoleTest.UsernameHelp"]
+other = "Nom d'utilisateur Proxmox (format: user@realm)"
+["ConsoleTest.PasswordLabel"]
+other = "Mot de passe"
+["ConsoleTest.PasswordPlaceholder"]
+other = "Entrer le mot de passe"
+["ConsoleTest.PasswordHelp"]
+other = "Mot de passe utilisateur pour l'authentification"
+["ConsoleTest.VMIDLabel"]
+other = "ID VM"
+["ConsoleTest.VMIDPlaceholder"]
+other = "100"
+["ConsoleTest.VMIDHelp"]
+other = "ID de la machine virtuelle à tester (ex: 100)"
+["ConsoleTest.NodeLabel"]
+other = "Nœud (Optionnel)"
+["ConsoleTest.NodePlaceholder"]
+other = "node1"
+["ConsoleTest.NodeHelp"]
+other = "Laisser vide pour détecter automatiquement depuis l'ID VM"
+["ConsoleTest.TestButton"]
+other = "Tester Console"
+["ConsoleTest.ClearButton"]
+other = "Vider le Formulaire"
+["ConsoleTest.SuccessTitle"]
+other = "Test Console Réussi"
+["ConsoleTest.SuccessMessage"]
+other = "Test d'accès console terminé avec succès. Vous pouvez utiliser les informations du ticket pour vous connecter à la console VM."
+["ConsoleTest.ErrorTitle"]
+other = "Test Console Échoué"
+["ConsoleTest.TicketLabel"]
+other = "Ticket VNC"
+["ConsoleTest.PortLabel"]
+other = "Port"
+["ConsoleTest.InfoTitle"]
+other = "Information"
+["ConsoleTest.Info1"]
+other = "Ce test vérifie que votre accès console noVNC fonctionne correctement."
+["ConsoleTest.Info2"]
+other = "Le test va s'authentifier avec les identifiants fournis et générer un ticket VNC."
+["ConsoleTest.Info3"]
+other = "En cas de succès, vous verrez les informations du ticket utilisables pour l'accès console."
+["ConsoleTest.Info4"]
+other = "L'interface noVNC réelle sera accessible via l'interface web intégrée de Proxmox."
