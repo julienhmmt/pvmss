@@ -47,6 +47,11 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/update/description", RequireAuthHandle(h.UpdateVMDescriptionHandler))
 	router.POST("/vm/update/tags", RequireAuthHandle(h.UpdateVMTagsHandler))
 	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))
+	router.POST("/vm/console", h.VMConsoleHandler)
+	router.POST("/vm/console-auth", HandlerFuncToHTTPrHandle(VMConsoleAuthHandler))
+
+	// VM console direct routes
+	router.GET("/vm/console-direct", h.VMConsoleDirectHandler)
 }
 
 // VMDetailsHandler displays detailed information about a specific VM

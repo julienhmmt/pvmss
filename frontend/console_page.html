@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Title}}</title>
+    <style>
+        html, body { 
+            margin: 0; 
+            height: 100%; 
+            overflow: hidden; 
+            background: #2c3e50; 
+            font-family: Arial, sans-serif;
+        }
+        .console-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            color: white;
+        }
+        .console-header {
+            background: rgba(52, 73, 94, 0.9);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #34495e;
+        }
+        .vm-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .vm-detail {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .vm-label {
+            font-size: 11px;
+            color: #bdc3c7;
+            text-transform: uppercase;
+        }
+        .vm-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+        .console-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .console-button {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .console-button:hover {
+            background: #2980b9;
+        }
+        .console-button.secondary {
+            background: #95a5a6;
+        }
+        .console-button.secondary:hover {
+            background: #7f8c8d;
+        }
+        .console-frame-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+        .console-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #000;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(44, 62, 80, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner {
+            border: 4px solid #34495e;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: white;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .loading-details {
+            color: #bdc3c7;
+            font-size: 14px;
+            text-align: center;
+            max-width: 400px;
+        }
+        .auth-prompt {
+            background: rgba(241, 196, 15, 0.1);
+            border: 1px solid #f1c40f;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px;
+            max-width: 500px;
+        }
+        .auth-prompt h3 {
+            margin: 0 0 15px 0;
+            color: #f1c40f;
+        }
+        .auth-prompt p {
+            margin: 10px 0;
+            color: #ecf0f1;
+            line-height: 1.4;
+        }
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .auth-input {
+            padding: 8px 12px;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+        }
+        .auth-input::placeholder {
+            color: #bdc3c7;
+        }
+    </style>
+</head>
+<body>
+    <div class="console-container">
+        <div class="console-header">
+            <div class="vm-info">
+                <div class="vm-detail">
+                    <span class="vm-label">VM ID</span>
+                    <span class="vm-value">{{.VMID}}</span>
+                </div>
+                <div class="vm-detail">
+                    <span class="vm-label">Node</span>
+                    <span class="vm-value">{{.Node}}</span>
+                </div>
+                <div class="vm-detail">
+                    <span class="vm-label">Port</span>
+                    <span class="vm-value">{{.Port}}</span>
+                </div>
+                <div class="vm-detail">
+                    <span class="vm-label">Host</span>
+                    <span class="vm-value">{{.Host}}</span>
+                </div>
+            </div>
+            <div class="console-actions">
+                <button onclick="refreshConsole()" class="console-button secondary">🔄 Refresh</button>
+                <button onclick="openInNewTab()" class="console-button">🔗 New Tab</button>
+            </div>
+        </div>
+
+        <div class="console-frame-container">
+            <iframe id="console-frame" class="console-frame" src="about:blank"></iframe>
+            
+            <div id="loading-overlay" class="loading-overlay">
+                <div class="spinner"></div>
+                <div class="loading-text">Loading Console...</div>
+                <div class="loading-details">Connecting to Proxmox noVNC interface</div>
+                
+                <div id="auth-prompt" class="auth-prompt" style="display: none;">
+                    <h3>🔐 Console Authentication</h3>
+                    <p>The console requires Proxmox authentication. Please enter your credentials:</p>
+                    <div class="auth-form">
+                        <input type="text" id="auth-username" class="auth-input" placeholder="Username" />
+                        <input type="password" id="auth-password" class="auth-input" placeholder="Password" />
+                        <button onclick="authenticateAndConnect()" class="console-button">Connect to Console</button>
+                    </div>
+                    <p style="font-size: 12px; margin-top: 15px;">
+                        💡 Use the same credentials you use to log into PVMSS
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template data -->
+    <input type="hidden" id="template-host" value="{{.Host}}">
+    <input type="hidden" id="template-port" value="{{.Port}}">
+    <input type="hidden" id="template-ticket" value="{{.Ticket}}">
+    <input type="hidden" id="template-node" value="{{.Node}}">
+    <input type="hidden" id="template-vmid" value="{{.VMID}}">
+
+    <script>
+        let consoleUrl = '';
+        let authAttempted = false;
+
+        function getConsoleUrl() {
+            const host = document.getElementById('template-host').value;
+            const node = document.getElementById('template-node').value;
+            const vmid = document.getElementById('template-vmid').value;
+            return `https://${host}/?console=kvm&novnc=1&node=${node}&vmid=${vmid}&resize=1`;
+        }
+
+        function loadConsole() {
+            consoleUrl = getConsoleUrl();
+            const iframe = document.getElementById('console-frame');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            
+            console.log('🖥️ Loading console:', consoleUrl);
+            
+            // Show loading
+            loadingOverlay.style.display = 'flex';
+            document.querySelector('.loading-text').textContent = 'Connecting to Console...';
+            document.querySelector('.loading-details').textContent = 'Using your session credentials';
+            
+            // First, try to authenticate using session credentials
+            authenticateWithSession();
+        }
+
+        function authenticateWithSession() {
+            const host = document.getElementById('template-host').value;
+            const node = document.getElementById('template-node').value;
+            const vmid = document.getElementById('template-vmid').value;
+            
+            console.log('🔑 Attempting authentication using session credentials');
+            
+            // Send request to our backend with session authentication
+            fetch('/vm/console-auth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    host: host,
+                    node: node,
+                    vmid: vmid
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`Session authentication failed: ${response.status}`);
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Session authentication successful');
+                    
+                    // Load the console with the authenticated URL
+                    const iframe = document.getElementById('console-frame');
+                    iframe.src = data.console_url || consoleUrl;
+                    
+                    // Set a timer to hide loading after console loads
+                    setTimeout(() => {
+                        hideLoading();
+                    }, 3000);
+                    
+                } else {
+                    console.error('❌ Session authentication failed:', data.message);
+                    showAuthPrompt();
+                }
+            })
+            .catch(error => {
+                console.error('❌ Session authentication error:', error);
+                showAuthPrompt();
+            });
+        }
+
+        function showAuthPrompt() {
+            console.log('🔐 Showing authentication prompt');
+            document.querySelector('.loading-text').textContent = 'Authentication Required';
+            document.querySelector('.loading-details').textContent = 'Please enter your Proxmox credentials to access the console';
+            document.getElementById('auth-prompt').style.display = 'block';
+        }
+
+        function hideLoading() {
+            console.log('✅ Console loaded successfully');
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+
+        function authenticateAndConnect() {
+            const username = document.getElementById('auth-username').value;
+            const password = document.getElementById('auth-password').value;
+            
+            if (!username || !password) {
+                alert('Please enter both username and password');
+                return;
+            }
+            
+            console.log('🔑 Attempting authentication for user:', username);
+            
+            // Hide auth prompt and show loading
+            document.getElementById('auth-prompt').style.display = 'none';
+            document.querySelector('.loading-text').textContent = 'Authenticating...';
+            document.querySelector('.loading-details').textContent = 'Logging into Proxmox with your credentials';
+            
+            authAttempted = true;
+            
+            // Instead of trying to authenticate directly with Proxmox (which has CORS issues),
+            // let's use our backend to handle the authentication and then redirect
+            const host = document.getElementById('template-host').value;
+            const node = document.getElementById('template-node').value;
+            const vmid = document.getElementById('template-vmid').value;
+            
+            // Send credentials to our backend for proxy authentication
+            fetch('/vm/console-auth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    username: username + '@pve', // Add PVE realm
+                    password: password,
+                    host: host,
+                    node: node,
+                    vmid: vmid
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`Authentication failed: ${response.status}`);
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Authentication successful via backend');
+                    
+                    // Now try to load the console with the authenticated session
+                    const authenticatedUrl = data.console_url || consoleUrl;
+                    
+                    // Create a new iframe with the authenticated URL
+                    const iframe = document.getElementById('console-frame');
+                    iframe.src = authenticatedUrl;
+                    
+                    // Set a timer to hide loading after a reasonable time
+                    setTimeout(() => {
+                        hideLoading();
+                    }, 3000);
+                    
+                } else {
+                    console.error('❌ Backend authentication failed');
+                    alert('Authentication failed: ' + (data.message || 'Invalid credentials'));
+                    showAuthPrompt();
+                }
+            })
+            .catch(error => {
+                console.error('❌ Authentication error:', error);
+                
+                // Fallback: Try opening in new window with credentials
+                alert('Direct authentication failed. Opening Proxmox login in new window...');
+                
+                // Open Proxmox login page
+                const loginUrl = `https://${host}`;
+                const loginWindow = window.open(loginUrl, 'proxmox-login', 'width=800,height=600');
+                
+                setTimeout(() => {
+                    if (confirm('Please log in to Proxmox in the opened window, then click OK to continue.')) {
+                        // Reload console after manual login
+                        loadConsole();
+                    } else {
+                        showAuthPrompt();
+                    }
+                }, 2000);
+            });
+        }
+
+        function refreshConsole() {
+            console.log('🔄 Refreshing console');
+            authAttempted = false;
+            loadConsole();
+        }
+
+        function openInNewTab() {
+            console.log('🔗 Opening console in new tab');
+            window.open(consoleUrl, '_blank');
+        }
+
+        // Auto-load console on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Console page loaded');
+            console.log('VM Details:', {
+                host: '{{.Host}}',
+                node: '{{.Node}}',
+                vmid: '{{.VMID}}',
+                port: '{{.Port}}'
+            });
+            
+            // Start loading console immediately
+            loadConsole();
+        });
+
+        // Handle Enter key in auth form
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && document.getElementById('auth-prompt').style.display !== 'none') {
+                authenticateAndConnect();
+            }
+        });
+    </script>
+</body>
+</html>

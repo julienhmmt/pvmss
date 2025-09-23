@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"pvmss/logger"
+	"strings"
 )
 
 // Headers adds security headers to all responses
@@ -16,7 +17,7 @@ func Headers(next http.Handler) http.Handler {
 
 // setSecurityHeaders applies a set of security-related HTTP headers to the response.
 func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
-	headers := getSecurityHeaders()
+	headers := getSecurityHeaders(r)
 
 	// Set all headers
 	for k, v := range headers {
@@ -33,8 +34,7 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 
 // getSecurityHeaders returns a map of standard security headers.
 // These headers help mitigate common web vulnerabilities like XSS and clickjacking.
-// In production, it also adds the Strict-Transport-Security header.
-func getSecurityHeaders() map[string]string {
+func getSecurityHeaders(r *http.Request) map[string]string {
 	headers := map[string]string{
 		"X-Content-Type-Options": "nosniff",
 		"X-Frame-Options":        "DENY",
@@ -46,6 +46,16 @@ func getSecurityHeaders() map[string]string {
 	headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
 	headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
 	headers["Access-Control-Allow-Credentials"] = "true"
+
+	// Set CORS origin based on request
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		// For development, allow localhost origins
+		if strings.HasPrefix(origin, "http://localhost") ||
+			strings.HasPrefix(origin, "http://127.0.0.1") {
+			headers["Access-Control-Allow-Origin"] = origin
+		}
+	}
 
 	if os.Getenv("ENV") == "production" {
 		headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"

@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"net/http"
 	"strings"
+	"time"
 
 	"pvmss/i18n"
 )
@@ -83,7 +84,11 @@ func GetBaseFuncMap() template.FuncMap {
 		"toJSON":         toJSON,
 		"toJSONIndent":   toJSONIndent,
 
-		// Request-agnostic fallbacks (overridden by GetFuncMap when request is available)
+		// Time functions
+		"now": func() time.Time { return time.Now() },
+		"date": func(format string) string {
+			return time.Now().Format(format)
+		},
 		"currentPath": func() string { return "/" },
 		"urlWithLang": func(lang string) string { return "/?lang=" + lang },
 		// Append lang parameter to an arbitrary path, handling existing query strings

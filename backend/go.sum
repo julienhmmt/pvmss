@@ -1,7 +1,7 @@
 github.com/BurntSushi/toml v1.5.0 h1:W5quZX/G/csjUnuI8SUYlsHs9M38FC7znL0lIO+DvMg=
 github.com/BurntSushi/toml v1.5.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Telmate/proxmox-api-go v0.0.0-20250909211818-e783370fc8ea h1:/g6SFJtTQO5H6RUbN2EirwY/uMFAG8w574RtQE4EizU=
-github.com/Telmate/proxmox-api-go v0.0.0-20250909211818-e783370fc8ea/go.mod h1:HGPbpwiVsrpYYuQAygnnU04ZdGLYc8fdP9qhJIBw2Bg=
+github.com/Telmate/proxmox-api-go v0.0.0-20250917211129-080d9b1cf42b h1:nAEuNQ3/TE1a57rcO5wXS5p5GlNJ5u1LmuSikK3MzGk=
+github.com/Telmate/proxmox-api-go v0.0.0-20250917211129-080d9b1cf42b/go.mod h1:HGPbpwiVsrpYYuQAygnnU04ZdGLYc8fdP9qhJIBw2Bg=
 github.com/alexedwards/scs/v2 v2.9.0 h1:xa05mVpwTBm1iLeTMNFfAWpKUm4fXAW7CeAViqBVS90=
 github.com/alexedwards/scs/v2 v2.9.0/go.mod h1:ToaROZxyKukJKT/xLcVQAChi5k6+Pn1Gvmdl7h3RRj8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
