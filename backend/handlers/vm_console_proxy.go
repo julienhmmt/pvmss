@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -105,9 +106,17 @@ func serveCustomNoVNCPage(w http.ResponseWriter, r *http.Request, log zerolog.Lo
 		log.Info().Msg("Using secure WebSocket (wss://) per scheme parameter")
 	}
 
-	// Use local WebSocket proxy instead of direct Proxmox connection to avoid cross-domain auth issues
-	websocketURL := fmt.Sprintf("ws://localhost:50000/vm/console-websocket?host=%s&node=%s&vmid=%s&port=%s&ticket=%s",
-		url.QueryEscape(host), url.QueryEscape(node), url.QueryEscape(vmid), url.QueryEscape(port), url.QueryEscape(ticket))
+	// This connects to our local WebSocket handler that proxies to Proxmox
+	// Detect current server port dynamically
+	serverPort := "8080" // default
+	if r.Host != "" {
+		if _, portStr, err := net.SplitHostPort(r.Host); err == nil {
+			serverPort = portStr
+		}
+	}
+
+	websocketURL := fmt.Sprintf("ws://localhost:%s/vm/console-websocket?host=%s&node=%s&vmid=%s&port=%s&ticket=%s",
+		serverPort, url.QueryEscape(host), url.QueryEscape(node), url.QueryEscape(vmid), url.QueryEscape(port), url.QueryEscape(ticket))
 
 	log.Info().
 		Str("websocket_url", websocketURL).
@@ -229,7 +238,9 @@ func isStaticAsset(path string) bool {
 func serveLocalNoVNCAsset(w http.ResponseWriter, r *http.Request, log zerolog.Logger) {
 	localPath, relativePath, err := resolveNoVNCAssetPath(r.URL.Path)
 	if err != nil {
-		log.Warn().Err(err).Str("requested_path", r.URL.Path).Msg("Failed to resolve noVNC asset path")
+		log.Warn().Err(err).
+			Str("requested_path", r.URL.Path).
+			Msg("Failed to resolve noVNC asset path")
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
@@ -279,7 +290,38 @@ func serveResolvedNoVNCAsset(w http.ResponseWriter, r *http.Request, log zerolog
 		return
 	}
 
-	setContentType(w, localPath)
+	// Set proper content type headers
+	ext := strings.ToLower(filepath.Ext(localPath))
+	switch ext {
+	case ".js":
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	case ".css":
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	case ".html":
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	case ".png":
+		w.Header().Set("Content-Type", "image/png")
+	case ".jpg", ".jpeg":
+		w.Header().Set("Content-Type", "image/jpeg")
+	case ".gif":
+		w.Header().Set("Content-Type", "image/gif")
+	case ".svg":
+		w.Header().Set("Content-Type", "image/svg+xml")
+	case ".woff":
+		w.Header().Set("Content-Type", "font/woff")
+	case ".woff2":
+		w.Header().Set("Content-Type", "font/woff2")
+	case ".mp3":
+		w.Header().Set("Content-Type", "audio/mpeg")
+	case ".oga", ".ogg":
+		w.Header().Set("Content-Type", "audio/ogg")
+	case ".json":
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	}
+
+	// Set cache headers for static assets
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+
 	http.ServeFile(w, r, localPath)
 }
 
@@ -300,8 +342,15 @@ func (h *VMHandler) NoVNCStaticHandler(w http.ResponseWriter, r *http.Request, p
 func (h *VMHandler) NoVNCComponentsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := CreateHandlerLogger("NoVNCComponentsHandler", r)
 
+	fmt.Printf("PVMSS DEBUG: ===== NoVNCComponentsHandler CALLED =====\n")
+	fmt.Printf("PVMSS DEBUG: Request URL: %s\n", r.URL.String())
+	fmt.Printf("PVMSS DEBUG: Request Method: %s\n", r.Method)
+
 	requestedPath := ps.ByName("filepath")
+	fmt.Printf("PVMSS DEBUG: Extracted filepath param: '%s'\n", requestedPath)
+
 	if requestedPath == "" {
+		fmt.Printf("PVMSS DEBUG: ERROR - Empty filepath parameter\n")
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
@@ -337,8 +386,49 @@ func (h *VMHandler) NoVNCComponentsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	log.Info().Str("serving_path", localPath).Msg("Serving noVNC component asset")
-	setContentType(w, localPath)
+	log.Info().Str("serving_path", localPath).Str("file_ext", filepath.Ext(localPath)).Str("request_url", r.URL.String()).Msg("Serving noVNC component asset")
+
+	// CRITICAL: Set proper content type headers BEFORE http.ServeFile to prevent text/plain
+	ext := strings.ToLower(filepath.Ext(localPath))
+	log.Info().Str("extension", ext).Str("file", localPath).Msg("Setting MIME type for noVNC asset")
+
+	// Force correct MIME types to prevent text/plain issues
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+
+	switch ext {
+	case ".js":
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	case ".css":
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	case ".html":
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	case ".png":
+		w.Header().Set("Content-Type", "image/png")
+	case ".jpg", ".jpeg":
+		w.Header().Set("Content-Type", "image/jpeg")
+	case ".gif":
+		w.Header().Set("Content-Type", "image/gif")
+	case ".svg":
+		w.Header().Set("Content-Type", "image/svg+xml")
+	case ".woff":
+		w.Header().Set("Content-Type", "font/woff")
+	case ".woff2":
+		w.Header().Set("Content-Type", "font/woff2")
+	case ".mp3":
+		w.Header().Set("Content-Type", "audio/mpeg")
+	case ".oga", ".ogg":
+		w.Header().Set("Content-Type", "audio/ogg")
+	case ".json":
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	default:
+		// Prevent Go from auto-detecting and potentially getting it wrong
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+
+	// Set cache headers for static assets
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+
+	// Serve the file
 	http.ServeFile(w, r, localPath)
 }
 
@@ -358,6 +448,12 @@ func resolveNoVNCAssetPath(rawPath string) (string, string, error) {
 
 	// Remove proxy-specific prefixes
 	path = strings.TrimPrefix(path, "vm/console-proxy/")
+	path = strings.TrimPrefix(path, "/")
+	path = strings.TrimPrefix(path, "components/noVNC-1.6.0/")
+	path = strings.TrimPrefix(path, "components/noVNC-1.6.0")
+	path = strings.TrimPrefix(path, "/")
+	path = strings.TrimPrefix(path, "frontend/components/noVNC-1.6.0/")
+	path = strings.TrimPrefix(path, "frontend/components/noVNC-1.6.0")
 	path = strings.TrimPrefix(path, "/")
 
 	// Reduce any parent path references for safety
@@ -386,30 +482,9 @@ func resolveNoVNCAssetPath(rawPath string) (string, string, error) {
 
 	// Use the full noVNC installation path
 	localPath := filepath.Join("frontend", "components", "noVNC-1.6.0", path)
-	return localPath, path, nil
-}
 
-// setContentType sets appropriate content type based on file extension
-func setContentType(w http.ResponseWriter, filename string) {
-	ext := strings.ToLower(filepath.Ext(filename))
-	switch ext {
-	case ".js":
-		w.Header().Set("Content-Type", "application/javascript")
-	case ".css":
-		w.Header().Set("Content-Type", "text/css")
-	case ".html":
-		w.Header().Set("Content-Type", "text/html")
-	case ".png":
-		w.Header().Set("Content-Type", "image/png")
-	case ".jpg", ".jpeg":
-		w.Header().Set("Content-Type", "image/jpeg")
-	case ".gif":
-		w.Header().Set("Content-Type", "image/gif")
-	case ".svg":
-		w.Header().Set("Content-Type", "image/svg+xml")
-	case ".woff":
-		w.Header().Set("Content-Type", "font/woff")
-	case ".woff2":
-		w.Header().Set("Content-Type", "font/woff2")
+	if _, err := os.Stat(localPath); err != nil {
+		return "", "", fmt.Errorf("noVNC asset not found at %s", localPath)
 	}
+	return localPath, path, nil
 }

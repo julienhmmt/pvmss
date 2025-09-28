@@ -36,16 +36,9 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 // These headers help mitigate common web vulnerabilities like XSS and clickjacking.
 func getSecurityHeaders(r *http.Request) map[string]string {
 	headers := map[string]string{
-		"X-Content-Type-Options": "nosniff",
-		"Referrer-Policy":        "strict-origin-when-cross-origin",
-		"Permissions-Policy":     "camera=(), microphone=(), geolocation=()",
-	}
-
-	// Allow framing for console proxy routes, deny for everything else
-	if strings.HasPrefix(r.URL.Path, "/vm/console-proxy") {
-		headers["X-Frame-Options"] = "SAMEORIGIN"
-	} else {
-		headers["X-Frame-Options"] = "DENY"
+		// "X-Content-Type-Options": "nosniff",
+		// "Referrer-Policy":        "strict-origin-when-cross-origin",
+		"Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 	}
 
 	// Add CORS headers for API and WebSocket endpoints

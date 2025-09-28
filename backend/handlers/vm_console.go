@@ -209,10 +209,14 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, _ h
 	// Store session temporarily for WebSocket proxy
 	sessionManager.Put(r.Context(), fmt.Sprintf("console_session_%d_%s", vmidInt, actualNode), consoleSession)
 
+	// Use backend HTTP proxy to eliminate cross-domain issues
+	proxyURL := fmt.Sprintf("/vm/console-proxy?vmid=%d&node=%s&host=%s&port=%d&ticket=%s&scheme=%s",
+		vmidInt, actualNode, access.Host, access.Port, access.Ticket, access.Scheme)
+
 	response := map[string]interface{}{
 		"success":     true,
-		"console_url": access.ConsoleURL, // Use the FULL URL with all parameters
-		"message":     "Console access granted",
+		"console_url": proxyURL, // Backend proxy URL
+		"message":     "Console access ready",
 		"node":        actualNode,
 		"vmid":        vmidInt,
 		"expires_in":  8, // seconds

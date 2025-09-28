@@ -102,6 +102,10 @@ func buildConsoleAccess(ctx context.Context, apiURL, node string, vmid int, pveA
 		return nil, err
 	}
 
+	log.Info().
+		Interface("vnc_response_full", vncResp).
+		Msg("Proxmox GetVNCProxy API response received")
+
 	var vncData map[string]any
 	if data, ok := vncResp["data"].(map[string]any); ok {
 		vncData = data
@@ -152,22 +156,18 @@ func buildConsoleAccess(ctx context.Context, apiURL, node string, vmid int, pveA
 
 	websocketHost := hostWithPort
 
-	// Build local noVNC URL with WebSocket connection parameters using encoded query values
-	values := neturl.Values{}
-	values.Set("vmid", strconv.Itoa(vmid))
-	values.Set("node", node)
-	values.Set("host", hostWithPort)
-	values.Set("port", strconv.Itoa(port))
-	values.Set("ticket", ticket)
-	values.Set("scheme", scheme)
+	// Build direct Proxmox noVNC URL (from working memory approach)
+	// This is the documented Proxmox URL format that works
+	consoleURL := fmt.Sprintf("%s://%s/?console=kvm&novnc=1&node=%s&vmid=%d&resize=1&path=api2/json/nodes/%s/qemu/%d/vncwebsocket/port/%d/vncticket=%s",
+		scheme, hostWithPort,
+		neturl.QueryEscape(node), vmid,
+		neturl.QueryEscape(node), vmid, port, neturl.QueryEscape(ticket))
 
+	// Also generate WebSocket URL for logging/debugging
 	wsScheme := "wss"
 	if strings.EqualFold(scheme, "http") {
 		wsScheme = "ws"
 	}
-	values.Set("ws_scheme", wsScheme)
-
-	consoleURL := "/vm/console-proxy?" + values.Encode()
 
 	websocketURL := fmt.Sprintf("%s://%s/api2/json/nodes/%s/qemu/%d/vncwebsocket?port=%d&vncticket=%s",
 		wsScheme, websocketHost, node, vmid, port, neturl.QueryEscape(ticket),

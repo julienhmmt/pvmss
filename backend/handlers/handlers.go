@@ -288,7 +288,7 @@ func isStaticPath(p string) bool {
 	if p == "/favicon.ico" {
 		return true
 	}
-	return hasAnyPrefix(p, "/css/", "/js/", "/webfonts/")
+	return hasAnyPrefix(p, "/css/", "/js/", "/webfonts/", "/components/")
 }
 
 func hasAnyPrefix(s string, prefixes ...string) bool {
