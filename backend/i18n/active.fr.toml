@@ -540,6 +540,16 @@ other = "Enregistrer les étiquettes"
 other = "Ouvrir la console"
 ["VMDetails.Console"]
 other = "Console"
+["VMDetails.Console.Loading"]
+other = "Chargement..."
+["VMDetails.Console.Error"]
+other = "Erreur"
+["VMDetails.Console.Unauthorized"]
+other = "Non autorisé"
+["VMDetails.Console.Forbidden"]
+other = "Interdit"
+["VMDetails.Console.ConnectionError"]
+other = "Erreur de connexion"
 
 # ==============
 # Documentation

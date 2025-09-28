@@ -37,9 +37,15 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 func getSecurityHeaders(r *http.Request) map[string]string {
 	headers := map[string]string{
 		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options":        "DENY",
 		"Referrer-Policy":        "strict-origin-when-cross-origin",
 		"Permissions-Policy":     "camera=(), microphone=(), geolocation=()",
+	}
+
+	// Allow framing for console proxy routes, deny for everything else
+	if strings.HasPrefix(r.URL.Path, "/vm/console-proxy") {
+		headers["X-Frame-Options"] = "SAMEORIGIN"
+	} else {
+		headers["X-Frame-Options"] = "DENY"
 	}
 
 	// Add CORS headers for API and WebSocket endpoints

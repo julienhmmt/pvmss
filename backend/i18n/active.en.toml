@@ -498,6 +498,16 @@ other = "Save Tags"
 other = "Open Console"
 ["VMDetails.Console"]
 other = "Console"
+["VMDetails.Console.Loading"]
+other = "Loading..."
+["VMDetails.Console.Error"]
+other = "Error"
+["VMDetails.Console.Unauthorized"]
+other = "Unauthorized"
+["VMDetails.Console.Forbidden"]
+other = "Forbidden"
+["VMDetails.Console.ConnectionError"]
+other = "Connection error"
 
 # ===========
 # Status

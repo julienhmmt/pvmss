@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"context"
+	"encoding/gob"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,16 +14,28 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/proxmox"
+	"pvmss/security"
 )
+
+func init() {
+	gob.Register(consoleSessionPayload{})
+}
+
+type consoleSessionPayload struct {
+	ConsoleURL   string
+	WebsocketURL string
+	Ticket       string
+	AuthCookie   string
+	CsrfToken    string
+	Host         string
+	Port         int
+	ExpiresAt    int64
+}
 
 // VMConsoleHandler handles VM console requests
 func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("VMConsoleHandler", r)
 
-	log.Info().Str("method", r.Method).Str("path", r.URL.Path).Msg("Console request received")
-
-	// Check authentication manually instead of using RequireAuthHandle
-	// to avoid middleware issues with AJAX requests
 	if !IsAuthenticated(r) {
 		log.Warn().Msg("Console request rejected: not authenticated")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -31,15 +46,17 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	vmid := r.FormValue("vmid")
-	vmname := r.FormValue("vmname") // The frontend sends vmname
-	if vmid == "" || vmname == "" {
-		log.Error().Str("vmid", vmid).Str("vmname", vmname).Msg("VM ID and name are required")
-		http.Error(w, "VM ID and name are required", http.StatusBadRequest)
+	vmid := strings.TrimSpace(r.FormValue("vmid"))
+	node := strings.TrimSpace(r.FormValue("node"))
+	vmname := strings.TrimSpace(r.FormValue("vmname"))
+
+	if vmid == "" {
+		log.Error().Msg("VM ID is required")
+		http.Error(w, "VM ID is required", http.StatusBadRequest)
 		return
 	}
 
-	log.Info().Str("vmid", vmid).Str("vmname", vmname).Msg("Processing console request")
+	log.Info().Str("vmid", vmid).Str("node", node).Str("vmname", vmname).Msg("Processing console request")
 
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
@@ -48,7 +65,6 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	// Get the state manager to access the Proxmox client
 	stateManager := getStateManager(r)
 	if stateManager == nil {
 		log.Error().Msg("State manager not available")
@@ -63,118 +79,148 @@ func (h *VMHandler) VMConsoleHandler(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
-	// Get all VMs to find the one with the matching name and get its node
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		log.Error().Msg("Session manager not available")
+		http.Error(w, "Session not available", http.StatusUnauthorized)
+		return
+	}
+
+	pveAuthCookie := strings.TrimSpace(sessionManager.GetString(r.Context(), "pve_auth_cookie"))
+	csrfToken := strings.TrimSpace(sessionManager.GetString(r.Context(), "csrf_prevention_token"))
+	username := strings.TrimSpace(sessionManager.GetString(r.Context(), "username"))
+	isAdmin := sessionManager.GetBool(r.Context(), "is_admin")
+
+	log.Info().
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Bool("has_pve_cookie", pveAuthCookie != "").
+		Bool("has_csrf_token", csrfToken != "").
+		Str("session_id", sessionManager.Token(r.Context())).
+		Msg("Console access attempt - session details")
+
+	if pveAuthCookie == "" {
+		log.Warn().Str("username", username).Msg("Missing PVE auth cookie in session")
+		http.Error(w, "Session expired. Please log in again to access the console.", http.StatusUnauthorized)
+		return
+	}
+
+	if username == "" {
+		log.Warn().Msg("Missing username in session")
+		http.Error(w, "Session expired. Please log in again to access the console.", http.StatusUnauthorized)
+		return
+	}
+
+	// Resolve node if not provided
+	actualNode := node
+	if actualNode == "" {
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		defer cancel()
+
+		vms, err := proxmox.GetVMsWithContext(ctx, client)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get VM list")
+			http.Error(w, "Failed to get VM information", http.StatusInternalServerError)
+			return
+		}
+
+		for _, vm := range vms {
+			if vm.VMID == vmidInt {
+				actualNode = vm.Node
+				break
+			}
+		}
+
+		if actualNode == "" {
+			log.Error().Int("vmid", vmidInt).Msg("Unable to determine VM node")
+			http.Error(w, "Unable to determine VM node", http.StatusNotFound)
+			return
+		}
+	}
+
+	apiURL := client.GetApiUrl()
+
+	log.Info().
+		Str("username", username).
+		Str("api_url", apiURL).
+		Str("node", actualNode).
+		Int("vmid", vmidInt).
+		Msg("Requesting VNC console access from Proxmox")
+
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	allVMs, err := proxmox.GetVMsWithContext(ctx, client)
+	access, err := buildConsoleAccess(ctx, apiURL, actualNode, vmidInt, pveAuthCookie, csrfToken, username)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get VM list")
-		http.Error(w, "Failed to get VM information", http.StatusInternalServerError)
-		return
-	}
-
-	// Find the VM by name and get its node
-	var actualNode string
-	for _, vm := range allVMs {
-		if vm.Name == vmname && vm.VMID == vmidInt {
-			actualNode = vm.Node
-			break
-		}
-	}
-
-	if actualNode == "" {
-		log.Error().Str("vmname", vmname).Int("vmid", vmidInt).Msg("VM not found")
-		http.Error(w, "VM not found", http.StatusNotFound)
-		return
-	}
-
-	log.Info().Int("vmid", vmidInt).Str("node", actualNode).Msg("Requesting VNC proxy ticket")
-
-	// Request VNC proxy ticket using the existing client (API token auth)
-	ctx, cancel = context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	vncResponse, err := client.GetVNCProxy(ctx, actualNode, vmidInt)
-	if err != nil {
-		log.Error().Err(err).Int("vmid", vmidInt).Str("node", actualNode).Msg("Failed to get VNC proxy ticket")
-
-		// Provide helpful error messages based on error type
-		if strings.Contains(err.Error(), "403") || strings.Contains(err.Error(), "permission") {
-			http.Error(w, "Insufficient permissions for console access. Please ensure your user or API token has 'VM.Console' permission in Proxmox.", http.StatusForbidden)
-			return
-		} else if strings.Contains(err.Error(), "401") || strings.Contains(err.Error(), "authentication") {
-			http.Error(w, "Authentication failed for console access. Please check your credentials or API token.", http.StatusUnauthorized)
+		if errors.Is(err, errProxmoxUnauthorized) {
+			log.Warn().
+				Str("username", username).
+				Str("node", actualNode).
+				Int("vmid", vmidInt).
+				Msg("Proxmox returned unauthorized for console access")
+			http.Error(w, "Authentication with Proxmox failed. Please log in again.", http.StatusUnauthorized)
 			return
 		}
-
-		http.Error(w, "Failed to get console access: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Extract the VNC ticket and port from the response
-	// Proxmox API returns data wrapped in a "data" field
-	var vncData map[string]interface{}
-	if data, ok := vncResponse["data"].(map[string]interface{}); ok {
-		vncData = data
-	} else {
-		// Fallback: try to use the response directly if no "data" wrapper
-		vncData = vncResponse
-	}
-
-	vncTicket, ok := vncData["ticket"].(string)
-	if !ok {
-		log.Error().Interface("response", vncResponse).Interface("vncData", vncData).Msg("Invalid VNC response format")
-		http.Error(w, "Invalid console response format", http.StatusInternalServerError)
-		return
-	}
-
-	vncPort, ok := vncData["port"].(float64)
-	if !ok {
-		// Try as string (Proxmox sometimes returns port as string)
-		if portStr, ok := vncData["port"].(string); ok {
-			if portInt, err := strconv.Atoi(portStr); err == nil {
-				vncPort = float64(portInt)
-			} else {
-				log.Error().Interface("response", vncResponse).Interface("vncData", vncData).Str("portStr", portStr).Msg("Invalid VNC response format - port not a valid number")
-				http.Error(w, "Invalid console response format", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			log.Error().Interface("response", vncResponse).Interface("vncData", vncData).Msg("Invalid VNC response format - missing port")
-			http.Error(w, "Invalid console response format", http.StatusInternalServerError)
+		if errors.Is(err, errProxmoxForbidden) {
+			log.Warn().
+				Str("username", username).
+				Str("node", actualNode).
+				Int("vmid", vmidInt).
+				Msg("Proxmox denied console access - insufficient permissions")
+			http.Error(w, "Insufficient permissions for console access. Ensure your user has 'VM.Console' permission.", http.StatusForbidden)
 			return
 		}
+		log.Error().
+			Err(err).
+			Str("username", username).
+			Str("node", actualNode).
+			Int("vmid", vmidInt).
+			Str("api_url", apiURL).
+			Msg("Failed to get console access from Proxmox")
+		http.Error(w, "Failed to access console", http.StatusInternalServerError)
+		return
 	}
 
-	// Get the Proxmox host URL for constructing the console URL
-	proxmoxHost := client.GetApiUrl()
-	proxmoxHost = strings.TrimPrefix(proxmoxHost, "https://")
-	proxmoxHost = strings.TrimSuffix(proxmoxHost, "/api2/json")
+	log.Info().
+		Str("username", username).
+		Str("node", actualNode).
+		Int("vmid", vmidInt).
+		Str("host", access.Host).
+		Int("port", access.Port).
+		Str("websocket_url", access.WebsocketURL).
+		Str("console_url", access.ConsoleURL).
+		Msg("Successfully obtained console access from Proxmox")
 
-	log.Info().Int("vmid", vmidInt).Str("node", actualNode).Int("port", int(vncPort)).Msg("VNC proxy ticket obtained successfully")
+	// Set cookies for cross-domain authentication
+	setProxmoxAuthCookies(w, pveAuthCookie, csrfToken, access.Host)
 
-	// Determine authentication method for frontend
-	authMethod := "api_token"
-	if client.GetPVEAuthCookie() != "" {
-		authMethod = "cookie"
+	// Create a console session that includes authentication
+	consoleSession := consoleSessionPayload{
+		ConsoleURL:   access.ConsoleURL,
+		WebsocketURL: access.WebsocketURL,
+		Ticket:       access.Ticket,
+		AuthCookie:   pveAuthCookie,
+		CsrfToken:    csrfToken,
+		Host:         access.Host,
+		Port:         access.Port,
+		ExpiresAt:    time.Now().Add(8 * time.Second).Unix(), // 8 seconds to be safe
 	}
 
-	// Return the console information as JSON
+	// Store session temporarily for WebSocket proxy
+	sessionManager.Put(r.Context(), fmt.Sprintf("console_session_%d_%s", vmidInt, actualNode), consoleSession)
+
 	response := map[string]interface{}{
-		"success":    true,
-		"ticket":     vncTicket,
-		"port":       int(vncPort),
-		"host":       proxmoxHost,
-		"node":       actualNode,
-		"vmid":       vmidInt,
-		"authMethod": authMethod,
+		"success":     true,
+		"console_url": access.ConsoleURL, // Use the FULL URL with all parameters
+		"message":     "Console access granted",
+		"node":        actualNode,
+		"vmid":        vmidInt,
+		"expires_in":  8, // seconds
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Error().Err(err).Msg("Failed to encode console response")
-		http.Error(w, "Failed to prepare console response", http.StatusInternalServerError)
 		return
 	}
 }

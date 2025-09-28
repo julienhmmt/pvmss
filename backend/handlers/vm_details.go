@@ -48,10 +48,11 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/update/tags", RequireAuthHandle(h.UpdateVMTagsHandler))
 	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))
 	router.POST("/vm/console", h.VMConsoleHandler)
-	router.POST("/vm/console-auth", HandlerFuncToHTTPrHandle(VMConsoleAuthHandler))
-
-	// VM console direct routes
-	router.GET("/vm/console-direct", h.VMConsoleDirectHandler)
+	router.GET("/vm/console-window", h.VMConsoleWindowHandler)
+	router.GET("/vm/console-proxy", h.VMConsoleProxyHandler)
+	router.GET("/vm/console-proxy/*filepath", h.VMConsoleProxyHandler)
+	// Dedicated static asset routes for noVNC
+	router.GET("/components/noVNC-1.6.0/*filepath", h.NoVNCComponentsHandler)
 }
 
 // VMDetailsHandler displays detailed information about a specific VM

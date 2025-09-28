@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('vmid', vmid);
             formData.append('vmname', vmname);
+            if (node) {
+                formData.append('node', node);
+            }
             
             // Add CSRF token if available
             let csrfToken = document.querySelector('meta[name="csrf-token"]');
@@ -66,163 +69,74 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData,
                 credentials: 'same-origin'
             });
-            
+
             if (!consoleInfoResponse.ok) {
-                throw new Error(`Failed to get console info: ${consoleInfoResponse.status}`);
+                const errorText = await consoleInfoResponse.text();
+                throw new Error(errorText || `Failed to get console info: ${consoleInfoResponse.status}`);
             }
             
             const consoleInfo = await consoleInfoResponse.json();
             console.log('Console info received:', consoleInfo);
-            
+            console.log('🔍 Full JSON response:', JSON.stringify(consoleInfo, null, 2));
+
             if (!consoleInfo.success) {
                 throw new Error(consoleInfo.message || 'Failed to get console info');
             }
-            
-            // Now use individual user authentication with the correct host
-            let authData = {
-                host: consoleInfo.host,
-                node: node,
-                vmid: vmid
-            };
 
-            // First try without credentials (in case user session has stored credentials)
-            let response = await fetch('/vm/console-auth', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify(authData)
-            });
+            consoleStatus.innerHTML = '<span class="has-text-success">✅ Console access granted - loading console</span>';
 
-            let data;
-            try {
-                data = await response.json();
-            } catch (jsonError) {
-                // If JSON parsing fails, get the raw text to see what we got
-                const rawText = await response.text();
-                console.error('Failed to parse JSON response:', rawText);
-                throw new Error(`Server returned invalid JSON: ${rawText}`);
+            const url = consoleInfo.console_url || consoleInfo.url;
+            if (!url) {
+                throw new Error('Console URL missing from response');
             }
             
-            // If we need user authentication, prompt for credentials
-            if (!data.success && data.message === 'NEED_USER_AUTH') {
-                console.log('🔐 User authentication required, prompting for credentials');
-                
-                // Update status to show we need authentication
-                consoleStatus.innerHTML = '<span class="has-text-warning">🔐 Please enter your Proxmox credentials</span>';
-                
-                // Show authentication prompt
-                const username = prompt('Enter your Proxmox username (without @pve):');
-                const password = prompt('Enter your Proxmox password:');
-                
-                if (!username || !password) {
-                    throw new Error('Authentication cancelled by user');
-                }
-                
-                console.log('🔑 Retrying with user credentials for:', username);
-                
-                // Retry with credentials
-                authData.username = username;
-                authData.password = password;
-                
-                response = await fetch('/vm/console-auth', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'same-origin',
-                    body: JSON.stringify(authData)
-                });
-                
-                // Parse the response properly
-                if (!response.ok) {
-                    let errorText;
-                    try {
-                        const errorData = await response.json();
-                        errorText = errorData.message || `HTTP ${response.status}`;
-                    } catch (e) {
-                        errorText = await response.text();
-                    }
-                    console.error('Console auth request failed:', errorText);
-                    throw new Error(`Authentication failed: ${response.status} - ${errorText}`);
-                }
-                
-                try {
-                    data = await response.json();
-                } catch (jsonError) {
-                    const rawText = await response.text();
-                    console.error('Failed to parse retry JSON response:', rawText);
-                    throw new Error(`Server returned invalid JSON on retry: ${rawText}`);
-                }
-                console.log('🔑 Authentication response:', data);
-            }
+            console.log('🖥️ Loading console in iframe:', url);
+            console.log('🔍 URL length:', url.length);
+            console.log('🔍 URL contains host:', url.includes('host='));
+            console.log('🔍 URL contains ticket:', url.includes('ticket='));
             
-            console.log('Console response status:', response.status);
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Console request failed:', errorText);
-                throw new Error(errorText || `Server returned ${response.status}`);
-            }
-            
-            console.log('Console data received:', data);
-            
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to get console access');
-            }
-            
-            // Update status
-            consoleStatus.innerHTML = '<span class="has-text-success">✅ Console connected successfully</span>';
-            
-            // Load the console in the iframe
+            // Load console in the existing iframe instead of opening a popup
             const iframe = document.getElementById('console-iframe');
-            if (iframe) {
-                console.log('🖥️ Loading console in iframe:', data.console_url);
-                iframe.src = data.console_url;
-                
-                // Add iframe event listeners for debugging
-                iframe.onload = function() {
-                    console.log('✅ Console iframe loaded successfully');
-                    // Hide loading overlay after iframe loads
-                    setTimeout(() => {
-                        if (loadingOverlay) {
-                            loadingOverlay.style.display = 'none';
-                        }
-                    }, 2000);
-                };
-                
-                iframe.onerror = function() {
-                    console.error('❌ Console iframe failed to load');
-                    if (loadingOverlay) {
-                        loadingOverlay.style.display = 'none';
-                    }
-                };
-                
-                // Also hide loading overlay after a timeout as fallback
-                setTimeout(() => {
-                    if (loadingOverlay) {
-                        loadingOverlay.style.display = 'none';
-                    }
-                    console.log('🕐 Loading overlay hidden after timeout');
-                }, 5000);
-            } else {
-                console.error('❌ Console iframe not found');
+            if (!iframe) {
+                throw new Error('Console iframe not found');
             }
             
+            // Set up iframe load event handlers
+            iframe.onload = function() {
+                console.log('✅ Console iframe loaded successfully');
+                // Hide loading overlay after iframe loads
+                if (loadingOverlay) {
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                    }, 1000); // Give it a moment to fully render
+                }
+                consoleStatus.innerHTML = '<span class="has-text-success">✅ Console ready</span>';
+            };
+            
+            iframe.onerror = function() {
+                console.error('❌ Console iframe failed to load');
+                if (loadingOverlay) {
+                    loadingOverlay.style.display = 'none';
+                }
+                throw new Error('Console iframe failed to load');
+            };
+            
+            // Load the console URL in the iframe
+            iframe.src = url;
+
             // Update button text
             const btnText = document.getElementById('console-btn-text');
             if (btnText) {
                 btnText.textContent = 'Console Active';
             }
-            
+
             // Hide status after success
             setTimeout(() => {
                 if (consoleStatus) {
                     consoleStatus.style.display = 'none';
                 }
             }, 5000);
-            
+
         } catch (error) {
             console.error('Console error:', error);
             consoleStatus.innerHTML = `<span class="has-text-danger">❌ Error: ${error.message}</span>`;
@@ -231,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (loadingOverlay) {
                 loadingOverlay.style.display = 'none';
             }
-            
+
             // Show error message in iframe area
             const iframe = document.getElementById('console-iframe');
             if (iframe) {
