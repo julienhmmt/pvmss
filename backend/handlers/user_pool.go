@@ -320,7 +320,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	comment := strings.TrimSpace(r.FormValue("comment"))
 	role := strings.TrimSpace(r.FormValue("role"))
 	if role == "" {
-		role = "PVMSSUser" // Use our custom role with console permissions
+		role = "PVMSSUser" // Use our custom role with VM management permissions
 	}
 	propagate := r.FormValue("propagate") == "1" || strings.EqualFold(r.FormValue("propagate"), "on")
 
@@ -345,19 +345,18 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Ensure custom role with console permissions exists
-	consoleRoleID := "PVMSSUser"
-	consolePrivileges := []string{
+	// Ensure custom role with VM management permissions exists
+	roleID := "PVMSSUser"
+	privileges := []string{
 		"VM.Audit",        // View VM status and configuration
-		"VM.Console",      // Access VM console (VNC/noVNC)
 		"VM.PowerMgmt",    // Start, stop, reset VMs
 		"VM.Config.CDROM", // Mount ISO files
 		"Datastore.Audit", // View datastore status
 		"Pool.Audit",      // View pool contents
 	}
-	if err := proxmox.EnsureRole(ctx, client, consoleRoleID, consolePrivileges); err != nil {
-		log.Error().Err(err).Str("role", consoleRoleID).Msg("EnsureRole failed")
-		http.Error(w, "failed to ensure console role: "+err.Error(), http.StatusInternalServerError)
+	if err := proxmox.EnsureRole(ctx, client, roleID, privileges); err != nil {
+		log.Error().Err(err).Str("role", roleID).Msg("EnsureRole failed")
+		http.Error(w, "failed to ensure role: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

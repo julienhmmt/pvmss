@@ -370,12 +370,6 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 		return
 	}
 
-	// Also establish cookie-based authentication for console access
-	// Store the cookie auth credentials in session for console access
-	sessionManager.Put(r.Context(), "pve_auth_cookie", pxClient.PVEAuthCookie)
-	sessionManager.Put(r.Context(), "csrf_prevention_token", pxClient.CSRFPreventionToken)
-	log.Debug().Str("username", username).Msg("Cookie authentication established for console access")
-
 	log.Debug().Str("username", username).Msg("User authentication successful via Proxmox, creating session")
 
 	if err := establishSession(w, r, false, username); err != nil {

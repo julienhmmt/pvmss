@@ -494,20 +494,6 @@ other = "Select tags"
 other = "No tags available"
 ["VMDetails.SaveTags"]
 other = "Save Tags"
-["VMDetails.OpenConsole"]
-other = "Open Console"
-["VMDetails.Console"]
-other = "Console"
-["VMDetails.Console.Loading"]
-other = "Loading..."
-["VMDetails.Console.Error"]
-other = "Error"
-["VMDetails.Console.Unauthorized"]
-other = "Unauthorized"
-["VMDetails.Console.Forbidden"]
-other = "Forbidden"
-["VMDetails.Console.ConnectionError"]
-other = "Connection error"
 
 # ===========
 # Status
@@ -770,61 +756,3 @@ other = "Delete ALL VMs in this pool, the user, then the pool? This cannot be un
 other = "Delete VMs, user, then pool"
 ["Admin.UserPool.DeletePurge"]
 other = "Delete (purge)"
-
-# ======
-# Console Test
-# ======
-["ConsoleTest.Title"]
-other = "Console Test"
-["ConsoleTest.Description"]
-other = "Test noVNC console access for virtual machines"
-["ConsoleTest.FormTitle"]
-other = "Test Console Access"
-["ConsoleTest.UsernameLabel"]
-other = "Username"
-["ConsoleTest.UsernamePlaceholder"]
-other = "user1"
-["ConsoleTest.UsernameHelp"]
-other = "Proxmox username (format: user@realm)"
-["ConsoleTest.PasswordLabel"]
-other = "Password"
-["ConsoleTest.PasswordPlaceholder"]
-other = "Enter password"
-["ConsoleTest.PasswordHelp"]
-other = "User password for authentication"
-["ConsoleTest.VMIDLabel"]
-other = "VM ID"
-["ConsoleTest.VMIDPlaceholder"]
-other = "100"
-["ConsoleTest.VMIDHelp"]
-other = "Virtual machine ID to test (e.g., 100)"
-["ConsoleTest.NodeLabel"]
-other = "Node (Optional)"
-["ConsoleTest.NodePlaceholder"]
-other = "node1"
-["ConsoleTest.NodeHelp"]
-other = "Leave empty to auto-detect from VM ID"
-["ConsoleTest.TestButton"]
-other = "Test Console"
-["ConsoleTest.ClearButton"]
-other = "Clear Form"
-["ConsoleTest.SuccessTitle"]
-other = "Console Test Successful"
-["ConsoleTest.SuccessMessage"]
-other = "Console access test completed successfully. You can use the ticket information to connect to the VM console."
-["ConsoleTest.ErrorTitle"]
-other = "Console Test Failed"
-["ConsoleTest.TicketLabel"]
-other = "VNC Ticket"
-["ConsoleTest.PortLabel"]
-other = "Port"
-["ConsoleTest.InfoTitle"]
-other = "Information"
-["ConsoleTest.Info1"]
-other = "This test verifies that your noVNC console access is working correctly."
-["ConsoleTest.Info2"]
-other = "The test will authenticate with the provided credentials and generate a VNC ticket."
-["ConsoleTest.Info3"]
-other = "If successful, you'll see the ticket information that can be used for console access."
-["ConsoleTest.Info4"]
-other = "The actual noVNC interface will be accessed through Proxmox's built-in web interface."

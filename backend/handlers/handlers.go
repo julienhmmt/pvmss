@@ -337,8 +337,7 @@ func sessionDebugMiddleware(next http.Handler) http.Handler {
 
 		// Skip ResponseWriter wrapping for WebSocket requests to avoid hijacking issues
 		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket" ||
-			strings.ToLower(r.Header.Get("Connection")) == "upgrade" ||
-			strings.HasPrefix(r.URL.Path, "/api/console/qemu/") // WebSocket console endpoint
+			strings.ToLower(r.Header.Get("Connection")) == "upgrade"
 
 		if isWebSocket {
 			// For WebSocket requests, skip the wrapper to preserve hijacking capability

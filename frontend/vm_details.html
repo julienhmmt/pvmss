@@ -206,55 +206,6 @@
         </a>
     </div>
 
-    <!-- Console Section -->
-    <div class="box mb-4">
-        <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
-            <h3 class="title is-5 mb-0">{{T "VMDetails.Console"}}</h3>
-            {{if .ProxmoxConnected}}
-                <button id="toggle-console-btn" class="button is-primary is-light"
-                        data-vmid="{{.VM.VMID}}"
-                        data-vmname="{{.VM.Name}}"
-                        data-node="{{.VM.Node}}">
-                    <span id="console-btn-text">{{T "VMDetails.OpenConsole"}}</span>
-                </button>
-            {{else}}
-                <button class="button is-primary is-light" disabled title="Offline mode">
-                    <span>{{T "VMDetails.OpenConsole"}}</span>
-                </button>
-            {{end}}
-        </div>
-        
-        <!-- Console Container -->
-        <div id="console-container" class="is-hidden">
-            <div id="console-status" class="notification is-info is-light mb-3">
-                <span>{{T "VMDetails.Console.Loading"}}</span>
-            </div>
-            <div id="console-content" style="width: 100%; height: 800px; border: 2px solid #3498db; background: #000; position: relative; border-radius: 8px; overflow: hidden;">
-                <iframe id="console-iframe" src="about:blank" style="width: 100%; height: 100%; border: none; background: #000;"></iframe>
-                
-                <div id="console-loading-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(44, 62, 80, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 1000;">
-                    <div style="border: 4px solid #34495e; border-top: 4px solid #3498db; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 30px;"></div>
-                    <div id="console-loading-text" style="font-size: 18px; margin-bottom: 15px; font-weight: bold;">Connecting to Console...</div>
-                    <div id="console-loading-details" style="font-size: 14px; color: #bdc3c7; text-align: center; max-width: 400px;">Using your session credentials to establish secure connection</div>
-                    <div style="margin-top: 20px; font-size: 12px; color: #95a5a6;">This may take a few seconds...</div>
-                </div>
-                
-                <style>
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                    #console-content {
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                    }
-                    #console-iframe {
-                        transition: opacity 0.3s ease;
-                    }
-                </style>
-            </div>
-        </div>
-    </div>
-
     <!-- VM Action Forms (server-side) -->
     <div class="buttons is-centered mt-4">
         <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
@@ -312,8 +263,6 @@
     </div>
 
     </div>
-
-    <script src="/js/vm_console.js"></script>
 </section>
 
 {{end}}
