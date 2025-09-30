@@ -269,6 +269,7 @@ func setupStaticFiles(router *httprouter.Router) {
 	// Create specific file handlers for other static subdirectories
 	jsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "js"))))
 	webfontsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "webfonts"))))
+	componentsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "components"))))
 
 	// Configure routes to serve CSS files using Context7 handler
 	router.Handler(http.MethodGet, "/css/*filepath", http.HandlerFunc(cssContext7Handler.ServeCSSWithContext7))
@@ -277,10 +278,12 @@ func setupStaticFiles(router *httprouter.Router) {
 	router.Handler(http.MethodHead, "/js/*filepath", http.StripPrefix("/js/", jsServer))
 	router.Handler(http.MethodGet, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
 	router.Handler(http.MethodHead, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
+	router.Handler(http.MethodGet, "/components/*filepath", http.StripPrefix("/components/", componentsServer))
+	router.Handler(http.MethodHead, "/components/*filepath", http.StripPrefix("/components/", componentsServer))
 	router.Handler(http.MethodGet, "/favicon.ico", http.HandlerFunc(serveFavicon))
 	router.Handler(http.MethodHead, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
-	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured for css, js, images, and webfonts")
+	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured for css, js, components, webfonts")
 }
 
 // isStaticPath returns true when the request is for a static asset we serve directly

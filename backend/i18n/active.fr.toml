@@ -536,6 +536,8 @@ other = "Sélectionner des étiquettes"
 other = "Aucune étiquette disponible"
 ["VMDetails.SaveTags"]
 other = "Enregistrer les étiquettes"
+["VMDetails.Action.Console"]
+other = "Console"
 
 # ==============
 # Documentation

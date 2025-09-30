@@ -10,6 +10,110 @@ import (
 	"pvmss/logger"
 )
 
+// TicketResponse represents the response from the /access/ticket endpoint.
+type TicketResponse struct {
+	Username            string `json:"username"`
+	Ticket              string `json:"ticket"`
+	CSRFPreventionToken string `json:"CSRFPreventionToken"`
+	Cap                 any    `json:"cap,omitempty"`
+	Clustername         string `json:"clustername,omitempty"`
+}
+
+// CreateTicketOptions holds optional parameters for ticket creation.
+type CreateTicketOptions struct {
+	// Realm for authentication (default: "pam")
+	Realm string
+	// OTP for two-factor authentication (optional)
+	OTP string
+	// Path for permission verification (optional)
+	Path string
+	// Privs for privilege verification (optional)
+	Privs string
+}
+
+// CreateTicket creates a new authentication ticket using username and password.
+// This is the primary authentication method for Proxmox API access.
+//
+// POST /access/ticket
+// Parameters:
+//   - username: Username in format "user@realm" or just "user" (realm defaults to "pam")
+//   - password: User password
+//   - opts: Optional parameters (realm, OTP, path, privs)
+//
+// Returns:
+//   - TicketResponse containing the ticket, CSRF token, and user capabilities
+//
+// The ticket is valid for 2 hours and must be sent as a cookie (PVEAuthCookie) in subsequent requests.
+// The CSRFPreventionToken must be included in the header for any state-changing operations (POST, PUT, DELETE).
+func CreateTicket(ctx context.Context, client ClientInterface, username, password string, opts *CreateTicketOptions) (*TicketResponse, error) {
+	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
+	defer cancel()
+
+	// Apply defaults
+	if opts == nil {
+		opts = &CreateTicketOptions{}
+	}
+	if opts.Realm == "" {
+		opts.Realm = defaultLoginRealm
+	}
+
+	// Ensure username has realm suffix
+	if !strings.Contains(username, "@") {
+		username = fmt.Sprintf("%s@%s", username, opts.Realm)
+	}
+
+	// Build request parameters
+	params := url.Values{}
+	params.Set("username", username)
+	params.Set("password", password)
+	if opts.OTP != "" {
+		params.Set("otp", opts.OTP)
+	}
+	if opts.Path != "" {
+		params.Set("path", opts.Path)
+	}
+	if opts.Privs != "" {
+		params.Set("privs", opts.Privs)
+	}
+
+	// Make the API request
+	var respData struct {
+		Data TicketResponse `json:"data"`
+	}
+
+	if err := client.PostFormAndGetJSON(ctx, "/access/ticket", params, &respData); err != nil {
+		logger.Get().Error().Err(err).Str("username", username).Msg("Failed to create authentication ticket")
+		return nil, fmt.Errorf("failed to create ticket for %s: %w", username, err)
+	}
+
+	// Validate response
+	if respData.Data.Ticket == "" {
+		return nil, fmt.Errorf("ticket creation succeeded but response missing ticket field")
+	}
+	if respData.Data.CSRFPreventionToken == "" {
+		logger.Get().Warn().Str("username", username).Msg("Ticket created but CSRFPreventionToken is empty")
+	}
+
+	logger.Get().Info().
+		Str("username", respData.Data.Username).
+		Bool("has_csrf_token", respData.Data.CSRFPreventionToken != "").
+		Str("clustername", respData.Data.Clustername).
+		Msg("Authentication ticket created successfully")
+
+	return &respData.Data, nil
+}
+
+// RefreshTicket renews an existing authentication ticket.
+// This is useful to extend a session before the current ticket expires (2 hours).
+// Note: This is an alias to CreateTicket as Proxmox doesn't have a separate refresh endpoint.
+func RefreshTicket(ctx context.Context, client ClientInterface, username, password string, opts *CreateTicketOptions) (*TicketResponse, error) {
+	return CreateTicket(ctx, client, username, password, opts)
+}
+
 // EnsureUser creates a Proxmox user if it does not already exist. This function is idempotent.
 func EnsureUser(ctx context.Context, client ClientInterface, username, password, email, comment, realm string, enable bool) error {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {

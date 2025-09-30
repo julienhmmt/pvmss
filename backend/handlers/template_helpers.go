@@ -237,9 +237,6 @@ func (cmh *ContextualMessageHelper) GenerateNodeMessages(action string, nodeName
 	}
 }
 
-// LegacyTemplateHelpers provides backward compatibility for existing code
-type LegacyTemplateHelpers struct{}
-
 // AdminPageDataWithRequest provides backward compatibility for AdminPageData function with request context
 func AdminPageDataWithRequest(title string, r *http.Request, sm state.StateManager) map[string]interface{} {
 	return StandardAdminPageData(title, r, sm, "")

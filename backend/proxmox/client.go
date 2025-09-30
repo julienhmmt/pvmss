@@ -107,43 +107,19 @@ func newBaseClient(apiURL string, insecureSkipVerify bool, opts ...ClientOption)
 }
 
 // Login authenticates using a username and password to obtain a session cookie and CSRF token.
+// This is a convenience method that wraps CreateTicket and stores the credentials in the client.
 func (c *Client) Login(ctx context.Context, username, password, realm string) error {
 	if c == nil {
 		return fmt.Errorf("client is nil")
 	}
-	if username == "" || password == "" {
-		return fmt.Errorf("username and password are required")
-	}
 
-	if !strings.Contains(username, "@") {
-		if realm == "" {
-			realm = defaultLoginRealm
-		}
-		username = fmt.Sprintf("%s@%s", username, realm)
-	}
-
-	params := url.Values{}
-	params.Set("username", username)
-	params.Set("password", password)
-
-	var respData struct {
-		Data struct {
-			Ticket              string `json:"ticket"`
-			CSRFPreventionToken string `json:"CSRFPreventionToken"`
-		}
-	}
-
-	err := c.doJSONRequest(ctx, http.MethodPost, "/access/ticket", params, &respData)
+	ticket, err := CreateTicket(ctx, c, username, password, &CreateTicketOptions{Realm: realm})
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)
 	}
 
-	if respData.Data.Ticket == "" {
-		return fmt.Errorf("login response missing ticket")
-	}
-
-	c.PVEAuthCookie = respData.Data.Ticket
-	c.CSRFPreventionToken = respData.Data.CSRFPreventionToken
+	c.PVEAuthCookie = ticket.Ticket
+	c.CSRFPreventionToken = ticket.CSRFPreventionToken
 	return nil
 }
 
@@ -271,19 +247,6 @@ func (c *Client) doJSONRequest(ctx context.Context, method, path string, data ur
 	}
 
 	return nil
-}
-
-// GetVNCProxy requests a VNC ticket for a specific VM.
-func (c *Client) GetVNCProxy(ctx context.Context, node string, vmID int) (map[string]interface{}, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/vncproxy", node, vmID)
-	params := url.Values{}
-	params.Set("websocket", "1")
-
-	var result map[string]interface{}
-	if err := c.doJSONRequest(ctx, http.MethodPost, path, params, &result); err != nil {
-		return nil, fmt.Errorf("vncproxy request failed: %w", err)
-	}
-	return result, nil
 }
 
 // InvalidateCache removes a specific entry from the client's cache.

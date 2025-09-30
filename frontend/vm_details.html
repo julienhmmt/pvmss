@@ -255,6 +255,54 @@
         </form>
     </div>
 
+    <!-- Console Button -->
+    <div class="buttons is-centered mt-4">
+        <button id="console-button" class="button is-primary" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
+            <span class="icon"><i class="fas fa-desktop"></i></span>
+            <span>{{T "VMDetails.Action.Console"}}</span>
+        </button>
+    </div>
+
+    <!-- Console Modal -->
+    <div id="console-modal" class="modal">
+        <div class="modal-background"></div>
+        <div class="modal-card" style="width: 95%; height: 90%;">
+            <header class="modal-card-head">
+                <p class="modal-card-title">
+                    <span class="icon"><i class="fas fa-desktop"></i></span>
+                    Console - {{.VM.Name}} ({{.VM.VMID}})
+                </p>
+                <button id="console-close" class="delete" aria-label="close"></button>
+            </header>
+            <section class="modal-card-body" style="padding: 0; display: flex; flex-direction: column;">
+                <!-- Status bar -->
+                <div id="console-status" style="padding: 0.5rem; background: #f5f5f5; border-bottom: 1px solid #dbdbdb;">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-circle-notch fa-spin"></i></span>
+                        <span id="console-status-text">Connecting...</span>
+                    </span>
+                </div>
+                <!-- noVNC container -->
+                <div id="console-container" style="flex: 1; position: relative; overflow: hidden;"></div>
+            </section>
+            <footer class="modal-card-foot" style="justify-content: space-between;">
+                <div>
+                    <button id="console-ctrl-alt-del" class="button is-small is-light" disabled>
+                        <span class="icon"><i class="fas fa-keyboard"></i></span>
+                        <span>Ctrl+Alt+Del</span>
+                    </button>
+                    <button id="console-fullscreen" class="button is-small is-light" disabled>
+                        <span class="icon"><i class="fas fa-expand"></i></span>
+                        <span>Fullscreen</span>
+                    </button>
+                </div>
+                <button id="console-disconnect" class="button is-danger is-light">
+                    <span class="icon"><i class="fas fa-times"></i></span>
+                    <span>Disconnect</span>
+                </button>
+            </footer>
+        </div>
+    </div>
 
     <div class="is-flex is-justify-content-center mb-4 mt-4">
         <a class="button is-info is-light" href="{{withLang "/search" .Lang}}">
@@ -264,5 +312,245 @@
 
     </div>
 </section>
+
+<!-- Console JavaScript with noVNC Module -->
+<script type="module">
+    // Import noVNC RFB module
+    import RFB from '/components/noVNC-1.6.0/core/rfb.js';
+    
+    // Configuration
+    const VMID = '{{.VM.VMID}}';
+    const NODE = '{{.VM.Node}}';
+    const CSRF_TOKEN = '{{.CSRFToken}}';
+    
+    // DOM elements
+    const consoleButton = document.getElementById('console-button');
+    const consoleModal = document.getElementById('console-modal');
+    const consoleClose = document.getElementById('console-close');
+    const consoleDisconnect = document.getElementById('console-disconnect');
+    const consoleStatus = document.getElementById('console-status-text');
+    const consoleContainer = document.getElementById('console-container');
+    const ctrlAltDelButton = document.getElementById('console-ctrl-alt-del');
+    const fullscreenButton = document.getElementById('console-fullscreen');
+    
+    // noVNC connection
+    let rfb = null;
+    
+    // Update status message
+    function updateStatus(message, type = 'info') {
+        const statusDiv = document.getElementById('console-status');
+        const icon = statusDiv.querySelector('.icon i');
+        
+        consoleStatus.textContent = message;
+        
+        // Update icon based on type
+        icon.className = 'fas fa-' + (
+            type === 'success' ? 'check-circle' :
+            type === 'error' ? 'exclamation-circle' :
+            type === 'connecting' ? 'circle-notch fa-spin' :
+            'info-circle'
+        );
+        
+        // Update background color
+        statusDiv.style.background = (
+            type === 'success' ? '#d4edda' :
+            type === 'error' ? '#f8d7da' :
+            '#f5f5f5'
+        );
+    }
+    
+    // Open console
+    async function openConsole() {
+        try {
+            updateStatus('Requesting console access...', 'connecting');
+            
+            // Step 1: Get VNC ticket from backend
+            const response = await fetch(`/api/vm/vnc-ticket?vmid=${VMID}&node=${NODE}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': CSRF_TOKEN,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ error: response.statusText }));
+                throw new Error(error.error || 'Failed to get console ticket');
+            }
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to get console ticket');
+            }
+            
+            const { ticket, port } = data;
+            
+            // Step 2: Build WebSocket URL
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/vm/console/websocket?vmid=${VMID}&node=${NODE}&port=${port}&vncticket=${encodeURIComponent(ticket)}`;
+            
+            updateStatus('Connecting to console...', 'connecting');
+            
+            // Step 3: Check if noVNC is available
+            if (typeof RFB === 'undefined') {
+                throw new Error('noVNC library not loaded. Please ensure noVNC components are properly installed.');
+            }
+            
+            // Step 4: Create noVNC connection
+            // For Proxmox VNC: The vncticket is passed in the URL AND used as the password
+            // during VNC authentication. This is how Proxmox's VNC implementation works.
+            rfb = new RFB(consoleContainer, wsUrl, {
+                credentials: { 
+                    username: '',  // Proxmox doesn't use username for VNC
+                    password: ticket  // The VNC ticket is used as the password
+                }
+            });
+            
+            // Set up event handlers
+            rfb.addEventListener('connect', handleConnect);
+            rfb.addEventListener('disconnect', handleDisconnect);
+            rfb.addEventListener('securityfailure', handleSecurityFailure);
+            
+            // Enable console controls
+            ctrlAltDelButton.disabled = false;
+            fullscreenButton.disabled = false;
+            
+            console.log('Console connection initiated');
+            
+        } catch (error) {
+            console.error('Console error:', error);
+            updateStatus(error.message, 'error');
+            
+            // Show error notification
+            setTimeout(() => {
+                if (confirm('Failed to open console: ' + error.message + '\n\nWould you like to try again?')) {
+                    closeConsole();
+                    setTimeout(openConsole, 500);
+                } else {
+                    closeConsole();
+                }
+            }, 500);
+        }
+    }
+    
+    // noVNC event handlers
+    function handleConnect() {
+        console.log('Console connected');
+        updateStatus('Connected', 'success');
+        
+        // Focus the noVNC canvas
+        const canvas = consoleContainer.querySelector('canvas');
+        if (canvas) {
+            canvas.focus();
+        }
+    }
+    
+    function handleDisconnect(e) {
+        console.log('Console disconnected:', e.detail);
+        
+        if (e.detail.clean) {
+            updateStatus('Disconnected', 'info');
+        } else {
+            updateStatus('Connection lost: ' + (e.detail.reason || 'Unknown error'), 'error');
+        }
+        
+        // Disable controls
+        ctrlAltDelButton.disabled = true;
+        fullscreenButton.disabled = true;
+        
+        // Auto-close modal after a delay if disconnected
+        if (!e.detail.clean) {
+            setTimeout(() => {
+                if (consoleModal.classList.contains('is-active')) {
+                    closeConsole();
+                }
+            }, 3000);
+        }
+    }
+    
+    function handleSecurityFailure(e) {
+        console.error('Security failure:', e.detail);
+        updateStatus('Authentication failed: ' + (e.detail.reason || 'Security error'), 'error');
+        
+        setTimeout(() => {
+            closeConsole();
+        }, 3000);
+    }
+    
+    // Close console
+    function closeConsole() {
+        // Disconnect noVNC
+        if (rfb) {
+            try {
+                rfb.disconnect();
+            } catch (e) {
+                console.error('Error disconnecting:', e);
+            }
+            rfb = null;
+        }
+        
+        // Clear container
+        consoleContainer.innerHTML = '';
+        
+        // Reset status
+        updateStatus('Disconnected', 'info');
+        
+        // Disable controls
+        ctrlAltDelButton.disabled = true;
+        fullscreenButton.disabled = true;
+        
+        // Close modal
+        consoleModal.classList.remove('is-active');
+    }
+    
+    // Send Ctrl+Alt+Del
+    function sendCtrlAltDel() {
+        if (rfb) {
+            rfb.sendCtrlAltDel();
+            console.log('Sent Ctrl+Alt+Del');
+        }
+    }
+    
+    // Toggle fullscreen
+    function toggleFullscreen() {
+        const modalCard = consoleModal.querySelector('.modal-card');
+        
+        if (!document.fullscreenElement) {
+            modalCard.requestFullscreen().catch(err => {
+                console.error('Error attempting to enable fullscreen:', err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+    
+    // Event listeners
+    consoleButton.addEventListener('click', function() {
+        consoleModal.classList.add('is-active');
+        // Small delay to ensure modal is visible before connecting
+        setTimeout(openConsole, 100);
+    });
+    
+    consoleClose.addEventListener('click', closeConsole);
+    consoleDisconnect.addEventListener('click', closeConsole);
+    
+    consoleModal.querySelector('.modal-background').addEventListener('click', function() {
+        if (confirm('Are you sure you want to close the console?')) {
+            closeConsole();
+        }
+    });
+    
+    ctrlAltDelButton.addEventListener('click', sendCtrlAltDel);
+    fullscreenButton.addEventListener('click', toggleFullscreen);
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (rfb) {
+            rfb.disconnect();
+        }
+    });
+</script>
 
 {{end}}

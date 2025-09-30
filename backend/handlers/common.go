@@ -31,14 +31,14 @@ type ISOInfo struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// contextKey is used for context keys to avoid collisions between packages using context
-type contextKey string
+// handlerContextKey is used for context keys specific to handlers package
+type handlerContextKey string
 
 // ParamsKey is the key used to store httprouter.Params in the request context
-const ParamsKey contextKey = "params"
+const ParamsKey handlerContextKey = "params"
 
 // StateManagerKey stores the state manager in request context
-const StateManagerKey contextKey = "stateManager"
+const StateManagerKey handlerContextKey = "stateManager"
 
 // getStateManager returns the state manager from request context when available.
 // No global fallback: state is injected by handlers.InitHandlers.

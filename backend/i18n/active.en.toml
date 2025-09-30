@@ -494,6 +494,8 @@ other = "Select tags"
 other = "No tags available"
 ["VMDetails.SaveTags"]
 other = "Save Tags"
+["VMDetails.Action.Console"]
+other = "Console"
 
 # ===========
 # Status

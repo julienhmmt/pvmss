@@ -364,15 +364,24 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	if err := pxClient.Login(ctx, username, password, "pve"); err != nil {
+	// Use CreateTicket to get the authentication ticket with full response
+	ticketResp, err := proxmox.CreateTicket(ctx, pxClient, username, password, &proxmox.CreateTicketOptions{
+		Realm: "pve",
+	})
+	if err != nil {
 		log.Info().Err(err).Str("username", username).Msg("User login failed - Proxmox authentication failed")
 		h.renderLoginForm(w, r, "Invalid credentials.")
 		return
 	}
 
-	log.Debug().Str("username", username).Msg("User authentication successful via Proxmox, creating session")
+	log.Debug().
+		Str("username", username).
+		Str("proxmox_username", ticketResp.Username).
+		Bool("has_csrf_token", ticketResp.CSRFPreventionToken != "").
+		Msg("User authentication successful via Proxmox, creating session")
 
-	if err := establishSession(w, r, false, username); err != nil {
+	// Establish session and store Proxmox ticket for later use (console access, API calls)
+	if err := establishSessionWithTicket(w, r, false, username, ticketResp); err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -401,7 +410,12 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 
 // establishSession renews the session token and sets authentication data.
 func establishSession(_ http.ResponseWriter, r *http.Request, isAdmin bool, username string) error {
-	log := logger.Get().With().Str("function", "establishSession").Logger()
+	return establishSessionWithTicket(nil, r, isAdmin, username, nil)
+}
+
+// establishSessionWithTicket renews the session token, sets authentication data, and stores Proxmox ticket.
+func establishSessionWithTicket(_ http.ResponseWriter, r *http.Request, isAdmin bool, username string, ticket *proxmox.TicketResponse) error {
+	log := logger.Get().With().Str("function", "establishSessionWithTicket").Logger()
 
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
@@ -421,6 +435,20 @@ func establishSession(_ http.ResponseWriter, r *http.Request, isAdmin bool, user
 		sessionManager.Put(r.Context(), "username", username)
 	}
 
+	// Store Proxmox ticket if provided (for console access and API operations)
+	if ticket != nil {
+		sessionManager.Put(r.Context(), "pve_auth_cookie", ticket.Ticket)
+		sessionManager.Put(r.Context(), "pve_csrf_token", ticket.CSRFPreventionToken)
+		sessionManager.Put(r.Context(), "pve_username", ticket.Username)
+		// Store ticket creation time for renewal checks
+		sessionManager.Put(r.Context(), "pve_ticket_created", time.Now().Unix())
+
+		log.Debug().
+			Str("pve_username", ticket.Username).
+			Bool("has_csrf_token", ticket.CSRFPreventionToken != "").
+			Msg("Proxmox ticket stored in session")
+	}
+
 	// Generate a new CSRF token for the new session
 	newCSRFToken, err := security.GenerateCSRFToken()
 	if err != nil {
@@ -433,9 +461,47 @@ func establishSession(_ http.ResponseWriter, r *http.Request, isAdmin bool, user
 		Str("session_id", sessionManager.Token(r.Context())).
 		Str("username", username).
 		Bool("is_admin", isAdmin).
+		Bool("has_pve_ticket", ticket != nil).
 		Msg("User session established")
 
 	return nil
+}
+
+// GetProxmoxTicketFromSession retrieves the stored Proxmox ticket from the user's session.
+// Returns the ticket, CSRF token, and creation timestamp. Returns empty strings if not found.
+func GetProxmoxTicketFromSession(r *http.Request) (ticket, csrfToken string, createdAt time.Time, ok bool) {
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		return "", "", time.Time{}, false
+	}
+
+	ticket, ticketOk := sessionManager.Get(r.Context(), "pve_auth_cookie").(string)
+	csrfToken, csrfOk := sessionManager.Get(r.Context(), "pve_csrf_token").(string)
+	createdUnix, timeOk := sessionManager.Get(r.Context(), "pve_ticket_created").(int64)
+
+	if !ticketOk || ticket == "" {
+		return "", "", time.Time{}, false
+	}
+
+	if timeOk && createdUnix > 0 {
+		createdAt = time.Unix(createdUnix, 0)
+	}
+
+	return ticket, csrfToken, createdAt, csrfOk && csrfToken != ""
+}
+
+// IsProxmoxTicketValid checks if the stored Proxmox ticket is still valid.
+// Proxmox tickets are valid for 2 hours. This function returns false if the ticket
+// is missing, older than 1 hour 55 minutes (with 5-minute buffer), or otherwise invalid.
+func IsProxmoxTicketValid(r *http.Request) bool {
+	_, _, createdAt, ok := GetProxmoxTicketFromSession(r)
+	if !ok || createdAt.IsZero() {
+		return false
+	}
+
+	// Check if ticket is less than 1h55m old (5min buffer before 2h expiration)
+	age := time.Since(createdAt)
+	return age < (1*time.Hour + 55*time.Minute)
 }
 
 // getRedirectURL determines the redirect URL from form values or query parameters.
