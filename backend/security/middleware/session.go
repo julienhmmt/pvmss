@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/alexedwards/scs/v2"
+	"pvmss/logger"
 	"pvmss/security"
 )
 
@@ -13,6 +14,13 @@ import (
 func SessionMiddleware(sm *scs.SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if sm == nil {
+				logger.Get().Error().Msg("SessionMiddleware called with nil session manager")
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			
+			logger.Get().Debug().Str("path", r.URL.Path).Msg("Session middleware injecting session manager")
 			// Add the session manager to the context for easy access.
 			ctx := security.WithSessionManager(r.Context(), sm)
 			next.ServeHTTP(w, r.WithContext(ctx))

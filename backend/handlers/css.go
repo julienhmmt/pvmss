@@ -27,17 +27,23 @@ func NewCSSHandler(basePath string) *CSSHandler {
 }
 
 func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
+	log := logger.Get().With().Str("handler", "CSSHandler.ServeCSS").Str("path", r.URL.Path).Logger()
+	
 	cssPath := strings.TrimPrefix(r.URL.Path, "/css/")
 	if cssPath == "" {
+		log.Debug().Msg("Empty CSS path, returning 404")
 		http.NotFound(w, r)
 		return
 	}
 
 	// Security check - prevent directory traversal
 	if strings.Contains(cssPath, "..") || strings.HasPrefix(cssPath, "/") {
+		log.Warn().Str("css_path", cssPath).Msg("Directory traversal attempt blocked")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
+	
+	log.Debug().Str("css_path", cssPath).Msg("Serving CSS file")
 
 	// Get context information from request headers or query params
 	theme := r.Header.Get("X-Theme")
@@ -65,13 +71,17 @@ func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CSSHandler) serveCSS(w http.ResponseWriter, r *http.Request, cssPath, theme string) error {
+	log := logger.Get().With().Str("css_path", cssPath).Str("theme", theme).Logger()
 	fullPath := filepath.Join(h.basePath, cssPath)
 
 	// Check if file exists
 	if !fileExists(fullPath) {
+		log.Debug().Str("full_path", fullPath).Msg("CSS file not found")
 		http.NotFound(w, r)
 		return nil
 	}
+	
+	log.Debug().Str("full_path", fullPath).Msg("CSS file found")
 
 	// For bulma.min.css, we can potentially serve different variants
 	if cssPath == "bulma.min.css" {
@@ -79,6 +89,7 @@ func (h *CSSHandler) serveCSS(w http.ResponseWriter, r *http.Request, cssPath, t
 	}
 
 	// For other CSS files, serve normally but with context headers
+	log.Debug().Str("css_path", cssPath).Msg("Serving standard CSS file")
 	http.ServeFile(w, r, fullPath)
 	return nil
 }
@@ -100,12 +111,18 @@ func (h *CSSHandler) serveBulmaWithContext(w http.ResponseWriter, r *http.Reques
 func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	if err != nil {
+		logger.Get().Debug().Err(err).Str("path", path).Msg("File stat failed")
 		return false
 	}
 
 	// Additional security check - get absolute path
 	abs, err := filepath.Abs(path)
 	if err != nil || strings.Contains(abs, "..") {
+		if err != nil {
+			logger.Get().Warn().Err(err).Str("path", path).Msg("Failed to get absolute path")
+		} else {
+			logger.Get().Warn().Str("path", path).Msg("Directory traversal detected in absolute path")
+		}
 		return false
 	}
 
