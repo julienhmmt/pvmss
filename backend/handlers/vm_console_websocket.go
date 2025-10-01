@@ -180,7 +180,7 @@ func proxyVNCWebSocket(w http.ResponseWriter, r *http.Request, proxmoxWSURL, pve
 	proxmoxHeaders := http.Header{}
 	proxmoxHeaders.Set("Cookie", fmt.Sprintf("PVEAuthCookie=%s", pveTicket))
 
-	// Connect to Proxmox WebSocket  
+	// Connect to Proxmox WebSocket
 	// Log the URL for debugging (mask sensitive parts)
 	maskedURL := proxmoxWSURL
 	if len(proxmoxWSURL) > 200 {

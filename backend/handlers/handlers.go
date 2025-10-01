@@ -13,7 +13,6 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/logger"
-	"pvmss/metrics"
 	"pvmss/middleware"
 	"pvmss/security"
 	securityMiddleware "pvmss/security/middleware"
@@ -157,17 +156,12 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Configure static files handler
 	setupStaticFiles(router)
 
-	// Metrics endpoint
-	router.Handler(http.MethodGet, "/metrics", metrics.Handler())
-	router.Handler(http.MethodHead, "/metrics", metrics.Handler())
-
 	// Create a new ServeMux to route requests to different middleware stacks.
 	// This allows us to have separate middleware for public/static routes vs. the main application.
 	mux := http.NewServeMux()
 
 	// --- Public/Static Middleware Chain (no session) ---
 	var publicHandler http.Handler = router
-	publicHandler = metrics.HTTPMetricsMiddleware(publicHandler)
 	publicHandler = recoverMiddleware(publicHandler)
 
 	// --- Main App Middleware Chain (with session, CSRF, etc.) ---
@@ -190,13 +184,12 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	appHandler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(appHandler)
 	appHandler = middleware.RateLimitMiddleware(rateLimiter)(appHandler)
 	appHandler = trailingSlashRedirectMiddleware(appHandler)
-	appHandler = metrics.HTTPMetricsMiddleware(appHandler)
 	appHandler = recoverMiddleware(appHandler) // Innermost recovery for the app
 
 	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Route static assets, /health, and /metrics to the public handler (no session)
-		if isStaticPath(r.URL.Path) || r.URL.Path == "/health" || r.URL.Path == "/metrics" {
+		// Route static assets and /health to the public handler (no session)
+		if isStaticPath(r.URL.Path) || r.URL.Path == "/health" {
 			publicHandler.ServeHTTP(w, r)
 		} else {
 			// All other requests go to the main app handler with the full middleware stack
