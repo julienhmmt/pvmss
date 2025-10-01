@@ -121,3 +121,26 @@ html { scroll-behavior: smooth; }
 .table.is-hoverable tbody tr:hover { background-color: var(--surface-2); }
 .table.is-striped tbody tr:nth-child(even) { background-color: rgb(0 0 0 / 0.02); }
 [data-theme="dark"] .table.is-striped tbody tr:nth-child(even) { background-color: rgb(255 255 255 / 0.03); }
+
+/* Console Modal Responsive Styles */
+@media screen and (max-width: 768px) {
+  .modal-card {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .modal-card-foot {
+    padding: 0.75rem !important;
+  }
+  
+  .modal-card-foot .button {
+    font-size: 0.875rem;
+  }
+}
+
+/* Ensure console container uses available space */
+#console-container canvas {
+  max-width: 100%;
+  height: auto;
+}
