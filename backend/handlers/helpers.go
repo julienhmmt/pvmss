@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"pvmss/i18n"
 	"pvmss/security"
 	"pvmss/state"
 
@@ -198,4 +199,63 @@ func FormatBytes(bytes int64) string {
 	}
 
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// FormatUptime formats uptime in seconds to human-readable format (days, hours, minutes, seconds)
+// with i18n support
+func FormatUptime(seconds int64, r *http.Request) string {
+	localizer := i18n.GetLocalizerFromRequest(r)
+	
+	if seconds == 0 {
+		return i18n.Localize(localizer, "Uptime.NotRunning")
+	}
+
+	days := seconds / 86400
+	hours := (seconds % 86400) / 3600
+	minutes := (seconds % 3600) / 60
+	secs := seconds % 60
+
+	var parts []string
+	if days > 0 {
+		if days == 1 {
+			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Day")))
+		} else {
+			parts = append(parts, fmt.Sprintf("%d %s", days, i18n.Localize(localizer, "Uptime.Days")))
+		}
+	}
+	if hours > 0 {
+		if hours == 1 {
+			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Hour")))
+		} else {
+			parts = append(parts, fmt.Sprintf("%d %s", hours, i18n.Localize(localizer, "Uptime.Hours")))
+		}
+	}
+	if minutes > 0 {
+		if minutes == 1 {
+			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Minute")))
+		} else {
+			parts = append(parts, fmt.Sprintf("%d %s", minutes, i18n.Localize(localizer, "Uptime.Minutes")))
+		}
+	}
+	if secs > 0 || len(parts) == 0 {
+		if secs == 1 {
+			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Second")))
+		} else {
+			parts = append(parts, fmt.Sprintf("%d %s", secs, i18n.Localize(localizer, "Uptime.Seconds")))
+		}
+	}
+
+	// Join parts with commas - simple format for all languages
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	result := ""
+	for i, part := range parts {
+		if i == 0 {
+			result = part
+		} else {
+			result += ", " + part
+		}
+	}
+	return result
 }

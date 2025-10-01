@@ -539,6 +539,26 @@ other = "Enregistrer les étiquettes"
 ["VMDetails.Action.Console"]
 other = "Console"
 
+# Formatage du temps de fonctionnement
+["Uptime.NotRunning"]
+other = "Non démarré"
+["Uptime.Day"]
+other = "jour"
+["Uptime.Days"]
+other = "jours"
+["Uptime.Hour"]
+other = "heure"
+["Uptime.Hours"]
+other = "heures"
+["Uptime.Minute"]
+other = "minute"
+["Uptime.Minutes"]
+other = "minutes"
+["Uptime.Second"]
+other = "seconde"
+["Uptime.Seconds"]
+other = "secondes"
+
 # ==============
 # Documentation
 # ==============
