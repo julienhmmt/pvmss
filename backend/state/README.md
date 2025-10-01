@@ -82,6 +82,7 @@ if err := stateManager.SetSettings(settings); err != nil {
 ## Best Practices
 
 1. **Prefer Dependency Injection**:
+
    ```go
    func NewMyHandler(stateManager StateManager) *MyHandler {
        return &MyHandler{state: stateManager}
@@ -99,6 +100,7 @@ if err := stateManager.SetSettings(settings); err != nil {
 ## Thread Safety
 
 All state operations are thread-safe using read/write mutexes. The package ensures that:
+
 - Multiple readers can access the state concurrently
 - Only one writer can modify the state at a time
 - No data races during state updates

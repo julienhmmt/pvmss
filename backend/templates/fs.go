@@ -10,11 +10,14 @@ import (
 )
 
 // FindTemplateFiles walks the given root directory and returns a slice of absolute paths
-// to all files with the .html extension.
+// to all files with the .html extension. The function logs progress and errors for debugging.
+// It returns an error if the directory walk fails.
 func FindTemplateFiles(root string) ([]string, error) {
 	logger.Get().Debug().Str("root", root).Msg("Scanning for template files")
 
-	var files []string
+	// Pre-allocate with reasonable capacity to reduce allocations
+	files := make([]string, 0, 32)
+
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			logger.Get().Error().Err(err).Str("path", path).Msg("Error walking template directory")

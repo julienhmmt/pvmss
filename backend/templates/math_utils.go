@@ -1,5 +1,8 @@
 package templates
 
+// Math utility functions for template operations.
+// All functions automatically convert arguments to float64 for consistent behavior.
+
 // addNumbers adds two numbers.
 // It converts both arguments to float64 before performing the addition.
 func addNumbers(a, b interface{}) float64 {

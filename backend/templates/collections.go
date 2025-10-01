@@ -53,9 +53,11 @@ func reverseSlice(slice interface{}) []interface{} {
 		return []interface{}{}
 	}
 
-	result := make([]interface{}, val.Len())
-	for i := 0; i < val.Len(); i++ {
-		result[val.Len()-1-i] = val.Index(i).Interface()
+	length := val.Len()
+	// Pre-allocate with exact capacity
+	result := make([]interface{}, length)
+	for i := 0; i < length; i++ {
+		result[length-1-i] = val.Index(i).Interface()
 	}
 
 	return result
@@ -104,6 +106,7 @@ func until(count int) []int {
 	if count <= 0 {
 		return []int{}
 	}
+	// Optimize: Use direct indexing instead of append for better performance
 	result := make([]int, count)
 	for i := 0; i < count; i++ {
 		result[i] = i
@@ -140,6 +143,7 @@ func seq(start, end int) []int {
 		return []int{}
 	}
 	n := end - start
+	// Optimize: Use direct indexing for better performance
 	res := make([]int, n)
 	for i := 0; i < n; i++ {
 		res[i] = start + i

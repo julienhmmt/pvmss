@@ -1,6 +1,8 @@
 package templates
 
-import "reflect"
+import (
+	"reflect"
+)
 
 // defaultValue returns the default value if the provided value is empty
 func defaultValue(value, defaultVal interface{}) interface{} {
@@ -12,18 +14,19 @@ func defaultValue(value, defaultVal interface{}) interface{} {
 
 // isEmpty checks if a value is considered "empty".
 // It returns true for nil, false, numeric zero, empty strings, empty collections (slices, maps, arrays),
-// and nil pointers or interfaces.
+// and nil pointers or interfaces. This function is optimized for common template use cases.
 func isEmpty(v interface{}) bool {
 	if v == nil {
 		return true
 	}
 
 	val := reflect.ValueOf(v)
-	switch val.Kind() {
-	case reflect.String, reflect.Slice, reflect.Array, reflect.Map:
+	kind := val.Kind()
+
+	// Fast path for common types
+	switch kind {
+	case reflect.String:
 		return val.Len() == 0
-	case reflect.Ptr, reflect.Interface:
-		return val.IsNil()
 	case reflect.Bool:
 		return !val.Bool()
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -32,6 +35,10 @@ func isEmpty(v interface{}) bool {
 		return val.Uint() == 0
 	case reflect.Float32, reflect.Float64:
 		return val.Float() == 0
+	case reflect.Slice, reflect.Array, reflect.Map:
+		return val.Len() == 0
+	case reflect.Ptr, reflect.Interface:
+		return val.IsNil()
 	default:
 		// For other types like structs, we consider them non-empty.
 		// A more comprehensive check could use reflect.DeepEqual with the zero value,

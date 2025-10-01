@@ -13,7 +13,15 @@ import (
 )
 
 // Render executes a template with a request-specific translation function.
+// It clones the template to ensure thread-safety and adds localization support.
 func Render(w io.Writer, r *http.Request, tmpl *template.Template, name string, data map[string]interface{}) error {
+	if tmpl == nil {
+		return fmt.Errorf("template is nil")
+	}
+	if name == "" {
+		return fmt.Errorf("template name is empty")
+	}
+
 	localizer := custom_i18n.GetLocalizerFromRequest(r)
 
 	instance, err := tmpl.Clone()
@@ -52,9 +60,12 @@ func Render(w io.Writer, r *http.Request, tmpl *template.Template, name string, 
 	var buf bytes.Buffer
 	if err := instance.ExecuteTemplate(&buf, name, data); err != nil {
 		logger.Get().Error().Err(err).Str("template", name).Msg("Error executing template")
-		return err
+		return fmt.Errorf("failed to execute template %s: %w", name, err)
 	}
 
-	_, err = w.Write(buf.Bytes())
-	return err
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		return fmt.Errorf("failed to write rendered template: %w", err)
+	}
+
+	return nil
 }

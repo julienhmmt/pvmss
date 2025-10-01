@@ -59,12 +59,11 @@ func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 
 	// Add context-aware headers
-	w.Header().Set("X-CSS-Context", "context7")
 	w.Header().Set("X-Theme-Context", theme)
 
 	// Serve different CSS variants based on context
 	if err := h.serveCSS(w, r, cssPath, theme); err != nil {
-		logger.Get().Error().Err(err).Str("css_path", cssPath).Msg("Failed to serve CSS with context7")
+		logger.Get().Error().Err(err).Str("css_path", cssPath).Msg("Failed to serve CSS")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -102,7 +101,7 @@ func (h *CSSHandler) serveBulmaWithContext(w http.ResponseWriter, r *http.Reques
 	logger.Get().Debug().
 		Str("theme", theme).
 		Str("css", "bulma.min.css").
-		Msg("Served Bulma CSS with context7")
+		Msg("Served Bulma CSS")
 
 	return nil
 }
@@ -152,7 +151,7 @@ func GetCSSContext7Middleware() func(http.Handler) http.Handler {
 						Str("path", r.URL.Path).
 						Dur("duration", duration).
 						Str("theme", theme).
-						Msg("CSS served with context7")
+						Msg("CSS served")
 				}
 			}()
 

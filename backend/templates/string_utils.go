@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"html/template"
 	"reflect"
 	"strings"
 )
@@ -39,10 +40,67 @@ func join(parts interface{}, sep string) string {
 		return "" // Return empty string if not a slice, for template safety.
 	}
 
-	var strParts []string
-	for i := 0; i < v.Len(); i++ {
+	length := v.Len()
+	// Pre-allocate with exact capacity
+	strParts := make([]string, 0, length)
+	for i := 0; i < length; i++ {
 		strParts = append(strParts, fmt.Sprintf("%v", v.Index(i).Interface()))
 	}
 
 	return strings.Join(strParts, sep)
+}
+
+// basename extracts the last component of a path (after the last slash or colon)
+func basename(s string) string {
+	// Find the last slash or colon
+	lastSlash := strings.LastIndex(s, "/")
+	lastColon := strings.LastIndex(s, ":")
+	var lastSep int
+	if lastSlash > lastColon {
+		lastSep = lastSlash
+	} else {
+		lastSep = lastColon
+	}
+
+	if lastSep == -1 {
+		return s
+	}
+	return s[lastSep+1:]
+}
+
+// startsWith checks if a string starts with a given prefix
+func startsWith(s, prefix string) bool {
+	return strings.HasPrefix(s, prefix)
+}
+
+// eqPath compares two paths for equality, ignoring trailing slashes
+func eqPath(a, b string) bool {
+	return normalizePath(a) == normalizePath(b)
+}
+
+// activeFor returns true when path matches base exactly (ignoring trailing slash)
+// or when path is a subpath of base (e.g., /admin/iso/toggle).
+func activeFor(path, base string) bool {
+	p := normalizePath(path)
+	b := normalizePath(base)
+	if p == b {
+		return true
+	}
+	if b == "/" {
+		// Any non-root path is a subpath of the root
+		return true
+	}
+	return strings.HasPrefix(p, b+"/")
+}
+
+// safeHTML marks a string as safe HTML to prevent auto-escaping
+// Use with caution - only for trusted content
+func safeHTML(s string) template.HTML {
+	return template.HTML(s)
+}
+
+// safeHTMLAttr marks a string as a safe HTML attribute
+// Use with caution - only for trusted content
+func safeHTMLAttr(s string) template.HTMLAttr {
+	return template.HTMLAttr(s)
 }

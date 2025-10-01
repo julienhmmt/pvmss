@@ -7,6 +7,15 @@ import (
 	"time"
 )
 
+const (
+	// Binary byte units (base 1024)
+	binaryUnit = 1024
+	// SI byte units (base 1000)
+	siUnit = 1000
+	// GiB constant
+	gib = 1024 * 1024 * 1024
+)
+
 // formatMemory formats memory bytes to human readable format
 func formatMemory(memBytes interface{}) string {
 	// Delegate to formatBytes for consistent formatting
@@ -36,61 +45,61 @@ func formatDuration(d time.Duration) string {
 	d -= minutes * time.Minute
 	seconds := d / time.Second
 
-	parts := []string{}
+	// Use strings.Builder for efficient string concatenation
+	var sb strings.Builder
 	if days > 0 {
-		parts = append(parts, fmt.Sprintf("%dd", days))
+		fmt.Fprintf(&sb, "%dd ", days)
 	}
 	if hours > 0 {
-		parts = append(parts, fmt.Sprintf("%dh", hours))
+		fmt.Fprintf(&sb, "%dh ", hours)
 	}
 	if minutes > 0 {
-		parts = append(parts, fmt.Sprintf("%dm", minutes))
+		fmt.Fprintf(&sb, "%dm ", minutes)
 	}
-	// Always show seconds if it's the only unit or if it's non-zero with other units.
-	if seconds > 0 || len(parts) == 0 {
-		parts = append(parts, fmt.Sprintf("%ds", seconds))
+	// Always show seconds if it's the only unit or if it's non-zero
+	if seconds > 0 || sb.Len() == 0 {
+		fmt.Fprintf(&sb, "%ds", seconds)
+	} else {
+		// Remove trailing space if we added other units
+		s := sb.String()
+		return neg + s[:len(s)-1]
 	}
 
-	// For brevity, you might want to limit the number of parts shown, e.g., parts = parts[:2]
-
-	return neg + strings.Join(parts, " ")
+	return neg + sb.String()
 }
 
-// formatBytes formats bytes to human readable format
+// formatBytes formats bytes to human readable format using binary units (1024)
 func formatBytes(bytes interface{}) string {
 	b := convertToFloat64(bytes)
-	const unit = 1024
-	if b < unit {
+	if b < binaryUnit {
 		return fmt.Sprintf("%d B", int64(b))
 	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
+	div, exp := float64(binaryUnit), 0
+	for n := b / binaryUnit; n >= binaryUnit && exp < 5; n /= binaryUnit {
+		div *= binaryUnit
 		exp++
 	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
+	return fmt.Sprintf("%.1f %cB", b/div, "KMGTPE"[exp])
 }
 
 // formatBytesSI formats bytes using SI units (base 1000): kB, MB, GB, ...
 func formatBytesSI(bytes interface{}) string {
 	b := convertToFloat64(bytes)
-	const unit = 1000
-	if b < unit {
+	if b < siUnit {
 		return fmt.Sprintf("%d B", int64(b))
 	}
-	div, exp := float64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
+	div, exp := float64(siUnit), 0
+	for n := b / siUnit; n >= siUnit && exp < 5; n /= siUnit {
+		div *= siUnit
 		exp++
 	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/div, "kMGTPE"[exp])
+	return fmt.Sprintf("%.1f %cB", b/div, "kMGTPE"[exp])
 }
 
 // formatGiB formats a byte value as GiB with fixed precision (e.g., "8.0 GiB").
 func formatGiB(bytes interface{}) string {
 	b := convertToFloat64(bytes)
-	const gib = 1024 * 1024 * 1024
-	return fmt.Sprintf("%.1f GiB", b/float64(gib))
+	return fmt.Sprintf("%.1f GiB", b/gib)
 }
 
 // since returns a human-friendly relative time string like "5m ago" for a past time.

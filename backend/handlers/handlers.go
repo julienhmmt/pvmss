@@ -264,7 +264,7 @@ func setupStaticFiles(router *httprouter.Router) {
 	webfontsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "webfonts"))))
 	componentsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "components"))))
 
-	// Configure routes to serve CSS files using Context7 handler
+	// Configure routes to serve CSS files using CSS handler
 	router.Handler(http.MethodGet, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
 	router.Handler(http.MethodHead, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
 	router.Handler(http.MethodGet, "/js/*filepath", http.StripPrefix("/js/", jsServer))

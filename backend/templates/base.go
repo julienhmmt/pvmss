@@ -44,7 +44,6 @@ func GetBaseFuncMap() template.FuncMap {
 		"reverse":     reverseSlice,
 		"contains":    containsValue,
 		"length":      getLength,
-		"until":       until,
 		"sortStrings": sortStrings,
 		"sortInts":    sortInts,
 		"seq":         seq,
@@ -67,10 +66,12 @@ func GetBaseFuncMap() template.FuncMap {
 		"div":      divideNumbers,
 
 		// Utility functions
-		"default":  defaultValue,
-		"empty":    isEmpty,
-		"notEmpty": isNotEmpty,
-		"coalesce": coalesce,
+		"default":      defaultValue,
+		"empty":        isEmpty,
+		"notEmpty":     isNotEmpty,
+		"coalesce":     coalesce,
+		"safeHTML":     safeHTML,
+		"safeHTMLAttr": safeHTMLAttr,
 
 		// Utility functions that don't depend on the request
 		"formatDuration": formatDuration,
@@ -100,48 +101,11 @@ func GetBaseFuncMap() template.FuncMap {
 		},
 
 		// Path/string helpers
-		"eqPath": func(a, b string) bool {
-			return normalizePath(a) == normalizePath(b)
-		},
-		// activeFor returns true when path matches base exactly (ignoring trailing slash)
-		// or when path is a subpath of base (e.g., /admin/iso/toggle).
-		"activeFor": func(path, base string) bool {
-			p := normalizePath(path)
-			b := normalizePath(base)
-			if p == b {
-				return true
-			}
-			if b == "/" {
-				// Any non-root path is a subpath of the root
-				return true
-			}
-			return strings.HasPrefix(p, b+"/")
-		},
-		"basename": func(s string) string {
-			// Find the last slash or colon
-			lastSlash := strings.LastIndex(s, "/")
-			lastColon := strings.LastIndex(s, ":")
-			var lastSep int
-			if lastSlash > lastColon {
-				lastSep = lastSlash
-			} else {
-				lastSep = lastColon
-			}
-
-			if lastSep == -1 {
-				return s
-			}
-			return s[lastSep+1:]
-		},
-		"startsWith": func(s, prefix string) bool {
-			if len(prefix) == 0 {
-				return true
-			}
-			if len(s) < len(prefix) {
-				return false
-			}
-			return s[:len(prefix)] == prefix
-		},
+		"eqPath":        eqPath,
+		"activeFor":     activeFor,
+		"basename":      basename,
+		"startsWith":    startsWith,
+		"normalizePath": normalizePath,
 
 		// Template helper functions for creating maps and slices
 		"dict": func(values ...interface{}) (map[string]interface{}, error) {

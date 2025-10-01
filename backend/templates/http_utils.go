@@ -20,21 +20,25 @@ func getCsrfToken(r *http.Request) string {
 }
 
 // csrfToken generates a CSRF token input field for forms.
+// The token value is HTML-escaped for security.
 func csrfToken(r *http.Request) template.HTML {
 	token := getCsrfToken(r)
 	if token == "" {
 		return ""
 	}
-	return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, token))
+	// Use template.HTMLEscapeString for proper escaping
+	return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, template.HTMLEscapeString(token)))
 }
 
 // csrfMeta generates a CSRF meta tag for JavaScript.
+// The token value is HTML-escaped for security.
 func csrfMeta(r *http.Request) template.HTML {
 	token := getCsrfToken(r)
 	if token == "" {
 		return ""
 	}
-	return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, token))
+	// Use template.HTMLEscapeString for proper escaping
+	return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, template.HTMLEscapeString(token)))
 }
 
 // isHTTPS checks if the request is using HTTPS
