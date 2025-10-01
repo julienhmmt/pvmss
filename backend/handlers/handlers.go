@@ -256,8 +256,8 @@ func setupStaticFiles(router *httprouter.Router) {
 	// Get the base path of the frontend directory.
 	basePath := getFrontendPath()
 
-	// Create CSS Context7 handler for optimized CSS serving
-	cssContext7Handler := NewCSSContext7Handler(basePath)
+	// Create CSS handler for optimized CSS serving
+	cssHandler := NewCSSHandler(basePath)
 
 	// Create specific file handlers for other static subdirectories
 	jsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "js"))))
@@ -265,8 +265,8 @@ func setupStaticFiles(router *httprouter.Router) {
 	componentsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "components"))))
 
 	// Configure routes to serve CSS files using Context7 handler
-	router.Handler(http.MethodGet, "/css/*filepath", http.HandlerFunc(cssContext7Handler.ServeCSSWithContext7))
-	router.Handler(http.MethodHead, "/css/*filepath", http.HandlerFunc(cssContext7Handler.ServeCSSWithContext7))
+	router.Handler(http.MethodGet, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
+	router.Handler(http.MethodHead, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
 	router.Handler(http.MethodGet, "/js/*filepath", http.StripPrefix("/js/", jsServer))
 	router.Handler(http.MethodHead, "/js/*filepath", http.StripPrefix("/js/", jsServer))
 	router.Handler(http.MethodGet, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))

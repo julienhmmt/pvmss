@@ -15,21 +15,18 @@ type themeContextKey string
 
 const ThemeContextKey themeContextKey = "theme"
 
-// CSS Context7 handler for serving CSS with context-aware optimizations
-type CSSContext7Handler struct {
+type CSSHandler struct {
 	basePath string
 }
 
-// NewCSSContext7Handler creates a new CSS context handler
-func NewCSSContext7Handler(basePath string) *CSSContext7Handler {
-	return &CSSContext7Handler{
+// NewCSSHandler creates a new CSS handler
+func NewCSSHandler(basePath string) *CSSHandler {
+	return &CSSHandler{
 		basePath: filepath.Join(basePath, "css"),
 	}
 }
 
-// ServeCSSWithContext7 serves CSS files with context-aware optimizations
-func (h *CSSContext7Handler) ServeCSSWithContext7(w http.ResponseWriter, r *http.Request) {
-	// Extract the CSS file path
+func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 	cssPath := strings.TrimPrefix(r.URL.Path, "/css/")
 	if cssPath == "" {
 		http.NotFound(w, r)
@@ -60,15 +57,14 @@ func (h *CSSContext7Handler) ServeCSSWithContext7(w http.ResponseWriter, r *http
 	w.Header().Set("X-Theme-Context", theme)
 
 	// Serve different CSS variants based on context
-	if err := h.serveContextualCSS(w, r, cssPath, theme); err != nil {
+	if err := h.serveCSS(w, r, cssPath, theme); err != nil {
 		logger.Get().Error().Err(err).Str("css_path", cssPath).Msg("Failed to serve CSS with context7")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 }
 
-// serveContextualCSS serves CSS with contextual optimizations
-func (h *CSSContext7Handler) serveContextualCSS(w http.ResponseWriter, r *http.Request, cssPath, theme string) error {
+func (h *CSSHandler) serveCSS(w http.ResponseWriter, r *http.Request, cssPath, theme string) error {
 	fullPath := filepath.Join(h.basePath, cssPath)
 
 	// Check if file exists
@@ -87,12 +83,8 @@ func (h *CSSContext7Handler) serveContextualCSS(w http.ResponseWriter, r *http.R
 	return nil
 }
 
-// serveBulmaWithContext serves Bulma CSS with theme context
-func (h *CSSContext7Handler) serveBulmaWithContext(w http.ResponseWriter, r *http.Request, fullPath, theme string) error {
-	// Add theme-specific CSS variables or modifications
+func (h *CSSHandler) serveBulmaWithContext(w http.ResponseWriter, r *http.Request, fullPath, theme string) error {
 	w.Header().Set("X-Bulma-Theme", theme)
-
-	// Could potentially serve different Bulma variants here
 	// For now, serve the standard bulma.min.css
 	http.ServeFile(w, r, fullPath)
 

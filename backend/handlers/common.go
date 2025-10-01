@@ -184,7 +184,6 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	setNoCacheHeaders(w)
 	populateTemplateData(w, r, data)
 
-	// Add CSS context information for context7 optimization
 	data["IsAdminPage"] = strings.HasPrefix(r.URL.Path, "/admin")
 	data["NeedsRegularIcons"] = detectNeedsRegularIcons(name, data)
 	data["NeedsBrandIcons"] = detectNeedsBrandIcons(name, data)
