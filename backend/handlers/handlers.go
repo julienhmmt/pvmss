@@ -299,10 +299,8 @@ func hasAnyPrefix(s string, prefixes ...string) bool {
 // sessionDebugMiddleware is a debug middleware for sessions
 func sessionDebugMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := logger.Get().With().
+		log := CreateHandlerLogger("sessionDebugMiddleware", r).With().
 			Str("remote_addr", r.RemoteAddr).
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
 			Logger()
 
 		// Log request headers

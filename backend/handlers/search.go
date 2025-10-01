@@ -29,10 +29,7 @@ func NewSearchHandler(sm state.StateManager) *SearchHandler {
 // SearchPageHandler handles GET and POST for the search page
 func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Create a logger for this request
-	log := logger.Get().With().
-		Str("handler", "SearchPageHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
+	log := CreateHandlerLogger("SearchPageHandler", r).With().
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
@@ -162,7 +159,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 // searchVMs searches for VMs based on the provided criteria
 func searchVMs(ctx context.Context, clientInterface proxmox.ClientInterface, vmidStr, name string) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
-		Str("handler", "searchVMs").
+		Str("function", "searchVMs").
 		Str("vmid", vmidStr).
 		Str("name", name).
 		Logger()
@@ -317,11 +314,7 @@ func (h *SearchHandler) RegisterRoutes(router *httprouter.Router) {
 
 // SearchHandlerFunc is a wrapper function for compatibility with existing code
 func SearchHandlerFunc(w http.ResponseWriter, r *http.Request) {
-	log := logger.Get().With().
-		Str("function", "SearchHandlerFunc").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("SearchHandlerFunc", r)
 
 	log.Debug().Msg("Calling search handler via wrapper function")
 

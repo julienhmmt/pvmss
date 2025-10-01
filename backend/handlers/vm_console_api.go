@@ -7,20 +7,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// GetVNCTicketHandler returns a VNC proxy ticket for the specified VM.
-// This endpoint creates a VNC proxy session with Proxmox and returns the ticket and port.
-//
-// POST /api/vm/vnc-ticket?vmid={vmid}&node={node}
-//
-// Response:
-//
-//	{
-//	  "success": true,
-//	  "ticket": "PVEVNC:...",
-//	  "port": 5900,
-//	  "node": "pve1",
-//	  "vmid": "100"
-//	}
 func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("GetVNCTicketHandler", r)
 
@@ -69,8 +55,7 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 	if err != nil {
 		log.Error().Err(err).Str("vmid", vmid).Str("node", node).Msg("Failed to get VNC proxy ticket")
 
-		// Log failed access attempt
-		LogVNCConsoleAccess(r, vmid, node, false, &log)
+		LogVNCConsoleAccess(r, vmid, node, false)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -81,8 +66,7 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// Log successful access
-	LogVNCConsoleAccess(r, vmid, node, true, &log)
+	LogVNCConsoleAccess(r, vmid, node, true)
 
 	log.Info().
 		Str("vmid", vmid).

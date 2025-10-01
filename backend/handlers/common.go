@@ -53,11 +53,8 @@ func getStateManager(r *http.Request) state.StateManager {
 // RenderTemplate renders a template with the provided data
 // This function is exported for use by other packages
 func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
-	log := logger.Get().With().
-		Str("handler", "RenderTemplate").
+	log := CreateHandlerLogger("RenderTemplate", r).With().
 		Str("template", name).
-		Str("path", r.URL.Path).
-		Str("method", r.Method).
 		Logger()
 
 	log.Debug().Msg("Starting template rendering")
@@ -86,7 +83,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data in
 
 // populateTemplateData adds common data to the template data map.
 func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
-	log := logger.Get().With().Str("function", "populateTemplateData").Logger()
+	log := CreateHandlerLogger("populateTemplateData", r)
 
 	// Get CSRF token from session and add to template data
 	stateManager := getStateManager(r)
@@ -175,7 +172,9 @@ func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[strin
 
 // renderTemplateInternal renders a template with a layout, injecting translation functions.
 func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-	log := logger.Get().With().Str("template", name).Logger()
+	log := CreateHandlerLogger("renderTemplateInternal", r).With().
+		Str("template", name).
+		Logger()
 
 	if data == nil {
 		data = make(map[string]interface{})
@@ -249,10 +248,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 // IsAuthenticated checks if the user is authenticated
 // This function is exported for use by other packages
 func IsAuthenticated(r *http.Request) bool {
-	log := logger.Get().With().
-		Str("handler", "IsAuthenticated").
-		Str("path", r.URL.Path).
-		Str("method", r.Method).
+	log := CreateHandlerLogger("IsAuthenticated", r).With().
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 
@@ -311,10 +307,7 @@ func IsAuthenticated(r *http.Request) bool {
 // This function is exported for use by other packages
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.Get().With().
-			Str("handler", "RequireAuth").
-			Str("path", r.URL.Path).
-			Str("method", r.Method).
+		log := CreateHandlerLogger("RequireAuth", r).With().
 			Str("remote_addr", r.RemoteAddr).
 			Logger()
 
@@ -365,10 +358,7 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 
 // IsAdmin checks if the current user is an admin
 func IsAdmin(r *http.Request) bool {
-	log := logger.Get().With().
-		Str("handler", "IsAdmin").
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("IsAdmin", r)
 
 	stateManager := getStateManager(r)
 	if stateManager == nil {
@@ -422,10 +412,7 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 // This function is exported for use by other packages
 func RequireAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.Get().With().
-			Str("handler", "RequireAdminAuth").
-			Str("path", r.URL.Path).
-			Str("method", r.Method).
+		log := CreateHandlerLogger("RequireAdminAuth", r).With().
 			Str("remote_addr", r.RemoteAddr).
 			Logger()
 
@@ -471,10 +458,7 @@ func RequireAuthHandleWS(h httprouter.Handle) httprouter.Handle {
 		}
 		sessionManager := stateManager.GetSessionManager()
 		if sessionManager == nil || !sessionManager.GetBool(r.Context(), "authenticated") {
-			log := logger.Get().With().
-				Str("handler", "RequireAuthHandleWS").
-				Str("path", r.URL.Path).
-				Logger()
+			log := CreateHandlerLogger("RequireAuthHandleWS", r)
 			log.Warn().Msg("WebSocket connection rejected: not authenticated")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -530,10 +514,7 @@ func IndexRouterHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Par
 func HandlerFuncToHTTPrHandle(h http.HandlerFunc) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		// Create a logger for this request
-		log := logger.Get().With().
-			Str("adapter", "HandlerFuncToHTTPrHandle").
-			Str("path", r.URL.Path).
-			Str("method", r.Method).
+		log := CreateHandlerLogger("HandlerFuncToHTTPrHandle", r).With().
 			Int("params_count", len(ps)).
 			Logger()
 

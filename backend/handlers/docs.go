@@ -47,10 +47,7 @@ func NewDocsHandler() *DocsHandler {
 // DocsHandler handles requests for documentation
 func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	// Create a logger for this request
-	log := logger.Get().With().
-		Str("handler", "DocsHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
+	log := CreateHandlerLogger("DocsHandler", r).With().
 		Str("remote_addr", r.RemoteAddr).
 		Logger()
 

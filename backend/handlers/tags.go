@@ -28,7 +28,7 @@ var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
 
 // validateTagDeletion validates tag deletion parameters and returns the validated tag name
 func (h *TagsHandler) validateTagDeletion(tagName string, checkExists bool) (string, bool) {
-	log := logger.Get().With().Str("handler", "TagsValidation").Logger()
+	log := logger.Get().With().Str("function", "TagsValidation").Logger()
 
 	tagName = strings.TrimSpace(tagName)
 	if tagName == "" {

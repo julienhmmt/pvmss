@@ -27,7 +27,7 @@ func NewCSSHandler(basePath string) *CSSHandler {
 }
 
 func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
-	log := logger.Get().With().Str("handler", "CSSHandler.ServeCSS").Str("path", r.URL.Path).Logger()
+	log := CreateHandlerLogger("CSSHandler.ServeCSS", r)
 
 	cssPath := strings.TrimPrefix(r.URL.Path, "/css/")
 	if cssPath == "" {
@@ -70,7 +70,10 @@ func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CSSHandler) serveCSS(w http.ResponseWriter, r *http.Request, cssPath, theme string) error {
-	log := logger.Get().With().Str("css_path", cssPath).Str("theme", theme).Logger()
+	log := CreateHandlerLogger("CSSHandler.serveCSS", r).With().
+		Str("css_path", cssPath).
+		Str("theme", theme).
+		Logger()
 	fullPath := filepath.Join(h.basePath, cssPath)
 
 	// Check if file exists

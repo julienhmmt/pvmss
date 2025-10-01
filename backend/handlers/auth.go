@@ -96,7 +96,7 @@ func (h *AuthHandler) RedirectIfAuthenticated(next httprouter.Handle) httprouter
 
 // ShowAdminLoginForm renders the admin login page.
 func (h *AuthHandler) ShowAdminLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "AuthHandler.ShowAdminLoginForm").Logger()
+	log := CreateHandlerLogger("AuthHandler.ShowAdminLoginForm", r)
 	log.Debug().Msg("Displaying admin login form")
 	h.renderAdminLoginForm(w, r, "")
 }
@@ -118,7 +118,7 @@ func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 
 // ShowLoginForm renders the user login page.
 func (h *AuthHandler) ShowLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().Str("handler", "AuthHandler.ShowLoginForm").Logger()
+	log := CreateHandlerLogger("AuthHandler.ShowLoginForm", r)
 	log.Debug().Msg("Displaying login form")
 	h.renderLoginForm(w, r, "")
 }
@@ -196,7 +196,7 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 
 // validateCSRF checks the CSRF token from the form against the one in the session.
 func validateCSRF(r *http.Request) error {
-	log := logger.Get().With().Str("function", "validateCSRF").Logger()
+	log := CreateHandlerLogger("validateCSRF", r)
 
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
@@ -415,7 +415,7 @@ func establishSession(_ http.ResponseWriter, r *http.Request, isAdmin bool, user
 
 // establishSessionWithTicket renews the session token, sets authentication data, and stores Proxmox ticket.
 func establishSessionWithTicket(_ http.ResponseWriter, r *http.Request, isAdmin bool, username string, ticket *proxmox.TicketResponse) error {
-	log := logger.Get().With().Str("function", "establishSessionWithTicket").Logger()
+	log := CreateHandlerLogger("establishSessionWithTicket", r)
 
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {

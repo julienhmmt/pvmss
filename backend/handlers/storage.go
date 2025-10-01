@@ -86,11 +86,7 @@ func NewStorageHandler(stateManager state.StateManager) *StorageHandler {
 
 // StoragePageHandler handles the storage management page
 func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := logger.Get().With().
-		Str("handler", "StorageHandler").
-		Str("method", r.Method).
-		Str("path", r.URL.Path).
-		Logger()
+	log := CreateHandlerLogger("StorageHandler", r)
 
 	// Get the Proxmox client
 	client := h.stateManager.GetProxmoxClient()

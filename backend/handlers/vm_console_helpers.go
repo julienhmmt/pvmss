@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rs/zerolog"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
@@ -27,8 +26,7 @@ import (
 //   - VNC port number
 //   - error if ticket creation fails
 func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port int, err error) {
-	log := logger.Get().With().
-		Str("function", "GetVNCProxyTicket").
+	log := CreateHandlerLogger("GetVNCProxyTicket", r).With().
 		Str("node", node).
 		Str("vmid", vmid).
 		Logger()
@@ -94,7 +92,7 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 }
 
 // LogVNCConsoleAccess logs VNC console access attempts for auditing
-func LogVNCConsoleAccess(r *http.Request, vmid, node string, success bool, log *zerolog.Logger) {
+func LogVNCConsoleAccess(r *http.Request, vmid, node string, success bool) {
 	// Get username from session if available
 	username := "anonymous"
 	if sessionMgr := security.GetSession(r); sessionMgr != nil {
@@ -103,6 +101,7 @@ func LogVNCConsoleAccess(r *http.Request, vmid, node string, success bool, log *
 		}
 	}
 
+	log := logger.Get()
 	event := log.Info()
 	if !success {
 		event = log.Warn()
