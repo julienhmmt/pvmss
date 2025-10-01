@@ -1,10 +1,21 @@
-// Package state provides centralized management of application state and dependencies.
-// It uses dependency injection and interface-based design for better testability and maintainability.
-//
-// Deprecated: Prefer dependency injection by passing a `StateManager` to the
-// components that need it. The global helpers are kept for backward
-// compatibility and will be removed in a future release.
 package state
+
+// This file contains DEPRECATED global state helper functions.
+//
+// MIGRATION GUIDE:
+// Instead of using global functions like GetGlobalState(), InitGlobalState(),
+// pass a StateManager instance via dependency injection to your components.
+//
+// Example (OLD - deprecated):
+//   settings := state.GetSettings()
+//
+// Example (NEW - recommended):
+//   type MyHandler struct {
+//       stateManager state.StateManager
+//   }
+//   settings := h.stateManager.GetSettings()
+//
+// All functions in this file will be removed in a future release.
 
 import (
 	"pvmss/logger"

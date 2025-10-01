@@ -1,5 +1,9 @@
 // Package state provides centralized management of application state and dependencies.
 // It uses dependency injection and interface-based design for better testability and maintainability.
+//
+// Usage:
+//   - Use StateManager interface with dependency injection (RECOMMENDED)
+//   - Avoid global helper functions like GetGlobalState() (DEPRECATED - see global.go)
 package state
 
 import (

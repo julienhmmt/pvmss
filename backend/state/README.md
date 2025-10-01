@@ -2,25 +2,46 @@
 
 This package provides a centralized and thread-safe way to manage the application state using dependency injection and interface-based design.
 
-## New Architecture
+## Architecture
 
-The new state management system is built around these key principles:
+The state management system is built around these key principles:
 
 1. **Interface-based Design**: `StateManager` interface defines all state operations
-2. **Dependency Injection**: Pass the state manager to components that need it
+2. **Dependency Injection**: Pass the state manager to components that need it (RECOMMENDED)
 3. **Thread Safety**: Built-in mutex protection for all operations
-4. **Backward Compatibility**: Legacy functions maintained with deprecation notices
+4. **Backward Compatibility**: Legacy global functions maintained with deprecation notices
+
+## ⚠️ Important Note on Package Import
+
+When you import `"pvmss/state"`, you're importing the **entire package** including:
+
+- ✅ `StateManager` interface (RECOMMENDED - use this!)
+- ✅ `NewAppState()` constructor
+- ❌ Global helper functions in `global.go` (DEPRECATED - avoid these!)
+
+**The package itself is NOT deprecated.** Only the global helper functions in `global.go` are deprecated.
+Use dependency injection with the `StateManager` interface instead.
 
 ## Usage
 
-### Initialization
+### Initialization (RECOMMENDED)
 
 ```go
-// Initialize the global state manager (for backward compatibility)
+// Create a new instance with dependency injection (RECOMMENDED)
+stateManager := state.NewAppState()
+
+// Pass it to your handlers/components
+handler := NewMyHandler(stateManager)
+```
+
+### Legacy Initialization (DEPRECATED - DO NOT USE)
+
+```go
+// DEPRECATED: Initialize global state manager (for backward compatibility only)
 stateManager := state.InitGlobalState()
 
-// Or create a new instance for dependency injection
-stateManager := state.NewAppState()
+// DEPRECATED: Access global state directly
+settings := state.GetSettings() // DON'T DO THIS!
 ```
 
 ### Using the State Manager
