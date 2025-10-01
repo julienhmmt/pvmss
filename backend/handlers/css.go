@@ -28,7 +28,7 @@ func NewCSSHandler(basePath string) *CSSHandler {
 
 func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 	log := logger.Get().With().Str("handler", "CSSHandler.ServeCSS").Str("path", r.URL.Path).Logger()
-	
+
 	cssPath := strings.TrimPrefix(r.URL.Path, "/css/")
 	if cssPath == "" {
 		log.Debug().Msg("Empty CSS path, returning 404")
@@ -42,7 +42,7 @@ func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
-	
+
 	log.Debug().Str("css_path", cssPath).Msg("Serving CSS file")
 
 	// Get context information from request headers or query params
@@ -80,7 +80,7 @@ func (h *CSSHandler) serveCSS(w http.ResponseWriter, r *http.Request, cssPath, t
 		http.NotFound(w, r)
 		return nil
 	}
-	
+
 	log.Debug().Str("full_path", fullPath).Msg("CSS file found")
 
 	// For bulma.min.css, we can potentially serve different variants

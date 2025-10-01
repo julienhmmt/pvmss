@@ -19,7 +19,7 @@ func SessionMiddleware(sm *scs.SessionManager) func(http.Handler) http.Handler {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
-			
+
 			logger.Get().Debug().Str("path", r.URL.Path).Msg("Session middleware injecting session manager")
 			// Add the session manager to the context for easy access.
 			ctx := security.WithSessionManager(r.Context(), sm)

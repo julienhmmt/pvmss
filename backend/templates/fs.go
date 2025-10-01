@@ -13,7 +13,7 @@ import (
 // to all files with the .html extension.
 func FindTemplateFiles(root string) ([]string, error) {
 	logger.Get().Debug().Str("root", root).Msg("Scanning for template files")
-	
+
 	var files []string
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -29,7 +29,7 @@ func FindTemplateFiles(root string) ([]string, error) {
 		logger.Get().Error().Err(err).Str("root", root).Msg("Failed to find template files")
 		return nil, fmt.Errorf("failed to walk template directory %s: %w", root, err)
 	}
-	
+
 	logger.Get().Info().Int("count", len(files)).Str("root", root).Msg("Template files found")
 	return files, nil
 }
