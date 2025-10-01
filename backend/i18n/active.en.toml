@@ -138,6 +138,8 @@ other = "Users"
 other = "Pool"
 ["Common.Yes"]
 other = "Yes"
+["Common.Information"]
+other = "Information"
 
 # ======
 # Errors
@@ -330,6 +332,10 @@ other = "Login as"
 other = "Switch to administrator login"
 ["Login.SwitchToUser"]
 other = "Switch to user login"
+["Login.Warning.General"]
+other = "Please log in to continue."
+["Login.Warning.UpdateDescription"]
+other = "Please log in to update the VM description."
 
 # =============
 # Admin Login

@@ -21,6 +21,15 @@ type HandlerContext struct {
 	ResponseWriter http.ResponseWriter
 }
 
+// Translate looks up a translation key using the request's locale, falling back to the key.
+func (ctx *HandlerContext) Translate(key string) string {
+	localizer := i18n.GetLocalizerFromRequest(ctx.Request)
+	if localizer == nil {
+		return key
+	}
+	return i18n.Localize(localizer, key)
+}
+
 // NewHandlerContext creates a new handler context with common setup
 func NewHandlerContext(w http.ResponseWriter, r *http.Request, handlerName string) *HandlerContext {
 	log := CreateHandlerLogger(handlerName, r)
@@ -205,7 +214,7 @@ func FormatBytes(bytes int64) string {
 // with i18n support
 func FormatUptime(seconds int64, r *http.Request) string {
 	localizer := i18n.GetLocalizerFromRequest(r)
-	
+
 	if seconds == 0 {
 		return i18n.Localize(localizer, "Uptime.NotRunning")
 	}

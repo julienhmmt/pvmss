@@ -138,6 +138,8 @@ other = "Utilisateurs"
 other = "Pool"
 ["Common.Yes"]
 other = "Oui"
+["Common.Information"]
+other = "Information"
 
 # ======
 # Errors
@@ -369,9 +371,13 @@ other = "Connexion administrateur"
 ["Login.LoginAs"]
 other = "Se connecter en tant que"
 ["Login.SwitchToAdmin"]
-other = "Basculer vers l'administration"
+other = "Basculer vers la connexion administrateur"
 ["Login.SwitchToUser"]
-other = "Basculer en compte utilisateur"
+other = "Basculer vers la connexion utilisateur"
+["Login.Warning.General"]
+other = "Veuillez vous connecter pour continuer."
+["Login.Warning.UpdateDescription"]
+other = "Veuillez vous connecter pour mettre à jour la description de la VM."
 
 # =============
 # Admin Login

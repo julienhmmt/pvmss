@@ -1,113 +1,289 @@
 {{define "vm_details"}}
 <section class="section">
-    <div class="container">
-        <div class="card admin-card">
-            <header class="card-header brand-header is-align-items-center">
-                <p class="card-header-title">
-                    <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{.VM.Name}} (ID: {{.VM.VMID}})
-                </p>
-            </header>
-            <div class="card-content">
-                {{/* Standard notifications */}}
-                {{if .Success}}
-                {{template "notification" (dict 
-                  "Type" "success" 
-                  "Message" .SuccessMessage 
-                  "Icon" "fas fa-check" 
-                  "Dismissible" true
-                )}}
-                {{end}}
-                {{if .Error}}
-                {{template "notification" (dict 
-                  "Type" "danger" 
-                  "Message" .ErrorMessage 
-                  "Icon" "fas fa-exclamation-triangle" 
-                  "Dismissible" true
-                )}}
-                {{end}}
-                {{if .Warning}}
-                {{template "notification" (dict 
-                  "Type" "warning" 
-                  "Message" .WarningMessage 
-                  "Icon" "fas fa-exclamation-triangle" 
-                  "Dismissible" true
-                )}}
-                {{end}}
-                <table class="table is-fullwidth is-narrow">
-                    <tbody>
-                        <tr>
-                            <th><i class="fas fa-tag"></i> {{T "VMDetails.Label.Name"}}</th>
-                            <td>{{.VM.Name}}</td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-hashtag"></i> {{T "VMDetails.Label.ID"}}</th>
-                            <td>{{.VM.VMID}}</td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-power-off"></i> {{T "VMDetails.Label.Status"}}</th>
-                            <td>
-                                <span id="vm-status-badge" class="tag is-medium {{if eq .VM.Status "running"}}is-success{{else if eq .VM.Status "stopped"}}is-danger{{else}}is-light{{end}}">
-                                    <span id="vm-status-text">{{.VM.Status}}</span>
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-clock"></i> {{T "VMDetails.Label.Uptime"}}</th>
-                            <td>{{.FormattedUptime}}</td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-microchip"></i> {{T "VMDetails.Label.CPU"}}</th>
-                            <td>{{.VM.CPUs}} cores</td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-memory"></i> {{T "VMDetails.Label.RAM"}}</th>
-                            <td>{{.FormattedMaxMem}}</td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-hdd"></i> {{T "VMDetails.Label.Disk"}}</th>
-                            <td>{{.FormattedMaxDisk}}</td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-network-wired"></i> {{T "VMDetails.Label.Network"}}</th>
-                            <td>{{.NetworkBridges}}</td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-info-circle"></i> {{T "VMDetails.Label.Description"}}</th>
-                            <td>
-                                {{if .DescriptionHTML}}
-                                {{safeHTML .DescriptionHTML}}
-                                {{else}}
-                                {{.Description}}
-                                {{end}}
-                                {{if .ProxmoxConnected}}
-                                <div class="is-pulled-right">
-                                    <a class="button is-small is-light" href="{{withLang (printf "/vm/details/%d?edit=description" .VM.VMID) .Lang}}">
-                                        <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                                        <span>{{T "VMDetails.Modify"}}</span>
-                                    </a>
-                                </div>
-                                {{end}}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th><i class="fas fa-tags"></i> {{T "Common.Tags"}}</th>
-                            <td>
-                                {{.Tags}}
-                                {{if .ProxmoxConnected}}
-                                <div class="is-pulled-right">
-                                    <a class="button is-small is-light" href="{{withLang (printf "/vm/details/%d?edit=tags" .VM.VMID) .Lang}}">
-                                        <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                                        <span>{{T "VMDetails.Modify"}}</span>
-                                    </a>
-                                </div>
-                                {{end}}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+    <div class="container" style="max-width: 1200px;">
+        {{/* Standard notifications */}}
+        {{if .Success}}
+        {{template "notification" (dict 
+          "Type" "success" 
+          "Message" .SuccessMessage 
+          "Icon" "fas fa-check" 
+          "Dismissible" true
+        )}}
+        {{end}}
+        {{if .Error}}
+        {{template "notification" (dict 
+          "Type" "danger" 
+          "Message" .ErrorMessage 
+          "Icon" "fas fa-exclamation-triangle" 
+          "Dismissible" true
+        )}}
+        {{end}}
+        {{if .Warning}}
+        {{template "notification" (dict 
+          "Type" "warning" 
+          "Message" .WarningMessage 
+          "Icon" "fas fa-exclamation-triangle" 
+          "Dismissible" true
+        )}}
+        {{end}}
 
-                <!-- Edit Description (Markdown) -->
-                {{if .ShowDescriptionEditor}}
+        <!-- Header -->
+        <div class="level mb-5">
+            <div class="level-left">
+                <div class="level-item">
+                    <div>
+                        <h1 class="title is-3 mb-2">{{.VM.Name}}</h1>
+                        <p class="subtitle is-6 has-text-grey">
+                            <span class="tag is-light mr-2">ID: {{.VM.VMID}}</span>
+                            <span class="tag is-light mr-2">{{.VM.Node}}</span>
+                            <span id="vm-status-badge" class="tag {{if eq .VM.Status "running"}}is-success{{else if eq .VM.Status "stopped"}}is-danger{{else}}is-light{{end}}">
+                                <span id="vm-status-text">{{.VM.Status}}</span>
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="level-right">
+                <div class="level-item">
+                    <a href="{{withLang "/search" .Lang}}" class="button is-light">
+                        <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                        <span>{{T "Common.Back"}}</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="buttons mb-5" style="background: #f9f9f9; padding: 1.5rem; border-radius: 6px;">
+            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                <input type="hidden" name="node" value="{{.VM.Node}}" />
+                <input type="hidden" name="action" value="start" />
+                <button class="button is-success" {{if or (not .ProxmoxConnected) (eq .VM.Status "running")}}disabled{{end}}>
+                    <span class="icon"><i class="fas fa-play"></i></span>
+                    <span>{{T "VMDetails.Action.Start"}}</span>
+                </button>
+            </form>
+            <button id="console-button" class="button" style="background-color: #ff8800; color: white;" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-terminal"></i></span>
+                <span>{{T "VMDetails.Action.Console"}}</span>
+            </button>
+            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                <input type="hidden" name="node" value="{{.VM.Node}}" />
+                <input type="hidden" name="action" value="reboot" />
+                <button class="button is-info" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
+                    <span class="icon"><i class="fas fa-redo"></i></span>
+                    <span>{{T "VMDetails.Action.Reboot"}}</span>
+                </button>
+            </form>
+            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                <input type="hidden" name="node" value="{{.VM.Node}}" />
+                <input type="hidden" name="action" value="shutdown" />
+                <button class="button is-danger" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
+                    <span class="icon"><i class="fas fa-power-off"></i></span>
+                    <span>{{T "VMDetails.Action.Shutdown"}}</span>
+                </button>
+            </form>
+            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                <input type="hidden" name="node" value="{{.VM.Node}}" />
+                <input type="hidden" name="action" value="stop" />
+                <button class="button is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
+                    <span class="icon"><i class="fas fa-stop"></i></span>
+                    <span>{{T "VMDetails.Action.Stop"}}</span>
+                </button>
+            </form>
+            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                <input type="hidden" name="node" value="{{.VM.Node}}" />
+                <input type="hidden" name="action" value="reset" />
+                <button class="button is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
+                    <span class="icon"><i class="fas fa-bolt"></i></span>
+                    <span>{{T "VMDetails.Action.Reset"}}</span>
+                </button>
+            </form>
+            <a href="{{withLang (printf "/vm/details/%d?refresh=1" .VM.VMID) .Lang}}" class="button is-light">
+                <span class="icon"><i class="fas fa-sync-alt"></i></span>
+                <span>{{T "VMDetails.Action.Refresh"}}</span>
+            </a>
+        </div>
+
+        <!-- Resources Grid -->
+        <div class="columns is-multiline mb-5">
+            <!-- CPU Card -->
+            <div class="column is-half">
+                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #ff8800;">
+                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+                        <div>
+                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.CPU"}}</p>
+                            <p class="title is-4 mb-0" style="color: #ff8800;">
+                                {{if eq .VM.Status "running"}}{{printf "%.0f" (mul .VM.CPU 100)}}%{{else}}--{{end}}
+                            </p>
+                        </div>
+                        <span class="icon is-large" style="color: #ff8800; opacity: 0.2;">
+                            <i class="fas fa-microchip fa-3x"></i>
+                        </span>
+                    </div>
+                    <p class="is-size-7 has-text-grey">{{.VM.CPUs}} cores</p>
+                    {{if eq .VM.Status "running"}}
+                    <progress class="progress is-small mt-2" value="{{mul .VM.CPU 100}}" max="100" style="height: 0.4rem;"></progress>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- Memory Card -->
+            <div class="column is-half">
+                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #48c774;">
+                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+                        <div>
+                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.RAM"}}</p>
+                            <p class="title is-4 mb-0" style="color: #48c774;">
+                                {{if eq .VM.Status "running"}}{{.FormattedMem}}{{else}}--{{end}}
+                            </p>
+                        </div>
+                        <span class="icon is-large" style="color: #48c774; opacity: 0.2;">
+                            <i class="fas fa-memory fa-3x"></i>
+                        </span>
+                    </div>
+                    <p class="is-size-7 has-text-grey">of {{.FormattedMaxMem}}</p>
+                    {{if eq .VM.Status "running"}}
+                    <progress class="progress is-success is-small mt-2" value="{{.VM.Mem}}" max="{{.VM.MaxMem}}" style="height: 0.4rem;"></progress>
+                    {{end}}
+                </div>
+            </div>
+
+            <!-- Disk Card -->
+            <div class="column is-half">
+                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #3298dc;">
+                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+                        <div>
+                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Disk"}}</p>
+                            <p class="title is-4 mb-0" style="color: #3298dc;">{{.FormattedMaxDisk}}</p>
+                        </div>
+                        <span class="icon is-large" style="color: #3298dc; opacity: 0.2;">
+                            <i class="fas fa-hdd fa-3x"></i>
+                        </span>
+                    </div>
+                    <p class="is-size-7 has-text-grey">allocated</p>
+                </div>
+            </div>
+
+            <!-- Uptime Card -->
+            <div class="column is-half">
+                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #ffdd57;">
+                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
+                        <div>
+                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Uptime"}}</p>
+                            <p class="title is-6 mb-0" style="color: #947600;">
+                                {{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Not running{{end}}
+                            </p>
+                        </div>
+                        <span class="icon is-large" style="color: #ffdd57; opacity: 0.2;">
+                            <i class="fas fa-clock fa-3x"></i>
+                        </span>
+                    </div>
+                    {{if .NetworkBridges}}
+                    <p class="is-size-7 has-text-grey"><i class="fas fa-network-wired"></i> {{.NetworkBridges}}</p>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
+        <!-- Description & Tags -->
+        {{if or .Description .Tags}}
+        <div class="columns is-multiline">
+            {{if .Description}}
+            <div class="column {{if .Tags}}is-two-thirds{{end}}">
+                <div style="background: white; padding: 2rem; border-radius: 6px; border-left: 4px solid #3273dc; min-height: 180px;">
+                    <div class="is-flex is-justify-content-space-between is-align-items-start mb-4">
+                        <div>
+                            <p class="has-text-weight-bold is-size-5 mb-1">
+                                <span class="icon-text">
+                                    <span class="icon" style="color: #3273dc;"><i class="fas fa-info-circle"></i></span>
+                                    <span>{{T "VMDetails.Label.Description"}}</span>
+                                </span>
+                            </p>
+                            <p class="is-size-7 has-text-grey">VM Information</p>
+                        </div>
+                        {{if .ProxmoxConnected}}
+                        <a href="{{withLang (printf "/vm/details/%d?edit=description" .VM.VMID) .Lang}}" class="button is-small is-light" style="margin-top: 0.25rem;">
+                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                            <span class="is-hidden-mobile">Edit</span>
+                        </a>
+                        {{end}}
+                    </div>
+                    <div class="content" style="color: #4a4a4a;">
+                        {{if .DescriptionHTML}}
+                        {{safeHTML .DescriptionHTML}}
+                        {{else}}
+                        <p>{{.Description}}</p>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+            {{end}}
+
+            {{if .Tags}}
+            <div class="column {{if .Description}}is-one-third{{end}}">
+                <div style="background: white; padding: 2rem; border-radius: 6px; border-left: 4px solid #ff8800; min-height: 180px;">
+                    <div class="is-flex is-justify-content-space-between is-align-items-start mb-4">
+                        <div>
+                            <p class="has-text-weight-bold is-size-5 mb-1">
+                                <span class="icon-text">
+                                    <span class="icon" style="color: #ff8800;"><i class="fas fa-tags"></i></span>
+                                    <span>{{T "Common.Tags"}}</span>
+                                </span>
+                            </p>
+                            <p class="is-size-7 has-text-grey">{{len (split .Tags ", ")}} tag(s)</p>
+                        </div>
+                        {{if .ProxmoxConnected}}
+                        <a href="{{withLang (printf "/vm/details/%d?edit=tags" .VM.VMID) .Lang}}" class="button is-small is-light" style="margin-top: 0.25rem;">
+                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                            <span class="is-hidden-mobile">Edit</span>
+                        </a>
+                        {{end}}
+                    </div>
+                    <div class="tags are-medium">
+                        {{range $tag := split .Tags ", "}}
+                        <span class="tag" style="background-color: #fff3e6; color: #ff8800; border: 1px solid #ffe0b3;">{{$tag}}</span>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{else}}
+        <!-- Empty state -->
+        {{if .ProxmoxConnected}}
+        <div style="background: white; padding: 3rem; border-radius: 6px; text-align: center; border: 2px dashed #dbdbdb;">
+            <span class="icon is-large has-text-grey-light mb-3" style="font-size: 3rem;">
+                <i class="fas fa-info-circle"></i>
+            </span>
+            <p class="has-text-grey mb-4"><strong>No description or tags yet</strong></p>
+            <p class="has-text-grey-light is-size-7 mb-4">Add information about this VM to help organize and document your infrastructure</p>
+            <div class="buttons is-centered">
+                <a href="{{withLang (printf "/vm/details/%d?edit=description" .VM.VMID) .Lang}}" class="button is-primary is-light">
+                    <span class="icon is-small"><i class="fas fa-plus"></i></span>
+                    <span>Add Description</span>
+                </a>
+                <a href="{{withLang (printf "/vm/details/%d?edit=tags" .VM.VMID) .Lang}}" class="button is-warning is-light">
+                    <span class="icon is-small"><i class="fas fa-plus"></i></span>
+                    <span>Add Tags</span>
+                </a>
+            </div>
+        </div>
+        {{end}}
+        {{end}}
+
+        <!-- Edit Description (Markdown) -->
+        {{if .ShowDescriptionEditor}}
                 <div class="box mt-5">
                     <h2 class="title is-5"><span class="icon"><i class="fas fa-edit"></i></span>&nbsp;{{T "VMDetails.EditDescriptionTitle"}}</h2>
                     <form action="{{withLang "/vm/update/description" .Lang}}" method="post">
@@ -137,10 +313,10 @@
                         </div>
                     </form>
                 </div>
-                {{end}}
+        {{end}}
 
-                <!-- Manage Tags -->
-                {{if .ShowTagsEditor}}
+        <!-- Manage Tags -->
+        {{if .ShowTagsEditor}}
                 <div class="box mt-5">
                     <h2 class="title is-5"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "Common.Tags"}}</h2>
                     <form action="{{withLang "/vm/update/tags" .Lang}}" method="post">
@@ -192,75 +368,7 @@
                         </div>
                     </form>
                 </div>
-                {{end}}
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Refresh Button -->
-    <div class="is-flex is-justify-content-center mb-4 mt-4">
-        <a class="button is-info is-light"
-            href="{{withLang (printf "/vm/details/%d?refresh=1" .VM.VMID) .Lang}}">
-            <span>{{T "VMDetails.Action.Refresh"}}</span>
-        </a>
-    </div>
-
-    <!-- VM Action Forms (server-side) -->
-    <div class="buttons is-centered mt-4">
-        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-            <input type="hidden" name="node" value="{{.VM.Node}}" />
-            <input type="hidden" name="action" value="start" />
-            <button class="button is-success is-light" {{if or (not .ProxmoxConnected) (eq .VM.Status "running")}}disabled{{end}}>
-                <span>{{T "VMDetails.Action.Start"}}</span>
-            </button>
-        </form>
-        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-            <input type="hidden" name="node" value="{{.VM.Node}}" />
-            <input type="hidden" name="action" value="reboot" />
-            <button class="button is-warning is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                <span>{{T "VMDetails.Action.Reboot"}}</span>
-            </button>
-        </form>
-        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-            <input type="hidden" name="node" value="{{.VM.Node}}" />
-            <input type="hidden" name="action" value="shutdown" />
-            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                <span>{{T "VMDetails.Action.Shutdown"}}</span>
-            </button>
-        </form>
-        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-            <input type="hidden" name="node" value="{{.VM.Node}}" />
-            <input type="hidden" name="action" value="stop" />
-            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                <span>{{T "VMDetails.Action.Stop"}}</span>
-            </button>
-        </form>
-        <form action="{{withLang "/vm/action" .Lang}}" method="post" class="is-inline-block mx-1">
-            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-            <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-            <input type="hidden" name="node" value="{{.VM.Node}}" />
-            <input type="hidden" name="action" value="reset" />
-            <button class="button is-danger is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                <span>{{T "VMDetails.Action.Reset"}}</span>
-            </button>
-        </form>
-    </div>
-
-    <!-- Console Button -->
-    <div class="buttons is-centered mt-4">
-        <button id="console-button" class="button is-primary" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-            <span class="icon"><i class="fas fa-desktop"></i></span>
-            <span>{{T "VMDetails.Action.Console"}}</span>
-        </button>
+        {{end}}
     </div>
 
     <!-- Console Modal -->
@@ -306,14 +414,6 @@
                 </button>
             </footer>
         </div>
-    </div>
-
-    <div class="is-flex is-justify-content-center mb-4 mt-4">
-        <a class="button is-info is-light" href="{{withLang "/search" .Lang}}">
-            <span>{{T "Common.BackToSearch"}}</span>
-        </a>
-    </div>
-
     </div>
 </section>
 

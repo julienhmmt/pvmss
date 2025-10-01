@@ -223,6 +223,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"AllTags":               allTags,
 		"FormattedMaxMem":       FormatBytes(vm.MaxMem),
 		"FormattedMaxDisk":      FormatBytes(vm.MaxDisk),
+		"FormattedMem":          FormatBytes(vm.Mem),
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
 	}
 
