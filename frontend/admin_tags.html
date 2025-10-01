@@ -44,19 +44,6 @@
                     <span>{{T "Admin.Tags.Header.Name"}}</span>
                   </span>
                 </div>
-                <div class="control">
-                  {{if eq .SortOrder "asc"}}
-                  <a href="/admin/tags?sort=desc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}&lang={{$.Lang}}" 
-                     class="button is-small is-ghost" title="Sort descending">
-                    <span class="icon is-small"><i class="fas fa-sort-up"></i></span>
-                  </a>
-                  {{else}}
-                  <a href="/admin/tags?sort=asc{{if .FilterQuery}}&filter={{.FilterQuery}}{{end}}&lang={{$.Lang}}" 
-                     class="button is-small is-ghost" title="Sort ascending">
-                    <span class="icon is-small"><i class="fas fa-sort-down"></i></span>
-                  </a>
-                  {{end}}
-                </div>
               </div>
             </th>
             {{if .TagCounts}}
@@ -69,7 +56,7 @@
           {{range .Tags}}
           <tr>
             <td>
-              <span class="tag is-info is-light">{{.}}</span>
+              <span class="tag is-light">{{.}}</span>
             </td>
             {{if $.TagCounts}}
             <td>

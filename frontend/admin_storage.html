@@ -21,72 +21,94 @@
   )}}
   {{else}}
   <div class="content mb-5">
-      <h1 class="title is-4"><span class="icon"><i class="fas fa-hdd"></i></span>&nbsp;{{T "Admin.Storage.Title"}}</h1>
-      <p class="subtitle is-6 has-text-grey">{{T "Admin.Storage.Description"}}</p>
+      <h1 class="title is-4">
+        <span class="icon has-text-primary"><i class="fas fa-hdd"></i></span>
+        <span>{{T "Admin.Storage.Title"}}</span>
+      </h1>
+      <p class="subtitle is-6 has-text-grey-light">{{T "Admin.Storage.Description"}}</p>
   </div>
+  
   {{if .Storages}}
-  <div class="table-container">
-    <table class="table is-fullwidth is-striped is-hoverable is-narrow">
-      <thead>
-        <tr>
-          <th><span class="icon is-small"><i class="fas fa-hdd"></i></span>&nbsp;{{T "Admin.Storage.Title"}}</th>
-          <th>{{T "Admin.Storage.Header.Usage"}}</th>
-          <th>{{T "Admin.Storage.Header.Type"}}</th>
-          <th class="has-text-right">{{T "Common.Actions"}}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .Storages}}
-        {{$used := .Used}}
-        {{$total := .Total}}
-        {{$percent := mul (div $used $total) 100.0}}
-        <tr>
-          <td>{{.Storage}}</td>
-          <td>
-            <div class="is-flex is-align-items-center is-justify-content-space-between">
-              <span class="is-size-7">{{$used | humanBytes}} / {{$total | humanBytes}}</span>
-              <span class="tag is-light is-size-7">{{printf "%.0f" $percent}}%</span>
-            </div>
-            <progress class="progress is-small {{if lt $percent 70.0}}is-success{{else if lt $percent 90.0}}is-warning{{else}}is-danger{{end}}" value="{{printf "%.0f" $percent}}" max="100"></progress>
-          </td>
-          <td>
-            <div class="tags is-inline-block">
-              {{range $type := split .Content ","}}
-                <span class="tag is-info is-light">{{$type}}</span>
-              {{end}}
-            </div>
-          </td>
-          <td class="has-text-right">
-            <form method="POST" action="{{withLang "/admin/storage/toggle" $.Lang}}" class="is-inline">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="storage" value="{{.Storage}}">
-              <input type="hidden" name="action" value="{{if index $.EnabledMap .Storage}}disable{{else}}enable{{end}}">
-              <button type="submit" class="button is-small {{if index $.EnabledMap .Storage}}is-success{{else}}is-light{{end}}"
-                aria-label="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}"
-                title="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}">
-                <span class="icon is-small">
-                  {{if index $.EnabledMap .Storage}}
-                    <i class="fas fa-toggle-on"></i>
-                  {{else}}
-                    <i class="fas fa-toggle-off"></i>
-                  {{end}}
+  <div class="box admin-box">
+    <div class="table-container">
+      <table class="table modern is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th>
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-hdd"></i></span>
+                <span>{{T "Admin.Storage.Title"}}</span>
+              </span>
+            </th>
+            <th style="width: 35%;">{{T "Admin.Storage.Header.Usage"}}</th>
+            <th>{{T "Admin.Storage.Header.Type"}}</th>
+            <th class="has-text-right">{{T "Common.Actions"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Storages}}
+          {{$used := .Used}}
+          {{$total := .Total}}
+          {{$percent := mul (div $used $total) 100.0}}
+          <tr>
+            <td>
+              <span class="has-text-weight-semibold">{{.Storage}}</span>
+            </td>
+            <td>
+              <div class="mb-2">
+                <progress class="progress {{if lt $percent 70.0}}is-success{{else if lt $percent 90.0}}is-warning{{else}}is-danger{{end}}" 
+                  value="{{printf "%.0f" $percent}}" max="100" 
+                  title="{{printf "%.0f%%" $percent}}">
+                </progress>
+              </div>
+              <div class="is-flex is-align-items-center is-justify-content-space-between is-size-7">
+                <span class="has-text-grey">{{$used | humanBytes}} / {{$total | humanBytes}}</span>
+                <span class="tag {{if lt $percent 70.0}}is-success{{else if lt $percent 90.0}}is-warning{{else}}is-danger{{end}} is-light">
+                  {{printf "%.0f" $percent}}%
                 </span>
-                <span>{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}}</span>
-              </button>
-            </form>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+              </div>
+            </td>
+            <td>
+              <div class="tags">
+                {{range $type := split .Content ","}}
+                  <span class="tag is-light">{{$type}}</span>
+                {{end}}
+              </div>
+            </td>
+            <td class="has-text-right">
+              <form method="POST" action="{{withLang "/admin/storage/toggle" $.Lang}}" class="is-inline">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="storage" value="{{.Storage}}">
+                <input type="hidden" name="action" value="{{if index $.EnabledMap .Storage}}disable{{else}}enable{{end}}">
+                <button type="submit" class="button is-small {{if index $.EnabledMap .Storage}}is-success is-light{{else}}is-ghost{{end}}"
+                  aria-label="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}"
+                  title="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}">
+                  <span class="icon is-small">
+                    {{if index $.EnabledMap .Storage}}
+                      <i class="fas fa-toggle-on"></i>
+                    {{else}}
+                      <i class="fas fa-toggle-off"></i>
+                    {{end}}
+                  </span>
+                  <span>{{if index $.EnabledMap .Storage}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
   </div>
   {{else}}
-  {{template "notification" (dict 
-    "Type" "warning" 
-    "Message" (T "Admin.Storage.NoStorages") 
-    "Icon" "fas fa-circle-info" 
-    "Dismissible" false 
-  )}}
+  <div class="box admin-box">
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Message" (T "Admin.Storage.NoStorages") 
+      "Icon" "fas fa-circle-info" 
+      "Dismissible" false 
+    )}}
+  </div>
   {{end}}
   {{end}}
 </div>

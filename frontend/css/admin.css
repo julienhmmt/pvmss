@@ -1,72 +1,15 @@
-/* Admin-specific styles: sticky menu, anchors highlighting, admin cards */
+/* ============================================
+   LAYOUT & SPACING
+   ============================================ */
 
 /* Smooth anchor offsets for fixed navbar */
 .section-anchor { scroll-margin-top: 4.5rem; }
 
 /* Highlight a section when navigated via hash */
-.section-anchor:target .card { box-shadow: 0 0 0 0.15rem rgb(50 115 220 / 0.25); }
-
-/* General Admin Box Styling */
-.admin-box {
-    background-color: #ffffff;
-    border-radius: 6px;
-    box-shadow: 0 2px 3px rgb(10 10 10 / 0.1), 0 0 0 1px rgb(10 10 10 / 0.1);
-    padding: 1.5rem;
-}
-
-/* Node Cards Styling */
-.node-card {
-    height: 100%;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgb(0 0 0 / 0.05);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-
-.node-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgb(0 0 0 / 0.1);
-}
-
-.node-card .card-header-title {
-    font-weight: 600;
-}
-
-.node-card .progress {
-    height: 6px;
-    border-radius: 3px;
-}
-
-.node-card .label {
-    font-weight: 500;
-    color: #7a7a7a;
-}
-
-/* Sticky admin menu, adjusted when banner visible */
-.admin-menu { position: sticky; top: 3.25rem; }
-#proxmox-status-banner ~ #main-content .admin-menu { top: 6rem; }
-
-.admin-menu .menu-label { font-weight: 700; color: var(--muted); }
-.admin-menu .menu-list a {
-  display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem;
-  transition: background-color 0.15s ease, color 0.15s ease, padding-left 0.15s ease;
-}
-.admin-menu .menu-list a:hover { background-color: var(--surface-2); color: var(--text); }
-.admin-menu .menu-list a:focus { box-shadow: none; }
-
-/* Explicit active class */
-.admin-menu .menu-list a.is-active { background-color: var(--surface-2); color: var(--text); font-weight: 600; border-left: 3px solid var(--primary); }
-
-/* Dark-mode soft hover/active */
-[data-theme="dark"] .admin-menu .menu-list a:hover { background-color: rgb(255 255 255 / 0.04); color: var(--text); }
-
-/* Admin cards polish */
-.card.admin-card .card-content { padding: 1.25rem 1rem; }
-.card.admin-card .card-header { padding: 0.5rem 1rem; }
-.card.admin-card:hover { transform: translateY(-2px); box-shadow: 0 0.375rem 1.25rem rgb(0 0 0 / 0.12); }
+.section-anchor:target .card { box-shadow: 0 0 0 0.15rem rgba(255, 136, 0, 0.25); }
 
 /* Compact spacing for admin pages */
 .section.admin-section {
-  /* Bulma's default is 3rem top/bottom; reduce to tighten header-to-content gap */
   padding-top: 1.25rem;
   padding-bottom: 1.5rem;
 }
@@ -74,24 +17,465 @@
 /* Slightly reduce gap between header actions and the main columns */
 .admin-layout { margin-top: 0.25rem; }
 
-/* Modernized tables */
-.table.modern {
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--surface-2);
-}
-.table.modern thead th {
-  background: var(--surface-2) !important;
-  color: var(--text-strong);
-  border: none;
-}
-.table.modern tbody tr:hover {
-  background: rgba(0,0,0,0.02);
-}
-.table.modern td, .table.modern th {
-  vertical-align: middle;
+/* ============================================
+   ADMIN BOX - Modern Flat Container
+   ============================================ */
+.admin-box {
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    padding: 2rem;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* Toolbar polish */
-.admin-box .toolbar .input.is-rounded { border-radius: 9999px; }
-.admin-box .toolbar .button.is-rounded { border-radius: 9999px; }
+.admin-box:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] .admin-box {
+    background-color: var(--surface-1);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .admin-box:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ============================================
+   NODE CARDS - Modern Elevated Design
+   ============================================ */
+.node-card {
+    height: 100%;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.node-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+.node-card .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 1rem 1.25rem;
+}
+
+[data-theme="dark"] .node-card .card-header {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.node-card .card-header-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+}
+
+.node-card .card-content {
+    padding: 1.5rem 1.25rem;
+}
+
+.node-card .progress {
+    height: 8px;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.node-card .label {
+    font-weight: 500;
+    color: #6b7280;
+    font-size: 0.875rem;
+    letter-spacing: 0.01em;
+}
+
+[data-theme="dark"] .node-card .label {
+    color: #9ca3af;
+}
+
+/* ============================================
+   STICKY ADMIN MENU - Refined Navigation
+   ============================================ */
+.admin-menu { 
+    position: sticky; 
+    top: 3.25rem;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .admin-menu {
+    background: var(--surface-1);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+#proxmox-status-banner ~ #main-content .admin-menu { top: 6rem; }
+
+.admin-menu .menu-label { 
+    font-weight: 700; 
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.admin-menu .menu-list a {
+    display: flex; 
+    align-items: center; 
+    gap: 0.75rem; 
+    padding: 0.75rem 1rem; 
+    border-radius: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 500;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.admin-menu .menu-list a:hover { 
+    background-color: rgba(0, 0, 0, 0.04);
+    color: var(--text); 
+    transform: translateX(4px);
+}
+
+.admin-menu .menu-list a:focus { 
+    box-shadow: 0 0 0 3px rgba(255, 136, 0, 0.1);
+}
+
+.admin-menu .menu-list a.is-active { 
+    background: linear-gradient(135deg, #ff8800 0%, #e67700 100%);
+    color: #ffffff; 
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(255, 136, 0, 0.3);
+}
+
+.admin-menu .menu-list a.is-active .icon {
+    transform: scale(1.1);
+}
+
+[data-theme="dark"] .admin-menu .menu-list a:hover { 
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================
+   TABLES - Modern Flat Design
+   ============================================ */
+.table.modern {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="dark"] .table.modern {
+    background: var(--surface-1);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.table.modern thead th {
+    background: #f8f9fa !important;
+    color: #374151;
+    border: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    padding: 1rem 1.25rem;
+}
+
+[data-theme="dark"] .table.modern thead th {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: #d1d5db;
+}
+
+.table.modern tbody tr {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    transition: background-color 0.15s ease;
+}
+
+.table.modern tbody tr:last-child {
+    border-bottom: none;
+}
+
+.table.modern tbody tr:hover {
+    background: rgba(255, 136, 0, 0.04);
+}
+
+[data-theme="dark"] .table.modern tbody tr {
+    border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .table.modern tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.table.modern td, .table.modern th {
+    vertical-align: middle;
+    padding: 1rem 1.25rem;
+}
+
+/* ============================================
+   FORMS - Modern Input Styling
+   ============================================ */
+.admin-box .field .input,
+.admin-box .field .select select {
+    border-radius: 8px;
+    border-color: rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+}
+
+.admin-box .field .input:focus,
+.admin-box .field .select select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255, 136, 0, 0.1);
+}
+
+.admin-box .field .label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+[data-theme="dark"] .admin-box .field .label {
+    color: #d1d5db;
+}
+
+/* ============================================
+   BUTTONS - Enhanced Styling
+   ============================================ */
+.admin-box .button {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.admin-box .button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.admin-box .button.is-primary {
+    background: linear-gradient(135deg, #ff8800 0%, #e67700 100%);
+    border: none;
+}
+
+.admin-box .button.is-primary:hover {
+    background: linear-gradient(135deg, #e67700 0%, #cc6600 100%);
+}
+
+/* ============================================
+   TOOLBAR - Modern Search & Actions
+   ============================================ */
+.admin-box .toolbar {
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    margin-bottom: 1.5rem;
+}
+
+.admin-box .toolbar .input.is-rounded { 
+    border-radius: 9999px;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+}
+
+.admin-box .toolbar .button.is-rounded { 
+    border-radius: 9999px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+/* ============================================
+   TAGS - Refined Badge Design
+   ============================================ */
+.tag {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.5em 0.85em;
+    font-size: 0.875rem;
+}
+
+.tag.is-success {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.tag.is-info {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.tag.is-warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tag.is-danger {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+[data-theme="dark"] .tag.is-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .tag.is-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+}
+
+[data-theme="dark"] .tag.is-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fcd34d;
+}
+
+[data-theme="dark"] .tag.is-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+}
+
+/* ============================================
+   PROGRESS BARS - Enhanced Visualization
+   ============================================ */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress::-webkit-progress-bar {
+    background-color: rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+}
+
+.progress::-webkit-progress-value {
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress.is-success::-webkit-progress-value {
+    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+}
+
+.progress.is-warning::-webkit-progress-value {
+    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+}
+
+.progress.is-danger::-webkit-progress-value {
+    background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+}
+
+/* ============================================
+   ADMIN CARDS - Generic Card Polish
+   ============================================ */
+.card.admin-card {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card.admin-card .card-content { 
+    padding: 1.5rem 1.25rem;
+}
+
+.card.admin-card .card-header { 
+    padding: 0.75rem 1.25rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.card.admin-card:hover { 
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   TOGGLE BUTTONS - Enhanced Readability
+   ============================================ */
+/* Enabled state - clear green with icon emphasis */
+.button.is-success.is-light {
+    background-color: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+    font-weight: 600;
+}
+
+.button.is-success.is-light:hover {
+    background-color: #a7f3d0;
+    border-color: #059669;
+    color: #064e3b;
+}
+
+.button.is-success.is-light .icon {
+    color: #10b981;
+}
+
+/* Disabled state - clear gray with better contrast */
+.button.is-ghost {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+    font-weight: 600;
+}
+
+.button.is-ghost:hover {
+    background-color: #e5e7eb;
+    border-color: #9ca3af;
+    color: #4b5563;
+}
+
+.button.is-ghost .icon {
+    color: #9ca3af;
+}
+
+/* Dark theme toggle button adjustments */
+[data-theme="dark"] .button.is-success.is-light {
+    background-color: rgba(16, 185, 129, 0.15);
+    border-color: #10b981;
+    color: #6ee7b7;
+}
+
+[data-theme="dark"] .button.is-success.is-light:hover {
+    background-color: rgba(16, 185, 129, 0.25);
+    border-color: #34d399;
+    color: #a7f3d0;
+}
+
+[data-theme="dark"] .button.is-ghost {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+}
+
+[data-theme="dark"] .button.is-ghost:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #d1d5db;
+}
+
+/* Add clear visual feedback on toggle */
+.button.is-small.is-success.is-light,
+.button.is-small.is-ghost {
+    min-width: 100px;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.button.is-small.is-success.is-light:active,
+.button.is-small.is-ghost:active {
+    transform: scale(0.95);
+}

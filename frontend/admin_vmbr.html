@@ -21,58 +21,80 @@
   )}}
   {{else}}
   <div class="content mb-5">
-    <h1 class="title is-4"><span class="icon"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "Admin.VMBR.Title"}}</h1>
-    <p class="subtitle is-6 has-text-grey">{{T "Admin.VMBR.Description"}}</p>
+    <h1 class="title is-4">
+      <span class="icon has-text-success"><i class="fas fa-network-wired"></i></span>
+      <span>{{T "Admin.VMBR.Title"}}</span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey-light">{{T "Admin.VMBR.Description"}}</p>
   </div>
+  
   {{if .VMBRs}}
-  <div class="table-container">
-    <table class="table is-fullwidth is-striped is-hoverable is-narrow">
-      <thead>
-        <tr>
-          <th><span class="icon is-small"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "Admin.VMBR.Title"}}</th>
-          <th>{{T "Admin.VMBR.Header.Node"}}</th>
-          <th>{{T "Admin.VMBR.Header.Description"}}</th>
-          <th class="has-text-right">{{T "Common.Actions"}}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {{range .VMBRs}}
-        {{$name := index . "name"}}
-        <tr>
-          <td>{{$name}}</td>
-          <td>{{index . "node"}}</td>
-          <td>{{index . "description"}}</td>
-          <td class="has-text-right">
-            <form method="POST" action="{{withLang "/admin/vmbr/toggle" $.Lang}}" class="is-inline">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="vmbr" value="{{$name}}">
-              <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
-              <button type="submit" class="button is-small {{if index $.EnabledVMBRs $name}}is-success{{else}}is-light{{end}}"
-                aria-label="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
-                title="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
-                <span class="icon is-small">
-                  {{if index $.EnabledVMBRs $name}}
-                    <i class="fas fa-toggle-on"></i>
-                  {{else}}
-                    <i class="fas fa-toggle-off"></i>
-                  {{end}}
-                </span>
-                <span>{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}}</span>
-              </button>
-            </form>
-          </td>
-        </tr>
-        {{end}}
-      </tbody>
-    </table>
+  <div class="box admin-box">
+    <div class="table-container">
+      <table class="table modern is-fullwidth is-hoverable">
+        <thead>
+          <tr>
+            <th>
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-network-wired"></i></span>
+                <span>{{T "Admin.VMBR.Title"}}</span>
+              </span>
+            </th>
+            <th>{{T "Admin.VMBR.Header.Node"}}</th>
+            <th>{{T "Admin.VMBR.Header.Description"}}</th>
+            <th class="has-text-right">{{T "Common.Actions"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .VMBRs}}
+          {{$name := index . "name"}}
+          <tr>
+            <td>
+              <span class="has-text-weight-semibold">{{$name}}</span>
+            </td>
+            <td>
+              <span class="tag is-light">
+                <span class="icon is-small"><i class="fas fa-server"></i></span>
+                <span>{{index . "node"}}</span>
+              </span>
+            </td>
+            <td>
+              <span class="has-text-grey">{{index . "description"}}</span>
+            </td>
+            <td class="has-text-right">
+              <form method="POST" action="{{withLang "/admin/vmbr/toggle" $.Lang}}" class="is-inline">
+                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="vmbr" value="{{$name}}">
+                <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
+                <button type="submit" class="button is-small {{if index $.EnabledVMBRs $name}}is-success is-light{{else}}is-ghost{{end}}"
+                  aria-label="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
+                  title="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
+                  <span class="icon is-small">
+                    {{if index $.EnabledVMBRs $name}}
+                      <i class="fas fa-toggle-on"></i>
+                    {{else}}
+                      <i class="fas fa-toggle-off"></i>
+                    {{end}}
+                  </span>
+                  <span>{{if index $.EnabledVMBRs $name}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
   </div>
   {{else}}
-  {{template "notification" (dict 
-    "Type" "warning" 
-    "Message" (T "Admin.VMBR.NoVMBRs") 
-    "Icon" "fas fa-circle-info" 
-    "Dismissible" false 
-  )}}
+  <div class="box admin-box">
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Message" (T "Admin.VMBR.NoVMBRs") 
+      "Icon" "fas fa-circle-info" 
+      "Dismissible" false 
+    )}}
+  </div>
   {{end}}
   {{end}}
   </div>

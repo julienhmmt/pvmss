@@ -5,59 +5,84 @@
 {{define "admin_iso_section"}}
   <div class="container mt-4">
     <div class="content mb-5">
-        <h1 class="title is-4"><span class="icon"><i class="fas fa-compact-disc"></i></span>&nbsp;{{T "Admin.ISO.Title"}}</h1>
-        <p class="subtitle is-6 has-text-grey">{{T "Admin.ISO.Description"}}</p>
+        <h1 class="title is-4">
+          <span class="icon has-text-info"><i class="fas fa-compact-disc"></i></span>
+          <span>{{T "Admin.ISO.Title"}}</span>
+        </h1>
+        <p class="subtitle is-6 has-text-grey-light">{{T "Admin.ISO.Description"}}</p>
     </div>
 
     {{if .AllISOs}}
-    <div class="table-container">
-      <table class="table is-fullwidth is-striped is-hoverable is-narrow">
-        <thead>
-          <tr>
-            <th><span class="icon is-small"><i class="fas fa-compact-disc"></i></span>&nbsp;ISO</th>
-            <th>{{T "Admin.ISO.Header.Storage"}}</th>
-            <th>{{T "Admin.ISO.Header.Size"}}</th>
-            <th class="has-text-right">{{T "Common.Actions"}}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{range .AllISOs}}
-          {{$name := .volid}}
-          <tr>
-            <td>{{if $name}}{{$name | basename}}{{else}}Unknown ISO{{end}}</td>
-            <td>{{.storage}}</td>
-            <td>{{.size | humanBytes}}</td>
-            <td class="has-text-right">
-              <form method="POST" action="/admin/iso/toggle" class="is-inline">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="volid" value="{{$name}}">
-                <input type="hidden" name="action" value="{{if index $.EnabledISOs $name}}disable{{else}}enable{{end}}">
-                <button type="submit" class="button is-small {{if index $.EnabledISOs $name}}is-success{{else}}is-light{{end}}"
-                  aria-label="{{if index $.EnabledISOs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
-                  title="{{if index $.EnabledISOs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
-                  <span class="icon is-small">
-                    {{if index $.EnabledISOs $name}}
-                      <i class="fas fa-toggle-on"></i>
-                    {{else}}
-                      <i class="fas fa-toggle-off"></i>
-                    {{end}}
+    <div class="box admin-box">
+      <div class="table-container">
+        <table class="table modern is-fullwidth is-hoverable">
+          <thead>
+            <tr>
+              <th>
+                <span class="icon-text">
+                  <span class="icon is-small"><i class="fas fa-compact-disc"></i></span>
+                  <span>ISO</span>
+                </span>
+              </th>
+              <th>{{T "Admin.ISO.Header.Storage"}}</th>
+              <th>{{T "Admin.ISO.Header.Size"}}</th>
+              <th class="has-text-right">{{T "Common.Actions"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .AllISOs}}
+            {{$name := .volid}}
+            <tr>
+              <td>
+                <span class="icon-text">
+                  <span class="has-text-weight-semibold">
+                    {{if $name}}{{$name | basename}}{{else}}Unknown ISO{{end}}
                   </span>
-                  <span>{{if index $.EnabledISOs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}}</span>
-                </button>
-              </form>
-            </td>
-          </tr>
-          {{end}}
-        </tbody>
-      </table>
+                </span>
+              </td>
+              <td>
+                <span class="tag is-light">
+                  <span class="icon is-small"><i class="fas fa-hdd"></i></span>
+                  <span>{{.storage}}</span>
+                </span>
+              </td>
+              <td>
+                <span class="has-text-grey">{{.size | humanBytes}}</span>
+              </td>
+              <td class="has-text-right">
+                <form method="POST" action="/admin/iso/toggle" class="is-inline">
+                  <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                  <input type="hidden" name="volid" value="{{$name}}">
+                  <input type="hidden" name="action" value="{{if index $.EnabledISOs $name}}disable{{else}}enable{{end}}">
+                  <button type="submit" class="button is-small {{if index $.EnabledISOs $name}}is-success is-light{{else}}is-ghost{{end}}"
+                    aria-label="{{if index $.EnabledISOs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
+                    title="{{if index $.EnabledISOs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
+                    <span class="icon is-small">
+                      {{if index $.EnabledISOs $name}}
+                        <i class="fas fa-toggle-on"></i>
+                      {{else}}
+                        <i class="fas fa-toggle-off"></i>
+                      {{end}}
+                    </span>
+                    <span>{{if index $.EnabledISOs $name}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
     </div>
     {{else}}
-    {{template "notification" (dict 
-      "Type" "warning" 
-      "Message" (T "Admin.ISO.NoISOs") 
-      "Icon" "fas fa-circle-info" 
-      "Dismissible" false 
-    )}}
+    <div class="box admin-box">
+      {{template "notification" (dict 
+        "Type" "warning" 
+        "Message" (T "Admin.ISO.NoISOs") 
+        "Icon" "fas fa-circle-info" 
+        "Dismissible" false 
+      )}}
+    </div>
     {{end}}
   </div>
 {{end}}

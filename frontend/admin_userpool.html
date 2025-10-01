@@ -20,8 +20,11 @@
   )}}
   {{else}}
     <div class="content mb-5">
-      <h1 class="title is-4"><span class="icon"><i class="fas fa-user-shield"></i></span>&nbsp;{{T "Admin.UserPool.Title"}}</h1>
-      <p class="subtitle is-6 has-text-grey">{{T "Admin.UserPool.Description"}}</p>
+      <h1 class="title is-4">
+        <span class="icon has-text-warning"><i class="fas fa-user-shield"></i></span>
+        <span>{{T "Admin.UserPool.Title"}}</span>
+      </h1>
+      <p class="subtitle is-6 has-text-grey-light">{{T "Admin.UserPool.Description"}}</p>
     </div>
 
     {{if .Success}}
@@ -36,7 +39,7 @@
       )}}
     {{end}}
 
-    <form method="POST" action="{{withLang "/admin/userpool/create" .Lang}}" class="box">
+    <form method="POST" action="{{withLang "/admin/userpool/create" .Lang}}" class="box admin-box">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div class="columns is-multiline">
         <div class="column is-6">
@@ -112,16 +115,21 @@
 
     {{/* List existing pvmss_* pools if available */}}
     {{if .UserPools}}
-    <div class="box mt-5">
-      <h2 class="title is-5">{{T "Admin.UserPool.ExistingTitle"}}</h2>
+    <div class="box admin-box mt-5">
+      <h2 class="title is-5 mb-4">
+        <span class="icon-text">
+          <span class="icon has-text-info"><i class="fas fa-users"></i></span>
+          <span>{{T "Admin.UserPool.ExistingTitle"}}</span>
+        </span>
+      </h2>
       <div class="table-container">
-        <table class="table is-fullwidth is-hoverable is-striped">
+        <table class="table modern is-fullwidth is-hoverable">
           <thead>
             <tr>
               <th>{{T "Common.User"}}</th>
               <th>{{T "Common.Pool"}}</th>
               <th>{{T "Admin.UserPool.VMCountHeader"}}</th>
-              <th>{{T "Common.Actions"}}</th>
+              <th class="has-text-right">{{T "Common.Actions"}}</th>
             </tr>
           </thead>
           <tbody>
@@ -129,35 +137,39 @@
             {{range .UserPools}}
             <tr>
               <td>
-                <span class="has-text-weight-medium">{{.User}}</span>
+                <span class="icon-text">
+                  <span class="icon is-small has-text-grey"><i class="fas fa-user"></i></span>
+                  <span class="has-text-weight-semibold">{{.User}}</span>
+                </span>
               </td>
               <td>
-                <code>{{.Pool}}</code>
+                <code class="has-background-grey-lighter has-text-grey-dark px-2 py-1" style="border-radius: 4px;">{{.Pool}}</code>
                 {{if .Comment}}
-                  <div class="has-text-grey is-size-7">{{.Comment}}</div>
+                  <div class="has-text-grey is-size-7 mt-1">{{.Comment}}</div>
                 {{end}}
               </td>
-              <td>{{.VMCount}}</td>
               <td>
-                <div class="buttons are-small mb-3">
-                  <a class="button is-light" href="{{withLang (printf "/admin/userpool?pool=%s" .Pool) $root.Lang}}" title="{{T "Admin.UserPool.RefreshPoolTitle"}}">
-                    <span class="icon"><i class="fas fa-sync"></i></span>
+                <span class="tag is-light">
+                  <span class="icon is-small"><i class="fas fa-desktop"></i></span>
+                  <span>{{.VMCount}}</span>
+                </span>
+              </td>
+              <td class="has-text-right">
+                <div class="buttons is-justify-content-flex-end">
+                  <a class="button is-small is-ghost" href="{{withLang (printf "/admin/userpool?pool=%s" .Pool) $root.Lang}}" title="{{T "Admin.UserPool.RefreshPoolTitle"}}">
+                    <span class="icon is-small"><i class="fas fa-sync"></i></span>
                     <span>{{T "Common.Refresh"}}</span>
                   </a>
-                </div>
 
-                <form method="POST" action="{{withLang "/admin/userpool/delete" $root.Lang}}" data-confirm="{{T "Admin.UserPool.DeleteConfirm"}}" onsubmit="return confirm(this.dataset.confirm);">
-                  <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}">
-                  <input type="hidden" name="pool" value="{{.Pool}}">
-                  <div class="field mt-2">
-                    <div class="control">
-                      <button type="submit" class="button is-danger is-small" title="{{T "Admin.UserPool.DeleteTitle"}}">
-                        <span class="icon"><i class="fas fa-trash"></i></span>
-                        <span>{{T "Admin.UserPool.DeletePurge"}}</span>
-                      </button>
-                    </div>
-                  </div>
-                </form>
+                  <form method="POST" action="{{withLang "/admin/userpool/delete" $root.Lang}}" data-confirm="{{T "Admin.UserPool.DeleteConfirm"}}" onsubmit="return confirm(this.dataset.confirm);" class="is-inline">
+                    <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}">
+                    <input type="hidden" name="pool" value="{{.Pool}}">
+                    <button type="submit" class="button is-danger is-small is-light" title="{{T "Admin.UserPool.DeleteTitle"}}">
+                      <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                      <span>{{T "Common.Delete"}}</span>
+                    </button>
+                  </form>
+                </div>
               </td>
             </tr>
             {{end}}
