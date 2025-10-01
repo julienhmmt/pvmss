@@ -131,18 +131,13 @@ type NodeInfo struct {
 	Type   string `json:"type"`
 }
 
-// NodeListResponse represents the response from the node list endpoint.
-type NodeListResponse struct {
-	Data []NodeInfo `json:"data"`
-}
-
 // GetNodeNamesWithContext fetches the list of all configured nodes from the `/nodes` endpoint of the Proxmox API.
 // It parses the response to extract and return a simple slice of node names.
 func GetNodeNamesWithContext(ctx context.Context, client ClientInterface) ([]string, error) {
 	logger.Get().Info().Msg("Fetching node names")
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response NodeListResponse
+	var response ListResponse[NodeInfo]
 	if err := client.GetJSON(ctx, "/nodes", &response); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to get node list from Proxmox API")
 		return nil, fmt.Errorf("failed to get node list: %w", err)

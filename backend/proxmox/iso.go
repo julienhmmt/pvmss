@@ -19,12 +19,7 @@ type ISO struct {
 	Size   int64  `json:"size"`
 }
 
-// ISOListResponse represents the response from the ISO list endpoint
-type ISOListResponse struct {
-	Data []ISO `json:"data"`
-}
-
-// GetISOList retrieves the list of ISO images from a specific storage on a given Proxmox node.
+// GetISOList fetches ISO files from a specific storage on a specific node in Proxmox node.
 // It uses the client's default timeout for the API request.
 func GetISOList(client ClientInterface, node, storage string) ([]ISO, error) {
 	logger.Get().Info().Str("node", node).Str("storage", storage).Msg("Fetching ISO list from Proxmox")
@@ -52,7 +47,7 @@ func GetISOListWithContext(ctx context.Context, client ClientInterface, node, st
 	path := fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage))
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response ISOListResponse
+	var response ListResponse[ISO]
 	if err := client.GetJSON(ctx, path, &response); err != nil {
 		logger.Get().Error().
 			Err(err).

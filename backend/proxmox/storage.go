@@ -24,11 +24,6 @@ type Storage struct {
 	Description string      `json:"description,omitempty"`
 }
 
-// StorageListResponse represents the response from the /api2/json/storage endpoint
-type StorageListResponse struct {
-	Data []Storage `json:"data"`
-}
-
 // GetStorages is a convenience function that retrieves the list of all available storages across all nodes.
 // It calls GetStoragesWithContext using the client's default timeout.
 func GetStorages(client ClientInterface) ([]Storage, error) {
@@ -42,7 +37,7 @@ func GetStorages(client ClientInterface) ([]Storage, error) {
 // using the provided context for timeout and cancellation control.
 func GetStoragesWithContext(ctx context.Context, client ClientInterface) ([]Storage, error) {
 	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response StorageListResponse
+	var response ListResponse[Storage]
 	if err := client.GetJSON(ctx, "/storage", &response); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to fetch storages from Proxmox API")
 		return nil, fmt.Errorf("failed to fetch storages: %w", err)
@@ -76,7 +71,7 @@ func GetNodeStorages(client ClientInterface, node string) ([]Storage, error) {
 
 // GetNodeStoragesWithContext fetches storages for a specific node with status fields (used/total/avail).
 func GetNodeStoragesWithContext(ctx context.Context, client ClientInterface, node string) ([]Storage, error) {
-	var response StorageListResponse
+	var response ListResponse[Storage]
 	path := "/nodes/" + url.PathEscape(node) + "/storage"
 	if err := client.GetJSON(ctx, path, &response); err != nil {
 		logger.Get().Error().Err(err).Str("node", node).Msg("Failed to fetch node storages from Proxmox API")

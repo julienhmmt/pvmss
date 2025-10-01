@@ -5,3 +5,10 @@ package proxmox
 type Response[T any] struct {
 	Data T `json:"data"`
 }
+
+// ListResponse is a generic response type for list endpoints
+// Used when the API returns an array wrapped in {"data": [...]}
+// This replaces all the specific *ListResponse types (VMListResponse, StorageListResponse, etc.)
+type ListResponse[T any] struct {
+	Data []T `json:"data"`
+}

@@ -138,11 +138,6 @@ type VM struct {
 	VMID    int     `json:"vmid"`
 }
 
-// VMListResponse represents the response from a VM list endpoint.
-type VMListResponse struct {
-	Data []VM `json:"data"`
-}
-
 // GetVMsWithContext retrieves a comprehensive list of all VMs across all available Proxmox nodes.
 // It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeWithContext for each.
 func GetVMsWithContext(ctx context.Context, client ClientInterface) ([]VM, error) {
@@ -178,7 +173,7 @@ func GetVMsForNodeWithContext(ctx context.Context, client ClientInterface, nodeN
 	path := fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(nodeName))
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response VMListResponse
+	var response ListResponse[VM]
 	if err := client.GetJSON(ctx, path, &response); err != nil {
 		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMs for node from Proxmox API")
 		return nil, fmt.Errorf("failed to get VMs for node %s: %w", nodeName, err)
@@ -191,29 +186,6 @@ func GetVMsForNodeWithContext(ctx context.Context, client ClientInterface, nodeN
 
 	logger.Get().Debug().Str("node", nodeName).Int("count", len(response.Data)).Msg("Fetched VMs for node")
 	return response.Data, nil
-}
-
-// GetVmList is a backward compatibility wrapper. It calls GetVMsWithContext and then wraps
-// the resulting slice of VMs into a map with a "data" key to match an older, expected response structure.
-func GetVmList(client ClientInterface, ctx context.Context) (map[string]interface{}, error) {
-	vms, err := GetVMsWithContext(ctx, client)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get VMs in GetVmList")
-		return nil, err
-	}
-
-	// Convert to a slice of interfaces for backward compatibility
-	vmsInterface := make([]interface{}, len(vms))
-	for i, vm := range vms {
-		vmsInterface[i] = vm
-	}
-
-	result := map[string]interface{}{
-		"data": vmsInterface,
-	}
-
-	logger.Get().Info().Int("vm_count", len(vms)).Msg("Returning VM list result")
-	return result, nil
 }
 
 // GetNextVMID determines the next available unique ID for a new VM.
