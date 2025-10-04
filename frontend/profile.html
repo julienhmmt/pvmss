@@ -120,13 +120,22 @@
                                                 </span>
                                             </td>
                                             <td class="has-text-centered">
-                                                <a href="{{withLang (printf "/vm/details/%d" .VMID) $lang}}" 
-                                                   class="button is-small is-primary">
-                                                    <span class="icon is-small">
-                                                        <i class="fas fa-circle-info"></i>
-                                                    </span>
-                                                    <span>{{T "Profile.ViewDetails"}}</span>
-                                                </a>
+                                                <div class="buttons is-centered">
+                                                    <a href="{{withLang (printf "/vm/details/%d" .VMID) $lang}}" 
+                                                       class="button is-small is-primary">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-circle-info"></i>
+                                                        </span>
+                                                        <span>{{T "Profile.ViewDetails"}}</span>
+                                                    </a>
+                                                    <a href="{{withLang (printf "/vm/delete/%d" .VMID) $lang}}" 
+                                                       class="button is-small is-danger">
+                                                        <span class="icon is-small">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </span>
+                                                        <span>{{T "Profile.Delete"}}</span>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                         {{end}}
@@ -151,26 +160,31 @@
                                             <span>{{T "Profile.CreateFirstVM"}}</span>
                                         </a>
                                     </div>
-                                </div>
                             </div>
                             {{end}}
                         </div>
 
                         <!-- Quick Actions -->
-                        <div class="buttons is-centered mt-5">
-                            <a href="{{withLang "/vm/create" $lang}}" class="button is-primary">
-                                <span class="icon">
-                                    <i class="fas fa-plus-square"></i>
-                                </span>
-                                <span>{{T "Profile.CreateVM"}}</span>
-                            </a>
-                            <a href="{{withLang "/search" $lang}}" class="button is-link is-light">
-                                <span class="icon">
-                                    <i class="fas fa-search"></i>
-                                </span>
-                                <span>{{T "Profile.SearchVM"}}</span>
-                            </a>
-                        </div>
+        <div class="buttons is-centered mt-5">
+            <a href="{{withLang "/vm/create" $lang}}" class="button is-primary">
+                <span class="icon">
+                    <i class="fas fa-plus-square"></i>
+                </span>
+                <span>{{T "Profile.CreateVM"}}</span>
+            </a>
+            <a href="{{withLang "/search" $lang}}" class="button is-link is-light">
+                <span class="icon">
+                    <i class="fas fa-search"></i>
+                </span>
+                <span>{{T "Profile.SearchVM"}}</span>
+            </a>
+            <a href="{{withLang "/profile?refresh=1" $lang}}" class="button is-light">
+                <span class="icon">
+                    <i class="fas fa-sync-alt"></i>
+                </span>
+                <span>{{T "Common.Refresh"}}</span>
+            </a>
+        </div>
                     </div>
                 </div>
             </div>

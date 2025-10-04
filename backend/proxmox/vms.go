@@ -237,3 +237,26 @@ func VMActionWithContext(ctx context.Context, client ClientInterface, node strin
 
 	return response.Data, nil
 }
+
+// DeleteVMWithContext deletes a VM from Proxmox.
+// This performs a DELETE request to /nodes/{node}/qemu/{vmid}
+// Note: The VM must be stopped before deletion. Use VMActionWithContext to stop it first if needed.
+func DeleteVMWithContext(ctx context.Context, client ClientInterface, node string, vmid int) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d", url.PathEscape(node), vmid)
+
+	// Proxmox DELETE typically responds with {"data":"UPID:..."}
+	_, err := client.DeleteWithContext(ctx, path, url.Values{})
+	if err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("VM deletion failed")
+		return fmt.Errorf("failed to delete VM %d on node %s: %w", vmid, node, err)
+	}
+
+	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM deleted successfully")
+
+	// Invalidate cache for this node's VM list
+	if c, ok := client.(*Client); ok && c != nil {
+		c.InvalidateCache(fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(node)))
+	}
+
+	return nil
+}

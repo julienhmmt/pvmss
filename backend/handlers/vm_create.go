@@ -349,6 +349,13 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		}
 	}
 
+	// Invalidate caches so the new VM appears immediately in profile and search
+	client.InvalidateCache("/nodes/" + url.PathEscape(node) + "/qemu")
+	if poolName != "" {
+		client.InvalidateCache("/pools/" + url.PathEscape(poolName))
+		log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM creation")
+	}
+
 	// Redirect to details
 	redirectURL := "/vm/details/" + strconv.Itoa(vmid) + "?refresh=1"
 	if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {

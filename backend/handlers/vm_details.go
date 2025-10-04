@@ -48,6 +48,10 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/update/tags", RequireAuthHandle(h.UpdateVMTagsHandler))
 	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))
 
+	// VM deletion routes
+	router.GET("/vm/delete/:vmid", RequireAuthHandle(h.VMDeleteConfirmHandler))
+	router.POST("/vm/delete", RequireAuthHandle(h.VMDeleteHandler))
+
 	// VM console routes
 	router.POST("/api/vm/vnc-ticket", RequireAuthHandle(h.GetVNCTicketHandler))
 	router.GET("/vm/console/websocket", RequireAuthHandle(h.VMConsoleWebSocketHandler))

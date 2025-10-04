@@ -45,10 +45,16 @@
             </div>
             <div class="level-right">
                 <div class="level-item">
-                    <a href="{{withLang "/search" .Lang}}" class="button is-light">
-                        <span class="icon"><i class="fas fa-arrow-left"></i></span>
-                        <span>{{T "Common.Back"}}</span>
-                    </a>
+                    <div class="buttons">
+                        <a href="{{withLang "/profile" .Lang}}" class="button is-light">
+                            <span class="icon"><i class="fas fa-user"></i></span>
+                            <span>{{T "Navbar.Profile"}}</span>
+                        </a>
+                        <a href="{{withLang "/search" .Lang}}" class="button is-light">
+                            <span class="icon"><i class="fas fa-search"></i></span>
+                            <span>{{T "Common.Search"}}</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -112,6 +118,10 @@
             <a href="{{withLang (printf "/vm/details/%d?refresh=1" .VM.VMID) .Lang}}" class="button is-light">
                 <span class="icon"><i class="fas fa-sync-alt"></i></span>
                 <span>{{T "VMDetails.Action.Refresh"}}</span>
+            </a>
+            <a href="{{withLang (printf "/vm/delete/%d" .VM.VMID) .Lang}}" class="button is-danger" {{if not .ProxmoxConnected}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-trash-alt"></i></span>
+                <span>{{T "VMDetails.Action.Delete"}}</span>
             </a>
         </div>
 

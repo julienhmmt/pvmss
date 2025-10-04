@@ -76,6 +76,19 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
+	// If 'refresh=1' is present, invalidate pool and node caches for fresh data
+	if r.URL.Query().Get("refresh") == "1" {
+		ctx.Log.Info().Str("pool", poolName).Msg("Refreshing profile page - invalidating caches")
+		// Invalidate pool cache
+		client.InvalidateCache("/pools/" + url.PathEscape(poolName))
+		// Invalidate all node VM lists
+		if nodes, err := h.getNodeNames(r.Context(), client); err == nil {
+			for _, node := range nodes {
+				client.InvalidateCache("/nodes/" + url.PathEscape(node) + "/qemu")
+			}
+		}
+	}
+
 	// Fetch VMs from the user's pool
 	vms := h.fetchUserVMs(r.Context(), client, poolName)
 
@@ -160,4 +173,27 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client interface {
 	}
 
 	return vms
+}
+
+// getNodeNames retrieves the list of Proxmox node names
+func (h *ProfileHandler) getNodeNames(ctx context.Context, client interface {
+	GetJSON(ctx context.Context, path string, result interface{}) error
+}) ([]string, error) {
+	var nodeResp struct {
+		Data []struct {
+			Node string `json:"node"`
+		} `json:"data"`
+	}
+
+	if err := client.GetJSON(ctx, "/nodes", &nodeResp); err != nil {
+		return nil, err
+	}
+
+	nodes := make([]string, 0, len(nodeResp.Data))
+	for _, n := range nodeResp.Data {
+		if n.Node != "" {
+			nodes = append(nodes, n.Node)
+		}
+	}
+	return nodes, nil
 }
