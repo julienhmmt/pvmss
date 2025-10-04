@@ -15,6 +15,30 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// forwardWebSocketMessages reads from source and writes to destination
+func forwardWebSocketMessages(source, dest *websocket.Conn, direction string, errChan chan<- error, log *zerolog.Logger) {
+	defer log.Debug().Str("direction", direction).Msg("Goroutine finished")
+	for {
+		messageType, message, err := source.ReadMessage()
+		if err != nil {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				log.Debug().Str("direction", direction).Msg("Connection closed normally")
+				errChan <- nil
+			} else {
+				log.Warn().Err(err).Str("direction", direction).Msg("Error reading message")
+				errChan <- err
+			}
+			return
+		}
+
+		if err := dest.WriteMessage(messageType, message); err != nil {
+			log.Warn().Err(err).Str("direction", direction).Msg("Error writing message")
+			errChan <- err
+			return
+		}
+	}
+}
+
 // VMConsoleWebSocketHandler handles WebSocket connections for VNC console access.
 // GET /vm/console/websocket?vmid={vmid}&node={node}&port={port}&vncticket={vncticket}
 //
@@ -211,55 +235,9 @@ func proxyVNCWebSocket(w http.ResponseWriter, r *http.Request, proxmoxWSURL, pve
 	// Create channels for error handling
 	errChan := make(chan error, 2)
 
-	// Client -> Proxmox goroutine
-	go func() {
-		defer log.Debug().Msg("Client->Proxmox goroutine finished")
-		for {
-			messageType, message, err := clientConn.ReadMessage()
-			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					log.Debug().Msg("Client closed connection normally")
-					errChan <- nil
-				} else {
-					log.Warn().Err(err).Msg("Error reading from client")
-					errChan <- err
-				}
-				return
-			}
-
-			// Forward message to Proxmox
-			if err := proxmoxConn.WriteMessage(messageType, message); err != nil {
-				log.Warn().Err(err).Msg("Error writing to Proxmox")
-				errChan <- err
-				return
-			}
-		}
-	}()
-
-	// Proxmox -> Client goroutine
-	go func() {
-		defer log.Debug().Msg("Proxmox->Client goroutine finished")
-		for {
-			messageType, message, err := proxmoxConn.ReadMessage()
-			if err != nil {
-				if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-					log.Debug().Msg("Proxmox closed connection normally")
-					errChan <- nil
-				} else {
-					log.Warn().Err(err).Msg("Error reading from Proxmox")
-					errChan <- err
-				}
-				return
-			}
-
-			// Forward message to client
-			if err := clientConn.WriteMessage(messageType, message); err != nil {
-				log.Warn().Err(err).Msg("Error writing to client")
-				errChan <- err
-				return
-			}
-		}
-	}()
+	// Start bidirectional forwarding
+	go forwardWebSocketMessages(clientConn, proxmoxConn, "Client->Proxmox", errChan, log)
+	go forwardWebSocketMessages(proxmoxConn, clientConn, "Proxmox->Client", errChan, log)
 
 	// Wait for either direction to complete
 	err = <-errChan

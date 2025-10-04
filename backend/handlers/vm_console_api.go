@@ -7,6 +7,17 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+// sendVNCJSONResponse sends a JSON response for VNC API calls
+func sendVNCJSONResponse(w http.ResponseWriter, statusCode int, success bool, data map[string]interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	response := map[string]interface{}{"success": success}
+	for k, v := range data {
+		response[k] = v
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
 func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("GetVNCTicketHandler", r)
 
@@ -24,11 +35,8 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 	// Check Proxmox ticket validity
 	if !IsProxmoxTicketValid(r) {
 		log.Warn().Msg("Proxmox ticket expired or invalid")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": false,
-			"error":   "Proxmox authentication expired. Please log in again.",
+		sendVNCJSONResponse(w, http.StatusUnauthorized, false, map[string]interface{}{
+			"error": "Proxmox authentication expired. Please log in again.",
 		})
 		return
 	}
@@ -39,11 +47,8 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 
 	if vmid == "" || node == "" {
 		log.Warn().Str("vmid", vmid).Str("node", node).Msg("Missing required parameters")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": false,
-			"error":   "Missing vmid or node parameter",
+		sendVNCJSONResponse(w, http.StatusBadRequest, false, map[string]interface{}{
+			"error": "Missing vmid or node parameter",
 		})
 		return
 	}
@@ -54,14 +59,9 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 	ticket, port, err := GetVNCProxyTicket(r, node, vmid)
 	if err != nil {
 		log.Error().Err(err).Str("vmid", vmid).Str("node", node).Msg("Failed to get VNC proxy ticket")
-
 		LogVNCConsoleAccess(r, vmid, node, false)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": false,
-			"error":   "Failed to create console session. Please ensure you have permission to access this VM.",
+		sendVNCJSONResponse(w, http.StatusInternalServerError, false, map[string]interface{}{
+			"error": "Failed to create console session. Please ensure you have permission to access this VM.",
 		})
 		return
 	}
@@ -75,12 +75,10 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 		Msg("VNC proxy ticket created successfully")
 
 	// Return JSON response
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"ticket":  ticket,
-		"port":    port,
-		"node":    node,
-		"vmid":    vmid,
+	sendVNCJSONResponse(w, http.StatusOK, true, map[string]interface{}{
+		"ticket": ticket,
+		"port":   port,
+		"node":   node,
+		"vmid":   vmid,
 	})
 }

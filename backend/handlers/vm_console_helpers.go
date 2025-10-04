@@ -91,16 +91,18 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 	return vncProxy.Ticket, portInt, nil
 }
 
-// LogVNCConsoleAccess logs VNC console access attempts for auditing
-func LogVNCConsoleAccess(r *http.Request, vmid, node string, success bool) {
-	// Get username from session if available
-	username := "anonymous"
+// getUsernameFromSession extracts username from session or returns "anonymous"
+func getUsernameFromSession(r *http.Request) string {
 	if sessionMgr := security.GetSession(r); sessionMgr != nil {
-		if u, ok := sessionMgr.Get(r.Context(), "username").(string); ok && u != "" {
-			username = u
+		if username, ok := sessionMgr.Get(r.Context(), "username").(string); ok && username != "" {
+			return username
 		}
 	}
+	return "anonymous"
+}
 
+// LogVNCConsoleAccess logs VNC console access attempts for auditing
+func LogVNCConsoleAccess(r *http.Request, vmid, node string, success bool) {
 	log := logger.Get()
 	event := log.Info()
 	if !success {
@@ -108,7 +110,7 @@ func LogVNCConsoleAccess(r *http.Request, vmid, node string, success bool) {
 	}
 
 	event.
-		Str("username", username).
+		Str("username", getUsernameFromSession(r)).
 		Str("vmid", vmid).
 		Str("node", node).
 		Bool("success", success).
