@@ -15,6 +15,40 @@ import (
 	"pvmss/state"
 )
 
+// deriveUserFromPool extracts username from pool ID (pvmss_username)
+func deriveUserFromPool(poolID string) string {
+	username := strings.TrimPrefix(poolID, "pvmss_")
+	if username != "" && !strings.Contains(username, "@") {
+		return username + "@pve"
+	}
+	return username
+}
+
+// buildUserPoolSuccessMessage creates success message from query parameters
+func buildUserPoolSuccessMessage(r *http.Request) string {
+	if r.URL.Query().Get("success") == "" {
+		return ""
+	}
+
+	user := r.URL.Query().Get("user")
+	pool := r.URL.Query().Get("pool")
+
+	if user != "" && pool != "" {
+		return "Created/ensured user '" + user + "' and pool '" + pool + "' with ACL"
+	}
+	return "User/pool ensured"
+}
+
+// invalidatePoolCaches invalidates pool-related caches
+func invalidatePoolCaches(client interface{}, poolID string) {
+	if c, ok := client.(*proxmox.Client); ok && c != nil {
+		c.InvalidateCache("/pools")
+		if poolID != "" {
+			c.InvalidateCache("/pools/" + poolID)
+		}
+	}
+}
+
 // UserPoolHandler handles Proxmox user/pool admin flows
 type UserPoolHandler struct {
 	stateManager state.StateManager
@@ -43,12 +77,8 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	// Derive user from pool id: pvmss_<username>
-	username := strings.TrimPrefix(poolID, "pvmss_")
-	userID := username
-	if userID != "" && !strings.Contains(userID, "@") {
-		userID = userID + "@pve"
-	}
+	// Derive user from pool id
+	userID := deriveUserFromPool(poolID)
 
 	// Always stop and delete all VMs in the pool first (purge)
 	var detailResp struct {
@@ -150,10 +180,7 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Invalidate caches for fresh state after pool deletion
-	if c, ok := client.(*proxmox.Client); ok && c != nil {
-		c.InvalidateCache("/pools")
-		c.InvalidateCache("/pools/" + poolID)
-	}
+	invalidatePoolCaches(client, poolID)
 
 	// Then attempt to delete the user (non-fatal)
 	if userID != "" {
@@ -186,19 +213,7 @@ func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
 
 // UserPoolPage renders the admin page for creating users/pools
 func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Success banner via query params
-	success := r.URL.Query().Get("success") != ""
-	user := r.URL.Query().Get("user")
-	pool := r.URL.Query().Get("pool")
-
-	var successMsg string
-	if success {
-		if user != "" && pool != "" {
-			successMsg = "Created/ensured user '" + user + "' and pool '" + pool + "' with ACL"
-		} else {
-			successMsg = "User/pool ensured"
-		}
-	}
+	successMsg := buildUserPoolSuccessMessage(r)
 
 	// Instruct browser not to cache this page; data must reflect current PVE state
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -223,9 +238,7 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		defer cancel()
 
 		// Ensure we fetch fresh data for pool listing
-		if c, ok := client.(*proxmox.Client); ok && c != nil {
-			c.InvalidateCache("/pools")
-		}
+		invalidatePoolCaches(client, "")
 
 		// GET /pools to list all pools
 		if err := client.GetJSON(ctx, "/pools", &listResp); err == nil {

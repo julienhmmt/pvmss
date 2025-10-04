@@ -46,6 +46,13 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 		return
 	}
 
+	// Admin users don't have profiles - redirect to admin dashboard
+	if ctx.IsAdmin() {
+		ctx.Log.Info().Msg("Admin user accessing profile page, redirecting to admin dashboard")
+		http.Redirect(w, r, "/admin", http.StatusSeeOther)
+		return
+	}
+
 	// Get username from session
 	username := ctx.GetUsername()
 	if username == "" {

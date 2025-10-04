@@ -14,22 +14,26 @@ func NewRouteHelpers() *RouteHelpers {
 	return &RouteHelpers{}
 }
 
+// registerRoute is a helper to register a route with the appropriate HTTP method
+func registerRoute(router *httprouter.Router, method, path string, handler httprouter.Handle) {
+	switch method {
+	case "GET":
+		router.GET(path, handler)
+	case "POST":
+		router.POST(path, handler)
+	case "PUT":
+		router.PUT(path, handler)
+	case "DELETE":
+		router.DELETE(path, handler)
+	}
+}
+
 // RegisterAdminRoute registers an admin-protected route
 func (rh *RouteHelpers) RegisterAdminRoute(router *httprouter.Router, method, path string, handler func(w http.ResponseWriter, r *http.Request, ps httprouter.Params)) {
 	wrappedHandler := HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		handler(w, r, httprouter.ParamsFromContext(r.Context()))
 	}))
-
-	switch method {
-	case "GET":
-		router.GET(path, wrappedHandler)
-	case "POST":
-		router.POST(path, wrappedHandler)
-	case "PUT":
-		router.PUT(path, wrappedHandler)
-	case "DELETE":
-		router.DELETE(path, wrappedHandler)
-	}
+	registerRoute(router, method, path, wrappedHandler)
 }
 
 // RegisterAdminRouteWithRedirect registers an admin route and its trailing-slash redirect variant
@@ -42,42 +46,6 @@ func (rh *RouteHelpers) RegisterAdminRouteWithRedirect(router *httprouter.Router
 	router.GET(redirectPath, HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, path, http.StatusMovedPermanently)
 	})))
-}
-
-// RegisterAuthRoute registers an authenticated route (not necessarily admin)
-func (rh *RouteHelpers) RegisterAuthRoute(router *httprouter.Router, method, path string, handler func(w http.ResponseWriter, r *http.Request, ps httprouter.Params)) {
-	wrappedHandler := HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		handler(w, r, httprouter.ParamsFromContext(r.Context()))
-	}))
-
-	switch method {
-	case "GET":
-		router.GET(path, wrappedHandler)
-	case "POST":
-		router.POST(path, wrappedHandler)
-	case "PUT":
-		router.PUT(path, wrappedHandler)
-	case "DELETE":
-		router.DELETE(path, wrappedHandler)
-	}
-}
-
-// RegisterPublicRoute registers a public route (no authentication required)
-func (rh *RouteHelpers) RegisterPublicRoute(router *httprouter.Router, method, path string, handler func(w http.ResponseWriter, r *http.Request, ps httprouter.Params)) {
-	wrappedHandler := func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		handler(w, r, ps)
-	}
-
-	switch method {
-	case "GET":
-		router.GET(path, wrappedHandler)
-	case "POST":
-		router.POST(path, wrappedHandler)
-	case "PUT":
-		router.PUT(path, wrappedHandler)
-	case "DELETE":
-		router.DELETE(path, wrappedHandler)
-	}
 }
 
 // AdminPageRoutes is a helper struct for registering admin page routes with common patterns

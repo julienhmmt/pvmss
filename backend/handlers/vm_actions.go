@@ -13,6 +13,32 @@ import (
 	"pvmss/proxmox"
 )
 
+// redirectVMError redirects to VM details with error message and language
+func redirectVMError(w http.ResponseWriter, r *http.Request, vmid, errorMsg string) {
+	mh := NewMessageHandlers()
+	errURL := mh.helper.BuildErrorURL("/vm/details/"+vmid, errorMsg)
+	u, _ := url.Parse(errURL)
+	q := u.Query()
+	q.Set("lang", i18n.GetLanguage(r))
+	u.RawQuery = q.Encode()
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
+}
+
+// redirectVMSuccess redirects to VM details with success message and parameters
+func redirectVMSuccess(w http.ResponseWriter, r *http.Request, vmid, successMsg string, extraParams map[string]string) {
+	mh := NewMessageHandlers()
+	params := map[string]string{
+		"refresh": "1",
+		"ts":      strconv.FormatInt(time.Now().Unix(), 10),
+		"lang":    i18n.GetLanguage(r),
+	}
+	// Merge extra params
+	for k, v := range extraParams {
+		params[k] = v
+	}
+	mh.RedirectWithSuccess(w, r, "/vm/details/"+vmid, successMsg, params)
+}
+
 // UpdateVMDescriptionHandler updates the VM description (Markdown supported on display)
 func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := NewHandlerContext(w, r, "UpdateVMDescriptionHandler")
@@ -50,25 +76,11 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 
 	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"description": desc}); err != nil {
 		ctx.Log.Error().Err(err).Msg("update description failed")
-		mh := NewMessageHandlers()
-		// Build error URL and append lang
-		errURL := mh.helper.BuildErrorURL("/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
-		u, _ := url.Parse(errURL)
-		q := u.Query()
-		q.Set("lang", i18n.GetLanguage(r))
-		u.RawQuery = q.Encode()
-		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		redirectVMError(w, r, vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
 		return
 	}
 	ctx.Log.Info().Str("vmid", vmid).Str("node", node).Msg("VM description updated successfully")
-	ts := time.Now().Unix()
-	mh := NewMessageHandlers()
-	params := map[string]string{
-		"refresh": "1",
-		"ts":      strconv.FormatInt(ts, 10),
-		"lang":    i18n.GetLanguage(r),
-	}
-	mh.RedirectWithSuccess(w, r, "/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.UpdatedSuccessfully"), params)
+	redirectVMSuccess(w, r, vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.UpdatedSuccessfully"), nil)
 }
 
 // UpdateVMTagsHandler updates the VM tags from selected checkboxes
@@ -103,23 +115,10 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 	// Update tags in Proxmox
 	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"tags": tagsStr}); err != nil {
 		ctx.Log.Error().Err(err).Msg("update tags failed")
-		mh := NewMessageHandlers()
-		// Build error URL and append lang
-		errURL := mh.helper.BuildErrorURL("/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
-		u, _ := url.Parse(errURL)
-		q := u.Query()
-		q.Set("lang", i18n.GetLanguage(r))
-		u.RawQuery = q.Encode()
-		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		redirectVMError(w, r, vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
 		return
 	}
-	mh := NewMessageHandlers()
-	params := map[string]string{
-		"refresh": "1",
-		"ts":      strconv.FormatInt(time.Now().Unix(), 10),
-		"lang":    i18n.GetLanguage(r),
-	}
-	mh.RedirectWithSuccess(w, r, "/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.UpdatedSuccessfully"), params)
+	redirectVMSuccess(w, r, vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.UpdatedSuccessfully"), nil)
 }
 
 // VMActionHandler handles VM lifecycle actions via server-side POST forms
@@ -170,25 +169,13 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	_, err = proxmox.VMActionWithContext(r.Context(), client, node, vmid, action)
 	if err != nil {
 		log.Error().Err(err).Str("action", action).Int("vmid", vmidInt).Msg("VM action failed")
-		mh := NewMessageHandlers()
-		// Build error URL and append lang
-		errURL := mh.helper.BuildErrorURL("/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
-		u, _ := url.Parse(errURL)
-		q := u.Query()
-		q.Set("lang", i18n.GetLanguage(r))
-		u.RawQuery = q.Encode()
-		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		redirectVMError(w, r, vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Message.ActionFailed"))
 		return
 	}
 
 	log.Info().Str("action", action).Int("vmid", vmidInt).Msg("VM action completed successfully")
 
-	mh := NewMessageHandlers()
-	params := map[string]string{
-		"refresh": "1",
-		"action":  action,
-		"ts":      strconv.FormatInt(time.Now().Unix(), 10),
-		"lang":    i18n.GetLanguage(r),
-	}
-	mh.RedirectWithSuccess(w, r, "/vm/details/"+vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "VMDetails.Action.Success"), params)
+	redirectVMSuccess(w, r, vmid, i18n.Localize(i18n.GetLocalizerFromRequest(r), "VMDetails.Action.Success"), map[string]string{
+		"action": action,
+	})
 }

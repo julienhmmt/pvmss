@@ -15,6 +15,59 @@ import (
 	"pvmss/security"
 )
 
+// readMinMax extracts min/max values from a nested map structure
+func readMinMax(m map[string]interface{}, key string) (min, max int, ok bool) {
+	if raw, exists := m[key]; exists {
+		if mm, ok2 := raw.(map[string]interface{}); ok2 {
+			vMin, vMax := 0, 0
+			if v, ok3 := mm["min"]; ok3 {
+				if f, ok4 := v.(float64); ok4 {
+					vMin = int(f)
+				}
+			}
+			if v, ok3 := mm["max"]; ok3 {
+				if f, ok4 := v.(float64); ok4 {
+					vMax = int(f)
+				}
+			}
+			return vMin, vMax, true
+		}
+	}
+	return 0, 0, false
+}
+
+// validateRequiredFields checks if required form fields are present
+func validateRequiredFields(fields map[string]string) []string {
+	var errors []string
+	for fieldName, value := range fields {
+		if value == "" {
+			errors = append(errors, fieldName+" is required")
+		}
+	}
+	return errors
+}
+
+// ensureMandatoryTag ensures "pvmss" tag is present and deduplicates tags
+func ensureMandatoryTag(selectedTags []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(selectedTags)+1)
+	
+	// Always include pvmss first
+	if _, ok := seen["pvmss"]; !ok {
+		seen["pvmss"] = struct{}{}
+		out = append(out, "pvmss")
+	}
+	
+	for _, t := range selectedTags {
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		out = append(out, t)
+	}
+	return out
+}
+
 // VMCreateFormData holds the form data for VM creation (used for session storage)
 type VMCreateFormData struct {
 	Name        string
@@ -167,52 +220,20 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	poolName := r.FormValue("pool")
 	selectedTags := r.Form["tags"]
 	selectedStorage := r.FormValue("storage")
-	// Ensure mandatory tag "pvmss" is present and deduplicate
-	seen := map[string]struct{}{}
-	out := make([]string, 0, len(selectedTags)+1)
-	// Always include pvmss first
-	if _, ok := seen["pvmss"]; !ok {
-		seen["pvmss"] = struct{}{}
-		out = append(out, "pvmss")
-	}
-	for _, t := range selectedTags {
-		if _, ok := seen[t]; ok {
-			continue
-		}
-		seen[t] = struct{}{}
-		out = append(out, t)
-	}
-	tags := out
+	tags := ensureMandatoryTag(selectedTags)
 
 	// Validate mandatory fields
-	var validationErrors []string
-	if name == "" {
-		validationErrors = append(validationErrors, "VM name is required")
-	}
-	if selectedNode == "" {
-		validationErrors = append(validationErrors, "Proxmox node is required")
-	}
-	if socketsStr == "" {
-		validationErrors = append(validationErrors, "CPU sockets are required")
-	}
-	if coresStr == "" {
-		validationErrors = append(validationErrors, "CPU cores are required")
-	}
-	if memoryMBStr == "" {
-		validationErrors = append(validationErrors, "Memory is required")
-	}
-	if diskSizeGBStr == "" {
-		validationErrors = append(validationErrors, "Disk size is required")
-	}
-	if selectedStorage == "" {
-		validationErrors = append(validationErrors, "Storage is required")
-	}
-	if isoPath == "" {
-		validationErrors = append(validationErrors, "ISO image is required")
-	}
-	if bridgeName == "" {
-		validationErrors = append(validationErrors, "Network bridge is required")
-	}
+	validationErrors := validateRequiredFields(map[string]string{
+		"VM name":        name,
+		"Proxmox node":   selectedNode,
+		"CPU sockets":    socketsStr,
+		"CPU cores":      coresStr,
+		"Memory":         memoryMBStr,
+		"Disk size":      diskSizeGBStr,
+		"Storage":        selectedStorage,
+		"ISO image":      isoPath,
+		"Network bridge": bridgeName,
+	})
 
 	// If validation fails, redirect back to form with errors
 	if len(validationErrors) > 0 {
@@ -303,27 +324,6 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	// Validate against settings limits (vm and optional node-specific)
 	if settings := h.stateManager.GetSettings(); settings != nil && settings.Limits != nil {
-		// Helper to read min/max from map
-		readMinMax := func(m map[string]interface{}, key string) (min, max int, ok bool) {
-			if raw, exists := m[key]; exists {
-				if mm, ok2 := raw.(map[string]interface{}); ok2 {
-					vMin, vMax := 0, 0
-					if v, ok3 := mm["min"]; ok3 {
-						if f, ok4 := v.(float64); ok4 {
-							vMin = int(f)
-						}
-					}
-					if v, ok3 := mm["max"]; ok3 {
-						if f, ok4 := v.(float64); ok4 {
-							vMax = int(f)
-						}
-					}
-					return vMin, vMax, true
-				}
-			}
-			return 0, 0, false
-		}
-
 		// VM limits
 		if rawVM, ok := settings.Limits["vm"].(map[string]interface{}); ok {
 			if min, max, ok2 := readMinMax(rawVM, "sockets"); ok2 {

@@ -13,6 +13,16 @@ import (
 	"pvmss/security"
 )
 
+// findVMByID finds a VM in a list by its ID
+func findVMByID(vms []proxmox.VM, vmid int) *proxmox.VM {
+	for i := range vms {
+		if vms[i].VMID == vmid {
+			return &vms[i]
+		}
+	}
+	return nil
+}
+
 // VMDeleteConfirmHandler shows a confirmation page before deleting a VM
 func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := CreateHandlerLogger("VMDeleteConfirmHandler", r)
@@ -52,14 +62,7 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Find the VM by ID
-	var vm *proxmox.VM
-	for i := range vms {
-		if vms[i].VMID == vmidInt {
-			vm = &vms[i]
-			break
-		}
-	}
-
+	vm := findVMByID(vms, vmidInt)
 	if vm == nil {
 		log.Error().Int("vmid", vmidInt).Msg("VM not found")
 		http.Error(w, "VM not found", http.StatusNotFound)
@@ -149,17 +152,12 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	log.Info().Int("vmid", vmidInt).Msg("VM deleted successfully")
 
 	// Invalidate pool cache to ensure profile page shows updated VM list
-	// Get username from session to derive pool name
-	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
-			username = user
+		if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
+			poolName := "pvmss_" + username
+			client.InvalidateCache("/pools/" + poolName)
+			log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM deletion")
 		}
-	}
-	if username != "" {
-		poolName := "pvmss_" + username
-		client.InvalidateCache("/pools/" + poolName)
-		log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM deletion")
 	}
 
 	// Redirect to profile page with success message and refresh parameter

@@ -118,24 +118,36 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		log.Fatal().Msg("State manager not initialized")
 	}
 
-	// Initialize handlers
-	authHandler := NewAuthHandler(stateManager)
+	// Initialize all handlers
 	adminHandler := NewAdminHandler(stateManager)
-	// wsHub := websocket.NewHub()
-	// go wsHub.Run()
-	vmHandler := NewVMHandler(stateManager)
-	storageHandler := NewStorageHandler(stateManager)
-	searchHandler := NewSearchHandler(stateManager)
+	authHandler := NewAuthHandler(stateManager)
 	docsHandler := NewDocsHandler()
 	healthHandler := NewHealthHandler(stateManager)
-	settingsHandler := NewSettingsHandler(stateManager)
-	tagsHandler := NewTagsHandler(stateManager)
-	vmbrHandler := NewVMBRHandler(stateManager)
-	userPoolHandler := NewUserPoolHandler(stateManager)
 	profileHandler := NewProfileHandler(stateManager)
+	searchHandler := NewSearchHandler(stateManager)
+	settingsHandler := NewSettingsHandler(stateManager)
+	storageHandler := NewStorageHandler(stateManager)
+	tagsHandler := NewTagsHandler(stateManager)
+	userPoolHandler := NewUserPoolHandler(stateManager)
+	vmHandler := NewVMHandler(stateManager)
+	vmbrHandler := NewVMBRHandler(stateManager)
 
 	// Configure routes
-	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, userPoolHandler, profileHandler)
+	setupRoutes(
+		adminHandler,
+		authHandler,
+		docsHandler,
+		healthHandler,
+		profileHandler,
+		router,
+		searchHandler,
+		settingsHandler,
+		storageHandler,
+		tagsHandler,
+		userPoolHandler,
+		vmHandler,
+		vmbrHandler,
+	)
 
 	// Friendly NotFound and MethodNotAllowed handlers (when state is available)
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -161,11 +173,11 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// This allows us to have separate middleware for public/static routes vs. the main application.
 	mux := http.NewServeMux()
 
-	// --- Public/Static Middleware Chain (no session) ---
+	// Public/Static Middleware Chain (no session)
 	var publicHandler http.Handler = router
 	publicHandler = recoverMiddleware(publicHandler)
 
-	// --- Main App Middleware Chain (with session, CSRF, etc.) ---
+	// Main App Middleware Chain (with session, CSRF, etc.)
 	var appHandler http.Handler = router
 	appHandler = stateManagerContextMiddleware(stateManager)(appHandler)
 
@@ -218,66 +230,79 @@ func stateManagerContextMiddleware(sm state.StateManager) func(http.Handler) htt
 	}
 }
 
+// handlerRegistrar interface for handlers that can register routes
+type handlerRegistrar interface {
+	RegisterRoutes(router *httprouter.Router)
+}
+
 // setupRoutes configures all application routes
 func setupRoutes(
-	router *httprouter.Router,
-	authHandler *AuthHandler,
 	adminHandler *AdminHandler,
-	vmHandler *VMHandler,
-	storageHandler *StorageHandler,
-	searchHandler *SearchHandler,
+	authHandler *AuthHandler,
 	docsHandler *DocsHandler,
 	healthHandler *HealthHandler,
-	settingsHandler *SettingsHandler,
-	tagsHandler *TagsHandler,
-	vmbrHandler *VMBRHandler,
-	userPoolHandler *UserPoolHandler,
 	profileHandler *ProfileHandler,
+	router *httprouter.Router,
+	searchHandler *SearchHandler,
+	settingsHandler *SettingsHandler,
+	storageHandler *StorageHandler,
+	tagsHandler *TagsHandler,
+	userPoolHandler *UserPoolHandler,
+	vmHandler *VMHandler,
+	vmbrHandler *VMBRHandler,
 ) {
-	// Register routes for each handler
-	authHandler.RegisterRoutes(router)
-	adminHandler.RegisterRoutes(router)
-	vmHandler.RegisterRoutes(router)
-	storageHandler.RegisterRoutes(router)
-	searchHandler.RegisterRoutes(router)
-	docsHandler.RegisterRoutes(router)
-	healthHandler.RegisterRoutes(router)
-	settingsHandler.RegisterRoutes(router)
+	// Register routes for all handlers
+	handlers := []handlerRegistrar{
+		adminHandler,
+		authHandler,
+		docsHandler,
+		healthHandler,
+		profileHandler,
+		searchHandler,
+		settingsHandler,
+		storageHandler,
+		tagsHandler,
+		userPoolHandler,
+		vmHandler,
+		vmbrHandler,
+	}
+
+	for _, h := range handlers {
+		h.RegisterRoutes(router)
+	}
+
+	// Register additional routes for settings handler
 	settingsHandler.RegisterISORoutes(router)
 	settingsHandler.RegisterLimitsRoutes(router)
-	tagsHandler.RegisterRoutes(router)
-	vmbrHandler.RegisterRoutes(router)
-	userPoolHandler.RegisterRoutes(router)
-	profileHandler.RegisterRoutes(router)
 
 	// Home route
 	router.GET("/", IndexRouterHandler)
 }
 
 // setupStaticFiles configures the static file server
+// registerStaticHandler registers both GET and HEAD handlers for a static route
+func registerStaticHandler(router *httprouter.Router, path string, handler http.Handler) {
+	router.Handler(http.MethodGet, path, handler)
+	router.Handler(http.MethodHead, path, handler)
+}
+
+// createCachedFileServer creates a file server with caching for a subdirectory
+func createCachedFileServer(basePath, subdir string) http.Handler {
+	return withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, subdir))))
+}
+
 func setupStaticFiles(router *httprouter.Router) {
-	// Get the base path of the frontend directory.
 	basePath := getFrontendPath()
 
 	// Create CSS handler for optimized CSS serving
 	cssHandler := NewCSSHandler(basePath)
 
-	// Create specific file handlers for other static subdirectories
-	jsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "js"))))
-	webfontsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "webfonts"))))
-	componentsServer := withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, "components"))))
-
-	// Configure routes to serve CSS files using CSS handler
-	router.Handler(http.MethodGet, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
-	router.Handler(http.MethodHead, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
-	router.Handler(http.MethodGet, "/js/*filepath", http.StripPrefix("/js/", jsServer))
-	router.Handler(http.MethodHead, "/js/*filepath", http.StripPrefix("/js/", jsServer))
-	router.Handler(http.MethodGet, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
-	router.Handler(http.MethodHead, "/webfonts/*filepath", http.StripPrefix("/webfonts/", webfontsServer))
-	router.Handler(http.MethodGet, "/components/*filepath", http.StripPrefix("/components/", componentsServer))
-	router.Handler(http.MethodHead, "/components/*filepath", http.StripPrefix("/components/", componentsServer))
-	router.Handler(http.MethodGet, "/favicon.ico", http.HandlerFunc(serveFavicon))
-	router.Handler(http.MethodHead, "/favicon.ico", http.HandlerFunc(serveFavicon))
+	// Configure routes - CSS uses custom handler, others use file servers
+	registerStaticHandler(router, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
+	registerStaticHandler(router, "/js/*filepath", http.StripPrefix("/js/", createCachedFileServer(basePath, "js")))
+	registerStaticHandler(router, "/webfonts/*filepath", http.StripPrefix("/webfonts/", createCachedFileServer(basePath, "webfonts")))
+	registerStaticHandler(router, "/components/*filepath", http.StripPrefix("/components/", createCachedFileServer(basePath, "components")))
+	registerStaticHandler(router, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
 	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured for css, js, components, webfonts")
 }
@@ -287,12 +312,8 @@ func isStaticPath(p string) bool {
 	if p == "/favicon.ico" {
 		return true
 	}
-	return hasAnyPrefix(p, "/css/", "/js/", "/webfonts/", "/components/")
-}
-
-func hasAnyPrefix(s string, prefixes ...string) bool {
-	for _, pref := range prefixes {
-		if len(s) >= len(pref) && s[:len(pref)] == pref {
+	for _, prefix := range []string{"/css/", "/js/", "/webfonts/", "/components/"} {
+		if strings.HasPrefix(p, prefix) {
 			return true
 		}
 	}

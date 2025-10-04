@@ -1,34 +1,31 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"pvmss/logger"
 )
 
-type themeContextKey string
-
-const ThemeContextKey themeContextKey = "theme"
-
+// CSSHandler serves CSS files with security checks and optimized caching
 type CSSHandler struct {
 	basePath string
 }
 
-// NewCSSHandler creates a new CSS handler
+// NewCSSHandler creates a new CSS handler with the specified base path
 func NewCSSHandler(basePath string) *CSSHandler {
 	return &CSSHandler{
 		basePath: filepath.Join(basePath, "css"),
 	}
 }
 
+// ServeCSS serves CSS files with security checks, proper headers, and aggressive caching
 func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 	log := CreateHandlerLogger("CSSHandler.ServeCSS", r)
 
+	// Extract CSS filename from URL path
 	cssPath := strings.TrimPrefix(r.URL.Path, "/css/")
 	if cssPath == "" {
 		log.Debug().Msg("Empty CSS path, returning 404")
@@ -36,150 +33,68 @@ func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Security check - prevent directory traversal
+	// Security: Prevent directory traversal attacks
 	if strings.Contains(cssPath, "..") || strings.HasPrefix(cssPath, "/") {
 		log.Warn().Str("css_path", cssPath).Msg("Directory traversal attempt blocked")
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
-	log.Debug().Str("css_path", cssPath).Msg("Serving CSS file")
-
-	// Get context information from request headers or query params
-	theme := r.Header.Get("X-Theme")
-	if theme == "" {
-		theme = r.URL.Query().Get("theme")
-	}
-	if theme == "" {
-		theme = "light" // default theme
-	}
-
-	// Set appropriate headers for CSS
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-
-	// Add context-aware headers
-	w.Header().Set("X-Theme-Context", theme)
-
-	// Serve different CSS variants based on context
-	if err := h.serveCSS(w, r, cssPath, theme); err != nil {
-		logger.Get().Error().Err(err).Str("css_path", cssPath).Msg("Failed to serve CSS")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *CSSHandler) serveCSS(w http.ResponseWriter, r *http.Request, cssPath, theme string) error {
-	log := CreateHandlerLogger("CSSHandler.serveCSS", r).With().
-		Str("css_path", cssPath).
-		Str("theme", theme).
-		Logger()
+	// Build full file path
 	fullPath := filepath.Join(h.basePath, cssPath)
 
-	// Check if file exists
-	if !fileExists(fullPath) {
-		log.Debug().Str("full_path", fullPath).Msg("CSS file not found")
+	// Security: Verify file exists and is not a directory
+	if !h.isValidCSSFile(fullPath) {
+		log.Debug().Str("full_path", fullPath).Msg("CSS file not found or invalid")
 		http.NotFound(w, r)
-		return nil
+		return
 	}
 
-	log.Debug().Str("full_path", fullPath).Msg("CSS file found")
+	log.Debug().Str("css_path", cssPath).Msg("Serving CSS file")
 
-	// For bulma.min.css, we can potentially serve different variants
-	if cssPath == "bulma.min.css" {
-		return h.serveBulmaWithContext(w, r, fullPath, theme)
-	}
+	// Set optimal headers for CSS delivery
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	// Aggressive caching for CSS files (1 year) - they should be versioned
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	// Security header to prevent MIME type sniffing
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 
-	// For other CSS files, serve normally but with context headers
-	log.Debug().Str("css_path", cssPath).Msg("Serving standard CSS file")
+	// Serve the CSS file
 	http.ServeFile(w, r, fullPath)
-	return nil
 }
 
-func (h *CSSHandler) serveBulmaWithContext(w http.ResponseWriter, r *http.Request, fullPath, theme string) error {
-	w.Header().Set("X-Bulma-Theme", theme)
-	// For now, serve the standard bulma.min.css
-	http.ServeFile(w, r, fullPath)
-
-	logger.Get().Debug().
-		Str("theme", theme).
-		Str("css", "bulma.min.css").
-		Msg("Served Bulma CSS")
-
-	return nil
-}
-
-// fileExists checks if a file exists
-func fileExists(path string) bool {
+// isValidCSSFile checks if the path points to a valid CSS file (exists and is not a directory)
+func (h *CSSHandler) isValidCSSFile(path string) bool {
 	info, err := os.Stat(path)
 	if err != nil {
-		logger.Get().Debug().Err(err).Str("path", path).Msg("File stat failed")
-		return false
-	}
-
-	// Additional security check - get absolute path
-	abs, err := filepath.Abs(path)
-	if err != nil || strings.Contains(abs, "..") {
-		if err != nil {
-			logger.Get().Warn().Err(err).Str("path", path).Msg("Failed to get absolute path")
-		} else {
-			logger.Get().Warn().Str("path", path).Msg("Directory traversal detected in absolute path")
+		if !os.IsNotExist(err) {
+			logger.Get().Debug().Err(err).Str("path", path).Msg("File stat failed")
 		}
 		return false
 	}
 
-	return !info.IsDir()
-}
-
-// GetCSSContext7Middleware returns middleware for CSS context handling
-func GetCSSContext7Middleware() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Add context information to the request
-			ctx := r.Context()
-
-			// Extract theme from various sources
-			theme := extractThemeFromRequest(r)
-			if theme != "" {
-				ctx = context.WithValue(ctx, ThemeContextKey, theme)
-				r = r.WithContext(ctx)
-			}
-
-			// Add performance timing
-			start := time.Now()
-			defer func() {
-				duration := time.Since(start)
-				if strings.HasPrefix(r.URL.Path, "/css/") {
-					logger.Get().Debug().
-						Str("path", r.URL.Path).
-						Dur("duration", duration).
-						Str("theme", theme).
-						Msg("CSS served")
-				}
-			}()
-
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// extractThemeFromRequest extracts theme information from the request
-func extractThemeFromRequest(r *http.Request) string {
-	// Try header first
-	if theme := r.Header.Get("X-Theme"); theme != "" {
-		return theme
+	// Additional security: Ensure it's a file, not a directory
+	if info.IsDir() {
+		logger.Get().Warn().Str("path", path).Msg("Attempted to serve directory as CSS file")
+		return false
 	}
 
-	// Try query parameter
-	if theme := r.URL.Query().Get("theme"); theme != "" {
-		return theme
+	// Additional security: Verify absolute path doesn't contain traversal
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		logger.Get().Warn().Err(err).Str("path", path).Msg("Failed to get absolute path")
+		return false
 	}
 
-	// Try to extract from referrer or user agent
-	userAgent := r.Header.Get("User-Agent")
-	if strings.Contains(strings.ToLower(userAgent), "dark") {
-		return "dark"
+	// Ensure the resolved path is still within the base path
+	absBase, _ := filepath.Abs(h.basePath)
+	if !strings.HasPrefix(abs, absBase) {
+		logger.Get().Warn().
+			Str("requested_path", abs).
+			Str("base_path", absBase).
+			Msg("Path traversal attempt detected")
+		return false
 	}
 
-	return "light" // default
+	return true
 }

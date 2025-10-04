@@ -43,7 +43,9 @@ func (h *SearchHandler) RegisterRoutes(router *httprouter.Router) {
 	log.Debug().Msg("Registering search routes")
 
 	router.GET("/search", RequireAuthHandle(h.SearchPageHandler))
-	router.POST("/search", RequireAuthHandle(h.SearchPageHandler))
+	router.POST("/search", SecureFormHandler("Search",
+		RequireAuthHandle(h.SearchPageHandler),
+	))
 
 	log.Info().
 		Strs("routes", []string{"GET /search", "POST /search"}).

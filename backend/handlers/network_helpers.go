@@ -2,10 +2,52 @@ package handlers
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"pvmss/proxmox"
 	"pvmss/state"
-	"time"
 )
+
+// buildVMBRDescription builds a description string from VMBR fields
+func buildVMBRDescription(vmbr proxmox.VMBR) string {
+	var parts []string
+
+	if vmbr.BridgePorts != "" {
+		parts = append(parts, "ports: "+vmbr.BridgePorts)
+	}
+
+	if vmbr.Address != "" {
+		cidr := vmbr.Address
+		if vmbr.Netmask != "" {
+			cidr += "/" + vmbr.Netmask
+		}
+		parts = append(parts, "ip: "+cidr)
+	}
+
+	if vmbr.Gateway != "" {
+		parts = append(parts, "gw: "+vmbr.Gateway)
+	}
+
+	if vmbr.Method != "" {
+		parts = append(parts, "method: "+vmbr.Method)
+	}
+
+	if len(parts) > 0 {
+		return strings.Join(parts, " | ")
+	}
+
+	// Fallback to comments if no other info
+	return vmbr.Comments
+}
+
+// getVMBRInterface returns the interface name, preferring Iface over IfaceName
+func getVMBRInterface(vmbr proxmox.VMBR) string {
+	if vmbr.Iface != "" {
+		return vmbr.Iface
+	}
+	return vmbr.IfaceName
+}
 
 // collectAllVMBRs retrieves VMBR bridge information across all nodes via Proxmox.
 // It returns a slice of maps to minimize churn in existing templates/callers.
@@ -52,52 +94,15 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 		log.Info().Str("node", node).Int("vmbr_count", len(vmbrs)).Msg("Fetched VMBRs for node")
 		for _, vmbr := range vmbrs {
 			if vmbr.Type == "bridge" { // keep parity with existing admin filtering
-				// Fallbacks: some Proxmox versions expose interface as "name" instead of "iface"
-				iface := vmbr.Iface
-				if iface == "" && vmbr.IfaceName != "" {
-					iface = vmbr.IfaceName
-				}
-
-				// Build a readable description from available fields
-				desc := ""
-				if vmbr.BridgePorts != "" {
-					desc = "ports: " + vmbr.BridgePorts
-				}
-				if vmbr.Address != "" {
-					if desc != "" {
-						desc += " | "
-					}
-					cidr := vmbr.Address
-					if vmbr.Netmask != "" {
-						cidr += "/" + vmbr.Netmask
-					}
-					desc += "ip: " + cidr
-				}
-				if vmbr.Gateway != "" {
-					if desc != "" {
-						desc += " | "
-					}
-					desc += "gw: " + vmbr.Gateway
-				}
-				if vmbr.Method != "" {
-					if desc != "" {
-						desc += " | "
-					}
-					desc += "method: " + vmbr.Method
-				}
-				if desc == "" && vmbr.Comments != "" {
-					desc = vmbr.Comments
-				}
-
 				allVMBRs = append(allVMBRs, map[string]string{
 					"node":        node,
-					"iface":       iface,
+					"iface":       getVMBRInterface(vmbr),
 					"type":        vmbr.Type,
 					"method":      vmbr.Method,
 					"address":     vmbr.Address,
 					"netmask":     vmbr.Netmask,
 					"gateway":     vmbr.Gateway,
-					"description": desc,
+					"description": buildVMBRDescription(vmbr),
 				})
 			}
 		}

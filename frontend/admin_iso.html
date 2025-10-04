@@ -31,7 +31,7 @@
           </thead>
           <tbody>
             {{range .AllISOs}}
-            {{$name := .volid}}
+            {{$name := .Volid}}
             <tr>
               <td>
                 <span class="icon-text">
@@ -43,11 +43,11 @@
               <td>
                 <span class="tag is-light">
                   <span class="icon is-small"><i class="fas fa-hdd"></i></span>
-                  <span>{{.storage}}</span>
+                  <span>{{.Storage}}</span>
                 </span>
               </td>
               <td>
-                <span class="has-text-grey">{{.size | humanBytes}}</span>
+                <span class="has-text-grey">{{.Size | humanBytes}}</span>
               </td>
               <td class="has-text-right">
                 <form method="POST" action="/admin/iso/toggle" class="is-inline">

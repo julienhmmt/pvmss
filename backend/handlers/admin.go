@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -249,7 +250,10 @@ func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
 		h.ProxmoxTicketTestPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
-	router.POST("/admin/ticket-test", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.ProxmoxTicketTestFormHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	// Admin ticket test form with CSRF protection
+	router.POST("/admin/ticket-test", SecureFormHandler("ProxmoxTicketTest",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.ProxmoxTicketTestFormHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
 }

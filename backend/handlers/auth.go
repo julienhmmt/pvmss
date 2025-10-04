@@ -19,6 +19,33 @@ import (
 	"pvmss/state"
 )
 
+// setLanguageCookieAndRedirect sets language cookie and appends lang to redirect URL
+func setLanguageCookieAndRedirect(w http.ResponseWriter, r *http.Request, baseURL string) string {
+	lang := i18n.GetLanguage(r)
+	if lang == "" {
+		return baseURL
+	}
+
+	// Set language cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:   i18n.CookieNameLang,
+		Value:  lang,
+		Path:   "/",
+		MaxAge: int(i18n.CookieMaxAge / time.Second),
+	})
+
+	// Append lang to redirect for explicit propagation
+	if lang != i18n.DefaultLang {
+		if strings.Contains(baseURL, "?") {
+			baseURL += "&lang=" + lang
+		} else {
+			baseURL += "?lang=" + lang
+		}
+	}
+
+	return baseURL
+}
+
 // AuthHandler handles authentication routes
 type AuthHandler struct {
 	stateManager state.StateManager
@@ -279,23 +306,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 
 	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/admin/nodes")
-	if lang := i18n.GetLanguage(r); lang != "" {
-		// Set language cookie
-		http.SetCookie(w, &http.Cookie{
-			Name:   i18n.CookieNameLang,
-			Value:  lang,
-			Path:   "/",
-			MaxAge: int(i18n.CookieMaxAge / time.Second),
-		})
-		// Append lang to redirect for explicit propagation
-		if lang != i18n.DefaultLang {
-			if strings.Contains(redirectURL, "?") {
-				redirectURL += "&lang=" + lang
-			} else {
-				redirectURL += "?lang=" + lang
-			}
-		}
-	}
+	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -388,23 +399,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 
 	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/vm/create")
-	if lang := i18n.GetLanguage(r); lang != "" {
-		// Set language cookie
-		http.SetCookie(w, &http.Cookie{
-			Name:   i18n.CookieNameLang,
-			Value:  lang,
-			Path:   "/",
-			MaxAge: int(i18n.CookieMaxAge / time.Second),
-		})
-		// Append lang to redirect for explicit propagation
-		if lang != i18n.DefaultLang {
-			if strings.Contains(redirectURL, "?") {
-				redirectURL += "&lang=" + lang
-			} else {
-				redirectURL += "?lang=" + lang
-			}
-		}
-	}
+	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -507,27 +502,26 @@ func IsProxmoxTicketValid(r *http.Request) bool {
 // getRedirectURL determines the redirect URL from form values or query parameters.
 func getRedirectURL(r *http.Request, defaultURL string) string {
 	// Check form values first, then query parameters
-	url := r.FormValue("return")
-	if url == "" {
-		url = r.URL.Query().Get("return")
-	}
-	if url == "" {
-		url = r.FormValue("redirect")
-	}
-	if url == "" {
-		url = r.URL.Query().Get("redirect")
+	for _, key := range []string{"return", "redirect"} {
+		if url := r.FormValue(key); url != "" {
+			return ensureLocalPath(url)
+		}
+		if url := r.URL.Query().Get(key); url != "" {
+			return ensureLocalPath(url)
+		}
 	}
 
-	// Use default if no URL is found
+	return ensureLocalPath(defaultURL)
+}
+
+// ensureLocalPath ensures the URL is a local path starting with /
+func ensureLocalPath(url string) string {
 	if url == "" {
-		url = defaultURL
+		return "/"
 	}
-
-	// Ensure the URL is a local path
-	if len(url) > 0 && url[0] != '/' {
-		url = "/" + url
+	if url[0] != '/' {
+		return "/" + url
 	}
-
 	return url
 }
 

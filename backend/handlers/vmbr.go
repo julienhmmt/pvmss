@@ -8,6 +8,36 @@ import (
 	"pvmss/state"
 )
 
+// removeFromList removes an item from a string list
+func removeFromList(list []string, item string) []string {
+	result := make([]string, 0, len(list))
+	for _, v := range list {
+		if v != item {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// buildVMBRSuccessMessage creates success message from query parameters
+func buildVMBRSuccessMessage(r *http.Request) string {
+	if r.URL.Query().Get("success") == "" {
+		return ""
+	}
+
+	action := r.URL.Query().Get("action")
+	name := r.URL.Query().Get("vmbr")
+
+	switch action {
+	case "enable":
+		return "VMBR '" + name + "' enabled"
+	case "disable":
+		return "VMBR '" + name + "' disabled"
+	default:
+		return "VMBR settings updated"
+	}
+}
+
 // VMBRHandler handles VMBR-related operations.
 type VMBRHandler struct {
 	stateManager state.StateManager
@@ -28,8 +58,7 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	gs := h.stateManager
-	settings := gs.GetSettings()
+	settings := h.stateManager.GetSettings()
 	if settings.VMBRs == nil {
 		settings.VMBRs = []string{}
 	}
@@ -47,19 +76,13 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 		}
 	} else { // disable
 		if enabled[name] {
-			filtered := make([]string, 0, len(settings.VMBRs))
-			for _, v := range settings.VMBRs {
-				if v != name {
-					filtered = append(filtered, v)
-				}
-			}
-			settings.VMBRs = filtered
+			settings.VMBRs = removeFromList(settings.VMBRs, name)
 			changed = true
 		}
 	}
 
 	if changed {
-		if err := gs.SetSettings(settings); err != nil {
+		if err := h.stateManager.SetSettings(settings); err != nil {
 			log.Error().Err(err).Msg("Failed to update settings")
 			http.Error(w, "Failed to update settings", http.StatusInternalServerError)
 			return
@@ -79,10 +102,8 @@ func NewVMBRHandler(sm state.StateManager) *VMBRHandler {
 func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("VMBRPageHandler", r)
 
-	// Get the global state
-	gs := h.stateManager
-	client := gs.GetProxmoxClient()
-	proxmoxConnected, proxmoxMsg := gs.GetProxmoxStatus()
+	client := h.stateManager.GetProxmoxClient()
+	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
 
 	// Collect all VMBRs using common helper when online; otherwise short-circuit
 	var allVMBRs []map[string]string
@@ -100,27 +121,13 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	}
 
 	// Get current settings to check which VMBRs are enabled
-	settings := gs.GetSettings()
-	enabledVMBRs := make(map[string]bool)
+	settings := h.stateManager.GetSettings()
+	enabledVMBRs := make(map[string]bool, len(settings.VMBRs))
 	for _, vmbr := range settings.VMBRs {
 		enabledVMBRs[vmbr] = true
 	}
 
-	// Success banner via query params
-	success := r.URL.Query().Get("success") != ""
-	act := r.URL.Query().Get("action")
-	vmbrName := r.URL.Query().Get("vmbr")
-	var successMsg string
-	if success {
-		switch act {
-		case "enable":
-			successMsg = "VMBR '" + vmbrName + "' enabled"
-		case "disable":
-			successMsg = "VMBR '" + vmbrName + "' disabled"
-		default:
-			successMsg = "VMBR settings updated"
-		}
-	}
+	successMsg := buildVMBRSuccessMessage(r)
 
 	// Prepare template data
 	// Map to template shape used previously: name field instead of iface
@@ -148,32 +155,6 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 
-// UpdateVMBRHandler handles updating enabled VMBRs.
-func (h *VMBRHandler) UpdateVMBRHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("UpdateVMBRHandler", r)
-
-	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
-		return
-	}
-
-	// Get the list of enabled VMBRs from the form
-	enabledVMBRs := r.Form["enabled_vmbrs"]
-
-	// Update settings
-	gs := h.stateManager
-	settings := gs.GetSettings()
-	settings.VMBRs = enabledVMBRs
-
-	if err := gs.SetSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Failed to update settings")
-		http.Error(w, "Failed to update settings", http.StatusInternalServerError)
-		return
-	}
-
-	// Redirect back to the VMBR page with a success banner
-	http.Redirect(w, r, "/admin/vmbr?success=1", http.StatusSeeOther)
-}
-
 // RegisterRoutes registers the routes for VMBR management.
 func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
 	routeHelpers := NewAdminPageRoutes()
@@ -181,7 +162,6 @@ func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
 	// Register admin VMBR routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/vmbr", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
 		"page":   h.VMBRPageHandler,
-		"update": h.UpdateVMBRHandler,
 		"toggle": h.ToggleVMBRHandler,
 	})
 }

@@ -14,6 +14,69 @@ import (
 	"pvmss/state"
 )
 
+// buildSuccessMessage creates success message from query parameters
+func buildSuccessMessage(r *http.Request) string {
+	if r.URL.Query().Get("success") == "" {
+		return ""
+	}
+
+	action := r.URL.Query().Get("action")
+	storage := r.URL.Query().Get("storage")
+
+	switch action {
+	case "enable":
+		return "Storage '" + storage + "' enabled"
+	case "disable":
+		return "Storage '" + storage + "' disabled"
+	default:
+		return "Storage settings updated"
+	}
+}
+
+// buildEnabledMap creates a map from a list of enabled storage names
+func buildEnabledMap(enabledList []string) map[string]bool {
+	enabledMap := make(map[string]bool, len(enabledList))
+	for _, s := range enabledList {
+		enabledMap[s] = true
+	}
+	return enabledMap
+}
+
+// ensureStoragesInitialized ensures EnabledStorages slice is initialized
+func ensureStoragesInitialized(settings *state.AppSettings) {
+	if settings.EnabledStorages == nil {
+		settings.EnabledStorages = []string{}
+	}
+}
+
+// projectEnabledFlags adds Enabled field to storage items and sorts them
+func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[string]interface{} {
+	enabledMap := buildEnabledMap(enabled)
+	projected := make([]map[string]interface{}, 0, len(base))
+
+	for _, item := range base {
+		cpy := make(map[string]interface{}, len(item)+1)
+		for k, v := range item {
+			cpy[k] = v
+		}
+		name, _ := cpy["Storage"].(string)
+		cpy["Enabled"] = len(enabled) == 0 || enabledMap[name]
+		projected = append(projected, cpy)
+	}
+
+	// Sort by Enabled desc, then Storage asc
+	sort.Slice(projected, func(i, j int) bool {
+		if projected[i]["Enabled"].(bool) != projected[j]["Enabled"].(bool) {
+			return projected[i]["Enabled"].(bool)
+		}
+		si := projected[i]["Storage"].(string)
+		sj := projected[j]["Storage"].(string)
+		return si < sj
+	})
+
+	return projected
+}
+
 // ToggleStorageHandler toggles a single storage enabled state (auto-save per click, no JS)
 func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("ToggleStorageHandler", r)
@@ -96,31 +159,9 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 		// Get settings
 		settings := h.stateManager.GetSettings()
-		if settings.EnabledStorages == nil {
-			settings.EnabledStorages = []string{}
-		}
-
-		// Build enabled map from settings for toggles
-		enabledMap := make(map[string]bool, len(settings.EnabledStorages))
-		for _, s := range settings.EnabledStorages {
-			enabledMap[s] = true
-		}
-
-		// Success banner via query params
-		success := r.URL.Query().Get("success") != ""
-		act := r.URL.Query().Get("action")
-		stor := r.URL.Query().Get("storage")
-		var successMsg string
-		if success {
-			switch act {
-			case "enable":
-				successMsg = "Storage '" + stor + "' enabled"
-			case "disable":
-				successMsg = "Storage '" + stor + "' disabled"
-			default:
-				successMsg = "Storage settings updated"
-			}
-		}
+		ensureStoragesInitialized(settings)
+		enabledMap := buildEnabledMap(settings.EnabledStorages)
+		successMsg := buildSuccessMessage(r)
 
 		// Prepare data for the template (empty Storages)
 		data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
@@ -132,15 +173,12 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Get settings
 	node := r.URL.Query().Get("node")
 	refresh := r.URL.Query().Get("refresh") == "1"
 
 	// Get settings
 	settings := h.stateManager.GetSettings()
-	if settings.EnabledStorages == nil {
-		settings.EnabledStorages = []string{}
-	}
+	ensureStoragesInitialized(settings)
 
 	// Use the shared utility to retrieve renderable storages
 	storages, enabledMap, chosenNode, err := FetchRenderableStorages(client, node, settings.EnabledStorages, refresh)
@@ -150,57 +188,14 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Success banner via query params
-	success := r.URL.Query().Get("success") != ""
-	act := r.URL.Query().Get("action")
-	stor := r.URL.Query().Get("storage")
-	var successMsg string
-	if success {
-		switch act {
-		case "enable":
-			successMsg = "Storage '" + stor + "' enabled"
-		case "disable":
-			successMsg = "Storage '" + stor + "' disabled"
-		default:
-			successMsg = "Storage settings updated"
-		}
-	}
+	successMsg := buildSuccessMessage(r)
 
 	data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
 	data["Node"] = chosenNode
 	data["Storages"] = storages
-	data["EnabledStorages"] = settings.EnabledStorages
 	data["EnabledMap"] = enabledMap
 
 	renderTemplateInternal(w, r, "admin_storage", data)
-}
-
-// UpdateStorageHandler handles updating enabled storages
-func (h *StorageHandler) UpdateStorageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("UpdateStorageHandler", r)
-
-	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
-		return
-	}
-
-	// Get checked storages from the form
-	enabledStoragesList := r.Form["enabled_storages"]
-
-	// Update settings
-	settings := h.stateManager.GetSettings()
-
-	// Update the list of enabled storages
-	settings.EnabledStorages = enabledStoragesList
-
-	// Save settings
-	if err := h.stateManager.SetSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Error saving settings")
-		http.Error(w, "Error saving settings", http.StatusInternalServerError)
-		return
-	}
-
-	// Redirect to storage page with success banner
-	http.Redirect(w, r, "/admin/storage?success=1", http.StatusSeeOther)
 }
 
 // RegisterRoutes registers storage-related routes
@@ -210,7 +205,6 @@ func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
 	// Register admin storage routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/storage", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
 		"page":   h.StoragePageHandler,
-		"update": h.UpdateStorageHandler,
 		"toggle": h.ToggleStorageHandler,
 	})
 }
@@ -230,15 +224,14 @@ type cachedStorages struct {
 }
 
 var vmDiskTypes = map[string]struct{}{
-	"dir":       {},
-	"lvm":       {},
-	"lvmthin":   {},
-	"zfs":       {},
-	"rbd":       {},
-	"ceph":      {},
-	"cephfs":    {},
-	"nfs":       {},
-	"glusterfs": {},
+	"ceph":    {},
+	"cephfs":  {},
+	"dir":     {},
+	"lvm":     {},
+	"lvmthin": {},
+	"nfs":     {},
+	"rbd":     {},
+	"zfs":     {},
 }
 
 func canHoldVMDisks(s proxmox.Storage) bool {
@@ -278,37 +271,13 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 		return nil, map[string]bool{}, "", nil
 	}
 
-	// small cache (per node, without Enabled)
+	// Check cache
 	storCacheMu.Lock()
 	cached, ok := storCache[chosen]
 	storCacheMu.Unlock()
 	if ok && time.Now().Before(cached.expiresAt) && !refresh {
 		log.Debug().Str("node", chosen).Time("expiresAt", cached.expiresAt).Msg("storage cache hit")
-		// project enabled flags on top
-		enabledMap := make(map[string]bool, len(enabled))
-		for _, s := range enabled {
-			enabledMap[s] = true
-		}
-		projected := make([]map[string]interface{}, 0, len(cached.items))
-		for _, item := range cached.items {
-			cpy := make(map[string]interface{}, len(item)+1)
-			for k, v := range item {
-				cpy[k] = v
-			}
-			name, _ := cpy["Storage"].(string)
-			cpy["Enabled"] = len(enabled) == 0 || enabledMap[name]
-			projected = append(projected, cpy)
-		}
-		// sort by Enabled desc then Storage asc
-		sort.Slice(projected, func(i, j int) bool {
-			if projected[i]["Enabled"].(bool) != projected[j]["Enabled"].(bool) {
-				return projected[i]["Enabled"].(bool)
-			}
-			si := projected[i]["Storage"].(string)
-			sj := projected[j]["Storage"].(string)
-			return si < sj
-		})
-		return projected, enabledMap, chosen, nil
+		return projectEnabledFlags(cached.items, enabled), buildEnabledMap(enabled), chosen, nil
 	}
 
 	// fetch global config and node storages
@@ -321,8 +290,6 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 		cfgByName[s.Storage] = s
 	}
 
-	nodePathEscaped := url.PathEscape(chosen)
-	_ = nodePathEscaped // not used directly, kept as doc to ensure safety if path built manually
 	nodeStorages, err := proxmox.GetNodeStorages(client, chosen)
 	if err != nil {
 		return nil, nil, chosen, err
@@ -377,36 +344,11 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 		base = append(base, item)
 	}
 
-	// update cache
+	// Update cache
 	storCacheMu.Lock()
 	storCache[chosen] = cachedStorages{items: base, expiresAt: time.Now().Add(cacheTTL)}
 	storCacheMu.Unlock()
 	log.Debug().Str("node", chosen).Int("items", len(base)).Dur("ttl", cacheTTL).Msg("storage cache updated")
 
-	// project enabled flags and sort
-	enabledMap := make(map[string]bool, len(enabled))
-	for _, s := range enabled {
-		enabledMap[s] = true
-	}
-	projected := make([]map[string]interface{}, 0, len(base))
-	for _, item := range base {
-		cpy := make(map[string]interface{}, len(item)+1)
-		for k, v := range item {
-			cpy[k] = v
-		}
-		name, _ := cpy["Storage"].(string)
-		cpy["Enabled"] = len(enabled) == 0 || enabledMap[name]
-		projected = append(projected, cpy)
-	}
-
-	sort.Slice(projected, func(i, j int) bool {
-		if projected[i]["Enabled"].(bool) != projected[j]["Enabled"].(bool) {
-			return projected[i]["Enabled"].(bool)
-		}
-		si := projected[i]["Storage"].(string)
-		sj := projected[j]["Storage"].(string)
-		return si < sj
-	})
-
-	return projected, enabledMap, chosen, nil
+	return projectEnabledFlags(base, enabled), buildEnabledMap(enabled), chosen, nil
 }

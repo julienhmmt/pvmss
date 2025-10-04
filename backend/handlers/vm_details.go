@@ -38,15 +38,26 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/vm/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.CreateVMPage(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
-	router.POST("/api/vm/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.CreateVMHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+
+	// VM creation with CSRF protection
+	router.POST("/api/vm/create", SecureFormHandler("CreateVM",
+		HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateVMHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
 
 	// VM details and actions routes
 	router.GET("/vm/details/:vmid", RequireAuthHandle(h.VMDetailsHandler))
-	router.POST("/vm/update/description", RequireAuthHandle(h.UpdateVMDescriptionHandler))
-	router.POST("/vm/update/tags", RequireAuthHandle(h.UpdateVMTagsHandler))
-	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))
+
+	router.POST("/vm/update/description", SecureFormHandler("UpdateVMDescription",
+		RequireAuthHandle(h.UpdateVMDescriptionHandler),
+	))
+	router.POST("/vm/update/tags", SecureFormHandler("UpdateVMTags",
+		RequireAuthHandle(h.UpdateVMTagsHandler),
+	))
+	router.POST("/vm/action", SecureFormHandler("VMAction",
+		RequireAuthHandle(h.VMActionHandler),
+	))
 
 	// VM deletion routes
 	router.GET("/vm/delete/:vmid", RequireAuthHandle(h.VMDeleteConfirmHandler))

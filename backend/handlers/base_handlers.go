@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rs/zerolog"
-
 	"pvmss/logger"
 	"pvmss/state"
 )
@@ -23,14 +21,8 @@ func NewBaseAdminHandler(sm state.StateManager) *BaseAdminHandler {
 	return &BaseAdminHandler{stateManager: sm}
 }
 
-// GetStateManager returns the state manager
 func (b *BaseAdminHandler) GetStateManager() state.StateManager {
 	return b.stateManager
-}
-
-// CreateLogger creates a handler logger with standard naming
-func (b *BaseAdminHandler) CreateLogger(handlerName string, r *http.Request) zerolog.Logger {
-	return CreateHandlerLogger(handlerName, r)
 }
 
 // ValidateAdminAccess checks if the user has admin access

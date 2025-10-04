@@ -26,6 +26,51 @@ func NewTagsHandler(sm state.StateManager) *TagsHandler {
 
 var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
 
+// buildTagSuccessMessage creates success message from query parameters
+func buildTagSuccessMessage(r *http.Request) string {
+	if r.URL.Query().Get("success") == "" {
+		return ""
+	}
+
+	action := r.URL.Query().Get("action")
+	tag := r.URL.Query().Get("tag")
+
+	switch action {
+	case "create":
+		return "Tag '" + tag + "' created"
+	case "delete":
+		return "Tag '" + tag + "' deleted"
+	default:
+		return "Tags updated"
+	}
+}
+
+// tagExists checks if a tag exists in the tags list (case-insensitive)
+func tagExists(tags []string, tagName string) bool {
+	for _, tag := range tags {
+		if strings.EqualFold(tag, tagName) {
+			return true
+		}
+	}
+	return false
+}
+
+// removeTag removes a tag from the list (case-insensitive)
+func removeTag(tags []string, tagName string) []string {
+	result := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if !strings.EqualFold(tag, tagName) {
+			result = append(result, tag)
+		}
+	}
+	return result
+}
+
+// validateTagName validates tag name format
+func validateTagName(tagName string) bool {
+	return tagNameRegex.MatchString(tagName)
+}
+
 // validateTagDeletion validates tag deletion parameters and returns the validated tag name
 func (h *TagsHandler) validateTagDeletion(tagName string, checkExists bool) (string, bool) {
 	log := logger.Get().With().Str("function", "TagsValidation").Logger()
@@ -36,7 +81,7 @@ func (h *TagsHandler) validateTagDeletion(tagName string, checkExists bool) (str
 		return "", false
 	}
 
-	if !tagNameRegex.MatchString(tagName) {
+	if !validateTagName(tagName) {
 		log.Warn().Str("tag", tagName).Msg("Invalid tag name format")
 		return "", false
 	}
@@ -47,18 +92,8 @@ func (h *TagsHandler) validateTagDeletion(tagName string, checkExists bool) (str
 	}
 
 	if checkExists {
-		gs := h.stateManager
-		settings := gs.GetSettings()
-
-		found := false
-		for _, tag := range settings.Tags {
-			if strings.EqualFold(tag, tagName) {
-				found = true
-				break
-			}
-		}
-
-		if !found {
+		settings := h.stateManager.GetSettings()
+		if !tagExists(settings.Tags, tagName) {
 			log.Warn().Str("tag", tagName).Msg("Tag not found")
 			return "", false
 		}
@@ -77,25 +112,22 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	tagName := strings.TrimSpace(r.FormValue("tag"))
 
-	if !tagNameRegex.MatchString(tagName) {
+	if !validateTagName(tagName) {
 		log.Warn().Str("tag", tagName).Msg("Invalid tag name")
 		http.Error(w, "Invalid tag name. Use only letters, numbers, hyphens, and underscores (1-50 characters).", http.StatusBadRequest)
 		return
 	}
 
-	gs := h.stateManager
-	settings := gs.GetSettings()
+	settings := h.stateManager.GetSettings()
 
-	for _, existingTag := range settings.Tags {
-		if strings.EqualFold(existingTag, tagName) {
-			log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
-			http.Redirect(w, r, "/admin/tags?error=exists", http.StatusSeeOther)
-			return
-		}
+	if tagExists(settings.Tags, tagName) {
+		log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
+		http.Redirect(w, r, "/admin/tags?error=exists", http.StatusSeeOther)
+		return
 	}
 
 	settings.Tags = append(settings.Tags, tagName)
-	if err := gs.SetSettings(settings); err != nil {
+	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
 		http.Error(w, "Internal server error.", http.StatusInternalServerError)
 		return
@@ -119,19 +151,12 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	gs := h.stateManager
-	settings := gs.GetSettings()
+	settings := h.stateManager.GetSettings()
 
 	// Remove the tag from settings
-	var newTags []string
-	for _, tag := range settings.Tags {
-		if !strings.EqualFold(tag, tagName) {
-			newTags = append(newTags, tag)
-		}
-	}
+	settings.Tags = removeTag(settings.Tags, tagName)
 
-	settings.Tags = newTags
-	if err := gs.SetSettings(settings); err != nil {
+	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings after deletion")
 		http.Error(w, "Internal server error.", http.StatusInternalServerError)
 		return
@@ -157,39 +182,24 @@ func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Req
 
 // TagsPageHandler handles the rendering of the admin tags page.
 func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	gs := h.stateManager
-	settings := gs.GetSettings()
+	settings := h.stateManager.GetSettings()
 
 	sortOrder := r.URL.Query().Get("sort") // "asc" or "desc"
 	if sortOrder != "desc" {
 		sortOrder = "asc" // default to ascending
 	}
 
-	// Success banner via query params
-	success := r.URL.Query().Get("success") != ""
-	act := r.URL.Query().Get("action")
-	tag := r.URL.Query().Get("tag")
-	var successMsg string
-	if success {
-		switch act {
-		case "create":
-			successMsg = "Tag '" + tag + "' created"
-		case "delete":
-			successMsg = "Tag '" + tag + "' deleted"
-		default:
-			successMsg = "Tags updated"
-		}
-	}
+	successMsg := buildTagSuccessMessage(r)
 
 	// Proxmox status for consistent UI (even if tags don't need Proxmox)
-	proxmoxConnected, proxmoxMsg := gs.GetProxmoxStatus()
+	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
 
 	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available
 	// Proxmox typically separates tags with ';' but some environments may contain
 	// comma-separated lists inside a single part (e.g. "pvmss,test"). We split on
 	// both ';' and ',' to ensure each individual tag is counted.
 	tagCounts := make(map[string]int)
-	if client := gs.GetProxmoxClient(); client != nil {
+	if client := h.stateManager.GetProxmoxClient(); client != nil {
 		if vms, err := proxmox.GetVMsWithContext(r.Context(), client); err == nil {
 			for i := range vms {
 				if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, vms[i].Node, vms[i].VMID); err == nil {
@@ -260,33 +270,35 @@ func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
 		h.DeleteTagConfirmHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
-	router.POST("/tags", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-	router.POST("/tags/delete", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.DeleteTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	// Admin tag creation with CSRF protection
+	router.POST("/tags", SecureFormHandler("CreateTag",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
+
+	// Admin tag deletion with CSRF protection
+	router.POST("/tags/delete", SecureFormHandler("DeleteTag",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.DeleteTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
 }
 
 // EnsureDefaultTag ensures that the default tag "pvmss" exists.
 func EnsureDefaultTag(sm state.StateManager) error {
-	gs := sm
-	settings := gs.GetSettings()
+	settings := sm.GetSettings()
 	if settings == nil {
-		// Do nothing if settings are not yet loaded
-		return nil
+		return nil // Settings not yet loaded
 	}
 
 	defaultTag := "pvmss"
-	for _, tag := range settings.Tags {
-		if strings.EqualFold(tag, defaultTag) {
-			return nil // The tag already exists
-		}
+	if tagExists(settings.Tags, defaultTag) {
+		return nil // Tag already exists
 	}
 
 	// Add the default tag and save
 	settings.Tags = append(settings.Tags, defaultTag)
-	log := logger.Get()
-	log.Info().Msg("Default tag 'pvmss' added to settings.")
-	return gs.SetSettings(settings)
+	logger.Get().Info().Msg("Default tag 'pvmss' added to settings.")
+	return sm.SetSettings(settings)
 }

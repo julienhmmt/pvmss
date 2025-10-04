@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -13,61 +12,38 @@ import (
 	"pvmss/proxmox"
 )
 
-// GetAllISOsHandler retrieves all available ISO images
-func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Short-circuit when offline to keep UI responsive
-	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
-	client := h.stateManager.GetProxmoxClient()
-	if !proxmoxConnected || client == nil {
-		logger.Get().Info().Msg("GetAllISOsHandler: Proxmox not connected, returning empty ISO list")
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "offline",
-			"isos":   []interface{}{},
-		}); err != nil {
-			logger.Get().Error().Err(err).Msg("Failed to encode offline ISO response")
-		}
-		return
-	}
+// ISOEntry represents an ISO file entry
+type ISOEntry struct {
+	Node    string      `json:"node"`
+	Storage string      `json:"storage"`
+	Volid   string      `json:"volid"`
+	Size    interface{} `json:"size"`
+	Format  string      `json:"format"`
+	Enabled bool        `json:"enabled,omitempty"`
+}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-	defer cancel()
-
-	// Collect all ISOs (reuse logic from GetAllISOsHandler)
+// fetchAllISOs retrieves all ISOs from all nodes and storages
+func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.ClientInterface, checkEnabled bool) ([]ISOEntry, error) {
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get nodes")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to get nodes",
-		}); err != nil {
-			logger.Get().Error().Err(err).Msg("Failed to encode nodes error response")
-		}
-		return
+		return nil, err
 	}
 
-	// Get all storages that can contain ISOs
 	storages, err := proxmox.GetStoragesWithContext(ctx, client)
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get storages")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  "error",
-			"message": "Failed to get storages",
-		}); err != nil {
-			logger.Get().Error().Err(err).Msg("Failed to encode storages error response")
-		}
-		return
+		return nil, err
 	}
 
-	var allISOs []map[string]interface{}
+	var allISOs []ISOEntry
+	var settings = h.stateManager.GetSettings()
+	if !checkEnabled {
+		settings = nil // Don't check enabled status if not requested
+	}
 
 	// For each node, get ISOs from each compatible storage
 	for _, nodeName := range nodes {
 		for _, storage := range storages {
+			// Check if storage is available on this node and supports ISO
 			isNodeInStorage := storage.Nodes == "" || strings.Contains(storage.Nodes, nodeName)
 			if !isNodeInStorage || !containsISO(storage.Content) {
 				continue
@@ -75,32 +51,38 @@ func (h *SettingsHandler) GetAllISOsHandler(w http.ResponseWriter, r *http.Reque
 
 			isoList, err := proxmox.GetISOListWithContext(ctx, client, nodeName, storage.Storage)
 			if err != nil {
-				logger.Get().Debug().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Failed to get ISO list for storage")
+				logger.Get().Debug().Err(err).
+					Str("node", nodeName).
+					Str("storage", storage.Storage).
+					Msg("Failed to get ISO list for storage")
 				continue
 			}
 
-			// Convert ISOs to response format
 			for _, iso := range isoList {
-				isoEntry := map[string]interface{}{
-					"node":    nodeName,
-					"storage": storage.Storage,
-					"volid":   iso.VolID,
-					"size":    iso.Size,
-					"format":  iso.Format,
+				entry := ISOEntry{
+					Node:    nodeName,
+					Storage: storage.Storage,
+					Volid:   iso.VolID,
+					Size:    iso.Size,
+					Format:  iso.Format,
 				}
-				allISOs = append(allISOs, isoEntry)
+
+				// Check if enabled (if requested)
+				if checkEnabled && settings != nil {
+					for _, enabledISO := range settings.ISOs {
+						if enabledISO == iso.VolID {
+							entry.Enabled = true
+							break
+						}
+					}
+				}
+
+				allISOs = append(allISOs, entry)
 			}
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "success",
-		"isos":   allISOs,
-	}); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to encode ISO list response")
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	return allISOs, nil
 }
 
 // ISOPageHandler renders the ISO management page (server-rendered, no JS required)
@@ -137,10 +119,11 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	data["ISOsList"] = []ISOInfo{}
 	data["EnabledISOs"] = enabledMap
 	data["ProxmoxConnected"] = proxmoxConnected
+	data["AllISOs"] = []interface{}{}
 
+	// Return early if Proxmox not connected
 	if !proxmoxConnected {
 		data["Warning"] = "Proxmox connection unavailable. Displaying cached ISO data."
-		data["AllISOs"] = []interface{}{}
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
@@ -149,7 +132,6 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	if client == nil {
 		log.Error().Msg("Proxmox client is nil despite connection status being true")
 		data["Warning"] = "Proxmox client unavailable."
-		data["AllISOs"] = []interface{}{}
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
@@ -157,70 +139,18 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get all nodes
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	// Fetch all ISOs with enabled check
+	isos, err := h.fetchAllISOs(ctx, client, true)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get nodes for ISO page")
-		data["Warning"] = "Failed to fetch nodes from Proxmox."
-		data["AllISOs"] = []interface{}{}
+		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
+		data["Warning"] = "Failed to fetch ISOs from Proxmox."
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
-	// Get all storages that can contain ISOs
-	storages, err := proxmox.GetStoragesWithContext(ctx, client)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to get storages for ISO page")
-		data["Warning"] = "Failed to fetch storages from Proxmox."
-		data["AllISOs"] = []interface{}{}
-		renderTemplateInternal(w, r, "admin_iso", data)
-		return
-	}
+	data["AllISOs"] = isos
 
-	var allISOs []map[string]interface{}
-
-	// For each node, get ISOs from each compatible storage
-	for _, nodeName := range nodes {
-		for _, storage := range storages {
-			isNodeInStorage := storage.Nodes == "" || strings.Contains(storage.Nodes, nodeName)
-			if !isNodeInStorage || !containsISO(storage.Content) {
-				continue
-			}
-			isoList, err := proxmox.GetISOListWithContext(ctx, client, nodeName, storage.Storage)
-			if err != nil {
-				log.Debug().Err(err).Str("node", nodeName).Str("storage", storage.Storage).Msg("Failed to get ISO list for storage")
-				continue
-			}
-
-			// Convert ISOs to response format, check against current settings
-			settings := h.stateManager.GetSettings()
-			for _, iso := range isoList {
-				enabled := false
-				if settings != nil {
-					for _, enabledISO := range settings.ISOs {
-						if enabledISO == iso.VolID {
-							enabled = true
-							break
-						}
-					}
-				}
-
-				isoEntry := map[string]interface{}{
-					"node":    nodeName,
-					"storage": storage.Storage,
-					"volid":   iso.VolID,
-					"size":    iso.Size,
-					"format":  iso.Format,
-					"enabled": enabled,
-				}
-				allISOs = append(allISOs, isoEntry)
-			}
-		}
-	}
-
-	data["AllISOs"] = allISOs
-
-	log.Debug().Int("iso_count", len(allISOs)).Msg("ISO page rendered")
+	log.Debug().Int("iso_count", len(isos)).Msg("ISO page rendered")
 	renderTemplateInternal(w, r, "admin_iso", data)
 }
 
@@ -304,7 +234,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	http.Redirect(w, r, "/admin/iso", http.StatusSeeOther)
 }
 
-// RegisterRoutes registers ISO-related routes
+// RegisterISORoutes registers ISO-related routes
 func (h *SettingsHandler) RegisterISORoutes(router *httprouter.Router) {
 	routeHelpers := NewAdminPageRoutes()
 
@@ -313,10 +243,6 @@ func (h *SettingsHandler) RegisterISORoutes(router *httprouter.Router) {
 		"page":   h.ISOPageHandler,
 		"toggle": h.ToggleISOHandler,
 	})
-
-	// API endpoint for fetching ISOs
-	helpers := NewRouteHelpers()
-	helpers.RegisterAuthRoute(router, "GET", "/api/settings/iso", h.GetAllISOsHandler)
 }
 
 // containsISO checks if a storage content type can contain ISOs

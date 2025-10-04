@@ -18,7 +18,6 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
-	i18n_bundle "github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // ISOInfo represents detailed information about an ISO image.
@@ -208,14 +207,9 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	localizer := i18n.GetLocalizerFromRequest(r)
 	instance.Funcs(template.FuncMap{
 		"T": func(messageID string, args ...interface{}) template.HTML {
-			config := &i18n_bundle.LocalizeConfig{MessageID: messageID}
-			if len(args) > 0 {
-				if count, ok := args[0].(int); ok {
-					config.PluralCount = count
-				}
-			}
-			localized, err := localizer.Localize(config)
-			if err != nil || localized == "" {
+			// Use pvmss/i18n.Localize wrapper instead of direct bundle call
+			localized := i18n.Localize(localizer, messageID)
+			if localized == "" {
 				return template.HTML(messageID)
 			}
 			return template.HTML(localized)

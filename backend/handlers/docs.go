@@ -7,187 +7,179 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
+	"sync"
 
+	"pvmss/i18n"
 	"pvmss/logger"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/julienschmidt/httprouter"
 )
 
-// DocsHandler handles documentation routes
+// CachedDoc holds a cached rendered documentation page
+type CachedDoc struct {
+	HTML template.HTML
+	Lang string
+}
+
+// DocsHandler handles documentation routes with caching
 type DocsHandler struct {
 	docsDir string
+	cache   map[string]*CachedDoc // key: "docType.lang"
+	mu      sync.RWMutex
 }
 
 // NewDocsHandler creates a new instance of DocsHandler
 func NewDocsHandler() *DocsHandler {
-	log := logger.Get().With().
-		Str("component", "DocsHandler").
-		Str("function", "NewDocsHandler").
-		Logger()
-
-	log.Debug().Msg("Searching for documentation directory")
+	log := logger.Get()
 
 	docsDir, err := findDocsDir()
 	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("Failed to find documentation directory")
+		log.Error().Err(err).Msg("Failed to find documentation directory")
 	} else {
-		log.Info().
-			Str("docs_dir", docsDir).
-			Msg("Successfully found documentation directory")
+		log.Info().Str("docs_dir", docsDir).Msg("Found documentation directory")
 	}
 
 	return &DocsHandler{
 		docsDir: docsDir,
+		cache:   make(map[string]*CachedDoc),
 	}
 }
 
-// DocsHandler handles requests for documentation
+// DocsHandler handles requests for documentation with caching
 func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// Create a logger for this request
-	log := CreateHandlerLogger("DocsHandler", r).With().
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
-
-	log.Debug().Msg("Processing documentation request")
+	log := CreateHandlerLogger("DocsHandler", r)
 
 	// Check if the documentation directory is available
 	if h.docsDir == "" {
-		errMsg := "Documentation directory is not configured"
-		log.Error().Msg(errMsg)
+		log.Error().Msg("Documentation directory not configured")
 		http.Error(w, "Documentation not available", http.StatusServiceUnavailable)
 		return
 	}
 
-	// Determine the language (default: en)
+	// Get language from query or use i18n detection
 	lang := r.URL.Query().Get("lang")
 	if lang == "" {
-		lang = "en"
-		log.Debug().Msg("No language specified, using English by default")
-	} else {
-		log.Debug().Str("lang", lang).Msg("Language specified in request")
+		lang = i18n.GetLanguage(r)
 	}
+	// Sanitize language code (security)
+	lang = sanitizeLangCode(lang)
 
 	// Determine the documentation type (admin or user)
 	docType := ps.ByName("type")
 	if docType == "" {
 		docType = "user"
-		log.Debug().Msg("No documentation type specified, using 'user' by default")
-	} else {
-		log.Debug().Str("doc_type", docType).Msg("Documentation type specified")
+	}
+	// Sanitize doc type (security)
+	if docType != "user" && docType != "admin" {
+		log.Warn().Str("invalid_type", docType).Msg("Invalid doc type, using 'user'")
+		docType = "user"
 	}
 
-	// Build the path to the documentation file
-	docFile := filepath.Join(h.docsDir, fmt.Sprintf("%s.%s.md", docType, lang))
+	// Check cache first
+	cacheKey := fmt.Sprintf("%s.%s", docType, lang)
+	h.mu.RLock()
+	cached, found := h.cache[cacheKey]
+	h.mu.RUnlock()
 
-	log.Debug().
-		Str("requested_file", docFile).
-		Msg("Looking for documentation file")
-
-	// Check if the file exists
-	if _, err := os.Stat(docFile); os.IsNotExist(err) {
-		log.Debug().
-			Str("file", docFile).
-			Msg("Documentation file not found, trying with English language")
-
-		// Try with the default language if the file does not exist
-		if lang != "en" {
-			docFile = filepath.Join(h.docsDir, fmt.Sprintf("%s.en.md", docType))
-			log.Debug().
-				Str("fallback_file", docFile).
-				Msg("Trying with the English fallback file")
-
-			// Check again after language change
-			if _, err := os.Stat(docFile); os.IsNotExist(err) {
-				log.Warn().
-					Str("file", docFile).
-					Str("doc_type", docType).
-					Str("lang", "en").
-					Msg("Documentation file not found, even in English")
-
-				http.NotFound(w, r)
-				return
-			}
-		} else {
-			log.Warn().
-				Str("file", docFile).
-				Msg("Documentation file not found and no alternative available")
-
-			http.NotFound(w, r)
-			return
+	if found {
+		log.Debug().Str("cache_key", cacheKey).Msg("Serving cached documentation")
+		// Serve from cache
+		data := map[string]interface{}{
+			"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), "Docs.Title"),
+			"Content":     cached.HTML,
+			"CurrentLang": lang,
+			"DocType":     docType,
 		}
-	}
-
-	// Read the Markdown file content
-	log.Debug().
-		Str("file", docFile).
-		Msg("Reading documentation file")
-
-	content, err := os.ReadFile(docFile)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("file", docFile).
-			Msg("Failed to read documentation file")
-
-		http.Error(w, "Internal server error while reading documentation", http.StatusInternalServerError)
+		renderTemplateInternal(w, r, "docs", data)
+		log.Info().Str("type", docType).Str("lang", lang).Msg("Served cached documentation")
 		return
 	}
 
-	log.Debug().
-		Int("file_size_bytes", len(content)).
-		Msg("Successfully read documentation file content")
+	// Cache miss - load and convert documentation
+	docFile, finalLang := h.findDocFile(docType, lang)
+	if docFile == "" {
+		log.Warn().Str("type", docType).Str("lang", lang).Msg("Documentation not found")
+		http.NotFound(w, r)
+		return
+	}
+
+	// Read and convert markdown
+	content, err := os.ReadFile(docFile)
+	if err != nil {
+		log.Error().Err(err).Str("file", docFile).Msg("Failed to read documentation")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
 	// Convert Markdown to HTML
-	htmlContent := markdown.ToHTML(content, nil, nil)
+	htmlContent := template.HTML(markdown.ToHTML(content, nil, nil))
 
-	log.Debug().
-		Int("html_size_bytes", len(htmlContent)).
-		Msg("Successfully converted Markdown to HTML")
+	// Store in cache
+	h.mu.Lock()
+	h.cache[cacheKey] = &CachedDoc{
+		HTML: htmlContent,
+		Lang: finalLang,
+	}
+	h.mu.Unlock()
+
+	log.Debug().Str("cache_key", cacheKey).Msg("Documentation cached")
 
 	// Prepare data for the template
 	data := map[string]interface{}{
-		"Content":     template.HTML(htmlContent),
-		"CurrentLang": lang,
+		"Content":     htmlContent,
+		"CurrentLang": finalLang,
 		"DocType":     docType,
 	}
 
-	log.Debug().
-		Str("doc_type", docType).
-		Str("lang", lang).
-		Msg("Preparing data for template rendering")
-
-	// Load translations
-	data["Title"] = data["Docs.Title"]
-
-	log.Debug().Msg("Calling documentation template renderer")
 	renderTemplateInternal(w, r, "docs", data)
+	log.Info().Str("type", docType).Str("lang", finalLang).Msg("Served documentation")
+}
 
-	log.Info().
-		Str("doc_type", docType).
-		Str("lang", lang).
-		Msg("Successfully displayed documentation")
+// findDocFile finds the documentation file with language fallback
+func (h *DocsHandler) findDocFile(docType, lang string) (string, string) {
+	// Try requested language first
+	docFile := filepath.Join(h.docsDir, fmt.Sprintf("%s.%s.md", docType, lang))
+	if _, err := os.Stat(docFile); err == nil {
+		return docFile, lang
+	}
+
+	// Fallback to English
+	if lang != "en" {
+		docFile = filepath.Join(h.docsDir, fmt.Sprintf("%s.en.md", docType))
+		if _, err := os.Stat(docFile); err == nil {
+			return docFile, "en"
+		}
+	}
+
+	return "", ""
+}
+
+// sanitizeLangCode ensures the language code is safe (2-letter code only)
+func sanitizeLangCode(lang string) string {
+	lang = strings.ToLower(strings.TrimSpace(lang))
+	if len(lang) != 2 || !isAlpha(lang) {
+		return "en"
+	}
+	return lang
+}
+
+// isAlpha checks if string contains only letters
+func isAlpha(s string) bool {
+	for _, r := range s {
+		if r < 'a' || r > 'z' {
+			return false
+		}
+	}
+	return true
 }
 
 // findDocsDir searches for the documentation directory
 func findDocsDir() (string, error) {
-	log := logger.Get().With().
-		Str("function", "findDocsDir").
-		Logger()
+	log := logger.Get()
 
-	log.Debug().Msg("Searching for documentation directory")
-
-	// Get the path of the calling source file
-	_, filename, _, ok := runtime.Caller(0)
-	if ok {
-		log.Debug().
-			Str("caller_file", filename).
-			Msg("Identified caller file")
-	}
-
-	// List of possible locations for the documentation directory
+	// Build list of possible locations
 	possibleDirs := []string{
 		"./docs",
 		"../docs",
@@ -197,86 +189,45 @@ func findDocsDir() (string, error) {
 	}
 
 	// Add the directory of the running binary
-	execDir, err := os.Executable()
-	if err == nil {
-		execDir = filepath.Dir(execDir)
-		docsPath := filepath.Join(execDir, "docs")
-		possibleDirs = append(possibleDirs, docsPath)
-		log.Debug().
-			Str("exec_dir", execDir).
-			Str("docs_path", docsPath).
-			Msg("Execution directory added to search locations")
-	} else {
-		log.Warn().
-			Err(err).
-			Msg("Could not determine execution directory")
+	if execPath, err := os.Executable(); err == nil {
+		possibleDirs = append(possibleDirs, filepath.Join(filepath.Dir(execPath), "docs"))
 	}
 
-	// Add the source file directory
-	_, filename, _, ok = runtime.Caller(0)
-	if ok {
+	// Add the source file directory (call runtime.Caller only once)
+	if _, filename, _, ok := runtime.Caller(0); ok {
 		srcDir := filepath.Dir(filepath.Dir(filename))
 		possibleDirs = append(possibleDirs, filepath.Join(srcDir, "docs"))
 	}
 
 	// Check each possible location
 	for _, dir := range possibleDirs {
-		log.Debug().
-			Str("checking_dir", dir).
-			Msg("Checking documentation location")
-
-		info, err := os.Stat(dir)
-		if err == nil && info.IsDir() {
-			log.Info().
-				Str("found_dir", dir).
-				Msg("Documentation directory found")
-
-			// Check that the directory contains documentation files
-			entries, err := os.ReadDir(dir)
-			if err == nil && len(entries) > 0 {
-				log.Info().
-					Str("dir", dir).
-					Int("file_count", len(entries)).
-					Msg("Valid documentation directory with files found")
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			// Verify directory contains files
+			if entries, err := os.ReadDir(dir); err == nil && len(entries) > 0 {
+				log.Info().Str("docs_dir", dir).Int("files", len(entries)).Msg("Found docs directory")
 				return dir, nil
 			}
-
-			log.Warn().
-				Str("dir", dir).
-				Msg("Directory found but empty or inaccessible")
 		}
 	}
 
 	// If no valid directory was found
-	return "", fmt.Errorf("could not find documentation directory in the following locations: %v", possibleDirs)
+	return "", fmt.Errorf("documentation directory not found in: %v", possibleDirs)
 }
 
 // RegisterRoutes registers documentation routes
 func (h *DocsHandler) RegisterRoutes(router *httprouter.Router) {
-	log := logger.Get().With().
-		Str("component", "DocsHandler").
-		Str("function", "RegisterRoutes").
-		Logger()
-
 	if router == nil {
-		log.Error().Msg("Router is nil, cannot register documentation routes")
+		logger.Get().Error().Msg("Router is nil, cannot register documentation routes")
 		return
 	}
-
-	log.Debug().Msg("Registering documentation routes")
 
 	// Route for user and admin documentation
 	router.GET("/docs/:type", h.DocsHandler)
 
-	// Alias for user documentation
+	// Alias for user documentation (default)
 	router.GET("/docs", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		log.Debug().Msg("Redirecting to default user documentation")
-		h.DocsHandler(w, r, httprouter.Params{
-			{Key: "type", Value: "user"},
-		})
+		h.DocsHandler(w, r, httprouter.Params{{Key: "type", Value: "user"}})
 	})
 
-	log.Info().
-		Strs("routes", []string{"/docs", "/docs/:type"}).
-		Msg("Documentation routes registered successfully")
+	logger.Get().Info().Msg("Documentation routes registered: /docs, /docs/:type")
 }
