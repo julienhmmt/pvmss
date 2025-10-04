@@ -43,7 +43,7 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	})))
 
 	// VM details and actions routes
-	router.GET("/vm/details/:vmid", h.VMDetailsHandler)
+	router.GET("/vm/details/:vmid", RequireAuthHandle(h.VMDetailsHandler))
 	router.POST("/vm/update/description", RequireAuthHandle(h.UpdateVMDescriptionHandler))
 	router.POST("/vm/update/tags", RequireAuthHandle(h.UpdateVMTagsHandler))
 	router.POST("/vm/action", RequireAuthHandle(h.VMActionHandler))

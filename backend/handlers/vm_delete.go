@@ -162,10 +162,11 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM deletion")
 	}
 
-	// Redirect to profile page with success message
+	// Redirect to profile page with success message and refresh parameter
 	mh := NewMessageHandlers()
 	params := map[string]string{
-		"lang": i18n.GetLanguage(r),
+		"lang":    i18n.GetLanguage(r),
+		"refresh": "1",
 	}
 	mh.RedirectWithSuccess(w, r, "/profile", i18n.Localize(i18n.GetLocalizerFromRequest(r), "VMDelete.Success"), params)
 }

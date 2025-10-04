@@ -4,13 +4,13 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
+	"pvmss/proxmox"
 	"pvmss/state"
 )
 
@@ -107,23 +107,19 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 }
 
 // fetchUserVMs retrieves all VMs in the user's pool with their status
-func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client interface {
-	GetJSON(ctx context.Context, path string, result interface{}) error
-}, poolName string) []VMInfo {
+func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.ClientInterface, poolName string) []VMInfo {
 	log := CreateHandlerLogger("fetchUserVMs", nil)
 
 	// Create context with timeout
 	fetchCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	// Fetch pool details
+	// First, get pool members to know which VMIDs belong to this pool
 	var poolResp struct {
 		Data struct {
 			Members []struct {
 				Type     string `json:"type"`
 				VMID     int    `json:"vmid"`
-				Node     string `json:"node"`
-				Name     string `json:"name"`
 				Template int    `json:"template"`
 			} `json:"members"`
 		} `json:"data"`
@@ -134,43 +130,56 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client interface {
 		return []VMInfo{}
 	}
 
-	// Collect VMs (exclude templates and non-QEMU resources)
-	vms := make([]VMInfo, 0)
+	// Build a set of VMIDs in this pool (excluding templates and non-QEMU)
+	poolVMIDs := make(map[int]bool)
 	for _, member := range poolResp.Data.Members {
-		// Skip templates and non-VM resources
 		if member.Template == 1 || member.VMID <= 0 {
 			continue
 		}
-		if !strings.EqualFold(member.Type, "qemu") {
-			continue
+		if strings.EqualFold(member.Type, "qemu") {
+			poolVMIDs[member.VMID] = true
 		}
-
-		vm := VMInfo{
-			VMID: member.VMID,
-			Name: member.Name,
-			Node: member.Node,
-		}
-
-		// Fetch VM status
-		if member.Node != "" {
-			statusPath := "/nodes/" + url.PathEscape(member.Node) + "/qemu/" + strconv.Itoa(member.VMID) + "/status/current"
-			var statusResp struct {
-				Data struct {
-					Status string `json:"status"`
-				} `json:"data"`
-			}
-			if err := client.GetJSON(fetchCtx, statusPath, &statusResp); err == nil {
-				vm.Status = statusResp.Data.Status
-			} else {
-				log.Warn().Err(err).Int("vmid", member.VMID).Msg("Failed to fetch VM status")
-				vm.Status = "unknown"
-			}
-		} else {
-			vm.Status = "unknown"
-		}
-
-		vms = append(vms, vm)
 	}
+
+	if len(poolVMIDs) == 0 {
+		log.Info().Str("pool", poolName).Msg("No VMs found in pool")
+		return []VMInfo{}
+	}
+
+	// Get all VMs with their status (already populated by GetVMsWithContext)
+	allVMs, err := proxmox.GetVMsWithContext(fetchCtx, client)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get all VMs")
+		return []VMInfo{}
+	}
+
+	// Filter VMs to only include those in the user's pool
+	vms := make([]VMInfo, 0)
+	for _, vm := range allVMs {
+		if poolVMIDs[vm.VMID] {
+			status := vm.Status
+			if status == "" {
+				// Fallback: if status is empty and uptime is 0, assume stopped
+				if vm.Uptime == 0 {
+					status = "stopped"
+				} else {
+					status = "unknown"
+				}
+			}
+
+			vms = append(vms, VMInfo{
+				VMID:   vm.VMID,
+				Name:   vm.Name,
+				Node:   vm.Node,
+				Status: strings.ToLower(status),
+			})
+		}
+	}
+
+	log.Info().
+		Str("pool", poolName).
+		Int("vm_count", len(vms)).
+		Msg("Successfully fetched user VMs")
 
 	return vms
 }
