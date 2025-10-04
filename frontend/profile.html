@@ -1,0 +1,180 @@
+{{define "profile"}}
+{{$lang := .Lang}}
+
+<!-- User Profile Page -->
+<section class="section">
+    <div class="container">
+        <div class="columns is-centered">
+            <div class="column is-10">
+                <div class="card admin-card">
+                    <header class="card-header brand-header is-align-items-center">
+                        <p class="card-header-title">
+                            <span class="icon"><i class="fas fa-user-circle"></i></span>&nbsp;{{T "Profile.Title"}}
+                        </p>
+                    </header>
+                    <div class="card-content">
+                        <!-- User Information -->
+                        <div class="box has-background-light mb-5">
+                            <div class="columns is-mobile is-multiline">
+                                <div class="column is-12-mobile is-6-tablet">
+                                    <div class="field">
+                                        <label class="label has-text-grey">{{T "Profile.Username"}}</label>
+                                        <p class="is-size-5 has-text-weight-semibold">
+                                            <span class="icon-text">
+                                                <span class="icon has-text-primary">
+                                                    <i class="fas fa-user"></i>
+                                                </span>
+                                                <span>{{.Username}}</span>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="column is-12-mobile is-6-tablet">
+                                    <div class="field">
+                                        <label class="label has-text-grey">{{T "Profile.Pool"}}</label>
+                                        <p class="is-size-5 has-text-weight-semibold">
+                                            <span class="icon-text">
+                                                <span class="icon has-text-info">
+                                                    <i class="fas fa-layer-group"></i>
+                                                </span>
+                                                <span>{{.PoolName}}</span>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- VMs Section -->
+                        <div class="content">
+                            <h2 class="title is-5 mb-4">
+                                <span class="icon-text">
+                                    <span class="icon">
+                                        <i class="fas fa-server"></i>
+                                    </span>
+                                    <span>{{T "Profile.MyVMs"}}</span>
+                                </span>
+                            </h2>
+
+                            {{if .ProxmoxError}}
+                            {{template "notification" (dict 
+                              "Type" "warning" 
+                              "Title" (T "Proxmox.ConnectionError")
+                              "Message" (T "Proxmox.NotConnected") 
+                              "Icon" "fas fa-exclamation-triangle" 
+                              "Dismissible" false 
+                              "Live" "polite"
+                            )}}
+                            {{else if .VMs}}
+                            <div class="table-container">
+                                <table class="table is-fullwidth is-hoverable is-striped">
+                                    <thead>
+                                        <tr>
+                                            <th class="has-text-centered">{{T "Profile.VMID"}}</th>
+                                            <th>{{T "Profile.VMName"}}</th>
+                                            <th class="has-text-centered">{{T "Profile.Node"}}</th>
+                                            <th class="has-text-centered">{{T "Profile.Status"}}</th>
+                                            <th class="has-text-centered">{{T "Profile.Actions"}}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{range .VMs}}
+                                        <tr>
+                                            <td class="has-text-centered has-text-weight-semibold">
+                                                {{.VMID}}
+                                            </td>
+                                            <td>
+                                                <span class="icon-text">
+                                                    <span class="icon has-text-grey">
+                                                        <i class="fas fa-desktop"></i>
+                                                    </span>
+                                                    <span>{{if .Name}}{{.Name}}{{else}}-{{end}}</span>
+                                                </span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <span class="tag is-light">{{.Node}}</span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <span class="tag {{if eq .Status "running"}}is-success{{else if eq .Status "stopped"}}is-danger{{else}}is-warning{{end}}">
+                                                    {{if eq .Status "running"}}
+                                                        <span class="icon">
+                                                            <i class="fas fa-circle-play"></i>
+                                                        </span>
+                                                        <span>{{T "Status.Running"}}</span>
+                                                    {{else if eq .Status "stopped"}}
+                                                        <span class="icon">
+                                                            <i class="fas fa-circle-stop"></i>
+                                                        </span>
+                                                        <span>{{T "Status.Stopped"}}</span>
+                                                    {{else if eq .Status "paused"}}
+                                                        <span class="icon">
+                                                            <i class="fas fa-circle-pause"></i>
+                                                        </span>
+                                                        <span>{{T "Status.Paused"}}</span>
+                                                    {{else}}
+                                                        <span class="icon">
+                                                            <i class="fas fa-circle-question"></i>
+                                                        </span>
+                                                        <span>{{T "Status.Unknown"}}</span>
+                                                    {{end}}
+                                                </span>
+                                            </td>
+                                            <td class="has-text-centered">
+                                                <a href="{{withLang (printf "/vm/details/%d" .VMID) $lang}}" 
+                                                   class="button is-small is-primary">
+                                                    <span class="icon is-small">
+                                                        <i class="fas fa-circle-info"></i>
+                                                    </span>
+                                                    <span>{{T "Profile.ViewDetails"}}</span>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {{end}}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {{else}}
+                            <div class="notification is-info is-light">
+                                <div class="content has-text-centered">
+                                    <p class="is-size-5">
+                                        <span class="icon is-large">
+                                            <i class="fas fa-inbox fa-2x"></i>
+                                        </span>
+                                    </p>
+                                    <p class="has-text-weight-semibold">{{T "Profile.NoVMs"}}</p>
+                                    <p class="has-text-grey">{{T "Profile.NoVMsMessage"}}</p>
+                                    <div class="buttons is-centered mt-4">
+                                        <a href="{{withLang "/vm/create" $lang}}" class="button is-primary">
+                                            <span class="icon">
+                                                <i class="fas fa-plus"></i>
+                                            </span>
+                                            <span>{{T "Profile.CreateFirstVM"}}</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="buttons is-centered mt-5">
+                            <a href="{{withLang "/vm/create" $lang}}" class="button is-primary">
+                                <span class="icon">
+                                    <i class="fas fa-plus-square"></i>
+                                </span>
+                                <span>{{T "Profile.CreateVM"}}</span>
+                            </a>
+                            <a href="{{withLang "/search" $lang}}" class="button is-link is-light">
+                                <span class="icon">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <span>{{T "Profile.SearchVM"}}</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{{end}}

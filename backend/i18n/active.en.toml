@@ -207,7 +207,7 @@ other = "Administration"
 ["Navbar.AdminDocs"]
 other = "Admin Docs"
 ["Navbar.CreateVM"]
-other = "Create VM"
+other = "Create a VM"
 ["Navbar.Documentation"]
 other = "Documentation"
 ["Navbar.Home"]
@@ -217,9 +217,45 @@ other = "Login"
 ["Navbar.Logout"]
 other = "Logout"
 ["Navbar.SearchVM"]
-other = "Search VM"
+other = "Search VMs"
 ["Navbar.UserDocs"]
 other = "User docs"
+["Navbar.Profile"]
+other = "Profile"
+
+# ===========
+# Profile
+# ===========
+["Profile.Title"]
+other = "My Profile"
+["Profile.Username"]
+other = "Username"
+["Profile.Pool"]
+other = "Pool"
+["Profile.MyVMs"]
+other = "My virtual machines"
+["Profile.VMID"]
+other = "VM ID"
+["Profile.VMName"]
+other = "VM Name"
+["Profile.Node"]
+other = "Node"
+["Profile.Status"]
+other = "Status"
+["Profile.Actions"]
+other = "Actions"
+["Profile.ViewDetails"]
+other = "View Details"
+["Profile.NoVMs"]
+other = "No virtual machines"
+["Profile.NoVMsMessage"]
+other = "You don't have any virtual machines yet. Create a VM to get started."
+["Profile.CreateFirstVM"]
+other = "Create a VM"
+["Profile.CreateVM"]
+other = "Create a new VM"
+["Profile.SearchVM"]
+other = "Search VMs"
 
 # ===========
 # Search
@@ -229,7 +265,7 @@ other = "Actions buttons"
 ["Search.Actions"]
 other = "Actions"
 ["Search.CreateVM"]
-other = "Create VM"
+other = "Create a VM"
 ["Search.CPUs"]
 other = "CPU (Sockets/Cores)"
 ["Search.CardView"]

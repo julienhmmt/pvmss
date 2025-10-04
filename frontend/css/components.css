@@ -539,3 +539,32 @@ label > input[type="checkbox"].is-hidden:checked + .tag {
 .message.is-success .message-body { border-left: 3px solid #22c55e; }
 .message.is-warning .message-body { border-left: 3px solid #f59e0b; }
 .message.is-danger .message-body { border-left: 3px solid #ef4444; }
+
+/* Ghost button style for profile link */
+.button.is-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  box-shadow: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.button.is-ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .button.is-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Profile page specific styles */
+.admin-card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.admin-card .box {
+  border-radius: 0.5rem;
+}

@@ -176,6 +176,42 @@ other = "Déconnexion"
 other = "Rechercher une VM"
 ["Navbar.UserDocs"]
 other = "Docs Utilisateur"
+["Navbar.Profile"]
+other = "Profil"
+
+# ===========
+# Profile
+# ===========
+["Profile.Title"]
+other = "Mon Profil"
+["Profile.Username"]
+other = "Nom d'utilisateur"
+["Profile.Pool"]
+other = "Pool"
+["Profile.MyVMs"]
+other = "Mes machines virtuelles"
+["Profile.VMID"]
+other = "ID VM"
+["Profile.VMName"]
+other = "Nom de la VM"
+["Profile.Node"]
+other = "Nœud"
+["Profile.Status"]
+other = "Statut"
+["Profile.Actions"]
+other = "Actions"
+["Profile.ViewDetails"]
+other = "Voir les détails"
+["Profile.NoVMs"]
+other = "Aucune machine virtuelle"
+["Profile.NoVMsMessage"]
+other = "Vous n'avez pas encore de machines virtuelles. Créez une VM pour commencer."
+["Profile.CreateFirstVM"]
+other = "Créer une VM"
+["Profile.CreateVM"]
+other = "Créer une nouvelle VM"
+["Profile.SearchVM"]
+other = "Rechercher des VMs"
 
 # ===========
 # UI Elements

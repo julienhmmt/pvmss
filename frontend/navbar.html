@@ -78,7 +78,12 @@
                         {{end}}
                         <div class="navbar-item is-hidden-mobile">
                             <div class="is-flex is-align-items-center is-justify-content-center">
-                                <span class="has-text-grey is-size-7 mr-2"><icon class="fas fa-user"></icon> {{.Username}}</span>
+                                <a href="{{withLang "/profile" .Lang}}" class="button is-small is-ghost mr-2" title="{{T "Navbar.Profile"}}">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-user"></i>
+                                    </span>
+                                    <span>{{.Username}}</span>
+                                </a>
                                 <a href="{{withLang "/logout" .Lang}}" class="button is-small is-danger is-light">
                                     <span class="icon is-small">
                                         <i class="fas fa-sign-out-alt"></i>

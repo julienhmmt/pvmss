@@ -132,9 +132,10 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	tagsHandler := NewTagsHandler(stateManager)
 	vmbrHandler := NewVMBRHandler(stateManager)
 	userPoolHandler := NewUserPoolHandler(stateManager)
+	profileHandler := NewProfileHandler(stateManager)
 
 	// Configure routes
-	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, userPoolHandler)
+	setupRoutes(router, authHandler, adminHandler, vmHandler, storageHandler, searchHandler, docsHandler, healthHandler, settingsHandler, tagsHandler, vmbrHandler, userPoolHandler, profileHandler)
 
 	// Friendly NotFound and MethodNotAllowed handlers (when state is available)
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -231,6 +232,7 @@ func setupRoutes(
 	tagsHandler *TagsHandler,
 	vmbrHandler *VMBRHandler,
 	userPoolHandler *UserPoolHandler,
+	profileHandler *ProfileHandler,
 ) {
 	// Register routes for each handler
 	authHandler.RegisterRoutes(router)
@@ -246,6 +248,7 @@ func setupRoutes(
 	tagsHandler.RegisterRoutes(router)
 	vmbrHandler.RegisterRoutes(router)
 	userPoolHandler.RegisterRoutes(router)
+	profileHandler.RegisterRoutes(router)
 
 	// Home route
 	router.GET("/", IndexRouterHandler)
