@@ -14,6 +14,9 @@
                     </header>
                     <div class="card-content">
                         <p class="mb-4 has-text-grey">{{T "UI.CreateVMDescription"}}</p>
+                        {{if .ValidationError}}
+                        {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
+                        {{end}}
                         {{if not .ProxmoxConnected}}
                         <div class="notification is-warning is-light mb-4" role="alert" aria-live="polite">
                             <div class="level is-mobile">
@@ -81,19 +84,19 @@
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <input id="vmName" class="input" type="text" name="name" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true" aria-describedby="vmName-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" />
+                                                        <input id="vmName" class="input" type="text" name="name" value="{{if .FormData.name}}{{.FormData.name}}{{end}}" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true" aria-describedby="vmName-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" />
                                                     </div>
                                                 </div>
                                                 <div class="field">
                                                     <label for="vmDescription" class="label has-text-weight-normal">{{T "VM.Create.Description"}}</label>
                                                     <div class="control">
-                                                        <textarea id="vmDescription" class="textarea" name="description" placeholder='{{T "VM.Create.DescriptionPlaceholder"}}' rows="3" aria-describedby="vmDescription-help" maxlength="500"></textarea>
+                                                        <textarea id="vmDescription" class="textarea" name="description" placeholder='{{T "VM.Create.DescriptionPlaceholder"}}' rows="3" aria-describedby="vmDescription-help" maxlength="500">{{if .FormData.description}}{{.FormData.description}}{{end}}</textarea>
                                                     </div>
                                                 </div>
                                                 <div class="field">
                                                     <label for="vmId" class="label has-text-weight-normal">{{T "VM.Create.VMID"}}</label>
                                                     <div class="control">
-                                                        <input id="vmId" class="input" type="number" name="vmid" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
+                                                        <input id="vmId" class="input" type="number" name="vmid" value="{{if .FormData.vmid}}{{.FormData.vmid}}{{end}}" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
                                                     </div>
                                                     <p class="help has-text-grey-light">{{T "VM.Create.VMID.Help"}}</p>
                                                 </div>
@@ -164,7 +167,7 @@
                                                         <div class="select is-fullwidth">
                                                             <select id="storage" name="storage" required aria-required="true" aria-describedby="storage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
-                                                                {{range .Storages}}<option value="{{.}}">{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>{{end}}
+                                                                {{range .Storages}}<option value="{{.}}" {{if eq . $.FormData.storage}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>{{end}}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -188,7 +191,7 @@
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
-                                                                {{range .Nodes}}<option value="{{.}}" {{if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>{{else}}<option disabled>No nodes available</option>{{end}}
+                                                                {{range .Nodes}}<option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>{{else}}<option disabled>No nodes available</option>{{end}}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -196,16 +199,16 @@
                                                 <div class="field">
                                                     <label for="pool" class="label has-text-weight-normal">Resource Pool</label>
                                                     <div class="control">
-                                                        <input id="pool" class="input" type="text" name="pool" value="{{.DefaultPool}}" placeholder="pvmss_<user>">
+                                                        <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>">
                                                     </div>
                                                 </div>
                                                 <div class="field">
                                                     <label for="isoImage" class="label has-text-weight-normal">{{T "VM.Create.ISOImage"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
-                                                            <select id="isoImage" name="iso" aria-describedby="isoImage-help">
+                                                            <select id="isoImage" name="iso" required aria-required="true" aria-describedby="isoImage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
-                                                                {{range sort .ISOs}}<option value="{{.}}">{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
+                                                                {{range sort .ISOs}}<option value="{{.}}" {{if eq . $.FormData.iso}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
                                                             </select>
                                                         </div>
                                                     </div>

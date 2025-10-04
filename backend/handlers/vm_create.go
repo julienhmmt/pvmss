@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/gob"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,6 +14,28 @@ import (
 	"pvmss/proxmox"
 	"pvmss/security"
 )
+
+// VMCreateFormData holds the form data for VM creation (used for session storage)
+type VMCreateFormData struct {
+	Name        string
+	Description string
+	VMID        string
+	Sockets     string
+	Cores       string
+	Memory      string
+	DiskSize    string
+	ISO         string
+	Bridge      string
+	Node        string
+	Pool        string
+	Storage     string
+	Tags        []string
+}
+
+// Register VMCreateFormData with gob for session serialization
+func init() {
+	gob.Register(VMCreateFormData{})
+}
 
 // CreateVMPage renders the VM creation form with pre-populated settings from settings.json
 // This includes ISOs, VMBRs, Tags, Limits, and available nodes from Proxmox
@@ -31,25 +54,61 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 	// Get username from session to pre-fill pool
 	defaultPool := ""
+	ctx := r.Context()
+	var validationError string
+	var formData map[string]interface{}
+
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
+		if username, ok := sessionManager.Get(ctx, "username").(string); ok && username != "" {
 			defaultPool = fmt.Sprintf("pvmss_%s", username)
+		}
+
+		// Check for validation errors from previous submission
+		if errMsg, ok := sessionManager.Get(ctx, "vm_create_errors").(string); ok && errMsg != "" {
+			validationError = errMsg
+			sessionManager.Remove(ctx, "vm_create_errors") // Clear after reading
+		}
+
+		// Retrieve preserved form data
+		if savedFormData, ok := sessionManager.Get(ctx, "vm_create_form_data").(VMCreateFormData); ok {
+			// Convert struct to map for template
+			formData = map[string]interface{}{
+				"name":        savedFormData.Name,
+				"description": savedFormData.Description,
+				"vmid":        savedFormData.VMID,
+				"sockets":     savedFormData.Sockets,
+				"cores":       savedFormData.Cores,
+				"memory":      savedFormData.Memory,
+				"disk_size":   savedFormData.DiskSize,
+				"iso":         savedFormData.ISO,
+				"bridge":      savedFormData.Bridge,
+				"node":        savedFormData.Node,
+				"pool":        savedFormData.Pool,
+				"storage":     savedFormData.Storage,
+				"tags":        savedFormData.Tags,
+			}
+			sessionManager.Remove(ctx, "vm_create_form_data") // Clear after reading
+		}
+	}
+
+	// If no saved form data, use defaults
+	if formData == nil {
+		formData = map[string]interface{}{
+			"tags": []string{"pvmss"},
 		}
 	}
 
 	data := map[string]interface{}{
-		"Title":         "Create VM",
-		"ISOs":          settings.ISOs,
-		"Bridges":       settings.VMBRs,
-		"AvailableTags": settings.Tags,
-		"Limits":        settings.Limits,
-		"Nodes":         nodes,
-		"ActiveNode":    activeNode,
-		"DefaultPool":   defaultPool,
-		// Empty form values for initial render
-		"FormData": map[string]interface{}{
-			"Tags": []string{"pvmss"},
-		},
+		"Title":           "Create VM",
+		"ISOs":            settings.ISOs,
+		"Bridges":         settings.VMBRs,
+		"AvailableTags":   settings.Tags,
+		"Limits":          settings.Limits,
+		"Nodes":           nodes,
+		"ActiveNode":      activeNode,
+		"DefaultPool":     defaultPool,
+		"FormData":        formData,
+		"ValidationError": validationError,
 	}
 
 	// Get available storages for the selected node
@@ -125,9 +184,69 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 	tags := out
 
-	if name == "" || socketsStr == "" || coresStr == "" || memoryMBStr == "" || diskSizeGBStr == "" || bridgeName == "" || selectedStorage == "" {
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
+	// Validate mandatory fields
+	var validationErrors []string
+	if name == "" {
+		validationErrors = append(validationErrors, "VM name is required")
+	}
+	if selectedNode == "" {
+		validationErrors = append(validationErrors, "Proxmox node is required")
+	}
+	if socketsStr == "" {
+		validationErrors = append(validationErrors, "CPU sockets are required")
+	}
+	if coresStr == "" {
+		validationErrors = append(validationErrors, "CPU cores are required")
+	}
+	if memoryMBStr == "" {
+		validationErrors = append(validationErrors, "Memory is required")
+	}
+	if diskSizeGBStr == "" {
+		validationErrors = append(validationErrors, "Disk size is required")
+	}
+	if selectedStorage == "" {
+		validationErrors = append(validationErrors, "Storage is required")
+	}
+	if isoPath == "" {
+		validationErrors = append(validationErrors, "ISO image is required")
+	}
+	if bridgeName == "" {
+		validationErrors = append(validationErrors, "Network bridge is required")
+	}
+
+	// If validation fails, redirect back to form with errors
+	if len(validationErrors) > 0 {
+		log.Warn().Strs("validation_errors", validationErrors).Msg("VM creation validation failed")
+
+		// Store form data and errors in session for re-display
+		if session := security.GetSession(r); session != nil {
+			ctx := r.Context()
+			session.Put(ctx, "vm_create_errors", strings.Join(validationErrors, "; "))
+			// Preserve form data using concrete struct (gob-serializable)
+			formData := VMCreateFormData{
+				Name:        name,
+				Description: description,
+				VMID:        vmidStr,
+				Sockets:     socketsStr,
+				Cores:       coresStr,
+				Memory:      memoryMBStr,
+				DiskSize:    diskSizeGBStr,
+				ISO:         isoPath,
+				Bridge:      bridgeName,
+				Node:        selectedNode,
+				Pool:        poolName,
+				Storage:     selectedStorage,
+				Tags:        selectedTags,
+			}
+			session.Put(ctx, "vm_create_form_data", formData)
+		}
+
+		// Redirect back to form
+		redirectURL := "/vm/create"
+		if lang := i18n.GetLanguage(r); lang != "" && lang != i18n.DefaultLang {
+			redirectURL += "?lang=" + lang
+		}
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 		return
 	}
 

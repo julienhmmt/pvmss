@@ -314,7 +314,7 @@ func (h *SearchHandler) hasTag(cfg map[string]interface{}, targetTag string) boo
 	}
 
 	targetTag = strings.ToLower(strings.TrimSpace(targetTag))
-	
+
 	// Proxmox can use either semicolon or comma as delimiter
 	// Try both separators
 	var tags []string

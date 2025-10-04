@@ -1,6 +1,7 @@
 package security
 
 import (
+	"encoding/gob"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +12,14 @@ import (
 	"github.com/alexedwards/scs/v2/memstore"
 	"pvmss/logger"
 )
+
+// RegisterSessionTypes registers custom types with gob for session serialization
+func init() {
+	// Register handlers.VMCreateFormData - done via interface to avoid circular import
+	// The actual type will be registered when handlers package loads
+	gob.Register(map[string]interface{}{})
+	gob.Register([]string{})
+}
 
 // InitSecurity initializes the session manager and other security components.
 // It configures the session store, lifetime, and cookie settings based on the
