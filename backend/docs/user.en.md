@@ -141,7 +141,6 @@ The PVMSS application is maintained by your organization's IT team. Contact your
 The PVMSS application currently does not support:
 
 - **Resource modification**: You cannot change VM resources (CPU, memory, storage, network bridge) after creation. To adjust resources, create a new VM and migrate your data.
-- **Password management**: You cannot change your username or password through the interface. Contact your administrator for password resets.
 - **LXC containers**: Only KVM/QEMU VMs are supported. LXC container creation is unavailable.
 - **Snapshots**: VM snapshot creation and management are not available through PVMSS.
 - **Backups**: VM backup and restore operations must be handled directly by administrators in Proxmox.

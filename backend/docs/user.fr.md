@@ -141,7 +141,6 @@ L'application PVMSS est gérée par l'équipe informatique de votre organisation
 L'application PVMSS ne prend actuellement pas en charge :
 
 - **Modification des ressources** : Vous ne pouvez pas modifier les ressources de la machine virtuelle (CPU, mémoire, stockage, pont réseau) après sa création. Si vous devez modifier les ressources, vous devez créer une nouvelle VM et migrer vos données.
-- **Gestion des mots de passe** : Vous ne pouvez pas modifier votre nom d'utilisateur et votre mot de passe via l'interface. Contactez votre administrateur pour la réinitialisation des mots de passe.
 - **Conteneurs LXC** : Seules les machines virtuelles KVM/QEMU sont prises en charge. La création de conteneurs LXC n'est pas disponible.
 - **Snapshots** : La création et la gestion de snapshots de VM ne sont pas disponibles via PVMSS.
 - **Sauvegardes** : Les opérations de sauvegarde et de restauration de VM doivent être effectuées par les administrateurs directement via Proxmox.
