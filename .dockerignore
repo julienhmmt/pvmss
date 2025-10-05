@@ -32,3 +32,27 @@ dist/
 
 # Keep empty directories
 !.gitkeep
+
+# Exclude unnecessary noVNC files to reduce image size
+frontend/components/noVNC-1.6.0/tests/
+frontend/components/noVNC-1.6.0/docs/
+frontend/components/noVNC-1.6.0/po/
+frontend/components/noVNC-1.6.0/utils/
+frontend/components/noVNC-1.6.0/README.md
+
+# Exclude unused noVNC locale files (keep only en and fr)
+frontend/components/noVNC-1.6.0/app/locale/cs.json
+frontend/components/noVNC-1.6.0/app/locale/de.json
+frontend/components/noVNC-1.6.0/app/locale/el.json
+frontend/components/noVNC-1.6.0/app/locale/es.json
+frontend/components/noVNC-1.6.0/app/locale/it.json
+frontend/components/noVNC-1.6.0/app/locale/ja.json
+frontend/components/noVNC-1.6.0/app/locale/ko.json
+frontend/components/noVNC-1.6.0/app/locale/nl.json
+frontend/components/noVNC-1.6.0/app/locale/pl.json
+frontend/components/noVNC-1.6.0/app/locale/pt_BR.json
+frontend/components/noVNC-1.6.0/app/locale/ru.json
+frontend/components/noVNC-1.6.0/app/locale/sv.json
+frontend/components/noVNC-1.6.0/app/locale/tr.json
+frontend/components/noVNC-1.6.0/app/locale/zh_CN.json
+frontend/components/noVNC-1.6.0/app/locale/zh_TW.json

@@ -15,12 +15,9 @@ services:
       TZ: "Europe/Paris"
     volumes:
       - ./backend/settings.json:/app/settings.json
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:50000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
+    # Note: Healthcheck removed due to distroless base image (no wget/curl available)
+    # Use external monitoring to check http://localhost:50000/health endpoint
+    # The restart policy will handle container failures automatically
     deploy:
       resources:
         limits:
