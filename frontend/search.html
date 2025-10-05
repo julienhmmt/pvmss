@@ -81,9 +81,7 @@
                                                 <td class="has-text-centered">{{.name}}</td>
                                                 <td class="has-text-centered">{{.node}}</td>
                                                 <td class="has-text-centered">
-                                                    <span class="tag {{if eq .status "running"}}is-success{{else if eq .status "stopped"}}is-danger{{else}}is-warning{{end}}">
-                                                        {{if eq .status "running"}}{{T "Status.Running"}}{{else if eq .status "stopped"}}{{T "Status.Stopped"}}{{else if eq .status "paused"}}{{T "Status.Paused"}}{{else if eq .status "suspended"}}{{T "Status.Paused"}}{{else}}{{T "Status.Unknown"}}{{end}}
-                                                    </span>
+                                                    {{template "status_badge" (dict "Status" .status "WithIcon" false)}}
                                                 </td>
                                                 <td class="has-text-centered">
                                                     <a href="{{withLang (printf "/vm/details/%d" .vmid) $lang}}"

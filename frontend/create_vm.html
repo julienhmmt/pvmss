@@ -18,26 +18,15 @@
                         {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
                         {{end}}
                         {{if not .ProxmoxConnected}}
-                        <div class="notification is-warning is-light mb-4" role="alert" aria-live="polite">
-                            <div class="level is-mobile">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <span class="icon has-text-warning">
-                                            <i class="fas fa-exclamation-triangle fa-lg"></i>
-                                        </span>
-                                    </div>
-                                    <div class="level-item">
-                                        <div>
-                                            <strong>{{T "Proxmox.ConnectionRequired"}}</strong>
-                                            <p>{{T "VM.Create.ProxmoxNotConnected"}}</p>
-                                            {{if .ProxmoxError}}
-                                            <p class="has-text-danger-dark mt-2">{{.ProxmoxError}}</p>
-                                            {{end}}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        {{template "notification" (dict 
+                            "Type" "warning" 
+                            "Title" (T "Proxmox.ConnectionRequired") 
+                            "Message" (T "VM.Create.ProxmoxNotConnected") 
+                            "Icon" "fas fa-exclamation-triangle" 
+                            "Dismissible" false 
+                            "Live" "polite" 
+                            "ExtraClasses" "mb-4"
+                        )}}
                         {{end}}
 
                         <form method="POST" action="/api/vm/create" id="vmCreateForm"

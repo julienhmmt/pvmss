@@ -1,8 +1,8 @@
 {{define "vm_delete_confirm"}}
 <section class="section">
-    <div class="container" style="max-width: 800px;">
+    <div class="container max-w-1200" style="max-width: 800px;">
         <div class="card">
-            <header class="card-header" style="background-color: #f14668;">
+            <header class="card-header" style="background-color: #f14668; color: white;">
                 <p class="card-header-title has-text-white">
                     <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>&nbsp;{{T "VMDelete.ConfirmTitle"}}
                 </p>
@@ -29,9 +29,7 @@
                             </div>
                             <div class="column is-6">
                                 <p class="has-text-grey is-size-7 mb-1">{{T "Common.Status"}}</p>
-                                <span class="tag {{if eq .VM.Status "running"}}is-success{{else if eq .VM.Status "stopped"}}is-danger{{else}}is-warning{{end}}">
-                                    {{.VM.Status}}
-                                </span>
+                                {{template "status_badge" (dict "Status" .VM.Status "WithIcon" false)}}
                             </div>
                         </div>
                     </div>
@@ -51,7 +49,7 @@
                         <span class="icon"><i class="fas fa-arrow-left"></i></span>
                         <span>{{T "Common.No"}}</span>
                     </a>
-                    <form action="{{withLang "/vm/delete" .Lang}}" method="post" style="display: inline;">
+                    <form action="{{withLang "/vm/delete" .Lang}}" method="post" class="is-inline">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
                         <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
                         <input type="hidden" name="node" value="{{.VM.Node}}" />

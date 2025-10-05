@@ -95,29 +95,7 @@
                                                 <span class="tag is-light">{{.Node}}</span>
                                             </td>
                                             <td class="has-text-centered">
-                                                <span class="tag {{if eq .Status "running"}}is-success{{else if eq .Status "stopped"}}is-danger{{else}}is-warning{{end}}">
-                                                    {{if eq .Status "running"}}
-                                                        <span class="icon">
-                                                            <i class="fas fa-circle-play"></i>
-                                                        </span>
-                                                        <span>{{T "Status.Running"}}</span>
-                                                    {{else if eq .Status "stopped"}}
-                                                        <span class="icon">
-                                                            <i class="fas fa-circle-stop"></i>
-                                                        </span>
-                                                        <span>{{T "Status.Stopped"}}</span>
-                                                    {{else if eq .Status "paused"}}
-                                                        <span class="icon">
-                                                            <i class="fas fa-circle-pause"></i>
-                                                        </span>
-                                                        <span>{{T "Status.Paused"}}</span>
-                                                    {{else}}
-                                                        <span class="icon">
-                                                            <i class="fas fa-circle-question"></i>
-                                                        </span>
-                                                        <span>{{T "Status.Unknown"}}</span>
-                                                    {{end}}
-                                                </span>
+                                                {{template "status_badge" (dict "Status" .Status "WithIcon" true)}}
                                             </td>
                                             <td class="has-text-centered">
                                                 <div class="buttons is-centered">

@@ -36,9 +36,7 @@
                         <p class="subtitle is-6 has-text-grey">
                             <span class="tag is-light mr-2">ID: {{.VM.VMID}}</span>
                             <span class="tag is-light mr-2">{{.VM.Node}}</span>
-                            <span id="vm-status-badge" class="tag {{if eq .VM.Status "running"}}is-success{{else if eq .VM.Status "stopped"}}is-danger{{else}}is-light{{end}}">
-                                <span id="vm-status-text">{{.VM.Status}}</span>
-                            </span>
+                            <span id="vm-status-badge">{{template "status_badge" (dict "Status" .VM.Status "WithIcon" false)}}</span>
                         </p>
                     </div>
                 </div>
