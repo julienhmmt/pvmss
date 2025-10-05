@@ -29,7 +29,6 @@ func GetVMBRs(client ClientInterface, node string) ([]VMBR, error) {
 	if node == "" {
 		return nil, fmt.Errorf("node name cannot be empty")
 	}
-	logger.Get().Info().Str("node", node).Msg("Fetching VMBRs from Proxmox")
 	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
 	return GetVMBRsWithContext(ctx, client, node)
@@ -41,8 +40,6 @@ func GetVMBRsWithContext(ctx context.Context, client ClientInterface, node strin
 	if node == "" {
 		return nil, fmt.Errorf("node name cannot be empty")
 	}
-
-	logger.Get().Info().Str("node", node).Msg("Fetching VMBRs with context from Proxmox")
 
 	path := fmt.Sprintf("/nodes/%s/network", url.PathEscape(node))
 

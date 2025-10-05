@@ -107,13 +107,6 @@ func CreateTicket(ctx context.Context, client ClientInterface, username, passwor
 	return &respData.Data, nil
 }
 
-// RefreshTicket renews an existing authentication ticket.
-// This is useful to extend a session before the current ticket expires (2 hours).
-// Note: This is an alias to CreateTicket as Proxmox doesn't have a separate refresh endpoint.
-func RefreshTicket(ctx context.Context, client ClientInterface, username, password string, opts *CreateTicketOptions) (*TicketResponse, error) {
-	return CreateTicket(ctx, client, username, password, opts)
-}
-
 // EnsureUser creates a Proxmox user if it does not already exist. This function is idempotent.
 func EnsureUser(ctx context.Context, client ClientInterface, username, password, email, comment, realm string, enable bool) error {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {

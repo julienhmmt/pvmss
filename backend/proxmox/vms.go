@@ -141,8 +141,6 @@ type VM struct {
 // GetVMsWithContext retrieves a comprehensive list of all VMs across all available Proxmox nodes.
 // It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeWithContext for each.
 func GetVMsWithContext(ctx context.Context, client ClientInterface) ([]VM, error) {
-	logger.Get().Info().Msg("Fetching all VMs from Proxmox")
-
 	// Get all nodes first
 	nodes, err := GetNodeNamesWithContext(ctx, client)
 	if err != nil {
@@ -154,7 +152,6 @@ func GetVMsWithContext(ctx context.Context, client ClientInterface) ([]VM, error
 	allVMs := make([]VM, 0)
 
 	for _, node := range nodes {
-		logger.Get().Info().Str("node", node).Msg("Fetching VMs for node")
 		nodeVMs, err := GetVMsForNodeWithContext(ctx, client, node)
 		if err != nil {
 			logger.Get().Warn().Err(err).Str("node", node).Msg("Failed to get VMs for node")

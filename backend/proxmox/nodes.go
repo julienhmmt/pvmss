@@ -57,7 +57,6 @@ func GetNodeDetails(client ClientInterface, nodeName string) (*NodeDetails, erro
 // It then unmarshals the raw response into the NodeStatus struct and maps the relevant data
 // into the cleaner, application-friendly NodeDetails struct.
 func GetNodeDetailsWithContext(ctx context.Context, client ClientInterface, nodeName string) (*NodeDetails, error) {
-	logger.Get().Info().Str("node", nodeName).Msg("Fetching node details")
 
 	// Get node status from Proxmox API
 	path := fmt.Sprintf("/nodes/%s/status", url.PathEscape(nodeName))
@@ -119,7 +118,6 @@ func GetNodeDetailsWithContext(ctx context.Context, client ClientInterface, node
 func GetNodeNames(client ClientInterface) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
-
 	return GetNodeNamesWithContext(ctx, client)
 }
 
@@ -134,7 +132,6 @@ type NodeInfo struct {
 // GetNodeNamesWithContext fetches the list of all configured nodes from the `/nodes` endpoint of the Proxmox API.
 // It parses the response to extract and return a simple slice of node names.
 func GetNodeNamesWithContext(ctx context.Context, client ClientInterface) ([]string, error) {
-	logger.Get().Info().Msg("Fetching node names")
 
 	// Use the new GetJSON method to directly unmarshal into our typed response
 	var response ListResponse[NodeInfo]

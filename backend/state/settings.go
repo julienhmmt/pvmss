@@ -53,11 +53,9 @@ func getSettingsFilePath() (string, error) {
 	return filepath.Join(exeDir, "settings.json"), nil
 }
 
-// WriteSettings serializes the provided AppSettings struct into a well-formatted JSON string
-// and writes it to settings.json, overwriting the previous content.
-// It uses a mutex to ensure thread-safe file writing.
 // LoadSettings loads the application settings from the settings file.
-// If the settings file does not exist, it creates a new one with default values.
+// If the settings file does not exist, it returns default values.
+// Returns (settings, modified, error) where modified indicates if defaults were applied.
 func LoadSettings() (*AppSettings, bool, error) {
 	settingsMutex.Lock()
 	defer settingsMutex.Unlock()

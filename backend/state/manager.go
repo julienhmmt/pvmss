@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
@@ -48,18 +49,15 @@ func (s *appState) startProxmoxMonitor() {
 	log := logger.Get().With().Str("component", "ProxmoxMonitor").Logger()
 	go func() {
 		// Immediate check to ensure status freshness
-		_ = s.CheckProxmoxConnection()
+		s.CheckProxmoxConnection()
 
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
 			ok := s.CheckProxmoxConnection()
-			// Keep logs at debug to avoid noise
-			if ok {
-				log.Debug().Msg("Periodic Proxmox connectivity check: connected")
-			} else {
+			if !ok {
 				_, errMsg := s.GetProxmoxStatus()
-				log.Debug().Str("error", errMsg).Msg("Periodic Proxmox connectivity check: disconnected")
+				log.Debug().Str("error", errMsg).Msg("Proxmox connectivity check failed")
 			}
 		}
 	}()
@@ -246,11 +244,6 @@ func (s *appState) SetSettings(settings *AppSettings) error {
 	return nil
 }
 
-// SaveSettings saves the settings to the settings file
-func SaveSettings(settings *AppSettings) error {
-	return WriteSettings(settings)
-}
-
 // GetTags returns the list of available tags
 func (s *appState) GetTags() []string {
 	s.mu.RLock()
@@ -307,38 +300,17 @@ func (s *appState) GetStorages() []string {
 func (s *appState) AddCSRFToken(token string, expiry time.Time) error {
 	s.securityMu.Lock()
 	defer s.securityMu.Unlock()
-
 	s.csrfTokens[token] = expiry
-
-	log := logger.Get().With().
-		Str("function", "AddCSRFToken").
-		Time("expiry", expiry).
-		Logger()
-
-	log.Debug().
-		Int("total_tokens", len(s.csrfTokens)).
-		Msg("New CSRF token added")
-
 	return nil
 }
 
 // ValidateAndRemoveCSRFToken validates a CSRF token and removes it if valid
 func (s *appState) ValidateAndRemoveCSRFToken(token string) bool {
-	log := logger.Get().With().
-		Str("function", "ValidateAndRemoveCSRFToken").
-		Logger()
-
 	s.securityMu.Lock()
 	defer s.securityMu.Unlock()
 
-	log.Debug().
-		Int("total_tokens_before", len(s.csrfTokens)).
-		Msg("Starting CSRF token validation")
-
 	expiry, exists := s.csrfTokens[token]
 	if !exists {
-		log.Warn().
-			Msg("CSRF token not found")
 		return false
 	}
 
@@ -346,18 +318,9 @@ func (s *appState) ValidateAndRemoveCSRFToken(token string) bool {
 	delete(s.csrfTokens, token)
 
 	// Check if token is expired
-	now := time.Now()
-	if now.After(expiry) {
-		log.Warn().
-			Time("expiry", expiry).
-			Time("now", now).
-			Msg("CSRF token expired")
+	if time.Now().After(expiry) {
 		return false
 	}
-
-	log.Debug().
-		Int("total_tokens_after", len(s.csrfTokens)).
-		Msg("CSRF token validated and removed successfully")
 
 	return true
 }
@@ -368,9 +331,18 @@ func (s *appState) CleanExpiredCSRFTokens() {
 	defer s.securityMu.Unlock()
 
 	now := time.Now()
+	expiredCount := 0
 	for token, expiry := range s.csrfTokens {
 		if now.After(expiry) {
 			delete(s.csrfTokens, token)
+			expiredCount++
 		}
+	}
+
+	if expiredCount > 0 {
+		logger.Get().Debug().
+			Int("expired_count", expiredCount).
+			Int("remaining_count", len(s.csrfTokens)).
+			Msg("Cleaned expired CSRF tokens")
 	}
 }

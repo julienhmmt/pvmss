@@ -108,9 +108,3 @@ func GetVNCProxy(ctx context.Context, client ClientInterface, node string, vmid 
 
 	return &respData.Data, nil
 }
-
-// GetVNCProxyWithContext is an alias for GetVNCProxy for backward compatibility.
-// Deprecated: Use GetVNCProxy directly as it already accepts a context.
-func GetVNCProxyWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (*VNCProxyResponse, error) {
-	return GetVNCProxy(ctx, client, node, vmid, nil)
-}

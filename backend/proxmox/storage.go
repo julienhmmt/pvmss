@@ -27,7 +27,6 @@ type Storage struct {
 // GetStorages is a convenience function that retrieves the list of all available storages across all nodes.
 // It calls GetStoragesWithContext using the client's default timeout.
 func GetStorages(client ClientInterface) ([]Storage, error) {
-	logger.Get().Info().Msg("Fetching storage list from Proxmox")
 	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
 	return GetStoragesWithContext(ctx, client)
@@ -63,7 +62,6 @@ func GetStoragesWithContext(ctx context.Context, client ClientInterface) ([]Stor
 // GetNodeStorages returns storages with live status for a specific node from /nodes/{node}/storage.
 // It uses the client's default timeout.
 func GetNodeStorages(client ClientInterface, node string) ([]Storage, error) {
-	logger.Get().Info().Str("node", node).Msg("Fetching node storage list from Proxmox")
 	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
 	return GetNodeStoragesWithContext(ctx, client, node)

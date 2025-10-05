@@ -22,7 +22,6 @@ type ISO struct {
 // GetISOList fetches ISO files from a specific storage on a specific node in Proxmox node.
 // It uses the client's default timeout for the API request.
 func GetISOList(client ClientInterface, node, storage string) ([]ISO, error) {
-	logger.Get().Info().Str("node", node).Str("storage", storage).Msg("Fetching ISO list from Proxmox")
 	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
 	defer cancel()
 	return GetISOListWithContext(ctx, client, node, storage)
@@ -38,11 +37,6 @@ func GetISOListWithContext(ctx context.Context, client ClientInterface, node, st
 	if storage == "" {
 		return nil, fmt.Errorf("storage name cannot be empty")
 	}
-
-	logger.Get().Info().
-		Str("node", node).
-		Str("storage", storage).
-		Msg("Fetching ISO list with context from Proxmox")
 
 	path := fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage))
 
