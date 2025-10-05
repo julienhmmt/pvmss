@@ -51,13 +51,13 @@ func validateRequiredFields(fields map[string]string) []string {
 func ensureMandatoryTag(selectedTags []string) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(selectedTags)+1)
-	
+
 	// Always include pvmss first
 	if _, ok := seen["pvmss"]; !ok {
 		seen["pvmss"] = struct{}{}
 		out = append(out, "pvmss")
 	}
-	
+
 	for _, t := range selectedTags {
 		if _, ok := seen[t]; ok {
 			continue

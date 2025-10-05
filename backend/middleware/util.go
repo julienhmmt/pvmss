@@ -33,25 +33,3 @@ func NewMiddlewareLogger(name string) *zerolog.Logger {
 	log := logger.Get().With().Str("middleware", name).Logger()
 	return &log
 }
-
-// IsStaticOrHealthPath checks if the request path corresponds to a static asset or a health check endpoint.
-// These paths are often exempt from certain middleware processing like CSRF checks or session loading.
-func IsStaticOrHealthPath(path string) bool {
-	// Check for static asset paths.
-	staticPrefixes := []string{"/css/", "/js/", "/webfonts/", "/favicon.ico"}
-	for _, prefix := range staticPrefixes {
-		if strings.HasPrefix(path, prefix) {
-			return true
-		}
-	}
-
-	// Check for health check endpoints.
-	healthEndpoints := []string{"/health", "/api/health", "/api/healthz"}
-	for _, endpoint := range healthEndpoints {
-		if path == endpoint {
-			return true
-		}
-	}
-
-	return false
-}

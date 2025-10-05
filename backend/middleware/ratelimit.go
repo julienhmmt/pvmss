@@ -17,6 +17,7 @@ type bucket struct {
 	tokens     float64
 	ratePerSec float64
 	lastAccess time.Time // Used to identify and clean up stale buckets.
+	rejects    uint64    // Counter for rejected requests (for monitoring).
 }
 
 // Rule defines the rate-limiting parameters for a specific route.
@@ -27,7 +28,7 @@ type Rule struct {
 
 // Limiter manages rate-limiting rules and active token buckets.
 type Limiter struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	rules   map[string]Rule    // Key: "METHOD /path"
 	buckets map[string]*bucket // Key: "METHOD /path|ip_address"
 }
@@ -51,19 +52,28 @@ func (l *Limiter) AddRule(method, path string, rule Rule) {
 	defer l.mu.Unlock()
 	key := method + " " + path
 	l.rules[key] = rule
+	logger.Get().Debug().Str("method", method).Str("path", path).
+		Int("capacity", rule.Capacity).Dur("refill", rule.Refill).
+		Msg("Rate limit rule added")
 }
 
 // Allow checks if a request is permitted under the configured rate limits.
 // It returns true if the request should be allowed, and false otherwise.
 func (l *Limiter) Allow(method, path, ip string) bool {
 	key := method + " " + path
-	l.mu.Lock()
-	defer l.mu.Unlock()
 
+	// Use RLock first to check if rule exists
+	l.mu.RLock()
 	rule, ok := l.rules[key]
+	l.mu.RUnlock()
+
 	if !ok {
 		return true // No rule for this path, so allow the request.
 	}
+
+	// Now acquire write lock for bucket operations
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	bucketKey := key + "|" + ip
 	bk, exists := l.buckets[bucketKey]
@@ -72,6 +82,7 @@ func (l *Limiter) Allow(method, path, ip string) bool {
 			capacity:   rule.Capacity,
 			tokens:     float64(rule.Capacity),
 			ratePerSec: 1.0 / rule.Refill.Seconds(),
+			rejects:    0,
 		}
 		l.buckets[bucketKey] = bk
 	}
@@ -91,6 +102,8 @@ func (l *Limiter) Allow(method, path, ip string) bool {
 		return true
 	}
 
+	// Track rejection for monitoring
+	bk.rejects++
 	return false
 }
 
@@ -100,14 +113,36 @@ func (l *Limiter) cleanupStaleBuckets(interval, threshold time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	log := logger.Get().With().Str("component", "rate_limiter_cleanup").Logger()
+
 	for range ticker.C {
 		l.mu.Lock()
+		cleaned := 0
 		for key, bk := range l.buckets {
 			if time.Since(bk.lastAccess) > threshold {
 				delete(l.buckets, key)
+				cleaned++
 			}
 		}
+		remainingBuckets := len(l.buckets)
 		l.mu.Unlock()
+
+		if cleaned > 0 {
+			log.Debug().Int("cleaned", cleaned).Int("remaining", remainingBuckets).
+				Msg("Cleaned up stale rate limit buckets")
+		}
+	}
+}
+
+// GetStats returns statistics about the current state of the rate limiter.
+// Useful for monitoring and debugging.
+func (l *Limiter) GetStats() map[string]interface{} {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	return map[string]interface{}{
+		"active_buckets": len(l.buckets),
+		"rules_count":    len(l.rules),
 	}
 }
 
@@ -117,8 +152,14 @@ func RateLimitMiddleware(limiter *Limiter) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := clientIP(r)
 			if !limiter.Allow(r.Method, r.URL.Path, ip) {
-				logger.Get().Warn().Str("ip", ip).Str("path", r.URL.Path).Msg("Rate limit exceeded")
+				logger.Get().Warn().
+					Str("ip", ip).
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Str("user_agent", r.UserAgent()).
+					Msg("Rate limit exceeded")
 				w.Header().Set("Retry-After", "10") // Inform the client to wait.
+				w.Header().Set("X-RateLimit-Limit", "5")
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return
 			}

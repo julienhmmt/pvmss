@@ -87,25 +87,25 @@ func CSRF(next http.Handler) http.Handler {
 		}
 
 		if requestToken == "" {
-			log.Warn().Msg("Missing CSRF token in unsafe request")
+			log.Warn().Str("method", r.Method).Str("path", r.URL.Path).Msg("Missing CSRF token in unsafe request")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		sessionToken := sessionManager.GetString(r.Context(), csrfSessionKey)
 		if sessionToken == "" {
-			log.Warn().Msg("Missing CSRF token in session for validation")
+			log.Warn().Str("method", r.Method).Str("path", r.URL.Path).Msg("Missing CSRF token in session for validation")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		if !CompareTokens(requestToken, sessionToken) {
-			log.Warn().Msg("Invalid CSRF token")
+			log.Warn().Str("method", r.Method).Str("path", r.URL.Path).Msg("Invalid CSRF token")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
-		log.Debug().Msg("CSRF token validated successfully")
+		log.Debug().Str("method", r.Method).Str("path", r.URL.Path).Msg("CSRF token validated successfully")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -131,14 +131,20 @@ func getOrCreateSessionToken(r *http.Request, sm sessionManager) string {
 // isSafeMethod checks if the request uses a safe HTTP method (e.g., GET, HEAD).
 func isSafeMethod(r *http.Request) bool {
 	// Skip CSRF for health checks and static assets.
-	if r.URL.Path == "/health" || r.URL.Path == "/api/health" || r.URL.Path == "/api/healthz" ||
-		strings.HasPrefix(r.URL.Path, "/css/") ||
-		strings.HasPrefix(r.URL.Path, "/js/") ||
-		strings.HasPrefix(r.URL.Path, "/webfonts/") ||
-		r.URL.Path == "/favicon.ico" {
+	path := r.URL.Path
+	if path == "/health" || path == "/api/health" || path == "/api/healthz" || path == "/favicon.ico" {
 		return true
 	}
 
+	// Check static asset prefixes
+	staticPrefixes := []string{"/css/", "/js/", "/webfonts/", "/components/"}
+	for _, prefix := range staticPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+
+	// Check HTTP method
 	switch r.Method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions, http.MethodTrace:
 		return true
