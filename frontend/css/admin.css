@@ -1,48 +1,43 @@
 /* ============================================
-   LAYOUT & SPACING
+   ADMIN STYLES
+   Admin-specific components and layouts
    ============================================ */
 
-/* Smooth anchor offsets for fixed navbar */
-.section-anchor { scroll-margin-top: 4.5rem; }
+/* ============================================
+   LAYOUT & SPACING
+   ============================================ */
+.section-anchor {
+  scroll-margin-top: 4.5rem;
+}
 
-/* Highlight a section when navigated via hash */
-.section-anchor:target .card { box-shadow: 0 0 0 0.15rem rgba(255, 136, 0, 0.25); }
+.section-anchor:target .card {
+  box-shadow: 0 0 0 3px rgba(255, 136, 0, 0.25);
+}
 
-/* Compact spacing for admin pages */
 .section.admin-section {
   padding-top: 1.25rem;
   padding-bottom: 1.5rem;
 }
 
-/* Slightly reduce gap between header actions and the main columns */
-.admin-layout { margin-top: 0.25rem; }
+.admin-layout {
+  margin-top: 0.25rem;
+}
 
 /* ============================================
    ADMIN BOX - Modern Flat Container
    ============================================ */
 .admin-box {
-    background-color: #ffffff;
-    border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-    padding: 2rem;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  padding: 2rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .admin-box:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-    border-color: rgba(0, 0, 0, 0.08);
-}
-
-[data-theme="dark"] .admin-box {
-    background-color: var(--surface-1);
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-[data-theme="dark"] .admin-box:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 /* ============================================
@@ -69,11 +64,6 @@
     padding: 1rem 1.25rem;
 }
 
-[data-theme="dark"] .node-card .card-header {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-    border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-
 .node-card .card-header-title {
     font-weight: 600;
     font-size: 1.1rem;
@@ -97,10 +87,6 @@
     letter-spacing: 0.01em;
 }
 
-[data-theme="dark"] .node-card .label {
-    color: #9ca3af;
-}
-
 /* ============================================
    STICKY ADMIN MENU - Refined Navigation
    ============================================ */
@@ -112,11 +98,6 @@
     border: 1px solid rgba(0, 0, 0, 0.06);
     padding: 1.25rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-[data-theme="dark"] .admin-menu {
-    background: var(--surface-1);
-    border-color: rgba(255, 255, 255, 0.08);
 }
 
 #proxmox-status-banner ~ #main-content .admin-menu { top: 6rem; }
@@ -161,10 +142,6 @@
 
 .admin-menu .menu-list a.is-active .icon {
     transform: scale(1.1);
-}
-
-[data-theme="dark"] .admin-menu .menu-list a:hover { 
-    background-color: rgba(255, 255, 255, 0.06);
 }
 
 /* ============================================
@@ -212,15 +189,8 @@
     background: rgba(255, 136, 0, 0.04);
 }
 
-[data-theme="dark"] .table.modern tbody tr {
-    border-bottom-color: rgba(255, 255, 255, 0.06);
-}
-
-[data-theme="dark"] .table.modern tbody tr:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.table.modern td, .table.modern th {
+.table.modern td,
+.table.modern th {
     vertical-align: middle;
     padding: 1rem 1.25rem;
 }
@@ -246,10 +216,6 @@
     color: #374151;
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
-}
-
-[data-theme="dark"] .admin-box .field .label {
-    color: #d1d5db;
 }
 
 /* ============================================
@@ -325,26 +291,6 @@
 .tag.is-danger {
     background: #fee2e2;
     color: #991b1b;
-}
-
-[data-theme="dark"] .tag.is-success {
-    background: rgba(16, 185, 129, 0.15);
-    color: #6ee7b7;
-}
-
-[data-theme="dark"] .tag.is-info {
-    background: rgba(59, 130, 246, 0.15);
-    color: #93c5fd;
-}
-
-[data-theme="dark"] .tag.is-warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: #fcd34d;
-}
-
-[data-theme="dark"] .tag.is-danger {
-    background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
 }
 
 /* ============================================
@@ -443,29 +389,6 @@
 }
 
 /* Dark theme toggle button adjustments */
-[data-theme="dark"] .button.is-success.is-light {
-    background-color: rgba(16, 185, 129, 0.15);
-    border-color: #10b981;
-    color: #6ee7b7;
-}
-
-[data-theme="dark"] .button.is-success.is-light:hover {
-    background-color: rgba(16, 185, 129, 0.25);
-    border-color: #34d399;
-    color: #a7f3d0;
-}
-
-[data-theme="dark"] .button.is-ghost {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #9ca3af;
-}
-
-[data-theme="dark"] .button.is-ghost:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.15);
-    color: #d1d5db;
-}
 
 /* Add clear visual feedback on toggle */
 .button.is-small.is-success.is-light,

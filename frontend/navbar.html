@@ -1,13 +1,13 @@
 {{define "navbar"}}
-<nav class="navbar is-fixed-top is-spaced has-shadow" role="navigation" aria-label="main navigation">
+<nav class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
     <div class="container">
-        <!-- CSS-only navbar toggle control -->
         <input type="checkbox" id="nav-toggle" class="visually-hidden-checkbox" aria-label="Toggle navigation">
+        
         <div class="navbar-brand">
             <a class="navbar-item" href="{{withLang "/" .Lang}}">
-                <span class="has-text-weight-bold">{{T "UI.Header"}}</span>
+                {{T "UI.Header"}}
             </a>
-            <label for="nav-toggle" class="navbar-burger burger" data-target="navbarMenu" role="button" aria-label="menu" aria-expanded="false">
+            <label for="nav-toggle" class="navbar-burger" aria-label="menu">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
@@ -18,47 +18,44 @@
             <div class="navbar-start">
                 <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="{{withLang "/" .Lang}}" {{if eq (currentPath) "/"}}aria-current="page"{{end}}>
                     <span class="icon-text">
-                        <span class="icon">
-                            <i class="fas fa-home"></i>
-                        </span>
+                        <span class="icon"><i class="fas fa-home"></i></span>
                         <span>{{T "Navbar.Home"}}</span>
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="{{withLang "/vm/create" .Lang}}"
+
+                {{ $createDisabled := or (not .IsAuthenticated) (not .ProxmoxConnected) }}
+                <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if $createDisabled}}is-disabled{{end}}"
+                   href="{{withLang "/vm/create" .Lang}}"
                    {{if eq (currentPath) "/vm/create"}}aria-current="page"{{end}}
-                   {{if not .ProxmoxConnected}}aria-disabled="true" tabindex="-1" title="Proxmox server is not available"{{end}}>
+                   {{if $createDisabled}}aria-disabled="true" tabindex="-1"{{if not .IsAuthenticated}} title="Login required"{{else}} title="Proxmox server unavailable"{{end}}{{end}}>
                     <span class="icon-text">
-                        <span class="icon">
-                            <i class="fas fa-plus-square"></i>
-                        </span>
+                        <span class="icon"><i class="fas fa-plus-square"></i></span>
                         <span>{{T "Navbar.CreateVM"}}</span>
                         {{if not .ProxmoxConnected}}
-                        <span class="icon has-text-danger ml-1">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </span>
+                        <span class="icon has-text-danger ml-1"><i class="fas fa-exclamation-triangle"></i></span>
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if not .ProxmoxConnected}}is-disabled{{end}}" href="{{withLang "/search" .Lang}}"
+
+                {{ $searchDisabled := or (not .IsAuthenticated) (not .ProxmoxConnected) }}
+                <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if $searchDisabled}}is-disabled{{end}}"
+                   href="{{withLang "/search" .Lang}}"
                    {{if eq (currentPath) "/search"}}aria-current="page"{{end}}
-                   {{if not .ProxmoxConnected}}aria-disabled="true" tabindex="-1" title="Proxmox server is not available"{{end}}>
+                   {{if $searchDisabled}}aria-disabled="true" tabindex="-1"{{if not .IsAuthenticated}} title="Login required"{{else}} title="Proxmox server unavailable"{{end}}{{end}}>
                     <span class="icon-text">
-                        <span class="icon">
-                            <i class="fas fa-search"></i>
-                        </span>
+                        <span class="icon"><i class="fas fa-search"></i></span>
                         <span>{{T "Navbar.SearchVM"}}</span>
                         {{if not .ProxmoxConnected}}
-                        <span class="icon has-text-danger ml-1">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </span>
+                        <span class="icon has-text-danger ml-1"><i class="fas fa-exclamation-triangle"></i></span>
                         {{end}}
                     </span>
                 </a>
-                <a class="navbar-item {{if eq (currentPath) "/docs/user"}}is-active{{end}}" href="{{withLang "/docs/user" .Lang}}" {{if eq (currentPath) "/docs/user"}}aria-current="page"{{end}}>
+
+                <a class="navbar-item {{if or (eq (currentPath) "/docs/user") (eq (currentPath) "/docs/admin")}}is-active{{end}}"
+                   href="{{withLang "/docs/user" .Lang}}"
+                   {{if or (eq (currentPath) "/docs/user") (eq (currentPath) "/docs/admin")}}aria-current="page"{{end}}>
                     <span class="icon-text">
-                        <span class="icon">
-                            <i class="fas fa-book"></i>
-                        </span>
+                        <span class="icon"><i class="fas fa-book"></i></span>
                         <span>{{T "Navbar.Documentation"}}</span>
                     </span>
                 </a>
@@ -66,50 +63,34 @@
 
             <div class="navbar-end">
                 <div class="navbar-item">
-                    <div class="buttons are-small">
+                    <div class="buttons">
                         {{if .IsAuthenticated}}
-                        {{if .IsAdmin}}
-                        <a class="button is-primary" href="{{withLang "/admin/nodes" .Lang}}">
-                            <span class="icon">
-                                <i class="fas fa-cog"></i>
-                            </span>
-                            <span>{{T "Navbar.Admin"}}</span>
-                        </a>
-                        {{end}}
-                        <div class="navbar-item is-hidden-mobile">
-                            <div class="is-flex is-align-items-center is-justify-content-center">
-                                <a href="{{withLang "/profile" .Lang}}" class="button is-small is-ghost mr-2" title="{{T "Navbar.Profile"}}">
-                                    <span class="icon is-small">
-                                        <i class="fas fa-user"></i>
-                                    </span>
-                                    <span>{{.Username}}</span>
-                                </a>
-                                <a href="{{withLang "/logout" .Lang}}" class="button is-small is-danger is-light">
-                                    <span class="icon is-small">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                    </span>
-                                    <span>{{T "Navbar.Logout"}}</span>
-                                </a>
-                            </div>
-                        </div>
+                            {{if .IsAdmin}}
+                            <a class="button is-primary" href="{{withLang "/admin/nodes" .Lang}}">
+                                <span class="icon"><i class="fas fa-cog"></i></span>
+                                <span>{{T "Navbar.Admin"}}</span>
+                            </a>
+                            {{end}}
+                            
+                            <a href="{{withLang "/profile" .Lang}}" class="button is-ghost">
+                                <span class="icon"><i class="fas fa-user"></i></span>
+                                <span>{{.Username}}</span>
+                            </a>
+                            
+                            <a href="{{withLang "/logout" .Lang}}" class="button is-light">
+                                <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                                <span>{{T "Navbar.Logout"}}</span>
+                            </a>
                         {{else}}
-                        <a class="button is-primary" href="{{withLang "/login" .Lang}}">
-                            <span class="icon">
-                                <i class="fas fa-sign-in-alt"></i>
-                            </span>
-                            <span>{{T "Navbar.Login"}}</span>
-                        </a>
+                            <a class="button is-primary" href="{{withLang "/login" .Lang}}">
+                                <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
+                                <span>{{T "Navbar.Login"}}</span>
+                            </a>
                         {{end}}
-
-                        <div class="buttons has-addons language-buttons" role="group" aria-label="Language">
-                            <a href="{{urlWithLang "fr"}}" hreflang="fr" class="button {{if eq .Lang "fr"}}is-selected{{else}}is-light{{end}}"
-                                title="Français" {{if eq .Lang "fr"}}aria-current="true"{{end}}>
-                                FR 🇫🇷
-                            </a>
-                            <a href="{{urlWithLang "en"}}" hreflang="en" class="button {{if eq .Lang "en"}}is-selected{{else}}is-light{{end}}"
-                                title="English" {{if eq .Lang "en"}}aria-current="true"{{end}}>
-                                EN 🇬🇧
-                            </a>
+                        
+                        <div class="buttons has-addons language-buttons">
+                            <a href="{{urlWithLang "fr"}}" class="button {{if eq .Lang "fr"}}is-selected{{end}}" title="Français">FR</a>
+                            <a href="{{urlWithLang "en"}}" class="button {{if eq .Lang "en"}}is-selected{{end}}" title="English">EN</a>
                         </div>
                     </div>
                 </div>

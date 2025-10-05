@@ -1,21 +1,35 @@
-/* Visually hidden checkbox - always hidden, used for CSS-only burger menu toggle */
+/* ============================================
+   UTILITY & NAVIGATION OVERRIDES
+   Mobile navigation and helper classes
+   ============================================ */
+
+/* ============================================
+   ACCESSIBILITY UTILITIES
+   ============================================ */
+/* Visually hidden checkbox for CSS-only toggles */
 .visually-hidden-checkbox {
-  position: absolute !important;
-  opacity: 0 !important;
-  width: 0 !important;
-  height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  pointer-events: none !important;
-  visibility: hidden !important;
-  overflow: hidden !important;
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  visibility: hidden;
+  overflow: hidden;
 }
 
-/* Mobile Navigation */
-@media screen and (max-width: 1023px) {
+/* Exception: Allow pointer events for notification dismissals */
+input.notification-dismiss-toggle.visually-hidden-checkbox {
+  pointer-events: auto;
+}
 
+/* ============================================
+   MOBILE NAVIGATION
+   ============================================ */
+@media screen and (max-width: 1023px) {
   .navbar-burger {
-    display: block !important;
+    display: block;
     cursor: pointer;
     position: relative;
     width: 3.25rem;
@@ -31,24 +45,15 @@
     left: calc(50% - 8px);
     position: absolute;
     transform-origin: center;
-    transition-duration: 86ms;
-    transition-property: background-color, opacity, transform;
-    transition-timing-function: ease-out;
+    transition: background-color 86ms ease-out, opacity 86ms ease-out, transform 86ms ease-out;
     width: 16px;
   }
 
-  .navbar-burger span:nth-child(1) {
-    top: calc(50% - 6px);
-  }
+  .navbar-burger span:nth-child(1) { top: calc(50% - 6px); }
+  .navbar-burger span:nth-child(2) { top: calc(50% - 1px); }
+  .navbar-burger span:nth-child(3) { top: calc(50% + 4px); }
 
-  .navbar-burger span:nth-child(2) {
-    top: calc(50% - 1px);
-  }
-
-  .navbar-burger span:nth-child(3) {
-    top: calc(50% + 4px);
-  }
-
+  /* Burger animation when menu is open */
   #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(1) {
     transform: translateY(5px) rotate(45deg);
   }
@@ -60,20 +65,20 @@
   #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(3) {
     transform: translateY(-5px) rotate(-45deg);
   }
+  
+  .navbar-item {
+    padding: 0.75rem;
+  }
 }
 
 @media screen and (min-width: 1024px) {
   .navbar-burger {
-    display: none !important;
+    display: none;
   }
 }
 
-/* Additional mobile improvements */
+/* Additional mobile responsive helpers */
 @media screen and (max-width: 768px) {
-  .navbar-item {
-    padding: 0.75rem;
-  }
-
   .buttons {
     flex-wrap: wrap;
     justify-content: center;
@@ -86,20 +91,4 @@
   .navbar-end .navbar-item .buttons {
     width: 100%;
   }
-}
-
-/* Remove hover effects from cards */
-.card:hover {
-  transform: none !important;
-  box-shadow: none !important;
-  transition: none !important;
-}
-
-.card:hover .card-content {
-  transform: none !important;
-}
-
-/* Override pointer-events for notification dismiss checkboxes */
-input.notification-dismiss-toggle.visually-hidden-checkbox {
-  pointer-events: auto !important;
 }

@@ -1,24 +1,25 @@
-/* Design tokens: color variables and Bulma brand mapping */
+/* ============================================
+   DESIGN TOKENS
+   ============================================ */
+
 :root {
-  --primary: hsl(var(--bulma-primary-h) var(--bulma-primary-s) var(--bulma-primary-l));
-  --primary-hover: hsl(var(--bulma-primary-h) var(--bulma-primary-s) calc(var(--bulma-primary-l) - 6%));
-  /* Light theme tokens */
-  --bg: #f7f8fa;
+  /* Brand colors */
+  --primary: #ff8800;
+  --primary-hover: #e67700;
+  
+  /* Colors */
+  --bg: #f9fafb;
   --text: #1f2937;
   --muted: #6b7280;
   --surface: #ffffff;
   --surface-2: #f3f4f6;
   --border: #e5e7eb;
-  --navbar-bg: #ffffff;
-  --navbar-text: #374151;
   --card-bg: #ffffff;
   --link: var(--primary);
   --link-hover: var(--primary-hover);
-  --shadow-color: 0 10px 30px rgb(2 6 23 / 8%);
-  color-scheme: light;
-
-  /* Bulma v1 brand mapping (primary color in light mode) */
-  /* #ff8800 -> hsl(32, 100%, 50%) */
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  
+  /* Bulma compatibility */
   --bulma-primary-h: 32;
   --bulma-primary-s: 100%;
   --bulma-primary-l: 50%;

@@ -1,11 +1,20 @@
-/* Base styles: global colors, surfaces, forms, spacing, accessibility */
+/* ============================================
+   BASE STYLES
+   Global styles for consistent UX across all pages
+   ============================================ */
 
-/* Smooth scrolling for in-page anchors */
-html { scroll-behavior: smooth; }
+/* ============================================
+   FOUNDATION
+   ============================================ */
+html {
+  scroll-behavior: smooth;
+}
 
-/* Respect user preference for reduced motion */
+/* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -13,26 +22,50 @@ html { scroll-behavior: smooth; }
   }
 }
 
-/* Surfaces */
+/* ============================================
+   LAYOUT & SPACING
+   ============================================ */
+.section {
+  padding: 1.5rem 0;
+}
+
+.section > .container > .section {
+  padding: 0.5rem 0;
+  min-height: auto;
+}
+
+/* ============================================
+   SURFACES & CONTAINERS
+   ============================================ */
 .box {
   background-color: var(--surface);
   box-shadow: var(--shadow-color);
   border: 1px solid var(--border);
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   margin-bottom: 1.5rem;
+}
+
+.box .title {
+  color: var(--text);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border);
 }
 
 .card {
   background-color: var(--card-bg);
   box-shadow: var(--shadow-color);
-  height: 100%;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
+  height: 100%;
   overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.card.no-hover:hover {
+.card.no-hover:hover,
+.card.admin-card:hover {
   transform: none;
   box-shadow: var(--shadow-color);
 }
@@ -48,161 +81,87 @@ html { scroll-behavior: smooth; }
   font-weight: 600;
 }
 
-/* Box title styling */
-.box .title {
-  color: var(--text);
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 0.125rem solid var(--border);
+/* Fade-in animation for cards */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Forms */
-.input, .textarea, .select select {
-  background-color: var(--surface);
-  color: var(--text);
-  border-color: var(--border);
-}
-.field:not(:last-child) { margin-bottom: 1.25rem; }
-.input::placeholder, .textarea::placeholder { color: var(--muted); }
-.input:focus, .textarea:focus, .select select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 0.125em rgb(255 136 0 / 0.2);
-}
-
-[data-theme="dark"] .input:focus,
-[data-theme="dark"] .textarea:focus,
-[data-theme="dark"] .select select:focus {
-  box-shadow: 0 0 0 0.125em rgb(217 119 6 / 0.18);
-}
-
-/* Dark: static addon buttons should match surfaces */
-[data-theme="dark"] .button.is-static {
-  background-color: var(--surface-2);
-  color: var(--muted);
-  border-color: var(--border);
-}
-
-/* Small text helpers */
-.help {
-  color: var(--muted);
-  font-size: 0.85em;
-  margin-top: 0.25em;
-}
-
-/* Sections */
-.section {
-  padding: 1.5rem 0;
-}
-
-.section > .container > .section {
-  padding: 0.5rem 0;
-  min-height: auto;
-}
-
-/* Accessibility: global focus outline */
-:where(a, button, input, select, textarea, .button):focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-/* Tables */
-.table { background-color: transparent; color: var(--text); }
-.table th, .table td { border-color: var(--border); }
-.table thead th { background-color: var(--surface-2); }
-
-.table-container {
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  overflow: hidden;
-}
-.table.is-hoverable tbody tr:hover { background-color: var(--surface-2); }
-.table.is-striped tbody tr:nth-child(even) { background-color: rgb(0 0 0 / 0.02); }
-[data-theme="dark"] .table.is-striped tbody tr:nth-child(even) { background-color: rgb(255 255 255 / 0.03); }
-
-/* Console Modal Responsive Styles */
-@media screen and (max-width: 768px) {
-  .modal-card {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  .modal-card-foot {
-    padding: 0.75rem !important;
-  }
-  
-  .modal-card-foot .button {
-    font-size: 0.875rem;
-  }
-}
-
-/* Ensure console container uses available space */
-#console-container canvas {
-  max-width: 100%;
-  height: auto;
-}
-
-/* VM Details Page - Orange Brand Color */
-.box[style*="border-left"] {
-  box-shadow: 0 2px 3px rgba(10, 10, 10, 0.1);
-}
-
-/* Custom progress bar styling */
-.progress::-webkit-progress-bar {
-  background-color: #f5f5f5;
-}
-
-.progress::-webkit-progress-value {
-  background-color: #ff8800;
-}
-
-.progress::-moz-progress-bar {
-  background-color: #ff8800;
-}
-
-.progress.is-success::-webkit-progress-value {
-  background-color: #48c774;
-}
-
-.progress.is-success::-moz-progress-bar {
-  background-color: #48c774;
-}
-
-.progress.is-warning::-webkit-progress-value {
-  background-color: #ffe08a;
-}
-
-.progress.is-warning::-moz-progress-bar {
-  background-color: #ffe08a;
+.card.admin-card {
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* ============================================
-   LOGIN FORMS - Enhanced Styling
+   FORMS & INPUTS
    ============================================ */
-/* Login form input focus states - clean, subtle */
-.input.is-large:focus {
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.08) !important;
+.field:not(:last-child) {
+  margin-bottom: 1.25rem;
+}
+
+.input,
+.textarea,
+.select select {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--muted);
+}
+
+/* Standard input focus */
+.input:focus,
+.textarea:focus,
+.select select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(255, 136, 0, 0.12);
   outline: none;
 }
 
-/* Login button states - no hover lift, just visual feedback */
+/* Large input focus (login forms) */
+.input.is-large:focus,
+.textarea.is-large:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.08);
+}
+
+.help {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* Icon positioning for large inputs */
+.control.has-icons-left .input.is-large ~ .icon.is-left {
+  font-size: 1.125rem;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+/* Large button interactions */
+.button.is-large:hover {
+  opacity: 0.95;
+}
+
+.button.is-large:active {
+  opacity: 0.9;
+}
+
 .button.is-primary.is-large:hover,
 .button.is-danger.is-large:hover {
-  opacity: 0.95;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 .button.is-primary.is-large:active,
 .button.is-danger.is-large:active {
-  opacity: 0.9;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Secondary button states - subtle interaction */
+/* Light button interactions */
 .button.is-light:hover {
   background-color: #f9fafb;
   border-color: #d1d5db;
@@ -212,58 +171,85 @@ html { scroll-behavior: smooth; }
   background-color: #f3f4f6;
 }
 
-/* Login card entrance animation - subtle fade in */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.card.admin-card {
-  animation: fadeIn 0.3s ease-out;
-}
-
-/* Remove default card hover effects on login pages */
-.card.admin-card:hover {
-  transform: none !important;
-}
-
-/* Dark theme adjustments for login forms */
-[data-theme="dark"] .input.is-large {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
+/* ============================================
+   TABLES
+   ============================================ */
+.table {
+  background-color: transparent;
   color: var(--text);
 }
 
-[data-theme="dark"] .input.is-large::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+.table th,
+.table td {
+  border-color: var(--border);
 }
 
-[data-theme="dark"] .input.is-large:focus {
-  border-color: var(--primary) !important;
-  background-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15) !important;
+.table thead th {
+  background-color: var(--surface-2);
 }
 
-[data-theme="dark"] .label {
-  color: #d1d5db !important;
+.table-container {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
 }
 
-[data-theme="dark"] .button.is-light {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #d1d5db;
+.table.is-hoverable tbody tr:hover {
+  background-color: var(--surface-2);
 }
 
-[data-theme="dark"] .button.is-light:hover {
-  background-color: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+.table.is-striped tbody tr:nth-child(even) {
+  background-color: #f9fafb;
 }
 
-/* Icon positioning for large inputs */
-.control.has-icons-left .input.is-large ~ .icon.is-left {
-  font-size: 1.125rem;
+/* ============================================
+   PROGRESS BARS
+   ============================================ */
+.progress::-webkit-progress-bar,
+.progress::-moz-progress-bar {
+  background-color: #f5f5f5;
 }
+
+.progress::-webkit-progress-value,
+.progress::-moz-progress-bar {
+  background-color: #ff8800;
+}
+
+.progress.is-success::-webkit-progress-value,
+.progress.is-success::-moz-progress-bar {
+  background-color: #48c774;
+}
+
+.progress.is-warning::-webkit-progress-value,
+.progress.is-warning::-moz-progress-bar {
+  background-color: #ffe08a;
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+:where(a, button, input, select, textarea, .button):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media screen and (max-width: 768px) {
+  .modal-card {
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+  }
+  
+  .modal-card-foot {
+    padding: 0.75rem;
+  }
+  
+  .modal-card-foot .button {
+    font-size: 0.875rem;
+  }
+}
+
