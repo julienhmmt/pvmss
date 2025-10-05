@@ -78,7 +78,7 @@ docker-compose logs -f pvmss
 - **VM Management**: Start, stop, restart, and delete virtual machines.
 - **VM Search**: Find virtual machines by VMID or name with real-time search.
 - **VM Details**: View comprehensive VM information including status, uptime, CPU, memory, disk usage, and network configuration.
-- **Profile Management**: Update personal description and manage assigned tags.
+- **Profile Management**: View and manage own VM, reset password.
 - **Multi-language**: The interface is available in English and French with automatic language detection.
 
 ### For administrators

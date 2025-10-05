@@ -258,6 +258,32 @@ other = "Create a VM"
 other = "Create a new VM"
 ["Profile.SearchVM"]
 other = "Search VMs"
+["Profile.ChangePassword"]
+other = "Change Password"
+["Profile.CurrentPassword"]
+other = "Current Password"
+["Profile.CurrentPasswordPlaceholder"]
+other = "Enter your current password"
+["Profile.CurrentPasswordHelp"]
+other = "Enter your current password to verify your identity"
+["Profile.NewPassword"]
+other = "New Password"
+["Profile.NewPasswordPlaceholder"]
+other = "Enter your new password"
+["Profile.NewPasswordHelp"]
+other = "Minimum 5 characters"
+["Profile.ConfirmPassword"]
+other = "Confirm New Password"
+["Profile.ConfirmPasswordPlaceholder"]
+other = "Re-enter your new password"
+["Profile.UpdatePassword"]
+other = "Update Password"
+["Profile.PasswordUpdateSuccess"]
+other = "Password updated successfully!"
+["Profile.ChangePasswordButton"]
+other = "Change My Password"
+["Profile.PasswordChangeDescription"]
+other = "Click the button below to change your Proxmox password. You will need to provide your current password for verification."
 
 # ===========
 # Search

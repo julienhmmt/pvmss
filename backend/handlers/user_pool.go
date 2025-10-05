@@ -30,6 +30,11 @@ func buildUserPoolSuccessMessage(r *http.Request) string {
 		return ""
 	}
 
+	// Check for explicit message parameter (used by password updates and deletions)
+	if msg := r.URL.Query().Get("message"); msg != "" {
+		return msg
+	}
+
 	user := r.URL.Query().Get("user")
 	pool := r.URL.Query().Get("pool")
 

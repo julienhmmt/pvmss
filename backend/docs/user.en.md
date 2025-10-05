@@ -128,7 +128,7 @@ If you encounter console connection issues:
 
 The PVMSS application is maintained by your organization's IT team. Contact your administrator for assistance in the following cases:
 
-- **Password loss**: Self-service password reset is unavailable. Your administrator can reset your password from the Proxmox node.
+- **Password loss**: You can update your password in the profile page. Your administrator can reset your password from the Proxmox node if you lost it.
 - **Resource limit increases**: Contact your administrator if you need more CPU, RAM, or disk than the configured limits allow.
 - **Difficulties creating a virtual machine**: Reach out for issues with VM creation, configuration, or deployment.
 - **Console access problems**: Contact your administrator for console connection or usage issues.

@@ -26,7 +26,8 @@ func NewProfileHandler(sm state.StateManager) *ProfileHandler {
 
 // RegisterRoutes registers profile routes
 func (h *ProfileHandler) RegisterRoutes(router *httprouter.Router) {
-	router.GET("/profile", h.ShowProfile)
+	router.GET("/profile", RequireAuthHandle(h.ShowProfile))
+	router.POST("/profile/update-password", RequireAuthHandle(h.UpdatePassword))
 }
 
 // VMInfo represents a VM in the user's pool
@@ -99,15 +100,23 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	// Fetch VMs from the user's pool
 	vms := h.fetchUserVMs(r.Context(), client, poolName)
 
+	// Check for password update messages and form visibility
+	passwordSuccess := r.URL.Query().Get("password_success") == "1"
+	passwordError := r.URL.Query().Get("password_error")
+	showPasswordForm := r.URL.Query().Get("show_password_form") == "1" || passwordError != ""
+
 	// Prepare template data
 	data := map[string]interface{}{
-		"Title":           ctx.Translate("Profile.Title"),
-		"Username":        username,
-		"PoolName":        poolName,
-		"VMs":             vms,
-		"Lang":            i18n.GetLanguage(r),
-		"IsAuthenticated": true,
-		"IsAdmin":         ctx.IsAdmin(),
+		"Title":            ctx.Translate("Profile.Title"),
+		"Username":         username,
+		"PoolName":         poolName,
+		"VMs":              vms,
+		"Lang":             i18n.GetLanguage(r),
+		"IsAuthenticated":  true,
+		"IsAdmin":          ctx.IsAdmin(),
+		"PasswordSuccess":  passwordSuccess,
+		"PasswordError":    passwordError,
+		"ShowPasswordForm": showPasswordForm,
 	}
 
 	ctx.RenderTemplate("profile", data)
@@ -212,4 +221,112 @@ func (h *ProfileHandler) getNodeNames(ctx context.Context, client interface {
 		}
 	}
 	return nodes, nil
+}
+
+// UpdatePassword handles user password change requests
+func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("ProfileHandler.UpdatePassword", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	// Get session manager
+	sessionManager := h.stateManager.GetSessionManager()
+	if sessionManager == nil {
+		log.Error().Msg("Session manager not available")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Get username from session
+	username := sessionManager.GetString(r.Context(), "username")
+	if username == "" {
+		log.Error().Msg("No username in session")
+		http.Redirect(w, r, "/profile?error=session_expired", http.StatusSeeOther)
+		return
+	}
+
+	// Get form values
+	currentPassword := r.FormValue("current_password")
+	newPassword := r.FormValue("new_password")
+	confirmPassword := r.FormValue("confirm_password")
+
+	// Validate inputs
+	if currentPassword == "" || newPassword == "" || confirmPassword == "" {
+		log.Debug().Msg("Missing password fields")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("All password fields are required"), http.StatusSeeOther)
+		return
+	}
+
+	if newPassword != confirmPassword {
+		log.Debug().Msg("New passwords do not match")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("New passwords do not match"), http.StatusSeeOther)
+		return
+	}
+
+	if len(newPassword) < 5 {
+		log.Debug().Msg("New password too short")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Password must be at least 5 characters"), http.StatusSeeOther)
+		return
+	}
+
+	// Get Proxmox client
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		log.Error().Msg("Proxmox client not available")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Service unavailable"), http.StatusSeeOther)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	// Proxmox password update requires cookie-based authentication
+	// First, verify current password by attempting to authenticate
+	proxmoxURL := client.GetApiUrl()
+	insecureSkipVerify := strings.Contains(proxmoxURL, "192.168.") || strings.Contains(proxmoxURL, "localhost") // Simple heuristic
+	
+	cookieClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkipVerify)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create cookie-based client")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Internal error"), http.StatusSeeOther)
+		return
+	}
+
+	// Authenticate with current password to verify it's correct
+	ticketResp, err := proxmox.CreateTicket(ctx, cookieClient, username, currentPassword, &proxmox.CreateTicketOptions{
+		Realm: "pve",
+	})
+	if err != nil {
+		log.Info().Err(err).Str("username", username).Msg("Current password verification failed")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Current password is incorrect"), http.StatusSeeOther)
+		return
+	}
+
+	// Set authentication credentials
+	cookieClient.PVEAuthCookie = ticketResp.Ticket
+	cookieClient.CSRFPreventionToken = ticketResp.CSRFPreventionToken
+
+	// Update password - Proxmox requires current password as confirmation
+	if err := proxmox.UpdateUserPassword(ctx, cookieClient, username, newPassword, currentPassword, "pve"); err != nil {
+		log.Error().Err(err).Str("username", username).Msg("Failed to update password")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Failed to update password: "+err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	log.Info().Str("username", username).Msg("Password updated successfully")
+
+	// Update session with new PVE credentials
+	newTicketResp, err := proxmox.CreateTicket(ctx, cookieClient, username, newPassword, &proxmox.CreateTicketOptions{
+		Realm: "pve",
+	})
+	if err == nil {
+		sessionManager.Put(r.Context(), "pve_auth_cookie", newTicketResp.Ticket)
+		sessionManager.Put(r.Context(), "pve_csrf_token", newTicketResp.CSRFPreventionToken)
+		sessionManager.Put(r.Context(), "pve_ticket_created", time.Now().Unix())
+	}
+
+	// Redirect with success message
+	http.Redirect(w, r, "/profile?password_success=1", http.StatusSeeOther)
 }

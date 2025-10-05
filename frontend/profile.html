@@ -45,6 +45,89 @@
                             </div>
                         </div>
 
+                        <!-- Password Change Section -->
+                        <div class="box mb-5">
+                            <h2 class="title is-5 mb-4">
+                                <span class="icon-text">
+                                    <span class="icon has-text-warning">
+                                        <i class="fas fa-key"></i>
+                                    </span>
+                                    <span>{{T "Profile.ChangePassword"}}</span>
+                                </span>
+                            </h2>
+
+                            {{if .PasswordSuccess}}
+                            {{template "notification" (dict 
+                              "Type" "success" 
+                              "Message" (T "Profile.PasswordUpdateSuccess")
+                              "Icon" "fas fa-check-circle" 
+                              "Dismissible" true
+                            )}}
+                            {{end}}
+
+                            {{if .PasswordError}}
+                            {{template "notification" (dict 
+                              "Type" "danger" 
+                              "Message" .PasswordError
+                              "Icon" "fas fa-exclamation-triangle" 
+                              "Dismissible" true
+                            )}}
+                            {{end}}
+
+                            {{if .ShowPasswordForm}}
+                            <form method="POST" action="{{withLang "/profile/update-password" $lang}}">
+                                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                                
+                                <div class="field">
+                                    <label class="label">{{T "Profile.CurrentPassword"}}</label>
+                                    <div class="control has-icons-left">
+                                        <input class="input" type="password" name="current_password" placeholder="{{T "Profile.CurrentPasswordPlaceholder"}}" required minlength="5" autofocus>
+                                        <span class="icon is-small is-left"><i class="fas fa-lock"></i></span>
+                                    </div>
+                                    <p class="help">{{T "Profile.CurrentPasswordHelp"}}</p>
+                                </div>
+
+                                <div class="field">
+                                    <label class="label">{{T "Profile.NewPassword"}}</label>
+                                    <div class="control has-icons-left">
+                                        <input class="input" type="password" name="new_password" placeholder="{{T "Profile.NewPasswordPlaceholder"}}" required minlength="5">
+                                        <span class="icon is-small is-left"><i class="fas fa-key"></i></span>
+                                    </div>
+                                    <p class="help">{{T "Profile.NewPasswordHelp"}}</p>
+                                </div>
+
+                                <div class="field">
+                                    <label class="label">{{T "Profile.ConfirmPassword"}}</label>
+                                    <div class="control has-icons-left">
+                                        <input class="input" type="password" name="confirm_password" placeholder="{{T "Profile.ConfirmPasswordPlaceholder"}}" required minlength="5">
+                                        <span class="icon is-small is-left"><i class="fas fa-key"></i></span>
+                                    </div>
+                                </div>
+
+                                <div class="field is-grouped">
+                                    <div class="control">
+                                        <button type="submit" class="button is-warning">
+                                            <span class="icon"><i class="fas fa-save"></i></span>
+                                            <span>{{T "Profile.UpdatePassword"}}</span>
+                                        </button>
+                                    </div>
+                                    <div class="control">
+                                        <a href="{{withLang "/profile" $lang}}" class="button is-light">
+                                            <span class="icon"><i class="fas fa-times"></i></span>
+                                            <span>{{T "Common.Cancel"}}</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                            {{else}}
+                            <p class="mb-3">{{T "Profile.PasswordChangeDescription"}}</p>
+                            <a href="{{withLang "/profile?show_password_form=1" $lang}}" class="button is-warning">
+                                <span class="icon"><i class="fas fa-key"></i></span>
+                                <span>{{T "Profile.ChangePasswordButton"}}</span>
+                            </a>
+                            {{end}}
+                        </div>
+
                         <!-- VMs Section -->
                         <div class="content">
                             <h2 class="title is-5 mb-4">

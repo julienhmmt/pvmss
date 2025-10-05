@@ -161,7 +161,7 @@
                     <span>{{T "Common.Refresh"}}</span>
                   </a>
 
-                  <form method="POST" action="{{withLang "/admin/userpool/delete" $root.Lang}}" data-confirm="{{T "Admin.UserPool.DeleteConfirm"}}" onsubmit="return confirm(this.dataset.confirm);" class="is-inline">
+                  <form method="POST" action="{{withLang "/admin/userpool/delete" $root.Lang}}" class="is-inline">
                     <input type="hidden" name="csrf_token" value="{{$root.CSRFToken}}">
                     <input type="hidden" name="pool" value="{{.Pool}}">
                     <button type="submit" class="button is-danger is-small is-light" title="{{T "Admin.UserPool.DeleteTitle"}}">

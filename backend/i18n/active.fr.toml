@@ -214,6 +214,32 @@ other = "Créer une VM"
 other = "Créer une nouvelle VM"
 ["Profile.SearchVM"]
 other = "Rechercher des VMs"
+["Profile.ChangePassword"]
+other = "Changer le mot de passe"
+["Profile.CurrentPassword"]
+other = "Mot de passe actuel"
+["Profile.CurrentPasswordPlaceholder"]
+other = "Entrez votre mot de passe actuel"
+["Profile.CurrentPasswordHelp"]
+other = "Entrez votre mot de passe actuel pour vérifier votre identité"
+["Profile.NewPassword"]
+other = "Nouveau mot de passe"
+["Profile.NewPasswordPlaceholder"]
+other = "Entrez votre nouveau mot de passe"
+["Profile.NewPasswordHelp"]
+other = "Minimum 5 caractères"
+["Profile.ConfirmPassword"]
+other = "Confirmer le nouveau mot de passe"
+["Profile.ConfirmPasswordPlaceholder"]
+other = "Ressaisissez votre nouveau mot de passe"
+["Profile.UpdatePassword"]
+other = "Mettre à jour le mot de passe"
+["Profile.PasswordUpdateSuccess"]
+other = "Mot de passe mis à jour avec succès !"
+["Profile.ChangePasswordButton"]
+other = "Changer mon mot de passe"
+["Profile.PasswordChangeDescription"]
+other = "Cliquez sur le bouton ci-dessous pour changer votre mot de passe Proxmox. Vous devrez fournir votre mot de passe actuel pour vérification."
 
 # ===========
 # UI Elements

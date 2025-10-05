@@ -128,7 +128,7 @@ Si vous rencontrez des problèmes de connexion à la console :
 
 L'application PVMSS est gérée par l'équipe informatique de votre organisation. Pour toute assistance, contactez votre administrateur dans les cas suivants :
 
-- **Perte de mot de passe** : La réinitialisation de mot de passe en libre-service n'est pas disponible. Votre administrateur peut réinitialiser votre mot de passe depuis le noeud Proxmox.
+- **Perte de mot de passe** : Vous pouvez changer votre mot de passe via le bouton "Modifier le mot de passe" dans votre profil. Votre administrateur peut réinitialiser votre mot de passe depuis le noeud Proxmox si vous avez perdu votre mot de passe.
 - **Augmentation des limites de ressources** : Si vous avez besoin de plus de CPU, RAM ou disque que les limites configurées ne le permettent, contactez votre administrateur.
 - **Difficultés lors de la création d'une machine virtuelle** : Problèmes avec la création, la configuration ou le déploiement de VM, contactez votre administrateur.
 - **Problèmes d'accès à la console** : Problèmes de connexion ou d'utilisation de la console VM, contactez votre administrateur.

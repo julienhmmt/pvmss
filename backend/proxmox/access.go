@@ -153,6 +153,51 @@ func EnsureUser(ctx context.Context, client ClientInterface, username, password,
 	return nil
 }
 
+// UpdateUserPassword updates the password for an existing Proxmox user.
+// This function uses the PUT /access/password endpoint.
+//
+// Parameters:
+//   - username: Username (will be normalized to user@realm format)
+//   - password: New password for the user
+//   - confirmPassword: Password confirmation (required by Proxmox API)
+//   - realm: Authentication realm (defaults to "pve")
+//
+// Returns:
+//   - error if the password update fails
+//
+// Note: This requires cookie-based authentication (PVEAuthCookie), not API tokens.
+func UpdateUserPassword(ctx context.Context, client ClientInterface, username, password, confirmPassword, realm string) error {
+	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
+		return err
+	}
+
+	if realm == "" {
+		realm = "pve"
+	}
+	uid := normalizeUserID(username, realm)
+
+	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
+	defer cancel()
+
+	// Build request parameters
+	form := url.Values{}
+	form.Set("userid", uid)
+	form.Set("password", password)
+	// Proxmox requires confirmation-password parameter
+	if confirmPassword != "" {
+		form.Set("confirmation-password", confirmPassword)
+	}
+
+	// Use PUT /access/password to update the password
+	if _, err := client.PutFormWithContext(ctx, "/access/password", form); err != nil {
+		logger.Get().Error().Err(err).Str("userid", uid).Msg("Failed to update user password")
+		return fmt.Errorf("failed to update password for user %s: %w", uid, err)
+	}
+
+	logger.Get().Info().Str("userid", uid).Msg("Successfully updated user password")
+	return nil
+}
+
 // EnsurePool creates a Proxmox pool if it is missing. This function is idempotent.
 func EnsurePool(ctx context.Context, client ClientInterface, poolID, comment string) error {
 	if err := validateClientAndParams(client, param{"poolID", poolID}); err != nil {
