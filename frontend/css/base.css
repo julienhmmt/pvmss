@@ -178,3 +178,92 @@ html { scroll-behavior: smooth; }
 .progress.is-warning::-moz-progress-bar {
   background-color: #ffe08a;
 }
+
+/* ============================================
+   LOGIN FORMS - Enhanced Styling
+   ============================================ */
+/* Login form input focus states - clean, subtle */
+.input.is-large:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.08) !important;
+  outline: none;
+}
+
+/* Login button states - no hover lift, just visual feedback */
+.button.is-primary.is-large:hover,
+.button.is-danger.is-large:hover {
+  opacity: 0.95;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.button.is-primary.is-large:active,
+.button.is-danger.is-large:active {
+  opacity: 0.9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Secondary button states - subtle interaction */
+.button.is-light:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.button.is-light:active {
+  background-color: #f3f4f6;
+}
+
+/* Login card entrance animation - subtle fade in */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.card.admin-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Remove default card hover effects on login pages */
+.card.admin-card:hover {
+  transform: none !important;
+}
+
+/* Dark theme adjustments for login forms */
+[data-theme="dark"] .input.is-large {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text);
+}
+
+[data-theme="dark"] .input.is-large::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="dark"] .input.is-large:focus {
+  border-color: var(--primary) !important;
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15) !important;
+}
+
+[data-theme="dark"] .label {
+  color: #d1d5db !important;
+}
+
+[data-theme="dark"] .button.is-light {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .button.is-light:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Icon positioning for large inputs */
+.control.has-icons-left .input.is-large ~ .icon.is-left {
+  font-size: 1.125rem;
+}
