@@ -1,0 +1,105 @@
+{{define "action_buttons"}}
+{{/*
+  Reusable action buttons component for VM operations
+  Usage: {{template "action_buttons" (dict 
+    "VMID" .VM.VMID 
+    "Node" .VM.Node 
+    "Status" .VM.Status 
+    "CSRFToken" .CSRFToken 
+    "ProxmoxConnected" .ProxmoxConnected
+    "Lang" .Lang
+    "Actions" (slice "start" "console" "reboot" "shutdown" "stop" "reset" "refresh" "delete")
+  )}}
+*/}}
+
+{{$vmid := .VMID}}
+{{$node := .Node}}
+{{$status := .Status}}
+{{$csrf := .CSRFToken}}
+{{$connected := .ProxmoxConnected}}
+{{$lang := .Lang}}
+{{$actions := or .Actions (slice "start" "console" "reboot" "shutdown" "stop" "reset" "refresh" "delete")}}
+
+<div class="buttons {{.ExtraClasses}}">
+    {{range $actions}}
+        {{if eq . "start"}}
+        <form action="{{withLang "/vm/action" $lang}}" method="post" class="is-inline">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}" />
+            <input type="hidden" name="vmid" value="{{$vmid}}" />
+            <input type="hidden" name="node" value="{{$node}}" />
+            <input type="hidden" name="action" value="start" />
+            <button class="button is-success" {{if or (not $connected) (eq $status "running")}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-play"></i></span>
+                <span>{{T "VMDetails.Action.Start"}}</span>
+            </button>
+        </form>
+        
+        {{else if eq . "console"}}
+        <button id="console-button" class="button" style="background-color: #ff8800; color: white;" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
+            <span class="icon"><i class="fas fa-terminal"></i></span>
+            <span>{{T "VMDetails.Action.Console"}}</span>
+        </button>
+        
+        {{else if eq . "reboot"}}
+        <form action="{{withLang "/vm/action" $lang}}" method="post" class="is-inline">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}" />
+            <input type="hidden" name="vmid" value="{{$vmid}}" />
+            <input type="hidden" name="node" value="{{$node}}" />
+            <input type="hidden" name="action" value="reboot" />
+            <button class="button is-info" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-redo"></i></span>
+                <span>{{T "VMDetails.Action.Reboot"}}</span>
+            </button>
+        </form>
+        
+        {{else if eq . "shutdown"}}
+        <form action="{{withLang "/vm/action" $lang}}" method="post" class="is-inline">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}" />
+            <input type="hidden" name="vmid" value="{{$vmid}}" />
+            <input type="hidden" name="node" value="{{$node}}" />
+            <input type="hidden" name="action" value="shutdown" />
+            <button class="button is-danger" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-power-off"></i></span>
+                <span>{{T "VMDetails.Action.Shutdown"}}</span>
+            </button>
+        </form>
+        
+        {{else if eq . "stop"}}
+        <form action="{{withLang "/vm/action" $lang}}" method="post" class="is-inline">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}" />
+            <input type="hidden" name="vmid" value="{{$vmid}}" />
+            <input type="hidden" name="node" value="{{$node}}" />
+            <input type="hidden" name="action" value="stop" />
+            <button class="button is-light" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-stop"></i></span>
+                <span>{{T "VMDetails.Action.Stop"}}</span>
+            </button>
+        </form>
+        
+        {{else if eq . "reset"}}
+        <form action="{{withLang "/vm/action" $lang}}" method="post" class="is-inline">
+            <input type="hidden" name="csrf_token" value="{{$csrf}}" />
+            <input type="hidden" name="vmid" value="{{$vmid}}" />
+            <input type="hidden" name="node" value="{{$node}}" />
+            <input type="hidden" name="action" value="reset" />
+            <button class="button is-light" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-bolt"></i></span>
+                <span>{{T "VMDetails.Action.Reset"}}</span>
+            </button>
+        </form>
+        
+        {{else if eq . "refresh"}}
+        <a href="{{withLang (printf "/vm/details/%d?refresh=1" $vmid) $lang}}" class="button is-light">
+            <span class="icon"><i class="fas fa-sync-alt"></i></span>
+            <span>{{T "VMDetails.Action.Refresh"}}</span>
+        </a>
+        
+        {{else if eq . "delete"}}
+        <a href="{{withLang (printf "/vm/delete/%d" $vmid) $lang}}" class="button is-danger" {{if not $connected}}disabled{{end}}>
+            <span class="icon"><i class="fas fa-trash-alt"></i></span>
+            <span>{{T "VMDetails.Action.Delete"}}</span>
+        </a>
+        {{end}}
+    {{end}}
+</div>
+{{end}}

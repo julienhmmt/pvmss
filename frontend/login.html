@@ -1,16 +1,16 @@
 {{define "login"}}
 {{$lang := .Lang}}
-<section class="section" style="min-height: 100vh; display: flex; align-items: center; padding: 2rem 1rem;">
+<section class="section min-h-100vh flex-center" style="padding: 2rem 1rem;">
   <div class="container">
     <div class="columns is-centered">
       <div class="column is-10-mobile is-8-tablet is-6-desktop is-5-widescreen">
-        <div class="card admin-card" style="box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12); border-radius: 16px; overflow: hidden;">
-          <header class="card-header brand-header is-align-items-center" style="background: linear-gradient(135deg, #ff8800 0%, #e67700 100%); border: none; padding: 2rem 1.5rem;">
-            <p class="card-header-title" style="color: #ffffff; font-size: 1.5rem; justify-content: center; font-weight: 700; letter-spacing: -0.025em;">
+        <div class="card admin-card login-card">
+          <header class="card-header brand-header is-align-items-center login-header">
+            <p class="card-header-title login-title">
               <span class="icon" style="font-size: 2rem; margin-right: 0.75rem;"><i class="fas fa-user"></i></span>{{T "Login.UserLogin"}}
             </p>
           </header>
-          <div class="card-content" style="padding: 3rem 2.5rem;">
+          <div class="card-content login-content">
             {{if .Warning}}
             {{template "notification" (dict 
               "Type" "info" 
@@ -49,8 +49,8 @@
                   {{T "Login.UsernameLabel"}}
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input is-large" type="text" id="username" name="username" required autofocus autocomplete="username" aria-required="true" aria-describedby="username-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" placeholder="{{T "Login.UsernameLabel"}}" style="border-radius: 10px; border: 2px solid #e5e7eb; padding: 0.75rem 1rem 0.75rem 3rem; font-size: 1rem; height: auto;" />
-                  <span class="icon is-left" style="height: 100%; align-items: center; color: #9ca3af;">
+                  <input class="input is-large input-lg" type="text" id="username" name="username" required autofocus autocomplete="username" aria-required="true" aria-describedby="username-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" placeholder="{{T "Login.UsernameLabel"}}" />
+                  <span class="icon is-left input-icon-left">
                     <i class="fas fa-user"></i>
                   </span>
                 </div>
@@ -62,8 +62,8 @@
                   {{T "Login.PasswordLabel"}}
                 </label>
                 <div class="control has-icons-left">
-                  <input class="input is-large" type="password" id="password" name="password" required autocomplete="current-password" aria-required="true" aria-describedby="password-help" minlength="6" maxlength="128" placeholder="{{T "Login.PasswordLabel"}}" style="border-radius: 10px; border: 2px solid #e5e7eb; padding: 0.75rem 1rem 0.75rem 3rem; font-size: 1rem; height: auto;" />
-                  <span class="icon is-left" style="height: 100%; align-items: center; color: #9ca3af;">
+                  <input class="input is-large input-lg" type="password" id="password" name="password" required autocomplete="current-password" aria-required="true" aria-describedby="password-help" minlength="6" maxlength="128" placeholder="{{T "Login.PasswordLabel"}}" />
+                  <span class="icon is-left input-icon-left">
                     <i class="fas fa-lock"></i>
                   </span>
                 </div>
@@ -71,7 +71,7 @@
 
               <div class="field" style="margin-top: 2rem;">
                 <div class="control">
-                  <button class="button is-primary is-fullwidth is-large" type="submit" aria-label="{{T "Login.Button"}}" style="background: linear-gradient(135deg, #ff8800 0%, #e67700 100%); border: none; border-radius: 10px; font-weight: 700; box-shadow: 0 4px 14px rgba(255, 136, 0, 0.25); height: auto; padding: 0.875rem 1.5rem; font-size: 1.125rem; letter-spacing: 0.025em;">
+                  <button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label="{{T "Login.Button"}}">
                     <span class="icon is-medium" aria-hidden="true">
                       <i class="fas fa-sign-in-alt"></i>
                     </span>
@@ -82,14 +82,14 @@
             </form>
 
             <!-- Divider -->
-            <div class="has-text-centered" style="margin: 2.5rem 0 2rem 0; position: relative;">
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0;" />
-              <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0 1.5rem; color: #6b7280; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;"></span>
+            <div class="has-text-centered divider-with-text">
+              <hr />
+              <span></span>
             </div>
 
             <!-- Admin Login Button -->
             <div class="has-text-centered">
-              <a class="button is-light is-fullwidth" href="{{withLang "/admin/login" .Lang}}" style="border-radius: 10px; border: 2px solid #e5e7eb; background: #ffffff; color: #374151; font-weight: 600; height: auto; padding: 0.75rem 1.5rem;">
+              <a class="button is-light is-fullwidth login-alt-button" href="{{withLang "/admin/login" .Lang}}">
                 <span class="icon has-text-grey">
                   <i class="fas fa-shield-alt"></i>
                 </span>

@@ -47,6 +47,9 @@
     <link rel="preload" href="/css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="/css/style.css"></noscript>
     
+    <link rel="preload" href="/css/utilities.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/utilities.css"></noscript>
+    
     {{if .IsAdminPage}}
     <link rel="preload" href="/css/admin.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="/css/admin.css"></noscript>
@@ -96,11 +99,6 @@
                         {{else}}
                             {{T "Proxmox.NotConnected"}} {{T "Proxmox.NotConnectedMessage"}}
                         {{end}}
-
-    {{/* Optional Flash Messages slot (override with a template defining "flash") */}}
-    <div role="status" aria-live="polite">
-    {{block "flash" .}}{{end}}
-    </div>
                     </div>
                 </div>
                 <div class="level-right">
@@ -110,6 +108,11 @@
         </div>
     </div>
     {{end}}
+
+    {{/* Optional Flash Messages slot (override with a template defining "flash") */}}
+    <div role="status" aria-live="polite">
+    {{block "flash" .}}{{end}}
+    </div>
 
     <main id="main-content" class="section">
         <div class="container">

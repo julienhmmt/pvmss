@@ -1,6 +1,6 @@
 {{define "vm_details"}}
 <section class="section">
-    <div class="container" style="max-width: 1200px;">
+    <div class="container max-w-1200">
         {{/* Standard notifications */}}
         {{if .Success}}
         {{template "notification" (dict 
@@ -60,76 +60,21 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="buttons mb-5" style="background: #f9f9f9; padding: 1.5rem; border-radius: 6px;">
-            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-                <input type="hidden" name="node" value="{{.VM.Node}}" />
-                <input type="hidden" name="action" value="start" />
-                <button class="button is-success" {{if or (not .ProxmoxConnected) (eq .VM.Status "running")}}disabled{{end}}>
-                    <span class="icon"><i class="fas fa-play"></i></span>
-                    <span>{{T "VMDetails.Action.Start"}}</span>
-                </button>
-            </form>
-            <button id="console-button" class="button" style="background-color: #ff8800; color: white;" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                <span class="icon"><i class="fas fa-terminal"></i></span>
-                <span>{{T "VMDetails.Action.Console"}}</span>
-            </button>
-            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-                <input type="hidden" name="node" value="{{.VM.Node}}" />
-                <input type="hidden" name="action" value="reboot" />
-                <button class="button is-info" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                    <span class="icon"><i class="fas fa-redo"></i></span>
-                    <span>{{T "VMDetails.Action.Reboot"}}</span>
-                </button>
-            </form>
-            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-                <input type="hidden" name="node" value="{{.VM.Node}}" />
-                <input type="hidden" name="action" value="shutdown" />
-                <button class="button is-danger" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                    <span class="icon"><i class="fas fa-power-off"></i></span>
-                    <span>{{T "VMDetails.Action.Shutdown"}}</span>
-                </button>
-            </form>
-            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-                <input type="hidden" name="node" value="{{.VM.Node}}" />
-                <input type="hidden" name="action" value="stop" />
-                <button class="button is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                    <span class="icon"><i class="fas fa-stop"></i></span>
-                    <span>{{T "VMDetails.Action.Stop"}}</span>
-                </button>
-            </form>
-            <form action="{{withLang "/vm/action" .Lang}}" method="post" style="display: inline;">
-                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-                <input type="hidden" name="node" value="{{.VM.Node}}" />
-                <input type="hidden" name="action" value="reset" />
-                <button class="button is-light" {{if or (not .ProxmoxConnected) (ne .VM.Status "running")}}disabled{{end}}>
-                    <span class="icon"><i class="fas fa-bolt"></i></span>
-                    <span>{{T "VMDetails.Action.Reset"}}</span>
-                </button>
-            </form>
-            <a href="{{withLang (printf "/vm/details/%d?refresh=1" .VM.VMID) .Lang}}" class="button is-light">
-                <span class="icon"><i class="fas fa-sync-alt"></i></span>
-                <span>{{T "VMDetails.Action.Refresh"}}</span>
-            </a>
-            <a href="{{withLang (printf "/vm/delete/%d" .VM.VMID) .Lang}}" class="button is-danger" {{if not .ProxmoxConnected}}disabled{{end}}>
-                <span class="icon"><i class="fas fa-trash-alt"></i></span>
-                <span>{{T "VMDetails.Action.Delete"}}</span>
-            </a>
-        </div>
+        {{template "action_buttons" (dict 
+            "VMID" .VM.VMID 
+            "Node" .VM.Node 
+            "Status" .VM.Status 
+            "CSRFToken" .CSRFToken 
+            "ProxmoxConnected" .ProxmoxConnected 
+            "Lang" .Lang
+            "ExtraClasses" "mb-5 bg-light-gray p-15 rounded-6"
+        )}}
 
         <!-- Resources Grid -->
         <div class="columns is-multiline mb-5">
             <!-- CPU Card -->
             <div class="column is-half">
-                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #ff8800;">
+                <div class="stat-card border-left-primary">
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.CPU"}}</p>
@@ -150,7 +95,7 @@
 
             <!-- Memory Card -->
             <div class="column is-half">
-                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #48c774;">
+                <div class="stat-card border-left-success">
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.RAM"}}</p>
@@ -171,7 +116,7 @@
 
             <!-- Disk Card -->
             <div class="column is-half">
-                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #3298dc;">
+                <div class="stat-card border-left-info">
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Disk"}}</p>
@@ -187,7 +132,7 @@
 
             <!-- Uptime Card -->
             <div class="column is-half">
-                <div style="background: white; padding: 1.5rem; border-radius: 6px; border-left: 4px solid #ffdd57;">
+                <div class="stat-card border-left-warning">
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Uptime"}}</p>
@@ -211,7 +156,7 @@
         <div class="columns is-multiline">
             {{if .Description}}
             <div class="column {{if .Tags}}is-two-thirds{{end}}">
-                <div style="background: white; padding: 2rem; border-radius: 6px; border-left: 4px solid #3273dc; min-height: 180px;">
+                <div class="stat-card border-left-link p-2 min-h-180">
                     <div class="is-flex is-justify-content-space-between is-align-items-start mb-4">
                         <div>
                             <p class="has-text-weight-bold is-size-5 mb-1">
@@ -242,7 +187,7 @@
 
             {{if .Tags}}
             <div class="column {{if .Description}}is-one-third{{end}}">
-                <div style="background: white; padding: 2rem; border-radius: 6px; border-left: 4px solid #ff8800; min-height: 180px;">
+                <div class="stat-card border-left-primary p-2 min-h-180">
                     <div class="is-flex is-justify-content-space-between is-align-items-start mb-4">
                         <div>
                             <p class="has-text-weight-bold is-size-5 mb-1">
@@ -262,7 +207,7 @@
                     </div>
                     <div class="tags are-medium">
                         {{range $tag := split .Tags ", "}}
-                        <span class="tag" style="background-color: #fff3e6; color: #ff8800; border: 1px solid #ffe0b3;">{{$tag}}</span>
+                        <span class="tag tag-pvmss">{{$tag}}</span>
                         {{end}}
                     </div>
                 </div>
@@ -272,7 +217,7 @@
         {{else}}
         <!-- Empty state -->
         {{if .ProxmoxConnected}}
-        <div style="background: white; padding: 3rem; border-radius: 6px; text-align: center; border: 2px dashed #dbdbdb;">
+        <div class="empty-state">
             <span class="icon is-large has-text-grey-light mb-3" style="font-size: 3rem;">
                 <i class="fas fa-info-circle"></i>
             </span>
@@ -384,7 +329,7 @@
     <!-- Console Modal -->
     <div id="console-modal" class="modal">
         <div class="modal-background"></div>
-        <div class="modal-card" style="width: 95%; max-width: 1400px; height: 90%;">
+        <div class="modal-card console-modal-card">
             <header class="modal-card-head">
                 <p class="modal-card-title">
                     <span class="icon"><i class="fas fa-desktop"></i></span>
@@ -392,19 +337,19 @@
                 </p>
                 <button id="console-close" class="delete" aria-label="close"></button>
             </header>
-            <section class="modal-card-body" style="padding: 0; display: flex; flex-direction: column;">
+            <section class="modal-card-body flex-column" style="padding: 0;">
                 <!-- Status bar -->
-                <div id="console-status" style="padding: 0.5rem; background: #f5f5f5; border-bottom: 1px solid #dbdbdb;">
+                <div id="console-status" class="console-status-bar">
                     <span class="icon-text">
                         <span class="icon"><i class="fas fa-circle-notch fa-spin"></i></span>
                         <span id="console-status-text">Connecting...</span>
                     </span>
                 </div>
                 <!-- noVNC container -->
-                <div id="console-container" style="flex: 1; position: relative; overflow: auto; background: #000;"></div>
+                <div id="console-container" class="console-container"></div>
             </section>
-            <footer class="modal-card-foot" style="justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <footer class="modal-card-foot console-footer">
+                <div class="console-controls">
                     <button id="console-ctrl-alt-del" class="button is-small is-light" disabled>
                         <span class="icon"><i class="fas fa-keyboard"></i></span>
                         <span class="is-hidden-mobile">Ctrl+Alt+Del</span>
@@ -427,284 +372,15 @@
     </div>
 </section>
 
-<!-- Console JavaScript with noVNC Module -->
+<!-- Console JavaScript -->
 <script type="module">
-    // Import noVNC RFB module
-    import RFB from '/components/noVNC-1.6.0/core/rfb.js';
+    import { initConsoleManager } from '/js/vm-console.js';
     
-    // Configuration
-    const VMID = '{{.VM.VMID}}';
-    const NODE = '{{.VM.Node}}';
-    const CSRF_TOKEN = '{{.CSRFToken}}';
-    
-    // DOM elements
-    const consoleButton = document.getElementById('console-button');
-    const consoleModal = document.getElementById('console-modal');
-    const consoleClose = document.getElementById('console-close');
-    const consoleDisconnect = document.getElementById('console-disconnect');
-    const consoleStatus = document.getElementById('console-status-text');
-    const consoleContainer = document.getElementById('console-container');
-    const ctrlAltDelButton = document.getElementById('console-ctrl-alt-del');
-    const scaleToggleButton = document.getElementById('console-scale-toggle');
-    const fullscreenButton = document.getElementById('console-fullscreen');
-    
-    // noVNC connection
-    let rfb = null;
-    let scaleViewport = true; // Default to scaling enabled for better mobile/small screen experience
-    
-    // Update status message
-    function updateStatus(message, type = 'info') {
-        const statusDiv = document.getElementById('console-status');
-        const icon = statusDiv.querySelector('.icon i');
-        
-        consoleStatus.textContent = message;
-        
-        // Update icon based on type
-        icon.className = 'fas fa-' + (
-            type === 'success' ? 'check-circle' :
-            type === 'error' ? 'exclamation-circle' :
-            type === 'connecting' ? 'circle-notch fa-spin' :
-            'info-circle'
-        );
-        
-        // Update background color
-        statusDiv.style.background = (
-            type === 'success' ? '#d4edda' :
-            type === 'error' ? '#f8d7da' :
-            '#f5f5f5'
-        );
-    }
-    
-    // Open console
-    async function openConsole() {
-        try {
-            updateStatus('Requesting console access...', 'connecting');
-            
-            // Step 1: Get VNC ticket from backend
-            const response = await fetch(`/api/vm/vnc-ticket?vmid=${VMID}&node=${NODE}`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-Token': CSRF_TOKEN,
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'same-origin'
-            });
-            
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ error: response.statusText }));
-                throw new Error(error.error || 'Failed to get console ticket');
-            }
-            
-            const data = await response.json();
-            
-            if (!data.success) {
-                throw new Error(data.error || 'Failed to get console ticket');
-            }
-            
-            const { ticket, port } = data;
-            
-            // Step 2: Build WebSocket URL
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/vm/console/websocket?vmid=${VMID}&node=${NODE}&port=${port}&vncticket=${encodeURIComponent(ticket)}`;
-            
-            updateStatus('Connecting to console...', 'connecting');
-            
-            // Step 3: Check if noVNC is available
-            if (typeof RFB === 'undefined') {
-                throw new Error('noVNC library not loaded. Please ensure noVNC components are properly installed.');
-            }
-            
-            // Step 4: Create noVNC connection
-            // For Proxmox VNC: The vncticket is passed in the URL AND used as the password
-            // during VNC authentication. This is how Proxmox's VNC implementation works.
-            rfb = new RFB(consoleContainer, wsUrl, {
-                credentials: { 
-                    username: '',  // Proxmox doesn't use username for VNC
-                    password: ticket  // The VNC ticket is used as the password
-                }
-            });
-            
-            // Enable viewport scaling for responsive display
-            rfb.scaleViewport = scaleViewport;
-            rfb.resizeSession = false; // Don't resize the remote session
-            rfb.clipViewport = false;  // Don't clip viewport when scaling
-            
-            // Set up event handlers
-            rfb.addEventListener('connect', handleConnect);
-            rfb.addEventListener('disconnect', handleDisconnect);
-            rfb.addEventListener('securityfailure', handleSecurityFailure);
-            
-            // Enable console controls
-            ctrlAltDelButton.disabled = false;
-            scaleToggleButton.disabled = false;
-            fullscreenButton.disabled = false;
-            
-            // Update scale toggle button appearance
-            updateScaleButton();
-            
-            console.log('Console connection initiated');
-            
-        } catch (error) {
-            console.error('Console error:', error);
-            updateStatus(error.message, 'error');
-            
-            // Show error notification
-            setTimeout(() => {
-                if (confirm('Failed to open console: ' + error.message + '\n\nWould you like to try again?')) {
-                    closeConsole();
-                    setTimeout(openConsole, 500);
-                } else {
-                    closeConsole();
-                }
-            }, 500);
-        }
-    }
-    
-    // noVNC event handlers
-    function handleConnect() {
-        console.log('Console connected');
-        updateStatus('Connected', 'success');
-        
-        // Focus the noVNC canvas
-        const canvas = consoleContainer.querySelector('canvas');
-        if (canvas) {
-            canvas.focus();
-        }
-    }
-    
-    function handleDisconnect(e) {
-        console.log('Console disconnected:', e.detail);
-        
-        if (e.detail.clean) {
-            updateStatus('Disconnected', 'info');
-        } else {
-            updateStatus('Connection lost: ' + (e.detail.reason || 'Unknown error'), 'error');
-        }
-        
-        // Disable controls
-        ctrlAltDelButton.disabled = true;
-        scaleToggleButton.disabled = true;
-        fullscreenButton.disabled = true;
-        
-        // Auto-close modal after a delay if disconnected
-        if (!e.detail.clean) {
-            setTimeout(() => {
-                if (consoleModal.classList.contains('is-active')) {
-                    closeConsole();
-                }
-            }, 3000);
-        }
-    }
-    
-    function handleSecurityFailure(e) {
-        console.error('Security failure:', e.detail);
-        updateStatus('Authentication failed: ' + (e.detail.reason || 'Security error'), 'error');
-        
-        setTimeout(() => {
-            closeConsole();
-        }, 3000);
-    }
-    
-    // Close console
-    function closeConsole() {
-        // Disconnect noVNC
-        if (rfb) {
-            try {
-                rfb.disconnect();
-            } catch (e) {
-                console.error('Error disconnecting:', e);
-            }
-            rfb = null;
-        }
-        
-        // Clear container
-        consoleContainer.innerHTML = '';
-        
-        // Reset status
-        updateStatus('Disconnected', 'info');
-        
-        // Disable controls
-        ctrlAltDelButton.disabled = true;
-        scaleToggleButton.disabled = true;
-        fullscreenButton.disabled = true;
-        
-        // Close modal
-        consoleModal.classList.remove('is-active');
-    }
-    
-    // Toggle viewport scaling
-    function toggleScale() {
-        if (rfb) {
-            scaleViewport = !scaleViewport;
-            rfb.scaleViewport = scaleViewport;
-            updateScaleButton();
-            console.log('Viewport scaling:', scaleViewport ? 'enabled' : 'disabled');
-        }
-    }
-    
-    // Update scale button appearance
-    function updateScaleButton() {
-        if (scaleViewport) {
-            scaleToggleButton.classList.add('is-info');
-            scaleToggleButton.classList.remove('is-light');
-            const span = scaleToggleButton.querySelector('span:not(.icon)');
-            if (span) span.textContent = 'Scale: On';
-            scaleToggleButton.title = 'Scaling enabled - Click to disable and show original size';
-        } else {
-            scaleToggleButton.classList.remove('is-info');
-            scaleToggleButton.classList.add('is-light');
-            const span = scaleToggleButton.querySelector('span:not(.icon)');
-            if (span) span.textContent = 'Scale: Off';
-            scaleToggleButton.title = 'Scaling disabled - Click to enable responsive scaling';
-        }
-    }
-    
-    // Send Ctrl+Alt+Del
-    function sendCtrlAltDel() {
-        if (rfb) {
-            rfb.sendCtrlAltDel();
-            console.log('Sent Ctrl+Alt+Del');
-        }
-    }
-    
-    // Toggle fullscreen
-    function toggleFullscreen() {
-        const modalCard = consoleModal.querySelector('.modal-card');
-        
-        if (!document.fullscreenElement) {
-            modalCard.requestFullscreen().catch(err => {
-                console.error('Error attempting to enable fullscreen:', err);
-            });
-        } else {
-            document.exitFullscreen();
-        }
-    }
-    
-    // Event listeners
-    consoleButton.addEventListener('click', function() {
-        consoleModal.classList.add('is-active');
-        // Small delay to ensure modal is visible before connecting
-        setTimeout(openConsole, 100);
-    });
-    
-    consoleClose.addEventListener('click', closeConsole);
-    consoleDisconnect.addEventListener('click', closeConsole);
-    
-    consoleModal.querySelector('.modal-background').addEventListener('click', function() {
-        if (confirm('Are you sure you want to close the console?')) {
-            closeConsole();
-        }
-    });
-    
-    ctrlAltDelButton.addEventListener('click', sendCtrlAltDel);
-    scaleToggleButton.addEventListener('click', toggleScale);
-    fullscreenButton.addEventListener('click', toggleFullscreen);
-    
-    // Cleanup on page unload
-    window.addEventListener('beforeunload', function() {
-        if (rfb) {
-            rfb.disconnect();
-        }
+    // Initialize console manager
+    initConsoleManager({
+        vmid: '{{.VM.VMID}}',
+        node: '{{.VM.Node}}',
+        csrfToken: '{{.CSRFToken}}'
     });
 </script>
 

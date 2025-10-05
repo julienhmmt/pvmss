@@ -1,0 +1,46 @@
+{{define "status_badge"}}
+{{/*
+  Reusable status badge component
+  Usage: {{template "status_badge" (dict "Status" .VM.Status "WithIcon" true "Size" "normal")}}
+  
+  Parameters:
+    - Status: running, stopped, paused, suspended, unknown (required)
+    - WithIcon: boolean to show/hide icon (optional, default: false)
+    - Size: normal, small, medium, large (optional, default: normal)
+*/}}
+
+{{$status := or .Status "unknown"}}
+{{$withIcon := .WithIcon}}
+{{$size := or .Size "normal"}}
+
+{{$statusClass := ""}}
+{{$statusText := ""}}
+{{$iconClass := ""}}
+
+{{if eq $status "running"}}
+    {{$statusClass = "is-success"}}
+    {{$statusText = T "Status.Running"}}
+    {{$iconClass = "fa-circle-play"}}
+{{else if eq $status "stopped"}}
+    {{$statusClass = "is-danger"}}
+    {{$statusText = T "Status.Stopped"}}
+    {{$iconClass = "fa-circle-stop"}}
+{{else if or (eq $status "paused") (eq $status "suspended")}}
+    {{$statusClass = "is-warning"}}
+    {{$statusText = T "Status.Paused"}}
+    {{$iconClass = "fa-circle-pause"}}
+{{else}}
+    {{$statusClass = "is-warning"}}
+    {{$statusText = T "Status.Unknown"}}
+    {{$iconClass = "fa-circle-question"}}
+{{end}}
+
+<span class="tag {{$statusClass}}{{if eq $size "small"}} is-small{{else if eq $size "medium"}} is-medium{{else if eq $size "large"}} is-large{{end}}">
+    {{if $withIcon}}
+    <span class="icon">
+        <i class="fas {{$iconClass}}"></i>
+    </span>
+    {{end}}
+    <span>{{$statusText}}</span>
+</span>
+{{end}}
