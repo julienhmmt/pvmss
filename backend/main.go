@@ -182,10 +182,6 @@ func initTemplates() (*template.Template, error) {
 		return template.HTML(localized)
 	}
 
-	funcMap["safeHTML"] = func(s string) template.HTML {
-		return template.HTML(s)
-	}
-
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		return nil, fmt.Errorf("could not get current file path")

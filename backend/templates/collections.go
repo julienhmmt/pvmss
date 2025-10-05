@@ -54,7 +54,11 @@ func reverseSlice(slice interface{}) []interface{} {
 	}
 
 	length := val.Len()
-	// Pre-allocate with exact capacity
+	if length == 0 {
+		return []interface{}{}
+	}
+
+	// Pre-allocate with exact capacity and use direct indexing
 	result := make([]interface{}, length)
 	for i := 0; i < length; i++ {
 		result[length-1-i] = val.Index(i).Interface()
@@ -74,7 +78,12 @@ func containsValue(slice interface{}, value interface{}) bool {
 		return false
 	}
 
-	for i := 0; i < val.Len(); i++ {
+	length := val.Len()
+	if length == 0 {
+		return false
+	}
+
+	for i := 0; i < length; i++ {
 		// Use DeepEqual to avoid panics on non-comparable element types
 		if reflect.DeepEqual(val.Index(i).Interface(), value) {
 			return true
@@ -97,21 +106,6 @@ func getLength(v interface{}) int {
 	default:
 		return 0
 	}
-}
-
-// until returns a slice of integers from 0 to count-1
-// This is commonly used in templates for iteration
-// Example: {{range $i := until 5}}{{end}} will iterate 5 times (0-4)
-func until(count int) []int {
-	if count <= 0 {
-		return []int{}
-	}
-	// Optimize: Use direct indexing instead of append for better performance
-	result := make([]int, count)
-	for i := 0; i < count; i++ {
-		result[i] = i
-	}
-	return result
 }
 
 // sortStrings sorts a slice of strings ascending

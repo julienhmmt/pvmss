@@ -41,10 +41,14 @@ func join(parts interface{}, sep string) string {
 	}
 
 	length := v.Len()
-	// Pre-allocate with exact capacity
-	strParts := make([]string, 0, length)
+	if length == 0 {
+		return ""
+	}
+
+	// Pre-allocate with exact capacity and use direct indexing
+	strParts := make([]string, length)
 	for i := 0; i < length; i++ {
-		strParts = append(strParts, fmt.Sprintf("%v", v.Index(i).Interface()))
+		strParts[i] = fmt.Sprintf("%v", v.Index(i).Interface())
 	}
 
 	return strings.Join(strParts, sep)
