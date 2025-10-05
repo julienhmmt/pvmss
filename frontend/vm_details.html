@@ -142,80 +142,156 @@
                             <i class="fas fa-clock fa-3x"></i>
                         </span>
                     </div>
-                    {{if .NetworkBridges}}
-                    <p class="is-size-7 has-text-grey"><i class="fas fa-network-wired"></i> {{.NetworkBridges}}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Information -->
+        {{if .NetworkInterfaces}}
+        <div class="mb-5">
+            <div class="mb-4">
+                <h2 class="title is-5">
+                    <span class="icon-text">
+                        <span class="icon" style="color: #3298dc;"><i class="fas fa-network-wired"></i></span>
+                        <span>Network Configuration</span>
+                    </span>
+                </h2>
+            </div>
+            
+            <div class="table-container">
+                <table class="table is-fullwidth is-hoverable">
+                    <thead>
+                        <tr>
+                            <th>Interface</th>
+                            <th>Bridge</th>
+                            <th>MAC Address</th>
+                            <th>IP Address(es)</th>
+                            <th>Firewall</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range $iface := .NetworkInterfaces}}
+                        <tr>
+                            <td>
+                                <span class="tag is-info is-light">{{$iface.Index}}</span>
+                                {{if $iface.Model}}
+                                <span class="tag is-light ml-2">{{$iface.Model}}</span>
+                                {{end}}
+                                {{if $iface.LinkDown}}
+                                <span class="tag is-warning ml-2" title="Link down">
+                                    <span class="icon is-small"><i class="fas fa-link-slash"></i></span>
+                                </span>
+                                {{end}}
+                            </td>
+                            <td>
+                                {{if $iface.Bridge}}
+                                <span class="icon-text">
+                                    <span class="icon has-text-info"><i class="fas fa-project-diagram"></i></span>
+                                    <span>{{$iface.Bridge}}</span>
+                                </span>
+                                {{else}}
+                                <span class="has-text-grey-light">—</span>
+                                {{end}}
+                            </td>
+                            <td>
+                                {{if $iface.MACAddress}}
+                                <code>{{$iface.MACAddress}}</code>
+                                {{else}}
+                                <span class="has-text-grey-light">—</span>
+                                {{end}}
+                            </td>
+                            <td>
+                                {{if $iface.IPAddresses}}
+                                <div class="tags">
+                                    {{range $ip := $iface.IPAddresses}}
+                                    <span class="tag is-success is-light">
+                                        <span class="icon is-small"><i class="fas fa-network-wired"></i></span>
+                                        <span>{{$ip}}</span>
+                                    </span>
+                                    {{end}}
+                                </div>
+                                {{else}}
+                                <span class="has-text-grey-light" title="Guest agent not available or no IP assigned">—</span>
+                                {{end}}
+                            </td>
+                            <td>
+                                {{if $iface.Firewall}}
+                                <span class="tag is-success">
+                                    <span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
+                                    <span>Enabled</span>
+                                </span>
+                                {{else}}
+                                <span class="tag is-light">
+                                    <span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
+                                    <span>Disabled</span>
+                                </span>
+                                {{end}}
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Description -->
+        {{if .Description}}
+        <div class="mb-5">
+            <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+                <h2 class="title is-5">
+                    <span class="icon-text">
+                        <span class="icon" style="color: #3273dc;"><i class="fas fa-info-circle"></i></span>
+                        <span>{{T "VMDetails.Label.Description"}}</span>
+                    </span>
+                </h2>
+                {{if .ProxmoxConnected}}
+                <a href="{{withLang (printf "/vm/details/%d?edit=description" .VM.VMID) .Lang}}" class="button is-small is-light">
+                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                    <span>Edit</span>
+                </a>
+                {{end}}
+            </div>
+            <div class="box content">
+                {{if .DescriptionHTML}}
+                {{safeHTML .DescriptionHTML}}
+                {{else}}
+                <p>{{.Description}}</p>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Tags -->
+        {{if .Tags}}
+        <div class="mb-5">
+            <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+                <h2 class="title is-5">
+                    <span class="icon-text">
+                        <span class="icon" style="color: #ff8800;"><i class="fas fa-tags"></i></span>
+                        <span>{{T "Common.Tags"}}</span>
+                    </span>
+                </h2>
+                {{if .ProxmoxConnected}}
+                <a href="{{withLang (printf "/vm/details/%d?edit=tags" .VM.VMID) .Lang}}" class="button is-small is-light">
+                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                    <span>Edit</span>
+                </a>
+                {{end}}
+            </div>
+            <div class="box">
+                <div class="tags are-medium">
+                    {{range $tag := split .Tags ", "}}
+                    <span class="tag tag-pvmss">{{$tag}}</span>
                     {{end}}
                 </div>
             </div>
         </div>
+        {{end}}
 
-        <!-- Description & Tags -->
-        {{if or .Description .Tags}}
-        <div class="columns is-multiline">
-            {{if .Description}}
-            <div class="column {{if .Tags}}is-two-thirds{{end}}">
-                <div class="stat-card border-left-link p-2 min-h-180">
-                    <div class="is-flex is-justify-content-space-between is-align-items-start mb-4">
-                        <div>
-                            <p class="has-text-weight-bold is-size-5 mb-1">
-                                <span class="icon-text">
-                                    <span class="icon" style="color: #3273dc;"><i class="fas fa-info-circle"></i></span>
-                                    <span>{{T "VMDetails.Label.Description"}}</span>
-                                </span>
-                            </p>
-                            <p class="is-size-7 has-text-grey">VM Information</p>
-                        </div>
-                        {{if .ProxmoxConnected}}
-                        <a href="{{withLang (printf "/vm/details/%d?edit=description" .VM.VMID) .Lang}}" class="button is-small is-light" style="margin-top: 0.25rem;">
-                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                            <span class="is-hidden-mobile">Edit</span>
-                        </a>
-                        {{end}}
-                    </div>
-                    <div class="content" style="color: #4a4a4a;">
-                        {{if .DescriptionHTML}}
-                        {{safeHTML .DescriptionHTML}}
-                        {{else}}
-                        <p>{{.Description}}</p>
-                        {{end}}
-                    </div>
-                </div>
-            </div>
-            {{end}}
-
-            {{if .Tags}}
-            <div class="column {{if .Description}}is-one-third{{end}}">
-                <div class="stat-card border-left-primary p-2 min-h-180">
-                    <div class="is-flex is-justify-content-space-between is-align-items-start mb-4">
-                        <div>
-                            <p class="has-text-weight-bold is-size-5 mb-1">
-                                <span class="icon-text">
-                                    <span class="icon" style="color: #ff8800;"><i class="fas fa-tags"></i></span>
-                                    <span>{{T "Common.Tags"}}</span>
-                                </span>
-                            </p>
-                            <p class="is-size-7 has-text-grey">{{len (split .Tags ", ")}} tag(s)</p>
-                        </div>
-                        {{if .ProxmoxConnected}}
-                        <a href="{{withLang (printf "/vm/details/%d?edit=tags" .VM.VMID) .Lang}}" class="button is-small is-light" style="margin-top: 0.25rem;">
-                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                            <span class="is-hidden-mobile">Edit</span>
-                        </a>
-                        {{end}}
-                    </div>
-                    <div class="tags are-medium">
-                        {{range $tag := split .Tags ", "}}
-                        <span class="tag tag-pvmss">{{$tag}}</span>
-                        {{end}}
-                    </div>
-                </div>
-            </div>
-            {{end}}
-        </div>
-        {{else}}
         <!-- Empty state -->
-        {{if .ProxmoxConnected}}
-        <div class="empty-state">
+        {{if and (not .Description) (not .Tags) .ProxmoxConnected}}
+        <div class="empty-state mb-5">
             <span class="icon is-large has-text-grey-light mb-3" style="font-size: 3rem;">
                 <i class="fas fa-info-circle"></i>
             </span>
@@ -232,7 +308,6 @@
                 </a>
             </div>
         </div>
-        {{end}}
         {{end}}
 
         <!-- Edit Description (Markdown) -->

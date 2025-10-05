@@ -61,6 +61,75 @@ func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node
 	return nil
 }
 
+// NetworkInterface represents a VM network interface configuration
+type NetworkInterface struct {
+	Index      string   // e.g., "net0", "net1"
+	Model      string   // e.g., "virtio", "e1000"
+	MACAddress string   // e.g., "AA:BB:CC:DD:EE:FF"
+	Bridge     string   // e.g., "vmbr0"
+	Firewall   bool     // whether firewall is enabled
+	LinkDown   bool     // whether link is down
+	Rate       string   // bandwidth limit if set
+	IPAddresses []string // IP addresses from guest agent
+}
+
+// ExtractNetworkInterfaces parses the VM config map and returns a list of network interfaces
+// with their full configuration details.
+func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
+	if cfg == nil {
+		return nil
+	}
+	
+	var interfaces []NetworkInterface
+	
+	// Iterate over keys like net0, net1, ... in order
+	for i := 0; i < 10; i++ { // Support up to 10 network interfaces
+		key := fmt.Sprintf("net%d", i)
+		v, exists := cfg[key]
+		if !exists {
+			continue
+		}
+		
+		s, ok := v.(string)
+		if !ok || s == "" {
+			continue
+		}
+		
+		// net line format example: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,firewall=1"
+		iface := NetworkInterface{
+			Index: key,
+		}
+		
+		parts := strings.Split(s, ",")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			
+			// Parse model and MAC address (first part, e.g., "virtio=AA:BB:CC:DD:EE:FF")
+			if strings.Contains(p, "=") && (strings.HasPrefix(p, "virtio=") || 
+				strings.HasPrefix(p, "e1000=") || strings.HasPrefix(p, "rtl8139=") || 
+				strings.HasPrefix(p, "vmxnet3=")) {
+				kv := strings.SplitN(p, "=", 2)
+				if len(kv) == 2 {
+					iface.Model = kv[0]
+					iface.MACAddress = strings.ToUpper(kv[1])
+				}
+			} else if strings.HasPrefix(p, "bridge=") {
+				iface.Bridge = strings.TrimPrefix(p, "bridge=")
+			} else if p == "firewall=1" {
+				iface.Firewall = true
+			} else if p == "link_down=1" {
+				iface.LinkDown = true
+			} else if strings.HasPrefix(p, "rate=") {
+				iface.Rate = strings.TrimPrefix(p, "rate=")
+			}
+		}
+		
+		interfaces = append(interfaces, iface)
+	}
+	
+	return interfaces
+}
+
 // ExtractNetworkBridges parses the VM config map and returns a unique, sorted list
 // of network bridge names (e.g., vmbr0) found in net* entries.
 func ExtractNetworkBridges(cfg map[string]interface{}) []string {
@@ -99,6 +168,74 @@ func ExtractNetworkBridges(cfg map[string]interface{}) []string {
 	// Stable order for display
 	// (no sort import at top; simple insertion order is fine)
 	return out
+}
+
+// GuestAgentNetworkInterface represents a network interface from QEMU guest agent
+type GuestAgentNetworkInterface struct {
+	HardwareAddress string `json:"hardware-address"`
+	IPAddresses     []struct {
+		IPAddress     string `json:"ip-address"`
+		IPAddressType string `json:"ip-address-type"` // "ipv4" or "ipv6"
+		Prefix        int    `json:"prefix"`
+	} `json:"ip-addresses"`
+	Name string `json:"name"`
+}
+
+// GetGuestAgentNetworkInterfaces fetches network information from the QEMU guest agent
+// Returns nil if guest agent is not available or not running
+func GetGuestAgentNetworkInterfaces(ctx context.Context, client ClientInterface, node string, vmid int) ([]GuestAgentNetworkInterface, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/agent/network-get-interfaces", url.PathEscape(node), vmid)
+	var resp Response[struct {
+		Result []GuestAgentNetworkInterface `json:"result"`
+	}]
+	
+	if err := client.GetJSON(ctx, path, &resp); err != nil {
+		// Guest agent not available is expected for VMs without it or when VM is stopped
+		return nil, err
+	}
+	
+	return resp.Data.Result, nil
+}
+
+// EnrichNetworkInterfacesWithIPs adds IP addresses from guest agent to network interfaces
+// Matches interfaces by MAC address
+func EnrichNetworkInterfacesWithIPs(interfaces []NetworkInterface, guestInterfaces []GuestAgentNetworkInterface) {
+	if len(guestInterfaces) == 0 {
+		return
+	}
+	
+	// Create a map of MAC address to IP addresses
+	macToIPs := make(map[string][]string)
+	for _, guestIface := range guestInterfaces {
+		if guestIface.HardwareAddress == "" {
+			continue
+		}
+		// Normalize MAC address to uppercase
+		mac := strings.ToUpper(guestIface.HardwareAddress)
+		
+		var ips []string
+		for _, ipAddr := range guestIface.IPAddresses {
+			// Skip loopback and link-local addresses
+			ip := ipAddr.IPAddress
+			if ip == "127.0.0.1" || ip == "::1" || strings.HasPrefix(ip, "fe80:") {
+				continue
+			}
+			ips = append(ips, ip)
+		}
+		
+		if len(ips) > 0 {
+			macToIPs[mac] = ips
+		}
+	}
+	
+	// Match and add IPs to network interfaces
+	for i := range interfaces {
+		if interfaces[i].MACAddress != "" {
+			if ips, found := macToIPs[interfaces[i].MACAddress]; found {
+				interfaces[i].IPAddresses = ips
+			}
+		}
+	}
 }
 
 // VMCurrent represents the runtime status/metrics of a VM from

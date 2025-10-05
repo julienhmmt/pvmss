@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/julienschmidt/httprouter"
@@ -11,6 +14,35 @@ import (
 	"pvmss/proxmox"
 	"pvmss/state"
 )
+
+// guestAgentCache stores VMs without guest agent to avoid repeated slow API calls
+var (
+	guestAgentUnavailableCache      = make(map[string]time.Time)
+	guestAgentUnavailableCacheMutex sync.RWMutex
+	guestAgentCacheTTL              = 5 * time.Minute
+)
+
+// isGuestAgentUnavailableCached checks if a VM is cached as having no guest agent
+func isGuestAgentUnavailableCached(node string, vmid int) bool {
+	key := node + ":" + strconv.Itoa(vmid)
+	guestAgentUnavailableCacheMutex.RLock()
+	defer guestAgentUnavailableCacheMutex.RUnlock()
+	
+	if expiry, found := guestAgentUnavailableCache[key]; found {
+		if time.Now().Before(expiry) {
+			return true
+		}
+	}
+	return false
+}
+
+// cacheGuestAgentUnavailable marks a VM as having no guest agent
+func cacheGuestAgentUnavailable(node string, vmid int) {
+	key := node + ":" + strconv.Itoa(vmid)
+	guestAgentUnavailableCacheMutex.Lock()
+	defer guestAgentUnavailableCacheMutex.Unlock()
+	guestAgentUnavailableCache[key] = time.Now().Add(guestAgentCacheTTL)
+}
 
 // VMStateManager defines the minimal state contract needed by VM details.
 // Provides access to Proxmox client and application settings.
@@ -163,6 +195,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var tags []string
 	var description string
 	var networkBridges []string
+	var networkInterfaces []proxmox.NetworkInterface
 	// First attempt using vm.Node (fast path)
 	cfg, cfgErr := proxmox.GetVMConfigWithContext(r.Context(), client, vm.Node, vm.VMID)
 	if cfgErr != nil {
@@ -196,6 +229,23 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			description = desc
 		}
 		networkBridges = proxmox.ExtractNetworkBridges(cfg)
+		networkInterfaces = proxmox.ExtractNetworkInterfaces(cfg)
+		
+		// Try to enrich network interfaces with IP addresses from guest agent (only if VM is running)
+		// Use a short timeout to avoid blocking page load if guest agent is slow/unavailable
+		// Skip if we recently determined guest agent is unavailable for this VM
+		if vm.Status == "running" && len(networkInterfaces) > 0 && !isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
+			guestCtx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+			defer cancel()
+			
+			if guestIfaces, err := proxmox.GetGuestAgentNetworkInterfaces(guestCtx, client, vm.Node, vm.VMID); err == nil {
+				proxmox.EnrichNetworkInterfacesWithIPs(networkInterfaces, guestIfaces)
+			} else {
+				// Guest agent not available - cache this result to avoid repeated slow calls
+				cacheGuestAgentUnavailable(vm.Node, vm.VMID)
+				log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Guest agent network info not available (cached for 5 minutes)")
+			}
+		}
 	} else if cfgErr != nil {
 		log.Warn().Err(cfgErr).Int("vmid", vm.VMID).Msg("Unable to fetch VM config; description and tags may be empty")
 	}
@@ -231,6 +281,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"Description":           description,
 		"DescriptionHTML":       descriptionHTML,
 		"NetworkBridges":        networkBridgesStr,
+		"NetworkInterfaces":     networkInterfaces,
 		"CSRFToken":             csrfToken,
 		"ShowDescriptionEditor": showDescriptionEditor,
 		"ShowTagsEditor":        showTagsEditor,
