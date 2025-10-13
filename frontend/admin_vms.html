@@ -1,0 +1,224 @@
+{{define "admin_vms"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_vms_section"}}
+<div class="container mt-4">
+
+  <div class="content mb-5">
+    <h1 class="title is-4">
+      <span class="icon"><i class="fas fa-server"></i></span>
+      <span>{{T "AdminVMs.Title"}}</span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey">{{T "AdminVMs.Description"}}</p>
+  </div>
+
+  <div class="box admin-box">
+    {{if .VMs}}
+    <div class="level mb-4">
+      <div class="level-left">
+        <div class="level-item">
+          <span class="tag is-info is-light is-medium">
+            <span class="icon"><i class="fas fa-list"></i></span>
+            <span>Total: {{.TotalVMs}} VM{{if ne .TotalVMs 1}}s{{end}}</span>
+          </span>
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          <a href="/search" class="button is-medium is-primary is-outlined has-text-white">
+            <span class="icon"><i class="fas fa-magnifying-glass"></i></span>
+            <span>{{T "Search.Title"}}</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-container">
+      <table class="table is-fullwidth is-hoverable modern">
+        <thead>
+          <tr>
+            <th class="has-text-centered">
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-hashtag"></i></span>
+                <span>{{T "Search.VMID"}}</span>
+              </span>
+            </th>
+            <th class="has-text-centered">
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-tag"></i></span>
+                <span>{{T "Search.Name"}}</span>
+              </span>
+            </th>
+            <th class="has-text-centered">
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-server"></i></span>
+                <span>{{T "Search.Node"}}</span>
+              </span>
+            </th>
+            <th class="has-text-centered">
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-circle-info"></i></span>
+                <span>{{T "Search.Status"}}</span>
+              </span>
+            </th>
+            <th class="has-text-centered">
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-tags"></i></span>
+                <span>{{T "Search.Tags"}}</span>
+              </span>
+            </th>
+            <th class="has-text-centered">
+              <span class="icon-text">
+                <span class="icon is-small"><i class="fas fa-wrench"></i></span>
+                <span>{{T "Common.Actions"}}</span>
+              </span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .VMs}}
+          <tr>
+            <td class="has-text-centered has-text-weight-semibold">
+              {{.VMID}}
+            </td>
+            <td class="has-text-centered">
+              {{.Name}}
+            </td>
+            <td class="has-text-centered">
+              <span class="tag is-light">{{.Node}}</span>
+            </td>
+            <td class="has-text-centered">
+              {{template "status_badge" (dict "Status" .Status "WithIcon" false)}}
+            </td>
+            <td class="has-text-centered">
+              {{if .Tags}}
+                {{$tags := split .Tags ";"}}
+                {{range $tag := $tags}}
+                  {{if $tag}}
+                    <span class="tag is-info is-light mr-1">{{$tag}}</span>
+                  {{end}}
+                {{end}}
+              {{else}}
+                <span class="tag is-light">-</span>
+              {{end}}
+            </td>
+            <td class="has-text-centered">
+              <a href="{{printf "/vm/details/%d" .VMID}}" 
+                 class="button is-small is-primary has-text-white" 
+                 title="View VM details">
+                <span class="icon is-small"><i class="fas fa-eye"></i></span>
+                <span>{{T "Search.Details"}}</span>
+              </a>
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {{if gt .TotalVMs 0}}
+    <nav class="pagination is-centered mt-4" role="navigation" aria-label="pagination">
+      {{if .HasPrevPage}}
+      <a href="{{printf "/admin/vms?page=%d&limit=%d" .PrevPage .Limit}}" class="pagination-previous">
+        <span class="icon"><i class="fas fa-chevron-left"></i></span>
+        <span>{{T "Common.Previous"}}</span>
+      </a>
+      {{else}}
+      <span class="pagination-previous" disabled>
+        <span class="icon"><i class="fas fa-chevron-left"></i></span>
+        <span>{{T "Common.Previous"}}</span>
+      </span>
+      {{end}}
+
+      {{if .HasNextPage}}
+      <a href="{{printf "/admin/vms?page=%d&limit=%d" .NextPage .Limit}}" class="pagination-next">
+        <span>{{T "Common.Next"}}</span>
+        <span class="icon"><i class="fas fa-chevron-right"></i></span>
+      </a>
+      {{else}}
+      <span class="pagination-next" disabled>
+        <span>{{T "Common.Next"}}</span>
+        <span class="icon"><i class="fas fa-chevron-right"></i></span>
+      </span>
+      {{end}}
+
+      {{if gt .TotalPages 1}}
+      <ul class="pagination-list">
+        <li>
+          <span class="pagination-ellipsis">&nbsp;</span>
+        </li>
+        {{range $page := .PaginationPages}}
+        <li>
+          {{if eq $page $.CurrentPage}}
+          <span class="pagination-link is-current" aria-label="Page {{$page}}" aria-current="page">{{$page}}</span>
+          {{else}}
+          <a href="{{printf "/admin/vms?page=%d&limit=%d" $page $.Limit}}" class="pagination-link" aria-label="Go to page {{$page}}">{{$page}}</a>
+          {{end}}
+        </li>
+        {{end}}
+        <li>
+          <span class="pagination-ellipsis">&nbsp;</span>
+        </li>
+      </ul>
+      {{end}}
+    </nav>
+
+    <!-- Pagination info and limit selector -->
+    <div class="level mt-3">
+      <div class="level-left">
+        <div class="level-item">
+          <small class="has-text-grey">
+            {{T "Common.Showing"}} {{.PaginationInfo.From}} {{T "Common.to"}} {{.PaginationInfo.To}} {{T "Common.of"}} {{.TotalVMs}} {{T "Common.VMs"}} ({{T "Common.Page"}} {{.CurrentPage}}{{if gt .TotalPages 1}} {{T "Common.of"}} {{.TotalPages}}{{end}})
+          </small>
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          <div class="field">
+            <div class="control">
+              <div class="select is-small">
+                <select id="limitSelector">
+                  <option value="10" {{if eq .Limit 10}}selected{{end}}>10 {{T "Common.PerPage"}}</option>
+                  <option value="25" {{if eq .Limit 25}}selected{{end}}>25 {{T "Common.PerPage"}}</option>
+                  <option value="50" {{if eq .Limit 50}}selected{{end}}>50 {{T "Common.PerPage"}}</option>
+                  <option value="100" {{if eq .Limit 100}}selected{{end}}>100 {{T "Common.PerPage"}}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {{end}}
+
+    {{else}}
+    {{template "notification" (dict 
+      "Type" "info" 
+      "Title" "No VMs Found" 
+      "Message" "No virtual machines with the 'pvmss' tag were found. VMs must be tagged with 'pvmss' to be managed by this system." 
+      "Icon" "fas fa-info-circle" 
+      "Dismissible" false
+    )}}
+    {{end}}
+  </div>
+
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const limitSelector = document.getElementById('limitSelector');
+    if (limitSelector) {
+        limitSelector.addEventListener('change', function() {
+            const limit = this.value;
+            const currentUrl = new URL(window.location);
+            currentUrl.searchParams.set('page', '1');
+            currentUrl.searchParams.set('limit', limit);
+            window.location.href = currentUrl.pathname + currentUrl.search;
+        });
+    }
+});
+</script>
+{{end}}

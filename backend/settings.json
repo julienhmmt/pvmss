@@ -1,0 +1,29 @@
+{
+    "tags": [
+        "pvmss"
+    ],
+    "isos": [],
+    "vmbrs": [],
+    "enabled_storages": [],
+    "limits": {
+        "nodes": {},
+        "vm": {
+            "cores": {
+                "max": 2,
+                "min": 1
+            },
+            "disk": {
+                "max": 12,
+                "min": 6
+            },
+            "ram": {
+                "max": 4,
+                "min": 1
+            },
+            "sockets": {
+                "max": 1,
+                "min": 1
+            }
+        }
+    }
+}

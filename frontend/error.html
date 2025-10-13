@@ -1,0 +1,44 @@
+{{define "error"}}
+<section class="section">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="card">
+          <header class="card-header">
+            <p class="card-header-title">
+              {{if .Title}}{{.Title}}{{else}}Error{{end}}
+            </p>
+          </header>
+          <div class="card-content">
+            <div class="content">
+              {{if .StatusCode}}
+              <p><strong>{{T "Common.Status"}}:</strong> {{.StatusCode}}</p>
+              {{end}}
+              {{if .Error}}
+              <p>{{.Error}}</p>
+              {{else}}
+              <p>{{T "Error.Unexpected"}}</p>
+              {{end}}
+            </div>
+            <div class="buttons mt-4">
+              <button class="button is-light" type="button" id="back-button" data-action="back">
+                ← {{T "Common.Back"}}
+              </button>
+              <a class="button is-primary" href="/">
+                {{T "Common.Home"}}
+              </a>
+            </div>
+            {{if .ReturnURL}}
+            <p class="is-size-7 has-text-grey mt-3">{{T "Error.PreviousPage"}}: <a href="{{.ReturnURL}}">{{.ReturnURL}}</a></p>
+            {{end}}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{{end}}
+
+{{define "content"}}
+{{template "error" .}}
+{{end}}

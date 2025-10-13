@@ -1,0 +1,100 @@
+{{define "content"}}
+{{$lang := .Lang}}
+<section class="section">
+    <div class="container">
+        <!-- Welcome Hero -->
+        <div class="hero is-primary is-small">
+            <div class="hero-body">
+                <div class="container has-text-centered">
+                    <h1 class="title is-2 has-text-white mb-2">
+                        {{T "UI.Header"}}
+                    </h1>
+                    <p class="subtitle has-text-white mb-2">
+                        {{T "UI.Subtitle"}}
+                    </p>
+                    <p class="subtitle has-text-white is-size-5">
+                        {{T "UI.Body"}}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Access Cards (overlay effect) -->
+        <div class="columns is-centered">
+            <div class="column is-10 welcome-block">
+                <div class="columns is-multiline is-centered">
+                    <!-- Create VM card -->
+                    <div class="column is-4-desktop is-6-tablet">
+                        <div class="card is-hoverable">
+                            <div class="card-header brand-header">
+                                <p class="card-header-title has-text-centered">
+                                    <span class="icon-text">
+                                        <span class="icon">
+                                            <i class="fas fa-plus-square"></i>
+                                        </span>
+                                        <span>{{T "Navbar.CreateVM"}}</span>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="card-content has-text-centered">
+                                <p class="mb-4">{{T "UI.CreateVMDescription"}}</p>
+                                <a href="/vm/create" class="button is-primary is-medium is-fullwidth">
+                                    <span>{{T "UI.GetStarted"}}</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documentation card -->
+                    <div class="column is-4-desktop is-6-tablet">
+                        <div class="card is-hoverable">
+                            <div class="card-header brand-header">
+                                <p class="card-header-title has-text-centered">
+                                    <span class="icon-text">
+                                        <span class="icon">
+                                            <i class="fas fa-book"></i>
+                                        </span>
+                                        <span>{{T "Docs.User.Title"}}</span>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="card-content has-text-centered">
+                                <p class="mb-4">{{T "UI.DocsDescription"}}</p>
+                                <a href="/docs/user" class="button is-primary is-medium is-fullwidth">
+                                    {{T "UI.ViewDocumentation"}}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin card -->
+                    <div class="column is-4-desktop is-6-tablet">
+                        <div class="card is-hoverable">
+                            <div class="card-header brand-header">
+                                <p class="card-header-title has-text-centered">
+                                    <span class="icon-text">
+                                        <span class="icon">
+                                            <i class="fas fa-screwdriver-wrench"></i>
+                                        </span>
+                                        <span>{{T "Navbar.Admin"}}</span>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="card-content has-text-centered">
+                                <p class="mb-4">{{T "UI.AdminDescription"}}</p>
+                                <a href="/admin/nodes" class="button is-primary is-medium is-fullwidth">
+                                    {{T "UI.AccessAdmin"}}
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{{end}}
+
+{{define "index"}}
+{{template "content" .}}
+{{end}}

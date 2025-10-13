@@ -1,0 +1,333 @@
+/* Utility CSS Classes - Replace common inline styles */
+
+/* Layout Utilities */
+.max-w-1200 {
+    max-width: 1200px;
+}
+
+.max-w-1344 {
+    max-width: 1344px;
+}
+
+.max-w-1400 {
+    max-width: 1400px;
+}
+
+/* Form Utilities */
+.form-inline {
+    display: inline;
+}
+
+.is-inline {
+    display: inline;
+}
+
+/* Background Colors */
+.bg-light-gray {
+    background: #f9f9f9;
+}
+
+.bg-white {
+    background: white;
+}
+
+/* Padding Utilities */
+.p-15 {
+    padding: 1.5rem;
+}
+
+.p-2 {
+    padding: 2rem;
+}
+
+.p-3 {
+    padding: 3rem;
+}
+
+/* Border Radius */
+.rounded-6 {
+    border-radius: 6px;
+}
+
+.rounded-10 {
+    border-radius: 10px;
+}
+
+.rounded-16 {
+    border-radius: 16px;
+}
+
+/* Border Utilities */
+.border-left-primary {
+    border-left: 4px solid #ff8800;
+}
+
+.border-left-success {
+    border-left: 4px solid #48c774;
+}
+
+.border-left-info {
+    border-left: 4px solid #3298dc;
+}
+
+.border-left-warning {
+    border-left: 4px solid #ffdd57;
+}
+
+.border-left-link {
+    border-left: 4px solid #3273dc;
+}
+
+.border-dashed {
+    border: 2px dashed #dbdbdb;
+}
+
+/* Min Height */
+.min-h-100vh {
+    min-height: 100vh;
+}
+
+.min-h-180 {
+    min-height: 180px;
+}
+
+/* Display Flex Utilities */
+.flex-center {
+    display: flex;
+    align-items: center;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Box Shadow */
+.shadow-lg {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+.shadow-md {
+    box-shadow: 0 4px 14px rgba(255, 136, 0, 0.25);
+}
+
+/* Console Button Color */
+.btn-console {
+    background-color: #ff8800;
+    color: white;
+}
+
+.btn-console:hover {
+    background-color: #e67700;
+    color: white;
+}
+
+/* Card Utilities */
+.card-no-hover {
+    transition: none;
+}
+
+.card-no-hover:hover {
+    box-shadow: 0 0.5em 1em -0.125em rgba(10, 10, 10, 0.1), 0 0px 0 1px rgba(10, 10, 10, 0.02);
+}
+
+/* Statistics Cards */
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 6px;
+}
+
+.stat-card-icon {
+    opacity: 0.2;
+    font-size: 3rem;
+}
+
+/* Tag Styles */
+.tag-pvmss {
+    background-color: #fff3e6;
+    color: #ff8800;
+    border: 1px solid #ffe0b3;
+}
+
+/* Text Utilities */
+.text-gray {
+    color: #374151;
+}
+
+.text-gray-light {
+    color: #6b7280;
+}
+
+.text-gray-lighter {
+    color: #9ca3af;
+}
+
+/* Input Utilities */
+.input-lg {
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    font-size: 1rem;
+    height: auto;
+}
+
+.input-icon-left {
+    height: 100%;
+    align-items: center;
+    color: #9ca3af;
+}
+
+/* Gradient Backgrounds */
+.gradient-primary {
+    background: linear-gradient(135deg, #ff8800 0%, #e67700 100%);
+}
+
+.gradient-header {
+    background: linear-gradient(135deg, #ff8800 0%, #e67700 100%);
+    border: none;
+    padding: 2rem 1.5rem;
+}
+
+/* Button Utilities */
+.btn-full-height {
+    height: auto;
+    padding: 0.875rem 1.5rem;
+}
+
+/* Divider Utilities */
+.divider-with-text {
+    margin: 2.5rem 0 2rem 0;
+    position: relative;
+}
+
+.divider-with-text hr {
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    margin: 0;
+}
+
+.divider-with-text span {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 0 1.5rem;
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Empty State */
+.empty-state {
+    background: white;
+    padding: 3rem;
+    border-radius: 6px;
+    text-align: center;
+    border: 2px dashed #dbdbdb;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Progress Bar Utilities */
+.progress-sm {
+    height: 0.4rem;
+}
+
+/* Accessibility */
+.visually-hidden-checkbox {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0,0,0,0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* Login Form Specific */
+.login-card {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.login-header {
+    background: linear-gradient(135deg, #ff8800 0%, #e67700 100%);
+    border: none;
+    padding: 2rem 1.5rem;
+}
+
+.login-title {
+    color: #ffffff;
+    font-size: 1.5rem;
+    justify-content: center;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.login-content {
+    padding: 3rem 2.5rem;
+}
+
+.login-button {
+    background: linear-gradient(135deg, #ff8800 0%, #e67700 100%);
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(255, 136, 0, 0.25);
+    height: auto;
+    padding: 0.875rem 1.5rem;
+    font-size: 1.125rem;
+    letter-spacing: 0.025em;
+}
+
+.login-alt-button {
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+    background: #ffffff;
+    color: #374151;
+    font-weight: 600;
+    height: auto;
+    padding: 0.75rem 1.5rem;
+}
+
+/* Console Modal Utilities */
+.console-modal-card {
+    width: 95%;
+    max-width: 1400px;
+    height: 90%;
+}
+
+.console-status-bar {
+    padding: 0.5rem;
+    background: #f5f5f5;
+    border-bottom: 1px solid #dbdbdb;
+}
+
+.console-container {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background: #000;
+}
+
+.console-footer {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.console-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}

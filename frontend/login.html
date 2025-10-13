@@ -1,0 +1,105 @@
+{{define "login"}}
+{{$lang := .Lang}}
+<section class="section min-h-100vh flex-center" style="padding: 2rem 1rem;">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-10-mobile is-8-tablet is-6-desktop is-5-widescreen">
+        <div class="card admin-card login-card">
+          <header class="card-header brand-header is-align-items-center login-header">
+            <p class="card-header-title login-title">
+              <span class="icon" style="font-size: 2rem; margin-right: 0.75rem;"><i class="fas fa-user"></i></span>{{T "Login.UserLogin"}}
+            </p>
+          </header>
+          <div class="card-content login-content">
+            {{if .Warning}}
+            {{template "notification" (dict 
+              "Type" "info" 
+              "Title" (T "Common.Information") 
+              "Message" .Warning 
+              "Icon" "fas fa-info-circle" 
+              "Dismissible" true 
+              "Live" "polite"
+            )}}
+            {{end}}
+            {{if .Error}}
+            {{template "notification" (dict 
+              "Type" "danger" 
+              "Title" (T "Common.Error") 
+              "Message" .Error 
+              "Icon" "fas fa-exclamation-triangle" 
+              "Dismissible" true 
+              "Live" "assertive"
+            )}}
+            {{end}}
+
+            <form method="post" action="/login" novalidate>
+              <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+              <input type="hidden" name="login_type" value="user" />
+              {{/* Preserve intended redirect target across POST */}}
+              {{if .ReturnURL}}
+              <input type="hidden" name="return" value="{{.ReturnURL}}" />
+              {{end}}
+              {{if .RedirectURL}}
+              <input type="hidden" name="redirect" value="{{.RedirectURL}}" />
+              {{end}}
+
+              <!-- Username Field -->
+              <div class="field">
+                <label class="label" for="username" style="font-weight: 600; color: #374151; margin-bottom: 0.75rem; font-size: 0.95rem;">
+                  {{T "Login.UsernameLabel"}}
+                </label>
+                <div class="control has-icons-left">
+                  <input class="input is-large input-lg" type="text" id="username" name="username" required autofocus autocomplete="username" aria-required="true" aria-describedby="username-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" placeholder="{{T "Login.UsernameLabel"}}" />
+                  <span class="icon is-left input-icon-left">
+                    <i class="fas fa-user"></i>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Password Field -->
+              <div class="field">
+                <label class="label" for="password" style="font-weight: 600; color: #374151; margin-bottom: 0.75rem; font-size: 0.95rem;">
+                  {{T "Login.PasswordLabel"}}
+                </label>
+                <div class="control has-icons-left">
+                  <input class="input is-large input-lg" type="password" id="password" name="password" required autocomplete="current-password" aria-required="true" aria-describedby="password-help" minlength="6" maxlength="128" placeholder="{{T "Login.PasswordLabel"}}" />
+                  <span class="icon is-left input-icon-left">
+                    <i class="fas fa-lock"></i>
+                  </span>
+                </div>
+              </div>
+
+              <div class="field" style="margin-top: 2rem;">
+                <div class="control">
+                  <button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label="{{T "Login.Button"}}">
+                    <span class="icon is-medium" aria-hidden="true">
+                      <i class="fas fa-sign-in-alt"></i>
+                    </span>
+                    <span>{{T "Login.Button"}}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <!-- Divider -->
+            <div class="has-text-centered divider-with-text">
+              <hr />
+              <span></span>
+            </div>
+
+            <!-- Admin Login Button -->
+            <div class="has-text-centered">
+              <a class="button is-light is-fullwidth login-alt-button" href="/admin/login">
+                <span class="icon has-text-grey">
+                  <i class="fas fa-shield-alt"></i>
+                </span>
+                <span>{{T "Login.AdminLoginLink"}}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{{end}}

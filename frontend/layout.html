@@ -1,0 +1,139 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="{{.Lang}}" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{T "UI.Header"}} - {{T "UI.Subtitle"}}">
+    <meta name="csrf-token" content="{{.CSRFToken}}">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>
+        {{- if .Title -}}
+            {{.Title}} - {{T "UI.Header"}}
+        {{- else if .TitleKey -}}
+            {{T .TitleKey}} - {{T "UI.Header"}}
+        {{- else -}}
+            {{T "UI.Header"}}
+        {{- end -}}
+    </title>
+
+    <!-- Critical CSS -->
+    <style>
+      /* Critical styles for initial paint */
+      body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; line-height: 1.5; }
+      .navbar { background: #fff; border-bottom: 1px solid #e1e5e9; }
+      .section { padding: 3rem 1.5rem; }
+      .container { max-width: 1344px; margin: 0 auto; }
+      .notification { padding: 1.25rem; margin-bottom: 1.5rem; }
+      .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
+    </style>
+    
+    <!-- Async CSS loading -->
+    <link rel="preload" href="/css/bulma.min.css?theme={{.Theme}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/bulma.min.css?theme={{.Theme}}"></noscript>
+    
+    <link rel="preload" href="/css/tokens.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/tokens.css"></noscript>
+    
+    <link rel="preload" href="/css/base.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/base.css"></noscript>
+    
+    <link rel="preload" href="/css/components.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/components.css"></noscript>
+    
+    <link rel="preload" href="/css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/style.css"></noscript>
+    
+    <link rel="preload" href="/css/utilities.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/utilities.css"></noscript>
+    
+    {{if .IsAdminPage}}
+    <link rel="preload" href="/css/admin.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/admin.css"></noscript>
+    {{end}}
+    
+    <!-- Font Awesome - only load what's needed -->
+    <link rel="preload" href="/css/fontawesome.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/fontawesome.min.css"></noscript>
+    
+    <link rel="preload" href="/css/solid.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/solid.min.css"></noscript>
+    
+    {{if .NeedsRegularIcons}}
+    <link rel="preload" href="/css/regular.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/regular.min.css"></noscript>
+    {{end}}
+    {{if .NeedsBrandIcons}}
+    <link rel="preload" href="/css/brands.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/brands.min.css"></noscript>
+    {{end}}
+    
+    <!-- Font preloading -->
+    <link rel="preconnect" href="/webfonts/">
+    <link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous">
+    {{if .NeedsRegularIcons}}<link rel="preload" href="/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin="anonymous">{{end}}
+    {{if .NeedsBrandIcons}}<link rel="preload" href="/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin="anonymous">{{end}}
+  </head>
+<body>
+    {{template "navbar" .}}
+
+    {{/* Proxmox Connection Status Banner - Server-side rendered */}}
+    {{if not .ProxmoxConnected}}
+    <div class="container">
+        {{if .ProxmoxError}}
+        {{template "notification" (dict 
+          "Type" "danger"
+          "Title" (T "Proxmox.ConnectionError")
+          "Message" .ProxmoxError
+          "Icon" "fas fa-exclamation-triangle"
+          "Dismissible" true
+          "Light" true
+          "Live" "assertive"
+        )}}
+        {{else}}
+        {{template "notification" (dict 
+          "Type" "danger"
+          "Title" (T "Proxmox.ConnectionError")
+          "Message" (printf "%s %s" (T "Proxmox.NotConnected") (T "Proxmox.NotConnectedMessage"))
+          "Icon" "fas fa-exclamation-triangle"
+          "Dismissible" true
+          "Light" true
+          "Live" "assertive"
+        )}}
+        {{end}}
+    </div>
+    {{end}}
+
+    {{/* Optional Flash Messages slot (override with a template defining "flash") */}}
+    <div role="status" aria-live="polite">
+    {{block "flash" .}}{{end}}
+    </div>
+
+    <main id="main-content" class="section">
+        <div class="container">
+            {{/* Optional Breadcrumbs slot (override with a template defining "breadcrumbs") */}}
+            {{block "breadcrumbs" .}}{{end}}
+            {{if .Content}}
+                {{.Content}}
+            {{else}}
+                {{/* Default content if no content template is defined */}}
+                <h1 class="title">{{T "UI.Header"}}</h1>
+                <p>No content available</p>
+            {{end}}
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container has-text-centered">
+            <p>{{T "UI.Footer"}}</p>
+        </div>
+    </footer>
+
+    <!-- Accessibility and Progressive Enhancement JavaScript -->
+    <script src="/js/accessibility.js" defer></script>
+  </body>
+</html>
+{{end}}

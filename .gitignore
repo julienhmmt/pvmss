@@ -1,0 +1,10 @@
+.DS_Store
+.env
+.idea/
+.vscode/
+Dockerfile
+Makefile
+docker-compose.dev.yml
+settings.dev.json
+tests/
+backend/tests/

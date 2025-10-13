@@ -1,0 +1,54 @@
+{{define "form_field"}}
+{{/* 
+  Reusable form field component
+  Usage: {{template "form_field" (dict "Type" "text" "Name" "username" "Label" "Username" "Required" true "Placeholder" "Enter username" "Value" .Username "Help" "Enter your username")}}
+*/}}
+<div class="field">
+  {{if .Label}}
+  <label for="{{.Name}}" class="label">{{.Label}}{{if .Required}}<span class="has-text-danger">*</span>{{end}}</label>
+  {{end}}
+  <div class="control{{if .Icon}} has-icons-left{{end}}{{if .IconRight}} has-icons-right{{end}}">
+    {{if eq .Type "textarea"}}
+    <textarea id="{{.Name}}" name="{{.Name}}" class="textarea{{if .Error}} is-danger{{end}}" 
+              {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}
+              {{if .Required}}required{{end}}
+              {{if .Rows}}rows="{{.Rows}}"{{end}}
+              {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}
+              {{if .Pattern}}pattern="{{.Pattern}}"{{end}}
+              {{if .Help}}aria-describedby="{{.Name}}-help"{{end}}>{{.Value}}</textarea>
+    {{else if eq .Type "select"}}
+    <div class="select{{if .Error}} is-danger{{end}}{{if .Multiple}} is-multiple{{end}}">
+      <select id="{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}} {{if .Multiple}}multiple{{end}}>
+        {{range .Options}}
+        <option value="{{.Value}}" {{if eq .Value $.Selected}}selected{{end}}>{{.Label}}</option>
+        {{end}}
+      </select>
+    </div>
+    {{else}}
+    <input id="{{.Name}}" name="{{.Name}}" type="{{or .Type "text"}}" class="input{{if .Error}} is-danger{{end}}" 
+           {{if .Placeholder}}placeholder="{{.Placeholder}}"{{end}}
+           {{if .Value}}value="{{.Value}}"{{end}}
+           {{if .Required}}required{{end}}
+           {{if .MaxLength}}maxlength="{{.MaxLength}}"{{end}}
+           {{if .Pattern}}pattern="{{.Pattern}}"{{end}}
+           {{if .Min}}min="{{.Min}}"{{end}}
+           {{if .Max}}max="{{.Max}}"{{end}}
+           {{if .Step}}step="{{.Step}}"{{end}}
+           {{if .Help}}aria-describedby="{{.Name}}-help"{{end}}>
+    {{end}}
+    {{if .Icon}}
+    <span class="icon is-small is-left">
+      <i class="{{.Icon}}"></i>
+    </span>
+    {{end}}
+    {{if .IconRight}}
+    <span class="icon is-small is-right">
+      <i class="{{.IconRight}}"></i>
+    </span>
+    {{end}}
+  </div>
+  {{if .Help}}
+  <p id="{{.Name}}-help" class="help{{if .Error}} is-danger{{else}} is-grey{{end}}">{{if .Error}}{{.Error}}{{else}}{{.Help}}{{end}}</p>
+  {{end}}
+</div>
+{{end}}

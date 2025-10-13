@@ -1,0 +1,148 @@
+{{define "admin_userpool"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_userpool_section"}}
+<div class="container mt-4">
+  {{if .Error}}
+  {{template "notification" (dict 
+    "Type" "danger" 
+    "Title" (T "Common.Error") 
+    "Message" .Error 
+    "Icon" "fas fa-exclamation-triangle" 
+    "Dismissible" true 
+    "Light" false 
+    "Action" (dict 
+      "Link" "/admin/userpool" 
+      "Text" (T "Common.TryAgain") 
+      "Icon" "fas fa-rotate-right" 
+      "Type" "light")
+  )}}
+  {{else}}
+    <div class="content mb-5">
+      <h1 class="title is-4">
+        <span class="icon"><i class="fas fa-user-shield"></i></span>
+        <span>{{T "Admin.UserPool.Title"}}</span>
+      </h1>
+      <p class="subtitle is-6 has-text-grey">{{T "Admin.UserPool.Description"}}</p>
+    </div>
+
+    {{if .Success}}
+      {{template "notification" (dict 
+        "Type" "success" 
+        "Title" (T "Common.Success") 
+        "Message" .SuccessMessage 
+        "Icon" "fas fa-user-plus" 
+        "Dismissible" true 
+        "ExtraClasses" "is-pulse mb-4" 
+        "Live" "polite"
+      )}}
+    {{end}}
+
+    <form method="POST" action="/userpool/create" class="box admin-box">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <div class="columns is-multiline">
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">{{T "Login.UsernameLabel"}}</label>
+            <div class="control has-icons-left">
+              <input class="input" type="text" name="username" placeholder="{{T "Admin.UserPool.UsernamePlaceholder"}}" required>
+              <span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+            </div>
+            <p class="help">{{T "Admin.UserPool.UsernameHelp"}}</p>
+          </div>
+        </div>
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">{{T "Login.PasswordLabel"}}</label>
+            <div class="control has-icons-left">
+              <input class="input" type="password" name="password" placeholder="********" required>
+              <span class="icon is-small is-left"><i class="fas fa-key"></i></span>
+            </div>
+          </div>
+        </div>
+        <div class="column is-6">
+          <div class="field">
+            <label class="label">{{T "Admin.UserPool.CommentOptional"}}</label>
+            <div class="control">
+              <input class="input" type="text" name="comment" placeholder="{{T "Admin.UserPool.CommentPlaceholder"}}">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <input type="hidden" name="role" value="PVEVMUser">
+      <input type="hidden" name="propagate" value="true">
+      
+      <div class="field is-grouped is-grouped-right">
+        <div class="control">
+          <button class="button is-primary has-text-white" type="submit">
+            <span class="icon is-small"><i class="fas fa-plus"></i></span>
+            <span>{{T "Common.Create"}}</span>
+          </button>
+        </div>
+      </div>
+    </form>
+
+    {{/* List existing pvmss_* pools if available */}}
+    {{if .UserPools}}
+    <div class="box admin-box mt-5">
+      <h2 class="title is-5 mb-4">
+        <span class="icon"><i class="fas fa-users"></i></span>
+        <span>{{T "Admin.UserPool.ExistingTitle"}}</span>
+      </h2>
+      <div class="table-container">
+        <table class="table modern is-fullwidth is-hoverable">
+          <thead>
+            <tr>
+              <th>{{T "Common.User"}}</th>
+              <th>{{T "Common.Pool"}}</th>
+              <th>{{T "Admin.UserPool.VMCountHeader"}}</th>
+              <th class="has-text-right">{{T "Common.Actions"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{$root := .}}
+            {{range .UserPools}}
+            <tr>
+              <td>
+                <span class="icon-text">
+                  <span class="icon is-small has-text-grey"><i class="fas fa-user"></i></span>
+                  <span class="has-text-weight-semibold">{{.User}}</span>
+                </span>
+              </td>
+              <td>
+                <code class="has-background-grey-lighter has-text-grey-dark px-2 py-1" style="border-radius: 4px;">{{.Pool}}</code>
+                {{if .Comment}}
+                  <div class="has-text-grey is-size-7 mt-1">{{.Comment}}</div>
+                {{end}}
+              </td>
+              <td>
+                <span class="tag is-light">
+                  <span class="icon is-small"><i class="fas fa-desktop"></i></span>
+                  <span>{{.VMCount}}</span>
+                </span>
+              </td>
+              <td class="has-text-right">
+                <div class="buttons is-justify-content-flex-end">
+                  <a class="button is-small is-ghost" href="{{printf "/admin/userpool?pool=%s" .Pool}}" title="{{T "Admin.UserPool.RefreshPoolTitle"}}">
+                    <span class="icon is-small"><i class="fas fa-sync"></i></span>
+                    <span>{{T "Common.Refresh"}}</span>
+                  </a>
+
+                  <a href="{{printf "/admin/userpool/delete?pool=%s" .Pool}}" class="button is-danger is-small is-light" title="{{T "Admin.UserPool.DeleteTitle"}}">
+                    <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                    <span>{{T "Common.Delete"}}</span>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

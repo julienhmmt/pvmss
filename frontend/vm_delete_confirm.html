@@ -1,0 +1,76 @@
+{{define "vm_delete_confirm"}}
+<section class="section">
+    <div class="container max-w-1200" style="max-width: 800px;">
+        <div class="card">
+            <header class="card-header" style="background-color: #f14668; color: white;">
+                <p class="card-header-title has-text-white">
+                    <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>&nbsp;{{T "VMDelete.ConfirmTitle"}}
+                </p>
+            </header>
+            <div class="card-content">
+                {{template "notification" (dict 
+                  "Type" "danger"
+                  "Title" (T "VMDelete.ConfirmMessage")
+                  "Icon" "fas fa-trash-alt"
+                  "Light" true
+                  "ExtraClasses" "mb-0"
+                )}}
+                
+                <div class="box has-background-white my-4">
+                    <div class="columns is-mobile is-multiline">
+                        <div class="column is-6">
+                            <p class="has-text-grey is-size-7 mb-1">VM ID</p>
+                            <p class="is-size-5 has-text-weight-semibold">{{.VM.VMID}}</p>
+                        </div>
+                        <div class="column is-6">
+                            <p class="has-text-grey is-size-7 mb-1">{{T "Common.Name"}}</p>
+                            <p class="is-size-5 has-text-weight-semibold">{{.VM.Name}}</p>
+                        </div>
+                        <div class="column is-6">
+                            <p class="has-text-grey is-size-7 mb-1">{{T "Common.Node"}}</p>
+                            <p class="is-size-5 has-text-weight-semibold">{{.VM.Node}}</p>
+                        </div>
+                        <div class="column is-6">
+                            <p class="has-text-grey is-size-7 mb-1">{{T "Common.Status"}}</p>
+                            {{template "status_badge" (dict "Status" .VM.Status "WithIcon" false)}}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="content">
+                    <h3 class="title is-6 has-text-danger">{{T "VMDelete.WarningTitle"}}</h3>
+                    <ul>
+                        <li>{{T "VMDelete.Warning1"}}</li>
+                        <li>{{T "VMDelete.Warning2"}}</li>
+                        <li>{{T "VMDelete.Warning3"}}</li>
+                    </ul>
+                    <p class="has-text-weight-bold mt-4">{{T "VMDelete.Question"}}</p>
+                </div>
+
+                <div class="buttons is-justify-content-space-between mt-5">
+                    <a href="{{printf "/vm/details/%d" .VM.VMID}}" class="button is-medium">
+                        <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                        <span>{{T "Common.No"}}</span>
+                    </a>
+                    <form action="/vm/delete" method="post" class="is-inline">
+                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                        <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                        <input type="hidden" name="node" value="{{.VM.Node}}" />
+                        <button type="submit" class="button is-danger is-medium">
+                            <span class="icon"><i class="fas fa-trash-alt"></i></span>
+                            <span>{{T "Common.Yes"}}</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="content has-text-centered mt-5">
+            <p class="has-text-grey is-size-7">
+                <span class="icon"><i class="fas fa-info-circle"></i></span>
+                {{T "VMDelete.BackInfo"}}
+            </p>
+        </div>
+    </div>
+</section>
+{{end}}

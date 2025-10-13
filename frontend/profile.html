@@ -1,0 +1,375 @@
+{{define "profile"}}
+{{$lang := .Lang}}
+
+<!-- User Profile Page -->
+<section class="section">
+    <div class="container">
+        <!-- Page Header with Quick Actions -->
+        <div class="level mb-5">
+            <div class="level-left">
+                <div class="level-item">
+                    <h1 class="title is-3">
+                        <span class="icon-text">
+                            <span class="icon has-text-primary">
+                                <i class="fas fa-user-circle"></i>
+                            </span>
+                            <span>{{T "Profile.Title"}}</span>
+                        </span>
+                    </h1>
+                </div>
+            </div>
+            <div class="level-right">
+                <div class="level-item">
+                    <div class="buttons">
+                        <a href="/vm/create" class="button is-primary has-text-white">
+                            <span class="icon"><i class="fas fa-plus-square"></i></span>
+                            <span>{{T "Profile.CreateVM"}}</span>
+                        </a>
+                        <a href="/search" class="button is-link is-light">
+                            <span class="icon"><i class="fas fa-search"></i></span>
+                            <span>{{T "Profile.SearchVM"}}</span>
+                        </a>
+                        <a href="/profile?refresh=1" class="button is-light">
+                            <span class="icon"><i class="fas fa-sync-alt"></i></span>
+                            <span>{{T "Common.Refresh"}}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overview Card -->
+        <div class="card mb-5">
+            <header class="card-header brand-header">
+                <p class="card-header-title">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-chart-line"></i></span>
+                        <span>Vue d'ensemble</span>
+                    </span>
+                </p>
+            </header>
+            <div class="card-content">
+                <div class="columns is-variable is-6">
+                    <!-- User Profile Section -->
+                    <div class="column is-12-tablet is-4-desktop">
+                        <div class="has-text-centered p-4">
+                            <div class="mb-4">
+                                <span class="icon is-large has-text-primary" style="font-size: 4.5rem;">
+                                    <i class="fas fa-user-circle"></i>
+                                </span>
+                            </div>
+                            <p class="title is-4 mb-3">{{.Username}}</p>
+                            <div class="box has-background-light p-3">
+                                <p class="heading mb-2">Pool assigné</p>
+                                <p class="subtitle is-6 mb-0">
+                                    <span class="icon-text">
+                                        <span class="icon has-text-info">
+                                            <i class="fas fa-layer-group"></i>
+                                        </span>
+                                        <span class="has-text-weight-semibold">{{.PoolName}}</span>
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Section -->
+                    <div class="column is-12-tablet is-8-desktop">
+                        <div class="columns is-mobile is-multiline">
+                            {{if .VMs}}
+                            <!-- Total VMs -->
+                            <div class="column is-6-mobile is-4-tablet">
+                                <div class="box has-text-centered">
+                                    <p class="heading has-text-grey-light">{{T "Profile.TotalVMs"}}</p>
+                                    <p class="title is-2 has-text-primary mb-3">{{len .VMs}}</p>
+                                    <span class="icon is-large has-text-primary">
+                                        <i class="fas fa-server fa-2x"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Running VMs -->
+                            <div class="column is-6-mobile is-4-tablet">
+                                <div class="box has-text-centered">
+                                    <p class="heading has-text-grey-light">{{T "Profile.RunningVMs"}}</p>
+                                    <p class="title is-2 has-text-success mb-3">
+                                        {{$running := 0}}
+                                        {{range .VMs}}{{if eq .Status "running"}}{{$running = add $running 1}}{{end}}{{end}}
+                                        {{$running}}
+                                    </p>
+                                    <span class="icon is-large has-text-success">
+                                        <i class="fas fa-play-circle fa-2x"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Stopped VMs -->
+                            <div class="column is-6-mobile is-4-tablet">
+                                <div class="box has-text-centered">
+                                    <p class="heading has-text-grey-light">{{T "Profile.StoppedVMs"}}</p>
+                                    <p class="title is-2 has-text-warning mb-3">
+                                        {{$stopped := 0}}
+                                        {{range .VMs}}{{if eq .Status "stopped"}}{{$stopped = add $stopped 1}}{{end}}{{end}}
+                                        {{$stopped}}
+                                    </p>
+                                    <span class="icon is-large has-text-warning">
+                                        <i class="fas fa-stop-circle fa-2x"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Paused VMs (if any) -->
+                            {{$paused := 0}}
+                            {{range .VMs}}{{if eq .Status "paused"}}{{$paused = add $paused 1}}{{end}}{{end}}
+                            {{if gt $paused 0}}
+                            <div class="column is-6-mobile is-4-tablet">
+                                <div class="box has-text-centered">
+                                    <p class="heading has-text-grey-light">{{T "Profile.PausedVMs"}}</p>
+                                    <p class="title is-2 has-text-info mb-3">{{$paused}}</p>
+                                    <span class="icon is-large has-text-info">
+                                        <i class="fas fa-pause-circle fa-2x"></i>
+                                    </span>
+                                </div>
+                            </div>
+                            {{end}}
+                            {{else}}
+                            <div class="column is-12">
+                                <div class="box has-text-centered p-6">
+                                    <span class="icon is-large has-text-grey-lighter mb-3">
+                                        <i class="fas fa-server fa-3x"></i>
+                                    </span>
+                                    <p class="heading has-text-grey">{{T "Profile.NoVMs"}}</p>
+                                    <p class="title is-3 has-text-grey-light">0</p>
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VMs List Section -->
+        <div class="card mb-5">
+            <header class="card-header brand-header">
+                <p class="card-header-title">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-server"></i></span>
+                        <span>{{T "Profile.MyVMs"}}</span>
+                    </span>
+                </p>
+            </header>
+            <div class="card-content">
+                {{if .ProxmoxError}}
+                {{template "notification" (dict 
+                  "Type" "warning" 
+                  "Title" (T "Proxmox.ConnectionError")
+                  "Message" (T "Proxmox.NotConnected") 
+                  "Icon" "fas fa-exclamation-triangle" 
+                  "Dismissible" false 
+                  "Live" "polite"
+                )}}
+                {{else if .VMs}}
+                <div class="table-container">
+                    <table class="table is-fullwidth is-hoverable">
+                        <thead>
+                            <tr class="has-background-light">
+                                <th class="has-text-centered" width="100">
+                                    <span>{{T "Profile.VMID"}}</span>
+                                </th>
+                                <th>
+                                    <span>{{T "Profile.VMName"}}</span>
+                                </th>
+                                <th class="has-text-centered" width="150">
+                                    <span>{{T "Profile.Node"}}</span>
+                                </th>
+                                <th class="has-text-centered" width="150">
+                                    <span>
+                                        {{T "Profile.Status"}}
+                                    </span>
+                                </th>
+                                <th class="has-text-centered" width="280">
+                                    <span>{{T "Profile.Actions"}}</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .VMs}}
+                            <tr class="is-size-6">
+                                <td class="has-text-centered is-vcentered">
+                                    <span class="tag is-light is-medium has-text-weight-bold">{{.VMID}}</span>
+                                </td>
+                                <td class="is-vcentered">
+                                    <div class="is-flex is-align-items-center">
+                                        <span class="icon has-text-primary mr-2">
+                                            <i class="fas fa-desktop"></i>
+                                        </span>
+                                        <span class="has-text-weight-semibold">{{if .Name}}{{.Name}}{{else}}<em class="has-text-grey-light">Sans nom</em>{{end}}</span>
+                                    </div>
+                                </td>
+                                <td class="has-text-centered is-vcentered">
+                                    <span class="tag is-small">
+                                        <span class="icon"><i class="fas fa-server"></i></span>
+                                        <span>{{.Node}}</span>
+                                    </span>
+                                </td>
+                                <td class="has-text-centered is-vcentered">
+                                    {{template "status_badge" (dict "Status" .Status "WithIcon" true)}}
+                                </td>
+                                <td class="has-text-centered is-vcentered">
+                                    <div class="buttons is-centered mb-0">
+                                        <a href="{{printf "/vm/details/%d" .VMID}}" 
+                                           class="button is-small is-primary"
+                                           title="{{T "Profile.ViewDetails"}}">
+                                            <span class="icon">
+                                                <i class="fas fa-eye"></i>
+                                            </span>
+                                            <span>{{T "Profile.ViewDetails"}}</span>
+                                        </a>
+                                        <a href="{{printf "/vm/delete/%d" .VMID}}" 
+                                           class="button is-small is-danger"
+                                           title="{{T "Profile.Delete"}}">
+                                            <span class="icon">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </span>
+                                            <span>{{T "Profile.Delete"}}</span>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+                {{else}}
+                {{template "empty_state" (dict 
+                  "Icon" "fas fa-inbox fa-2x"
+                  "Title" (T "Profile.NoVMs")
+                  "Message" (T "Profile.NoVMsMessage")
+                  "Action" (dict 
+                    "Link" "/vm/create"
+                    "Text" (T "Profile.CreateFirstVM")
+                    "Icon" "fas fa-plus"
+                    "Type" "primary"
+                  )
+                )}}
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Security Section -->
+        <div class="card">
+            <header class="card-header brand-header">
+                <p class="card-header-title">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-shield-halved"></i></span>
+                        <span>{{T "Profile.Security"}}</span>
+                    </span>
+                </p>
+            </header>
+            <div class="card-content">
+                {{if .PasswordSuccess}}
+                {{template "notification" (dict 
+                  "Type" "success" 
+                  "Message" (T "Profile.PasswordUpdateSuccess")
+                  "Icon" "fas fa-check-circle" 
+                  "Dismissible" true
+                )}}
+                {{end}}
+
+                {{if .PasswordError}}
+                {{template "notification" (dict 
+                  "Type" "danger" 
+                  "Message" .PasswordError
+                  "Icon" "fas fa-exclamation-triangle" 
+                  "Dismissible" true
+                )}}
+                {{end}}
+
+                <div class="columns is-variable is-8">
+                    <div class="column is-12-tablet is-4-desktop">
+                        <div class="box has-background-light has-text-centered p-5">
+                            <span class="icon is-large has-text-warning mb-3">
+                                <i class="fas fa-key fa-3x"></i>
+                            </span>
+                            <h3 class="title is-5 mb-2">{{T "Profile.ChangePassword"}}</h3>
+                            <p class="has-text-grey-dark">{{T "Profile.ChangePasswordDescription"}}</p>
+                        </div>
+                    </div>
+
+                    <div class="column is-12-tablet is-8-desktop">
+                        {{if .ShowPasswordForm}}
+                        <form method="POST" action="/profile/update-password" class="box">
+                            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                            
+                            <div class="field">
+                                <label class="label has-text-weight-semibold">
+                                    <span class="icon-text">
+                                        <span class="icon has-text-grey"><i class="fas fa-lock"></i></span>
+                                        <span>{{T "Profile.CurrentPassword"}}</span>
+                                    </span>
+                                </label>
+                                <div class="control has-icons-left">
+                                    <input class="input" type="password" name="current_password" placeholder="{{T "Profile.CurrentPasswordPlaceholder"}}" required minlength="5" autofocus>
+                                    <span class="icon is-small is-left"><i class="fas fa-lock"></i></span>
+                                </div>
+                                <p class="help has-text-grey">{{T "Profile.CurrentPasswordHelp"}}</p>
+                            </div>
+
+                            <div class="field">
+                                <label class="label has-text-weight-semibold">
+                                    <span class="icon-text">
+                                        <span class="icon has-text-grey"><i class="fas fa-key"></i></span>
+                                        <span>{{T "Profile.NewPassword"}}</span>
+                                    </span>
+                                </label>
+                                <div class="control has-icons-left">
+                                    <input class="input" type="password" name="new_password" placeholder="{{T "Profile.NewPasswordPlaceholder"}}" required minlength="5">
+                                    <span class="icon is-small is-left"><i class="fas fa-key"></i></span>
+                                </div>
+                                <p class="help has-text-grey">{{T "Profile.NewPasswordHelp"}}</p>
+                            </div>
+
+                            <div class="field">
+                                <label class="label has-text-weight-semibold">
+                                    <span class="icon-text">
+                                        <span class="icon has-text-grey"><i class="fas fa-check-double"></i></span>
+                                        <span>{{T "Profile.ConfirmPassword"}}</span>
+                                    </span>
+                                </label>
+                                <div class="control has-icons-left">
+                                    <input class="input" type="password" name="confirm_password" placeholder="{{T "Profile.ConfirmPasswordPlaceholder"}}" required minlength="5">
+                                    <span class="icon is-small is-left"><i class="fas fa-check"></i></span>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <div class="field is-grouped is-grouped-right">
+                                <div class="control">
+                                    <a href="/profile" class="button is-light">
+                                        <span class="icon"><i class="fas fa-times"></i></span>
+                                        <span>{{T "Common.Cancel"}}</span>
+                                    </a>
+                                </div>
+                                <div class="control">
+                                    <button type="submit" class="button is-warning">
+                                        <span class="icon"><i class="fas fa-check"></i></span>
+                                        <span>{{T "Profile.UpdatePassword"}}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        {{else}}
+                        <div class="box has-text-centered p-6">
+                            <p class="mb-4 has-text-grey-dark">{{T "Profile.PasswordChangeDescription"}}</p>
+                            <a href="/profile?show_password_form=1" class="button is-warning is-medium">
+                                <span class="icon"><i class="fas fa-edit"></i></span>
+                                <span>{{T "Profile.ChangePasswordButton"}}</span>
+                            </a>
+                        </div>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{{end}}

@@ -1,0 +1,94 @@
+/* ============================================
+   UTILITY & NAVIGATION OVERRIDES
+   Mobile navigation and helper classes
+   ============================================ */
+
+/* ============================================
+   ACCESSIBILITY UTILITIES
+   ============================================ */
+/* Visually hidden checkbox for CSS-only toggles */
+.visually-hidden-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  visibility: hidden;
+  overflow: hidden;
+}
+
+/* Exception: Allow pointer events for notification dismissals */
+input.notification-dismiss-toggle.visually-hidden-checkbox {
+  pointer-events: auto;
+}
+
+/* ============================================
+   MOBILE NAVIGATION
+   ============================================ */
+@media screen and (max-width: 1023px) {
+  .navbar-burger {
+    display: block;
+    cursor: pointer;
+    position: relative;
+    width: 3.25rem;
+    height: 3.25rem;
+    margin-left: auto;
+    padding: 0.5rem;
+  }
+
+  .navbar-burger span {
+    background-color: currentColor;
+    display: block;
+    height: 3px;
+    left: calc(50% - 8px);
+    position: absolute;
+    transform-origin: center;
+    transition: background-color 86ms ease-out, opacity 86ms ease-out, transform 86ms ease-out;
+    width: 16px;
+  }
+
+  .navbar-burger span:nth-child(1) { top: calc(50% - 6px); }
+  .navbar-burger span:nth-child(2) { top: calc(50% - 1px); }
+  .navbar-burger span:nth-child(3) { top: calc(50% + 4px); }
+
+  /* Burger animation when menu is open */
+  #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(1) {
+    transform: translateY(5px) rotate(45deg);
+  }
+
+  #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(2) {
+    opacity: 0;
+  }
+
+  #nav-toggle:checked + .navbar-brand .navbar-burger span:nth-child(3) {
+    transform: translateY(-5px) rotate(-45deg);
+  }
+  
+  .navbar-item {
+    padding: 0.75rem;
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .navbar-burger {
+    display: none;
+  }
+}
+
+/* Additional mobile responsive helpers */
+@media screen and (max-width: 768px) {
+  .buttons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .language-buttons {
+    margin-top: 0.5rem;
+  }
+
+  .navbar-end .navbar-item .buttons {
+    width: 100%;
+  }
+}

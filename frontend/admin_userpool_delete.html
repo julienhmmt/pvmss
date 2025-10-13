@@ -1,0 +1,87 @@
+{{define "admin_userpool_delete"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_userpool_delete_section"}}
+<section class="section">
+  <div class="container mt-4">
+
+  <div class="content mb-5">
+    <h1 class="title is-4">
+      <span class="icon has-text-warning"><i class="fas fa-user-shield"></i></span>
+      <span>{{T "Admin.UserPool.Title"}}</span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey-light">{{T "Admin.UserPool.Description"}}</p>
+  </div>
+
+  <div class="box admin-box">
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Title" (T "Admin.UserPool.DeleteConfirmTitle") 
+      "Message" (T "Admin.UserPool.DeleteConfirmMessage") 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" false
+    )}}
+
+    <div class="content mt-4">
+      <div class="notification is-danger is-light">
+        <p class="has-text-weight-semibold mb-2">
+          <span class="icon"><i class="fas fa-exclamation-circle"></i></span>
+          <span>{{T "Admin.UserPool.DeleteWarning"}}</span>
+        </p>
+        <ul>
+          <li>{{T "Admin.UserPool.DeleteWarning1"}}</li>
+          <li>{{T "Admin.UserPool.DeleteWarning2"}}</li>
+          <li>{{T "Admin.UserPool.DeleteWarning3"}}</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="box mb-4">
+      <div class="columns is-vcentered">
+        <div class="column is-narrow">
+          <span class="icon is-large has-text-info">
+            <i class="fas fa-user fa-2x"></i>
+          </span>
+        </div>
+        <div class="column">
+          <p class="has-text-weight-semibold">{{T "Common.User"}}:</p>
+          <p class="is-size-5">{{.User}}</p>
+        </div>
+      </div>
+      <div class="columns is-vcentered mt-2">
+        <div class="column is-narrow">
+          <span class="icon is-large has-text-info">
+            <i class="fas fa-layer-group fa-2x"></i>
+          </span>
+        </div>
+        <div class="column">
+          <p class="has-text-weight-semibold">{{T "Common.Pool"}}:</p>
+          <p class="is-size-5">
+            <code class="has-background-grey has-text-white px-2 py-1" style="border-radius: 4px;">{{.Pool}}</code>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="field is-grouped is-grouped-centered">
+      <div class="control">
+        <form method="POST" action="/userpool/delete" class="is-inline">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="pool" value="{{.Pool}}">
+          <button type="submit" class="button is-danger is-medium has-text-white">
+            <span class="icon"><i class="fas fa-trash"></i></span>
+            <span>{{T "Common.Yes"}}, {{T "Common.Delete"}}</span>
+          </button>
+        </form>
+      </div>
+      <div class="control">
+        <a href="/admin/userpool" class="button is-light is-medium">
+          <span class="icon"><i class="fas fa-times"></i></span>
+          <span>{{T "Common.No"}}, {{T "Common.Cancel"}}</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{{end}}

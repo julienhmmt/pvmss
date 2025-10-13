@@ -1,0 +1,47 @@
+{{define "card"}}
+{{/*
+  Standardized card component
+  Usage: {{template "card" (dict "Title" "Card Title" "Icon" "fas fa-server" "HeaderClass" "brand-header" "Class" "admin-card" "Content" ...)}}
+*/}}
+<div class="card {{.Class}}">
+  {{if or .Title .HeaderContent}}
+  <header class="card-header {{.HeaderClass}}">
+    {{if .Title}}
+    <p class="card-header-title">
+      {{if .Icon}}
+      <span class="icon mr-2"><i class="{{.Icon}}"></i></span>
+      {{end}}
+      <span>{{.Title}}</span>
+    </p>
+    {{end}}
+    {{if .HeaderContent}}
+    {{.HeaderContent}}
+    {{end}}
+  </header>
+  {{end}}
+  <div class="card-content">
+    {{.Content}}
+  </div>
+  {{if .FooterContent}}
+  <footer class="card-footer">
+    {{.FooterContent}}
+  </footer>
+  {{end}}
+</div>
+{{end}}
+
+{{define "card_admin"}}
+{{/*
+  Admin card with standard styling
+  Usage: {{template "card_admin" (dict "Title" "Admin Section" "Icon" "fas fa-cog" "Content" ...)}}
+*/}}
+{{template "card" (dict 
+  "Title" .Title 
+  "Icon" .Icon
+  "HeaderClass" "brand-header"
+  "Class" "admin-card"
+  "Content" .Content
+  "HeaderContent" .HeaderContent
+  "FooterContent" .FooterContent
+)}}
+{{end}}

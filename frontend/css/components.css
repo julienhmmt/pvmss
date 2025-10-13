@@ -1,0 +1,615 @@
+/* ============================================
+   COMPONENTS
+   UI components and overrides
+   ============================================ */
+
+/* ============================================
+   HERO
+   ============================================ */
+.hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  padding-top: 6rem;
+  padding-bottom: 4rem;
+}
+
+.hero .title {
+  color: white;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.hero .subtitle {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* ============================================
+   CARDS & BLOCKS
+   ============================================ */
+.welcome-block {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 1.125rem;
+  box-shadow: 0 0.5rem 2rem rgba(50, 50, 93, 0.07);
+  padding: 2.5rem 2.2rem;
+  margin-top: -2.5rem;
+}
+
+.card.is-hoverable {
+  border-radius: 0.875rem;
+  box-shadow: 0 0.25rem 1rem rgba(50, 50, 93, 0.1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card.is-hoverable:hover {
+  transform: translateY(-0.25rem) scale(1.03);
+  box-shadow: 0 0.5rem 1.75rem rgba(50, 50, 93, 0.18);
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.is-hoverable {
+    transition: none;
+  }
+  
+  .card.is-hoverable:hover {
+    transform: none;
+    box-shadow: 0 0.25rem 1rem rgba(50, 50, 93, 0.1);
+  }
+}
+
+/* Brand header */
+.card-header.brand-header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+}
+
+.card-header.brand-header .card-header-title,
+.card-header.brand-header .card-header-icon,
+.card-header.brand-header .icon {
+  color: #ffffff;
+}
+
+.card .button.is-primary {
+  color: #ffffff;
+}
+
+/* ============================================
+   FORMS
+   ============================================ */
+fieldset[disabled] {
+  opacity: 0.7;
+  position: relative;
+}
+
+fieldset[disabled]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.5);
+  z-index: 10;
+  pointer-events: none;
+  border-radius: 6px;
+}
+
+/* No-JS fallbacks */
+.no-js .navbar-burger {
+  display: none;
+}
+
+.no-js #navbarMenu {
+  display: block;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media screen and (max-width: 64rem) {
+  #nav-toggle:checked ~ #navbarMenu {
+    display: block;
+  }
+  
+  #nav-toggle:checked ~ .navbar-brand .navbar-burger {
+    background-color: transparent;
+  }
+}
+
+@media (max-width: 48rem) {
+  .columns {
+    flex-direction: column;
+  }
+  
+  .column {
+    width: 100%;
+  }
+}
+
+/* ============================================
+   NOTIFICATION BANNER
+   ============================================ */
+#proxmox-status-banner {
+  position: fixed;
+  top: 3.25rem;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  border-radius: 0;
+  margin: 0;
+  padding: 0.75rem 1.5rem;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+#pmx-dismiss:checked ~ #proxmox-status-banner {
+  display: none;
+}
+
+#main-content {
+  padding-top: 1.5rem;
+  margin-top: 3.25rem;
+}
+
+#proxmox-status-banner ~ #main-content {
+  margin-top: 6rem;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #proxmox-status-banner {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ============================================
+   NAVBAR - Clean & Professional
+   ============================================ */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  min-height: 3.5rem;
+}
+
+.navbar-brand {
+  min-height: 3.5rem;
+  padding: 0;
+}
+
+.navbar-brand .navbar-item {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 0.5rem 1rem;
+  transition: color 0.2s ease;
+}
+
+.navbar-brand .navbar-item:hover {
+  color: var(--primary-hover);
+  background: transparent;
+}
+
+.navbar-burger {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-left: auto;
+}
+
+.navbar-burger span {
+  background-color: var(--text);
+  height: 2px;
+  width: 16px;
+  left: calc(50% - 8px);
+}
+
+.navbar-burger:hover {
+  background-color: #f9fafb;
+}
+
+#nav-toggle:checked ~ .navbar-brand .navbar-burger span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+
+#nav-toggle:checked ~ .navbar-brand .navbar-burger span:nth-child(2) {
+  opacity: 0;
+}
+
+#nav-toggle:checked ~ .navbar-brand .navbar-burger span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+.navbar-menu {
+  background: #ffffff;
+}
+
+.navbar-start {
+  align-items: center;
+}
+
+.navbar-end {
+  align-items: center;
+}
+
+.navbar-item {
+  color: #4b5563;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.navbar-item:hover,
+.navbar-item:focus {
+  background-color: #f9fafb;
+  color: var(--text);
+}
+
+.navbar-item.is-active {
+  background-color: #fef3e7;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.navbar-item.is-active:hover {
+  background-color: #fde8cc;
+  color: var(--primary-hover);
+}
+
+.navbar-item.is-disabled {
+  color: #9ca3af;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.navbar-item.is-disabled .icon {
+  color: inherit;
+}
+
+.navbar-item .icon-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-item .icon {
+  color: inherit;
+}
+
+.navbar .buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar .buttons .button {
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.navbar .buttons .button.is-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.navbar .buttons .button.is-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.navbar .buttons .button.is-light {
+  background: #f3f4f6;
+  color: var(--text);
+  border-color: #e5e7eb;
+}
+
+.navbar .buttons .button.is-light:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+}
+
+.navbar .buttons .button.is-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid #e5e7eb;
+}
+
+.navbar .buttons .button.is-ghost:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.language-buttons {
+  display: flex;
+  gap: 0;
+  margin-left: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.language-buttons .button {
+  border-radius: 0;
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  font-weight: 600;
+  min-width: 2.5rem;
+  border: none;
+  border-right: 1px solid #e5e7eb;
+}
+
+.language-buttons .button:last-child {
+  border-right: none;
+}
+
+.language-buttons .button.is-selected {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.language-buttons .button:not(.is-selected) {
+  background: #ffffff;
+  color: #6b7280;
+}
+
+.language-buttons .button:not(.is-selected):hover {
+  background: #f9fafb;
+  color: var(--text);
+}
+
+/* Mobile & Tablet */
+@media (max-width: 1023px) {
+  .navbar-menu {
+    background: #ffffff;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-start,
+  .navbar-end {
+    padding: 0.5rem 0;
+  }
+
+  .navbar-item {
+    padding: 0.75rem 1rem;
+  }
+
+  .navbar .buttons {
+    flex-direction: column;
+    padding: 0 1rem;
+  }
+
+  .navbar .buttons .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .language-buttons {
+    margin: 0.5rem 0 0 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    min-height: 3.25rem;
+  }
+  
+  .navbar-brand {
+    min-height: 3.25rem;
+  }
+  
+  .navbar-brand .navbar-item {
+    font-size: 1.125rem;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .navbar-burger {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+}
+
+/* ============================================
+   BREADCRUMB
+   ============================================ */
+.breadcrumb a {
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+
+.breadcrumb a:hover {
+  color: var(--text);
+}
+
+.breadcrumb li.is-active a {
+  color: var(--text);
+}
+
+.breadcrumb .icon {
+  color: var(--muted);
+}
+
+/* ============================================
+   INPUTS & CHECKBOXES
+   ============================================ */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary);
+}
+
+/* Tag selection */
+label > input[type="checkbox"].is-hidden + .tag {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+label > input[type="checkbox"].is-hidden:focus + .tag {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+label > input[type="checkbox"].is-hidden:checked + .tag {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+/* ============================================
+   PROGRESS BARS
+   ============================================ */
+.progress {
+  height: 0.5rem;
+  border-radius: 999px;
+  appearance: none;
+  overflow: hidden;
+}
+
+.progress::-webkit-progress-bar,
+.progress::-webkit-progress-inner-element {
+  background-color: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress::-webkit-progress-value,
+.progress::-moz-progress-bar {
+  background-color: var(--primary);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.progress.is-small {
+  height: 0.375rem;
+}
+
+/* Inline progress in tables */
+.table td > .progress {
+  display: inline-block;
+  width: 120px;
+  min-width: 96px;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.table td > .progress + span {
+  display: inline-block;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Color variants */
+.progress.is-primary::-webkit-progress-value,
+.progress.is-primary::-moz-progress-bar {
+  background-color: var(--primary);
+}
+
+.progress.is-success::-webkit-progress-value,
+.progress.is-success::-moz-progress-bar {
+  background-color: #22c55e;
+}
+
+.progress.is-info::-webkit-progress-value,
+.progress.is-info::-moz-progress-bar {
+  background-color: #38bdf8;
+}
+
+.progress.is-warning::-webkit-progress-value,
+.progress.is-warning::-moz-progress-bar {
+  background-color: #f59e0b;
+}
+
+.progress.is-danger::-webkit-progress-value,
+.progress.is-danger::-moz-progress-bar {
+  background-color: #ef4444;
+}
+
+/* ============================================
+   MESSAGES
+   ============================================ */
+.message {
+  background: transparent;
+}
+
+.message .message-header {
+  background-color: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.message .message-body {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-top: none;
+}
+
+.message.is-primary .message-header {
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: #ffffff;
+}
+
+.message.is-primary .message-body {
+  border-left: 3px solid var(--primary);
+}
+
+.message.is-info .message-body {
+  border-left: 3px solid #38bdf8;
+}
+
+.message.is-success .message-body {
+  border-left: 3px solid #22c55e;
+}
+
+.message.is-warning .message-body {
+  border-left: 3px solid #f59e0b;
+}
+
+.message.is-danger .message-body {
+  border-left: 3px solid #ef4444;
+}
+
+/* ============================================
+   BUTTONS - Special Variants
+   ============================================ */
+.button.is-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  box-shadow: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.button.is-ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+/* ============================================
+   PROFILE & ADMIN SPECIFIC
+   ============================================ */
+.admin-card {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.admin-card .box {
+  border-radius: 0.5rem;
+}

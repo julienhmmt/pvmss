@@ -1,0 +1,167 @@
+package handlers
+
+import (
+	"net/http"
+	"net/url"
+
+	"github.com/julienschmidt/httprouter"
+	"pvmss/state"
+)
+
+// removeFromList removes an item from a string list
+func removeFromList(list []string, item string) []string {
+	result := make([]string, 0, len(list))
+	for _, v := range list {
+		if v != item {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// buildVMBRSuccessMessage creates success message from query parameters
+func buildVMBRSuccessMessage(r *http.Request) string {
+	if r.URL.Query().Get("success") == "" {
+		return ""
+	}
+
+	action := r.URL.Query().Get("action")
+	name := r.URL.Query().Get("vmbr")
+
+	switch action {
+	case "enable":
+		return "VMBR '" + name + "' enabled"
+	case "disable":
+		return "VMBR '" + name + "' disabled"
+	default:
+		return "VMBR settings updated"
+	}
+}
+
+// VMBRHandler handles VMBR-related operations.
+type VMBRHandler struct {
+	stateManager state.StateManager
+}
+
+// ToggleVMBRHandler toggles a single VMBR enable state (auto-save without JS)
+func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("ToggleVMBRHandler", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	name := r.FormValue("vmbr")
+	action := r.FormValue("action") // enable|disable
+	if name == "" || (action != "enable" && action != "disable") {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	settings := h.stateManager.GetSettings()
+	if settings.VMBRs == nil {
+		settings.VMBRs = []string{}
+	}
+
+	enabled := make(map[string]bool, len(settings.VMBRs))
+	for _, v := range settings.VMBRs {
+		enabled[v] = true
+	}
+
+	changed := false
+	if action == "enable" {
+		if !enabled[name] {
+			settings.VMBRs = append(settings.VMBRs, name)
+			changed = true
+		}
+	} else { // disable
+		if enabled[name] {
+			settings.VMBRs = removeFromList(settings.VMBRs, name)
+			changed = true
+		}
+	}
+
+	if changed {
+		if err := h.stateManager.SetSettings(settings); err != nil {
+			log.Error().Err(err).Msg("Failed to update settings")
+			http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	redirectURL := "/admin/vmbr?success=1&action=" + action + "&vmbr=" + url.QueryEscape(name)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// NewVMBRHandler creates a new instance of VMBRHandler.
+func NewVMBRHandler(sm state.StateManager) *VMBRHandler {
+	return &VMBRHandler{stateManager: sm}
+}
+
+// VMBRPageHandler renders the VMBR management page.
+func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("VMBRPageHandler", r)
+
+	client := h.stateManager.GetProxmoxClient()
+	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
+
+	// Collect all VMBRs using common helper when online; otherwise short-circuit
+	var allVMBRs []map[string]string
+	var err error
+	if client == nil || !proxmoxConnected {
+		// Proceed gracefully in offline/read-only mode like AdminPageHandler
+		log.Warn().Bool("connected", proxmoxConnected).Msg("Proxmox not available; rendering page with empty VMBR list")
+		allVMBRs = []map[string]string{}
+	} else {
+		allVMBRs, err = collectAllVMBRs(h.stateManager)
+		if err != nil {
+			log.Warn().Err(err).Msg("collectAllVMBRs returned an error; continuing")
+		}
+		log.Info().Int("vmbr_total", len(allVMBRs)).Msg("Total VMBRs prepared for template")
+	}
+
+	// Get current settings to check which VMBRs are enabled
+	settings := h.stateManager.GetSettings()
+	enabledVMBRs := make(map[string]bool, len(settings.VMBRs))
+	for _, vmbr := range settings.VMBRs {
+		enabledVMBRs[vmbr] = true
+	}
+
+	successMsg := buildVMBRSuccessMessage(r)
+
+	// Prepare template data
+	// Map to template shape used previously: name field instead of iface
+	vmbrsForTemplate := make([]map[string]string, 0, len(allVMBRs))
+	for _, v := range allVMBRs {
+		vmbrsForTemplate = append(vmbrsForTemplate, map[string]string{
+			"node":        v["node"],
+			"name":        v["iface"],
+			"description": v["description"],
+		})
+	}
+
+	templateData := AdminPageDataWithMessage("VMBR Management", "vmbr", successMsg, "")
+	templateData["VMBRs"] = vmbrsForTemplate
+	templateData["EnabledVMBRs"] = enabledVMBRs
+	if err != nil {
+		templateData["Error"] = err.Error()
+	}
+	// Pass Proxmox status flags for consistent UI behavior
+	templateData["ProxmoxConnected"] = proxmoxConnected
+	if !proxmoxConnected && proxmoxMsg != "" {
+		templateData["ProxmoxError"] = proxmoxMsg
+	}
+
+	renderTemplateInternal(w, r, "admin_vmbr", templateData)
+}
+
+// RegisterRoutes registers the routes for VMBR management.
+func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
+	routeHelpers := NewAdminPageRoutes()
+
+	// Register admin VMBR routes using helper
+	routeHelpers.RegisterCRUDRoutes(router, "/admin/vmbr", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
+		"page":   h.VMBRPageHandler,
+		"toggle": h.ToggleVMBRHandler,
+	})
+}

@@ -1,0 +1,17 @@
+{{define "docs"}}
+<section class="section">
+  <div class="container">
+
+    <div class="field is-grouped mb-4">
+      <p class="control">
+        <a class="button {{if eq .CurrentLang "en"}}is-primary{{else}}is-light{{end}}" href="/set-lang?lang=en">English</a>
+      </p>
+      <p class="control">
+        <a class="button {{if eq .CurrentLang "fr"}}is-primary{{else}}is-light{{end}}" href="/set-lang?lang=fr">Français</a>
+      </p>
+    </div>
+
+    <div class="content">{{.Content}}</div>
+  </div>
+</section>
+{{end}}

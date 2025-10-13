@@ -1,0 +1,154 @@
+{{define "admin_tags"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_tags_section"}}
+<div class="container mt-4">
+
+  <div class="content mb-5">
+    <h1 class="title is-4">
+      <span class="icon"><i class="fas fa-tags"></i></span>
+      <span>{{T "Admin.Tags.Title"}}</span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey">{{T "Admin.Tags.Description"}}</p>
+  </div>
+
+  <div class="box admin-box">
+    <div class="toolbar mb-3">
+      <form method="POST" action="/tags" class="is-flex is-align-items-center">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <div class="field has-addons mb-0">
+          <div class="control is-expanded">
+            <input type="text" id="new-tag" name="tag" class="input" maxlength="50"
+                   placeholder='{{T "Admin.Tags.Placeholder"}}' required pattern="[a-zA-Z0-9_\-]+"
+                   title='{{T "Admin.Tags.ValidationMessage"}}'>
+          </div>
+          <div class="control">
+            <button type="submit" class="button is-primary has-text-white">
+              <span class="icon"><i class="fas fa-plus"></i></span>
+              <span>{{T "Admin.Tags.AddTag"}}</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    {{if .Tags}}
+    <div class="table-container">
+      <table class="table is-fullwidth is-hoverable modern">
+        <thead>
+          <tr>
+            <th>
+              <div class="field has-addons mb-0 is-align-items-center">
+                <div class="control">
+                  <span class="icon-text">
+                    <span class="icon is-small"><i class="fas fa-tag"></i></span>
+                    <span>{{T "Admin.Tags.Header.Name"}}</span>
+                  </span>
+                </div>
+              </div>
+            </th>
+            {{if .TagCounts}}
+            <th>{{T "Admin.Tags.Header.Usage"}}</th>
+            {{end}}
+            <th class="has-text-right">{{T "Common.Actions"}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{range .Tags}}
+          <tr>
+            <td>
+              <span class="tag is-light">{{.}}</span>
+            </td>
+            {{if $.TagCounts}}
+            <td>
+              {{$count := index $.TagCounts .}}
+              {{if $count}}
+                <span class="tag is-success is-light">{{$count}} VMs</span>
+              {{end}}
+            </td>
+            {{else}}
+            <td>
+              <span class="tag is-light">0 VMs</span>
+            </td>
+            {{end}}
+            <td class="has-text-right">
+              {{if ne . "pvmss"}}
+              <a href="/admin/tags/delete?tag={{.}}" class="button is-small is-danger is-light"
+                 title='{{T "Admin.Tags.DeleteTag"}} "{{.}}"'>
+                <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                <span>{{T "Common.Delete"}}</span>
+              </a>
+              {{else}}
+              <span class="tag is-light">{{T "Admin.Tags.DefaultTag"}}</span>
+              {{end}}
+            </td>
+          </tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+    {{else}}
+    {{template "notification" (dict 
+      "Type" "info" 
+      "Message" (T "Admin.Tags.NoTags") 
+      "Icon" "fas fa-info-circle" 
+      "Dismissible" true
+    )}}
+    {{end}}
+  </div>
+</div>
+{{end}}
+
+{{define "admin_tags_delete"}}  
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_tags_delete_section"}}
+<div class="container mt-4">
+
+  <div class="content mb-5">
+    <h1 class="title is-4">
+      <span class="icon"><i class="fas fa-tags"></i></span>
+      <span>{{T "Admin.Tags.Title"}}</span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey">{{T "Admin.Tags.Description"}}</p>
+  </div>
+
+  <div class="box admin-box">
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Title" (T "Admin.Tags.DeleteConfirmTitle") 
+      "Message" (T "Admin.Tags.DeleteConfirmMessage" .Tag) 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" true
+    )}}
+
+    <div class="level">
+      <div class="level-left">
+        <div class="level-item">
+          <span class="tag is-info is-large">{{.Tag}}</span>
+        </div>
+      </div>
+      <div class="level-right">
+        <div class="level-item">
+          <form method="POST" action="/tags/delete" class="is-inline">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <input type="hidden" name="tag" value="{{.Tag}}">
+            <button type="submit" class="button is-danger has-text-white">
+              <span class="icon"><i class="fas fa-trash"></i></span>
+              <span>{{T "Common.Yes"}}</span>
+            </button>
+          </form>
+        </div>
+        <div class="level-item">
+          <a href="/admin/tags" class="button">
+            <span class="icon"><i class="fas fa-times"></i></span>
+            <span>{{T "Common.No"}}</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

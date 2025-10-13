@@ -1,0 +1,30 @@
+---
+services:
+  pvmss:
+    image: jhmmt/pvmss:0.1
+    container_name: pvmss
+    restart: unless-stopped
+    ports:
+      - "50000:50000/tcp"
+    # Use either the .env file for environment variables
+    # or the environment variables in the docker-compose.yml file.
+    # env_file:
+    #  - .env
+    environment:
+      # Proxmox VE settings
+      PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
+      PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
+      PROXMOX_URL: "https://ip-or-name:8006/api2/json"
+      PROXMOX_VERIFY_SSL: "false"
+      # PVMSS settings
+      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      LOG_LEVEL: "INFO"
+      SESSION_SECRET: "changeMeWithSomethingElseUnique"
+      TZ: "Europe/Paris"
+    volumes:
+      - ./backend/settings.json:/app/settings.json
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 64M

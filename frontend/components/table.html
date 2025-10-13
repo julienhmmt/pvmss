@@ -1,0 +1,23 @@
+{{define "table"}}
+{{/*
+  Standardized table component with responsive wrapper
+  Usage: {{template "table" (dict "Class" "custom-class" "Fullwidth" true "Striped" true "Hoverable" true "Narrow" false "Content" ...)}}
+*/}}
+<div class="table-container">
+  <table class="table {{if ne .Fullwidth false}}is-fullwidth{{end}} {{if .Striped}}is-striped{{end}} {{if .Hoverable}}is-hoverable{{end}} {{if .Narrow}}is-narrow{{end}} {{.Class}}">
+    {{.Content}}
+  </table>
+</div>
+{{end}}
+
+{{define "table_standard"}}
+{{/*
+  Standard table with recommended defaults
+  Usage: {{template "table_standard" .TableContent}}
+*/}}
+<div class="table-container">
+  <table class="table is-fullwidth is-striped is-hoverable">
+    {{.}}
+  </table>
+</div>
+{{end}}

@@ -1,0 +1,88 @@
+{{define "error_handler"}}
+{{/*
+  Standardized error handler component
+  Usage: {{template "error_handler" (dict "Error" .Error "Type" "danger" "Title" "Error Occurred" "RetryAction" "/retry" "Context" .Context)}}
+*/}}
+{{$type := or .Type "danger"}}
+{{$title := or .Title (T "Common.Error")}}
+{{$message := or .Error (T "Common.UnknownError")}}
+
+<div class="notification is-{{$type}} is-light" role="alert" aria-live="assertive" aria-atomic="true">
+  <div class="level is-mobile">
+    <div class="level-left">
+      <div class="level-item">
+        <span class="icon has-text-{{$type}}">
+          {{if eq $type "success"}}
+            <i class="fas fa-check-circle"></i>
+          {{else if eq $type "warning"}}
+            <i class="fas fa-exclamation-triangle"></i>
+          {{else if eq $type "info"}}
+            <i class="fas fa-info-circle"></i>
+          {{else}}
+            <i class="fas fa-exclamation-circle"></i>
+          {{end}}
+        </span>
+      </div>
+      <div class="level-item">
+        <div>
+          <strong>{{$title}}</strong>
+          <p>{{$message}}</p>
+          {{if .Context}}
+          <small class="has-text-grey">{{.Context}}</small>
+          {{end}}
+        </div>
+      </div>
+    </div>
+    <div class="level-right">
+      {{if .RetryAction}}
+      <div class="level-item">
+        <a href="{{.RetryAction}}" class="button is-small is-{{$type}} is-light">
+          <span class="icon"><i class="fas fa-rotate"></i></span>
+          <span>{{T "Common.TryAgain"}}</span>
+        </a>
+      </div>
+      {{end}}
+      {{if .Dismissible}}
+      <div class="level-item">
+        <button class="delete" data-action="dismiss" aria-label="{{T "Common.DismissError"}}"></button>
+      </div>
+      {{end}}
+    </div>
+  </div>
+</div>
+{{end}}
+
+{{define "loading_state"}}
+{{/*
+  Loading state component
+  Usage: {{template "loading_state" (dict "Message" "Loading..." "Size" "medium")}}
+*/}}
+<div class="has-text-centered py-4" role="status" aria-live="polite">
+  <span class="icon is-{{or .Size "medium"}}">
+    <i class="fas fa-spinner fa-spin"></i>
+  </span>
+  <span class="ml-2">{{or .Message (T "Common.Loading")}}</span>
+</div>
+{{end}}
+
+{{define "empty_state"}}
+{{/*
+  Empty state component
+  Usage: {{template "empty_state" (dict "Message" "No items found" "Icon" "fas fa-inbox" "Action" .Action)}}
+*/}}
+<div class="has-text-centered py-6">
+  <span class="icon is-large has-text-grey">
+    <i class="{{or .Icon "fas fa-inbox"}} fa-3x"></i>
+  </span>
+  <p class="title is-4 mt-4 has-text-grey">{{or .Title (T "Common.NoData")}}</p>
+  <p class="subtitle is-6 has-text-grey-light">{{or .Message (T "Common.NoDataMessage")}}</p>
+  {{if .Action}}
+  <div class="mt-4">
+    <a href="{{.Action.Link}}" class="button is-primary">
+      {{if .Action.Icon}}<span class="icon"><i class="{{.Action.Icon}}"></i></span>{{end}}
+      <span>{{.Action.Text}}</span>
+    </a>
+  </div>
+  {{end}}
+</div>
+{{end}}

@@ -1,0 +1,67 @@
+---
+name: Lint
+
+on:
+  push: null
+  pull_request: null
+
+permissions: {}
+
+jobs:
+    super-linter:
+      name: Super Linter
+      runs-on: ubuntu-latest
+      timeout-minutes: 15
+
+      permissions:
+        contents: read
+        packages: read
+        statuses: write
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v5
+          with:
+            # super-linter needs the full git history to get the
+            # list of files that changed across commits
+            fetch-depth: 0
+
+        - name: Super-linter
+          uses: super-linter/super-linter/slim@v8.2.0 # x-release-please-version
+          env:
+            # To report GitHub Actions status checks
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            DEFAULT_BRANCH: main
+            VALIDATE_ALL_CODEBASE: false
+            VALIDATE_CSS: true
+            VALIDATE_HTML: true
+            VALIDATE_YAML: true
+            FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$,.*brands\.min\.css$,.*fontawesome\.min\.css$,.*regular\.min\.css$,.*solid\.min\.css$'
+
+    golangci-lint:
+      name: Go Lint
+      runs-on: ubuntu-latest
+      timeout-minutes: 10
+
+      permissions:
+        contents: read
+        packages: read
+        statuses: write
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v5
+          with:
+            fetch-depth: 0
+
+        - name: Set up Go
+          uses: actions/setup-go@v6
+          with:
+            go-version-file: backend/go.mod
+
+        - name: Run golangci-lint
+          uses: golangci/golangci-lint-action@v8
+          with:
+            version: latest
+            working-directory: backend
+            args: --timeout=3m

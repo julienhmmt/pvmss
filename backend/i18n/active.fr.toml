@@ -1,0 +1,976 @@
+# ===================================
+# PVMSS - French Translations
+# ===================================
+# Organized alphabetically by section and key
+
+# ======
+# Error
+# ======
+["Error.Unexpected"]
+other = "Une erreur inattendue s'est produite."
+["Error.PreviousPage"]
+other = "Page précédente"
+["Common.Home"]
+other = "Accueil"
+["Common.Actions"]
+other = "Actions"
+["Common.Add"]
+other = "Ajouter"
+["Common.Admin"]
+other = "Administration"
+["Common.Back"]
+other = "Retour"
+["Common.BackToSearch"]
+other = "Retour à la recherche"
+["Common.CPU"]
+other = "CPU"
+["Common.Cancel"]
+other = "Annuler"
+["Common.Confirm"]
+other = "Confirmer"
+["Common.Create"]
+other = "Créer"
+["Common.Delete"]
+other = "Supprimer"
+["Common.Description"]
+other = "Description"
+["Common.Disk"]
+other = "Disque"
+["Common.Disable"]
+other = "Désactiver"
+["Common.Disabled"]
+other = "Désactivé"
+["Common.Edit"]
+other = "Modifier"
+["Common.Enable"]
+other = "Activer"
+["Common.Enabled"]
+other = "Activé"
+["Common.Error"]
+other = "Erreur"
+
+# Proxmox
+["Proxmox.ConnectionError"]
+other = "Erreur de connexion au serveur Proxmox"
+["Proxmox.NotConnected"]
+other = "Le serveur Proxmox est éteint ou n'est pas connecté"
+["Proxmox.NotConnectedMessage"]
+other = "Impossible de créer une VM : le serveur Proxmox n'est pas connecté."
+["Proxmox.CheckConnection"]
+other = "Veuillez vérifier la connexion au serveur Proxmox et réessayer."
+["Common.ID"]
+other = "ID"
+["Common.Loading"]
+other = "Chargement..."
+["Common.Login"]
+other = "Connexion"
+["Common.Logout"]
+other = "Déconnexion"
+["Common.Max"]
+other = "Max"
+["Common.Memory"]
+other = "Mémoire"
+["Common.Min"]
+other = "Min"
+["Common.Select"]
+other = "Sélectionner"
+["Common.Refresh"]
+other = "Actualiser"
+["Common.Name"]
+other = "Nom"
+["Common.Network"]
+other = "Réseau"
+["Common.Next"]
+other = "Suivant"
+["Common.Node"]
+other = "Nœud"
+["Common.No"]
+other = "Non"
+["Common.None"]
+other = "Aucun"
+["Common.OK"]
+other = "OK"
+["Common.Optional"]
+other = "Optionnel"
+["Common.Previous"]
+other = "Précédent"
+["Common.Required"]
+other = "Requis"
+["Common.Reset"]
+other = "Réinitialiser"
+["Common.Save"]
+other = "Enregistrer"
+["Common.Saved"]
+other = "✓ Enregistré"
+["Common.Saving"]
+other = "Enregistrement en cours..."
+["Common.Search"]
+other = "Rechercher"
+["Common.SelectAll"]
+other = "Tout sélectionner"
+["Common.Selected"]
+other = "sélectionné(s)"
+["Common.SelectNone"]
+other = "Tout désélectionner"
+["Common.Settings"]
+other = "Paramètres"
+["Common.Status"]
+other = "Statut"
+["Common.Storage"]
+other = "Stockage"
+["Common.Submit"]
+other = "Envoyer"
+["Common.TryAgain"]
+other = "Réessayer"
+["Common.Success"]
+other = "Succès"
+["Common.Tags"]
+other = "Étiquettes"
+["Common.Unauthorized"]
+other = "Non autorisé"
+["Common.Update"]
+other = "Mettre à jour"
+["Common.User"]
+other = "Utilisateur"
+["Common.Users"]
+other = "Utilisateurs"
+["Common.Pool"]
+other = "Pool"
+["Common.Yes"]
+other = "Oui"
+["Common.Information"]
+other = "Information"
+["Common.PerPage"]
+other = "par page"
+["Common.Showing"]
+other = "Affichage de"
+["Common.to"]
+other = "à"
+["Common.of"]
+other = "sur"
+["Common.VMs"]
+other = "VMs"
+["Common.Page"]
+other = "Page"
+
+["AdminVMs.Title"]
+other = "Machines Virtuelles PVMSS"
+["AdminVMs.Description"]
+other = "Liste de toutes les VMs PVMSS"
+["Admin.UserPool.DeleteConfirmTitle"]
+other = "Confirmer la suppression de l'utilisateur et du pool"
+["Admin.UserPool.DeleteConfirmMessage"]
+other = "Êtes-vous sûr de vouloir supprimer cet utilisateur, ce pool et toutes les VMs associées ? Cette action est irréversible."
+["Admin.UserPool.DeleteWarning"]
+other = "Attention : Cela va définitivement :"
+["Admin.UserPool.DeleteWarning1"]
+other = "Arrêter et supprimer toutes les VMs de ce pool"
+["Admin.UserPool.DeleteWarning2"]
+other = "Supprimer le pool et toutes ses ressources"
+["Admin.UserPool.DeleteWarning3"]
+other = "Supprimer le compte utilisateur associé"
+
+["Error.Generic"]
+other = "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur."
+["Error.InternalServer"]
+other = "Erreur Interne du Serveur"
+["Error.NotFound"]
+other = "Ressource Non Trouvée"
+["Error.Title"]
+other = "Erreur"
+["Error.Unauthorized"]
+other = "Non Autorisé"
+
+# ===========
+# Navigation
+# ===========
+["Navbar.Admin"]
+other = "Administration"
+["Navbar.AdminDocs"]
+other = "Documentation administrateur"
+["Navbar.CreateVM"]
+other = "Créer une VM"
+["Navbar.Documentation"]
+other = "Documentation"
+["Navbar.Home"]
+other = "Accueil"
+["Navbar.Login"]
+other = "Connexion"
+["Navbar.Logout"]
+other = "Déconnexion"
+["Navbar.SearchVM"]
+other = "Rechercher une VM"
+["Navbar.UserDocs"]
+other = "Docs Utilisateur"
+["Navbar.Profile"]
+other = "Profil"
+
+# ===========
+# Profile
+# ===========
+["Profile.Title"]
+other = "Mon Profil"
+["Profile.Username"]
+other = "Nom d'utilisateur"
+["Profile.Pool"]
+other = "Pool"
+["Profile.MyVMs"]
+other = "Mes machines virtuelles"
+["Profile.VMID"]
+other = "ID VM"
+["Profile.VMName"]
+other = "Nom de la VM"
+["Profile.Node"]
+other = "Nœud"
+["Profile.Status"]
+other = "Statut"
+["Profile.Actions"]
+other = "Actions"
+["Profile.ViewDetails"]
+other = "Voir les détails"
+["Profile.Delete"]
+other = "Supprimer"
+["Profile.NoVMs"]
+other = "Aucune machine virtuelle"
+["Profile.NoVMsMessage"]
+other = "Vous n'avez pas encore de machines virtuelles. Créez une VM pour commencer."
+["Profile.CreateFirstVM"]
+other = "Créer une VM"
+["Profile.CreateVM"]
+other = "Créer une nouvelle VM"
+["Profile.SearchVM"]
+other = "Rechercher des VMs"
+["Profile.ChangePassword"]
+other = "Changer le mot de passe"
+["Profile.CurrentPassword"]
+other = "Mot de passe actuel"
+["Profile.CurrentPasswordPlaceholder"]
+other = "Entrez votre mot de passe actuel"
+["Profile.CurrentPasswordHelp"]
+other = "Entrez votre mot de passe actuel pour vérifier votre identité"
+["Profile.NewPassword"]
+other = "Nouveau mot de passe"
+["Profile.NewPasswordPlaceholder"]
+other = "Entrez votre nouveau mot de passe"
+["Profile.NewPasswordHelp"]
+other = "Minimum 5 caractères"
+["Profile.ConfirmPassword"]
+other = "Confirmer le nouveau mot de passe"
+["Profile.ConfirmPasswordPlaceholder"]
+other = "Ressaisissez votre nouveau mot de passe"
+["Profile.UpdatePassword"]
+other = "Mettre à jour le mot de passe"
+["Profile.PasswordUpdateSuccess"]
+other = "Mot de passe mis à jour avec succès !"
+["Profile.ChangePasswordButton"]
+other = "Changer mon mot de passe"
+["Profile.PasswordChangeDescription"]
+other = "Cliquez sur le bouton ci-dessous pour changer votre mot de passe Proxmox. Vous devrez fournir votre mot de passe actuel pour vérification."
+["Profile.MyProfile"]
+other = "Mon profil"
+["Profile.RunningVMs"]
+other = "VMs en cours d'exécution"
+["Profile.StoppedVMs"]
+other = "VMs arrêtées"
+["Profile.PausedVMs"]
+other = "VMs en pause"
+["Profile.Security"]
+other = "Sécurité"
+["Profile.SecurityDescription"]
+other = "Gérez vos paramètres de sécurité de compte."
+["Profile.TotalVMs"]
+other = "Total VMs"
+["Profile.TotalRunningVMs"]
+other = "VMs en cours d'exécution"
+["Profile.TotalStoppedVMs"]
+other = "VMs arrêtées"
+["Profile.TotalPausedVMs"]
+other = "VMs en pause"
+["Profile.ChangePasswordDescription"]
+other = "Cliquez sur le bouton ci-dessous pour changer votre mot de passe Proxmox. Vous devrez fournir votre mot de passe actuel pour vérification."
+
+# ===========
+# UI Elements
+# ===========
+["Title"]
+other = "PVMSS"
+["UI.AccessAdmin"]
+other = "Accès administrateur"
+["UI.AdminDescription"]
+other = "Accédez aux paramètres d'administration et à la configuration du système."
+["UI.Body"]
+other = "Avec PVMSS, vous êtes en mesure de créer des machines virtuelles dans un serveur Proxmox."
+["UI.Button.Search"]
+other = "Rechercher"
+["UI.Button.ColorMode"]
+other = "Jour/Nuit"
+["UI.CreateVMDescription"]
+other = "Créez et déployez de nouvelles machines virtuelles en quelques clics."
+["UI.DocsDescription"]
+other = "Trouvez des guides et une documentation détaillée pour tirer le meilleur parti de PVMSS."
+["UI.Footer"]
+other = 'PVMSS - Julien HOMMET. Fait avec le ❤️ en 🇫🇷 🇪🇺.'
+["UI.GetStarted"]
+other = "Commencer"
+["UI.Header"]
+other = "Proxmox VM Self-Service"
+["UI.Subtitle"]
+other = "Un portail en libre service et simple pour Proxmox VE."
+["UI.ViewDocumentation"]
+other = "Voir la documentation"
+
+# ===========
+# Messages
+# ===========
+["Message.ActionFailed"]
+other = "L'action a échoué"
+["Message.CreatedSuccessfully"]
+other = "Créé avec succès"
+["Message.DeletedSuccessfully"]
+other = "Supprimé avec succès"
+["Message.SavedSuccessfully"]
+other = "Enregistré avec succès"
+["Message.UpdatedSuccessfully"]
+other = "Mis à jour avec succès"
+
+# ===========
+# Status
+# ===========
+["Status.Active"]
+other = "Actif"
+["Status.Connected"]
+other = "Connecté"
+["Status.Disabled"]
+other = "Désactivé"
+["Status.Disconnected"]
+other = "Déconnecté"
+["Status.Down"]
+other = "Arrêté"
+["Status.Error"]
+other = "Erreur"
+["Status.Failed"]
+other = "Échec"
+["Status.Offline"]
+other = "Hors ligne"
+["Status.Online"]
+other = "En ligne"
+["Status.Paused"]
+other = "En pause"
+["Status.Pending"]
+other = "En attente"
+["Status.Running"]
+other = "En cours d'exécution"
+["Status.Stopped"]
+other = "Arrêté"
+["Status.Success"]
+other = "Succès"
+["Status.Unknown"]
+other = "Inconnu"
+["Status.Updating"]
+other = "Mise à jour en cours"
+["Status.Warning"]
+other = "Avertissement"
+
+# ===========
+# Validation
+# ===========
+["Validation.Required"]
+other = "Ce champ est obligatoire"
+["Validation.InvalidFormat"]
+other = "Format invalide"
+["Validation.MinLength"]
+other = "Doit contenir au moins {{.Limit}} caractères"
+["Validation.MaxLength"]
+other = "Ne doit pas dépasser {{.Limit}} caractères"
+["Validation.Email"]
+other = "Doit être une adresse email valide"
+["Validation.URL"]
+other = "Doit être une URL valide"
+["Validation.Numeric"]
+other = "Doit être un nombre"
+["Validation.IP"]
+other = "Doit être une adresse IP valide"
+["Validation.Positive"]
+other = "Doit être un nombre positif"
+["Validation.Negative"]
+other = "Doit être un nombre négatif"
+
+# ======
+# Search
+# ======
+["Search.ActionsHeader"]
+other = "Boutons d'actions"
+["Search.Actions"]
+other = "Actions"
+["Search.CPUs"]
+other = "CPU (Sockets/Cœurs)"
+["Search.CardView"]
+other = "Vue Cartes"
+["Search.Clear"]
+other = "Effacer"
+["Search.CreateVM"]
+other = "Créer une VM"
+["Search.Details"]
+other = "Détails de la VM"
+["Search.Filter"]
+other = "Filtrer"
+["Search.Memory"]
+other = "Mémoire"
+["Search.Name"]
+other = "Nom"
+["Search.Node"]
+other = "Nœud"
+["Search.NoResults"]
+other = "Aucune machine virtuelle ne correspond à vos critères."
+["Search.NoResultsMessage"]
+other = "Essayez d'ajuster vos critères de recherche ou vérifiez si la VM existe."
+["Search.NoName"]
+other = "Sans nom"
+["Search.Placeholder"]
+other = "Rechercher par ID ou Nom..."
+["Search.PlaceholderName"]
+other = "ex. ma-vm"
+["Search.PlaceholderVMID"]
+other = "ex. 100"
+["Search.RAM"]
+other = "Mémoire vive"
+["Search.Results"]
+other = "Résultats de la recherche"
+["Search.ResultsFor"]
+other = "Résultats pour"
+["Search.ResultFound"]
+other = "résultat trouvé"
+["Search.ResultsFound"]
+other = "résultats trouvés"
+["Search.Status"]
+other = "Statut"
+["Search.Storage"]
+other = "Stockage"
+["Search.Submit"]
+other = "Rechercher"
+["Search.Subtitle"]
+other = "Trouvez vos machines virtuelles rapidement et facilement"
+["Search.TableView"]
+other = "Vue Tableau"
+["Search.Title"]
+other = "Recherche de machines virtuelles"
+["Search.TitleName"]
+other = "Veuillez entrer un nom de VM entre 1 et 100 caractères."
+["Search.TitleVMID"]
+other = "Veuillez entrer un ID de VM avec 1 à 10 chiffres."
+["Search.VMDetailsButton"]
+other = "Détails de la VM"
+["Search.VMID"]
+other = "ID de la VM"
+["Search.YouSearchedFor"]
+other = "Vous avez recherché"
+["Search.Validation.MissingCriteria"]
+other = "Veuillez fournir au moins un critère de recherche (ID ou nom)."
+["Search.Criterias"]
+other = "Critères de recherche"
+
+# ======
+# Login
+# ======
+["Login.Button"]
+other = "Se connecter"
+["Login.PasswordLabel"]
+other = "Mot de passe"
+["Login.Title"]
+other = "Connexion"
+["Login.UsernameLabel"]
+other = "Nom d'utilisateur"
+["Login.UserLogin"]
+other = "Connexion utilisateur"
+["Login.AdminLoginLink"]
+other = "Connexion administrateur"
+["Login.LoginAs"]
+other = "Se connecter en tant que"
+["Login.SwitchToAdmin"]
+other = "Basculer vers la connexion administrateur"
+["Login.SwitchToUser"]
+other = "Basculer vers la connexion utilisateur"
+["Login.Warning.General"]
+other = "Veuillez vous connecter pour continuer."
+["Login.Warning.UpdateDescription"]
+other = "Veuillez vous connecter pour mettre à jour la description de la VM."
+
+# =============
+# Admin Login
+# =============
+["AdminLogin.Button"]
+other = "Connexion administrateur"
+["AdminLogin.PasswordLabel"]
+other = "Mot de passe administrateur"
+["AdminLogin.Title"]
+other = "Connexion administrateur"
+["AdminLogin.UserLoginLink"]
+other = "Connexion utilisateur"
+
+# VM Creation
+["VM.Bridge.Description"]
+other = "Pont pour le réseau de la machine virtuelle"
+
+# VM Creation - Form Sections
+["VM.Create.AddTags"]
+other = "Ajouter des étiquettes"
+["VM.Create.BasicInfo"]
+other = "Informations de base"
+["VM.Create.CreateButton"]
+other = "Créer la VM"
+["VM.Create.CPUCores"]
+other = "Cœurs par socket"
+["VM.Create.CPUSockets"]
+other = "Sockets CPU"
+["VM.Create.Description"]
+other = "Description"
+["VM.Create.DescriptionPlaceholder"]
+other = "Entrez une description (markdown supporté)"
+["VM.Create.DiskSize"]
+other = "Taille du disque (Go)"
+["VM.Create.DiskSizeHelp"]
+other = "Taille du disque en gigaoctets (8 Go minimum)"
+["VM.Create.Header"]
+other = "Créer une machine virtuelle"
+["VM.Create.ISO"]
+other = "Image ISO"
+["VM.Create.ISOImageHelp"]
+other = "Sélectionnez une image ISO pour installer le système d'exploitation"
+["VM.Create.MediaNetwork"]
+other = "Image ISO & Réseau"
+["VM.Create.Memory"]
+other = "Mémoire (Mo)"
+["VM.Create.MemoryHelp"]
+other = "Quantité de mémoire en mégaoctets (512 Mo minimum)"
+["VM.Create.Network"]
+other = "Pont réseau"
+["VM.Create.NetworkBridgeHelp"]
+other = "Sélectionnez un pont réseau pour connecter la VM"
+["VM.Create.NoBridges"]
+other = "Aucun pont réseau disponible"
+["VM.Create.NoTagsAvailable"]
+other = "Aucune étiquette disponible"
+["VM.Create.NoBridgesAvailable"]
+other = "Aucun pont réseau disponible"
+["VM.Create.NoISOs"]
+other = "Aucune image ISO disponible. Veuillez contacter un administrateur."
+["VM.Create.NoISOsAvailable"]
+other = "Aucune image ISO disponible"
+["VM.Create.ResetButton"]
+other = "Réinitialiser"
+["VM.Create.Resources"]
+other = "Ressources"
+["VM.Create.SelectISO"]
+other = "Sélectionnez une ISO"
+["VM.Create.SelectNetwork"]
+other = "Sélectionnez un pont réseau"
+["VM.Create.Storage"]
+other = "Stockage (Go)"
+["VM.Create.Tags"]
+other = "Étiquettes"
+["VM.Create.ISOImage"]
+other = "Image ISO"
+["VM.Create.TagsHelp"]
+other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
+["VM.Create.TagsPlaceholder"]
+other = "Appuyez sur Entrée pour ajouter une étiquette"
+["VM.Create.Title"]
+other = "Créer une nouvelle machine virtuelle"
+["VM.Create.VMName"]
+other = "Nom de la VM"
+["VM.Create.VMNameHelp"]
+other = "Un nom unique pour votre machine virtuelle"
+["VM.Create.VMNamePlaceholder"]
+other = "ex. ma-vm-01"
+["VM.Create.VMID"]
+other = "ID VM (Optionnel)"
+["VM.Create.VMID.Help"]
+other = "Si vous laissez ce champ vide, le prochain ID de VM disponible sera automatiquement attribué."
+["VM.Create.VMIDPlaceholder"]
+other = "Auto-attribué si vide"
+["VM.Create.SelectStorage"]
+other = "Sélectionnez un stockage"
+["VM.Create.NoStoragesAvailable"]
+other = "Aucun stockage disponible"
+["VM.Create.StorageHelp"]
+other = "Sélectionnez un stockage pour votre machine virtuelle"
+
+# ===========
+# VM Details
+# ===========
+["VMDetails.Action.Failed"]
+other = "Échec de l'action: {{.Error}}"
+["VMDetails.Action.Processing"]
+other = "Traitement en cours..."
+["VMDetails.Action.Reboot"]
+other = "Redémarrer"
+["VMDetails.Action.Refresh"]
+other = "Actualiser"
+["VMDetails.Action.Reset"]
+other = "Reset"
+["VMDetails.Action.Shutdown"]
+other = "Éteindre"
+["VMDetails.Action.Start"]
+other = "Démarrer"
+["VMDetails.Action.Status"]
+other = "Statut"
+["VMDetails.Action.Stop"]
+other = "Arrêter"
+["VMDetails.Action.Success"]
+other = "Action réussie"
+["VMDetails.Label.CPU"]
+other = "CPU"
+["VMDetails.Label.Description"]
+other = "Description"
+["VMDetails.Label.Disk"]
+other = "Disque"
+["VMDetails.Label.ID"]
+other = "ID"
+["VMDetails.Label.Name"]
+other = "Nom"
+["VMDetails.Label.Network"]
+other = "Réseau"
+["VMDetails.Label.RAM"]
+other = "Mémoire"
+["VMDetails.Label.Status"]
+other = "Statut"
+["VMDetails.Label.Uptime"]
+other = "Temps de fonctionnement"
+["VMDetails.Modify"]
+other = "Modifier"
+["VMDetails.EditDescriptionTitle"]
+other = "Modifier la description"
+["VMDetails.DescriptionLabel"]
+other = "Description (Markdown supporté)"
+["VMDetails.DescriptionPlaceholder"]
+other = "Entrez une description en Markdown..."
+["VMDetails.DescriptionHelp"]
+other = "Utilisez le Markdown pour la mise en forme. La version rendue s'affiche dans le tableau ci-dessus."
+["VMDetails.SaveDescription"]
+other = "Enregistrer la description"
+["VMDetails.TagsCurrentlyAppliedPrefix"]
+other = "Actuellement appliqués :"
+["VMDetails.SelectTags"]
+other = "Sélectionner des étiquettes"
+["VMDetails.NoTagsAvailable"]
+other = "Aucune étiquette disponible"
+["VMDetails.SaveTags"]
+other = "Enregistrer les étiquettes"
+["VMDetails.Action.Console"]
+other = "Console"
+["VMDetails.Action.Delete"]
+other = "Supprimer"
+["VMDetails.Label.FirewallEnabled"]
+other = "Activé"
+["VMDetails.Label.FirewallDisabled"]
+other = "Désactivé"
+["VMDetails.Label.Firewall"]
+other = " Pare-feu"
+["VMDetails.Label.Interface"]
+other = "Interface"
+["VMDetails.Label.IPAddress"]
+other = "Adresse IP"
+["VMDetails.Label.MACAddress"]
+other = "Adresse MAC"
+["VMDetails.Label.Bridge"]
+other = "Pont réseau"
+["VMDetails.NoDescription"]
+other = "Aucune description disponible"
+
+# ===========
+# VM Delete
+# ===========
+["VMDelete.ConfirmTitle"]
+other = "Confirmer la suppression de la VM"
+["VMDelete.ConfirmMessage"]
+other = "Vous êtes sur le point de supprimer définitivement cette machine virtuelle."
+["VMDelete.WarningTitle"]
+other = "Attention : Cette action est irréversible !"
+["VMDelete.Warning1"]
+other = "La VM sera forcée à s'arrêter si elle est en cours d'exécution"
+["VMDelete.Warning2"]
+other = "Toutes les données associées à cette VM seront définitivement supprimées"
+["VMDelete.Warning3"]
+other = "Cette action ne peut pas être annulée"
+["VMDelete.Question"]
+other = "Êtes-vous sûr de vouloir supprimer cette VM ?"
+["VMDelete.Success"]
+other = "VM supprimée avec succès"
+["VMDelete.BackInfo"]
+other = "Cliquez sur 'Non' pour revenir à la page des détails de la VM"
+
+# Formatage du temps de fonctionnement
+["Uptime.NotRunning"]
+other = "Non démarré"
+["Uptime.Day"]
+other = "jour"
+["Uptime.Days"]
+other = "jours"
+["Uptime.Hour"]
+other = "heure"
+["Uptime.Hours"]
+other = "heures"
+["Uptime.Minute"]
+other = "minute"
+["Uptime.Minutes"]
+other = "minutes"
+["Uptime.Second"]
+other = "seconde"
+["Uptime.Seconds"]
+other = "secondes"
+
+# ==============
+# Documentation
+# ==============
+["Docs.Admin.Description"]
+other = "Guide complet pour l'administration et la configuration de PVMSS"
+["Docs.Admin.Title"]
+other = "Documentation administrateur - PVMSS"
+["Docs.User.Description"]
+other = "Instructions pour utiliser PVMSS et gérer vos machines virtuelles"
+["Docs.User.Title"]
+other = "Documentation utilisateur - PVMSS"
+
+# ======
+# Nodes
+# ======
+["Nodes.Title"]
+other = "Nœuds"
+["Nodes.Description"]
+other = "Vue d'ensemble des nœuds du cluster Proxmox et leur utilisation des ressources"
+["Nodes.Header.Node"]
+other = "Nœud"
+["Nodes.Header.Status"]
+other = "Statut"
+["Nodes.Header.CPUUsage"]
+other = "Utilisation CPU"
+["Nodes.Header.MemoryUsage"]
+other = "Utilisation Mémoire"
+["Nodes.Header.DiskUsage"]
+other = "Utilisation Disque"
+["Nodes.Status.Online"]
+other = "En ligne"
+["Nodes.Status.Offline"]
+other = "Hors ligne"
+["Nodes.NoNodes"]
+other = "Aucun nœud trouvé"
+
+# Admin - ISO Management
+["Admin.Description"]
+other = "Page d'administration de PVMSS"
+["Admin.ISO.Description"]
+other = "Gérez les images ISO disponibles pour l'installation des machines virtuelles."
+["Admin.ISO.Header.Enabled"]
+other = "Activé"  # Duplicate of Common.Enabled - consider removing if same meaning
+["Admin.ISO.Header.Name"]
+other = "Nom de l'ISO"
+["Admin.ISO.Header.Size"]
+other = "Taille (Go)"
+["Admin.ISO.Header.Storage"]
+other = "Stockage"
+["Admin.ISO.Title"]
+other = "Gestion des ISOs"
+
+# Admin - Storage Management
+["Admin.Storage.Description"]
+other = "Affichez et gérez les espaces de stockage disponibles pour les machines virtuelles."
+["Admin.Storage.Error"]
+other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
+["Admin.Storage.Header.Content"]
+other = "Contenu"
+["Admin.Storage.Header.Name"]
+other = "Nom"
+["Admin.Storage.Header.Usage"]
+other = "Utilisation"
+["Admin.Storage.Header.Type"]
+other = "Type"
+["Admin.Storage.NoStorages"]
+other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
+["Admin.Storage.Title"]
+other = "Gestion des stockages"
+
+# Admin - VMBR Management
+["Admin.VMBR.Title"]
+other = "Gestion des ponts réseau"
+
+["Admin.VMBR.Description"]
+other = "Gérez les ponts réseau virtuels disponibles pour les machines virtuelles."
+
+["Admin.VMBR.AvailableBridges"]
+other = "Ponts réseau disponibles"
+
+["Admin.VMBR.NoVMBRs"]
+other = "Aucun pont réseau trouvé. Veuillez vérifier votre configuration Proxmox."
+
+["Admin.VMBR.Enable"]
+other = "Activer"
+
+["Admin.VMBR.Disable"]
+other = "Désactiver"
+
+["Admin.VMBR.SaveSuccess"]
+other = "Paramètres des ponts réseau enregistrés avec succès"
+
+["Admin.VMBR.SaveError"]
+other = "Échec de l'enregistrement des paramètres des ponts réseau"
+
+["Admin.VMBR.Error"]
+other = "Erreur lors de la récupération des données. Voir la console pour les détails."
+
+["Admin.VMBR.Header.Description"]
+other = "Description"
+
+["Admin.VMBR.Header.Enabled"]
+other = "Activé"
+
+["Admin.VMBR.Header.Name"]
+other = "Nom du pont réseau"
+
+["Admin.VMBR.Header.Node"]
+other = "Nœud"
+
+# Admin - Tags Management
+["Admin.Tags.Description"]
+other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
+["Admin.Tags.Placeholder"]
+other = "Nom du tag"
+["Admin.Tags.Title"]
+other = "Gestion des tags"
+["Admin.Tags.Header.Name"]
+other = "Nom"
+["Admin.Tags.Header.Usage"]
+other = "Utilisation"
+["Admin.Tags.DefaultTag"]
+other = "Tag par défaut"
+["Admin.Tags.AddTag"]
+other = "Ajouter un tag"
+["Admin.Tags.DeleteTag"]
+other = "Supprimer le tag"
+["Admin.Tags.DeleteConfirmTitle"]
+other = "Confirmation de suppression du tag"
+["Admin.Tags.DeleteConfirmMessage"]
+other = "Êtes-vous sûr de vouloir supprimer ce tag ? Cette action ne peut pas être annulée."
+["Admin.Tags.DeleteConfirmTitleShort"]
+other = "Supprimer le tag"
+["Admin.Tags.ValidationMessage"]
+other = "Seules les lettres, les chiffres, les tirets et les underscores sont autorisés"
+
+# Admin - Resource Limits
+["Admin.Limits.Cores"]
+other = "Cœurs par socket"
+["Admin.Limits.Description"]
+other = "Configurez les ressources minimales et maximales pouvant être allouées aux machines virtuelles"
+["Admin.Limits.Disk"]
+other = "Espace disque (Go)"
+["Admin.Limits.Error"]
+other = "Erreur"
+["Admin.Limits.GB"]
+other = "Go"
+["Admin.Limits.Node"]
+other = "Nœud"
+["Admin.Limits.Memory"]
+other = "Mémoire (Go)"
+["Admin.Limits.NodeLabel"]
+other = "Nœud :"
+["Admin.Limits.NodeSection"]
+other = "Limites de ressources des nœuds"
+["Admin.Limits.NoNodes"]
+other = "Aucun nœud n'est disponible pour configurer les limites. Veuillez vérifier votre connexion Proxmox et l'état des nœuds."
+["Admin.Limits.ResetToDefaults"]
+other = "Réinitialiser"
+["Admin.Limits.Saved"]
+other = "✓ Enregistré"
+["Admin.Limits.Saving"]
+other = "Enregistrement..."
+["Admin.Limits.Sockets"]
+other = "Sockets"
+["Admin.Limits.Title"]
+other = "Limites des ressources"
+["Admin.Limits.VM"]
+other = "Limites de VM"
+["Admin.Limits.ScopeVM"]
+other = "Limites globales pour toutes les VMs"
+["Admin.Limits.ScopeNode"]
+other = "Limites de ressources spécifiques au nœud"
+["Admin.Limits.NoNodeSelected"]
+other = "Aucun nœud sélectionné"
+["Admin.Limits.SelectNodePrompt"]
+other = "Veuillez sélectionner un nœud pour configurer ses limites :"
+["Admin.Limits.SelectNode"]
+other = "Sélectionnez un nœud..."
+["Admin.Limits.VMSection"]
+other = "Limites de ressources par défaut des VMs"
+["Admin.Limits.DefaultsRestored"]
+other = "Valeurs par défaut restaurées avec succès"
+["Admin.Limits.Validation.InProgress"]
+other = "Validation en cours..."
+["Admin.Limits.Validation.Success"]
+other = "Validation réussie"
+["Admin.Limits.Validation.MinMax"]
+other = "La valeur maximale doit être supérieure ou égale à la valeur minimale."
+["Admin.Limits.Validation.Required"]
+other = "Ce champ est obligatoire"
+["Admin.Limits.Validation.Positive"]
+other = "La valeur doit être un nombre positif"
+["Admin.Limits.NetworkError"]
+other = "Une erreur réseau s'est produite. Veuillez réessayer"
+["Admin.Limits.AggregateTitle"]
+other = "Ressources Agrégées (VMs PVMSS)"
+["Admin.Limits.AggregateTotalVMs"]
+other = "VM(s) avec le tag \"pvmss\" sur ce nœud"
+["Admin.Limits.AggregateCores"]
+other = "Cœurs :"
+["Admin.Limits.AggregateMemory"]
+other = "RAM :"
+["Admin.Limits.AggregateNoLimit"]
+other = "Pas de limite"
+["Admin.Limits.AggregateDescription"]
+other = "Ces limites représentent les ressources totales combinées que toutes les VMs avec le tag \"pvmss\" peuvent utiliser sur ce nœud."
+["Admin.Limits.AggregateScopeNode"]
+other = "Définir les limites agrégées de ressources pour toutes les VMs PVMSS sur ce nœud. Ces limites contrôlent les <strong>ressources totales combinées</strong> que toutes les VMs avec le tag \"pvmss\" peuvent utiliser."
+["Admin.Limits.TotalCores"]
+other = "Total Cœurs (Agrégé)"
+["Admin.Limits.TotalMemory"]
+other = "Total Mémoire (Agrégé)"
+["Admin.Limits.NodePhysicalCapacity"]
+other = "Capacité Physique du Nœud"
+["Admin.Limits.CapacityWarning"]
+other = "Les limites agrégées ne peuvent pas dépasser la capacité physique du nœud."
+["Admin.Limits.MinAlways1"]
+other = "Le minimum est toujours 1"
+
+# Admin - Utilisateurs & Pools
+["Admin.UserPool.Title"]
+other = "Utilisateurs & Pools"
+["Admin.UserPool.Description"]
+other = "Créer un utilisateur PVE, un pool dédié (pvmss_<username>), et accorder un rôle sur ce pool."
+["Admin.UserPool.UsernamePlaceholder"]
+other = "alice"
+["Admin.UserPool.UsernameHelp"]
+other = "Créera l'utilisateur alice@pve et le pool pvmss_alice"
+["Admin.UserPool.EmailOptional"]
+other = "Email (optionnel)"
+["Admin.UserPool.EmailPlaceholder"]
+other = "alice@example.com"
+["Admin.UserPool.CommentOptional"]
+other = "Commentaire (optionnel)"
+["Admin.UserPool.CommentPlaceholder"]
+other = "Membre de l'équipe, expire fin T3"
+["Admin.UserPool.RoleLabel"]
+other = "Rôle"
+["Admin.UserPool.RoleHelp"]
+other = "Par défaut : PVEVMUser. Vous pourrez définir plus tard un rôle minimal personnalisé."
+["Admin.UserPool.PropagateACL"]
+other = "Propager l'ACL aux objets contenus"
+["Admin.UserPool.ExistingTitle"]
+other = "Pools d'utilisateurs existants"
+["Admin.UserPool.VMCountHeader"]
+other = "# VMs dans le pool"
+["Admin.UserPool.RefreshPoolTitle"]
+other = "Actualiser le pool"
+["Admin.UserPool.DeleteConfirm"]
+other = "Supprimer TOUTES les VMs de ce pool, l'utilisateur, puis le pool ? Cette action est irréversible."
+["Admin.UserPool.DeleteTitle"]
+other = "Supprimer les VMs, l'utilisateur, puis le pool"
+["Admin.UserPool.DeletePurge"]
+other = "Supprimer (purge)"
