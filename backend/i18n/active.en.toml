@@ -492,6 +492,8 @@ other = "Bridge for the virtual machine network"
 # VM Creation - Form Sections
 ["VM.Create.AddTags"]
 other = "Add Tags"
+["VM.Create.AvailableTags"]
+other = "Available Tags"
 ["VM.Create.BasicInfo"]
 other = "Basic Information"
 ["VM.Create.CreateButton"]
@@ -570,6 +572,10 @@ other = "Auto-assigned if empty"
 other = "Select a storage"
 ["VM.Create.NoStoragesAvailable"]
 other = "No storage available"
+["VM.Create.ProxmoxNode"]
+other = "Proxmox node"
+["VM.Create.ResourcePool"]
+other = "Resource pool"
 ["VM.Create.StorageHelp"]
 other = "Select a storage for your virtual machine"
 

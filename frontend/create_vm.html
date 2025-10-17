@@ -150,7 +150,7 @@
                                                             </div>
                                                         </div>
                                                         <div class="column">
-                                                            <label for="cpuCores" class="label is-small has-text-grey">Cores per Socket</label>
+                                                            <label for="cpuCores" class="label is-small has-text-grey">{{T "VM.Create.CPUCores"}}</label>
                                                             <div class="control">
                                                                 <div class="select is-small is-fullwidth">
                                                                     <select id="cpuCores" name="cores" required aria-required="true" aria-describedby="cpuCores-help">
@@ -207,7 +207,7 @@
                                             <div class="card-content">
                                                 <!-- Node, Pool, ISO, Bridge fields... -->
                                                 <div class="field">
-                                                    <label for="node" class="label has-text-weight-normal">Proxmox Node</label>
+                                                    <label for="node" class="label has-text-weight-normal">{{T "VM.Create.ProxmoxNode"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
@@ -217,7 +217,7 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="pool" class="label has-text-weight-normal">Resource Pool</label>
+                                                    <label for="pool" class="label has-text-weight-normal">{{T "VM.Create.ResourcePool"}}</label>
                                                     <div class="control">
                                                         <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
                                                     </div>
@@ -266,7 +266,7 @@
                                             </header>
                                             <div class="card-content">
                                                 <div class="field">
-                                                    <label class="label has-text-weight-normal">Available Tags</label>
+                                                    <label class="label has-text-weight-normal">{{T "VM.Create.AvailableTags"}}</label>
                                                     <div class="tags are-medium">
                                                         {{if .AvailableTags}}
                                                         <span class="tag is-primary">pvmss</span>

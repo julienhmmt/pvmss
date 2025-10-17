@@ -530,6 +530,8 @@ other = "Pont pour le réseau de la machine virtuelle"
 # VM Creation - Form Sections
 ["VM.Create.AddTags"]
 other = "Ajouter des étiquettes"
+["VM.Create.AvailableTags"]
+other = "Étiquettes disponibles"
 ["VM.Create.BasicInfo"]
 other = "Informations de base"
 ["VM.Create.CreateButton"]
@@ -608,6 +610,10 @@ other = "Auto-attribué si vide"
 other = "Sélectionnez un stockage"
 ["VM.Create.NoStoragesAvailable"]
 other = "Aucun stockage disponible"
+["VM.Create.ProxmoxNode"]
+other = "Noeud Proxmox"
+["VM.Create.ResourcePool"]
+other = "Pool de ressources"
 ["VM.Create.StorageHelp"]
 other = "Sélectionnez un stockage pour votre machine virtuelle"
 
