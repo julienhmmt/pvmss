@@ -52,12 +52,26 @@ other = "Erreur"
 # Proxmox
 ["Proxmox.ConnectionError"]
 other = "Erreur de connexion au serveur Proxmox"
+["Proxmox.ConnectionErrorDescription"]
+other = "Veuillez vérifier la connexion au serveur Proxmox et réessayer."
+["Proxmox.ConnectionErrorTitle"]
+other = "Erreur de connexion au serveur Proxmox"
+["Proxmox.ConnectionRequired"]
+other = "Connexion au serveur Proxmox requise"
 ["Proxmox.NotConnected"]
 other = "Le serveur Proxmox est éteint ou n'est pas connecté"
 ["Proxmox.NotConnectedMessage"]
-other = "Impossible de créer une VM : le serveur Proxmox n'est pas connecté."
+other = "Impossible de créer la VM : le serveur Proxmox n'est pas connecté."
+["Proxmox.NotConnectedTitle"]
+other = "Le serveur Proxmox est éteint ou n'est pas connecté"
 ["Proxmox.CheckConnection"]
 other = "Veuillez vérifier la connexion au serveur Proxmox et réessayer."
+["Proxmox.CheckConnectionTitle"]
+other = "Erreur de connexion"
+["Proxmox.OfflineModeEnabled"]
+other = "Mode hors ligne activé (PVMSS_OFFLINE=true)"
+["Proxmox.ClientNotInitialized"]
+other = "Client Proxmox non initialisé"
 ["Common.ID"]
 other = "ID"
 ["Common.Loading"]
@@ -772,6 +786,8 @@ other = "Taille (Go)"
 other = "Stockage"
 ["Admin.ISO.Title"]
 other = "Gestion des ISOs"
+["Admin.ISO.NoISOs"]
+other = "Aucune image ISO ou IMG trouvée"
 
 # Admin - Storage Management
 ["Admin.Storage.Description"]
@@ -846,8 +862,10 @@ other = "Utilisation"
 other = "Tag par défaut"
 ["Admin.Tags.AddTag"]
 other = "Ajouter un tag"
+["Admin.SelectSectionPrompt"]
+other = "Sélectionnez une section d'administration dans le menu pour commencer."
 ["Admin.Tags.DeleteTag"]
-other = "Supprimer le tag"
+other = "Supprimer un tag"
 ["Admin.Tags.DeleteConfirmTitle"]
 other = "Confirmation de suppression du tag"
 ["Admin.Tags.DeleteConfirmMessage"]

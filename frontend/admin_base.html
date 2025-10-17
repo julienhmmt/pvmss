@@ -95,7 +95,7 @@
             <!-- Unknown AdminActive value: show default message -->
             {{template "notification" (dict 
               "Type" "info" 
-              "Message" "Select an admin section from the menu to get started." 
+              "Message" (T "Admin.SelectSectionPrompt") 
               "Icon" "fas fa-info-circle"
             )}}
           {{end}}

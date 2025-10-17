@@ -50,12 +50,26 @@ other = "Error"
 # Proxmox
 ["Proxmox.ConnectionError"]
 other = "Connection error"
+["Proxmox.ConnectionErrorDescription"]
+other = "Please check the Proxmox host connection and try again."
+["Proxmox.ConnectionErrorTitle"]
+other = "Connection error"
+["Proxmox.ConnectionRequired"]
+other = "Proxmox connection required"
 ["Proxmox.NotConnected"]
 other = "Proxmox host is down or not connected"
 ["Proxmox.NotConnectedMessage"]
 other = "Cannot create VM: Proxmox host is not connected."
+["Proxmox.NotConnectedTitle"]
+other = "Proxmox host is down or not connected"
 ["Proxmox.CheckConnection"]
 other = "Please check the Proxmox host connection and try again."
+["Proxmox.CheckConnectionTitle"]
+other = "Connection error"
+["Proxmox.OfflineModeEnabled"]
+other = "Offline mode enabled (PVMSS_OFFLINE=true)"
+["Proxmox.ClientNotInitialized"]
+other = "Proxmox client not initialized"
 ["Common.ID"]
 other = "ID"
 ["Common.Loading"]
@@ -796,6 +810,8 @@ other = "Size (GB)"
 other = "Storage"
 ["Admin.ISO.Title"]
 other = "ISO Management"
+["Admin.ISO.NoISOs"]
+other = "No ISO or IMG found"
 
 # Admin - Storage Management
 ["Admin.Storage.Description"]
@@ -842,6 +858,12 @@ other = "Usage"
 other = "Default Tag"
 ["Admin.Tags.AddTag"]
 other = "Add Tag"
+["Admin.Node.DeleteCardDescription"]
+other = "Remove a node from the managed cluster."
+["Admin.SelectSectionPrompt"]
+other = "Select an admin section from the menu to get started."
+["Admin.Node.DeleteCardTitle"]
+other = "Delete Node"
 ["Admin.Tags.DeleteTag"]
 other = "Delete Tag"
 ["Admin.Tags.DeleteConfirmTitle"]

@@ -52,6 +52,7 @@ Vous pouvez utiliser le fichier d'exemple fourni `env.example` pour créer votre
 - `PROXMOX_API_TOKEN_VALUE` : La valeur secrète de votre token API.
 - `PROXMOX_URL` : L'URL complète vers votre endpoint API Proxmox (ex : `https://proxmox.example.com:8006/api2/json`).
 - `PROXMOX_VERIFY_SSL` : Définir à `false` si vous utilisez un certificat auto-signé sur Proxmox (par défaut : `false`).
+- `PVMSS_OFFLINE` : Définir à `true` pour activer le mode déconnecté (désactive tous les appels API Proxmox). Utile pour le développement ou lorsque Proxmox n'est pas disponible (par défaut : `false`).
 - `SESSION_SECRET` : Clé secrète pour le chiffrement des sessions (changez pour une chaîne aléatoire unique, par exemple `$ openssl rand -hex 32`).
 
 ### 2. Lancer le conteneur

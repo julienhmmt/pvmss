@@ -130,6 +130,8 @@ spec:
                 secretKeyRef:
                   name: pvmss-secrets
                   key: session-secret
+            - name: PVMSS_OFFLINE
+              value: "false" # Set to true to disable Proxmox connection
             - name: PVMSS_SETTINGS_PATH
               value: "/data/settings.json"
             - name: TZ
