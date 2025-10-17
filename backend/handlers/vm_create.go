@@ -106,6 +106,7 @@ func init() {
 // CreateVMPage renders the VM creation form with pre-populated settings from settings.json
 // This includes ISOs, VMBRs, Tags, Limits, and available nodes from Proxmox
 func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("CreateVMPage", r)
 	sm := h.stateManager
 	settings := sm.GetSettings()
 	// Get nodes list (best effort)
@@ -164,10 +165,45 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		}
 	}
 
+	bridgeDetails := make([]map[string]string, 0)
+	bridgeDescriptions := make(map[string]string)
+	if sm != nil {
+		client := sm.GetProxmoxClient()
+		if client == nil {
+			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
+		} else {
+			for _, nodeName := range nodes {
+				vmbrs, err := proxmox.GetVMBRsWithContext(r.Context(), client, nodeName)
+				if err != nil {
+					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve VMBRs; continuing with remaining nodes")
+					continue
+				}
+				for _, vmbr := range vmbrs {
+					name := getVMBRInterface(vmbr)
+					if name == "" {
+						continue
+					}
+					if desc, exists := bridgeDescriptions[name]; exists && desc != "" {
+						continue
+					}
+					bridgeDescriptions[name] = buildVMBRDescription(vmbr)
+				}
+			}
+		}
+	}
+	for _, bridgeName := range settings.VMBRs {
+		bridgeDetails = append(bridgeDetails, map[string]string{
+			"name":        bridgeName,
+			"description": bridgeDescriptions[bridgeName],
+		})
+	}
+
 	data := map[string]interface{}{
 		"Title":           "Create VM",
 		"ISOs":            settings.ISOs,
 		"Bridges":         settings.VMBRs,
+		"BridgeDetails":   bridgeDetails,
+		"BridgeDescriptions": bridgeDescriptions,
 		"AvailableTags":   settings.Tags,
 		"Limits":          settings.Limits,
 		"Nodes":           nodes,

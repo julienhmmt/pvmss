@@ -59,7 +59,11 @@
               </span>
             </td>
             <td>
-              <span class="has-text-grey">{{index . "description"}}</span>
+              {{if (index . "description")}}
+                <span class="has-text-grey">{{index . "description"}}</span>
+              {{else}}
+                <span class="has-text-grey is-italic">{{T "VMDetails.NoDescription"}}</span>
+              {{end}}
             </td>
             <td class="has-text-right">
               <form method="POST" action="/admin/vmbr/toggle" class="is-inline">

@@ -238,7 +238,16 @@
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
-                                                                {{range sort .Bridges}}<option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoBridgesAvailable"}}</option>{{end}}
+                                                                {{range $bridge := sort .Bridges}}
+                                                                {{$rawDesc := index $.BridgeDescriptions $bridge}}
+                                                                {{$desc := $rawDesc}}
+                                                                {{if not $desc}}
+                                                                    {{$desc = ""}}
+                                                                {{end}}
+                                                                <option value="{{$bridge}}" {{if $.FormData.bridge}}{{if eq $bridge $.FormData.bridge}}selected{{end}}{{else if eq $bridge "vmbr0"}}selected{{end}}>
+                                                                    {{$bridge}}{{if $desc}} &ndash; {{$desc}}{{end}}
+                                                                </option>
+                                                                {{end}}
                                                             </select>
                                                         </div>
                                                     </div>
