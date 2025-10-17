@@ -33,6 +33,7 @@
   {{end}}
 
   <!-- Node Limits Section (Priority - Configure cluster-wide limits first) -->
+  {{if .ProxmoxConnected}}
   <div class="box admin-box">
     <form action="/admin/limits/update" method="POST">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
@@ -225,6 +226,17 @@
       </div>
     </form>
   </div>
+  {{else}}
+  <div class="box admin-box">
+    {{template "notification" (dict 
+      "Type" "warning" 
+      "Title" (T "Proxmox.ConnectionErrorTitle")
+      "Message" (T "Proxmox.ConnectionRequired") 
+      "Icon" "fas fa-exclamation-triangle" 
+      "Dismissible" false
+    )}}
+  </div>
+  {{end}}
 
   <!-- VM Limits Section (Individual VM Configuration) -->
   <div class="box admin-box mt-5">

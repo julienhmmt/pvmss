@@ -11,34 +11,7 @@ import (
 
 // buildVMBRDescription builds a description string from VMBR fields
 func buildVMBRDescription(vmbr proxmox.VMBR) string {
-	var parts []string
-
-	if vmbr.BridgePorts != "" {
-		parts = append(parts, "ports: "+vmbr.BridgePorts)
-	}
-
-	if vmbr.Address != "" {
-		cidr := vmbr.Address
-		if vmbr.Netmask != "" {
-			cidr += "/" + vmbr.Netmask
-		}
-		parts = append(parts, "ip: "+cidr)
-	}
-
-	if vmbr.Gateway != "" {
-		parts = append(parts, "gw: "+vmbr.Gateway)
-	}
-
-	if vmbr.Method != "" {
-		parts = append(parts, "method: "+vmbr.Method)
-	}
-
-	if len(parts) > 0 {
-		return strings.Join(parts, " | ")
-	}
-
-	// Fallback to comments if no other info
-	return vmbr.Comments
+	return strings.TrimSpace(vmbr.Comments)
 }
 
 // getVMBRInterface returns the interface name, preferring Iface over IfaceName

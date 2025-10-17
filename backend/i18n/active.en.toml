@@ -1,3 +1,5 @@
+["VM.Create.NodeLimitReached"]
+other = "This node has reached its PVMSS resource limits. Please select another Proxmox node or contact an administrator."
 # ===================================
 # PVMSS - English Translations
 # ===================================
@@ -50,12 +52,26 @@ other = "Error"
 # Proxmox
 ["Proxmox.ConnectionError"]
 other = "Connection error"
+["Proxmox.ConnectionErrorDescription"]
+other = "Please check the Proxmox host connection and try again."
+["Proxmox.ConnectionErrorTitle"]
+other = "Connection error"
+["Proxmox.ConnectionRequired"]
+other = "Proxmox connection required"
 ["Proxmox.NotConnected"]
 other = "Proxmox host is down or not connected"
 ["Proxmox.NotConnectedMessage"]
 other = "Cannot create VM: Proxmox host is not connected."
+["Proxmox.NotConnectedTitle"]
+other = "Proxmox host is down or not connected"
 ["Proxmox.CheckConnection"]
 other = "Please check the Proxmox host connection and try again."
+["Proxmox.CheckConnectionTitle"]
+other = "Connection error"
+["Proxmox.OfflineModeEnabled"]
+other = "Offline mode enabled (PVMSS_OFFLINE=true)"
+["Proxmox.ClientNotInitialized"]
+other = "Proxmox client not initialized"
 ["Common.ID"]
 other = "ID"
 ["Common.Loading"]
@@ -394,6 +410,8 @@ other = "Search"
 other = "Find your virtual machines quickly and easily"
 ["Search.TableView"]
 other = "Table View"
+["Search.Tags"]
+other = "Tags"
 ["Search.Title"]
 other = "Virtual Machine Search"
 ["Search.TitleName"]
@@ -476,6 +494,8 @@ other = "Bridge for the virtual machine network"
 # VM Creation - Form Sections
 ["VM.Create.AddTags"]
 other = "Add Tags"
+["VM.Create.AvailableTags"]
+other = "Available Tags"
 ["VM.Create.BasicInfo"]
 other = "Basic Information"
 ["VM.Create.CreateButton"]
@@ -554,6 +574,10 @@ other = "Auto-assigned if empty"
 other = "Select a storage"
 ["VM.Create.NoStoragesAvailable"]
 other = "No storage available"
+["VM.Create.ProxmoxNode"]
+other = "Proxmox node"
+["VM.Create.ResourcePool"]
+other = "Resource pool"
 ["VM.Create.StorageHelp"]
 other = "Select a storage for your virtual machine"
 
@@ -794,6 +818,8 @@ other = "Size (GB)"
 other = "Storage"
 ["Admin.ISO.Title"]
 other = "ISO Management"
+["Admin.ISO.NoISOs"]
+other = "No ISO or IMG found"
 
 # Admin - Storage Management
 ["Admin.Storage.Description"]
@@ -840,6 +866,12 @@ other = "Usage"
 other = "Default Tag"
 ["Admin.Tags.AddTag"]
 other = "Add Tag"
+["Admin.Node.DeleteCardDescription"]
+other = "Remove a node from the managed cluster."
+["Admin.SelectSectionPrompt"]
+other = "Select an admin section from the menu to get started."
+["Admin.Node.DeleteCardTitle"]
+other = "Delete Node"
 ["Admin.Tags.DeleteTag"]
 other = "Delete Tag"
 ["Admin.Tags.DeleteConfirmTitle"]
@@ -923,7 +955,7 @@ other = "No limit"
 ["Admin.Limits.AggregateDescription"]
 other = "These limits represent the total combined resources that all VMs with the \"pvmss\" tag can use on this node."
 ["Admin.Limits.AggregateScopeNode"]
-other = "Set aggregate resource limits for all PVMSS VMs on this node. These limits control the <strong>total combined resources</strong> that all VMs with the \"pvmss\" tag can use."
+other = "Set aggregate resource limits for all PVMSS VMs on this node. These limits control the total combined resources that all VMs with the \"pvmss\" tag can use."
 ["Admin.Limits.TotalCores"]
 other = "Total Cores (Aggregate)"
 ["Admin.Limits.TotalMemory"]

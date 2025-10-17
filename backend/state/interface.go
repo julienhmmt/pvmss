@@ -27,6 +27,8 @@ type StateManager interface {
 	// Proxmox client management
 	GetProxmoxClient() proxmox.ClientInterface
 	SetProxmoxClient(pc proxmox.ClientInterface) error
+	SetOfflineMode() // Enable offline mode (no Proxmox client)
+	IsOfflineMode() bool
 	GetProxmoxStatus() (bool, string) // Returns (connected, errorMessage)
 	CheckProxmoxConnection() bool
 

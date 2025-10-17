@@ -211,12 +211,12 @@
                                     </span>
                                 </td>
                                 <td class="has-text-centered is-vcentered">
-                                    {{template "status_badge" (dict "Status" .Status "WithIcon" true)}}
+                                    {{template "status_badge" (dict "Status" .Status "WithIcon" true "HasTextWhite" true)}}
                                 </td>
                                 <td class="has-text-centered is-vcentered">
                                     <div class="buttons is-centered mb-0">
                                         <a href="{{printf "/vm/details/%d" .VMID}}" 
-                                           class="button is-small is-primary"
+                                           class="button is-small is-primary has-text-white"
                                            title="{{T "Profile.ViewDetails"}}">
                                             <span class="icon">
                                                 <i class="fas fa-eye"></i>
@@ -224,7 +224,7 @@
                                             <span>{{T "Profile.ViewDetails"}}</span>
                                         </a>
                                         <a href="{{printf "/vm/delete/%d" .VMID}}" 
-                                           class="button is-small is-danger"
+                                           class="button is-small is-danger has-text-white"
                                            title="{{T "Profile.Delete"}}">
                                             <span class="icon">
                                                 <i class="fas fa-trash-alt"></i>
@@ -350,7 +350,7 @@
                                     </a>
                                 </div>
                                 <div class="control">
-                                    <button type="submit" class="button is-warning">
+                                    <button type="submit" class="button is-primary has-text-white">
                                         <span class="icon"><i class="fas fa-check"></i></span>
                                         <span>{{T "Profile.UpdatePassword"}}</span>
                                     </button>
@@ -360,7 +360,7 @@
                         {{else}}
                         <div class="box has-text-centered p-6">
                             <p class="mb-4 has-text-grey-dark">{{T "Profile.PasswordChangeDescription"}}</p>
-                            <a href="/profile?show_password_form=1" class="button is-warning is-medium">
+                            <a href="/profile?show_password_form=1" class="button is-primary is-medium has-text-white">
                                 <span class="icon"><i class="fas fa-edit"></i></span>
                                 <span>{{T "Profile.ChangePasswordButton"}}</span>
                             </a>

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"net/url"
+	"sort"
 
 	"github.com/julienschmidt/httprouter"
 	"pvmss/state"
@@ -137,6 +138,27 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 			"node":        v["node"],
 			"name":        v["iface"],
 			"description": v["description"],
+		})
+	}
+
+	nodeSet := make(map[string]struct{}, len(vmbrsForTemplate))
+	for _, vmbr := range vmbrsForTemplate {
+		node := vmbr["node"]
+		if node != "" {
+			nodeSet[node] = struct{}{}
+		}
+	}
+
+	if len(nodeSet) <= 1 {
+		sort.Slice(vmbrsForTemplate, func(i, j int) bool {
+			return vmbrsForTemplate[i]["name"] < vmbrsForTemplate[j]["name"]
+		})
+	} else {
+		sort.Slice(vmbrsForTemplate, func(i, j int) bool {
+			if vmbrsForTemplate[i]["node"] == vmbrsForTemplate[j]["node"] {
+				return vmbrsForTemplate[i]["name"] < vmbrsForTemplate[j]["name"]
+			}
+			return vmbrsForTemplate[i]["node"] < vmbrsForTemplate[j]["node"]
 		})
 	}
 

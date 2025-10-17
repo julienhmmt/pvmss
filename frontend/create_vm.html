@@ -150,7 +150,7 @@
                                                             </div>
                                                         </div>
                                                         <div class="column">
-                                                            <label for="cpuCores" class="label is-small has-text-grey">Cores per Socket</label>
+                                                            <label for="cpuCores" class="label is-small has-text-grey">{{T "VM.Create.CPUCores"}}</label>
                                                             <div class="control">
                                                                 <div class="select is-small is-fullwidth">
                                                                     <select id="cpuCores" name="cores" required aria-required="true" aria-describedby="cpuCores-help">
@@ -207,19 +207,32 @@
                                             <div class="card-content">
                                                 <!-- Node, Pool, ISO, Bridge fields... -->
                                                 <div class="field">
-                                                    <label for="node" class="label has-text-weight-normal">Proxmox Node</label>
+                                                    <label for="node" class="label has-text-weight-normal">{{T "VM.Create.ProxmoxNode"}}</label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
-                                                                {{range .Nodes}}<option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>{{else}}<option disabled>No nodes available</option>{{end}}
+                                                                {{if .NodeOptions}}
+                                                                {{range .NodeOptions}}
+                                                                <option value="{{.Name}}" {{if $.FormData.node}}{{if eq .Name $.FormData.node}}selected{{end}}{{else if eq .Name $.ActiveNode}}selected{{end}} {{if .Disabled}}disabled title="{{T .DisabledReason}}" class="has-text-grey-light"{{end}}>
+                                                                    {{.Name}}{{if .Disabled}} — {{T .DisabledReason}}{{end}}
+                                                                </option>
+                                                                {{end}}
+                                                                {{else}}
+                                                                {{range .Nodes}}
+                                                                <option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>
+                                                                {{end}}
+                                                                {{end}}
+                                                                {{if not .Nodes}}
+                                                                <option disabled>{{T "VM.Create.NoNodesAvailable"}}</option>
+                                                                {{end}}
                                                             </select>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="pool" class="label has-text-weight-normal">Resource Pool</label>
+                                                    <label for="pool" class="label has-text-weight-normal">{{T "VM.Create.ResourcePool"}}</label>
                                                     <div class="control">
-                                                        <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>">
+                                                        <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
                                                     </div>
                                                 </div>
                                                 <div class="field">
@@ -238,7 +251,16 @@
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
-                                                                {{range sort .Bridges}}<option value="{{.}}" {{if eq . "vmbr0"}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoBridgesAvailable"}}</option>{{end}}
+                                                                {{range $bridge := sort .Bridges}}
+                                                                {{$rawDesc := index $.BridgeDescriptions $bridge}}
+                                                                {{$desc := $rawDesc}}
+                                                                {{if not $desc}}
+                                                                    {{$desc = ""}}
+                                                                {{end}}
+                                                                <option value="{{$bridge}}" {{if $.FormData.bridge}}{{if eq $bridge $.FormData.bridge}}selected{{end}}{{else if eq $bridge "vmbr0"}}selected{{end}}>
+                                                                    {{$bridge}}{{if $desc}} &ndash; {{$desc}}{{end}}
+                                                                </option>
+                                                                {{end}}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -257,7 +279,7 @@
                                             </header>
                                             <div class="card-content">
                                                 <div class="field">
-                                                    <label class="label has-text-weight-normal">Available Tags</label>
+                                                    <label class="label has-text-weight-normal">{{T "VM.Create.AvailableTags"}}</label>
                                                     <div class="tags are-medium">
                                                         {{if .AvailableTags}}
                                                         <span class="tag is-primary">pvmss</span>
