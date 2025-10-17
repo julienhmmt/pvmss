@@ -34,7 +34,8 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 		return nil, err
 	}
 
-	var allISOs []ISOEntry
+	// Use a map to deduplicate ISOs by Volid (same storage = same ISOs across nodes)
+	isoMap := make(map[string]ISOEntry)
 	var settings = h.stateManager.GetSettings()
 	if !checkEnabled {
 		settings = nil // Don't check enabled status if not requested
@@ -59,6 +60,11 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 			}
 
 			for _, iso := range isoList {
+				// Skip if we already have this ISO (same Volid = same storage/file)
+				if _, exists := isoMap[iso.VolID]; exists {
+					continue
+				}
+
 				entry := ISOEntry{
 					Node:    nodeName,
 					Storage: storage.Storage,
@@ -77,9 +83,15 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 					}
 				}
 
-				allISOs = append(allISOs, entry)
+				isoMap[iso.VolID] = entry
 			}
 		}
+	}
+
+	// Convert map to slice
+	allISOs := make([]ISOEntry, 0, len(isoMap))
+	for _, entry := range isoMap {
+		allISOs = append(allISOs, entry)
 	}
 
 	return allISOs, nil
