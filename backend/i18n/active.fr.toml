@@ -451,7 +451,9 @@ other = "Rechercher"
 ["Search.Subtitle"]
 other = "Trouvez vos machines virtuelles rapidement et facilement"
 ["Search.TableView"]
-other = "Vue Tableau"
+other = "Vue tableau"
+["Search.Tags"]
+other = "Tags"
 ["Search.Title"]
 other = "Recherche de machines virtuelles"
 ["Search.TitleName"]

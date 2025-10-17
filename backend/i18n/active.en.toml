@@ -394,6 +394,8 @@ other = "Search"
 other = "Find your virtual machines quickly and easily"
 ["Search.TableView"]
 other = "Table View"
+["Search.Tags"]
+other = "Tags"
 ["Search.Title"]
 other = "Virtual Machine Search"
 ["Search.TitleName"]
