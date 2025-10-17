@@ -12,10 +12,12 @@
 {{$status := or .Status "unknown"}}
 {{$withIcon := .WithIcon}}
 {{$size := or .Size "normal"}}
+{{$hasTextWhite := .HasTextWhite}}
 
 {{$statusClass := ""}}
 {{$statusText := ""}}
 {{$iconClass := ""}}
+{{$textClass := ""}}
 
 {{if eq $status "running"}}
     {{$statusClass = "is-success"}}
@@ -35,7 +37,11 @@
     {{$iconClass = "fa-circle-question"}}
 {{end}}
 
-<span class="tag {{$statusClass}}{{if eq $size "small"}} is-small{{else if eq $size "medium"}} is-medium{{else if eq $size "large"}} is-large{{end}}">
+{{if $hasTextWhite}}
+    {{$textClass = " has-text-white"}}
+{{end}}
+
+<span class="tag {{$statusClass}}{{if eq $size "small"}} is-small{{else if eq $size "medium"}} is-medium{{else if eq $size "large"}} is-large{{end}}{{$textClass}}">
     {{if $withIcon}}
     <span class="icon">
         <i class="fas {{$iconClass}}"></i>

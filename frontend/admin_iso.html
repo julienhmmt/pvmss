@@ -12,7 +12,7 @@
       <p class="subtitle is-6 has-text-grey">{{T "Admin.ISO.Description"}}</p>
     </div>
 
-    {{if .AllISOs}}
+    {{if .ISOGroupByNode}}
     <div class="box admin-box">
       <div class="table-container">
         <table class="table modern is-fullwidth is-hoverable">
@@ -30,7 +30,16 @@
             </tr>
           </thead>
           <tbody>
-            {{range .AllISOs}}
+            {{range .ISOGroupByNode}}
+            <tr class="is-spacer">
+              <td colspan="4" class="has-background-light">
+                <span class="icon-text">
+                  <span class="icon is-small"><i class="fas fa-server"></i></span>
+                  <span class="has-text-weight-semibold">{{.Node}}</span>
+                </span>
+              </td>
+            </tr>
+            {{range .ISOs}}
             {{$name := .Volid}}
             <tr>
               <td>
@@ -69,6 +78,7 @@
                 </form>
               </td>
             </tr>
+            {{end}}
             {{end}}
           </tbody>
         </table>

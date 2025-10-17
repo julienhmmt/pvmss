@@ -73,6 +73,8 @@ const (
 	MsgProxmoxDisconnected = "Proxmox.Disconnected"
 	MsgProxmoxError        = "Proxmox.Error"
 	MsgProxmoxTimeout      = "Proxmox.Timeout"
+	MsgProxmoxOfflineMode  = "Proxmox.OfflineModeEnabled"
+	MsgProxmoxClientNil    = "Proxmox.ClientNotInitialized"
 )
 
 // Console Messages

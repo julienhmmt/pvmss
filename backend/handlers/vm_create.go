@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -28,6 +30,7 @@ func readMinMax(m map[string]interface{}, key string) (min, max int, ok bool) {
 					if vMin < 1 {
 						vMin = 1
 					}
+
 				}
 			}
 			if v, ok3 := mm["max"]; ok3 {
@@ -103,18 +106,79 @@ func init() {
 	gob.Register(VMCreateFormData{})
 }
 
+type NodeOption struct {
+	Name           string
+	Disabled       bool
+	DisabledReason string
+}
+
 // CreateVMPage renders the VM creation form with pre-populated settings from settings.json
 // This includes ISOs, VMBRs, Tags, Limits, and available nodes from Proxmox
 func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("CreateVMPage", r)
 	sm := h.stateManager
 	settings := sm.GetSettings()
+	client := sm.GetProxmoxClient()
 	// Get nodes list (best effort)
 	nodes := []string{}
 	activeNode := ""
-	if client := sm.GetProxmoxClient(); client != nil {
+	if client != nil {
 		if list, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil && len(list) > 0 {
 			nodes = list
 			activeNode = list[0]
+		}
+	}
+
+	nodeOptions := make([]NodeOption, 0, len(nodes))
+	disabledNodes := make(map[string]bool)
+	var nodeUsage map[string]*NodeResourceUsage
+	if client != nil && len(nodes) > 0 {
+		usageCtx, usageCancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer usageCancel()
+		usage, err := CalculateNodeResourceUsage(usageCtx, client, h.stateManager)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to calculate node resource usage for create page")
+		} else {
+			nodeUsage = usage
+		}
+	}
+	for _, nodeName := range nodes {
+		option := NodeOption{Name: nodeName}
+		if nodeUsage != nil {
+			if usageEntry, ok := nodeUsage[nodeName]; ok && usageEntry != nil {
+				saturated := false
+				if usageEntry.MaxCores > 0 && usageEntry.Cores >= usageEntry.MaxCores {
+					saturated = true
+				}
+				if usageEntry.MaxRamGB > 0 && usageEntry.RamGB >= usageEntry.MaxRamGB {
+					saturated = true
+				}
+				if saturated {
+					option.Disabled = true
+					option.DisabledReason = "VM.Create.NodeLimitReached"
+					disabledNodes[nodeName] = true
+				}
+			}
+		}
+		nodeOptions = append(nodeOptions, option)
+	}
+
+	if activeNode != "" {
+		for _, option := range nodeOptions {
+			if option.Name == activeNode {
+				if option.Disabled {
+					activeNode = ""
+				}
+				break
+			}
+		}
+	}
+	if activeNode == "" {
+		for _, option := range nodeOptions {
+			if !option.Disabled {
+				activeNode = option.Name
+				break
+			}
 		}
 	}
 
@@ -164,13 +228,54 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		}
 	}
 
+	if value, ok := formData["node"].(string); ok && value != "" {
+		if disabledNodes[value] {
+			formData["node"] = ""
+		}
+	}
+
+	bridgeDetails := make([]map[string]string, 0)
+	bridgeDescriptions := make(map[string]string)
+	if sm != nil {
+		if client == nil {
+			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
+		} else {
+			for _, nodeName := range nodes {
+				vmbrs, err := proxmox.GetVMBRsWithContext(r.Context(), client, nodeName)
+				if err != nil {
+					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve VMBRs; continuing with remaining nodes")
+					continue
+				}
+				for _, vmbr := range vmbrs {
+					name := getVMBRInterface(vmbr)
+					if name == "" {
+						continue
+					}
+					if desc, exists := bridgeDescriptions[name]; exists && desc != "" {
+						continue
+					}
+					bridgeDescriptions[name] = buildVMBRDescription(vmbr)
+				}
+			}
+		}
+	}
+	for _, bridgeName := range settings.VMBRs {
+		bridgeDetails = append(bridgeDetails, map[string]string{
+			"name":        bridgeName,
+			"description": bridgeDescriptions[bridgeName],
+		})
+	}
+
 	data := map[string]interface{}{
 		"Title":           "Create VM",
 		"ISOs":            settings.ISOs,
 		"Bridges":         settings.VMBRs,
+		"BridgeDetails":   bridgeDetails,
+		"BridgeDescriptions": bridgeDescriptions,
 		"AvailableTags":   settings.Tags,
 		"Limits":          settings.Limits,
 		"Nodes":           nodes,
+		"NodeOptions":     nodeOptions,
 		"ActiveNode":      activeNode,
 		"DefaultPool":     defaultPool,
 		"FormData":        formData,
@@ -179,8 +284,8 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 	// Get available storages for the selected node
 	storages := []string{}
-	if sm.GetProxmoxClient() != nil && activeNode != "" {
-		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), sm.GetProxmoxClient(), activeNode); err == nil {
+	if client != nil && activeNode != "" {
+		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), client, activeNode); err == nil {
 			// Create a map of enabled storages for quick lookup
 			enabledStorageMap := make(map[string]bool)
 			for _, enabledStorage := range settings.EnabledStorages {
@@ -426,6 +531,8 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		"memory":  strconv.Itoa(memoryMB), // MB
 	}
 
+	params["agent"] = "enabled=1"
+
 	// Assign to pool if provided
 	if poolName != "" {
 		params["pool"] = poolName
@@ -443,8 +550,6 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if isoPath != "" {
 		// Expect iso to be a Proxmox volid like 'local:iso/debian.iso'
 		params["ide2"] = isoPath + ",media=cdrom"
-		// Set boot order to cdrom first then disk
-		params["boot"] = "order=ide2;scsi0"
 	}
 
 	// Network: virtio on selected bridge
@@ -456,6 +561,12 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if selectedStorage != "" && diskSizeGBStr != "" {
 		params["scsi0"] = selectedStorage + ":" + strconv.Itoa(diskSizeGB)
 		params["scsihw"] = "virtio-scsi-pci"
+		params["bootdisk"] = "scsi0"
+		if isoPath != "" {
+			params["boot"] = "order=scsi0;ide2"
+		} else {
+			params["boot"] = "order=scsi0"
+		}
 	}
 
 	// Perform API call: POST /nodes/{node}/qemu

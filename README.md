@@ -52,6 +52,7 @@ You can use the provided example file `env.example` to create your own `.env` fi
 - `PROXMOX_API_TOKEN_VALUE`: The secret value of your API token.
 - `PROXMOX_URL`: The full URL to your Proxmox API endpoint (e.g., `https://proxmox.example.com:8006/api2/json`).
 - `PROXMOX_VERIFY_SSL`: Set to `false` if you are using a self-signed certificate on Proxmox (default: `false`).
+- `PVMSS_OFFLINE`: Set to `true` to enable offline mode (disables all Proxmox API calls). Useful for development or when Proxmox is unavailable (default: `false`).
 - `SESSION_SECRET`: Secret key for session encryption (change to a unique random string, like `$ openssl rand -hex 32`).
 
 ### 2. Run the container

@@ -103,9 +103,27 @@ func initializeApp(stateManager state.StateManager) error {
 		return fmt.Errorf("failed to load settings: %w", err)
 	}
 
-	proxmoxClient, err := initProxmoxClient()
-	if err != nil {
-		return fmt.Errorf("failed to initialize Proxmox client: %w", err)
+	// Check if offline mode is enabled
+	offlineMode := strings.ToLower(os.Getenv("PVMSS_OFFLINE")) == "true"
+	if offlineMode {
+		logger.Get().Info().Msg("Environment variable PVMSS_OFFLINE is set to true. Starting in offline mode (Proxmox API calls disabled)")
+		stateManager.SetOfflineMode()
+	} else {
+		proxmoxClient, err := initProxmoxClient()
+		if err != nil {
+			return fmt.Errorf("failed to initialize Proxmox client: %w", err)
+		}
+
+		if err := stateManager.SetProxmoxClient(proxmoxClient); err != nil {
+			return fmt.Errorf("failed to set Proxmox client: %w", err)
+		}
+
+		if connected := stateManager.CheckProxmoxConnection(); !connected {
+			_, errorMsg := stateManager.GetProxmoxStatus()
+			logger.Get().Warn().
+				Str("error", errorMsg).
+				Msg("Proxmox server not reachable, starting in read-only mode")
+		}
 	}
 
 	i18n.InitI18n()
@@ -113,17 +131,6 @@ func initializeApp(stateManager state.StateManager) error {
 	templates, frontendPath, err := initTemplates()
 	if err != nil {
 		return fmt.Errorf("failed to initialize templates: %w", err)
-	}
-
-	if err := stateManager.SetProxmoxClient(proxmoxClient); err != nil {
-		return fmt.Errorf("failed to set Proxmox client: %w", err)
-	}
-
-	if connected := stateManager.CheckProxmoxConnection(); !connected {
-		_, errorMsg := stateManager.GetProxmoxStatus()
-		logger.Get().Warn().
-			Str("error", errorMsg).
-			Msg("Proxmox server not reachable, starting in read-only mode")
 	}
 
 	if err := stateManager.SetTemplates(templates); err != nil {

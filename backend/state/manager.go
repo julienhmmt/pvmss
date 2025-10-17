@@ -11,6 +11,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
@@ -31,6 +32,9 @@ type appState struct {
 	// Background monitor control
 	proxmoxMonitorStarted bool
 
+	// Offline mode flag
+	offlineMode bool
+
 	// Security-related fields
 	csrfTokens map[string]time.Time
 	securityMu sync.RWMutex // Mutex for CSRF token operations
@@ -41,6 +45,10 @@ type appState struct {
 	// Cleanup callbacks
 	guestAgentCleanupFunc func()
 	cleanupMu             sync.RWMutex
+}
+
+func translateProxmoxMessage(messageID string) string {
+	return i18n.Localize(i18n.GetLocalizer(i18n.DefaultLang), messageID)
 }
 
 // startProxmoxMonitor starts a non-blocking background goroutine that periodically
@@ -170,6 +178,7 @@ func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 	}
 	s.mu.Lock()
 	s.proxmoxClient = pc
+	s.offlineMode = false
 	s.mu.Unlock()
 
 	// Check connection when setting a new client
@@ -178,6 +187,24 @@ func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 	// Start background monitor (only once)
 	s.startProxmoxMonitor()
 	return nil
+}
+
+// SetOfflineMode enables offline mode (no Proxmox client)
+func (s *appState) SetOfflineMode() {
+	s.mu.Lock()
+	s.offlineMode = true
+	s.mu.Unlock()
+
+	// Update status to reflect offline mode
+	s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxOfflineMode))
+	logger.Get().Info().Msg("Offline mode activated")
+}
+
+// IsOfflineMode returns true if offline mode is enabled
+func (s *appState) IsOfflineMode() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.offlineMode
 }
 
 // GetProxmoxStatus returns the current Proxmox connection status
@@ -191,10 +218,16 @@ func (s *appState) GetProxmoxStatus() (bool, string) {
 func (s *appState) CheckProxmoxConnection() bool {
 	s.mu.RLock()
 	client := s.proxmoxClient
+	offline := s.offlineMode
 	s.mu.RUnlock()
 
+	if offline {
+		s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxOfflineMode))
+		return false
+	}
+
 	if client == nil {
-		s.updateProxmoxStatus(false, "Proxmox client not initialized")
+		s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxClientNil))
 		return false
 	}
 

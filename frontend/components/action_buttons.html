@@ -28,7 +28,7 @@
             <input type="hidden" name="vmid" value="{{$vmid}}" />
             <input type="hidden" name="node" value="{{$node}}" />
             <input type="hidden" name="action" value="start" />
-            <button class="button is-success" {{if or (not $connected) (eq $status "running")}}disabled{{end}}>
+            <button class="button is-success has-text-white" {{if or (not $connected) (eq $status "running")}}disabled{{end}}>
                 <span class="icon"><i class="fas fa-play"></i></span>
                 <span>{{T "VMDetails.Action.Start"}}</span>
             </button>
@@ -58,7 +58,7 @@
             <input type="hidden" name="vmid" value="{{$vmid}}" />
             <input type="hidden" name="node" value="{{$node}}" />
             <input type="hidden" name="action" value="shutdown" />
-            <button class="button is-danger" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
+            <button class="button is-danger has-text-white" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
                 <span class="icon"><i class="fas fa-power-off"></i></span>
                 <span>{{T "VMDetails.Action.Shutdown"}}</span>
             </button>
@@ -95,7 +95,7 @@
         </a>
         
         {{else if eq . "delete"}}
-        <a href="{{printf "/vm/delete/%d" $vmid}}" class="button is-danger" {{if not $connected}}disabled{{end}}>
+        <a href="{{printf "/vm/delete/%d" $vmid}}" class="button is-danger has-text-white" {{if not $connected}}disabled{{end}}>
             <span class="icon"><i class="fas fa-trash-alt"></i></span>
             <span>{{T "VMDetails.Action.Delete"}}</span>
         </a>
