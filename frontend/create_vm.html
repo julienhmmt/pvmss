@@ -219,7 +219,7 @@
                                                 <div class="field">
                                                     <label for="pool" class="label has-text-weight-normal">Resource Pool</label>
                                                     <div class="control">
-                                                        <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>">
+                                                        <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
                                                     </div>
                                                 </div>
                                                 <div class="field">
