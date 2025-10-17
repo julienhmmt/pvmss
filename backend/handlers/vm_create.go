@@ -531,6 +531,8 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		"memory":  strconv.Itoa(memoryMB), // MB
 	}
 
+	params["agent"] = "enabled=1"
+
 	// Assign to pool if provided
 	if poolName != "" {
 		params["pool"] = poolName
