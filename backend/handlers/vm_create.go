@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -28,6 +30,7 @@ func readMinMax(m map[string]interface{}, key string) (min, max int, ok bool) {
 					if vMin < 1 {
 						vMin = 1
 					}
+
 				}
 			}
 			if v, ok3 := mm["max"]; ok3 {
@@ -103,19 +106,79 @@ func init() {
 	gob.Register(VMCreateFormData{})
 }
 
+type NodeOption struct {
+	Name           string
+	Disabled       bool
+	DisabledReason string
+}
+
 // CreateVMPage renders the VM creation form with pre-populated settings from settings.json
 // This includes ISOs, VMBRs, Tags, Limits, and available nodes from Proxmox
 func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("CreateVMPage", r)
 	sm := h.stateManager
 	settings := sm.GetSettings()
+	client := sm.GetProxmoxClient()
 	// Get nodes list (best effort)
 	nodes := []string{}
 	activeNode := ""
-	if client := sm.GetProxmoxClient(); client != nil {
+	if client != nil {
 		if list, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil && len(list) > 0 {
 			nodes = list
 			activeNode = list[0]
+		}
+	}
+
+	nodeOptions := make([]NodeOption, 0, len(nodes))
+	disabledNodes := make(map[string]bool)
+	var nodeUsage map[string]*NodeResourceUsage
+	if client != nil && len(nodes) > 0 {
+		usageCtx, usageCancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer usageCancel()
+		usage, err := CalculateNodeResourceUsage(usageCtx, client, h.stateManager)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to calculate node resource usage for create page")
+		} else {
+			nodeUsage = usage
+		}
+	}
+	for _, nodeName := range nodes {
+		option := NodeOption{Name: nodeName}
+		if nodeUsage != nil {
+			if usageEntry, ok := nodeUsage[nodeName]; ok && usageEntry != nil {
+				saturated := false
+				if usageEntry.MaxCores > 0 && usageEntry.Cores >= usageEntry.MaxCores {
+					saturated = true
+				}
+				if usageEntry.MaxRamGB > 0 && usageEntry.RamGB >= usageEntry.MaxRamGB {
+					saturated = true
+				}
+				if saturated {
+					option.Disabled = true
+					option.DisabledReason = "VM.Create.NodeLimitReached"
+					disabledNodes[nodeName] = true
+				}
+			}
+		}
+		nodeOptions = append(nodeOptions, option)
+	}
+
+	if activeNode != "" {
+		for _, option := range nodeOptions {
+			if option.Name == activeNode {
+				if option.Disabled {
+					activeNode = ""
+				}
+				break
+			}
+		}
+	}
+	if activeNode == "" {
+		for _, option := range nodeOptions {
+			if !option.Disabled {
+				activeNode = option.Name
+				break
+			}
 		}
 	}
 
@@ -165,10 +228,15 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		}
 	}
 
+	if value, ok := formData["node"].(string); ok && value != "" {
+		if disabledNodes[value] {
+			formData["node"] = ""
+		}
+	}
+
 	bridgeDetails := make([]map[string]string, 0)
 	bridgeDescriptions := make(map[string]string)
 	if sm != nil {
-		client := sm.GetProxmoxClient()
 		if client == nil {
 			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
 		} else {
@@ -207,6 +275,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		"AvailableTags":   settings.Tags,
 		"Limits":          settings.Limits,
 		"Nodes":           nodes,
+		"NodeOptions":     nodeOptions,
 		"ActiveNode":      activeNode,
 		"DefaultPool":     defaultPool,
 		"FormData":        formData,
@@ -215,8 +284,8 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 	// Get available storages for the selected node
 	storages := []string{}
-	if sm.GetProxmoxClient() != nil && activeNode != "" {
-		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), sm.GetProxmoxClient(), activeNode); err == nil {
+	if client != nil && activeNode != "" {
+		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), client, activeNode); err == nil {
 			// Create a map of enabled storages for quick lookup
 			enabledStorageMap := make(map[string]bool)
 			for _, enabledStorage := range settings.EnabledStorages {

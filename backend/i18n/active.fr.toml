@@ -1,3 +1,5 @@
+["VM.Create.NodeLimitReached"]
+other = "Ce nœud a atteint ses limites de ressources PVMSS. Veuillez choisir un autre nœud ou contactez l'administrateur."
 # ===================================
 # PVMSS - French Translations
 # ===================================
@@ -953,7 +955,7 @@ other = "Pas de limite"
 ["Admin.Limits.AggregateDescription"]
 other = "Ces limites représentent les ressources totales combinées que toutes les VMs avec le tag \"pvmss\" peuvent utiliser sur ce nœud."
 ["Admin.Limits.AggregateScopeNode"]
-other = "Définir les limites agrégées de ressources pour toutes les VMs PVMSS sur ce nœud. Ces limites contrôlent les <strong>ressources totales combinées</strong> que toutes les VMs avec le tag \"pvmss\" peuvent utiliser."
+other = "Définir les limites agrégées de ressources pour toutes les VMs PVMSS sur ce nœud. Ces limites contrôlent les ressources totales combinées que toutes les VMs avec le tag \"pvmss\" peuvent utiliser."
 ["Admin.Limits.TotalCores"]
 other = "Total Cœurs (Agrégé)"
 ["Admin.Limits.TotalMemory"]

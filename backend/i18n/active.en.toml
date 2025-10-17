@@ -1,3 +1,5 @@
+["VM.Create.NodeLimitReached"]
+other = "This node has reached its PVMSS resource limits. Please select another Proxmox node or contact an administrator."
 # ===================================
 # PVMSS - English Translations
 # ===================================
@@ -953,7 +955,7 @@ other = "No limit"
 ["Admin.Limits.AggregateDescription"]
 other = "These limits represent the total combined resources that all VMs with the \"pvmss\" tag can use on this node."
 ["Admin.Limits.AggregateScopeNode"]
-other = "Set aggregate resource limits for all PVMSS VMs on this node. These limits control the <strong>total combined resources</strong> that all VMs with the \"pvmss\" tag can use."
+other = "Set aggregate resource limits for all PVMSS VMs on this node. These limits control the total combined resources that all VMs with the \"pvmss\" tag can use."
 ["Admin.Limits.TotalCores"]
 other = "Total Cores (Aggregate)"
 ["Admin.Limits.TotalMemory"]

@@ -211,7 +211,20 @@
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
-                                                                {{range .Nodes}}<option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>{{else}}<option disabled>No nodes available</option>{{end}}
+                                                                {{if .NodeOptions}}
+                                                                {{range .NodeOptions}}
+                                                                <option value="{{.Name}}" {{if $.FormData.node}}{{if eq .Name $.FormData.node}}selected{{end}}{{else if eq .Name $.ActiveNode}}selected{{end}} {{if .Disabled}}disabled title="{{T .DisabledReason}}" class="has-text-grey-light"{{end}}>
+                                                                    {{.Name}}{{if .Disabled}} — {{T .DisabledReason}}{{end}}
+                                                                </option>
+                                                                {{end}}
+                                                                {{else}}
+                                                                {{range .Nodes}}
+                                                                <option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>
+                                                                {{end}}
+                                                                {{end}}
+                                                                {{if not .Nodes}}
+                                                                <option disabled>{{T "VM.Create.NoNodesAvailable"}}</option>
+                                                                {{end}}
                                                             </select>
                                                         </div>
                                                     </div>
