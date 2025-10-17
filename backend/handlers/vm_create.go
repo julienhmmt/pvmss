@@ -548,8 +548,6 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if isoPath != "" {
 		// Expect iso to be a Proxmox volid like 'local:iso/debian.iso'
 		params["ide2"] = isoPath + ",media=cdrom"
-		// Set boot order to cdrom first then disk
-		params["boot"] = "order=ide2;scsi0"
 	}
 
 	// Network: virtio on selected bridge
@@ -561,6 +559,12 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if selectedStorage != "" && diskSizeGBStr != "" {
 		params["scsi0"] = selectedStorage + ":" + strconv.Itoa(diskSizeGB)
 		params["scsihw"] = "virtio-scsi-pci"
+		params["bootdisk"] = "scsi0"
+		if isoPath != "" {
+			params["boot"] = "order=scsi0;ide2"
+		} else {
+			params["boot"] = "order=scsi0"
+		}
 	}
 
 	// Perform API call: POST /nodes/{node}/qemu
