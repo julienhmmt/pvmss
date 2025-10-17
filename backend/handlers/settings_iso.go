@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"net/http"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +24,12 @@ type ISOEntry struct {
 	Enabled bool        `json:"enabled,omitempty"`
 }
 
+// NodeISOGroup represents grouped ISO entries per node for easier template rendering
+type NodeISOGroup struct {
+	Node string     `json:"node"`
+	ISOs []ISOEntry `json:"isos"`
+}
+
 // fetchAllISOs retrieves all ISOs from all nodes and storages
 func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.ClientInterface, checkEnabled bool) ([]ISOEntry, error) {
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
@@ -34,12 +42,16 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 		return nil, err
 	}
 
-	// Use a map to deduplicate ISOs by Volid (same storage = same ISOs across nodes)
-	isoMap := make(map[string]ISOEntry)
-	var settings = h.stateManager.GetSettings()
-	if !checkEnabled {
-		settings = nil // Don't check enabled status if not requested
+	enabledSet := make(map[string]struct{})
+	if checkEnabled {
+		if settings := h.stateManager.GetSettings(); settings != nil {
+			for _, enabledISO := range settings.ISOs {
+				enabledSet[enabledISO] = struct{}{}
+			}
+		}
 	}
+
+	allISOs := make([]ISOEntry, 0)
 
 	// For each node, get ISOs from each compatible storage
 	for _, nodeName := range nodes {
@@ -60,11 +72,6 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 			}
 
 			for _, iso := range isoList {
-				// Skip if we already have this ISO (same Volid = same storage/file)
-				if _, exists := isoMap[iso.VolID]; exists {
-					continue
-				}
-
 				entry := ISOEntry{
 					Node:    nodeName,
 					Storage: storage.Storage,
@@ -73,25 +80,13 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 					Format:  iso.Format,
 				}
 
-				// Check if enabled (if requested)
-				if checkEnabled && settings != nil {
-					for _, enabledISO := range settings.ISOs {
-						if enabledISO == iso.VolID {
-							entry.Enabled = true
-							break
-						}
-					}
+				if _, ok := enabledSet[iso.VolID]; ok {
+					entry.Enabled = true
 				}
 
-				isoMap[iso.VolID] = entry
+				allISOs = append(allISOs, entry)
 			}
 		}
-	}
-
-	// Convert map to slice
-	allISOs := make([]ISOEntry, 0, len(isoMap))
-	for _, entry := range isoMap {
-		allISOs = append(allISOs, entry)
 	}
 
 	return allISOs, nil
@@ -131,7 +126,8 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	data["ISOsList"] = []ISOInfo{}
 	data["EnabledISOs"] = enabledMap
 	data["ProxmoxConnected"] = proxmoxConnected
-	data["AllISOs"] = []interface{}{}
+	data["AllISOs"] = []ISOEntry{}
+	data["ISOGroupByNode"] = []NodeISOGroup{}
 
 	// Return early if Proxmox not connected
 	if !proxmoxConnected {
@@ -160,7 +156,37 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
+	sort.Slice(isos, func(i, j int) bool {
+		nodeI := strings.ToLower(isos[i].Node)
+		nodeJ := strings.ToLower(isos[j].Node)
+		if nodeI == nodeJ {
+			nameI := strings.ToLower(filepath.Base(isos[i].Volid))
+			nameJ := strings.ToLower(filepath.Base(isos[j].Volid))
+			if nameI == nameJ {
+				return strings.ToLower(isos[i].Storage) < strings.ToLower(isos[j].Storage)
+			}
+			return nameI < nameJ
+		}
+		return nodeI < nodeJ
+	})
+
 	data["AllISOs"] = isos
+
+	if len(isos) > 0 {
+		groups := make([]NodeISOGroup, 0)
+		currentNode := isos[0].Node
+		currentGroup := NodeISOGroup{Node: currentNode, ISOs: []ISOEntry{}}
+		for _, iso := range isos {
+			if iso.Node != currentNode {
+				groups = append(groups, currentGroup)
+				currentNode = iso.Node
+				currentGroup = NodeISOGroup{Node: currentNode, ISOs: []ISOEntry{}}
+			}
+			currentGroup.ISOs = append(currentGroup.ISOs, iso)
+		}
+		groups = append(groups, currentGroup)
+		data["ISOGroupByNode"] = groups
+	}
 
 	log.Debug().Int("iso_count", len(isos)).Msg("ISO page rendered")
 	renderTemplateInternal(w, r, "admin_iso", data)
