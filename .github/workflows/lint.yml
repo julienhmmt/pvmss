@@ -36,7 +36,7 @@ jobs:
             VALIDATE_CSS: true
             VALIDATE_HTML: true
             VALIDATE_YAML: true
-            FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$,.*brands\.min\.css$,.*fontawesome\.min\.css$,.*regular\.min\.css$,.*solid\.min\.css$'
+            FILTER_REGEX_EXCLUDE: '.*bulma\.min\.css$,.*brands\.min\.css$,.*fontawesome\.min\.css$,.*regular\.min\.css$,.*solid\.min\.css$,.*components/noVNC-1\.6\.0/.*\.css$'
 
     golangci-lint:
       name: Go Lint
