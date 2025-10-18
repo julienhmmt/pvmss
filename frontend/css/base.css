@@ -3,11 +3,22 @@
    Global styles for consistent UX across all pages
    ============================================ */
 
-/* ============================================
-   FOUNDATION
-   ============================================ */
+:root {
+  --navbar-height: 3.75rem;
+}
+
 html {
   scroll-behavior: smooth;
+}
+
+.app-body {
+  padding-top: var(--navbar-height);
+}
+
+@media screen and (max-width: 768px) {
+  :root {
+    --navbar-height: 3.25rem;
+  }
 }
 
 /* Respect user motion preferences */
