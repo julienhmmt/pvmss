@@ -22,11 +22,8 @@ func NewLanguageHandler() *LanguageHandler {
 func (h *LanguageHandler) SetLanguage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("LanguageHandler.SetLanguage", r)
 
-	// Get the requested language from query parameter
-	lang := r.URL.Query().Get("lang")
-
 	// Validate and normalize the language code
-	lang = i18n.GetLanguage(&http.Request{
+	lang := i18n.GetLanguage(&http.Request{
 		URL: r.URL,
 	})
 

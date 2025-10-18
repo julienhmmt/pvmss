@@ -152,21 +152,6 @@ func GetI18nData(lang string) map[string]interface{} {
 	return data
 }
 
-// translationSearchPaths returns the ordered list of locations to look for translation files.
-func translationSearchPaths(filename string) []string {
-	return []string{
-		// --- Container paths ---
-		// Canonical path in the final Docker image.
-		filepath.Join("/app", "backend", "i18n", filename),
-
-		// --- Local development paths ---
-		// From project root (e.g., `go run ./backend`)
-		filepath.Join("backend", "i18n", filename),
-		// From inside backend/ (e.g., `go run .`)
-		filepath.Join("i18n", filename),
-	}
-}
-
 // findI18nDirectory searches for the 'i18n' directory in common locations.
 func findI18nDirectory() (string, error) {
 	// Add current working directory as a search path for tests
