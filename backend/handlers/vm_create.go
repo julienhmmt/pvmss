@@ -267,19 +267,19 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 
 	data := map[string]interface{}{
-		"Title":           "Create VM",
-		"ISOs":            settings.ISOs,
-		"Bridges":         settings.VMBRs,
-		"BridgeDetails":   bridgeDetails,
+		"Title":              "Create VM",
+		"ISOs":               settings.ISOs,
+		"Bridges":            settings.VMBRs,
+		"BridgeDetails":      bridgeDetails,
 		"BridgeDescriptions": bridgeDescriptions,
-		"AvailableTags":   settings.Tags,
-		"Limits":          settings.Limits,
-		"Nodes":           nodes,
-		"NodeOptions":     nodeOptions,
-		"ActiveNode":      activeNode,
-		"DefaultPool":     defaultPool,
-		"FormData":        formData,
-		"ValidationError": validationError,
+		"AvailableTags":      settings.Tags,
+		"Limits":             settings.Limits,
+		"Nodes":              nodes,
+		"NodeOptions":        nodeOptions,
+		"ActiveNode":         activeNode,
+		"DefaultPool":        defaultPool,
+		"FormData":           formData,
+		"ValidationError":    validationError,
 	}
 
 	// Get available storages for the selected node
