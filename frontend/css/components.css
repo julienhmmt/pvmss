@@ -1,11 +1,3 @@
-/* ============================================
-   COMPONENTS
-   UI components and overrides
-   ============================================ */
-
-/* ============================================
-   HERO
-   ============================================ */
 .hero {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   padding-top: 6rem;
@@ -126,7 +118,7 @@ fieldset[disabled]::after {
    ============================================ */
 #proxmox-status-banner {
   position: fixed;
-  top: 3.25rem;
+  top: var(--navbar-height);
   left: 0;
   right: 0;
   z-index: 99;
@@ -143,12 +135,12 @@ fieldset[disabled]::after {
 }
 
 #main-content {
-  padding-top: 1.5rem;
-  margin-top: 3.25rem;
+  padding-top: 1.25rem;
+  margin-top: 0.75rem;
 }
 
 #proxmox-status-banner ~ #main-content {
-  margin-top: 6rem;
+  margin-top: calc(var(--navbar-height) + 2.25rem);
 }
 
 @keyframes slideDown {
