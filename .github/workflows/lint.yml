@@ -64,4 +64,4 @@ jobs:
           with:
             version: latest
             working-directory: backend
-            args: --timeout=3m
+            args: -v --timeout=3m
