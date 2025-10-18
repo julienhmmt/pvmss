@@ -95,7 +95,7 @@ go-test: ## Lance les tests Go unitaires
 
 go-lint: ## Lance le linter Go
 	@echo "$(BLUE)Lancement du linter Go...$(NC)"
-	cd backend && golangci-lint run
+	cd backend && golangci-lint run -v --timeout=3m
 
 go-fmt: ## Formate le code Go
 	@echo "$(BLUE)Formatage du code Go...$(NC)"
