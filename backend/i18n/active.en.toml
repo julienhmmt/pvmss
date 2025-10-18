@@ -160,9 +160,9 @@ other = "Information"
 other = "per page"
 ["Common.Showing"]
 other = "Showing"
-["Common.to"]
+["Common.To"]
 other = "to"
-["Common.of"]
+["Common.Of"]
 other = "of"
 ["Common.VMs"]
 other = "VMs"
@@ -350,6 +350,10 @@ other = "Cancel"
 other = "Total VMs"
 ["Profile.TotalRunningVMs"]
 other = "Running VMs"
+["Profile.TotalStoppedVMs"]
+other = "Stopped VMs"
+["Profile.TotalPausedVMs"]
+other = "Paused VMs"
 ["Profile.ChangePasswordDescription"]
 other = "Click the button below to change your Proxmox password. You will need to provide your current password for verification."
 
