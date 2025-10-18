@@ -24,9 +24,6 @@ func (h *LanguageHandler) SetLanguage(w http.ResponseWriter, r *http.Request, _ 
 
 	// Get the requested language from query parameter
 	lang := r.URL.Query().Get("lang")
-	if lang == "" {
-		lang = "en"
-	}
 
 	// Validate and normalize the language code
 	lang = i18n.GetLanguage(&http.Request{
