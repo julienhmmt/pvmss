@@ -160,9 +160,9 @@ other = "Information"
 other = "par page"
 ["Common.Showing"]
 other = "Affichage de"
-["Common.to"]
+["Common.To"]
 other = "à"
-["Common.of"]
+["Common.Of"]
 other = "sur"
 ["Common.VMs"]
 other = "VMs"
@@ -302,6 +302,14 @@ other = "VMs en cours d'exécution"
 other = "VMs arrêtées"
 ["Profile.TotalPausedVMs"]
 other = "VMs en pause"
+["Profile.DeleteConfirmButton"]
+other = "Supprimer la VM"
+["Profile.DeleteConfirmCancel"]
+other = "Annuler"
+["Profile.DeleteConfirmTitle"]
+other = "Confirmer la suppression de la VM"
+["Profile.DeleteConfirmMessage"]
+other = "Êtes-vous sûr de vouloir supprimer cette VM ? Cette action est irréversible."
 ["Profile.ChangePasswordDescription"]
 other = "Cliquez sur le bouton ci-dessous pour changer votre mot de passe Proxmox. Vous devrez fournir votre mot de passe actuel pour vérification."
 
@@ -818,40 +826,28 @@ other = "Gestion des stockages"
 # Admin - VMBR Management
 ["Admin.VMBR.Title"]
 other = "Gestion des ponts réseau"
-
 ["Admin.VMBR.Description"]
 other = "Gérez les ponts réseau virtuels disponibles pour les machines virtuelles."
-
 ["Admin.VMBR.AvailableBridges"]
 other = "Ponts réseau disponibles"
-
 ["Admin.VMBR.NoVMBRs"]
 other = "Aucun pont réseau trouvé. Veuillez vérifier votre configuration Proxmox."
-
 ["Admin.VMBR.Enable"]
 other = "Activer"
-
 ["Admin.VMBR.Disable"]
 other = "Désactiver"
-
 ["Admin.VMBR.SaveSuccess"]
 other = "Paramètres des ponts réseau enregistrés avec succès"
-
 ["Admin.VMBR.SaveError"]
 other = "Échec de l'enregistrement des paramètres des ponts réseau"
-
 ["Admin.VMBR.Error"]
 other = "Erreur lors de la récupération des données. Voir la console pour les détails."
-
 ["Admin.VMBR.Header.Description"]
 other = "Description"
-
 ["Admin.VMBR.Header.Enabled"]
 other = "Activé"
-
 ["Admin.VMBR.Header.Name"]
 other = "Nom du pont réseau"
-
 ["Admin.VMBR.Header.Node"]
 other = "Nœud"
 
@@ -1002,3 +998,8 @@ other = "Supprimer TOUTES les VMs de ce pool, l'utilisateur, puis le pool ? Cett
 other = "Supprimer les VMs, l'utilisateur, puis le pool"
 ["Admin.UserPool.DeletePurge"]
 other = "Supprimer (purge)"
+
+["Admin.Node.DeleteCardTitle"]
+other = "Supprimer le nœud"
+["Admin.Node.DeleteCardDescription"]
+other = "Supprimer le nœud et toutes ses VMs ? Cette action est irréversible."

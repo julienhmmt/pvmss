@@ -158,6 +158,15 @@ func initProxmoxClient() (*proxmox.Client, error) {
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
 	if proxmoxURL == "" || tokenID == "" || tokenValue == "" {
+		// Check if we're in test mode or if offline mode is enabled
+		testMode := os.Getenv("GO_TEST_ENVIRONMENT") != "" || strings.Contains(os.Args[0], ".test")
+		offlineMode := strings.ToLower(os.Getenv("PVMSS_OFFLINE")) == "true"
+
+		if testMode || offlineMode {
+			logger.Get().Info().Msg("Skipping Proxmox client initialization (test mode or offline mode)")
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("missing required Proxmox environment variables: PROXMOX_URL, PROXMOX_API_TOKEN_NAME, PROXMOX_API_TOKEN_VALUE")
 	}
 

@@ -33,3 +33,7 @@ jobs:
     - name: Test
       run: go test -v ./...
       working-directory: backend
+      env:
+        PVMSS_OFFLINE: true
+        LOG_LEVEL: ERROR
+        GO_TEST_ENVIRONMENT: 1
