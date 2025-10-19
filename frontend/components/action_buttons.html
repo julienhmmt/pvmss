@@ -20,7 +20,7 @@
 {{$lang := .Lang}}
 {{$actions := or .Actions (slice "start" "console" "reboot" "shutdown" "stop" "reset" "refresh" "delete")}}
 
-<div class="buttons {{.ExtraClasses}}">
+<div class="buttons {{.ExtraClasses}}" style="gap: 0.5rem;">
     {{range $actions}}
         {{if eq . "start"}}
         <form action="/vm/action" method="post" class="is-inline">
