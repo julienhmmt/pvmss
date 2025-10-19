@@ -1,20 +1,24 @@
 {{define "navbar"}}
 <nav class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
     <div class="container">
-        <input type="checkbox" id="nav-toggle" class="visually-hidden-checkbox" aria-label="Toggle navigation">
-        
         <div class="navbar-brand">
             <a class="navbar-item" href="/">
                 {{T "UI.Header"}}
             </a>
-            <label for="nav-toggle" class="navbar-burger has-text-primary" aria-label="menu">
+            <button class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbarMenu">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
-            </label>
+            </button>
         </div>
 
-        <div id="navbarMenu" class="navbar-menu">
+        <div class="navbar-menu" id="navbarMenuDesktop">
+            <div class="navbar-menu-header">
+                <span class="navbar-menu-title">{{T "UI.Header"}}</span>
+                <button class="navbar-menu-close" aria-label="Close menu">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
             <div class="navbar-start">
                 <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="/" {{if eq (currentPath) "/"}}aria-current="page"{{end}}>
                     <span class="icon-text">
@@ -98,4 +102,134 @@
         </div>
     </div>
 </nav>
+
+<!-- Mobile Menu (outside container for proper z-index) -->
+<div id="navbarMenu" class="navbar-menu-mobile">
+    <div class="navbar-menu-mobile-header">
+        <span class="navbar-menu-mobile-title">{{T "UI.Header"}}</span>
+        <button class="navbar-menu-mobile-close" aria-label="Close menu">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="navbar-start">
+        <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="/" {{if eq (currentPath) "/"}}aria-current="page"{{end}}>
+            <span class="icon-text">
+                <span class="icon"><i class="fas fa-home"></i></span>
+                <span>{{T "Navbar.Home"}}</span>
+            </span>
+        </a>
+
+        {{ $createDisabled := or (not .IsAuthenticated) (not .ProxmoxConnected) }}
+        <a class="navbar-item {{if eq (currentPath) "/vm/create"}}is-active{{end}} {{if $createDisabled}}is-disabled{{end}}"
+           href="/vm/create"
+           {{if eq (currentPath) "/vm/create"}}aria-current="page"{{end}}
+           {{if $createDisabled}}aria-disabled="true" tabindex="-1"{{if not .IsAuthenticated}} title="Login required"{{else}} title="Proxmox server unavailable"{{end}}{{end}}>
+            <span class="icon-text">
+                <span class="icon"><i class="fas fa-plus-square"></i></span>
+                <span>{{T "Navbar.CreateVM"}}</span>
+                {{if not .ProxmoxConnected}}
+                <span class="icon has-text-danger ml-1"><i class="fas fa-exclamation-triangle"></i></span>
+                {{end}}
+            </span>
+        </a>
+
+        {{ $searchDisabled := or (not .IsAuthenticated) (not .ProxmoxConnected) }}
+        <a class="navbar-item {{if eq (currentPath) "/search"}}is-active{{end}} {{if $searchDisabled}}is-disabled{{end}}"
+           href="/search"
+           {{if eq (currentPath) "/search"}}aria-current="page"{{end}}
+           {{if $searchDisabled}}aria-disabled="true" tabindex="-1"{{if not .IsAuthenticated}} title="Login required"{{else}} title="Proxmox server unavailable"{{end}}{{end}}>
+            <span class="icon-text">
+                <span class="icon"><i class="fas fa-search"></i></span>
+                <span>{{T "Navbar.SearchVM"}}</span>
+                {{if not .ProxmoxConnected}}
+                <span class="icon has-text-danger ml-1"><i class="fas fa-exclamation-triangle"></i></span>
+                {{end}}
+            </span>
+        </a>
+
+        <a class="navbar-item {{if or (eq (currentPath) "/docs/user") (eq (currentPath) "/docs/admin")}}is-active{{end}}"
+           href="/docs/user"
+           {{if or (eq (currentPath) "/docs/user") (eq (currentPath) "/docs/admin")}}aria-current="page"{{end}}>
+            <span class="icon-text">
+                <span class="icon"><i class="fas fa-book"></i></span>
+                <span>{{T "Navbar.Documentation"}}</span>
+            </span>
+        </a>
+    </div>
+
+    <div class="navbar-end">
+        <div class="navbar-item">
+            <div class="buttons">
+                {{if .IsAuthenticated}}
+                    {{if .IsAdmin}}
+                    <a class="button is-primary" href="/admin/nodes">
+                        <span class="icon"><i class="fas fa-cog"></i></span>
+                        <span>{{T "Navbar.Admin"}}</span>
+                    </a>
+                    {{end}}
+                    
+                    <a href="/profile" class="button is-ghost">
+                        <span class="icon"><i class="fas fa-user"></i></span>
+                        <span>{{.Username}}</span>
+                    </a>
+                    
+                    <a href="/logout" class="button is-light">
+                        <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                        <span>{{T "Navbar.Logout"}}</span>
+                    </a>
+                {{else}}
+                    <a class="button is-primary" href="/login">
+                        <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
+                        <span>{{T "Navbar.Login"}}</span>
+                    </a>
+                {{end}}
+                
+                <div class="buttons has-addons language-buttons">
+                    <a href="/set-lang?lang=fr" class="button {{if eq .Lang "fr"}}is-selected{{end}}" title="Français">FR</a>
+                    <a href="/set-lang?lang=en" class="button {{if eq .Lang "en"}}is-selected{{end}}" title="English">EN</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="navbar-backdrop"></div>
+<script>
+(function() {
+  const burger = document.querySelector('.navbar-burger');
+  const menu = document.querySelector('.navbar-menu-mobile');
+  const backdrop = document.querySelector('.navbar-backdrop');
+  const closeBtn = document.querySelector('.navbar-menu-mobile-close');
+  
+  function openMenu() {
+    if (menu) menu.classList.add('is-active');
+    if (backdrop) backdrop.classList.add('is-active');
+    document.body.style.overflow = 'hidden';
+  }
+  
+  function closeMenu() {
+    if (menu) menu.classList.remove('is-active');
+    if (backdrop) backdrop.classList.remove('is-active');
+    document.body.style.overflow = '';
+  }
+  
+  if (burger) {
+    burger.addEventListener('click', function() {
+      if (menu && menu.classList.contains('is-active')) {
+        closeMenu();
+      } else {
+        openMenu();
+      }
+    });
+  }
+  
+  if (backdrop) {
+    backdrop.addEventListener('click', closeMenu);
+  }
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeMenu);
+  }
+})();
+</script>
 {{end}}
