@@ -167,15 +167,9 @@
 .input-lg {
     border-radius: 10px;
     border: 2px solid #e5e7eb;
-    padding: 0.75rem 1rem 0.75rem 3rem;
+    padding: 0.75rem 1rem;
     font-size: 1rem;
     height: auto;
-}
-
-.input-icon-left {
-    height: 100%;
-    align-items: center;
-    color: #9ca3af;
 }
 
 /* Gradient Backgrounds */

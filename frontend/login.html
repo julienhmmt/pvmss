@@ -6,9 +6,7 @@
       <div class="column is-10-mobile is-8-tablet is-6-desktop is-5-widescreen">
         <div class="card admin-card login-card">
           <header class="card-header brand-header is-align-items-center login-header">
-            <p class="card-header-title login-title">
-              <span class="icon" style="font-size: 2rem; margin-right: 0.75rem;"><i class="fas fa-user"></i></span>{{T "Login.UserLogin"}}
-            </p>
+            <p class="card-header-title login-title">{{T "Login.UserLogin"}}</p>
           </header>
           <div class="card-content login-content">
             {{if .Warning}}
@@ -45,31 +43,25 @@
 
               <!-- Username Field -->
               <div class="field">
-                <label class="label" for="username" style="font-weight: 600; color: #374151; margin-bottom: 0.75rem; font-size: 0.95rem;">
+                <label class="label" for="username">
                   {{T "Login.UsernameLabel"}}
                 </label>
-                <div class="control has-icons-left">
+                <div class="control">
                   <input class="input is-large input-lg" type="text" id="username" name="username" required autofocus autocomplete="username" aria-required="true" aria-describedby="username-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" placeholder="{{T "Login.UsernameLabel"}}" />
-                  <span class="icon is-left input-icon-left">
-                    <i class="fas fa-user"></i>
-                  </span>
                 </div>
               </div>
 
               <!-- Password Field -->
               <div class="field">
-                <label class="label" for="password" style="font-weight: 600; color: #374151; margin-bottom: 0.75rem; font-size: 0.95rem;">
+                <label class="label" for="password">
                   {{T "Login.PasswordLabel"}}
                 </label>
-                <div class="control has-icons-left">
+                <div class="control">
                   <input class="input is-large input-lg" type="password" id="password" name="password" required autocomplete="current-password" aria-required="true" aria-describedby="password-help" minlength="6" maxlength="128" placeholder="{{T "Login.PasswordLabel"}}" />
-                  <span class="icon is-left input-icon-left">
-                    <i class="fas fa-lock"></i>
-                  </span>
                 </div>
               </div>
 
-              <div class="field" style="margin-top: 2rem;">
+              <div class="field mt-5">
                 <div class="control">
                   <button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label="{{T "Login.Button"}}">
                     <span class="icon is-medium" aria-hidden="true">
@@ -90,7 +82,7 @@
             <!-- Admin Login Button -->
             <div class="has-text-centered">
               <a class="button is-light is-fullwidth login-alt-button" href="/admin/login">
-                <span class="icon has-text-grey">
+                <span class="icon has-text-primary">
                   <i class="fas fa-shield-alt"></i>
                 </span>
                 <span>{{T "Login.AdminLoginLink"}}</span>
