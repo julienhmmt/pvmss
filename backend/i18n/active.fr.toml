@@ -294,6 +294,8 @@ other = "VMs en cours d'exécution"
 other = "VMs arrêtées"
 ["Profile.PausedVMs"]
 other = "VMs en pause"
+["Profile.Overview"]
+other = "Vue d'ensemble"
 ["Profile.Security"]
 other = "Sécurité"
 ["Profile.SecurityDescription"]
