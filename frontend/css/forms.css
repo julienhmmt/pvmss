@@ -1,0 +1,337 @@
+/* ============================================
+   FORMS - Consolidated form styles
+   ============================================ */
+
+/* Form Layout */
+.form-vertical .field + .field {
+    margin-top: 1.25rem;
+}
+
+.form-inline-fields .column {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Form Labels */
+.form-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+.form-label-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 136, 0, 0.12);
+    color: #ff8800;
+    flex-shrink: 0;
+}
+
+.form-label-icon .icon {
+    font-size: 0.85rem;
+}
+
+.form-label-text {
+    flex: 1;
+}
+
+.form-label-help {
+    display: flex;
+    align-items: center;
+}
+
+.form-sublabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 0.4rem;
+}
+
+/* Form Help Text */
+.form-help {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+    line-height: 1.4;
+}
+
+.form-help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 136, 0, 0.12);
+    color: #ff8800;
+}
+
+/* Form Tooltips */
+.form-tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    z-index: 1;
+}
+
+.form-tooltip-trigger {
+    border: none;
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    box-shadow: 0 4px 12px rgba(245, 124, 0, 0.25);
+    cursor: help;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    padding: 0;
+}
+
+.form-tooltip-trigger i {
+    pointer-events: none;
+}
+
+.form-tooltip-trigger:focus-visible {
+    outline: 2px solid rgba(245, 124, 0, 0.5);
+    outline-offset: 2px;
+}
+
+.form-tooltip-trigger:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(245, 124, 0, 0.35);
+}
+
+.form-tooltip-content {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    color: #ffffff;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+    min-width: 220px;
+    max-width: 320px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    z-index: 30;
+}
+
+.form-tooltip-content::after {
+    content: "";
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: transparent transparent #1f2937 transparent;
+}
+
+.form-tooltip:hover .form-tooltip-content,
+.form-tooltip:focus-within .form-tooltip-content,
+.form-tooltip-trigger:focus + .form-tooltip-content {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.form-tooltip:hover,
+.form-tooltip:focus-within {
+    z-index: 9999;
+}
+
+/* Form Footer */
+.form-footer {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.form-footer-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-footer .button {
+    min-width: 150px;
+}
+
+.form-footer .button.is-light {
+    background: #ffffff;
+    border-color: #e5e7eb;
+}
+
+.form-footer .button.is-primary {
+    box-shadow: 0 12px 24px rgba(255, 136, 0, 0.25);
+}
+
+.form-footer .button.is-primary:hover {
+    box-shadow: 0 16px 32px rgba(255, 136, 0, 0.35);
+}
+
+.form-footer .button:focus-visible {
+    outline: 2px solid rgba(245, 124, 0, 0.4);
+    outline-offset: 3px;
+}
+
+/* Input Enhancements */
+.input:focus,
+.textarea:focus,
+.select select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.1);
+}
+
+.input-lg {
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    height: auto;
+}
+
+input[type="number"] {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Static Buttons in Addons */
+.field.has-addons .control .button.is-static {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3rem;
+    padding: 0 1rem;
+    font-size: 1rem;
+    border-radius: 10px;
+    border: 2px solid #e5e7eb;
+    background: #f9f9f9;
+    color: #4b5563;
+    font-weight: 600;
+}
+
+.field.has-addons .control .button.is-static.is-medium {
+    min-height: 3.125rem;
+    padding: 0 1.25rem;
+    font-size: 1rem;
+}
+
+/* Field Spacing */
+.field:not(:last-child) {
+    margin-bottom: 1.25rem;
+}
+
+/* Select Enhancements */
+.select select {
+    cursor: pointer;
+}
+
+.select select option:disabled {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Tag Selection */
+.tags.are-medium label {
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.tags.are-medium label:hover {
+    transform: translateY(-2px);
+}
+
+.tags.are-medium label:active {
+    transform: translateY(0);
+}
+
+/* Help Text Styling */
+.help.has-text-grey-light {
+    font-size: 0.8125rem;
+    margin-top: 0.375rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.help.has-text-grey-light::before {
+    content: "ℹ️";
+    font-size: 0.875rem;
+}
+
+/* Disabled State */
+fieldset[disabled] .card {
+    filter: grayscale(0.3);
+}
+
+fieldset[disabled] {
+    opacity: 0.7;
+    position: relative;
+}
+
+fieldset[disabled]::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.5);
+    z-index: 10;
+    pointer-events: none;
+    border-radius: 6px;
+}
+
+/* Overflow Management for Tooltips */
+.card,
+.card-header,
+.card-content,
+.columns,
+.column,
+.section,
+.container,
+fieldset,
+.form-vertical,
+.form-label,
+.field {
+    overflow: visible !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-tooltip-content {
+        min-width: 180px;
+        max-width: 240px;
+        font-size: 0.8rem;
+    }
+    
+    .field.has-addons .button.is-static {
+        min-width: 3rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .form-tooltip-trigger,
+    .form-tooltip-content {
+        transition: none;
+    }
+}
