@@ -269,7 +269,7 @@ other = "Profile"
 # Profile
 # ===========
 ["Profile.Title"]
-other = "My Profile"
+other = "My profile"
 ["Profile.Username"]
 other = "Username"
 ["Profile.Pool"]
@@ -280,6 +280,10 @@ other = "My virtual machines"
 other = "VM ID"
 ["Profile.VMName"]
 other = "VM Name"
+["Profile.Description"]
+other = "Description"
+["Profile.NoDescription"]
+other = "No description"
 ["Profile.Node"]
 other = "Node"
 ["Profile.Status"]
