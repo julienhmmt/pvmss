@@ -172,6 +172,8 @@
     height: auto;
 }
 
+/* Form styles moved to forms.css */
+
 /* Gradient Backgrounds */
 .gradient-primary {
     background: linear-gradient(135deg, #ff8800 0%, #e67700 100%);

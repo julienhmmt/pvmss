@@ -94,26 +94,40 @@
                                                     <span class="icon"><i class="fas fa-info-circle"></i></span>&nbsp;{{T "VM.Create.BasicInfo"}}
                                                 </p>
                                             </header>
-                                            <div class="card-content">
+                                            <div class="card-content form-vertical">
                                                 <!-- VM Name, Description, VM ID fields... -->
                                                 <div class="field">
-                                                    <label for="vmName" class="label has-text-weight-normal has-tooltip-label">
-                                                        <span>{{T "Common.Name"}}</span>
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Name"}}</span>
+                                                    <label for="vmName" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-tag"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "Common.Name"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Name"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="vmName-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Name"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <input id="vmName" class="input" type="text" name="name" value="{{if .FormData.name}}{{.FormData.name}}{{end}}" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true" aria-describedby="vmName-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" />
+                                                        <input id="vmName" class="input is-medium" type="text" name="name" value="{{if .FormData.name}}{{.FormData.name}}{{end}}" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true" aria-describedby="vmName-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" />
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="vmDescription" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.Description"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Description"}}</span>
+                                                    <label for="vmDescription" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-align-left"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.Description"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Description"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="vmDescription-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Description"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
@@ -121,17 +135,23 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="vmId" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.VMID"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.VMID"}}</span>
+                                                    <label for="vmId" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-hashtag"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.VMID"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.VMID"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="vmId-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.VMID"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <input id="vmId" class="input" type="number" name="vmid" value="{{if .FormData.vmid}}{{.FormData.vmid}}{{end}}" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
+                                                        <input id="vmId" class="input is-medium" type="number" name="vmid" value="{{if .FormData.vmid}}{{.FormData.vmid}}{{end}}" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
                                                     </div>
-                                                    <p class="help has-text-grey-light">{{T "VM.Create.VMID.Help"}}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -145,22 +165,29 @@
                                                     <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{T "VM.Create.Resources"}}
                                                 </p>
                                             </header>
-                                            <div class="card-content">
+                                            <div class="card-content form-vertical">
                                                 <!-- CPU, Memory, Disk, Storage fields... -->
                                                 <div class="field">
-                                                    <label class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.CPUCores"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.CPU"}}</span>
+                                                    <label class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-microchip"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.CPUCores"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.CPU"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="cpu-tooltip" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.CPU"}}
+                                                            </div>
                                                         </span>
                                                     </label>
-                                                    <div class="columns is-mobile">
+                                                    <div class="columns is-mobile form-inline-fields is-variable is-2">
                                                         <div class="column">
-                                                            <label for="cpuSockets" class="label is-small has-text-grey">{{T "VM.Create.CPUSockets"}}</label>
+                                                            <span class="form-sublabel">{{T "VM.Create.CPUSockets"}}</span>
                                                             <div class="control">
-                                                                <div class="select is-small is-fullwidth">
-                                                                    <select id="cpuSockets" name="sockets" required aria-required="true" aria-describedby="cpuSockets-help">
+                                                                <div class="select is-fullwidth is-medium">
+                                                                    <select id="cpuSockets" name="sockets" required aria-required="true" aria-describedby="cpu-tooltip">
                                                                         {{range $i := seq $vmSockMin (int (add $vmSockMax 1))}}
                                                                         <option value="{{$i}}" {{if eq $i $vmSockMin}}selected{{end}}>{{$i}}</option>
                                                                         {{end}}
@@ -169,10 +196,10 @@
                                                             </div>
                                                         </div>
                                                         <div class="column">
-                                                            <label for="cpuCores" class="label is-small has-text-grey">{{T "VM.Create.CPUCores"}}</label>
+                                                            <span class="form-sublabel">{{T "VM.Create.CPUCores"}}</span>
                                                             <div class="control">
-                                                                <div class="select is-small is-fullwidth">
-                                                                    <select id="cpuCores" name="cores" required aria-required="true" aria-describedby="cpuCores-help">
+                                                                <div class="select is-fullwidth is-medium">
+                                                                    <select id="cpuCores" name="cores" required aria-required="true" aria-describedby="cpu-tooltip">
                                                                         {{range $i := seq $vmCoreMin (int (add $vmCoreMax 1))}}
                                                                         <option value="{{$i}}" {{if eq $i $vmCoreMin}}selected{{end}}>{{$i}}</option>
                                                                         {{end}}
@@ -183,45 +210,66 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="memory" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "Common.Memory"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Memory"}}</span>
+                                                    <label for="memory" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-memory"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "Common.Memory"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Memory"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="memory-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Memory"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="memory" class="input" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric">
+                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric">
                                                         </div>
-                                                        <div class="control"><span class="button is-static">MB</span></div>
+                                                        <div class="control"><span class="button is-static is-medium">MB</span></div>
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="diskSize" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.DiskSize"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.DiskSize"}}</span>
+                                                    <label for="diskSize" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas a-hdd"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.DiskSize"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.DiskSize"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="diskSize-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.DiskSize"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="diskSize" class="input" type="number" name="disk_size" min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required aria-required="true" aria-describedby="diskSize-help" inputmode="numeric">
+                                                            <input id="diskSize" class="input is-medium" type="number" name="disk_size" min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required aria-required="true" aria-describedby="diskSize-help" inputmode="numeric">
                                                         </div>
-                                                        <div class="control"><span class="button is-static">GB</span></div>
+                                                        <div class="control"><span class="button is-static is-medium">GB</span></div>
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="storage" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.Storage"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Storage"}}</span>
+                                                    <label for="storage" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-database"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.Storage"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Storage"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="storage-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Storage"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <div class="select is-fullwidth">
+                                                        <div class="select is-fullwidth is-medium">
                                                             <select id="storage" name="storage" required aria-required="true" aria-describedby="storage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
                                                                 {{range .Storages}}<option value="{{.}}" {{if eq . $.FormData.storage}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>{{end}}
@@ -241,18 +289,25 @@
                                                     <span class="icon"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "VM.Create.MediaNetwork"}}
                                                 </p>
                                             </header>
-                                            <div class="card-content">
+                                            <div class="card-content form-vertical">
                                                 <!-- Node, Pool, ISO, Bridge fields... -->
                                                 <div class="field">
-                                                    <label for="node" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.ProxmoxNode"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Node"}}</span>
+                                                    <label for="node" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-server"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ProxmoxNode"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Node"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="node-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Node"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <div class="select is-fullwidth">
+                                                        <div class="select is-fullwidth is-medium">
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
                                                                 {{if .NodeOptions}}
                                                                 {{range .NodeOptions}}
@@ -273,27 +328,41 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="pool" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.ResourcePool"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Pool"}}</span>
+                                                    <label for="pool" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-layer-group"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ResourcePool"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Pool"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="pool-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Pool"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
+                                                        <input id="pool" class="input is-medium" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="isoImage" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.ISOImage"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.ISO"}}</span>
+                                                    <label for="isoImage" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-compact-disc"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ISOImage"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.ISO"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="isoImage-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.ISO"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <div class="select is-fullwidth">
+                                                        <div class="select is-fullwidth is-medium">
                                                             <select id="isoImage" name="iso" required aria-required="true" aria-describedby="isoImage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
                                                                 {{range sort .ISOs}}<option value="{{.}}" {{if eq . $.FormData.iso}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
@@ -302,15 +371,22 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="networkBridge" class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.Network"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Network"}}</span>
+                                                    <label for="networkBridge" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-ethernet"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.Network"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Network"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkBridge-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Network"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <div class="select is-fullwidth">
+                                                        <div class="select is-fullwidth is-medium">
                                                             <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
                                                                 {{range $bridge := sort .Bridges}}
                                                                 {{$rawDesc := index $.BridgeDescriptions $bridge}}
@@ -338,24 +414,31 @@
                                                     <span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "VM.Create.Tags"}}
                                                 </p>
                                             </header>
-                                            <div class="card-content">
+                                            <div class="card-content form-vertical">
                                                 <div class="field">
-                                                    <label class="label has-text-weight-normal has-tooltip-label">
-                                                        {{T "VM.Create.AvailableTags"}}
-                                                        <span class="has-tooltip">
-                                                            <span class="tooltip-icon">?</span>
-                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Tags"}}</span>
+                                                    <label class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-tag"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.AvailableTags"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Tags"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Tags"}}
+                                                            </div>
                                                         </span>
                                                     </label>
                                                     <div class="tags are-medium">
                                                         {{if .AvailableTags}}
-                                                        <span class="tag is-primary">pvmss</span>
+                                                        <span class="tag is-primary is-medium">pvmss</span>
                                                         <input type="hidden" name="tags" value="pvmss">
                                                         {{range sort .AvailableTags}}
                                                         {{if ne . "pvmss"}}
                                                         <label>
                                                             <input type="checkbox" name="tags" value="{{.}}" class="is-hidden">
-                                                            <span class="tag is-light">{{.}}</span>
+                                                            <span class="tag is-light is-medium">{{.}}</span>
                                                         </label>
                                                         {{end}}
                                                         {{end}}
@@ -363,7 +446,7 @@
                                                         <span class="tag is-light is-medium">{{T "VM.Create.NoTagsAvailable"}}</span>
                                                         {{end}}
                                                     </div>
-                                                    <p class="help has-text-grey-light">{{T "VM.Create.TagsHelp"}}</p>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.TagsHelp"}}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -373,20 +456,18 @@
                             </fieldset>
 
                             <!-- Action Buttons -->
-                            <div class="field is-grouped is-justify-content-flex-end pt-5">
-                                <div class="control">
+                            <footer class="form-footer">
+                                <div class="form-footer-actions">
                                     <button type="reset" form="vmCreateForm" class="button is-light is-medium">
                                         <span class="icon"><i class="fas fa-undo"></i></span>
                                         <span>{{T "Common.Reset"}}</span>
                                     </button>
-                                </div>
-                                <div class="control">
                                     <button type="submit" form="vmCreateForm" class="button is-primary is-medium">
                                         <span class="icon"><i class="fas fa-save"></i></span>
                                         <span>{{T "Common.Create"}}</span>
                                     </button>
                                 </div>
-                            </div>
+                            </footer>
                         </form>
                     </div>
                 </div>

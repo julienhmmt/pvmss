@@ -38,6 +38,9 @@ html {
    ============================================ */
 .section {
   padding: 1.5rem 0;
+  position: relative;
+  overflow: visible;
+  z-index: 0;
 }
 
 .section > .container > .section {
@@ -72,7 +75,7 @@ html {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   height: 100%;
-  overflow: hidden;
+  overflow: visible;
   transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 }
 
@@ -80,6 +83,7 @@ html {
 .card.no-hover,
 .card.admin-card {
   transition: none;
+  overflow: visible;
 }
 
 .card.no-hover:hover,

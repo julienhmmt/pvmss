@@ -33,31 +33,11 @@
       .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
     </style>
     
-    <!-- Async CSS loading -->
-    <link rel="preload" href="/css/bulma.min.css?theme={{.Theme}}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/bulma.min.css?theme={{.Theme}}"></noscript>
+    <!-- Main CSS (consolidated imports) -->
+    <link rel="preload" href="/css/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="/css/main.css"></noscript>
     
-    <link rel="preload" href="/css/tokens.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/tokens.css"></noscript>
-    
-    <link rel="preload" href="/css/base.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/base.css"></noscript>
-    
-    <link rel="preload" href="/css/components.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/components.css"></noscript>
-    
-    <link rel="preload" href="/css/style.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/style.css"></noscript>
-    
-    <link rel="preload" href="/css/utilities.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/utilities.css"></noscript>
-    
-    <link rel="preload" href="/css/tooltips.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/tooltips.css"></noscript>
-    
-    <link rel="preload" href="/css/glass.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/glass.css"></noscript>
-    
+    <!-- Admin styles (conditional) -->
     {{if .IsAdminPage}}
     <link rel="preload" href="/css/admin.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="/css/admin.css"></noscript>
