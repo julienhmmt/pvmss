@@ -3,7 +3,7 @@
    ============================================ */
 
 /* Form Layout */
-.form-vertical .field + .field {
+.form-vertical .field+.field {
     margin-top: 1.25rem;
 }
 
@@ -122,7 +122,7 @@
     left: 50%;
     transform: translateX(-50%) translateY(8px);
     background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-    color: #ffffff;
+    color: #fff;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
     box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
@@ -150,7 +150,7 @@
 
 .form-tooltip:hover .form-tooltip-content,
 .form-tooltip:focus-within .form-tooltip-content,
-.form-tooltip-trigger:focus + .form-tooltip-content {
+.form-tooltip-trigger:focus+.form-tooltip-content {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
@@ -180,7 +180,7 @@
 }
 
 .form-footer .button.is-light {
-    background: #ffffff;
+    background: #fff;
     border-color: #e5e7eb;
 }
 
@@ -323,13 +323,14 @@ fieldset,
         max-width: 240px;
         font-size: 0.8rem;
     }
-    
+
     .field.has-addons .button.is-static {
         min-width: 3rem;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
+
     .form-tooltip-trigger,
     .form-tooltip-content {
         transition: none;

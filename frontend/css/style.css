@@ -1,11 +1,3 @@
-/* ============================================
-   UTILITY & NAVIGATION OVERRIDES
-   Mobile navigation and helper classes
-   ============================================ */
-
-/* ============================================
-   ACCESSIBILITY UTILITIES
-   ============================================ */
 /* Visually hidden checkbox for CSS-only toggles */
 .visually-hidden-checkbox {
   position: absolute;

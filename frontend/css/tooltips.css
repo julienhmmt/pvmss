@@ -5,7 +5,7 @@
    ============================================ */
 
 /* Import consolidated form styles */
-@import 'forms.css';
+@import "forms.css";
 
 /* Card enhancements for form sections */
 .card.no-hover {
@@ -34,12 +34,12 @@
 }
 
 /* Column spacing */
-.columns.is-multiline > .column {
+.columns.is-multiline>.column {
   padding-top: 0;
   padding-bottom: 0;
 }
 
-.columns.is-multiline > .column .card {
+.columns.is-multiline>.column .card {
   height: 100%;
 }
 
