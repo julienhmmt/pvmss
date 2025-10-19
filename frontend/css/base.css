@@ -23,6 +23,7 @@ html {
 
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -43,7 +44,7 @@ html {
   z-index: 0;
 }
 
-.section > .container > .section {
+.section>.container>.section {
   padding: 0.5rem 0;
   min-height: auto;
 }
@@ -105,8 +106,13 @@ html {
 
 /* Fade-in animation for cards */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .card.admin-card {
@@ -158,7 +164,7 @@ html {
 }
 
 /* Icon positioning for large inputs */
-.control.has-icons-left .input.is-large ~ .icon.is-left {
+.control.has-icons-left .input.is-large~.icon.is-left {
   font-size: 1.125rem;
 }
 
@@ -263,58 +269,59 @@ html {
 
 /* Improved mobile spacing (screens < 800px) */
 @media screen and (max-width: 800px) {
+
   /* Add padding to container on small screens */
   .container {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
   }
-  
+
   /* Adjust section padding */
   .section {
     padding: 1.25rem 0;
   }
-  
+
   /* Card spacing improvements */
   .card-content {
     padding: 1.25rem;
   }
-  
+
   .card-header {
     padding: 1rem 1.25rem;
   }
-  
+
   /* Box spacing */
   .box {
     padding: 1.25rem;
     margin-bottom: 1rem;
   }
-  
+
   /* Table responsive improvements */
   .table-container {
     margin-left: -0.25rem;
     margin-right: -0.25rem;
   }
-  
+
   /* Columns spacing on mobile */
   .columns {
     margin-left: -0.5rem;
     margin-right: -0.5rem;
   }
-  
+
   .column {
     padding: 0.5rem;
   }
-  
+
   /* Form fields spacing */
   .field:not(:last-child) {
     margin-bottom: 1rem;
   }
-  
+
   /* Button groups */
   .buttons {
     margin-bottom: 0.5rem;
   }
-  
+
   .level {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
@@ -327,13 +334,12 @@ html {
     height: 100%;
     max-width: 100%;
   }
-  
+
   .modal-card-foot {
     padding: 0.75rem;
   }
-  
+
   .modal-card-foot .button {
     font-size: 0.875rem;
   }
 }
-

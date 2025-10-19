@@ -8,51 +8,56 @@
   --primary-hover: #e67700;
   --primary-light: #ffa633;
   --primary-dark: #cc6600;
-  
+
   /* Glass effect colors */
   --glass-white: rgba(255, 255, 255, 0.7);
   --glass-white-hover: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(255, 255, 255, 0.4);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-  
+
   /* Glass opacity levels - Hiérarchie claire */
-  --glass-opacity-light: rgba(255, 255, 255, 0.65);    /* Boxes */
-  --glass-opacity-normal: rgba(255, 255, 255, 0.7);    /* Cards, navbar */
-  --glass-opacity-medium: rgba(255, 255, 255, 0.75);   /* Buttons light */
-  --glass-opacity-strong: rgba(255, 255, 255, 0.8);    /* Welcome block */
-  --glass-opacity-solid: rgba(255, 255, 255, 0.85);    /* Notifications */
-  
+  --glass-opacity-light: rgba(255, 255, 255, 0.65);
+  /* Boxes */
+  --glass-opacity-normal: rgba(255, 255, 255, 0.7);
+  /* Cards, navbar */
+  --glass-opacity-medium: rgba(255, 255, 255, 0.75);
+  /* Buttons light */
+  --glass-opacity-strong: rgba(255, 255, 255, 0.8);
+  /* Welcome block */
+  --glass-opacity-solid: rgba(255, 255, 255, 0.85);
+  /* Notifications */
+
   --bg: #fafafa;
   --bg-gradient: linear-gradient(135deg, #fafafa 0%, #f5f5f5 50%, #f0f0f0 100%);
-  
+
   /* Text colors */
   --text: #1f2937;
   --text-light: #4b5563;
   --muted: #6b7280;
   --muted-light: #9ca3af;
-  
+
   /* Surface colors */
   --surface: rgba(255, 255, 255, 0.85);
   --surface-2: rgba(254, 253, 251, 0.85);
   --surface-glass: rgba(255, 255, 255, 0.7);
   --border: rgba(0, 0, 0, 0.05);
   --border-light: rgba(0, 0, 0, 0.03);
-  
+
   /* Card backgrounds */
   --card-bg: rgba(255, 255, 255, 0.7);
   --card-hover-bg: rgba(255, 255, 255, 0.85);
-  
+
   /* Links */
   --link: var(--primary);
   --link-hover: var(--primary-hover);
-  
+
   /* Shadows - Layered for depth */
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
   --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08);
   --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  
+
   /* Status colors with alpha */
   --success: #10b981;
   --success-light: rgba(209, 250, 229, 0.9);
@@ -62,23 +67,23 @@
   --warning-light: rgba(254, 243, 199, 0.9);
   --danger: #ef4444;
   --danger-light: rgba(254, 226, 226, 0.9);
-  
+
   /* Blur values */
   --blur-sm: blur(10px);
   --blur-md: blur(20px);
   --blur-lg: blur(40px);
-  
+
   /* Border radius */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 24px;
-  
+
   /* Transitions */
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* Bulma compatibility */
   --bulma-primary-h: 32;
   --bulma-primary-s: 100%;

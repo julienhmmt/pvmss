@@ -1,6 +1,5 @@
 /* ============================================
    GLASSMORPHISM - Modern Apple-style Design
-   Effet de verre élégant et professionnel
    ============================================ */
 
 /* ============================================
@@ -20,7 +19,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
+  background-image:
     radial-gradient(circle at 20% 30%, rgba(255, 136, 0, 0.01) 0%, transparent 50%),
     radial-gradient(circle at 80% 70%, rgba(230, 119, 0, 0.008) 0%, transparent 50%);
   pointer-events: none;
@@ -128,9 +127,9 @@ body::before {
 }
 
 .card-header.brand-header {
-  background: linear-gradient(135deg, 
-    rgba(255, 136, 0, 0.85) 0%, 
-    rgba(230, 119, 0, 0.9) 100%);
+  background: linear-gradient(135deg,
+      rgba(255, 136, 0, 0.85) 0%,
+      rgba(230, 119, 0, 0.9) 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -141,10 +140,10 @@ body::before {
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, 
-    transparent,
-    rgba(255, 255, 255, 0.6),
-    transparent);
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.6),
+      transparent);
 }
 
 /* ============================================
@@ -163,10 +162,10 @@ body::before {
    HERO - Gradient Glass
    ============================================ */
 .hero.is-primary {
-  background: linear-gradient(135deg, 
-    rgba(255, 136, 0, 0.9) 0%, 
-    rgba(230, 119, 0, 0.95) 50%,
-    rgba(204, 102, 0, 0.9) 100%);
+  background: linear-gradient(135deg,
+      rgba(255, 136, 0, 0.9) 0%,
+      rgba(230, 119, 0, 0.95) 50%,
+      rgba(204, 102, 0, 0.9) 100%);
   position: relative;
   overflow: hidden;
 }
@@ -183,8 +182,17 @@ body::before {
 }
 
 @keyframes heroShine {
-  0%, 100% { transform: translate(0%, 0%) scale(1); opacity: 0.2; }
-  50% { transform: translate(10%, 10%) scale(1.1); opacity: 0.35; }
+
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+    opacity: 0.2;
+  }
+
+  50% {
+    transform: translate(10%, 10%) scale(1.1);
+    opacity: 0.35;
+  }
 }
 
 /* ============================================
@@ -197,7 +205,7 @@ body::before {
   backdrop-filter: var(--blur-sm);
   -webkit-backdrop-filter: var(--blur-sm);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 
+  box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.03),
     inset 0 1px 2px rgba(0, 0, 0, 0.05);
   transition: all var(--transition-base);
@@ -207,7 +215,7 @@ body::before {
 .textarea:hover,
 .select select:hover {
   border-color: rgba(0, 0, 0, 0.15);
-  box-shadow: 
+  box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.05),
     inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
@@ -217,7 +225,7 @@ body::before {
 .select select:focus {
   background: rgba(255, 255, 255, 0.95);
   border-color: var(--primary);
-  box-shadow: 
+  box-shadow:
     0 0 0 4px rgba(255, 136, 0, 0.1),
     0 4px 12px rgba(255, 136, 0, 0.15),
     inset 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -252,7 +260,7 @@ body::before {
 .button.is-primary {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   border: none;
-  box-shadow: 
+  box-shadow:
     0 3px 10px rgba(255, 136, 0, 0.25),
     0 1px 3px rgba(255, 136, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
@@ -260,7 +268,7 @@ body::before {
 
 .button.is-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 
+  box-shadow:
     0 6px 18px rgba(255, 136, 0, 0.3),
     0 2px 6px rgba(255, 136, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -276,7 +284,7 @@ body::before {
   backdrop-filter: var(--blur-sm);
   -webkit-backdrop-filter: var(--blur-sm);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 
+  box-shadow:
     0 2px 6px rgba(0, 0, 0, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
@@ -309,10 +317,10 @@ body::before {
 }
 
 .admin-menu .menu-list a.is-active {
-  background: linear-gradient(135deg, 
-    rgba(255, 136, 0, 0.9) 0%, 
-    rgba(230, 119, 0, 0.95) 100%);
-  box-shadow: 
+  background: linear-gradient(135deg,
+      rgba(255, 136, 0, 0.9) 0%,
+      rgba(230, 119, 0, 0.95) 100%);
+  box-shadow:
     0 4px 12px rgba(255, 136, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
@@ -399,7 +407,7 @@ body::before {
   backdrop-filter: var(--blur-md) saturate(180%);
   -webkit-backdrop-filter: var(--blur-md) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 
+  box-shadow:
     0 6px 24px rgba(0, 0, 0, 0.06),
     0 2px 8px rgba(0, 0, 0, 0.03),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
@@ -441,7 +449,7 @@ body::before {
   backdrop-filter: var(--blur-lg) saturate(180%);
   -webkit-backdrop-filter: var(--blur-lg) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 
+  box-shadow:
     0 20px 80px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   border-radius: 20px;
@@ -471,6 +479,7 @@ body::before {
    ACCESSIBILITY & REDUCED MOTION
    ============================================ */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -478,11 +487,11 @@ body::before {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
+
   .hero.is-primary::before {
     animation: none;
   }
-  
+
   .button::before {
     display: none;
   }
@@ -492,6 +501,7 @@ body::before {
    FALLBACK FOR NON-SUPPORTING BROWSERS
    ============================================ */
 @supports not (backdrop-filter: blur(20px)) {
+
   .navbar,
   .box,
   .card,
@@ -513,6 +523,7 @@ body::before {
    RESPONSIVE ADJUSTMENTS
    ============================================ */
 @media screen and (max-width: 768px) {
+
   /* Reduce blur for performance on mobile */
   .navbar,
   .box,
@@ -521,18 +532,18 @@ body::before {
     backdrop-filter: blur(12px) saturate(150%);
     -webkit-backdrop-filter: blur(12px) saturate(150%);
   }
-  
+
   /* Simplify shadows and transforms on mobile */
   .box:hover,
   .card:hover {
     transform: none;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
   }
-  
+
   .button:hover {
     transform: none;
   }
-  
+
   .navbar-item:hover {
     transform: none;
   }
