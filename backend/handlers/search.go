@@ -240,16 +240,22 @@ func (h *SearchHandler) searchVMs(ctx context.Context, client proxmox.ClientInte
 		}
 
 		// VM passed all filters, add to results
+		description := ""
+		if desc, ok := cfg["description"].(string); ok {
+			description = desc
+		}
+
 		status := vm.Status
 		if status == "" {
 			status = "unknown"
 		}
 
 		results = append(results, map[string]interface{}{
-			"vmid":   vm.VMID,
-			"name":   vm.Name,
-			"node":   vm.Node,
-			"status": strings.ToLower(status),
+			"vmid":        vm.VMID,
+			"name":        vm.Name,
+			"description": description,
+			"node":        vm.Node,
+			"status":      strings.ToLower(status),
 		})
 
 		log.Info().

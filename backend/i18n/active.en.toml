@@ -380,12 +380,16 @@ other = "Filter"
 other = "Memory"
 ["Search.Name"]
 other = "Name"
+["Search.Description"]
+other = "Description"
 ["Search.Node"]
 other = "Node"
 ["Search.NoResults"]
 other = "No results found"
 ["Search.NoName"]
 other = "No name"
+["Search.NoDescription"]
+other = "No description"
 ["Search.NoResultsMessage"]
 other = "Try adjusting your search criteria or check if the VM exists."
 ["Search.Placeholder"]
