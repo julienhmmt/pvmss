@@ -585,6 +585,32 @@ other = "Resource pool"
 ["VM.Create.StorageHelp"]
 other = "Select a storage for your virtual machine"
 
+# VM Creation - Tooltips
+["VM.Create.Tooltip.Name"]
+other = "Identification name for your virtual machine. Use a descriptive name for easier management (e.g., web-server, dev-env)."
+["VM.Create.Tooltip.Description"]
+other = "Detailed description of this VM's purpose. Add information about the project, environment, or hosted services."
+["VM.Create.Tooltip.VMID"]
+other = "Unique VM identifier in Proxmox (100-999999999). This ID helps locate and organize your virtual machines. Leave empty for automatic generation."
+["VM.Create.Tooltip.CPU"]
+other = "Processor configuration: Sockets = number of physical CPUs, Cores = number of cores per socket. More cores improve multi-tasking performance."
+["VM.Create.Tooltip.Memory"]
+other = "RAM allocated to the VM in megabytes (MB). More RAM allows running more applications simultaneously. Recommended: minimum 2048 MB (2 GB)."
+["VM.Create.Tooltip.DiskSize"]
+other = "Virtual disk size in gigabytes (GB). Plan space for the operating system, applications, and your data. Can be extended later if needed."
+["VM.Create.Tooltip.Storage"]
+other = "Storage location where the VM disk will be created. Choose storage with sufficient available space and good performance."
+["VM.Create.Tooltip.Node"]
+other = "Physical Proxmox server where the VM will be hosted. Choose a node with available resources and geographically close if needed."
+["VM.Create.Tooltip.Pool"]
+other = "Proxmox resource pool to group and manage your VMs. Each user has a dedicated pool for organization and quotas."
+["VM.Create.Tooltip.ISO"]
+other = "Operating system ISO image to install (Linux, Windows, etc.). The ISO will be mounted as a virtual CD-ROM at VM startup."
+["VM.Create.Tooltip.Network"]
+other = "Virtual network bridge for VM connection. Determines which network the VM will access (Internet, internal network, specific VLAN)."
+["VM.Create.Tooltip.Tags"]
+other = "Categorization labels to organize your VMs (production, development, test). Click on a tag to select it. The 'pvmss' tag is required."
+
 # ===========
 # VM Details
 # ===========

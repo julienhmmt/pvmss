@@ -97,10 +97,11 @@
                                             <div class="card-content">
                                                 <!-- VM Name, Description, VM ID fields... -->
                                                 <div class="field">
-                                                    <label for="vmName" class="label has-text-weight-normal">
-                                                        <span class="icon-text">
-                                                            <span class="icon has-text-grey"><i class="fas fa-tag"></i></span>
-                                                            <span>{{T "Common.Name"}}</span>
+                                                    <label for="vmName" class="label has-text-weight-normal has-tooltip-label">
+                                                        <span>{{T "Common.Name"}}</span>
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Name"}}</span>
                                                         </span>
                                                     </label>
                                                     <div class="control">
@@ -108,13 +109,25 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="vmDescription" class="label has-text-weight-normal">{{T "VM.Create.Description"}}</label>
+                                                    <label for="vmDescription" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.Description"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Description"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="control">
                                                         <textarea id="vmDescription" class="textarea" name="description" placeholder='{{T "VM.Create.DescriptionPlaceholder"}}' rows="3" aria-describedby="vmDescription-help" maxlength="500">{{if .FormData.description}}{{.FormData.description}}{{end}}</textarea>
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="vmId" class="label has-text-weight-normal">{{T "VM.Create.VMID"}}</label>
+                                                    <label for="vmId" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.VMID"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.VMID"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="control">
                                                         <input id="vmId" class="input" type="number" name="vmid" value="{{if .FormData.vmid}}{{.FormData.vmid}}{{end}}" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
                                                     </div>
@@ -135,7 +148,13 @@
                                             <div class="card-content">
                                                 <!-- CPU, Memory, Disk, Storage fields... -->
                                                 <div class="field">
-                                                    <label class="label has-text-weight-normal">{{T "VM.Create.CPUCores"}}</label>
+                                                    <label class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.CPUCores"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.CPU"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="columns is-mobile">
                                                         <div class="column">
                                                             <label for="cpuSockets" class="label is-small has-text-grey">{{T "VM.Create.CPUSockets"}}</label>
@@ -164,7 +183,13 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="memory" class="label has-text-weight-normal">{{T "Common.Memory"}}</label>
+                                                    <label for="memory" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "Common.Memory"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Memory"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
                                                             <input id="memory" class="input" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric">
@@ -173,7 +198,13 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="diskSize" class="label has-text-weight-normal">{{T "VM.Create.DiskSize"}}</label>
+                                                    <label for="diskSize" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.DiskSize"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.DiskSize"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
                                                             <input id="diskSize" class="input" type="number" name="disk_size" min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required aria-required="true" aria-describedby="diskSize-help" inputmode="numeric">
@@ -182,7 +213,13 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="storage" class="label has-text-weight-normal">{{T "VM.Create.Storage"}}</label>
+                                                    <label for="storage" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.Storage"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Storage"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="storage" name="storage" required aria-required="true" aria-describedby="storage-help">
@@ -207,7 +244,13 @@
                                             <div class="card-content">
                                                 <!-- Node, Pool, ISO, Bridge fields... -->
                                                 <div class="field">
-                                                    <label for="node" class="label has-text-weight-normal">{{T "VM.Create.ProxmoxNode"}}</label>
+                                                    <label for="node" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.ProxmoxNode"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Node"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
@@ -230,13 +273,25 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="pool" class="label has-text-weight-normal">{{T "VM.Create.ResourcePool"}}</label>
+                                                    <label for="pool" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.ResourcePool"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Pool"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="control">
                                                         <input id="pool" class="input" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="isoImage" class="label has-text-weight-normal">{{T "VM.Create.ISOImage"}}</label>
+                                                    <label for="isoImage" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.ISOImage"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.ISO"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="isoImage" name="iso" required aria-required="true" aria-describedby="isoImage-help">
@@ -247,7 +302,13 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="networkBridge" class="label has-text-weight-normal">{{T "VM.Create.Network"}}</label>
+                                                    <label for="networkBridge" class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.Network"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Network"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth">
                                                             <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
@@ -279,7 +340,13 @@
                                             </header>
                                             <div class="card-content">
                                                 <div class="field">
-                                                    <label class="label has-text-weight-normal">{{T "VM.Create.AvailableTags"}}</label>
+                                                    <label class="label has-text-weight-normal has-tooltip-label">
+                                                        {{T "VM.Create.AvailableTags"}}
+                                                        <span class="has-tooltip">
+                                                            <span class="tooltip-icon">?</span>
+                                                            <span class="tooltip-content">{{T "VM.Create.Tooltip.Tags"}}</span>
+                                                        </span>
+                                                    </label>
                                                     <div class="tags are-medium">
                                                         {{if .AvailableTags}}
                                                         <span class="tag is-primary">pvmss</span>
