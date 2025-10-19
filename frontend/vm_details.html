@@ -27,29 +27,18 @@
         )}}
         {{end}}
 
-        <!-- Header -->
-        <div class="level mb-5">
-            <div class="level-left">
-                <div class="level-item">
-                    <div>
-                        <h1 class="title is-3 mb-2">{{.VM.Name}}</h1>
-                        <p class="subtitle is-6 has-text-grey">
-                            <span class="tag is-light mr-2">ID: {{.VM.VMID}}</span>
-                            <span class="tag is-light mr-2">{{.VM.Node}}</span>
-                            <span id="vm-status-badge">{{template "status_badge" (dict "Status" .VM.Status "WithIcon" false)}}</span>
-                        </p>
-                    </div>
-                </div>
-            </div>
+        <!-- Navigation Links -->
+        <div class="level mb-4">
+            <div class="level-left"></div>
             <div class="level-right">
                 <div class="level-item">
                     <div class="buttons">
-                        <a href="/profile" class="button is-light">
-                            <span class="icon"><i class="fas fa-user"></i></span>
+                        <a href="/profile" class="button is-light is-small">
+                            <span class="icon is-small"><i class="fas fa-user"></i></span>
                             <span>{{T "Navbar.Profile"}}</span>
                         </a>
-                        <a href="/search" class="button is-light">
-                            <span class="icon"><i class="fas fa-search"></i></span>
+                        <a href="/search" class="button is-light is-small">
+                            <span class="icon is-small"><i class="fas fa-search"></i></span>
                             <span>{{T "Common.Search"}}</span>
                         </a>
                     </div>
@@ -57,347 +46,413 @@
             </div>
         </div>
 
-        <!-- Quick Actions -->
-        {{template "action_buttons" (dict 
-            "VMID" .VM.VMID 
-            "Node" .VM.Node 
-            "Status" .VM.Status 
-            "CSRFToken" .CSRFToken 
-            "ProxmoxConnected" .ProxmoxConnected 
-            "Lang" .Lang
-            "ExtraClasses" "mb-5 bg-light-gray p-15 rounded-6"
-        )}}
+        <!-- VM Overview - Header + Stats + Actions -->
+        <div class="card mb-4">
+            <!-- VM Header -->
+            <div class="card-content" style="background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%); border-bottom: 1px solid rgb(0,0,0,6%);">
+                <div class="level is-mobile mb-0">
+                    <div class="level-left">
+                        <div class="level-item">
+                            <div>
+                                <h1 class="title is-4 mb-2" style="font-weight: 700;">
+                                    <span class="icon-text">
+                                        <span class="icon has-text-primary"><i class="fas fa-server"></i></span>
+                                        <span>{{.VM.Name}}</span>
+                                    </span>
+                                </h1>
+                                <div class="is-flex is-flex-wrap-wrap" style="gap: 0.5rem;">
+                                    <div class="tags has-addons mb-0">
+                                        <span class="tag is-light">ID</span>
+                                        <span class="tag is-dark">{{.VM.VMID}}</span>
+                                    </div>
+                                    <div class="tags has-addons mb-0">
+                                        <span class="tag is-light">Node</span>
+                                        <span class="tag is-info">{{.VM.Node}}</span>
+                                    </div>
+                                    <div class="tags has-addons mb-0">
+                                        <span class="tag is-light"><i class="fas fa-clock"></i></span>
+                                        <span class="tag is-warning">{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="level-right">
+                        <div class="level-item">
+                            <span id="vm-status-badge">{{template "status_badge" (dict "Status" .VM.Status "WithIcon" true)}}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        <!-- Resources Grid -->
-        <div class="columns is-multiline mb-5">
-            <!-- CPU Card -->
-            <div class="column is-half">
-                <div class="stat-card border-left-primary">
-                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
-                        <div>
-                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.CPU"}}</p>
-                            <p class="title is-4 mb-0 has-text-primary">
-                                {{if eq .VM.Status "running"}}{{printf "%.0f" (mul .VM.CPU 100)}}%{{else}}--{{end}}
+            <!-- VM Stats Grid -->
+            <div class="card-content pt-4 pb-3 px-3">
+                <div class="columns is-mobile is-multiline is-variable is-2">
+                    <!-- CPU Stat -->
+                    <div class="column is-one-third-tablet is-half-mobile">
+                        <div style="background: linear-gradient(135deg, #fff5f5 0%, #fff 100%); border-left: 3px solid #ff8800; border-radius: 8px; padding: 1rem;">
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                                <div class="is-flex is-align-items-center">
+                                    <span class="icon has-text-primary mr-2">
+                                        <i class="fas fa-microchip"></i>
+                                    </span>
+                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">CPU</span>
+                                </div>
+                                <span class="tag is-light is-small" style="font-size: 0.65rem; opacity: 0.7;">{{.VM.CPUs}} vCPU{{if gt .VM.CPUs 1}}s{{end}}</span>
+                            </div>
+                            <p class="title is-5 mb-1 has-text-primary">
+                                {{if eq .VM.Status "running"}}{{printf "%.0f" (mul .VM.CPU 100)}}%{{else}}<span class="has-text-grey-light">--</span>{{end}}
                             </p>
-                        </div>
-                        <span class="icon is-large has-text-primary" style="opacity: 0.2;">
-                            <i class="fas fa-microchip fa-3x"></i>
-                        </span>
-                    </div>
-                    <p class="is-size-7 has-text-grey">{{.VM.CPUs}} cores</p>
-                    {{if eq .VM.Status "running"}}
-                    <progress class="progress is-small mt-2" value="{{mul .VM.CPU 100}}" max="100" style="height: 0.4rem;"></progress>
-                    {{end}}
-                </div>
-            </div>
-
-            <!-- Memory Card -->
-            <div class="column is-half">
-                <div class="stat-card border-left-success">
-                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
-                        <div>
-                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.RAM"}}</p>
-                            <p class="title is-4 mb-0 has-text-success">
-                                {{if eq .VM.Status "running"}}{{.FormattedMem}}{{else}}--{{end}}
-                            </p>
-                        </div>
-                        <span class="icon is-large has-text-success" style="opacity: 0.2;">
-                            <i class="fas fa-memory fa-3x"></i>
-                        </span>
-                    </div>
-                    <p class="is-size-7 has-text-grey">of {{.FormattedMaxMem}}</p>
-                    {{if eq .VM.Status "running"}}
-                    <progress class="progress is-success is-small mt-2" value="{{.VM.Mem}}" max="{{.VM.MaxMem}}" style="height: 0.4rem;"></progress>
-                    {{end}}
-                </div>
-            </div>
-
-            <!-- Disk Card -->
-            <div class="column is-half">
-                <div class="stat-card border-left-info">
-                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
-                        <div>
-                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Disk"}}</p>
-                            <p class="title is-4 mb-0 has-text-info">{{.FormattedMaxDisk}}</p>
-                        </div>
-                        <span class="icon is-large has-text-info" style="opacity: 0.2;">
-                            <i class="fas fa-hdd fa-3x"></i>
-                        </span>
-                    </div>
-                    <p class="is-size-7 has-text-grey">allocated</p>
-                </div>
-            </div>
-
-            <!-- Uptime Card -->
-            <div class="column is-half">
-                <div class="stat-card border-left-warning">
-                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
-                        <div>
-                            <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Uptime"}}</p>
-                            <p class="title is-6 mb-0 has-text-warning-dark">
-                                {{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Not running{{end}}
-                            </p>
-                        </div>
-                        <span class="icon is-large has-text-warning" style="opacity: 0.2;">
-                            <i class="fas fa-clock fa-3x"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Network Information -->
-        {{if .NetworkInterfaces}}
-        <div class="mb-5">
-            <div class="mb-4">
-                <h2 class="title is-5">
-                    <span class="icon-text">
-                        <span class="icon has-text-info"><i class="fas fa-network-wired"></i></span>
-                        <span>{{T "VMDetails.Label.Network"}}</span>
-                    </span>
-                </h2>
-            </div>
-            
-            <div class="table-container">
-                <table class="table is-fullwidth is-hoverable">
-                    <thead>
-                        <tr>
-                            <th>{{T "VMDetails.Label.Interface"}}</th>
-                            <th>{{T "VMDetails.Label.Bridge"}}</th>
-                            <th>{{T "VMDetails.Label.MACAddress"}}</th>
-                            <th>{{T "VMDetails.Label.IPAddress"}}</th>
-                            <th>{{T "VMDetails.Label.Firewall"}}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {{range $iface := .NetworkInterfaces}}
-                        <tr>
-                            <td>
-                                <span class="tag is-info is-light">{{$iface.Index}}</span>
-                                {{if $iface.Model}}
-                                <span class="tag is-light ml-2">{{$iface.Model}}</span>
-                                {{end}}
-                                {{if $iface.LinkDown}}
-                                <span class="tag is-warning ml-2" title="Link down">
-                                    <span class="icon is-small"><i class="fas fa-link-slash"></i></span>
-                                </span>
-                                {{end}}
-                            </td>
-                            <td>
-                                {{if $iface.Bridge}}
+                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">
+                                {{if eq .VM.Status "running"}}
                                 <span class="icon-text">
-                                    <span class="icon has-text-info"><i class="fas fa-project-diagram"></i></span>
+                                    <span class="icon is-small"><i class="fas fa-tachometer-alt"></i></span>
+                                    <span>{{.VM.CPUs}} core{{if gt .VM.CPUs 1}}s{{end}} actif{{if gt .VM.CPUs 1}}s{{end}}</span>
+                                </span>
+                                {{else}}
+                                <span>{{.VM.CPUs}} core{{if gt .VM.CPUs 1}}s{{end}}</span>
+                                {{end}}
+                            </p>
+                            {{if eq .VM.Status "running"}}
+                            <progress class="progress is-small is-primary mt-2" value="{{mul .VM.CPU 100}}" max="100" style="height: 4px;"></progress>
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- RAM Stat -->
+                    <div class="column is-one-third-tablet is-half-mobile">
+                        <div style="background: linear-gradient(135deg, #f0fdf4 0%, #fff 100%); border-left: 3px solid #48c774; border-radius: 8px; padding: 1rem;">
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                                <div class="is-flex is-align-items-center">
+                                    <span class="icon has-text-success mr-2">
+                                        <i class="fas fa-memory"></i>
+                                    </span>
+                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">RAM</span>
+                                </div>
+                                {{if eq .VM.Status "running"}}
+                                <span class="tag is-light is-small" style="font-size: 0.65rem; opacity: 0.7;">{{printf "%.0f" (mul (div (float64 .VM.Mem) (float64 .VM.MaxMem)) 100)}}%</span>
+                                {{end}}
+                            </div>
+                            <p class="title is-5 mb-1 has-text-success">
+                                {{if eq .VM.Status "running"}}{{.FormattedMem}}{{else}}<span class="has-text-grey-light">--</span>{{end}}
+                            </p>
+                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">
+                                {{if eq .VM.Status "running"}}
+                                <span class="icon-text">
+                                    <span class="icon is-small"><i class="fas fa-memory"></i></span>
+                                    <span>{{.FormattedMaxMem}} alloué</span>
+                                </span>
+                                {{else}}
+                                <span>{{.FormattedMaxMem}} total</span>
+                                {{end}}
+                            </p>
+                            {{if eq .VM.Status "running"}}
+                            <progress class="progress is-success is-small mt-2" value="{{.VM.Mem}}" max="{{.VM.MaxMem}}" style="height: 4px;"></progress>
+                            {{end}}
+                        </div>
+                    </div>
+
+                    <!-- Disk Stat -->
+                    <div class="column is-one-third-tablet is-half-mobile">
+                        <div style="background: linear-gradient(135deg, #eff6ff 0%, #fff 100%); border-left: 3px solid #3298dc; border-radius: 8px; padding: 1rem;">
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                                <div class="is-flex is-align-items-center">
+                                    <span class="icon has-text-info mr-2">
+                                        <i class="fas fa-hdd"></i>
+                                    </span>
+                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Disk</span>
+                                </div>
+                            </div>
+                            <p class="title is-5 mb-1 has-text-info">{{.FormattedMaxDisk}}</p>
+                        </div>
+                    </div>
+
+                    <!-- Network Summary Card -->
+                    {{if .NetworkInterfaces}}
+                    {{$ifaceCount := len .NetworkInterfaces}}
+                    <div class="column {{if eq $ifaceCount 1}}is-one-third-tablet is-half-mobile{{else}}is-full-tablet{{end}}">
+                        <div style="background: linear-gradient(135deg, #faf5ff 0%, #fff 100%); border-left: 3px solid #9b59b6; border-radius: 8px; padding: 1rem;">
+                            <div class="is-flex is-align-items-center mb-2">
+                                <span class="icon has-text-purple mr-2">
+                                    <i class="fas fa-network-wired"></i>
+                                </span>
+                                <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Network</span>
+                            </div>
+                            {{if eq $ifaceCount 1}}
+                            {{range $iface := .NetworkInterfaces}}
+                            <div class="mb-2">
+                                <span class="tag is-info is-light mb-2">{{$iface.Index}}</span>
+                                {{if $iface.LinkDown}}
+                                <span class="tag is-warning is-small ml-1"><i class="fas fa-link-slash"></i></span>
+                                {{end}}
+                            </div>
+                            {{if $iface.IPAddresses}}
+                            {{range $ip := $iface.IPAddresses}}
+                            <p class="is-size-7 has-text-grey-dark mb-1">
+                                <span class="icon is-small has-text-success"><i class="fas fa-circle" style="font-size: 0.4rem;"></i></span>
+                                <span>{{$ip}}</span>
+                            </p>
+                            {{end}}
+                            {{end}}
+                            {{if $iface.Bridge}}
+                            <p class="is-size-7 has-text-grey mt-2">
+                                <span class="icon-text">
+                                    <span class="icon is-small"><i class="fas fa-project-diagram"></i></span>
                                     <span>{{$iface.Bridge}}</span>
                                 </span>
-                                {{else}}
-                                <span class="has-text-grey-light">—</span>
-                                {{end}}
-                            </td>
-                            <td>
-                                {{if $iface.MACAddress}}
-                                <code>{{$iface.MACAddress}}</code>
-                                {{else}}
-                                <span class="has-text-grey-light">—</span>
-                                {{end}}
-                            </td>
-                            <td>
-                                {{if $iface.IPAddresses}}
-                                <div class="tags">
-                                    {{range $ip := $iface.IPAddresses}}
-                                    <span class="tag is-success is-light">
-                                        <span class="icon is-small"><i class="fas fa-network-wired"></i></span>
-                                        <span>{{$ip}}</span>
-                                    </span>
+                            </p>
+                            {{end}}
+                            {{end}}
+                            {{else}}
+                            <div class="is-flex is-flex-wrap-wrap" style="gap: 0.75rem;">
+                                {{range $iface := .NetworkInterfaces}}
+                                <div class="box" style="background: white; padding: 0.75rem; margin-bottom: 0; flex: 1; min-width: 200px;">
+                                    <div class="is-flex is-justify-content-space-between is-align-items-start mb-2">
+                                        <span class="tag is-info is-light">{{$iface.Index}}</span>
+                                        {{if $iface.LinkDown}}
+                                        <span class="tag is-warning is-small"><i class="fas fa-link-slash"></i></span>
+                                        {{end}}
+                                    </div>
+                                    {{if $iface.IPAddresses}}
+                                    <div class="mb-2">
+                                        {{range $ip := $iface.IPAddresses}}
+                                        <p class="is-size-7 has-text-grey-dark mb-1">
+                                            <span class="icon is-small has-text-success"><i class="fas fa-circle" style="font-size: 0.4rem;"></i></span>
+                                            <span>{{$ip}}</span>
+                                        </p>
+                                        {{end}}
+                                    </div>
                                     {{end}}
+                                    <div class="is-size-7 has-text-grey">
+                                        {{if $iface.Bridge}}
+                                        <span class="icon-text">
+                                            <span class="icon is-small"><i class="fas fa-project-diagram"></i></span>
+                                            <span>{{$iface.Bridge}}</span>
+                                        </span>
+                                        {{end}}
+                                    </div>
                                 </div>
-                                {{else}}
-                                <span class="has-text-grey-light" title="Guest agent not available or no IP assigned">—</span>
                                 {{end}}
-                            </td>
-                            <td>
-                                {{if $iface.Firewall}}
-                                <span class="tag is-success">
-                                    <span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
-                                    <span>{{T "VMDetails.Label.FirewallEnabled"}}</span>
-                                </span>
-                                {{else}}
-                                <span class="tag is-light">
-                                    <span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
-                                    <span>{{T "VMDetails.Label.FirewallDisabled"}}</span>
-                                </span>
-                                {{end}}
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {{end}}
-
-        <!-- Description -->
-        <div class="mb-5">
-            <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
-                <h2 class="title is-5">
-                    <span class="icon-text">
-                        <span class="icon has-text-link"><i class="fas fa-info-circle"></i></span>
-                        <span>{{T "VMDetails.Label.Description"}}</span>
-                    </span>
-                </h2>
-                {{if .ProxmoxConnected}}
-                <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-small is-light">
-                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                    <span>{{T "VMDetails.Modify"}}</span>
-                </a>
-                {{end}}
-            </div>
-            <div class="box content">
-                {{if .Description}}
-                    {{if .DescriptionHTML}}
-                    {{safeHTML .DescriptionHTML}}
-                    {{else}}
-                    <p>{{.Description}}</p>
-                    {{end}}
-                {{else}}
-                    <p class="has-text-grey-light is-italic">{{T "VMDetails.NoDescription"}}</p>
-                {{end}}
-            </div>
-        </div>
-
-        <!-- Tags -->
-        {{if .Tags}}
-        <div class="mb-5">
-            <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
-                <h2 class="title is-5">
-                    <span class="icon-text">
-                        <span class="icon has-text-primary"><i class="fas fa-tags"></i></span>
-                        <span>{{T "Common.Tags"}}</span>
-                    </span>
-                </h2>
-                {{if .ProxmoxConnected}}
-                <a href="{{printf "/vm/details/%d?edit=tags" .VM.VMID}}" class="button is-small is-light">
-                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                    <span>{{T "VMDetails.Modify"}}</span>
-                </a>
-                {{end}}
-            </div>
-            <div class="box">
-                <div class="tags are-medium">
-                    {{range $tag := split .Tags ", "}}
-                    <span class="tag tag-pvmss">{{$tag}}</span>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
                     {{end}}
                 </div>
             </div>
+
+            <!-- Quick Actions -->
+            <div class="card-content pt-0 pb-4 px-4" style="border-top: 1px solid rgb(0,0,0,6%);">
+                <div class="has-text-centered mb-2 mt-3">
+                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Actions rapides</span>
+                </div>
+                {{template "action_buttons" (dict 
+                    "VMID" .VM.VMID 
+                    "Node" .VM.Node 
+                    "Status" .VM.Status 
+                    "CSRFToken" .CSRFToken 
+                    "ProxmoxConnected" .ProxmoxConnected 
+                    "Lang" .Lang
+                    "ExtraClasses" "is-flex-wrap-wrap is-justify-content-center"
+                )}}
+            </div>
         </div>
-        {{end}}
+
+
+        <!-- Description & Tags Grid -->
+        <div class="columns is-variable is-5">
+            <!-- Description -->
+            <div class="column {{if .Tags}}is-7{{else}}is-12{{end}}">
+                <div class="card mb-5">
+                    <header class="card-header brand-header is-align-items-center">
+                        <p class="card-header-title">
+                            <span class="icon-text">
+                                <span class="icon"><i class="fas fa-info-circle"></i></span>
+                                <span>{{T "VMDetails.Label.Description"}}</span>
+                            </span>
+                        </p>
+                        {{if .ProxmoxConnected}}
+                        <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-small is-light mr-3">
+                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                            <span class="is-hidden-mobile">{{T "VMDetails.Modify"}}</span>
+                        </a>
+                        {{end}}
+                    </header>
+                    <div class="card-content content">
+                        {{if .Description}}
+                            {{if .DescriptionHTML}}
+                            {{safeHTML .DescriptionHTML}}
+                            {{else}}
+                            <p>{{.Description}}</p>
+                            {{end}}
+                        {{else}}
+                            <p class="has-text-grey-light is-italic mb-0">{{T "VMDetails.NoDescription"}}</p>
+                        {{end}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tags -->
+            {{if .Tags}}
+            <div class="column is-5">
+                <div class="card mb-5">
+                    <header class="card-header brand-header is-align-items-center">
+                        <p class="card-header-title">
+                            <span class="icon-text">
+                                <span class="icon"><i class="fas fa-tags"></i></span>
+                                <span>{{T "Common.Tags"}}</span>
+                            </span>
+                        </p>
+                        {{if .ProxmoxConnected}}
+                        <a href="{{printf "/vm/details/%d?edit=tags" .VM.VMID}}" class="button is-small is-light mr-3">
+                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                            <span class="is-hidden-mobile">{{T "VMDetails.Modify"}}</span>
+                        </a>
+                        {{end}}
+                    </header>
+                    <div class="card-content">
+                        <div class="tags are-medium">
+                            {{range $tag := split .Tags ", "}}
+                            <span class="tag tag-pvmss">{{$tag}}</span>
+                            {{end}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        </div>
 
         <!-- Empty state -->
         {{if and (not .Description) (not .Tags) .ProxmoxConnected}}
-        <div class="empty-state mb-5">
-            <span class="icon is-large has-text-grey-light mb-3" style="font-size: 3rem;">
-                <i class="fas fa-info-circle"></i>
-            </span>
-            <p class="has-text-grey mb-4"><strong>No description or tags yet</strong></p>
-            <p class="has-text-grey-light is-size-7 mb-4">Add information about this VM to help organize and document your infrastructure</p>
-            <div class="buttons is-centered">
-                <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-primary is-light">
-                    <span class="icon is-small"><i class="fas fa-plus"></i></span>
-                    <span>{{T "VMDetails.Modify"}}</span>
-                </a>
-                <a href="{{printf "/vm/details/%d?edit=tags" .VM.VMID}}" class="button is-warning is-light">
-                    <span class="icon is-small"><i class="fas fa-plus"></i></span>
-                    <span>{{T "VMDetails.Modify"}}</span>
-                </a>
+        <div class="card mb-5">
+            <div class="card-content has-text-centered py-6">
+                <span class="icon has-text-grey-lighter mb-3" style="font-size: 3rem;">
+                    <i class="fas fa-info-circle"></i>
+                </span>
+                <p class="title is-5 has-text-grey mb-3">No description or tags yet</p>
+                <p class="has-text-grey-light is-size-6 mb-4">Add information about this VM to help organize and document your infrastructure</p>
+                <div class="buttons is-centered">
+                    <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-primary is-light">
+                        <span class="icon"><i class="fas fa-edit"></i></span>
+                        <span>Add Description</span>
+                    </a>
+                    <a href="{{printf "/vm/details/%d?edit=tags" .VM.VMID}}" class="button is-link is-light">
+                        <span class="icon"><i class="fas fa-tags"></i></span>
+                        <span>Add Tags</span>
+                    </a>
+                </div>
             </div>
         </div>
         {{end}}
 
         <!-- Edit Description (Markdown) -->
         {{if .ShowDescriptionEditor}}
-                <div class="box mt-5">
-                    <h2 class="title is-5"><span class="icon"><i class="fas fa-edit"></i></span>&nbsp;{{T "VMDetails.EditDescriptionTitle"}}</h2>
-                    <form action="/vm/update/description" method="post">
-                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                        <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-                        <input type="hidden" name="node" value="{{.VM.Node}}" />
-                        <div class="field">
-                            <label for="description" class="label">{{T "VMDetails.DescriptionLabel"}}</label>
-                            <div class="control">
-                                <textarea id="description" name="description" class="textarea" rows="6" placeholder="{{T "VMDetails.DescriptionPlaceholder"}}">{{.Description}}</textarea>
-                            </div>
-                            <p class="help">{{T "VMDetails.DescriptionHelp"}}</p>
+        <div class="card mb-5">
+            <header class="card-header brand-header">
+                <p class="card-header-title">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-edit"></i></span>
+                        <span>{{T "VMDetails.EditDescriptionTitle"}}</span>
+                    </span>
+                </p>
+            </header>
+            <div class="card-content">
+                <form action="/vm/update/description" method="post">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                    <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                    <input type="hidden" name="node" value="{{.VM.Node}}" />
+                    <div class="field">
+                        <label for="description" class="label has-text-weight-semibold">{{T "VMDetails.DescriptionLabel"}}</label>
+                        <div class="control">
+                            <textarea id="description" name="description" class="textarea" rows="6" placeholder="{{T "VMDetails.DescriptionPlaceholder"}}">{{.Description}}</textarea>
                         </div>
-                        <div class="field is-grouped is-justify-content-space-between">
-                            <div class="control">
-                                <a class="button" href="{{printf "/vm/details/%d" .VM.VMID}}">
-                                    <span class="icon"><i class="fas fa-times"></i></span>
-                                    <span>{{T "Common.Cancel"}}</span>
-                                </a>
-                            </div>
-                            <div class="control">
-                                <button type="submit" class="button is-primary has-text-white" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
-                                    <span class="icon"><i class="fas fa-save"></i></span>
-                                    <span>{{T "VMDetails.SaveDescription"}}</span>
-                                </button>
-                            </div>
+                        <p class="help has-text-grey">{{T "VMDetails.DescriptionHelp"}}</p>
+                    </div>
+                    <hr class="my-4">
+                    <div class="field is-grouped is-justify-content-space-between">
+                        <div class="control">
+                            <a class="button is-light" href="{{printf "/vm/details/%d" .VM.VMID}}">
+                                <span class="icon"><i class="fas fa-times"></i></span>
+                                <span>{{T "Common.Cancel"}}</span>
+                            </a>
                         </div>
-                    </form>
-                </div>
+                        <div class="control">
+                            <button type="submit" class="button is-primary has-text-white" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
+                                <span class="icon"><i class="fas fa-save"></i></span>
+                                <span>{{T "VMDetails.SaveDescription"}}</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
         {{end}}
 
         <!-- Manage Tags -->
         {{if .ShowTagsEditor}}
-                <div class="box mt-5">
-                    <h2 class="title is-5"><span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "Common.Tags"}}</h2>
-                    <form action="/vm/update/tags" method="post">
-                        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-                        <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
-                        <input type="hidden" name="node" value="{{.VM.Node}}" />
-                        {{if .CurrentTags}}
-                        <p class="mb-3 is-size-7 has-text-grey">
+        <div class="card mb-5">
+            <header class="card-header brand-header">
+                <p class="card-header-title">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-tags"></i></span>
+                        <span>{{T "Common.Tags"}}</span>
+                    </span>
+                </p>
+            </header>
+            <div class="card-content">
+                <form action="/vm/update/tags" method="post">
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                    <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                    <input type="hidden" name="node" value="{{.VM.Node}}" />
+                    {{if .CurrentTags}}
+                    <div class="notification is-light is-info mb-4">
+                        <p class="is-size-7">
                             <strong>{{T "VMDetails.TagsCurrentlyAppliedPrefix"}}</strong> {{join .CurrentTags ", "}}
                         </p>
-                        {{end}}
-                        <div class="field">
-                            <label class="label">{{T "VMDetails.SelectTags"}}</label>
-                            <div class="tags">
-                                {{if .AllTags}}
-                                    {{range $tag := .AllTags}}
-                                        {{if eq $tag "pvmss"}}
-                                            <label class="checkbox mr-3" title="Mandatory tag">
-                                                <input type="checkbox" checked disabled />
-                                                <span class="tag is-primary">pvmss</span>
-                                                <!-- submit disabled value -->
-                                                <input type="hidden" name="tags" value="pvmss" />
-                                            </label>
-                                        {{else}}
-                                            <label class="checkbox mr-3">
-                                                <input type="checkbox" name="tags" value="{{$tag}}" {{if contains $.CurrentTags $tag}}checked{{end}} {{if not $.ProxmoxConnected}}disabled{{end}} />
-                                                <span class="tag is-light">{{$tag}}</span>
-                                            </label>
-                                        {{end}}
+                    </div>
+                    {{end}}
+                    <div class="field">
+                        <label class="label has-text-weight-semibold">{{T "VMDetails.SelectTags"}}</label>
+                        <div class="tags">
+                            {{if .AllTags}}
+                                {{range $tag := .AllTags}}
+                                    {{if eq $tag "pvmss"}}
+                                        <label class="checkbox mr-3" title="Mandatory tag">
+                                            <input type="checkbox" checked disabled />
+                                            <span class="tag is-primary">pvmss</span>
+                                            <!-- submit disabled value -->
+                                            <input type="hidden" name="tags" value="pvmss" />
+                                        </label>
+                                    {{else}}
+                                        <label class="checkbox mr-3">
+                                            <input type="checkbox" name="tags" value="{{$tag}}" {{if contains $.CurrentTags $tag}}checked{{end}} {{if not $.ProxmoxConnected}}disabled{{end}} />
+                                            <span class="tag is-light">{{$tag}}</span>
+                                        </label>
                                     {{end}}
-                                {{else}}
-                                    <span class="has-text-grey">{{T "VMDetails.NoTagsAvailable"}}</span>
                                 {{end}}
-                            </div>
+                            {{else}}
+                                <span class="has-text-grey">{{T "VMDetails.NoTagsAvailable"}}</span>
+                            {{end}}
                         </div>
-                        <div class="field is-grouped is-justify-content-space-between">
-                            <div class="control">
-                                <a class="button" href="{{printf "/vm/details/%d" .VM.VMID}}">
-                                    <span class="icon"><i class="fas fa-times"></i></span>
-                                    <span>{{T "Common.Cancel"}}</span>
-                                </a>
-                            </div>
-                            <div class="control">
-                                <button type="submit" class="button is-primary has-text-white" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
-                                    <span class="icon"><i class="fas fa-save"></i></span>
-                                    <span>{{T "VMDetails.SaveTags"}}</span>
-                                </button>
-                            </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="field is-grouped is-justify-content-space-between">
+                        <div class="control">
+                            <a class="button is-light" href="{{printf "/vm/details/%d" .VM.VMID}}">
+                                <span class="icon"><i class="fas fa-times"></i></span>
+                                <span>{{T "Common.Cancel"}}</span>
+                            </a>
                         </div>
-                    </form>
-                </div>
+                        <div class="control">
+                            <button type="submit" class="button is-primary has-text-white" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
+                                <span class="icon"><i class="fas fa-save"></i></span>
+                                <span>{{T "VMDetails.SaveTags"}}</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
         {{end}}
     </div>
 
