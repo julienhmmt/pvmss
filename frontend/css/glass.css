@@ -100,6 +100,17 @@ body::before {
   transition: all var(--transition-slow);
 }
 
+.card.no-hover {
+  overflow: visible;
+  position: relative;
+  z-index: 0;
+}
+
+.card.no-hover:hover,
+.card.no-hover:focus-within {
+  z-index: 20;
+}
+
 .card.is-hoverable:hover,
 .node-card:hover {
   transform: translateY(-4px);
