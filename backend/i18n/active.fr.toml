@@ -627,6 +627,32 @@ other = "Pool de ressources"
 ["VM.Create.StorageHelp"]
 other = "Sélectionnez un stockage pour votre machine virtuelle"
 
+# VM Creation - Tooltips
+["VM.Create.Tooltip.Name"]
+other = "Nom de votre machine virtuelle. Utilisez un nom descriptif pour faciliter la gestion ou en cohérence avec les normes de votre organisation (ex : web-server, jh-pvmss-01-fr)."
+["VM.Create.Tooltip.Description"]
+other = "Description de la VM. Ajoutez des informations sur le projet, l'environnement ou les services hébergés. Le markdown est supporté."
+["VM.Create.Tooltip.VMID"]
+other = "Identifiant unique de la VM dans Proxmox (100-999999999). Cet ID permet de retrouver et d'organiser les machines virtuelles. Laissez vide pour génération automatique."
+["VM.Create.Tooltip.CPU"]
+other = "Configuration des ressources CPU : sockets = nombre de CPU physiques (ne pas excéder le nombre de sockets disponibles), cores = nombre de cœurs par socket. Plus de cores peut améliorer les performances multi-tâches, selon le type d'utilisation."
+["VM.Create.Tooltip.Memory"]
+other = "Mémoire vive allouée à la VM en mégaoctets (MB). Recommandé : minimum 2048 MB (2 GB)."
+["VM.Create.Tooltip.DiskSize"]
+other = "Taille du disque virtuel en gigaoctets (GB). Prévoyez l'espace pour le système d'exploitation, les applications et vos données. Extensible ultérieurement si nécessaire."
+["VM.Create.Tooltip.Storage"]
+other = "Emplacement où sera créé le disque de la VM. Suivez les instructions ou demandez aux administrateurs pour sélectionner le stockage approprié."
+["VM.Create.Tooltip.Node"]
+other = "Serveur Proxmox physique où sera hébergée la VM. Suivez les instructions ou demandez aux administrateurs pour sélectionner le nœud approprié."
+["VM.Create.Tooltip.Pool"]
+other = "Pool de ressources Proxmox pour regrouper et gérer vos VMs. Chaque utilisateur dispose d'un pool dédié pour l'organisation et les quotas."
+["VM.Create.Tooltip.ISO"]
+other = "Image ISO du système d'exploitation à installer (Linux, Windows, etc.). L'ISO sera monté comme un CD-ROM virtuel au démarrage de la VM une seule fois."
+["VM.Create.Tooltip.Network"]
+other = "Connexion réseau virtuelle pour la VM. Détermine le réseau auquel la VM aura accès (Internet, réseau interne, VLAN spécifique)."
+["VM.Create.Tooltip.Tags"]
+other = "Étiquettes de catégorisation pour organiser vos VMs. Cliquez sur un tag pour le sélectionner. Le tag 'pvmss' est obligatoire et ne peut pas être modifié."
+
 # ===========
 # VM Details
 # ===========

@@ -1,0 +1,276 @@
+/* ============================================
+   TOOLTIP SYSTEM - Modern & Accessible
+   ============================================ */
+
+/* Tooltip container */
+.has-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Tooltip icon */
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: white;
+  font-size: 0.625rem;
+  font-weight: 700;
+  cursor: help;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.tooltip-icon:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(245, 124, 0, 0.3);
+}
+
+/* Tooltip content */
+.tooltip-content {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+  color: white;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  white-space: normal;
+  min-width: 200px;
+  max-width: 320px;
+  z-index: 9999; /* Very high z-index to appear above all elements */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25), 0 4px 8px rgba(0, 0, 0, 0.15);
+  font-weight: 400;
+}
+
+/* Tooltip arrow */
+.tooltip-content::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #374151;
+}
+
+/* Show tooltip on hover */
+.has-tooltip:hover .tooltip-content,
+.tooltip-icon:hover + .tooltip-content,
+.tooltip-icon:focus + .tooltip-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-12px);
+}
+
+/* Tooltip variants for different positions */
+.has-tooltip.tooltip-right .tooltip-content {
+  bottom: auto;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(8px);
+}
+
+.has-tooltip.tooltip-right .tooltip-content::after {
+  top: 50%;
+  left: -6px;
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.has-tooltip.tooltip-right:hover .tooltip-content {
+  transform: translateY(-50%) translateX(12px);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .tooltip-content {
+    max-width: 250px;
+    font-size: 0.75rem;
+    padding: 0.625rem 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip-icon,
+  .tooltip-content {
+    transition: none;
+  }
+  
+  .tooltip-icon:hover {
+    transform: none;
+  }
+  
+  .has-tooltip:hover .tooltip-content {
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+
+/* ============================================
+   FORM ENHANCEMENTS
+   ============================================ */
+
+/* Enhanced label styling */
+.label.has-tooltip-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Card enhancements for form sections */
+.card.no-hover {
+  border-radius: 0.875rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  overflow: visible; /* Allow tooltips to overflow */
+}
+
+.card.no-hover:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border-color: #d1d5db;
+}
+
+/* Ensure card content allows tooltip overflow */
+.card-content {
+  overflow: visible;
+}
+
+.card-header {
+  overflow: visible;
+}
+
+/* Input focus enhancement */
+.input:focus,
+.textarea:focus,
+.select select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.1);
+}
+
+/* Field spacing improvements */
+.field:not(:last-child) {
+  margin-bottom: 1.25rem;
+}
+
+/* Help text styling */
+.help.has-text-grey-light {
+  font-size: 0.8125rem;
+  margin-top: 0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.help.has-text-grey-light::before {
+  content: "ℹ️";
+  font-size: 0.875rem;
+}
+
+/* Tag selection enhancement */
+.tags.are-medium label {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.tags.are-medium label:hover {
+  transform: translateY(-2px);
+}
+
+.tags.are-medium label:active {
+  transform: translateY(0);
+}
+
+/* Disabled state styling */
+fieldset[disabled] .card {
+  filter: grayscale(0.3);
+}
+
+/* Section header with icon */
+.card-header.brand-header {
+  padding: 1rem 1.25rem;
+}
+
+.card-header-title .icon-text {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-weight: 600;
+}
+
+/* Input groups with units */
+.field.has-addons .button.is-static {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.875rem;
+  min-width: 3.5rem;
+}
+
+/* Number input styling */
+input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Select dropdown enhancement */
+.select select {
+  cursor: pointer;
+}
+
+.select select option:disabled {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Action buttons */
+.field.is-grouped button {
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.625rem 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.field.is-grouped button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.field.is-grouped button:active {
+  transform: translateY(0);
+}
+
+/* Column spacing */
+.columns.is-multiline > .column {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.columns.is-multiline > .column .card {
+  height: 100%;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .card-header.brand-header {
+    padding: 0.875rem 1rem;
+  }
+  
+  .field.has-addons .button.is-static {
+    min-width: 3rem;
+  }
+}
