@@ -338,6 +338,8 @@ other = "Running VMs"
 other = "Stopped VMs"
 ["Profile.PausedVMs"]
 other = "Paused VMs"
+["Profile.Overview"]
+other = "Overview"
 ["Profile.Security"]
 other = "Security"
 ["Profile.SecurityDescription"]

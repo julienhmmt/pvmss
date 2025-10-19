@@ -64,12 +64,12 @@
                             <span class="icon is-small has-text-primary mr-1">
                                 <i class="fas fa-chart-line"></i>
                             </span>
-                            <span class="is-size-7 has-text-grey-dark has-text-weight-semibold">Vue d'ensemble</span>
+                            <span class="is-size-7 has-text-grey-dark has-text-weight-semibold">{{T "Profile.Overview"}}</span>
                         </div>
                     </div>
                 </div>
 
-                <hr class="my-3" style="background-color: rgba(0,0,0,0.06);">
+                <hr class="my-3" style="background-color: rgb(0,0,0,6%);">
 
                 <!-- Stats Section: Horizontal inline stats with dividers -->
                 {{if .VMs}}
@@ -83,7 +83,7 @@
                         </div>
                     </div>
                     <div class="column is-narrow px-0">
-                        <div class="py-2" style="border-left: 2px solid rgba(0,0,0,0.06); height: 100%;"></div>
+                        <div class="py-2" style="border-left: 2px solid rgb(0,0,0,6%); height: 100%;"></div>
                     </div>
                     <div class="column">
                         <div class="py-2">
@@ -96,7 +96,7 @@
                         </div>
                     </div>
                     <div class="column is-narrow px-0">
-                        <div class="py-2" style="border-left: 2px solid rgba(0,0,0,0.06); height: 100%;"></div>
+                        <div class="py-2" style="border-left: 2px solid rgb(0,0,0,6%); height: 100%;"></div>
                     </div>
                     <div class="column">
                         <div class="py-2">
@@ -175,9 +175,6 @@
                                 </td>
                                 <td class="is-vcentered">
                                     <div class="is-flex is-align-items-center">
-                                        <span class="icon has-text-primary mr-2">
-                                            <i class="fas fa-desktop"></i>
-                                        </span>
                                         <span class="has-text-weight-semibold">{{if .Name}}{{.Name}}{{else}}<em class="has-text-grey-light">Sans nom</em>{{end}}</span>
                                     </div>
                                 </td>
@@ -185,13 +182,10 @@
                                     <span class="is-size-7">{{if .Description}}{{.Description}}{{else}}<em class="has-text-grey-light">{{T "Profile.NoDescription"}}</em>{{end}}</span>
                                 </td>
                                 <td class="has-text-centered is-vcentered">
-                                    <span class="tag is-small">
-                                        <span class="icon"><i class="fas fa-server"></i></span>
-                                        <span>{{.Node}}</span>
-                                    </span>
+                                    <span class="tag is-small">{{.Node}}</span>
                                 </td>
                                 <td class="has-text-centered is-vcentered">
-                                    {{template "status_badge" (dict "Status" .Status "WithIcon" true "HasTextWhite" true)}}
+                                    {{template "status_badge" (dict "Status" .Status "WithIcon" true)}}
                                 </td>
                                 <td class="has-text-centered is-vcentered">
                                     <div class="buttons is-centered mb-0">
