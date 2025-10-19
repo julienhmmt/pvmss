@@ -442,6 +442,8 @@ other = "Filtrer"
 other = "Mémoire"
 ["Search.Name"]
 other = "Nom"
+["Search.Description"]
+other = "Description"
 ["Search.Node"]
 other = "Nœud"
 ["Search.NoResults"]
@@ -450,6 +452,8 @@ other = "Aucune machine virtuelle ne correspond à vos critères."
 other = "Essayez d'ajuster vos critères de recherche ou vérifiez si la VM existe."
 ["Search.NoName"]
 other = "Sans nom"
+["Search.NoDescription"]
+other = "Sans description"
 ["Search.Placeholder"]
 other = "Rechercher par ID ou Nom..."
 ["Search.PlaceholderName"]

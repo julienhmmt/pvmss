@@ -123,6 +123,9 @@
                                 <th>
                                     <span>{{T "Search.Name"}}</span>
                                 </th>
+                                <th>
+                                    <span>{{T "Search.Description"}}</span>
+                                </th>
                                 <th class="has-text-centered" width="150">
                                     <span>{{T "Search.Node"}}</span>
                                 </th>
@@ -144,6 +147,9 @@
                                     <div class="is-flex is-align-items-center">
                                         <span class="has-text-weight-semibold">{{if .name}}{{.name}}{{else}}<em class="has-text-grey-light">{{T "Search.NoName"}}</em>{{end}}</span>
                                     </div>
+                                </td>
+                                <td>
+                                    <span>{{if .description}}{{.description}}{{else}}<em class="has-text-grey-light">{{T "Search.NoDescription"}}</em>{{end}}</span>
                                 </td>
                                 <td class="has-text-centered">
                                     <span class="tag is-medium">
