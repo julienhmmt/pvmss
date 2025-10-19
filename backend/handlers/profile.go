@@ -32,10 +32,11 @@ func (h *ProfileHandler) RegisterRoutes(router *httprouter.Router) {
 
 // VMInfo represents a VM in the user's pool
 type VMInfo struct {
-	VMID   int
-	Name   string
-	Node   string
-	Status string
+	VMID        int
+	Name        string
+	Description string
+	Node        string
+	Status      string
 }
 
 // ShowProfile renders the user profile page
@@ -183,11 +184,22 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 				}
 			}
 
+			// Get VM description from config
+			var description string
+			if vmConfig, err := proxmox.GetVMConfigWithContext(fetchCtx, client, vm.Node, vm.VMID); err == nil {
+				if desc, exists := vmConfig["description"]; exists {
+					if descStr, ok := desc.(string); ok {
+						description = descStr
+					}
+				}
+			}
+
 			vms = append(vms, VMInfo{
-				VMID:   vm.VMID,
-				Name:   vm.Name,
-				Node:   vm.Node,
-				Status: strings.ToLower(status),
+				VMID:        vm.VMID,
+				Name:        vm.Name,
+				Description: description,
+				Node:        vm.Node,
+				Status:      strings.ToLower(status),
 			})
 		}
 	}
