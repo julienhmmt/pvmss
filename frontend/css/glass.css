@@ -1,0 +1,528 @@
+/* ============================================
+   GLASSMORPHISM - Modern Apple-style Design
+   Effet de verre élégant et professionnel
+   ============================================ */
+
+/* ============================================
+   BODY & BACKGROUND
+   ============================================ */
+body {
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Subtle warm pattern overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(255, 136, 0, 0.01) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(230, 119, 0, 0.008) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================
+   NAVBAR - Glass Effect
+   ============================================ */
+.navbar {
+  background: var(--glass-opacity-normal);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-md);
+}
+
+.navbar-item {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar-item:hover {
+  background: rgba(255, 136, 0, 0.06);
+  transform: translateY(-0.5px);
+}
+
+.navbar-item.is-active {
+  background: rgba(255, 136, 0, 0.12);
+  position: relative;
+}
+
+.navbar-item.is-active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  border-radius: 3px 3px 0 0;
+}
+
+/* ============================================
+   BOXES & CONTAINERS - Glass Surface
+   ============================================ */
+.box,
+.admin-box {
+  background: var(--glass-opacity-light);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg), var(--shadow-inner);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-slow);
+}
+
+.box:hover,
+.admin-box:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-xl), var(--shadow-inner);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ============================================
+   CARDS - Elegant Glass Cards
+   ============================================ */
+.card,
+.admin-card,
+.node-card {
+  background: var(--glass-opacity-normal);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg), var(--shadow-inner);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all var(--transition-slow);
+}
+
+.card.is-hoverable:hover,
+.node-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl), var(--shadow-inner);
+  border-color: rgba(255, 136, 0, 0.15);
+}
+
+.card-header,
+.card-header.brand-header {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+}
+
+.card-header.brand-header {
+  background: linear-gradient(135deg, 
+    rgba(255, 136, 0, 0.85) 0%, 
+    rgba(230, 119, 0, 0.9) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent,
+    rgba(255, 255, 255, 0.6),
+    transparent);
+}
+
+/* ============================================
+   WELCOME BLOCK - Hero Glass Effect
+   ============================================ */
+.welcome-block {
+  background: var(--glass-opacity-strong);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--shadow-xl), var(--shadow-inner);
+  border-radius: var(--radius-xl);
+}
+
+/* ============================================
+   HERO - Gradient Glass
+   ============================================ */
+.hero.is-primary {
+  background: linear-gradient(135deg, 
+    rgba(255, 136, 0, 0.9) 0%, 
+    rgba(230, 119, 0, 0.95) 50%,
+    rgba(204, 102, 0, 0.9) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero.is-primary::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: heroShine 20s ease-in-out infinite;
+}
+
+@keyframes heroShine {
+  0%, 100% { transform: translate(0%, 0%) scale(1); opacity: 0.2; }
+  50% { transform: translate(10%, 10%) scale(1.1); opacity: 0.35; }
+}
+
+/* ============================================
+   FORMS - Glass Inputs
+   ============================================ */
+.input,
+.textarea,
+.select select {
+  background: var(--glass-opacity-strong);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.03),
+    inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all var(--transition-base);
+}
+
+.input:hover,
+.textarea:hover,
+.select select:hover {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.05),
+    inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.input:focus,
+.textarea:focus,
+.select select:focus {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--primary);
+  box-shadow: 
+    0 0 0 4px rgba(255, 136, 0, 0.1),
+    0 4px 12px rgba(255, 136, 0, 0.15),
+    inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================
+   BUTTONS - Modern Glass Buttons
+   ============================================ */
+.button {
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transition: left 0.6s ease;
+}
+
+.button:hover::before {
+  left: 100%;
+}
+
+.button.is-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  border: none;
+  box-shadow: 
+    0 3px 10px rgba(255, 136, 0, 0.25),
+    0 1px 3px rgba(255, 136, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.button.is-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 6px 18px rgba(255, 136, 0, 0.3),
+    0 2px 6px rgba(255, 136, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.button.is-primary:active {
+  transform: translateY(0);
+}
+
+.button.is-light,
+.button.is-ghost {
+  background: var(--glass-opacity-medium);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.button.is-light:hover,
+.button.is-ghost:hover {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(0, 0, 0, 0.12);
+  transform: translateY(-0.5px);
+}
+
+/* ============================================
+   ADMIN MENU - Sidebar Glass
+   ============================================ */
+.admin-menu {
+  background: var(--glass-opacity-normal);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg), var(--shadow-inner);
+}
+
+.admin-menu .menu-list a {
+  background: transparent;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-menu .menu-list a:hover {
+  background: rgba(255, 136, 0, 0.06);
+}
+
+.admin-menu .menu-list a.is-active {
+  background: linear-gradient(135deg, 
+    rgba(255, 136, 0, 0.9) 0%, 
+    rgba(230, 119, 0, 0.95) 100%);
+  box-shadow: 
+    0 4px 12px rgba(255, 136, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
+   TABLES - Glass Table Design
+   ============================================ */
+.table-container {
+  background: var(--glass-opacity-normal);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg), var(--shadow-inner);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table.modern {
+  background: transparent;
+  border: none;
+}
+
+.table.modern thead th {
+  background: rgba(248, 249, 250, 0.8);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+}
+
+.table.modern tbody tr {
+  background: transparent;
+  transition: background-color 0.2s ease;
+}
+
+.table.modern tbody tr:hover {
+  background: rgba(255, 136, 0, 0.04);
+}
+
+/* ============================================
+   TAGS - Glass Badge Effect
+   ============================================ */
+.tag {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.tag.is-success {
+  background: var(--success-light);
+}
+
+.tag.is-info {
+  background: var(--info-light);
+}
+
+.tag.is-warning {
+  background: var(--warning-light);
+}
+
+.tag.is-danger {
+  background: var(--danger-light);
+}
+
+/* ============================================
+   PROGRESS BARS - Glass Progress
+   ============================================ */
+.progress::-webkit-progress-bar {
+  background: rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress::-webkit-progress-value {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+/* ============================================
+   NOTIFICATIONS - Glass Alerts
+   ============================================ */
+.notification {
+  background: var(--glass-opacity-solid);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 6px 24px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-md);
+}
+
+.notification.is-danger {
+  background: var(--danger-light);
+  border-left: 3px solid var(--danger);
+}
+
+.notification.is-success {
+  background: var(--success-light);
+  border-left: 3px solid var(--success);
+}
+
+.notification.is-warning {
+  background: var(--warning-light);
+  border-left: 3px solid var(--warning);
+}
+
+.notification.is-info {
+  background: var(--info-light);
+  border-left: 3px solid var(--info);
+}
+
+/* ============================================
+   MODALS - Glass Modal Overlay
+   ============================================ */
+.modal-background {
+  backdrop-filter: blur(8px) saturate(120%);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.modal-card,
+.modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: var(--blur-lg) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-lg) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 20px 80px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.modal-card-head,
+.modal-card-foot {
+  background: rgba(248, 249, 250, 0.8);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================
+   FOOTER - Subtle Glass Footer
+   ============================================ */
+.footer {
+  background: var(--glass-opacity-light);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.03);
+}
+
+/* ============================================
+   ACCESSIBILITY & REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .hero.is-primary::before {
+    animation: none;
+  }
+  
+  .button::before {
+    display: none;
+  }
+}
+
+/* ============================================
+   FALLBACK FOR NON-SUPPORTING BROWSERS
+   ============================================ */
+@supports not (backdrop-filter: blur(20px)) {
+  .navbar,
+  .box,
+  .card,
+  .admin-box,
+  .welcome-block,
+  .admin-menu,
+  .table-container,
+  .notification,
+  .modal-card,
+  .footer,
+  .input,
+  .textarea,
+  .select select {
+    background: rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+@media screen and (max-width: 768px) {
+  /* Reduce blur for performance on mobile */
+  .navbar,
+  .box,
+  .card,
+  .admin-box {
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+  }
+  
+  /* Simplify shadows and transforms on mobile */
+  .box:hover,
+  .card:hover {
+    transform: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  }
+  
+  .button:hover {
+    transform: none;
+  }
+  
+  .navbar-item:hover {
+    transform: none;
+  }
+}

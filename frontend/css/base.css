@@ -50,10 +50,11 @@ html {
    ============================================ */
 .box {
   background-color: var(--surface);
-  box-shadow: var(--shadow-color);
+  box-shadow: var(--shadow-md);
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
 .box .title {
@@ -67,18 +68,24 @@ html {
 
 .card {
   background-color: var(--card-bg);
-  box-shadow: var(--shadow-color);
+  box-shadow: var(--shadow-md);
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   height: 100%;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform var(--transition-slow), box-shadow var(--transition-slow);
+}
+
+/* Cards with no hover effect */
+.card.no-hover,
+.card.admin-card {
+  transition: none;
 }
 
 .card.no-hover:hover,
 .card.admin-card:hover {
   transform: none;
-  box-shadow: var(--shadow-color);
+  box-shadow: var(--shadow-md);
 }
 
 .card-header {
@@ -115,7 +122,8 @@ html {
   background-color: var(--surface);
   color: var(--text);
   border-color: var(--border);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
 .input::placeholder,
@@ -128,7 +136,7 @@ html {
 .textarea:focus,
 .select select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(255, 136, 0, 0.12);
+  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.1);
   outline: none;
 }
 
@@ -201,7 +209,7 @@ html {
 
 .table-container {
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 

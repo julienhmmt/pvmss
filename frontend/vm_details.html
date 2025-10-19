@@ -76,11 +76,11 @@
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.CPU"}}</p>
-                            <p class="title is-4 mb-0" style="color: #ff8800;">
+                            <p class="title is-4 mb-0 has-text-primary">
                                 {{if eq .VM.Status "running"}}{{printf "%.0f" (mul .VM.CPU 100)}}%{{else}}--{{end}}
                             </p>
                         </div>
-                        <span class="icon is-large" style="color: #ff8800; opacity: 0.2;">
+                        <span class="icon is-large has-text-primary" style="opacity: 0.2;">
                             <i class="fas fa-microchip fa-3x"></i>
                         </span>
                     </div>
@@ -97,11 +97,11 @@
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.RAM"}}</p>
-                            <p class="title is-4 mb-0" style="color: #48c774;">
+                            <p class="title is-4 mb-0 has-text-success">
                                 {{if eq .VM.Status "running"}}{{.FormattedMem}}{{else}}--{{end}}
                             </p>
                         </div>
-                        <span class="icon is-large" style="color: #48c774; opacity: 0.2;">
+                        <span class="icon is-large has-text-success" style="opacity: 0.2;">
                             <i class="fas fa-memory fa-3x"></i>
                         </span>
                     </div>
@@ -118,9 +118,9 @@
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Disk"}}</p>
-                            <p class="title is-4 mb-0" style="color: #3298dc;">{{.FormattedMaxDisk}}</p>
+                            <p class="title is-4 mb-0 has-text-info">{{.FormattedMaxDisk}}</p>
                         </div>
-                        <span class="icon is-large" style="color: #3298dc; opacity: 0.2;">
+                        <span class="icon is-large has-text-info" style="opacity: 0.2;">
                             <i class="fas fa-hdd fa-3x"></i>
                         </span>
                     </div>
@@ -134,11 +134,11 @@
                     <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
                         <div>
                             <p class="has-text-grey is-size-7 mb-1">{{T "VMDetails.Label.Uptime"}}</p>
-                            <p class="title is-6 mb-0" style="color: #947600;">
+                            <p class="title is-6 mb-0 has-text-warning-dark">
                                 {{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Not running{{end}}
                             </p>
                         </div>
-                        <span class="icon is-large" style="color: #ffdd57; opacity: 0.2;">
+                        <span class="icon is-large has-text-warning" style="opacity: 0.2;">
                             <i class="fas fa-clock fa-3x"></i>
                         </span>
                     </div>
@@ -152,7 +152,7 @@
             <div class="mb-4">
                 <h2 class="title is-5">
                     <span class="icon-text">
-                        <span class="icon" style="color: #3298dc;"><i class="fas fa-network-wired"></i></span>
+                        <span class="icon has-text-info"><i class="fas fa-network-wired"></i></span>
                         <span>{{T "VMDetails.Label.Network"}}</span>
                     </span>
                 </h2>
@@ -240,7 +240,7 @@
             <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
                 <h2 class="title is-5">
                     <span class="icon-text">
-                        <span class="icon" style="color: #3273dc;"><i class="fas fa-info-circle"></i></span>
+                        <span class="icon has-text-link"><i class="fas fa-info-circle"></i></span>
                         <span>{{T "VMDetails.Label.Description"}}</span>
                     </span>
                 </h2>
@@ -270,7 +270,7 @@
             <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
                 <h2 class="title is-5">
                     <span class="icon-text">
-                        <span class="icon" style="color: #ff8800;"><i class="fas fa-tags"></i></span>
+                        <span class="icon has-text-primary"><i class="fas fa-tags"></i></span>
                         <span>{{T "Common.Tags"}}</span>
                     </span>
                 </h2>

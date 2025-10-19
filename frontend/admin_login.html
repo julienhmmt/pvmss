@@ -1,16 +1,14 @@
 {{define "admin_login"}}
 {{$lang := .Lang}}
-<section class="section" style="min-height: 100vh; display: flex; align-items: center; padding: 2rem 1rem;">
+<section class="section min-h-100vh flex-center" style="padding: 2rem 1rem;">
   <div class="container">
     <div class="columns is-centered">
       <div class="column is-10-mobile is-8-tablet is-6-desktop is-5-widescreen">
-        <div class="card admin-card" style="box-shadow: 0 20px 60px rgba(239, 68, 68, 0.15); border-radius: 16px; overflow: hidden;">
-          <header class="card-header brand-header is-align-items-center" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none; padding: 2rem 1.5rem;">
-            <p class="card-header-title" style="color: #ffffff; font-size: 1.5rem; justify-content: center; font-weight: 700; letter-spacing: -0.025em;">
-              <span class="icon" style="font-size: 2rem; margin-right: 0.75rem;"><i class="fas fa-shield-alt"></i></span>{{T "AdminLogin.Title"}}
-            </p>
+        <div class="card admin-card admin-danger-card">
+          <header class="card-header brand-header brand-header-danger is-align-items-center">
+            <p class="card-header-title has-text-centered">{{T "AdminLogin.Title"}}</p>
           </header>
-          <div class="card-content" style="padding: 3rem 2.5rem;">
+          <div class="card-content p-6">
             {{if .Error}}
             {{template "notification" (dict 
               "Type" "danger" 
@@ -36,20 +34,17 @@
 
               <!-- Admin Password Field -->
               <div class="field">
-                <label class="label" for="password" style="font-weight: 600; color: #374151; margin-bottom: 0.75rem; font-size: 0.95rem;">
+                <label class="label" for="password">
                   {{T "AdminLogin.PasswordLabel"}}
                 </label>
-                <div class="control has-icons-left">
-                  <input class="input is-large" type="password" id="password" name="password" required autofocus autocomplete="current-password" aria-required="true" placeholder="{{T "AdminLogin.PasswordLabel"}}" style="border-radius: 10px; border: 2px solid #e5e7eb; padding: 0.75rem 1rem 0.75rem 3rem; font-size: 1rem; height: auto;" />
-                  <span class="icon is-left" style="height: 100%; align-items: center; color: #9ca3af;">
-                    <i class="fas fa-lock"></i>
-                  </span>
+                <div class="control">
+                  <input class="input is-large" type="password" id="password" name="password" required autofocus autocomplete="current-password" aria-required="true" placeholder="{{T "AdminLogin.PasswordLabel"}}" />
                 </div>
               </div>
 
-              <div class="field" style="margin-top: 2rem;">
+              <div class="field mt-5">
                 <div class="control">
-                  <button class="button is-danger is-fullwidth is-large has-text-white" type="submit" aria-label="{{T "AdminLogin.Button"}}" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none; border-radius: 10px; font-weight: 700; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25); height: auto; padding: 0.875rem 1.5rem; font-size: 1.125rem; letter-spacing: 0.025em;">
+                  <button class="button is-danger is-fullwidth is-large has-text-white admin-button" type="submit" aria-label="{{T "AdminLogin.Button"}}">
                     <span class="icon is-medium" aria-hidden="true">
                       <i class="fas fa-sign-in-alt"></i>
                     </span>
@@ -60,15 +55,15 @@
             </form>
 
             <!-- Divider -->
-            <div class="has-text-centered" style="margin: 2.5rem 0 2rem 0; position: relative;">
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 0;" />
-              <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0 1.5rem; color: #6b7280; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;"></span>
+            <div class="divider-with-text">
+              <hr />
+              <span></span>
             </div>
 
             <!-- User Login Button -->
             <div class="has-text-centered">
-              <a class="button is-light is-fullwidth" href="/login" style="border-radius: 10px; border: 2px solid #e5e7eb; background: #ffffff; color: #374151; font-weight: 600; height: auto; padding: 0.75rem 1.5rem;">
-                <span class="icon has-text-grey">
+              <a class="button is-light is-fullwidth login-alt-button" href="/login">
+                <span class="icon has-text-primary">
                   <i class="fas fa-user"></i>
                 </span>
                 <span>{{T "AdminLogin.UserLoginLink"}}</span>
