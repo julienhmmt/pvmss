@@ -48,7 +48,7 @@
                 </div>
 
                 <div class="buttons is-justify-content-space-between mt-5">
-                    <a href="{{printf "/vm/details/%d" .VM.VMID}}" class="button is-medium">
+                    <a href="{{printf "/vm/details/%d?refresh=1" .VM.VMID}}" class="button is-medium">
                         <span class="icon"><i class="fas fa-arrow-left"></i></span>
                         <span>{{T "Common.No"}}</span>
                     </a>

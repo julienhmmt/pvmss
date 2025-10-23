@@ -730,6 +730,8 @@ other = "Are you sure you want to delete this VM?"
 other = "VM deleted successfully"
 ["VMDelete.BackInfo"]
 other = "Click 'No' to go back to the VM details page"
+["VMDelete.Error"]
+other = "VM deletion failed"
 
 # Uptime formatting
 ["Uptime.NotRunning"]

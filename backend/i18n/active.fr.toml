@@ -772,6 +772,8 @@ other = "Êtes-vous sûr de vouloir supprimer cette VM ?"
 other = "VM supprimée avec succès"
 ["VMDelete.BackInfo"]
 other = "Cliquez sur 'Non' pour revenir à la page des détails de la VM"
+["VMDelete.Error"]
+other = "Suppression de la VM échouée"
 
 # Formatage du temps de fonctionnement
 ["Uptime.NotRunning"]
