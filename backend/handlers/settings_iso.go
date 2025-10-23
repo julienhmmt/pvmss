@@ -30,14 +30,20 @@ type NodeISOGroup struct {
 	ISOs []ISOEntry `json:"isos"`
 }
 
-// fetchAllISOs retrieves all ISOs from all nodes and storages
+// fetchAllISOs retrieves all ISOs from all nodes and storages using resty
 func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.ClientInterface, checkEnabled bool) ([]ISOEntry, error) {
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		return nil, err
 	}
 
-	storages, err := proxmox.GetStoragesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		return nil, err
+	}
+
+	storages, err := proxmox.GetStoragesResty(ctx, restyClient)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +68,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 				continue
 			}
 
-			isoList, err := proxmox.GetISOListWithContext(ctx, client, nodeName, storage.Storage)
+			isoList, err := proxmox.GetISOListResty(ctx, restyClient, nodeName, storage.Storage)
 			if err != nil {
 				logger.Get().Debug().Err(err).
 					Str("node", nodeName).

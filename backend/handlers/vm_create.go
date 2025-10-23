@@ -123,9 +123,11 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	nodes := []string{}
 	activeNode := ""
 	if client != nil {
-		if list, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil && len(list) > 0 {
-			nodes = list
-			activeNode = list[0]
+		if restyClient, err := getDefaultRestyClient(); err == nil {
+			if list, err := proxmox.GetNodeNamesResty(r.Context(), restyClient); err == nil && len(list) > 0 {
+				nodes = list
+				activeNode = list[0]
+			}
 		}
 	}
 
@@ -240,9 +242,9 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	if sm != nil {
 		if client == nil {
 			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
-		} else {
+		} else if restyClient, err := getDefaultRestyClient(); err == nil {
 			for _, nodeName := range nodes {
-				vmbrs, err := proxmox.GetVMBRsWithContext(r.Context(), client, nodeName)
+				vmbrs, err := proxmox.GetVMBRsResty(r.Context(), restyClient, nodeName)
 				if err != nil {
 					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve VMBRs; continuing with remaining nodes")
 					continue
@@ -292,18 +294,20 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	storages := []string{}
 	storageNodes := make(map[string]string)
 	if client != nil && activeNode != "" {
-		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), client, activeNode); err == nil {
-			// Create a map of enabled storages for quick lookup
-			enabledStorageMap := make(map[string]bool)
-			for _, enabledStorage := range settings.EnabledStorages {
-				enabledStorageMap[enabledStorage] = true
-			}
+		if restyClient, err := getDefaultRestyClient(); err == nil {
+			if storageList, err := proxmox.GetNodeStoragesResty(r.Context(), restyClient, activeNode); err == nil {
+				// Create a map of enabled storages for quick lookup
+				enabledStorageMap := make(map[string]bool)
+				for _, enabledStorage := range settings.EnabledStorages {
+					enabledStorageMap[enabledStorage] = true
+				}
 
-			for _, storage := range storageList {
-				// Only include storages that are in enabled_storages list, enabled, and can hold VM disks
-				if enabledStorageMap[storage.Storage] && storage.Enabled == 1 && strings.Contains(storage.Content, "images") {
-					storages = append(storages, storage.Storage)
-					storageNodes[storage.Storage] = activeNode
+				for _, storage := range storageList {
+					// Only include storages that are in enabled_storages list, enabled, and can hold VM disks
+					if enabledStorageMap[storage.Storage] && storage.Enabled == 1 && strings.Contains(storage.Content, "images") {
+						storages = append(storages, storage.Storage)
+						storageNodes[storage.Storage] = activeNode
+					}
 				}
 			}
 		}
@@ -405,9 +409,17 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	ctx := r.Context()
 
 	// Determine node: use selected if provided, otherwise pick the first available node
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.FailedCreateVM"), http.StatusInternalServerError)
+		return
+	}
+
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil || len(nodes) == 0 {
-		log.Error().Err(err).Msg("unable to get Proxmox nodes")
+		log.Error().Err(err).Msg("unable to get Proxmox nodes (resty)")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
 		return
@@ -521,11 +533,11 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		}
 	}
 	if vmid == 0 {
-		v, err := proxmox.GetNextVMID(ctx, client)
+		v, err := proxmox.GetNextVMIDResty(ctx, restyClient)
 		if err != nil {
-			log.Error().Err(err).Msg("failed to get next VMID")
+			log.Error().Err(err).Msg("failed to get next VMID (resty)")
 			localizer := i18n.GetLocalizerFromRequest(r)
-			http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
+			http.Error(w, i18n.Localize(localizer, "Error.FailedCreateVM"), http.StatusInternalServerError)
 			return
 		}
 		vmid = v
@@ -594,13 +606,13 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 
 	// Optional: ensure VM is running. Query current status and start if needed.
-	if cur, err := proxmox.GetVMCurrentWithContext(ctx, client, node, vmid); err != nil {
-		log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Could not fetch VM current status after creation")
+	if cur, err := proxmox.GetVMCurrentResty(ctx, restyClient, node, vmid); err != nil {
+		log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Could not fetch VM current status after creation (resty)")
 	} else if strings.ToLower(cur.Status) != "running" {
-		if _, err := proxmox.VMActionWithContext(ctx, client, node, strconv.Itoa(vmid), "start"); err != nil {
-			log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Failed to start VM after creation")
+		if _, err := proxmox.VMActionResty(ctx, restyClient, node, strconv.Itoa(vmid), "start"); err != nil {
+			log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Failed to start VM after creation (resty)")
 		} else {
-			log.Info().Int("vmid", vmid).Str("node", node).Msg("VM started after creation")
+			log.Info().Int("vmid", vmid).Str("node", node).Msg("VM started after creation (resty)")
 		}
 	}
 

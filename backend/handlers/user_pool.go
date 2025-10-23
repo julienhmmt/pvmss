@@ -120,17 +120,23 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 			}
 			m := m // capture loop var
 			wg.Add(1)
-			go func() {
+			go func(member struct {
+				Type string `json:"type"`
+				VMID int    `json:"vmid"`
+				Node string `json:"node"`
+			}) {
 				defer wg.Done()
-				switch strings.ToLower(m.Type) {
+				switch strings.ToLower(member.Type) {
 				case "qemu":
-					if _, err := proxmox.VMActionWithContext(ctx, client, m.Node, strconv.Itoa(m.VMID), "stop"); err != nil {
-						log.Warn().Err(err).Int("vmid", m.VMID).Str("node", m.Node).Msg("Failed to stop QEMU VM; continuing")
+					if restyClient, err := getDefaultRestyClient(); err == nil {
+						if _, err := proxmox.VMActionResty(ctx, restyClient, member.Node, strconv.Itoa(member.VMID), "stop"); err != nil {
+							log.Warn().Err(err).Int("vmid", member.VMID).Str("node", member.Node).Msg("Failed to stop QEMU VM (resty); continuing")
+						}
 					}
 				default:
 					// ignore other member types
 				}
-			}()
+			}(m)
 		}
 		wg.Wait()
 		// Fixed small wait to give Proxmox time to transition state

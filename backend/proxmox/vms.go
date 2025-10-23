@@ -275,70 +275,16 @@ type VM struct {
 	VMID    int     `json:"vmid"`
 }
 
-// GetVMsWithContext retrieves a comprehensive list of all VMs across all available Proxmox nodes.
-// It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeWithContext for each.
-func GetVMsWithContext(ctx context.Context, client ClientInterface) ([]VM, error) {
-	// Get all nodes first
-	nodes, err := GetNodeNamesWithContext(ctx, client)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get node list while fetching VMs")
-		return nil, fmt.Errorf("failed to get node list: %w", err)
-	}
-
-	// Collect VMs from all nodes
-	allVMs := make([]VM, 0)
-
-	for _, node := range nodes {
-		nodeVMs, err := GetVMsForNodeWithContext(ctx, client, node)
-		if err != nil {
-			logger.Get().Warn().Err(err).Str("node", node).Msg("Failed to get VMs for node")
-			continue
-		}
-		allVMs = append(allVMs, nodeVMs...)
-	}
-
-	logger.Get().Info().Int("total_vms", len(allVMs)).Msg("Successfully fetched all VMs")
-	return allVMs, nil
-}
-
-// GetVMsForNodeWithContext fetches all VMs located on a single, specified Proxmox node.
-// It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
-func GetVMsForNodeWithContext(ctx context.Context, client ClientInterface, nodeName string) ([]VM, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(nodeName))
-
-	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response ListResponse[VM]
-	if err := client.GetJSON(ctx, path, &response); err != nil {
-		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMs for node from Proxmox API")
-		return nil, fmt.Errorf("failed to get VMs for node %s: %w", nodeName, err)
-	}
-
-	// Set the node name for each VM
-	for i := range response.Data {
-		response.Data[i].Node = nodeName
-	}
-
-	logger.Get().Debug().Str("node", nodeName).Int("count", len(response.Data)).Msg("Fetched VMs for node")
-	return response.Data, nil
-}
-
-// GetNextVMID determines the next available unique ID for a new VM.
-// It fetches all existing VMs, finds the highest current VMID, and returns that value incremented by one.
-func GetNextVMID(ctx context.Context, client ClientInterface) (int, error) {
-	vms, err := GetVMsWithContext(ctx, client)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get VMs to calculate next VMID: %w", err)
-	}
-
-	highestVMID := 0
-	for _, vm := range vms {
-		if vm.VMID > highestVMID {
-			highestVMID = vm.VMID
-		}
-	}
-
-	return highestVMID + 1, nil
-}
+// LEGACY FUNCTIONS REMOVED - Use resty versions instead:
+// - GetVMsWithContext → GetVMsResty
+// - GetVMsForNodeWithContext → GetVMsForNodeResty
+// - GetVMConfigWithContext → GetVMConfigResty
+// - GetVMCurrentWithContext → GetVMCurrentResty
+// - UpdateVMConfigWithContext → UpdateVMConfigResty
+// - GetNextVMID → GetNextVMIDResty
+// - VMActionWithContext → VMActionResty
+// - DeleteVMWithContext → DeleteVMResty
+// See resty_vms.go for modern implementations
 
 // VMActionWithContext performs a lifecycle action on a VM via the Proxmox API.
 // Supported actions map to the following endpoints:
