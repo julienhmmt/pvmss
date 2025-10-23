@@ -590,6 +590,9 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		}
 	}
 
+	// Ask Proxmox to start the VM automatically after creation
+	params["start"] = "1"
+
 	// Perform API call: POST /nodes/{node}/qemu
 	path := "/nodes/" + url.PathEscape(node) + "/qemu"
 
@@ -598,22 +601,12 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		values.Set(k, v)
 	}
 
+	// Create VM (Proxmox handles auto-start when start=1)
 	if _, err := client.PostFormWithContext(ctx, path, values); err != nil {
 		log.Error().Err(err).Str("node", node).Msg("VM create API call failed")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
 		return
-	}
-
-	// Optional: ensure VM is running. Query current status and start if needed.
-	if cur, err := proxmox.GetVMCurrentResty(ctx, restyClient, node, vmid); err != nil {
-		log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Could not fetch VM current status after creation (resty)")
-	} else if strings.ToLower(cur.Status) != "running" {
-		if _, err := proxmox.VMActionResty(ctx, restyClient, node, strconv.Itoa(vmid), "start"); err != nil {
-			log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Failed to start VM after creation (resty)")
-		} else {
-			log.Info().Int("vmid", vmid).Str("node", node).Msg("VM started after creation (resty)")
-		}
 	}
 
 	// Invalidate caches so the new VM appears immediately in profile and search
