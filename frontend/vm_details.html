@@ -455,7 +455,6 @@
         </div>
         {{end}}
     </div>
-
     <!-- Console Modal -->
     <div id="console-modal" class="modal">
         <div class="modal-background"></div>
@@ -510,7 +509,8 @@
     initConsoleManager({
         vmid: '{{.VM.VMID}}',
         node: '{{.VM.Node}}',
-        csrfToken: '{{.CSRFToken}}'
+        csrfToken: '{{.CSRFToken}}',
+        vmName: '{{.VM.Name}}'
     });
 </script>
 

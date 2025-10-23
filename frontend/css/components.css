@@ -18,9 +18,6 @@
   text-shadow: 0 1px 4px rgb(0 0 0 / 10%);
 }
 
-/* ============================================
-   CARDS & BLOCKS
-   ============================================ */
 .welcome-block {
   background: var(--glass-white);
   border-radius: var(--radius-xl);
@@ -53,7 +50,6 @@
   }
 }
 
-/* Brand header */
 .card-header.brand-header {
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   position: relative;
@@ -80,9 +76,6 @@
   color: #fff;
 }
 
-/* ============================================
-   FORMS
-   ============================================ */
 fieldset[disabled] {
   opacity: 0.7;
   position: relative;
@@ -98,10 +91,6 @@ fieldset[disabled]::after {
   border-radius: 6px;
 }
 
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-
 @media (width <=48rem) {
   .columns {
     flex-direction: column;
@@ -112,9 +101,10 @@ fieldset[disabled]::after {
   }
 }
 
-/* ============================================
-   NOTIFICATION BANNER
-   ============================================ */
+.modal.is-active {
+  z-index: 2000 !important;
+}
+
 #proxmox-status-banner {
   position: fixed;
   top: var(--navbar-height);
@@ -161,9 +151,6 @@ fieldset[disabled]::after {
   }
 }
 
-/* ============================================
-   NAVBAR - Clean & Professional
-   ============================================ */
 .navbar {
   position: fixed;
   top: 0;
@@ -178,6 +165,14 @@ fieldset[disabled]::after {
   align-items: center;
 }
 
+/* Hide navbar and footer when modal is active for clean overlay */
+.modal-is-active .navbar,
+.modal-is-active .footer {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
 .navbar-brand {
   min-height: 3.5rem;
   padding: 0;
@@ -190,6 +185,53 @@ fieldset[disabled]::after {
   width: 100%;
   position: relative;
   gap: 1rem;
+}
+
+/* Generic navbar item styles should precede brand-specific variants */
+.navbar-item {
+  color: #4b5563;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.navbar-item:hover,
+.navbar-item:focus {
+  background-color: rgb(255 136 0 / 8%);
+  color: var(--text);
+}
+
+.navbar-item.is-active {
+  background-color: rgb(255 136 0 / 12%);
+  color: var(--primary);
+  font-weight: 600;
+  position: relative;
+}
+
+.navbar-item.is-active:hover {
+  background-color: rgb(255 136 0 / 18%);
+  color: var(--primary-hover);
+}
+
+.navbar-item.is-disabled {
+  color: #9ca3af;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.navbar-item.is-disabled .icon {
+  color: inherit;
+}
+
+.navbar-item .icon-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-item .icon {
+  color: inherit;
 }
 
 .navbar-brand .navbar-item {
@@ -279,8 +321,7 @@ fieldset[disabled]::after {
   backdrop-filter: var(--blur-md) saturate(180%);
   border-left: 1px solid rgb(0 0 0 / 10%);
   box-shadow: -8px 0 32px rgb(0 0 0 / 15%);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden auto;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
@@ -332,10 +373,7 @@ fieldset[disabled]::after {
 
 .navbar-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgb(0 0 0 / 60%);
   backdrop-filter: blur(2px);
   opacity: 0;
@@ -351,6 +389,67 @@ fieldset[disabled]::after {
   pointer-events: auto;
 }
 
+/* Open mobile menu when nav toggle is checked */
+#nav-toggle:checked ~ .navbar-menu-mobile {
+  transform: translateX(0);
+}
+
+/* Show backdrop when nav toggle is checked */
+#nav-toggle:checked ~ .navbar-backdrop {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Mobile dropdown: default hidden, shown when checked */
+.navbar-menu-mobile .navbar-user-dropdown {
+  display: none;
+}
+
+.navbar-menu-mobile .user-menu-toggle:checked ~ .navbar-user-dropdown {
+  display: block;
+}
+
+/* Base icon rotate target and active state before checked-state rule to satisfy specificity order */
+.navbar-user-toggle .icon:last-child {
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+}
+
+.navbar-user-menu.is-active .navbar-user-toggle .icon:last-child {
+  transform: rotate(180deg);
+}
+
+/* Desktop dropdown visibility when checked */
+.navbar-user-menu .user-menu-toggle:checked ~ .navbar-user-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* User dropdown: rotate chevron when open */
+.navbar-user-menu .user-menu-toggle:checked + .navbar-user-toggle .icon:last-child {
+  transform: rotate(180deg);
+}
+
+/* Base desktop dropdown panel (must come before checked-state visibility rule) */
+.navbar-user-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 32px rgb(0 0 0 / 12%);
+  min-width: 200px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1001;
+  overflow: hidden;
+}
+
 .navbar-start {
   align-items: center;
 }
@@ -359,56 +458,19 @@ fieldset[disabled]::after {
   align-items: center;
 }
 
-.navbar-item {
-  color: #4b5563;
-  padding: 0.5rem 1rem;
-  font-weight: 500;
-  font-size: 0.9375rem;
-  transition: color 0.2s ease, background-color 0.2s ease;
-}
-
-.navbar-item:hover,
-.navbar-item:focus {
-  background-color: rgb(255 136 0 / 8%);
-  color: var(--text);
-}
-
-.navbar-item.is-active {
-  background-color: rgb(255 136 0 / 12%);
-  color: var(--primary);
-  font-weight: 600;
-  position: relative;
-}
-
-.navbar-item.is-active:hover {
-  background-color: rgb(255 136 0 / 18%);
-  color: var(--primary-hover);
-}
-
-.navbar-item.is-disabled {
-  color: #9ca3af;
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.navbar-item.is-disabled .icon {
-  color: inherit;
-}
-
-.navbar-item .icon-text {
-  display: flex;
+.navbar .icon {
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-}
-
-.navbar-item .icon {
-  color: inherit;
+  justify-content: center;
+  line-height: 1;
 }
 
 .navbar .buttons {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .navbar .buttons .button {
@@ -417,6 +479,100 @@ fieldset[disabled]::after {
   font-size: 0.875rem;
   padding: 0.5rem 1rem;
   transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.navbar .navbar-item.navbar-actions {
+  padding-top: 0;
+  padding-bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-actions > * {
+  align-self: center;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-user-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-user-toggle,
+.navbar-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-size: 0.8125rem;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.navbar-login-btn {
+  border: 1px solid transparent;
+}
+
+.navbar-user-toggle:hover,
+.navbar-login-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(255 136 0 / 25%);
+}
+
+.navbar-username,
+.navbar-login-text {
+  display: inline;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navbar-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  color: #4b5563;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.navbar-dropdown-item:hover {
+  background: rgb(255 136 0 / 8%);
+  color: var(--primary);
+  border-left-color: var(--primary);
+  padding-left: calc(1.25rem + 2px);
+}
+
+.navbar-dropdown-item .icon {
+  font-size: 1rem;
+  min-width: 1.25rem;
+  color: inherit;
+}
+
+.navbar-dropdown-divider {
+  margin: 0.5rem 0;
+  border: none;
+  border-top: 1px solid #f3f4f6;
 }
 
 .navbar .buttons .button.is-primary {
@@ -442,6 +598,21 @@ fieldset[disabled]::after {
   border-color: rgb(0 0 0 / 15%);
 }
 
+/* Base ghost button variant must precede navbar-specific ghost variant */
+.button.is-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  box-shadow: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.button.is-ghost:hover {
+  background: rgb(0 0 0 / 5%);
+  color: var(--primary);
+  box-shadow: none;
+}
+
 .navbar .buttons .button.is-ghost {
   background: transparent;
   color: var(--text);
@@ -454,22 +625,46 @@ fieldset[disabled]::after {
 }
 
 .language-buttons {
-  display: flex;
+  display: inline-flex;
+  align-items: center;
   gap: 0;
-  margin-left: 0.5rem;
+  margin-left: 0;
+  margin-right: 0;
   border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border-radius: 6px; /* match button radius */
   overflow: hidden;
+  align-self: center; /* center within navbar-actions */
+  padding: 0; /* avoid extra height */
+  line-height: 1;
+  box-sizing: border-box;
 }
 
+/* Override Bulma .buttons defaults for the language group wrapper */
+.buttons.language-buttons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0; /* remove default bottom margin */
+  padding: 0;
+  gap: 0;
+  line-height: 1;
+}
+
+/* Place language segment button base before navbar button variants */
 .language-buttons .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 0;
-  font-size: 0.75rem;
-  padding: 0.375rem 0.75rem;
-  font-weight: 600;
-  min-width: 2.5rem;
+  font-size: 0.8125rem; /* match login btn */
+  padding: 0.5rem 0.875rem; /* match login btn */
+  font-weight: 500; /* match login btn */
+  min-width: 2.75rem;
   border: none;
   border-right: 1px solid #e5e7eb;
+  line-height: 1;
+  height: auto; /* align with login button */
+  box-sizing: border-box;
 }
 
 .language-buttons .button:last-child {
@@ -478,7 +673,13 @@ fieldset[disabled]::after {
 
 .language-buttons .button.is-selected {
   background: var(--primary);
-  color: #fff;
+  color: #fff; /* like has-text-white */
+  border-color: var(--primary);
+}
+
+/* Hover lift parity for selected (primary-like) segment */
+.language-buttons .button.is-selected:hover {
+  background: var(--primary-hover);
 }
 
 .language-buttons .button:not(.is-selected) {
@@ -491,8 +692,39 @@ fieldset[disabled]::after {
   color: var(--text);
 }
 
+/* Responsive adjustments */
+@media (width <=1200px) {
+  .navbar-username,
+  .navbar-login-text {
+    display: none;
+  }
+
+  .navbar-user-toggle,
+  .navbar-login-btn {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .language-buttons {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
 /* Mobile & Tablet */
 @media (width <=1023px) {
+  .navbar-menu-mobile .navbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
+    width: 100%;
+  }
+
+  .navbar-menu-mobile .navbar-actions .language-buttons {
+    margin: 0;
+    width: 100%;
+    height: auto;
+  }
+
   .navbar-burger {
     display: block;
   }
@@ -556,7 +788,7 @@ fieldset[disabled]::after {
   }
 
   .navbar-menu-mobile .buttons {
-    flex-direction: column;
+    flex-flow: column nowrap;
     gap: 0.875rem;
     width: 100%;
   }
@@ -569,19 +801,64 @@ fieldset[disabled]::after {
     border-radius: 8px;
   }
 
+  .navbar-menu-mobile .language-buttons .button {
+    height: auto;
+    flex: 1;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .navbar-menu-mobile .navbar-username,
+  .navbar-menu-mobile .navbar-login-text {
+    display: inline;
+  }
+
+  .navbar-menu-mobile .navbar-user-toggle,
+  .navbar-menu-mobile .navbar-login-btn {
+    padding: 0.875rem 1.5rem;
+    width: 100%;
+    justify-content: center;
+    font-size: 0.9375rem;
+  }
+
+  .navbar-menu-mobile .navbar-user-dropdown {
+    position: static;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    box-shadow: none;
+    border: none;
+    border-top: 1px solid #f3f4f6;
+    border-radius: 0;
+    margin-top: 0.5rem;
+    min-width: auto;
+  }
+
+  .navbar-menu-mobile .navbar-user-menu.is-active .navbar-user-dropdown {
+    display: block;
+  }
+
+  .navbar-menu-mobile .navbar-user-menu:not(.is-active) .navbar-user-dropdown {
+    display: none;
+  }
+
+  .navbar-menu-mobile .navbar-dropdown-item {
+    padding: 1rem 1.75rem;
+    border-left: 4px solid transparent;
+  }
+
+  .navbar-menu-mobile .navbar-dropdown-item:hover {
+    border-left-color: var(--primary);
+    padding-left: calc(1.75rem - 1px);
+  }
+
   .navbar-menu-mobile .language-buttons {
-    margin: 1rem 0 0 0;
+    margin: 1rem 0 0;
     justify-content: center;
     width: 100%;
     background: rgb(255 255 255 / 50%);
     padding: 0.25rem;
     border-radius: 8px;
-  }
-
-  .navbar-menu-mobile .language-buttons .button {
-    flex: 1;
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
   }
 }
 
@@ -620,9 +897,6 @@ fieldset[disabled]::after {
   }
 }
 
-/* ============================================
-   BREADCRUMB
-   ============================================ */
 .breadcrumb a {
   color: var(--muted);
   transition: color 0.15s ease;
@@ -640,9 +914,6 @@ fieldset[disabled]::after {
   color: var(--muted);
 }
 
-/* ============================================
-   INPUTS & CHECKBOXES
-   ============================================ */
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--primary);
@@ -664,9 +935,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border-color: transparent;
 }
 
-/* ============================================
-   PROGRESS BARS
-   ============================================ */
 .progress {
   height: 0.5rem;
   border-radius: 999px;
@@ -735,9 +1003,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   background-color: #ef4444;
 }
 
-/* ============================================
-   MESSAGES
-   ============================================ */
 .message {
   background: transparent;
 }
@@ -747,7 +1012,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   color: var(--text);
   border-color: var(--border);
   backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
 }
 
 .message .message-body {
@@ -756,7 +1020,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border: 1px solid var(--border);
   border-top: none;
   backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
 }
 
 .message.is-primary .message-header {
@@ -784,26 +1047,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border-left: 3px solid #ef4444;
 }
 
-/* ============================================
-   BUTTONS - Special Variants
-   ============================================ */
-.button.is-ghost {
-  background: transparent;
-  border: none;
-  color: var(--text);
-  box-shadow: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.button.is-ghost:hover {
-  background: rgb(0 0 0 / 5%);
-  color: var(--primary);
-  box-shadow: none;
-}
-
-/* ============================================
-   PROFILE & ADMIN SPECIFIC
-   ============================================ */
 .admin-card {
   border-radius: 0.75rem;
   overflow: hidden;
@@ -813,9 +1056,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border-radius: 0.5rem;
 }
 
-/* ============================================
-   LOGIN & AUTH PAGES
-   ============================================ */
 .min-h-100vh {
   min-height: 100vh;
 }

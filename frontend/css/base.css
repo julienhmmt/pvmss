@@ -1,8 +1,3 @@
-/* ============================================
-   BASE STYLES
-   Global styles for consistent UX across all pages
-   ============================================ */
-
 :root {
   --navbar-height: 3.75rem;
 }
@@ -34,9 +29,6 @@ html {
   }
 }
 
-/* ============================================
-   LAYOUT & SPACING
-   ============================================ */
 .section {
   padding: 1.5rem 0;
   position: relative;
@@ -49,9 +41,6 @@ html {
   min-height: auto;
 }
 
-/* ============================================
-   SURFACES & CONTAINERS
-   ============================================ */
 .box {
   background-color: var(--surface);
   box-shadow: var(--shadow-md);
@@ -80,7 +69,6 @@ html {
   transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 }
 
-/* Cards with no hover effect */
 .card.no-hover,
 .card.admin-card {
   transition: none;
@@ -104,7 +92,6 @@ html {
   font-weight: 600;
 }
 
-/* Fade-in animation for cards */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -119,9 +106,6 @@ html {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* ============================================
-   FORMS & INPUTS
-   ============================================ */
 .field:not(:last-child) {
   margin-bottom: 1.25rem;
 }
@@ -141,7 +125,6 @@ html {
   color: var(--muted);
 }
 
-/* Standard input focus */
 .input:focus,
 .textarea:focus,
 .select select:focus {
@@ -150,7 +133,6 @@ html {
   outline: none;
 }
 
-/* Large input focus (login forms) */
 .input.is-large:focus,
 .textarea.is-large:focus {
   border-color: var(--primary);
@@ -163,15 +145,10 @@ html {
   margin-top: 0.25rem;
 }
 
-/* Icon positioning for large inputs */
 .control.has-icons-left .input.is-large~.icon.is-left {
   font-size: 1.125rem;
 }
 
-/* ============================================
-   BUTTONS
-   ============================================ */
-/* Large button interactions */
 .button.is-large:hover {
   opacity: 0.95;
 }
@@ -190,7 +167,6 @@ html {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Light button interactions */
 .button.is-light:hover {
   background-color: #f9fafb;
   border-color: #d1d5db;
@@ -200,9 +176,6 @@ html {
   background-color: #f3f4f6;
 }
 
-/* ============================================
-   TABLES
-   ============================================ */
 .table {
   background-color: transparent;
   color: var(--text);
@@ -231,9 +204,6 @@ html {
   background-color: #f9fafb;
 }
 
-/* ============================================
-   PROGRESS BARS
-   ============================================ */
 .progress::-webkit-progress-bar,
 .progress::-moz-progress-bar {
   background-color: #f5f5f5;
@@ -254,34 +224,21 @@ html {
   background-color: #ffe08a;
 }
 
-/* ============================================
-   ACCESSIBILITY
-   ============================================ */
 :where(a, button, input, select, textarea, .button):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
-/* ============================================
-   RESPONSIVE DESIGN
-   ============================================ */
-
-/* Improved mobile spacing (screens < 800px) */
 @media screen and (max-width: 800px) {
-
-  /* Add padding to container on small screens */
   .container {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
   }
 
-  /* Adjust section padding */
   .section {
     padding: 1.25rem 0;
   }
-
-  /* Card spacing improvements */
   .card-content {
     padding: 1.25rem;
   }
@@ -290,19 +247,15 @@ html {
     padding: 1rem 1.25rem;
   }
 
-  /* Box spacing */
   .box {
     padding: 1.25rem;
     margin-bottom: 1rem;
   }
-
-  /* Table responsive improvements */
   .table-container {
     margin-left: -0.25rem;
     margin-right: -0.25rem;
   }
 
-  /* Columns spacing on mobile */
   .columns {
     margin-left: -0.5rem;
     margin-right: -0.5rem;
@@ -312,12 +265,9 @@ html {
     padding: 0.5rem;
   }
 
-  /* Form fields spacing */
   .field:not(:last-child) {
     margin-bottom: 1rem;
   }
-
-  /* Button groups */
   .buttons {
     margin-bottom: 0.5rem;
   }

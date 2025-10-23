@@ -236,6 +236,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 	bridgeDetails := make([]map[string]string, 0)
 	bridgeDescriptions := make(map[string]string)
+	bridgeNodes := make(map[string]string)
 	if sm != nil {
 		if client == nil {
 			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
@@ -251,6 +252,9 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 					if name == "" {
 						continue
 					}
+					if _, exists := bridgeNodes[name]; !exists {
+						bridgeNodes[name] = nodeName
+					}
 					if desc, exists := bridgeDescriptions[name]; exists && desc != "" {
 						continue
 					}
@@ -263,6 +267,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		bridgeDetails = append(bridgeDetails, map[string]string{
 			"name":        bridgeName,
 			"description": bridgeDescriptions[bridgeName],
+			"node":        bridgeNodes[bridgeName],
 		})
 	}
 
@@ -272,6 +277,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		"Bridges":            settings.VMBRs,
 		"BridgeDetails":      bridgeDetails,
 		"BridgeDescriptions": bridgeDescriptions,
+		"BridgeNodes":        bridgeNodes,
 		"AvailableTags":      settings.Tags,
 		"Limits":             settings.Limits,
 		"Nodes":              nodes,
@@ -284,6 +290,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 	// Get available storages for the selected node
 	storages := []string{}
+	storageNodes := make(map[string]string)
 	if client != nil && activeNode != "" {
 		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), client, activeNode); err == nil {
 			// Create a map of enabled storages for quick lookup
@@ -296,11 +303,13 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 				// Only include storages that are in enabled_storages list, enabled, and can hold VM disks
 				if enabledStorageMap[storage.Storage] && storage.Enabled == 1 && strings.Contains(storage.Content, "images") {
 					storages = append(storages, storage.Storage)
+					storageNodes[storage.Storage] = activeNode
 				}
 			}
 		}
 	}
 	data["Storages"] = storages
+	data["StorageNodes"] = storageNodes
 
 	// Proxmox connection status for template (also provided by middleware, but ensure here)
 	if sm != nil {
