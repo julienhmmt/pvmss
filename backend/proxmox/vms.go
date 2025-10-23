@@ -462,14 +462,18 @@ func VMActionResty(ctx context.Context, restyClient *RestyClient, node string, v
 	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", url.PathEscape(node), url.PathEscape(vmid), action)
 
 	var response Response[string]
-	if err := restyClient.Post(ctx, path, url.Values{}, &response); err != nil {
+	// Use PostEmpty to send POST with empty form data
+	// Proxmox may return empty JSON for some actions
+	if err := restyClient.PostEmpty(ctx, path, &response); err != nil {
 		logger.Get().Error().Err(err).Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action failed (resty)")
 		return "", err
 	}
 
 	// The task ID (UPID) is returned in the 'data' field.
+	// Some actions may not return a UPID, which is acceptable
 	if response.Data == "" {
-		return "", fmt.Errorf("did not receive a task ID from Proxmox for action '%s' on VM %s", action, vmid)
+		logger.Get().Info().Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action executed (no UPID returned)")
+		return "", nil
 	}
 
 	logger.Get().Info().Str("node", node).Str("vmid", vmid).Str("action", action).Str("upid", response.Data).Msg("VM action executed (resty)")
@@ -478,7 +482,7 @@ func VMActionResty(ctx context.Context, restyClient *RestyClient, node string, v
 
 // DeleteVMResty deletes a VM from Proxmox using resty.
 // This performs a DELETE request to /nodes/{node}/qemu/{vmid}
-// Note: The VM must be stopped before deletion. Use VMActionResty to stop it first if needed.
+// Note: The VM must be stopped before deletion. Use VMActionResty to stop it first.
 func DeleteVMResty(ctx context.Context, restyClient *RestyClient, node string, vmid int) error {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d", url.PathEscape(node), vmid)
 

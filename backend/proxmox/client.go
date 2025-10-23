@@ -435,6 +435,7 @@ func (rc *RestyClient) Get(ctx context.Context, path string, target interface{})
 func (rc *RestyClient) Post(ctx context.Context, path string, data url.Values, target interface{}) error {
 	resp, err := rc.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetFormDataFromValues(data).
 		SetResult(target).
 		Post(path)
@@ -450,10 +451,39 @@ func (rc *RestyClient) Post(ctx context.Context, path string, data url.Values, t
 	return nil
 }
 
+// PostEmpty performs a POST request with empty form data
+// Used for Proxmox API endpoints that require POST but don't need parameters
+// Sends empty url.Values to ensure proper Content-Type header
+func (rc *RestyClient) PostEmpty(ctx context.Context, path string, target interface{}) error {
+	resp, err := rc.client.R().
+		SetContext(ctx).
+		SetHeader("Content-Type", "application/x-www-form-urlencoded").
+		SetBody("").
+		SetResult(target).
+		Post(path)
+
+	if err != nil {
+		return fmt.Errorf("POST request failed for %s: %w", path, err)
+	}
+
+	if resp.IsError() {
+		// Check if response body is empty or just whitespace
+		respBody := strings.TrimSpace(resp.String())
+		if respBody == "" {
+			// Empty response is acceptable for some Proxmox endpoints
+			return nil
+		}
+		return fmt.Errorf("POST request returned error status %d for %s: %s", resp.StatusCode(), path, resp.String())
+	}
+
+	return nil
+}
+
 // Put performs a PUT request with form data
 func (rc *RestyClient) Put(ctx context.Context, path string, data url.Values, target interface{}) error {
 	resp, err := rc.client.R().
 		SetContext(ctx).
+		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetFormDataFromValues(data).
 		SetResult(target).
 		Put(path)
