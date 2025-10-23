@@ -390,12 +390,13 @@
                                                             <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
                                                                 {{range $bridge := sort .Bridges}}
                                                                 {{$rawDesc := index $.BridgeDescriptions $bridge}}
+                                                                {{$nodeName := index $.BridgeNodes $bridge}}
                                                                 {{$desc := $rawDesc}}
                                                                 {{if not $desc}}
                                                                     {{$desc = ""}}
                                                                 {{end}}
                                                                 <option value="{{$bridge}}" {{if $.FormData.bridge}}{{if eq $bridge $.FormData.bridge}}selected{{end}}{{else if eq $bridge "vmbr0"}}selected{{end}}>
-                                                                    {{$bridge}}{{if $desc}} &ndash; {{$desc}}{{end}}
+                                                                    {{$bridge}}{{if $nodeName}} ({{$nodeName}}){{end}}{{if $desc}} &ndash; {{$desc}}{{end}}
                                                                 </option>
                                                                 {{end}}
                                                             </select>

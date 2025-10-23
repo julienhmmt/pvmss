@@ -236,6 +236,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 	bridgeDetails := make([]map[string]string, 0)
 	bridgeDescriptions := make(map[string]string)
+	bridgeNodes := make(map[string]string)
 	if sm != nil {
 		if client == nil {
 			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
@@ -251,6 +252,9 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 					if name == "" {
 						continue
 					}
+					if _, exists := bridgeNodes[name]; !exists {
+						bridgeNodes[name] = nodeName
+					}
 					if desc, exists := bridgeDescriptions[name]; exists && desc != "" {
 						continue
 					}
@@ -263,6 +267,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		bridgeDetails = append(bridgeDetails, map[string]string{
 			"name":        bridgeName,
 			"description": bridgeDescriptions[bridgeName],
+			"node":        bridgeNodes[bridgeName],
 		})
 	}
 
@@ -272,6 +277,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		"Bridges":            settings.VMBRs,
 		"BridgeDetails":      bridgeDetails,
 		"BridgeDescriptions": bridgeDescriptions,
+		"BridgeNodes":        bridgeNodes,
 		"AvailableTags":      settings.Tags,
 		"Limits":             settings.Limits,
 		"Nodes":              nodes,
