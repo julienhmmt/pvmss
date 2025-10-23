@@ -11,11 +11,12 @@ import RFB from '/components/noVNC-1.6.0/core/rfb.js';
  * @param {string} config.csrfToken - CSRF token for API requests
  */
 export function initConsoleManager(config) {
-    const { vmid, node, csrfToken } = config;
+    const { vmid, node, csrfToken, vmName } = config;
     
     // DOM elements
     const consoleButton = document.getElementById('console-button');
     const consoleModal = document.getElementById('console-modal');
+    const consoleTitle = document.getElementById('console-title');
     const consoleClose = document.getElementById('console-close');
     const consoleDisconnect = document.getElementById('console-disconnect');
     const consoleStatus = document.getElementById('console-status-text');
@@ -61,6 +62,11 @@ export function initConsoleManager(config) {
      * Open console connection
      */
     async function openConsole() {
+        // Update modal title
+        if (consoleTitle && vmName) {
+            consoleTitle.textContent = `Console - ${vmName} (${vmid})`;
+        }
+
         try {
             updateStatus('Requesting console access...', 'connecting');
             
