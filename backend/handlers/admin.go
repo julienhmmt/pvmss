@@ -29,47 +29,66 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 
 	// Proxmox connection status from background monitor
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
-	client := h.stateManager.GetProxmoxClient()
 	var nodeDetails []*proxmox.NodeDetails
 	var errMsg string
 
-	if proxmoxConnected && client != nil {
-		// Check if client is our custom Client type
-		if pc, ok := client.(*proxmox.Client); ok {
-			// Use a shorter timeout to avoid long blocking even if status recently changed
-			ctx, cancel := context.WithTimeout(r.Context(), constants.ShortContextTimeout)
-			defer cancel()
-			nodes, err := proxmox.GetNodeNamesWithContext(ctx, pc)
+	if proxmoxConnected {
+		// Create a resty client for this request
+		proxmoxURL := os.Getenv("PROXMOX_URL")
+		tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
+		tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+		insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
+
+		if proxmoxURL != "" && tokenID != "" && tokenValue != "" {
+			restyClient, err := proxmox.NewRestyClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify, constants.ShortContextTimeout)
 			if err != nil {
-				log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes")
-				errMsg = "Failed to retrieve nodes"
+				log.Error().Err(err).Msg("Failed to create resty client")
+				errMsg = "Failed to create API client"
 			} else {
-				var wg sync.WaitGroup
-				detailsChan := make(chan *proxmox.NodeDetails, len(nodes))
+				// Use a shorter timeout to avoid long blocking
+				ctx, cancel := context.WithTimeout(r.Context(), constants.ShortContextTimeout)
+				defer cancel()
 
-				for _, nodeName := range nodes {
-					wg.Add(1)
-					go func(name string) {
-						defer wg.Done()
-						nd, nErr := proxmox.GetNodeDetails(pc, name)
-						if nErr != nil {
-							log.Warn().Err(nErr).Str("node", name).Msg("Failed to retrieve node details; skipping node")
-							return
-						}
-						detailsChan <- nd
-					}(nodeName)
-				}
+				log.Info().Msg("Using resty client to fetch nodes")
 
-				wg.Wait()
-				close(detailsChan)
+				// Get node names using resty
+				nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+				if err != nil {
+					log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes (resty)")
+					errMsg = "Failed to retrieve nodes"
+				} else {
+					log.Info().Int("count", len(nodes)).Msg("Successfully retrieved nodes with resty")
 
-				for detail := range detailsChan {
-					nodeDetails = append(nodeDetails, detail)
+					// Fetch details for each node concurrently
+					var wg sync.WaitGroup
+					detailsChan := make(chan *proxmox.NodeDetails, len(nodes))
+
+					for _, nodeName := range nodes {
+						wg.Add(1)
+						go func(name string) {
+							defer wg.Done()
+							nd, nErr := proxmox.GetNodeDetailsResty(ctx, restyClient, name)
+							if nErr != nil {
+								log.Warn().Err(nErr).Str("node", name).Msg("Failed to retrieve node details (resty); skipping node")
+								return
+							}
+							detailsChan <- nd
+						}(nodeName)
+					}
+
+					wg.Wait()
+					close(detailsChan)
+
+					for detail := range detailsChan {
+						nodeDetails = append(nodeDetails, detail)
+					}
+
+					log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with resty")
 				}
 			}
 		} else {
-			log.Warn().Msg("Proxmox client is not the expected type")
-			errMsg = "Invalid client type"
+			log.Warn().Msg("Proxmox credentials not configured")
+			errMsg = "Proxmox credentials missing"
 		}
 	} else {
 		log.Warn().Msg("Proxmox client is not initialized; rendering page without live node data")

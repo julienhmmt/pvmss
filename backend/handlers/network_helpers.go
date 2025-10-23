@@ -49,17 +49,24 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Use the interface directly to support real and mock clients
-	nodeNames, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes")
+		log.Warn().Err(err).Msg("Failed to create resty client")
+		return []map[string]string{}, nil
+	}
+
+	// Get nodes using resty
+	nodeNames, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes (resty)")
 		return []map[string]string{}, nil
 	}
 	log.Info().Int("node_count", len(nodeNames)).Msg("Discovered Proxmox nodes")
 
 	allVMBRs := make([]map[string]string, 0)
 	for _, node := range nodeNames {
-		vmbrs, err := proxmox.GetVMBRsWithContext(ctx, client, node)
+		vmbrs, err := proxmox.GetVMBRsResty(ctx, restyClient, node)
 		if err != nil {
 			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs for node; skipping")
 			continue

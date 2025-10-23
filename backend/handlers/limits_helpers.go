@@ -23,12 +23,19 @@ type NodeResourceUsage struct {
 }
 
 // CalculateNodeResourceUsage calculates the aggregated resources used by VMs with the "pvmss" tag
-// for each node in the Proxmox cluster
+// for each node in the Proxmox cluster using resty
 func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
 	log := logger.Get().With().Str("function", "CalculateNodeResourceUsage").Logger()
 
+	// Create resty client
+	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, err
+	}
+
 	// Get all nodes
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get nodes")
 		return nil, err
@@ -44,7 +51,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	}
 
 	// Get all VMs
-	vms, err := proxmox.GetVMsWithContext(ctx, client)
+	vms, err := proxmox.GetVMsResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get VMs")
 		return usage, nil // Return empty usage instead of error
@@ -53,7 +60,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	// Iterate through VMs and accumulate resources for pvmss-tagged VMs
 	for _, vm := range vms {
 		// Get VM config to check tags
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
 			log.Warn().Err(err).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Failed to get VM config")
 			continue
@@ -165,11 +172,18 @@ type NodeCapacity struct {
 	MemoryMB int64 // Total RAM in MB
 }
 
-// GetNodeCapacity retrieves the physical hardware capacity of a node
+// GetNodeCapacity retrieves the physical hardware capacity of a node using resty
 func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string) (*NodeCapacity, error) {
 	log := logger.Get().With().Str("function", "GetNodeCapacity").Logger()
 
-	nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, client, nodeName)
+	// Create resty client
+	restyClient, err := proxmox.NewRestyClientFromEnv(10 * time.Second)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, err
+	}
+
+	nodeDetails, err := proxmox.GetNodeDetailsResty(ctx, restyClient, nodeName)
 	if err != nil {
 		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
 		return nil, err

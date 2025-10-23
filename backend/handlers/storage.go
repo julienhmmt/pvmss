@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"sort"
@@ -280,17 +281,24 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 		return projectEnabledFlags(cached.items, enabled), buildEnabledMap(enabled), chosen, nil
 	}
 
-	// fetch global config and node storages
-	globalStorages, err := proxmox.GetStorages(client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		return nil, nil, chosen, err
 	}
-	cfgByName := make(map[string]proxmox.Storage, len(globalStorages))
+
+	// fetch global config and node storages using resty
+	globalStorages, err := proxmox.GetStoragesResty(context.Background(), restyClient)
+	if err != nil {
+		return nil, nil, chosen, err
+	}
+
+	cfgByName := make(map[string]proxmox.Storage)
 	for _, s := range globalStorages {
 		cfgByName[s.Storage] = s
 	}
 
-	nodeStorages, err := proxmox.GetNodeStorages(client, chosen)
+	nodeStorages, err := proxmox.GetNodeStoragesResty(context.Background(), restyClient, chosen)
 	if err != nil {
 		return nil, nil, chosen, err
 	}

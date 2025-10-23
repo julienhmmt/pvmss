@@ -145,8 +145,16 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	log.Info().Str("action", action).Int("vmid", vmidInt).Msg("executing VM action")
 
-	// Execute the action using VMActionWithContext
-	_, err = proxmox.VMActionWithContext(r.Context(), client, node, vmid, action)
+	// Execute the action using resty
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		ctx := NewHandlerContext(w, r, "VMActionHandler")
+		ctx.RedirectWithError("/vm/details/"+vmid, "Error.InternalServer")
+		return
+	}
+
+	_, err = proxmox.VMActionResty(r.Context(), restyClient, node, vmid, action)
 	if err != nil {
 		log.Error().Err(err).Str("action", action).Int("vmid", vmidInt).Msg("VM action failed")
 		ctx := NewHandlerContext(w, r, "VMActionHandler")

@@ -163,10 +163,16 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 		return []VMInfo{}
 	}
 
-	// Get all VMs with their status (already populated by GetVMsWithContext)
-	allVMs, err := proxmox.GetVMsWithContext(fetchCtx, client)
+	// Get all VMs with their status using resty
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get all VMs")
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return []VMInfo{}
+	}
+
+	allVMs, err := proxmox.GetVMsResty(fetchCtx, restyClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get all VMs (resty)")
 		return []VMInfo{}
 	}
 

@@ -143,26 +143,33 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	renderTemplateInternal(w, r, "admin_vms", data)
 }
 
-// getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag
+// getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag using resty
 func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context, client proxmox.ClientInterface) ([]AdminVMInfo, string) {
 	log := logger.Get().With().
 		Str("function", "getVMsWithPVMSSTag").
 		Logger()
 
-	// Get all VMs from Proxmox
-	allVMs, err := proxmox.GetVMsWithContext(ctx, client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get VMs")
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, "Failed to create API client"
+	}
+
+	// Get all VMs from Proxmox using resty
+	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get VMs (resty)")
 		return nil, "Failed to retrieve VMs from Proxmox"
 	}
 
-	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs")
+	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")
 
 	// Filter VMs with pvmss tag
 	results := []AdminVMInfo{}
 	for _, vm := range allVMs {
 		// Get VM config to check for pvmss tag
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
 			log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config, skipping")
 			continue

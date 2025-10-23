@@ -155,7 +155,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 	renderTemplateInternal(w, r, "search", data)
 }
 
-// searchVMs performs the actual VM search with filtering
+// searchVMs performs the actual VM search with filtering using resty
 func (h *SearchHandler) searchVMs(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery, username string, isAdmin bool) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("function", "searchVMs").
@@ -165,13 +165,19 @@ func (h *SearchHandler) searchVMs(ctx context.Context, client proxmox.ClientInte
 		Bool("is_admin", isAdmin).
 		Logger()
 
-	// Get all VMs from Proxmox
-	allVMs, err := proxmox.GetVMsWithContext(ctx, client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get VMs: %w", err)
+		return nil, fmt.Errorf("failed to create resty client: %w", err)
 	}
 
-	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs")
+	// Get all VMs from Proxmox using resty
+	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VMs (resty): %w", err)
+	}
+
+	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")
 
 	// For non-admin users, get their pool VMs
 	var userPoolVMIDs map[int]bool

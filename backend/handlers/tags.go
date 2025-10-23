@@ -194,15 +194,15 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Proxmox status for consistent UI (even if tags don't need Proxmox)
 	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
 
-	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available
+	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available using resty
 	// Proxmox typically separates tags with ';' but some environments may contain
 	// comma-separated lists inside a single part (e.g. "pvmss,test"). We split on
 	// both ';' and ',' to ensure each individual tag is counted.
 	tagCounts := make(map[string]int)
-	if client := h.stateManager.GetProxmoxClient(); client != nil {
-		if vms, err := proxmox.GetVMsWithContext(r.Context(), client); err == nil {
+	if restyClient, err := getDefaultRestyClient(); err == nil {
+		if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
 			for i := range vms {
-				if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, vms[i].Node, vms[i].VMID); err == nil {
+				if cfg, err := proxmox.GetVMConfigResty(r.Context(), restyClient, vms[i].Node, vms[i].VMID); err == nil {
 					if v, ok := cfg["tags"].(string); ok && v != "" {
 						// First split by ';'
 						semiParts := strings.Split(v, ";")

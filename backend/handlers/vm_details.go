@@ -222,10 +222,17 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 	}
 
-	// Get all VMs and find the one we want
-	vms, err := proxmox.GetVMsWithContext(r.Context(), client)
+	// Get all VMs and find the one we want using resty
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Error().Err(err).Int("vmid", vmidInt).Msg("Failed to get VMs")
+		log.Error().Err(err).Msg("Failed to create resty client")
+		http.Error(w, "Failed to create API client", http.StatusInternalServerError)
+		return
+	}
+
+	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
+	if err != nil {
+		log.Error().Err(err).Int("vmid", vmidInt).Msg("Failed to get VMs (resty)")
 		http.Error(w, "Failed to get VMs", http.StatusInternalServerError)
 		return
 	}
@@ -242,9 +249,9 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	if vm == nil {
 		// As a fallback (especially right after creation), try to locate the VM by querying
 		// each node's current status endpoint which is uncached per-VM.
-		if nodes, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil {
+		if nodes, err := proxmox.GetNodeNamesResty(r.Context(), restyClient); err == nil {
 			for _, n := range nodes {
-				if cur, err2 := proxmox.GetVMCurrentWithContext(r.Context(), client, n, vmidInt); err2 == nil && cur != nil {
+				if cur, err2 := proxmox.GetVMCurrentResty(r.Context(), restyClient, n, vmidInt); err2 == nil && cur != nil {
 					// Found the VM on node 'n', synthesize a minimal VM struct for display
 					vm = &proxmox.VM{
 						VMID:   vmidInt,
@@ -274,14 +281,14 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var description string
 	var networkBridges []string
 	var networkInterfaces []proxmox.NetworkInterface
-	// First attempt using vm.Node (fast path)
-	cfg, cfgErr := proxmox.GetVMConfigWithContext(r.Context(), client, vm.Node, vm.VMID)
+	// First attempt using vm.Node (fast path) with resty
+	cfg, cfgErr := proxmox.GetVMConfigResty(r.Context(), restyClient, vm.Node, vm.VMID)
 	if cfgErr != nil {
 		// Log and attempt a robust fallback by discovering the node
 		log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Primary VM config fetch failed, attempting node discovery fallback")
-		if nodes, nErr := proxmox.GetNodeNamesWithContext(r.Context(), client); nErr == nil {
+		if nodes, nErr := proxmox.GetNodeNamesResty(r.Context(), restyClient); nErr == nil {
 			for _, n := range nodes {
-				if altCfg, altErr := proxmox.GetVMConfigWithContext(r.Context(), client, n, vm.VMID); altErr == nil {
+				if altCfg, altErr := proxmox.GetVMConfigResty(r.Context(), restyClient, n, vm.VMID); altErr == nil {
 					cfg = altCfg
 					vm.Node = n // update node for subsequent actions
 					cfgErr = nil
