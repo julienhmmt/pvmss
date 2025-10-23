@@ -272,7 +272,12 @@
                                                         <div class="select is-fullwidth is-medium">
                                                             <select id="storage" name="storage" required aria-required="true" aria-describedby="storage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
-                                                                {{range .Storages}}<option value="{{.}}" {{if eq . $.FormData.storage}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>{{end}}
+                                                                {{range .Storages}}
+                                                                {{$storageNode := index $.StorageNodes .}}
+                                                                <option value="{{.}}" {{if eq . $.FormData.storage}}selected{{end}}>{{.}}{{if $storageNode}} ({{$storageNode}}){{end}}</option>
+                                                                {{else}}
+                                                                <option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>
+                                                                {{end}}
                                                             </select>
                                                         </div>
                                                     </div>
