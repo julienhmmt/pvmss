@@ -1,11 +1,3 @@
-/* ============================================
-   ADMIN STYLES
-   Admin-specific components and layouts
-   ============================================ */
-
-/* ============================================
-   LAYOUT & SPACING
-   ============================================ */
 .section-anchor {
     scroll-margin-top: 4.5rem;
 }
@@ -23,9 +15,6 @@
     margin-top: 0.25rem;
 }
 
-/* ============================================
-   ADMIN BOX - Modern Flat Container
-   ============================================ */
 .admin-box {
     background-color: #fff;
     border-radius: 12px;
@@ -40,9 +29,6 @@
     border-color: rgb(0 0 0 / 8%);
 }
 
-/* ============================================
-   NODE CARDS - Modern Elevated Design
-   ============================================ */
 .node-card {
     height: 100%;
     border-radius: 12px;
@@ -87,9 +73,6 @@
     letter-spacing: 0.01em;
 }
 
-/* ============================================
-   STICKY ADMIN MENU - Refined Navigation
-   ============================================ */
 .admin-menu {
     position: sticky;
     top: 3.25rem;
@@ -146,9 +129,6 @@
     transform: scale(1.1);
 }
 
-/* ============================================
-   TABLES - Modern Flat Design
-   ============================================ */
 .table.modern {
     border-radius: 12px;
     overflow: hidden;
@@ -197,9 +177,6 @@
     padding: 1rem 1.25rem;
 }
 
-/* ============================================
-   FORMS - Modern Input Styling
-   ============================================ */
 .admin-box .field .input,
 .admin-box .field .select select {
     border-radius: 8px;
@@ -220,9 +197,6 @@
     font-size: 0.875rem;
 }
 
-/* ============================================
-   BUTTONS - Enhanced Styling
-   ============================================ */
 .admin-box .button {
     border-radius: 8px;
     font-weight: 500;
@@ -244,9 +218,6 @@
     background: linear-gradient(135deg, #e67700 0%, #c60 100%);
 }
 
-/* ============================================
-   TOOLBAR - Modern Search & Actions
-   ============================================ */
 .admin-box .toolbar {
     padding-bottom: 1.5rem;
     border-bottom: 1px solid rgb(0 0 0 / 6%);
@@ -265,9 +236,6 @@
     padding-right: 1.5rem;
 }
 
-/* ============================================
-   TAGS - Refined Badge Design
-   ============================================ */
 .tag {
     border-radius: 6px;
     font-weight: 500;
@@ -295,9 +263,6 @@
     color: #991b1b;
 }
 
-/* ============================================
-   PROGRESS BARS - Enhanced Visualization
-   ============================================ */
 .progress {
     height: 8px;
     border-radius: 4px;
@@ -326,9 +291,6 @@
     background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
 }
 
-/* ============================================
-   ADMIN CARDS - Generic Card Polish
-   ============================================ */
 .card.admin-card {
     border-radius: 12px;
     border: 1px solid rgb(0 0 0 / 6%);
@@ -351,11 +313,6 @@
     box-shadow: 0 8px 20px rgb(0 0 0 / 1%);
 }
 
-/* ============================================
-   TOGGLE BUTTONS - Enhanced Readability
-   ============================================ */
-
-/* Enabled state - clear green with icon emphasis */
 .button.is-success.is-light {
     background-color: #d1fae5;
     border-color: #10b981;
@@ -373,7 +330,6 @@
     color: #10b981;
 }
 
-/* Disabled state - clear gray with better contrast */
 .button.is-ghost {
     background-color: #f3f4f6;
     border: 1px solid #d1d5db;
@@ -391,9 +347,6 @@
     color: #9ca3af;
 }
 
-/* Dark theme toggle button adjustments */
-
-/* Add clear visual feedback on toggle */
 .button.is-small.is-success.is-light,
 .button.is-small.is-ghost {
     min-width: 100px;

@@ -18,9 +18,6 @@
   text-shadow: 0 1px 4px rgb(0 0 0 / 10%);
 }
 
-/* ============================================
-   CARDS & BLOCKS
-   ============================================ */
 .welcome-block {
   background: var(--glass-white);
   border-radius: var(--radius-xl);
@@ -53,7 +50,6 @@
   }
 }
 
-/* Brand header */
 .card-header.brand-header {
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   position: relative;
@@ -80,9 +76,6 @@
   color: #fff;
 }
 
-/* ============================================
-   FORMS
-   ============================================ */
 fieldset[disabled] {
   opacity: 0.7;
   position: relative;
@@ -98,10 +91,6 @@ fieldset[disabled]::after {
   border-radius: 6px;
 }
 
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-
 @media (width <=48rem) {
   .columns {
     flex-direction: column;
@@ -112,25 +101,10 @@ fieldset[disabled]::after {
   }
 }
 
-/* ============================================
-   MODALS
-   ============================================ */
-/* Force modal to display above all other elements */
 .modal.is-active {
   z-index: 2000 !important;
 }
 
-/* Hide navbar and footer when modal is active for clean overlay */
-.modal-is-active .navbar,
-.modal-is-active .footer {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-/* ============================================
-   NOTIFICATION BANNER
-   ============================================ */
 #proxmox-status-banner {
   position: fixed;
   top: var(--navbar-height);
@@ -177,9 +151,6 @@ fieldset[disabled]::after {
   }
 }
 
-/* ============================================
-   NAVBAR - Clean & Professional
-   ============================================ */
 .navbar {
   position: fixed;
   top: 0;
@@ -194,6 +165,14 @@ fieldset[disabled]::after {
   align-items: center;
 }
 
+/* Hide navbar and footer when modal is active for clean overlay */
+.modal-is-active .navbar,
+.modal-is-active .footer {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
 .navbar-brand {
   min-height: 3.5rem;
   padding: 0;
@@ -206,6 +185,53 @@ fieldset[disabled]::after {
   width: 100%;
   position: relative;
   gap: 1rem;
+}
+
+/* Generic navbar item styles should precede brand-specific variants */
+.navbar-item {
+  color: #4b5563;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.navbar-item:hover,
+.navbar-item:focus {
+  background-color: rgb(255 136 0 / 8%);
+  color: var(--text);
+}
+
+.navbar-item.is-active {
+  background-color: rgb(255 136 0 / 12%);
+  color: var(--primary);
+  font-weight: 600;
+  position: relative;
+}
+
+.navbar-item.is-active:hover {
+  background-color: rgb(255 136 0 / 18%);
+  color: var(--primary-hover);
+}
+
+.navbar-item.is-disabled {
+  color: #9ca3af;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.navbar-item.is-disabled .icon {
+  color: inherit;
+}
+
+.navbar-item .icon-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-item .icon {
+  color: inherit;
 }
 
 .navbar-brand .navbar-item {
@@ -295,8 +321,7 @@ fieldset[disabled]::after {
   backdrop-filter: var(--blur-md) saturate(180%);
   border-left: 1px solid rgb(0 0 0 / 10%);
   box-shadow: -8px 0 32px rgb(0 0 0 / 15%);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden auto;
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
@@ -348,10 +373,7 @@ fieldset[disabled]::after {
 
 .navbar-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgb(0 0 0 / 60%);
   backdrop-filter: blur(2px);
   opacity: 0;
@@ -367,9 +389,6 @@ fieldset[disabled]::after {
   pointer-events: auto;
 }
 
-/* ============================================
-   CSS-ONLY TOGGLES (no JS)
-   ============================================ */
 /* Open mobile menu when nav toggle is checked */
 #nav-toggle:checked ~ .navbar-menu-mobile {
   transform: translateX(0);
@@ -382,24 +401,53 @@ fieldset[disabled]::after {
   pointer-events: auto;
 }
 
-/* User dropdown: rotate chevron when open */
-.navbar-user-menu .user-menu-toggle:checked + .navbar-user-toggle .icon:last-child {
+/* Mobile dropdown: default hidden, shown when checked */
+.navbar-menu-mobile .navbar-user-dropdown {
+  display: none;
+}
+
+.navbar-menu-mobile .user-menu-toggle:checked ~ .navbar-user-dropdown {
+  display: block;
+}
+
+/* Base icon rotate target and active state before checked-state rule to satisfy specificity order */
+.navbar-user-toggle .icon:last-child {
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+}
+
+.navbar-user-menu.is-active .navbar-user-toggle .icon:last-child {
   transform: rotate(180deg);
 }
 
-/* User dropdown: show dropdown when checked (desktop) */
+/* Desktop dropdown visibility when checked */
 .navbar-user-menu .user-menu-toggle:checked ~ .navbar-user-dropdown {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
 }
 
-/* Mobile dropdown: default hidden, shown when checked */
-.navbar-menu-mobile .navbar-user-dropdown {
-  display: none;
+/* User dropdown: rotate chevron when open */
+.navbar-user-menu .user-menu-toggle:checked + .navbar-user-toggle .icon:last-child {
+  transform: rotate(180deg);
 }
-.navbar-menu-mobile .user-menu-toggle:checked ~ .navbar-user-dropdown {
-  display: block;
+
+/* Base desktop dropdown panel (must come before checked-state visibility rule) */
+.navbar-user-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 32px rgb(0 0 0 / 12%);
+  min-width: 200px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1001;
+  overflow: hidden;
 }
 
 .navbar-start {
@@ -410,53 +458,6 @@ fieldset[disabled]::after {
   align-items: center;
 }
 
-.navbar-item {
-  color: #4b5563;
-  padding: 0.5rem 1rem;
-  font-weight: 500;
-  font-size: 0.9375rem;
-  transition: color 0.2s ease, background-color 0.2s ease;
-}
-
-.navbar-item:hover,
-.navbar-item:focus {
-  background-color: rgb(255 136 0 / 8%);
-  color: var(--text);
-}
-
-.navbar-item.is-active {
-  background-color: rgb(255 136 0 / 12%);
-  color: var(--primary);
-  font-weight: 600;
-  position: relative;
-}
-
-.navbar-item.is-active:hover {
-  background-color: rgb(255 136 0 / 18%);
-  color: var(--primary-hover);
-}
-
-.navbar-item.is-disabled {
-  color: #9ca3af;
-  pointer-events: none;
-  opacity: 0.6;
-}
-
-.navbar-item.is-disabled .icon {
-  color: inherit;
-}
-
-.navbar-item .icon-text {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.navbar-item .icon {
-  color: inherit;
-}
-
-/* Normalize icon alignment inside navbar buttons */
 .navbar .icon {
   display: inline-flex;
   align-items: center;
@@ -524,7 +525,6 @@ fieldset[disabled]::after {
   box-sizing: border-box;
 }
 
-/* Add transparent border so height matches language group with 1px border */
 .navbar-login-btn {
   border: 1px solid transparent;
 }
@@ -536,44 +536,13 @@ fieldset[disabled]::after {
   box-shadow: 0 4px 12px rgb(255 136 0 / 25%);
 }
 
-.navbar-user-toggle .icon:last-child {
-  font-size: 0.75rem;
-  transition: transform 0.3s ease;
-}
-
-.navbar-user-menu.is-active .navbar-user-toggle .icon:last-child {
-  transform: rotate(180deg);
-}
-
 .navbar-username,
 .navbar-login-text {
+  display: inline;
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.navbar-user-dropdown {
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  right: 0;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 32px rgb(0 0 0 / 12%);
-  min-width: 200px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-8px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1001;
-  overflow: hidden;
-}
-
-.navbar-user-menu.is-active .navbar-user-dropdown {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
 }
 
 .navbar-dropdown-item {
@@ -629,6 +598,21 @@ fieldset[disabled]::after {
   border-color: rgb(0 0 0 / 15%);
 }
 
+/* Base ghost button variant must precede navbar-specific ghost variant */
+.button.is-ghost {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  box-shadow: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.button.is-ghost:hover {
+  background: rgb(0 0 0 / 5%);
+  color: var(--primary);
+  box-shadow: none;
+}
+
 .navbar .buttons .button.is-ghost {
   background: transparent;
   color: var(--text);
@@ -666,6 +650,7 @@ fieldset[disabled]::after {
   line-height: 1;
 }
 
+/* Place language segment button base before navbar button variants */
 .language-buttons .button {
   display: inline-flex;
   align-items: center;
@@ -692,10 +677,6 @@ fieldset[disabled]::after {
   border-color: var(--primary);
 }
 
-.language-buttons .button:not(.is-selected):hover {
-  background: rgb(0 0 0 / 5%);
-}
-
 /* Hover lift parity for selected (primary-like) segment */
 .language-buttons .button.is-selected:hover {
   background: var(--primary-hover);
@@ -709,11 +690,6 @@ fieldset[disabled]::after {
 .language-buttons .button:not(.is-selected):hover {
   background: #f9fafb;
   color: var(--text);
-}
-
-.navbar-username,
-.navbar-login-text {
-  display: inline;
 }
 
 /* Responsive adjustments */
@@ -812,10 +788,9 @@ fieldset[disabled]::after {
   }
 
   .navbar-menu-mobile .buttons {
-    flex-direction: column;
+    flex-flow: column nowrap;
     gap: 0.875rem;
     width: 100%;
-    flex-wrap: nowrap;
   }
 
   .navbar-menu-mobile .buttons .button {
@@ -828,6 +803,9 @@ fieldset[disabled]::after {
 
   .navbar-menu-mobile .language-buttons .button {
     height: auto;
+    flex: 1;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
   }
 
   .navbar-menu-mobile .navbar-username,
@@ -875,18 +853,12 @@ fieldset[disabled]::after {
   }
 
   .navbar-menu-mobile .language-buttons {
-    margin: 1rem 0 0 0;
+    margin: 1rem 0 0;
     justify-content: center;
     width: 100%;
     background: rgb(255 255 255 / 50%);
     padding: 0.25rem;
     border-radius: 8px;
-  }
-
-  .navbar-menu-mobile .language-buttons .button {
-    flex: 1;
-    padding: 0.625rem 1rem;
-    font-size: 0.875rem;
   }
 }
 
@@ -925,9 +897,6 @@ fieldset[disabled]::after {
   }
 }
 
-/* ============================================
-   BREADCRUMB
-   ============================================ */
 .breadcrumb a {
   color: var(--muted);
   transition: color 0.15s ease;
@@ -945,9 +914,6 @@ fieldset[disabled]::after {
   color: var(--muted);
 }
 
-/* ============================================
-   INPUTS & CHECKBOXES
-   ============================================ */
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--primary);
@@ -969,9 +935,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border-color: transparent;
 }
 
-/* ============================================
-   PROGRESS BARS
-   ============================================ */
 .progress {
   height: 0.5rem;
   border-radius: 999px;
@@ -1040,9 +1003,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   background-color: #ef4444;
 }
 
-/* ============================================
-   MESSAGES
-   ============================================ */
 .message {
   background: transparent;
 }
@@ -1052,7 +1012,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   color: var(--text);
   border-color: var(--border);
   backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
 }
 
 .message .message-body {
@@ -1061,7 +1020,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border: 1px solid var(--border);
   border-top: none;
   backdrop-filter: var(--blur-sm);
-  -webkit-backdrop-filter: var(--blur-sm);
 }
 
 .message.is-primary .message-header {
@@ -1089,26 +1047,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border-left: 3px solid #ef4444;
 }
 
-/* ============================================
-   BUTTONS - Special Variants
-   ============================================ */
-.button.is-ghost {
-  background: transparent;
-  border: none;
-  color: var(--text);
-  box-shadow: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.button.is-ghost:hover {
-  background: rgb(0 0 0 / 5%);
-  color: var(--primary);
-  box-shadow: none;
-}
-
-/* ============================================
-   PROFILE & ADMIN SPECIFIC
-   ============================================ */
 .admin-card {
   border-radius: 0.75rem;
   overflow: hidden;
@@ -1118,9 +1056,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border-radius: 0.5rem;
 }
 
-/* ============================================
-   LOGIN & AUTH PAGES
-   ============================================ */
 .min-h-100vh {
   min-height: 100vh;
 }
