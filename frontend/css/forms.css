@@ -1,8 +1,3 @@
-/* ============================================
-   FORMS - Consolidated form styles
-   ============================================ */
-
-/* Form Layout */
 .form-vertical .field+.field {
     margin-top: 1.25rem;
 }
@@ -12,7 +7,6 @@
     flex-direction: column;
 }
 
-/* Form Labels */
 .form-label {
     display: flex;
     align-items: center;
@@ -54,7 +48,6 @@
     margin-bottom: 0.4rem;
 }
 
-/* Form Help Text */
 .form-help {
     display: flex;
     align-items: flex-start;
@@ -76,7 +69,6 @@
     color: #ff8800;
 }
 
-/* Form Tooltips */
 .form-tooltip {
     position: relative;
     display: inline-flex;
