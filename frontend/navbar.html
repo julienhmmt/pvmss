@@ -1,15 +1,17 @@
 {{define "navbar"}}
+<!-- CSS toggles -->
+<input type="checkbox" id="nav-toggle" class="nav-toggle-checkbox" hidden>
 <nav class="navbar is-fixed-top" role="navigation" aria-label="main navigation">
     <div class="container">
         <div class="navbar-brand">
             <a class="navbar-item" href="/">
                 {{T "UI.Header"}}
             </a>
-            <button class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navbar-menu">
+            <label class="navbar-burger" for="nav-toggle" aria-label="menu" aria-expanded="false">
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
                 <span aria-hidden="true"></span>
-            </button>
+            </label>
         </div>
 
         <div class="navbar-menu" id="navbarMenuDesktop">
@@ -66,37 +68,44 @@
             </div>
 
             <div class="navbar-end">
-                <div class="navbar-item">
-                    <div class="buttons">
-                        {{if .IsAuthenticated}}
-                            {{if .IsAdmin}}
-                            <a class="button is-primary" href="/admin/nodes">
-                                <span class="icon"><i class="fas fa-cog"></i></span>
-                                <span>{{T "Navbar.Admin"}}</span>
-                            </a>
-                            {{end}}
-                            
-                            <a href="/profile" class="button is-ghost">
-                                <span class="icon"><i class="fas fa-user"></i></span>
-                                <span>{{.Username}}</span>
-                            </a>
-                            
-                            <a href="/logout" class="button is-light">
-                                <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
-                                <span>{{T "Navbar.Logout"}}</span>
-                            </a>
-                        {{else}}
-                            <a class="button is-primary" href="/login">
-                                <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
-                                <span>{{T "Navbar.Login"}}</span>
-                            </a>
-                        {{end}}
-                        
-                        <div class="buttons has-addons language-buttons">
-                            <a href="/set-lang?lang=fr" class="button {{if eq .Lang "fr"}}is-selected{{end}}" title="Français">FR</a>
-                            <a href="/set-lang?lang=en" class="button {{if eq .Lang "en"}}is-selected{{end}}" title="English">EN</a>
-                        </div>
+                <div class="navbar-item navbar-actions">
+                    <div class="buttons has-addons language-buttons">
+                        <a href="/set-lang?lang=fr" class="button {{if eq .Lang "fr"}}is-selected{{end}}" title="Français">FR</a>
+                        <a href="/set-lang?lang=en" class="button {{if eq .Lang "en"}}is-selected{{end}}" title="English">EN</a>
                     </div>
+                    
+                    {{if .IsAuthenticated}}
+                        <div class="navbar-user-menu">
+                            <input type="checkbox" id="user-menu-toggle" class="user-menu-toggle" hidden>
+                            <label for="user-menu-toggle" class="button is-primary has-text-white navbar-user-toggle" title="User menu">
+                                <span class="icon"><i class="fas fa-user-circle"></i></span>
+                                <span class="navbar-username">{{.Username}}</span>
+                                <span class="icon"><i class="fas fa-chevron-down"></i></span>
+                            </label>
+                            <div class="navbar-user-dropdown">
+                                {{if .IsAdmin}}
+                                <a class="navbar-dropdown-item" href="/admin/nodes">
+                                    <span class="icon"><i class="fas fa-cog"></i></span>
+                                    <span>{{T "Navbar.Admin"}}</span>
+                                </a>
+                                <hr class="navbar-dropdown-divider">
+                                {{end}}
+                                <a class="navbar-dropdown-item" href="/profile">
+                                    <span class="icon"><i class="fas fa-user"></i></span>
+                                    <span>{{T "Navbar.Profile"}}</span>
+                                </a>
+                                <a class="navbar-dropdown-item" href="/logout">
+                                    <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                                    <span>{{T "Navbar.Logout"}}</span>
+                                </a>
+                            </div>
+                        </div>
+                    {{else}}
+                        <a class="button is-primary has-text-white navbar-login-btn" href="/login" title="{{T "Navbar.Login"}}">
+                            <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
+                            <span class="navbar-login-text">{{T "Navbar.Login"}}</span>
+                        </a>
+                    {{end}}
                 </div>
             </div>
         </div>
@@ -107,9 +116,9 @@
 <div id="navbar-menu" class="navbar-menu-mobile">
     <div class="navbar-menu-mobile-header">
         <span class="navbar-menu-mobile-title">{{T "UI.Header"}}</span>
-        <button class="navbar-menu-mobile-close" aria-label="Close menu">
+        <label class="navbar-menu-mobile-close" for="nav-toggle" aria-label="Close menu">
             <span aria-hidden="true">&times;</span>
-        </button>
+        </label>
     </div>
     <div class="navbar-start">
         <a class="navbar-item {{if eq (currentPath) "/"}}is-active{{end}}" href="/" {{if eq (currentPath) "/"}}aria-current="page"{{end}}>
@@ -158,78 +167,47 @@
     </div>
 
     <div class="navbar-end">
-        <div class="navbar-item">
-            <div class="buttons">
-                {{if .IsAuthenticated}}
-                    {{if .IsAdmin}}
-                    <a class="button is-primary" href="/admin/nodes">
-                        <span class="icon"><i class="fas fa-cog"></i></span>
-                        <span>{{T "Navbar.Admin"}}</span>
-                    </a>
-                    {{end}}
-                    
-                    <a href="/profile" class="button is-ghost">
-                        <span class="icon"><i class="fas fa-user"></i></span>
-                        <span>{{.Username}}</span>
-                    </a>
-                    
-                    <a href="/logout" class="button is-light">
-                        <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
-                        <span>{{T "Navbar.Logout"}}</span>
-                    </a>
-                {{else}}
-                    <a class="button is-primary" href="/login">
-                        <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
-                        <span>{{T "Navbar.Login"}}</span>
-                    </a>
-                {{end}}
-                
-                <div class="buttons has-addons language-buttons">
-                    <a href="/set-lang?lang=fr" class="button {{if eq .Lang "fr"}}is-selected{{end}}" title="Français">FR</a>
-                    <a href="/set-lang?lang=en" class="button {{if eq .Lang "en"}}is-selected{{end}}" title="English">EN</a>
-                </div>
+        <div class="navbar-item navbar-actions">
+            <div class="buttons has-addons language-buttons">
+                <a href="/set-lang?lang=fr" class="button {{if eq .Lang "fr"}}is-selected{{end}}" title="Français">FR</a>
+                <a href="/set-lang?lang=en" class="button {{if eq .Lang "en"}}is-selected{{end}}" title="English">EN</a>
             </div>
+            
+            {{if .IsAuthenticated}}
+                <div class="navbar-user-menu">
+                    <input type="checkbox" id="user-menu-toggle-mobile" class="user-menu-toggle" hidden>
+                    <label for="user-menu-toggle-mobile" class="button is-primary has-text-white navbar-user-toggle" title="User menu">
+                        <span class="icon"><i class="fas fa-user-circle"></i></span>
+                        <span class="navbar-username">{{.Username}}</span>
+                        <span class="icon"><i class="fas fa-chevron-down"></i></span>
+                    </label>
+                    <div class="navbar-user-dropdown">
+                        {{if .IsAdmin}}
+                        <a class="navbar-dropdown-item" href="/admin/nodes">
+                            <span class="icon"><i class="fas fa-cog"></i></span>
+                            <span>{{T "Navbar.Admin"}}</span>
+                        </a>
+                        <hr class="navbar-dropdown-divider">
+                        {{end}}
+                        <a class="navbar-dropdown-item" href="/profile">
+                            <span class="icon"><i class="fas fa-user"></i></span>
+                            <span>{{T "Navbar.Profile"}}</span>
+                        </a>
+                        <a class="navbar-dropdown-item" href="/logout">
+                            <span class="icon"><i class="fas fa-sign-out-alt"></i></span>
+                            <span>{{T "Navbar.Logout"}}</span>
+                        </a>
+                    </div>
+                </div>
+            {{else}}
+                <a class="button is-primary has-text-white navbar-login-btn" href="/login" title="{{T "Navbar.Login"}}">
+                    <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
+                    <span class="navbar-login-text">{{T "Navbar.Login"}}</span>
+                </a>
+            {{end}}
         </div>
     </div>
 </div>
 
-<div class="navbar-backdrop"></div>
-<script>
-(function() {
-  const burger = document.querySelector('.navbar-burger');
-  const menu = document.querySelector('.navbar-menu-mobile');
-  const backdrop = document.querySelector('.navbar-backdrop');
-  const closeBtn = document.querySelector('.navbar-menu-mobile-close');
-  
-  function openMenu() {
-    if (menu) menu.classList.add('is-active');
-    if (backdrop) backdrop.classList.add('is-active');
-    document.body.style.overflow = 'hidden';
-  }
-  
-  function closeMenu() {
-    if (menu) menu.classList.remove('is-active');
-    if (backdrop) backdrop.classList.remove('is-active');
-    document.body.style.overflow = '';
-  }
-  
-  if (burger) {
-    burger.addEventListener('click', function() {
-      if (menu && menu.classList.contains('is-active')) {
-        closeMenu();
-      } else {
-        openMenu();
-      }
-    });
-  }
-  
-  if (backdrop) {
-    backdrop.addEventListener('click', closeMenu);
-  }
-  
-  if (closeBtn) {
-    closeBtn.addEventListener('click', closeMenu);
-  }
-})();
-</script>
+<label for="nav-toggle" class="navbar-backdrop"></label>
 {{end}}
