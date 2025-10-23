@@ -290,6 +290,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 
 	// Get available storages for the selected node
 	storages := []string{}
+	storageNodes := make(map[string]string)
 	if client != nil && activeNode != "" {
 		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), client, activeNode); err == nil {
 			// Create a map of enabled storages for quick lookup
@@ -302,11 +303,13 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 				// Only include storages that are in enabled_storages list, enabled, and can hold VM disks
 				if enabledStorageMap[storage.Storage] && storage.Enabled == 1 && strings.Contains(storage.Content, "images") {
 					storages = append(storages, storage.Storage)
+					storageNodes[storage.Storage] = activeNode
 				}
 			}
 		}
 	}
 	data["Storages"] = storages
+	data["StorageNodes"] = storageNodes
 
 	// Proxmox connection status for template (also provided by middleware, but ensure here)
 	if sm != nil {
