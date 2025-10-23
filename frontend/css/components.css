@@ -113,6 +113,22 @@ fieldset[disabled]::after {
 }
 
 /* ============================================
+   MODALS
+   ============================================ */
+/* Force modal to display above all other elements */
+.modal.is-active {
+  z-index: 2000 !important;
+}
+
+/* Hide navbar and footer when modal is active for clean overlay */
+.modal-is-active .navbar,
+.modal-is-active .footer {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* ============================================
    NOTIFICATION BANNER
    ============================================ */
 #proxmox-status-banner {
