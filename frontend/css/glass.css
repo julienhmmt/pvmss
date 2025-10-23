@@ -26,9 +26,6 @@ body::before {
   z-index: 0;
 }
 
-/* ============================================
-   NAVBAR - Glass Effect
-   ============================================ */
 .navbar {
   background: var(--glass-opacity-normal);
   backdrop-filter: var(--blur-md) saturate(180%);
@@ -62,9 +59,6 @@ body::before {
   border-radius: 3px 3px 0 0;
 }
 
-/* ============================================
-   BOXES & CONTAINERS - Glass Surface
-   ============================================ */
 .box,
 .admin-box {
   background: var(--glass-opacity-light);
@@ -83,9 +77,6 @@ body::before {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* ============================================
-   CARDS - Elegant Glass Cards
-   ============================================ */
 .card,
 .admin-card,
 .node-card {
@@ -146,9 +137,6 @@ body::before {
       transparent);
 }
 
-/* ============================================
-   WELCOME BLOCK - Hero Glass Effect
-   ============================================ */
 .welcome-block {
   background: var(--glass-opacity-strong);
   backdrop-filter: blur(24px) saturate(180%);
@@ -158,9 +146,6 @@ body::before {
   border-radius: var(--radius-xl);
 }
 
-/* ============================================
-   HERO - Gradient Glass
-   ============================================ */
 .hero.is-primary {
   background: linear-gradient(135deg,
       rgba(255, 136, 0, 0.9) 0%,
@@ -195,9 +180,6 @@ body::before {
   }
 }
 
-/* ============================================
-   FORMS - Glass Inputs
-   ============================================ */
 .input,
 .textarea,
 .select select {
@@ -231,9 +213,6 @@ body::before {
     inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* ============================================
-   BUTTONS - Modern Glass Buttons
-   ============================================ */
 .button {
   border-radius: var(--radius-md);
   font-weight: 600;
@@ -296,9 +275,6 @@ body::before {
   transform: translateY(-0.5px);
 }
 
-/* ============================================
-   ADMIN MENU - Sidebar Glass
-   ============================================ */
 .admin-menu {
   background: var(--glass-opacity-normal);
   backdrop-filter: var(--blur-md) saturate(180%);
@@ -325,9 +301,6 @@ body::before {
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-/* ============================================
-   TABLES - Glass Table Design
-   ============================================ */
 .table-container {
   background: var(--glass-opacity-normal);
   backdrop-filter: var(--blur-md) saturate(180%);
@@ -358,9 +331,6 @@ body::before {
   background: rgba(255, 136, 0, 0.04);
 }
 
-/* ============================================
-   TAGS - Glass Badge Effect
-   ============================================ */
 .tag {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -384,9 +354,6 @@ body::before {
   background: var(--danger-light);
 }
 
-/* ============================================
-   PROGRESS BARS - Glass Progress
-   ============================================ */
 .progress::-webkit-progress-bar {
   background: rgba(0, 0, 0, 0.06);
   backdrop-filter: blur(5px);
@@ -399,9 +366,6 @@ body::before {
   position: relative;
 }
 
-/* ============================================
-   NOTIFICATIONS - Glass Alerts
-   ============================================ */
 .notification {
   background: var(--glass-opacity-solid);
   backdrop-filter: var(--blur-md) saturate(180%);
@@ -434,9 +398,6 @@ body::before {
   border-left: 3px solid var(--info);
 }
 
-/* ============================================
-   MODALS - Glass Modal Overlay
-   ============================================ */
 .modal-background {
   backdrop-filter: blur(8px) saturate(120%);
   -webkit-backdrop-filter: blur(8px) saturate(120%);
@@ -464,9 +425,6 @@ body::before {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
-/* ============================================
-   FOOTER - Subtle Glass Footer
-   ============================================ */
 .footer {
   background: var(--glass-opacity-light);
   backdrop-filter: var(--blur-md) saturate(180%);
@@ -475,11 +433,7 @@ body::before {
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.03);
 }
 
-/* ============================================
-   ACCESSIBILITY & REDUCED MOTION
-   ============================================ */
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
@@ -497,11 +451,7 @@ body::before {
   }
 }
 
-/* ============================================
-   FALLBACK FOR NON-SUPPORTING BROWSERS
-   ============================================ */
 @supports not (backdrop-filter: blur(20px)) {
-
   .navbar,
   .box,
   .card,
@@ -519,12 +469,7 @@ body::before {
   }
 }
 
-/* ============================================
-   RESPONSIVE ADJUSTMENTS
-   ============================================ */
 @media screen and (max-width: 768px) {
-
-  /* Reduce blur for performance on mobile */
   .navbar,
   .box,
   .card,
@@ -533,7 +478,6 @@ body::before {
     -webkit-backdrop-filter: blur(12px) saturate(150%);
   }
 
-  /* Simplify shadows and transforms on mobile */
   .box:hover,
   .card:hover {
     transform: none;

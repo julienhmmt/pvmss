@@ -364,6 +364,12 @@ other = "Paused VMs"
 other = "Click the button below to change your Proxmox password. You will need to provide your current password for verification."
 
 # ===========
+# VM Create
+# ===========
+["VM.Create.Configuration"]
+other = "VM Configuration"
+
+# ===========
 # Search
 # ===========
 ["Search.ActionsHeader"]
