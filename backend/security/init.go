@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/alexedwards/scs/v2/memstore"
 	"pvmss/logger"
+	"pvmss/utils"
 )
 
 // RegisterSessionTypes registers custom types with gob for session serialization
@@ -35,7 +35,7 @@ func InitSecurity() (*scs.SessionManager, error) {
 	}
 
 	// Determine if running in production for secure cookie settings.
-	isProduction := strings.ToLower(os.Getenv("ENV")) == "production"
+	isProduction := utils.IsProduction()
 
 	// Initialize session manager with enhanced configuration.
 	scsm := scs.New()
