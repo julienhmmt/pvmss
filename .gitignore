@@ -2,6 +2,7 @@
 .env
 .idea/
 .vscode/
+.windsurf/
 Makefile
 docker-compose.dev.yml
 settings.dev.json
