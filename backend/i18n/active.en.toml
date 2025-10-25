@@ -38,6 +38,8 @@ other = "Description"
 other = "Disk"
 ["Common.Disable"]
 other = "Disable"
+["Common.DismissNotification"]
+other = "Dismiss notification"
 ["Common.Disabled"]
 other = "Disabled"
 ["Common.Edit"]
@@ -90,6 +92,8 @@ other = "Min"
 other = "Name"
 ["Common.Network"]
 other = "Network"
+["Common.NotificationDismissed"]
+other = "Notification dismissed"
 ["Common.Next"]
 other = "Next"
 ["Common.No"]
