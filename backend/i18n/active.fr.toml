@@ -626,6 +626,10 @@ other = "Options de démarrage"
 other = "Activer le démarrage EFI (UEFI)"
 ["VM.Create.EFIHelp"]
 other = "Active le firmware UEFI (OVMF) pour les systèmes d'exploitation modernes. Requis pour Windows 11, Secure Boot et les disques GPT."
+["VM.Create.EnableTPM"]
+other = "Activer le TPM (Trusted Platform Module)"
+["VM.Create.TPMHelp"]
+other = "Active le Trusted Platform Module v2.0 pour des fonctionnalités de sécurité avancées. Requis pour Windows 11, le chiffrement BitLocker et le démarrage sécurisé. Un disque d'état TPM de 4 Mio sera créé."
 ["VM.Create.Title"]
 other = "Créer une nouvelle machine virtuelle"
 ["VM.Create.VMName"]
@@ -678,6 +682,8 @@ other = "Connexion réseau virtuelle pour la VM. Détermine le réseau auquel la
 other = "Étiquettes de catégorisation pour organiser vos VMs. Cliquez sur un tag pour le sélectionner. Le tag 'pvmss' est obligatoire et ne peut pas être modifié."
 ["VM.Create.Tooltip.EFI"]
 other = "Active le mode de démarrage UEFI (Unified Extensible Firmware Interface) au lieu du BIOS traditionnel. UEFI est requis pour les systèmes d'exploitation modernes comme Windows 11, prend en charge Secure Boot et active le partitionnement de disque GPT. Un disque EFI sera automatiquement créé dans le même stockage que votre disque principal."
+["VM.Create.Tooltip.TPM"]
+other = "Active le Trusted Platform Module (TPM) v2.0 pour des fonctionnalités de sécurité matérielles avancées. Le TPM est requis pour Windows 11, le chiffrement de disque BitLocker, Windows Hello et d'autres fonctionnalités de sécurité. Un disque d'état TPM de 4 Mio sera automatiquement créé dans le même stockage que votre disque principal. Le TPM nécessite un stockage compatible prenant en charge le format de disque brut (raw)."
 
 # ===========
 # VM Details

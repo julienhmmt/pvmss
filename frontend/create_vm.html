@@ -153,6 +153,23 @@
                                                         <input id="vmId" class="input is-medium" type="number" name="vmid" value="{{if .FormData.vmid}}{{.FormData.vmid}}{{end}}" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
                                                     </div>
                                                 </div>
+
+                                                <!-- TPM Option -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="enable_tpm" value="1" {{if eq .FormData.enable_tpm "1"}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.EnableTPM"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.TPM"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.TPM"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.TPMHelp"}}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

@@ -584,6 +584,10 @@ other = "Boot options"
 other = "Enable EFI boot (UEFI)"
 ["VM.Create.EFIHelp"]
 other = "Enable UEFI firmware (OVMF) for modern operating systems. Required for Windows 11, secure boot, and GPT disks."
+["VM.Create.EnableTPM"]
+other = "Enable TPM (Trusted Platform Module)"
+["VM.Create.TPMHelp"]
+other = "Enable Trusted Platform Module v2.0 for enhanced security features. Required for Windows 11, BitLocker encryption, and secure boot. A 4 MiB TPM state disk will be created."
 ["VM.Create.Title"]
 other = "Create a New Virtual Machine"
 ["VM.Create.VMName"]
@@ -636,6 +640,8 @@ other = "Virtual network bridge for VM connection. Determines which network the 
 other = "Categorization labels to organize your VMs (production, development, test). Click on a tag to select it. The 'pvmss' tag is required."
 ["VM.Create.Tooltip.EFI"]
 other = "Enable UEFI (Unified Extensible Firmware Interface) boot mode instead of legacy BIOS. UEFI is required for modern operating systems like Windows 11, supports Secure Boot, and enables GPT disk partitioning. An EFI disk will be automatically created in the same storage as your main disk."
+["VM.Create.Tooltip.TPM"]
+other = "Enable Trusted Platform Module (TPM) v2.0 for hardware-level security features. TPM is required for Windows 11, BitLocker drive encryption, Windows Hello, and other security features. A 4 MiB TPM state disk will be automatically created in the same storage as your main disk. TPM requires compatible storage that supports raw disk format."
 
 # ===========
 # VM Details
