@@ -1189,12 +1189,60 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
    Notification Component - Responsive
    =================================== */
 
+
 .notification {
   position: relative;
   overflow: hidden;
   --notification-dismiss-duration: 200ms;
+  --notification-accent-color: #2563eb;
+  --notification-icon-bg: rgba(255, 255, 255, 0.18);
+  --notification-icon-color: currentColor;
   transition: opacity var(--notification-dismiss-duration) ease,
     transform var(--notification-dismiss-duration) ease;
+}
+
+.notification[data-tone="success"] {
+  --notification-accent-color: #16a34a;
+}
+
+.notification[data-tone="warning"] {
+  --notification-accent-color: #f59e0b;
+}
+
+.notification[data-tone="danger"],
+.notification[data-tone="error"] {
+  --notification-accent-color: #dc2626;
+}
+
+.notification[data-tone="info"] {
+  --notification-accent-color: #2563eb;
+}
+
+.notification.is-light {
+  --notification-icon-bg: rgba(37, 99, 235, 0.1);
+}
+
+.notification[data-tone="success"].is-light {
+  --notification-icon-bg: rgba(22, 163, 74, 0.12);
+}
+
+.notification[data-tone="warning"].is-light {
+  --notification-icon-bg: rgba(245, 158, 11, 0.14);
+}
+
+.notification[data-tone="danger"].is-light,
+.notification[data-tone="error"].is-light {
+  --notification-icon-bg: rgba(220, 38, 38, 0.12);
+}
+
+.notification.is-plain {
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.notification.is-plain:not(.is-light) {
+  color: inherit;
 }
 
 .notification.is-compact {
@@ -1213,6 +1261,17 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   gap: 1rem;
 }
 
+.notification-accent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--notification-accent-color), rgba(37, 99, 235, 0.6));
+}
+
+.notification[data-plain="true"] .notification-accent {
+  background: none;
+}
+
 .notification-body {
   display: flex;
   gap: 1rem;
@@ -1229,11 +1288,38 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   min-width: 1.5rem;
 }
 
+.notification-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 1.25rem;
+  background: var(--notification-icon-bg);
+  color: var(--notification-icon-color);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+}
+
+.notification.is-light .notification-icon-badge {
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: none;
+}
+
 .notification-text {
   flex: 1;
   min-width: 0;
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+
+.notification-eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.9);
 }
 
 .notification-heading {
@@ -1282,6 +1368,26 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 .notification-meta {
   font-size: 0.85rem;
   opacity: 0.85;
+}
+
+.notification-footnote {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: rgba(71, 85, 105, 0.9);
+}
+
+.notification-footnote a {
+  color: currentColor;
+  text-decoration: underline;
+}
+
+.notification[data-plain="true"] .notification-footnote {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.notification-footnote:empty {
+  display: none;
 }
 
 .notification-html > * + * {
