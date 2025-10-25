@@ -273,11 +273,29 @@
                                                     </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{$vmRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric">
+                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="256" value="{{$vmRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., 2048 (2 GB)">
                                                         </div>
                                                         <div class="control"><span class="button is-static is-medium">MB</span></div>
                                                     </div>
+                                                    <p class="help has-text-grey is-size-7 mt-2">
+                                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                                        <span id="memory-display">{{$vmRamMinGB}} GB minimum ({{$vmRamMinMB}} MB)</span>
+                                                    </p>
                                                 </div>
+                                                <script>
+                                                    // Real-time memory display conversion
+                                                    const memoryInput = document.getElementById('memory');
+                                                    const memoryDisplay = document.getElementById('memory-display');
+                                                    
+                                                    function updateMemoryDisplay() {
+                                                        const mb = parseInt(memoryInput.value) || 0;
+                                                        const gb = (mb / 1024).toFixed(1);
+                                                        memoryDisplay.textContent = gb + ' GB (' + mb + ' MB)';
+                                                    }
+                                                    
+                                                    memoryInput.addEventListener('input', updateMemoryDisplay);
+                                                    memoryInput.addEventListener('change', updateMemoryDisplay);
+                                                </script>
                                                 <div class="field">
                                                     <label for="diskSize" class="form-label">
                                                         <span class="form-label-icon">

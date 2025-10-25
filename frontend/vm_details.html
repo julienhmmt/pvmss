@@ -134,16 +134,16 @@
                                 {{end}}
                             </div>
                             <p class="title is-5 mb-1 has-text-success">
-                                {{if eq .VM.Status "running"}}{{.FormattedMem}}{{else}}<span class="has-text-grey-light">--</span>{{end}}
+                                {{if eq .VM.Status "running"}}{{.FormattedMemGB}}{{else}}<span class="has-text-grey-light">--</span>{{end}}
                             </p>
                             <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">
                                 {{if eq .VM.Status "running"}}
                                 <span class="icon-text">
                                     <span class="icon is-small"><i class="fas fa-memory"></i></span>
-                                    <span>{{.FormattedMaxMem}} alloué</span>
+                                    <span>/ {{.FormattedMaxMemGB}} alloué</span>
                                 </span>
                                 {{else}}
-                                <span>{{.FormattedMaxMem}} total</span>
+                                <span>{{.FormattedMaxMemGB}} total</span>
                                 {{end}}
                             </p>
                             {{if eq .VM.Status "running"}}

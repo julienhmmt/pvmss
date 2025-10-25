@@ -406,6 +406,51 @@ func FormatBytes(bytes int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
+// FormatMemoryGB converts memory from bytes or MB to GB with clean formatting
+// Accepts bytes (from Proxmox API) or MB (from form input)
+// Returns formatted string like "2 GB", "512 MB", "0.5 GB"
+func FormatMemoryGB(value int64, isBytes bool) string {
+	var memoryMB int64
+
+	if isBytes {
+		// Convert bytes to MB (Proxmox API returns bytes)
+		memoryMB = value / (1024 * 1024)
+	} else {
+		// Already in MB (from form input)
+		memoryMB = value
+	}
+
+	// Convert MB to GB
+	memoryGB := float64(memoryMB) / 1024.0
+
+	// Format based on size
+	if memoryGB >= 1 {
+		// For 1 GB or more, show as GB
+		if memoryGB == float64(int64(memoryGB)) {
+			// Whole number
+			return fmt.Sprintf("%d GB", int64(memoryGB))
+		}
+		// Decimal
+		return fmt.Sprintf("%.1f GB", memoryGB)
+	}
+
+	// Less than 1 GB, show as MB
+	if memoryMB == int64(memoryMB) {
+		return fmt.Sprintf("%d MB", memoryMB)
+	}
+	return fmt.Sprintf("%.0f MB", float64(memoryMB))
+}
+
+// BytesToGB converts bytes to GB as integer (for calculations)
+func BytesToGB(bytes int64) int64 {
+	return bytes / (1024 * 1024 * 1024)
+}
+
+// MBToGB converts MB to GB as integer (for calculations)
+func MBToGB(mb int64) int64 {
+	return mb / 1024
+}
+
 // FormatUptime formats uptime in seconds to human-readable format (days, hours, minutes, seconds)
 // with i18n support
 func FormatUptime(seconds int64, r *http.Request) string {
