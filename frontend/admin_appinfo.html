@@ -141,18 +141,26 @@
         </table>
       </div>
     {{else}}
-      <div class="notification is-info is-light">
-        <p>{{T "Admin.AppInfo.NoVariables"}}</p>
-      </div>
+      {{template "notification" (dict 
+        "Type" "info" 
+        "Message" (T "Admin.AppInfo.NoVariables") 
+        "Icon" "fas fa-info-circle" 
+        "Dismissible" false 
+        "Light" true 
+        "ExtraClasses" "mb-0"
+      )}}
     {{end}}
   </div>
 
   <!-- Information Notice -->
-  <div class="notification is-info is-light">
-    <p class="mb-2">
-      <span class="icon"><i class="fas fa-shield-alt"></i></span>
-      <strong>{{T "Admin.AppInfo.SecurityNote"}}</strong> {{T "Admin.AppInfo.SecurityMessage"}}
-    </p>
-  </div>
+  {{template "notification" (dict 
+    "Type" "info" 
+    "Title" (T "Admin.AppInfo.SecurityNote") 
+    "Message" (T "Admin.AppInfo.SecurityMessage") 
+    "Icon" "fas fa-shield-alt" 
+    "Dismissible" false 
+    "Light" true 
+    "ExtraClasses" "mb-0"
+  )}}
 </div>
 {{end}}

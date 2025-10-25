@@ -55,26 +55,32 @@
           <span>{{T "Admin.Limits.NoNodeSelected"}}</span>
         </h2>
       </div>
-      <div class="notification is-warning is-light">
-        <p class="mb-4">{{T "Admin.Limits.SelectNodePrompt"}}</p>
-        <div class="field has-addons">
-          <div class="control is-expanded">
-            <div class="select is-fullwidth">
-              <select id="nodeSelect" name="node">
-                <option value="">{{T "Admin.Limits.SelectNode"}}</option>
-                {{range $node := .NodeNames}}
-                <option value="{{$node}}">{{$node}}</option>
-                {{end}}
-              </select>
-            </div>
+      {{template "notification" (dict 
+        "Type" "warning" 
+        "Title" (T "Admin.Limits.NoNodeSelected") 
+        "MessageHTML" (T "Admin.Limits.SelectNodePrompt") 
+        "Icon" "fas fa-exclamation-triangle" 
+        "Dismissible" false 
+        "Light" true 
+        "ExtraClasses" "mb-4"
+      )}}
+      <div class="field has-addons">
+        <div class="control is-expanded">
+          <div class="select is-fullwidth">
+            <select id="nodeSelect" name="node">
+              <option value="">{{T "Admin.Limits.SelectNode"}}</option>
+              {{range $node := .NodeNames}}
+              <option value="{{$node}}">{{$node}}</option>
+              {{end}}
+            </select>
           </div>
-          <div class="control">
-            <button class="button is-primary" type="button"
-                    onclick="if(document.getElementById('nodeSelect').value) window.location.href='/admin/limits?node=' + encodeURIComponent(document.getElementById('nodeSelect').value)">
-              <span class="icon"><i class="fas fa-check"></i></span>
-              <span>{{T "Common.Select"}}</span>
-            </button>
-          </div>
+        </div>
+        <div class="control">
+          <button class="button is-primary" type="button"
+                  onclick="if(document.getElementById('nodeSelect').value) window.location.href='/admin/limits?node=' + encodeURIComponent(document.getElementById('nodeSelect').value)">
+            <span class="icon"><i class="fas fa-check"></i></span>
+            <span>{{T "Common.Select"}}</span>
+          </button>
         </div>
       </div>
       {{end}}
@@ -84,24 +90,18 @@
           {{$capacity := index .NodeCapacities .Node}}
           {{if $capacity}}
           <!-- Node Physical Capacity -->
-          <div class="notification is-info is-light mb-5">
-            <p class="has-text-weight-bold mb-2">
-              <span class="icon"><i class="fas fa-server"></i></span>
-              <span>{{T "Admin.Limits.NodePhysicalCapacity"}}</span>
-            </p>
-            <div class="content is-small">
-              <p class="mb-1">
-                <strong>{{T "Admin.Limits.AggregateCores"}}</strong> {{$capacity.CPUs}} CPUs
-              </p>
-              <p class="mb-1">
-                <strong>{{T "Admin.Limits.AggregateMemory"}}</strong> {{$capacity.MemoryGB}} GB
-              </p>
-              <p class="is-size-7 has-text-grey mt-2">
-                <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
-                {{T "Admin.Limits.CapacityWarning"}}
-              </p>
-            </div>
-          </div>
+          {{template "notification" (dict 
+            "Type" "info" 
+            "Title" (T "Admin.Limits.NodePhysicalCapacity") 
+            "MessageHTML" (printf "<p class=\"mb-1\"><strong>%s</strong> %d CPUs</p><p class=\"mb-1\"><strong>%s</strong> %d GB</p><p class=\"is-size-7 has-text-grey mt-2\">%s</p>" 
+              (T "Admin.Limits.AggregateCores") $capacity.CPUs 
+              (T "Admin.Limits.AggregateMemory") $capacity.MemoryGB 
+              (T "Admin.Limits.CapacityWarning"))
+            "Icon" "fas fa-server" 
+            "Dismissible" false 
+            "Light" true 
+            "ExtraClasses" "mb-5"
+          )}}
           {{end}}
         {{end}}
       {{end}}

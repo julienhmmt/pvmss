@@ -20,21 +20,21 @@
       "Title" (T "Admin.UserPool.DeleteConfirmTitle") 
       "Message" (T "Admin.UserPool.DeleteConfirmMessage") 
       "Icon" "fas fa-exclamation-triangle" 
-      "Dismissible" false
+      "Dismissible" false 
+      "Light" true 
+      "ExtraClasses" "mb-4"
     )}}
 
     <div class="content mt-4">
-      <div class="notification is-danger is-light">
-        <p class="has-text-weight-semibold mb-2">
-          <span class="icon"><i class="fas fa-exclamation-circle"></i></span>
-          <span>{{T "Admin.UserPool.DeleteWarning"}}</span>
-        </p>
-        <ul>
-          <li>{{T "Admin.UserPool.DeleteWarning1"}}</li>
-          <li>{{T "Admin.UserPool.DeleteWarning2"}}</li>
-          <li>{{T "Admin.UserPool.DeleteWarning3"}}</li>
-        </ul>
-      </div>
+      {{template "notification" (dict 
+        "Type" "danger" 
+        "Title" (T "Admin.UserPool.DeleteWarning") 
+        "Message" (T "Admin.UserPool.DeleteWarningDetails") 
+        "Icon" "fas fa-exclamation-circle" 
+        "Dismissible" false 
+        "Light" true 
+        "ExtraClasses" "mb-0"
+      )}}
     </div>
 
     <div class="box mb-4">
