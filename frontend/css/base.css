@@ -4,10 +4,26 @@
 
 html {
   scroll-behavior: smooth;
+  height: 100%;
 }
 
-.app-body {
+body {
+  min-height: 100%;
+}
+
+body.app-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   padding-top: var(--navbar-height);
+}
+
+body.app-body main {
+  flex: 1 0 auto;
+}
+
+.footer {
+  margin-top: auto;
 }
 
 @media screen and (max-width: 768px) {
