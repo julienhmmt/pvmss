@@ -63,14 +63,27 @@ func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node
 
 // NetworkInterface represents a VM network interface configuration
 type NetworkInterface struct {
-	Index       string   // e.g., "net0", "net1"
-	Model       string   // e.g., "virtio", "e1000"
-	MACAddress  string   // e.g., "AA:BB:CC:DD:EE:FF"
-	Bridge      string   // e.g., "vmbr0"
-	Firewall    bool     // whether firewall is enabled
-	LinkDown    bool     // whether link is down
-	Rate        string   // bandwidth limit if set
-	IPAddresses []string // IP addresses from guest agent
+	Bridge                 string   // e.g., "vmbr0"
+	Firewall               bool     // whether firewall is enabled
+	IPAddresses            []string // IP addresses from guest agent
+	Index                  string   // e.g., "net0", "net1"
+	LinkDown               bool     // whether link is down
+	MACAddress             string   // e.g., "AA:BB:CC:DD:EE:FF"
+	Model                  string   // e.g., "virtio", "e1000"
+	ModelLabel             string   // e.g., "VirtIO", "E1000"
+	ModelTranslationSuffix string
+	Rate                   string // bandwidth limit if set
+}
+
+var networkModelMetadata = map[string]struct {
+	label             string
+	translationSuffix string
+}{
+	"e1000":   {label: "E1000", translationSuffix: "E1000"},
+	"e1000e":  {label: "E1000E", translationSuffix: "E1000E"},
+	"rtl8139": {label: "RTL8139", translationSuffix: "RTL8139"},
+	"virtio":  {label: "VirtIO", translationSuffix: "VirtIO"},
+	"vmxnet3": {label: "VMXNet3", translationSuffix: "VMXNet3"},
 }
 
 // ExtractNetworkInterfaces parses the VM config map and returns a list of network interfaces
@@ -106,12 +119,19 @@ func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
 
 			// Parse model and MAC address (first part, e.g., "virtio=AA:BB:CC:DD:EE:FF")
 			if strings.Contains(p, "=") && (strings.HasPrefix(p, "virtio=") ||
-				strings.HasPrefix(p, "e1000=") || strings.HasPrefix(p, "rtl8139=") ||
-				strings.HasPrefix(p, "vmxnet3=")) {
+				strings.HasPrefix(p, "e1000=") || strings.HasPrefix(p, "e1000e=") ||
+				strings.HasPrefix(p, "rtl8139=") || strings.HasPrefix(p, "vmxnet3=")) {
 				kv := strings.SplitN(p, "=", 2)
 				if len(kv) == 2 {
-					iface.Model = kv[0]
+					modelKey := strings.ToLower(kv[0])
+					iface.Model = modelKey
 					iface.MACAddress = strings.ToUpper(kv[1])
+					if meta, ok := networkModelMetadata[modelKey]; ok {
+						iface.ModelLabel = meta.label
+						iface.ModelTranslationSuffix = meta.translationSuffix
+					} else {
+						iface.ModelLabel = strings.ToUpper(modelKey)
+					}
 				}
 			} else if strings.HasPrefix(p, "bridge=") {
 				iface.Bridge = strings.TrimPrefix(p, "bridge=")

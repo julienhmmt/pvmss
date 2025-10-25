@@ -180,12 +180,13 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	vmid := strings.TrimSpace(r.FormValue("vmid"))
-	node := strings.TrimSpace(r.FormValue("node"))
-	socketsStr := strings.TrimSpace(r.FormValue("sockets"))
 	coresStr := strings.TrimSpace(r.FormValue("cores"))
 	memoryStr := strings.TrimSpace(r.FormValue("memory"))
+	networkModel := strings.TrimSpace(r.FormValue("network_model"))
+	node := strings.TrimSpace(r.FormValue("node"))
+	socketsStr := strings.TrimSpace(r.FormValue("sockets"))
 	vmbr := strings.TrimSpace(r.FormValue("vmbr"))
+	vmid := strings.TrimSpace(r.FormValue("vmid"))
 
 	if vmid == "" || node == "" {
 		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
@@ -222,6 +223,21 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Validate network model
+	validModels := map[string]bool{
+		"virtio":  true,
+		"e1000":   true,
+		"e1000e":  true,
+		"rtl8139": true,
+		"vmxnet3": true,
+	}
+	if networkModel == "" {
+		networkModel = "virtio" // default
+	} else if !validModels[networkModel] {
+		ctx.Log.Warn().Str("network_model", networkModel).Msg("Invalid network model, defaulting to virtio")
+		networkModel = "virtio"
+	}
+
 	// Get Proxmox client
 	stateManager := getStateManager(r)
 	client := stateManager.GetProxmoxClient()
@@ -230,38 +246,50 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Get current VM config to preserve network model
+	// Get current VM config to preserve MAC address
 	cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, node, vmidInt)
 	if err != nil {
-		ctx.Log.Warn().Err(err).Msg("Failed to get current VM config, using default network model")
+		ctx.Log.Warn().Err(err).Msg("Failed to get current VM config, MAC address may not be preserved")
 		cfg = nil
 	}
 
-	// Extract current network model from net0 if it exists
-	currentNetModel := "virtio" // default
+	// Extract current MAC address from net0 if it exists
+	currentMAC := ""
 	if cfg != nil {
 		if net0Val, ok := cfg["net0"].(string); ok && net0Val != "" {
-			// Parse net0 format: "model=virtio,bridge=vmbr0" or "virtio,bridge=vmbr0"
+			// Parse net0 format to extract MAC: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0"
 			parts := strings.Split(net0Val, ",")
 			for _, part := range parts {
-				if strings.HasPrefix(part, "model=") {
-					currentNetModel = strings.TrimPrefix(part, "model=")
-					break
-				} else if !strings.Contains(part, "=") && part != "" {
-					// First part without = is the model (old format)
-					currentNetModel = part
+				part = strings.TrimSpace(part)
+				// Check for model=MAC format (Proxmox standard)
+				validModels := []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
+				for _, model := range validModels {
+					if strings.HasPrefix(part, model+"=") {
+						currentMAC = strings.TrimPrefix(part, model+"=")
+						break
+					}
+				}
+				if currentMAC != "" {
 					break
 				}
 			}
 		}
 	}
 
-	// Build update parameters - only update net0 with bridge, keep existing model
+	// Build update parameters with selected network model and preserved MAC
+	// Format: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0"
+	net0Value := networkModel
+	if currentMAC != "" {
+		net0Value = networkModel + "=" + currentMAC
+	}
+	net0Value = net0Value + ",bridge=" + vmbr
+	ctx.Log.Debug().Str("net0_value", net0Value).Str("current_mac", currentMAC).Msg("Building net0 parameter")
+
 	updateParams := map[string]string{
 		"sockets": socketsStr,
 		"cores":   coresStr,
 		"memory":  memoryStr,
-		"net0":    currentNetModel + ",bridge=" + vmbr,
+		"net0":    net0Value,
 	}
 
 	// Update VM config
@@ -273,7 +301,10 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 	ctx.Log.Info().Str("vmid", vmid).Str("node", node).
 		Int("sockets", sockets).Int("cores", cores).Int64("memory", memory).
-		Str("vmbr", vmbr).Msg("VM resources updated successfully")
+		Str("vmbr", vmbr).Str("network_model", networkModel).Msg("VM resources updated successfully")
+
+	// Invalidate guest agent cache for this VM since network config changed
+	InvalidateGuestAgentCache(node, vmidInt)
 
 	ctx.RedirectWithSuccess(buildVMDetailsURL(vmid), "Message.UpdatedSuccessfully")
 }

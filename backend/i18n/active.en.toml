@@ -547,6 +547,8 @@ other = "Memory (MB)"
 ["VM.Create.MemoryHelp"]
 other = "Amount of memory in megabytes (512MB minimum)"
 ["VM.Create.Network"]
+other = "Network Configuration"
+["VM.Create.NetworkBridge"]
 other = "Network Bridge"
 ["VM.Create.NetworkBridgeHelp"]
 other = "Select a network bridge to connect the VM"
