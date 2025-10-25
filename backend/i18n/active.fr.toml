@@ -620,6 +620,12 @@ other = "Image ISO"
 other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
 ["VM.Create.TagsPlaceholder"]
 other = "Appuyez sur Entrée pour ajouter une étiquette"
+["VM.Create.BootOptions"]
+other = "Options de démarrage"
+["VM.Create.EnableEFI"]
+other = "Activer le démarrage EFI (UEFI)"
+["VM.Create.EFIHelp"]
+other = "Active le firmware UEFI (OVMF) pour les systèmes d'exploitation modernes. Requis pour Windows 11, Secure Boot et les disques GPT."
 ["VM.Create.Title"]
 other = "Créer une nouvelle machine virtuelle"
 ["VM.Create.VMName"]
@@ -670,6 +676,8 @@ other = "Image ISO du système d'exploitation à installer (Linux, Windows, etc.
 other = "Connexion réseau virtuelle pour la VM. Détermine le réseau auquel la VM aura accès (Internet, réseau interne, VLAN spécifique)."
 ["VM.Create.Tooltip.Tags"]
 other = "Étiquettes de catégorisation pour organiser vos VMs. Cliquez sur un tag pour le sélectionner. Le tag 'pvmss' est obligatoire et ne peut pas être modifié."
+["VM.Create.Tooltip.EFI"]
+other = "Active le mode de démarrage UEFI (Unified Extensible Firmware Interface) au lieu du BIOS traditionnel. UEFI est requis pour les systèmes d'exploitation modernes comme Windows 11, prend en charge Secure Boot et active le partitionnement de disque GPT. Un disque EFI sera automatiquement créé dans le même stockage que votre disque principal."
 
 # ===========
 # VM Details
