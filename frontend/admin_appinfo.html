@@ -68,6 +68,45 @@
     </div>
   </div>
 
+  <!-- Proxmox Cluster Info -->
+  {{$clusterInfo := $buildInfo.clusterInfo}}
+  {{if $clusterInfo}}
+  <div class="box admin-box mb-5">
+    <div class="mb-5">
+      <h2 class="title is-5 mb-3">
+        <span class="icon"><i class="fas fa-network-wired"></i></span>
+        <span>{{T "Admin.AppInfo.ProxmoxInfo"}}</span>
+      </h2>
+    </div>
+
+    <div class="columns is-multiline">
+      <!-- Cluster Status -->
+      <div class="column is-6">
+        <div class="box has-background-white-bis">
+          <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.ClusterStatus"}}</p>
+          <p class="is-size-5 has-text-weight-bold">
+            {{if $clusterInfo.isCluster}}
+              <span class="tag is-success is-light">{{T "Admin.AppInfo.ClusterDetected"}}</span>
+            {{else}}
+              <span class="tag is-warning is-light">{{T "Admin.AppInfo.StandaloneMode"}}</span>
+            {{end}}
+          </p>
+        </div>
+      </div>
+
+      <!-- Cluster Name -->
+      {{if $clusterInfo.isCluster}}
+      <div class="column is-6">
+        <div class="box has-background-white-bis">
+          <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.ClusterName"}}</p>
+          <p class="is-size-6 has-text-monospace">{{$clusterInfo.clusterName}}</p>
+        </div>
+      </div>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+
   <!-- Environment Variables -->
   <div class="box admin-box mb-5">
     <div class="mb-5">

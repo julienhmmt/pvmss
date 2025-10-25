@@ -68,7 +68,7 @@
                                 aria-disabled="{{if not .ProxmoxConnected}}true{{else}}false{{end}}">
 
                                 <!-- Variable Preparation -->
-                                {{/* Prepare limits helpers */}}
+                                {{/* Extract VM limits from settings (always defined in settings.json) */}}
                                 {{$vm := index .Limits "vm"}}
                                 {{$vmSockMin := int (index (index $vm "sockets") "min")}}
                                 {{$vmSockMax := int (index (index $vm "sockets") "max")}}
@@ -76,11 +76,11 @@
                                 {{$vmCoreMax := int (index (index $vm "cores") "max")}}
                                 {{$vmRamMinGB := int (index (index $vm "ram") "min")}}
                                 {{$vmRamMaxGB := int (index (index $vm "ram") "max")}}
-                                {{$vmRamMinMB := int (mul $vmRamMinGB 1024)}}
-                                {{$vmRamMaxMB := int (mul $vmRamMaxGB 1024)}}
                                 {{$vmDiskMin := int (index (index $vm "disk") "min")}}
                                 {{$vmDiskMax := int (index (index $vm "disk") "max")}}
-                                {{/* Node limits map for later inline lookups */}}
+                                {{$vmRamMinMB := int (mul $vmRamMinGB 1024)}}
+                                {{$vmRamMaxMB := int (mul $vmRamMaxGB 1024)}}
+                                {{/* Node limits map for per-node caps (optional, used in cluster mode) */}}
                                 {{$nodesLimits := index .Limits "nodes"}}
 
                                 <!-- Configuration Sections -->

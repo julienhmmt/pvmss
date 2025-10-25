@@ -1059,13 +1059,13 @@ other = "Application Information"
 ["Admin.AppInfo.Description"]
 other = "Build details, environment, and system information"
 ["Admin.AppInfo.BuildInfo"]
-other = "Build Information"
+other = "Build information"
 ["Admin.AppInfo.Version"]
 other = "Version"
 ["Admin.AppInfo.Environment"]
 other = "Environment"
 ["Admin.AppInfo.GoVersion"]
-other = "Go Version"
+other = "Go version"
 ["Admin.AppInfo.Platform"]
 other = "Platform"
 ["Admin.AppInfo.EnvironmentVariables"]
@@ -1075,10 +1075,20 @@ other = "Safe configuration variables (secrets are not displayed)"
 ["Admin.AppInfo.NoVariables"]
 other = "No environment variables configured."
 ["Admin.AppInfo.SecurityNote"]
-other = "Security Note:"
+other = "Security note:"
 ["Admin.AppInfo.SecurityMessage"]
 other = "This page displays only safe, non-sensitive configuration information. API tokens, passwords, and other secrets are never displayed."
+["Admin.AppInfo.ProxmoxInfo"]
+other = "Proxmox information"
+["Admin.AppInfo.ClusterStatus"]
+other = "Cluster status"
+["Admin.AppInfo.ClusterDetected"]
+other = "Cluster mode"
+["Admin.AppInfo.StandaloneMode"]
+other = "Standalone mode"
+["Admin.AppInfo.ClusterName"]
+other = "Cluster name"
 ["Admin.VMs.Title"]
-other = "Gestion des VMs"
+other = "VMs management"
 ["Admin.VMs.Description"]
-other = "Gestion des VMs Proxmox avec le tag pvmss"
+other = "Manage VMs Proxmox with the pvmss tag"

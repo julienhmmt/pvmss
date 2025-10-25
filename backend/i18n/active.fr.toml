@@ -1070,6 +1070,16 @@ other = "Aucune variable d'environnement configurée."
 other = "Note de Sécurité :"
 ["Admin.AppInfo.SecurityMessage"]
 other = "Cette page affiche uniquement des informations de configuration sûres et non sensibles. Les tokens API, mots de passe et autres secrets ne sont jamais affichés."
+["Admin.AppInfo.ProxmoxInfo"]
+other = "Informations Proxmox"
+["Admin.AppInfo.ClusterStatus"]
+other = "État du cluster"
+["Admin.AppInfo.ClusterDetected"]
+other = "Mode cluster"
+["Admin.AppInfo.StandaloneMode"]
+other = "Mode autonome"
+["Admin.AppInfo.ClusterName"]
+other = "Nom du cluster"
 
 ["Admin.Node.DeleteCardTitle"]
 other = "Supprimer le nœud"
