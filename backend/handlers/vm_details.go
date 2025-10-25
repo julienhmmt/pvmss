@@ -81,6 +81,24 @@ func cacheGuestAgentIPs(node string, vmid int, interfaces []proxmox.GuestAgentNe
 	}
 }
 
+// InvalidateGuestAgentCache removes a specific VM's guest agent cache entries
+// This should be called when VM configuration changes (e.g., network model update)
+func InvalidateGuestAgentCache(node string, vmid int) {
+	key := node + ":" + strconv.Itoa(vmid)
+
+	// Remove from unavailable cache
+	guestAgentUnavailableCacheMutex.Lock()
+	delete(guestAgentUnavailableCache, key)
+	guestAgentUnavailableCacheMutex.Unlock()
+
+	// Remove from IP cache
+	guestAgentIPCacheMutex.Lock()
+	delete(guestAgentIPCache, key)
+	guestAgentIPCacheMutex.Unlock()
+
+	logger.Get().Debug().Str("node", node).Int("vmid", vmid).Msg("Guest agent cache invalidated for VM")
+}
+
 // CleanExpiredGuestAgentCache removes expired entries from both guest agent caches.
 // This function is called periodically by the state manager to prevent cache growth.
 func CleanExpiredGuestAgentCache() {
@@ -377,6 +395,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var currentCores = 1
 	var currentSockets = 1
 	var currentVMBR string
+	var currentNetworkModel = "virtio"              // default
 	var currentMemoryMB = vm.MaxMem / (1024 * 1024) // Convert bytes to MB
 
 	if showResourcesEditor {
@@ -393,13 +412,38 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			log.Warn().Err(err).Str("node", vm.Node).Msg("Failed to get VMBRs for resource editor")
 		}
 
-		// Extract sockets and cores from VM config
+		// Extract sockets, cores, and network model from VM config
 		if cfg != nil {
 			if socketsVal, ok := cfg["sockets"].(float64); ok {
 				currentSockets = int(socketsVal)
 			}
 			if coresVal, ok := cfg["cores"].(float64); ok {
 				currentCores = int(coresVal)
+			}
+			// Extract network model from net0 configuration
+			if net0Val, ok := cfg["net0"].(string); ok && net0Val != "" {
+				// Parse net0 format: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0" or "model=virtio,bridge=vmbr0"
+				parts := strings.Split(net0Val, ",")
+				for _, part := range parts {
+					part = strings.TrimSpace(part)
+					// Check for model=xxx format (legacy)
+					if strings.HasPrefix(part, "model=") {
+						currentNetworkModel = strings.TrimPrefix(part, "model=")
+						break
+					}
+					// Check for virtio=MAC, e1000=MAC, etc. format (Proxmox standard)
+					validModels := []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
+					for _, model := range validModels {
+						if strings.HasPrefix(part, model+"=") {
+							currentNetworkModel = model
+							break
+						}
+					}
+					// If we found a model, exit outer loop
+					if currentNetworkModel != "virtio" {
+						break
+					}
+				}
 			}
 		}
 	}
@@ -411,6 +455,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"CSRFToken":             csrfToken,
 		"CurrentCores":          currentCores,
 		"CurrentMemory":         currentMemoryMB,
+		"CurrentNetworkModel":   currentNetworkModel,
 		"CurrentSockets":        currentSockets,
 		"CurrentTags":           tags,
 		"CurrentVMBR":           currentVMBR,

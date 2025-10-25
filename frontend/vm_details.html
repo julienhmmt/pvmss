@@ -202,6 +202,18 @@
                                 </span>
                             </p>
                             {{end}}
+                            {{if $iface.ModelLabel}}
+                            <p class="is-size-7 has-text-grey mt-1">
+                                <span class="icon-text">
+                                    <span class="icon is-small"><i class="fas fa-microchip"></i></span>
+                                    {{if $iface.ModelTranslationSuffix}}
+                                    <span title="{{T (printf "VM.Create.NetworkModelDesc.%s" $iface.ModelTranslationSuffix)}}">{{$iface.ModelLabel}}</span>
+                                    {{else}}
+                                    <span>{{$iface.ModelLabel}}</span>
+                                    {{end}}
+                                </span>
+                            </p>
+                            {{end}}
                             {{end}}
                             {{else}}
                             <div class="is-flex is-flex-wrap-wrap" style="gap: 0.75rem;">
@@ -229,6 +241,18 @@
                                             <span class="icon is-small"><i class="fas fa-project-diagram"></i></span>
                                             <span>{{$iface.Bridge}}</span>
                                         </span>
+                                        {{end}}
+                                        {{if $iface.ModelLabel}}
+                                        <div class="mt-1">
+                                            <span class="icon-text">
+                                                <span class="icon is-small"><i class="fas fa-microchip"></i></span>
+                                                {{if $iface.ModelTranslationSuffix}}
+                                                <span title="{{T (printf "VM.Create.NetworkModelDesc.%s" $iface.ModelTranslationSuffix)}}">{{$iface.ModelLabel}}</span>
+                                                {{else}}
+                                                <span>{{$iface.ModelLabel}}</span>
+                                                {{end}}
+                                            </span>
+                                        </div>
                                         {{end}}
                                     </div>
                                 </div>
@@ -558,22 +582,41 @@
                         </div>
                     </div>
 
-                    <!-- Network Bridge Selection -->
+                    <!-- Network Configuration -->
                     {{if .AvailableVMBRs}}
                     <div class="field" {{if $isRunning}}style="opacity: 0.6; pointer-events: none;"{{end}}>
-                        <label for="vmbr" class="label has-text-weight-semibold">
+                        <label class="label has-text-weight-semibold">
                             <span class="icon-text">
                                 <span class="icon"><i class="fas fa-network-wired"></i></span>
                                 <span>{{T "VM.Create.Network"}}</span>
                             </span>
                         </label>
-                        <div class="control">
-                            <div class="select is-fullwidth is-medium">
-                                <select id="vmbr" name="vmbr" required {{if $isRunning}}disabled{{end}}>
-                                    {{range $bridge := .AvailableVMBRs}}
-                                    <option value="{{$bridge}}" {{if eq $bridge $ctx.CurrentVMBR}}selected{{end}}>{{$bridge}}</option>
-                                    {{end}}
-                                </select>
+                        <div class="columns is-mobile is-variable is-2">
+                            <div class="column">
+                                <label for="vmbr" class="label is-size-7 has-text-grey">{{T "VM.Create.NetworkBridge"}}</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth is-medium">
+                                        <select id="vmbr" name="vmbr" required {{if $isRunning}}disabled{{end}}>
+                                            {{range $bridge := .AvailableVMBRs}}
+                                            <option value="{{$bridge}}" {{if eq $bridge $ctx.CurrentVMBR}}selected{{end}}>{{$bridge}}</option>
+                                            {{end}}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <label for="networkModel" class="label is-size-7 has-text-grey">{{T "VM.Create.NetworkModel"}}</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth is-medium">
+                                        <select id="networkModel" name="network_model" required {{if $isRunning}}disabled{{end}}>
+                                            <option value="virtio" title="{{T "VM.Create.NetworkModel.Virtio"}}" {{if eq $ctx.CurrentNetworkModel "virtio"}}selected{{end}}>VirtIO</option>
+                                            <option value="e1000" title="{{T "VM.Create.NetworkModel.E1000"}}" {{if eq $ctx.CurrentNetworkModel "e1000"}}selected{{end}}>E1000</option>
+                                            <option value="e1000e" title="{{T "VM.Create.NetworkModel.E1000E"}}" {{if eq $ctx.CurrentNetworkModel "e1000e"}}selected{{end}}>E1000E</option>
+                                            <option value="rtl8139" title="{{T "VM.Create.NetworkModel.RTL8139"}}" {{if eq $ctx.CurrentNetworkModel "rtl8139"}}selected{{end}}>RTL8139</option>
+                                            <option value="vmxnet3" title="{{T "VM.Create.NetworkModel.VMXNet3"}}" {{if eq $ctx.CurrentNetworkModel "vmxnet3"}}selected{{end}}>VMXNet3</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
