@@ -1189,6 +1189,24 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
    Notification Component - Responsive
    =================================== */
 
+.notification {
+  position: relative;
+  overflow: hidden;
+  --notification-dismiss-duration: 200ms;
+  transition: opacity var(--notification-dismiss-duration) ease,
+    transform var(--notification-dismiss-duration) ease;
+}
+
+.notification.is-compact {
+  padding: 0.75rem 1rem;
+}
+
+.notification.is-dismissed {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
 .notification-content {
   display: flex;
   flex-direction: column;
@@ -1218,10 +1236,61 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   overflow-wrap: break-word;
 }
 
-.notification-text p {
+.notification-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.notification-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: inherit;
+}
+
+.notification.is-light .notification-tag {
+  background-color: rgba(55, 65, 81, 0.08);
+}
+
+.notification-subheading {
+  margin: 0.35rem 0 0;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.notification-message,
+.notification-html,
+.notification-list,
+.notification-meta {
   margin-top: 0.5rem;
+}
+
+.notification-message,
+.notification-meta {
   margin-bottom: 0;
   line-height: 1.5;
+}
+
+.notification-meta {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.notification-html > * + * {
+  margin-top: 0.5rem;
+}
+
+.notification-list {
+  padding-left: 1.25rem;
+  margin-bottom: 0;
 }
 
 .notification-actions {
@@ -1239,6 +1308,61 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 .notification-dismiss {
   flex-shrink: 0;
   margin-left: auto;
+}
+
+.notification-dismiss-button {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.notification-dismiss-button:hover,
+.notification-dismiss-button:focus-visible {
+  transform: scale(1.1);
+  opacity: 0.8;
+}
+
+.notification-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.75);
+  transform-origin: left;
+  animation: notification-progress linear forwards;
+  animation-duration: var(--notification-duration, 6000ms);
+}
+
+.notification.is-light .notification-progress {
+  background-color: rgba(55, 65, 81, 0.35);
+}
+
+.notification[data-auto-dismiss-state="paused"] .notification-progress,
+.notification.is-dismissed .notification-progress {
+  animation-play-state: paused;
+}
+
+@keyframes notification-progress {
+  from {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: scaleX(0);
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification,
+  .notification-dismiss-button {
+    transition: none;
+  }
+
+  .notification-progress {
+    display: none;
+    animation: none;
+  }
 }
 
 /* Mobile responsiveness */

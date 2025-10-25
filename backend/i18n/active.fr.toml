@@ -40,6 +40,8 @@ other = "Description"
 other = "Disque"
 ["Common.Disable"]
 other = "Désactiver"
+["Common.DismissNotification"]
+other = "Fermer la notification"
 ["Common.Disabled"]
 other = "Désactivé"
 ["Common.Edit"]
@@ -96,6 +98,8 @@ other = "Actualiser"
 other = "Nom"
 ["Common.Network"]
 other = "Réseau"
+["Common.NotificationDismissed"]
+other = "Notification fermée"
 ["Common.Next"]
 other = "Suivant"
 ["Common.Node"]
