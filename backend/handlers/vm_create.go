@@ -84,6 +84,33 @@ func ensureMandatoryTag(selectedTags []string) []string {
 	return out
 }
 
+// getEFIDiskFormat determines the appropriate format for EFI disk based on storage type
+// Block-based storages (LVM, LVM-thin, ZFS, Ceph) require 'raw' format
+// File-based storages (dir, nfs, cifs) can use 'qcow2' format
+// Returns the format string to use for efidisk0 parameter
+func getEFIDiskFormat(storageType string) string {
+	// Normalize storage type to lowercase for comparison
+	storageType = strings.ToLower(storageType)
+
+	// Block-based storages require raw format
+	blockBasedStorages := map[string]bool{
+		"lvmthin": true,
+		"lvm":     true,
+		"zfs":     true,
+		"ceph":    true,
+		"iscsi":   true,
+	}
+
+	// If it's a block-based storage, use raw format
+	if blockBasedStorages[storageType] {
+		return "raw"
+	}
+
+	// For file-based storages (dir, nfs, cifs, etc.), use qcow2
+	// qcow2 provides better space efficiency and snapshot support
+	return "qcow2"
+}
+
 // VMCreateFormData holds the form data for VM creation (used for session storage)
 type VMCreateFormData struct {
 	Name        string
@@ -99,6 +126,7 @@ type VMCreateFormData struct {
 	Pool        string
 	Storage     string
 	Tags        []string
+	EnableEFI   string
 }
 
 // Register VMCreateFormData with gob for session serialization
@@ -218,6 +246,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 				"pool":        savedFormData.Pool,
 				"storage":     savedFormData.Storage,
 				"tags":        savedFormData.Tags,
+				"enable_efi":  savedFormData.EnableEFI,
 			}
 			sessionManager.Remove(ctx, "vm_create_form_data") // Clear after reading
 		}
@@ -226,7 +255,8 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	// If no saved form data, use defaults
 	if formData == nil {
 		formData = map[string]interface{}{
-			"tags": []string{"pvmss"},
+			"tags":        []string{"pvmss"},
+			"enable_efi":  "1", // EFI enabled by default
 		}
 	}
 
@@ -338,20 +368,21 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 
 	// Extract form fields
-	name := r.FormValue("name")
-	description := r.FormValue("description")
-	vmidStr := r.FormValue("vmid")
-	socketsStr := r.FormValue("sockets")
-	coresStr := r.FormValue("cores")
-	memoryMBStr := r.FormValue("memory") // MB
-	diskSizeGBStr := r.FormValue("disk_size")
-	isoPath := r.FormValue("iso") // settings provides full volid or path string
 	bridgeName := r.FormValue("bridge")
-	selectedNode := r.FormValue("node")
+	coresStr := r.FormValue("cores")
+	description := r.FormValue("description")
+	diskSizeGBStr := r.FormValue("disk_size")
+	enableEFI := r.FormValue("enable_efi") // "1" if checked, "" otherwise
+	isoPath := r.FormValue("iso") // settings provides full volid or path string
+	memoryMBStr := r.FormValue("memory") // MB
+	name := r.FormValue("name")
 	poolName := r.FormValue("pool")
-	selectedTags := r.Form["tags"]
+	selectedNode := r.FormValue("node")
 	selectedStorage := r.FormValue("storage")
+	selectedTags := r.Form["tags"]
+	socketsStr := r.FormValue("sockets")
 	tags := ensureMandatoryTag(selectedTags)
+	vmidStr := r.FormValue("vmid")
 
 	// Validate mandatory fields
 	validationErrors := validateRequiredFields(map[string]string{
@@ -389,6 +420,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 				Pool:        poolName,
 				Storage:     selectedStorage,
 				Tags:        selectedTags,
+				EnableEFI:   enableEFI,
 			}
 			session.Put(ctx, "vm_create_form_data", formData)
 		}
@@ -587,6 +619,43 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 			params["boot"] = "order=scsi0;ide2"
 		} else {
 			params["boot"] = "order=scsi0"
+		}
+	}
+
+	// EFI Boot: Enable UEFI firmware (OVMF) and create EFI disk
+	if enableEFI == "1" {
+		// Set BIOS to OVMF (UEFI firmware)
+		params["bios"] = "ovmf"
+		
+		// Create EFI disk in the same storage as the main disk
+		// Determine appropriate format based on storage type
+		if selectedStorage != "" {
+			// Fetch storage information to determine the correct format
+			storageInfo, err := proxmox.GetNodeStoragesResty(ctx, restyClient, node)
+			if err != nil {
+				log.Warn().Err(err).Str("node", node).Msg("Failed to fetch storage info for EFI disk format detection, using default format")
+				// Fallback to qcow2 if we can't determine storage type
+				params["efidisk0"] = selectedStorage + ":1,format=qcow2,efitype=4m"
+			} else {
+				// Find the selected storage and get its type
+				storageType := "dir" // Default fallback
+				for _, storage := range storageInfo {
+					if storage.Storage == selectedStorage {
+						storageType = storage.Type
+						break
+					}
+				}
+				
+				// Determine format based on storage type
+				efiFormat := getEFIDiskFormat(storageType)
+				params["efidisk0"] = selectedStorage + ":1,format=" + efiFormat + ",efitype=4m"
+				
+				log.Info().
+					Str("storage", selectedStorage).
+					Str("storage_type", storageType).
+					Str("efi_format", efiFormat).
+					Msg("EFI boot enabled: creating EFI disk with appropriate format")
+			}
 		}
 	}
 

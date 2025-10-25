@@ -578,6 +578,12 @@ other = "ISO Image"
 other = "Select one or more tags (PVMSS is required)"
 ["VM.Create.TagsPlaceholder"]
 other = "Press Enter to add a tag"
+["VM.Create.BootOptions"]
+other = "Boot options"
+["VM.Create.EnableEFI"]
+other = "Enable EFI boot (UEFI)"
+["VM.Create.EFIHelp"]
+other = "Enable UEFI firmware (OVMF) for modern operating systems. Required for Windows 11, secure boot, and GPT disks."
 ["VM.Create.Title"]
 other = "Create a New Virtual Machine"
 ["VM.Create.VMName"]
@@ -628,6 +634,8 @@ other = "Operating system ISO image to install (Linux, Windows, etc.). The ISO w
 other = "Virtual network bridge for VM connection. Determines which network the VM will access (Internet, internal network, specific VLAN)."
 ["VM.Create.Tooltip.Tags"]
 other = "Categorization labels to organize your VMs (production, development, test). Click on a tag to select it. The 'pvmss' tag is required."
+["VM.Create.Tooltip.EFI"]
+other = "Enable UEFI (Unified Extensible Firmware Interface) boot mode instead of legacy BIOS. UEFI is required for modern operating systems like Windows 11, supports Secure Boot, and enables GPT disk partitioning. An EFI disk will be automatically created in the same storage as your main disk."
 
 # ===========
 # VM Details

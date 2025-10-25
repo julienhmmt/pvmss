@@ -282,6 +282,23 @@
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                <!-- EFI Boot Option -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="enable_efi" value="1" {{if or (eq .FormData.enable_efi "1") (not .FormData.enable_efi)}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.EnableEFI"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.EFI"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.EFI"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.EFIHelp"}}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
