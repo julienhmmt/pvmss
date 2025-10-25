@@ -97,15 +97,43 @@ func PostFormHandler(handler httprouter.Handle) httprouter.Handle {
 }
 
 // RedirectWithSuccess redirects with success message in query params
-func RedirectWithSuccess(w http.ResponseWriter, r *http.Request, url, message string) {
-	redirectURL := fmt.Sprintf("%s?success=1&message=%s", url, message)
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+func RedirectWithSuccess(w http.ResponseWriter, r *http.Request, targetURL, message string) {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		http.Redirect(w, r, targetURL, http.StatusSeeOther)
+		return
+	}
+
+	q := u.Query()
+	q.Set("success", "1")
+	if message != "" {
+		q.Set("message", message)
+	} else {
+		q.Del("message")
+	}
+	u.RawQuery = q.Encode()
+
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 // RedirectWithError redirects with error message in query params
-func RedirectWithError(w http.ResponseWriter, r *http.Request, url, message string) {
-	redirectURL := fmt.Sprintf("%s?error=1&message=%s", url, message)
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+func RedirectWithError(w http.ResponseWriter, r *http.Request, targetURL, message string) {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		http.Redirect(w, r, targetURL, http.StatusSeeOther)
+		return
+	}
+
+	q := u.Query()
+	q.Set("error", "1")
+	if message != "" {
+		q.Set("message", message)
+	} else {
+		q.Del("message")
+	}
+	u.RawQuery = q.Encode()
+
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 // RenderErrorPage renders a friendly error page with status code and message.

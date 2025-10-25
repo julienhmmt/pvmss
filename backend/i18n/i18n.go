@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -181,7 +182,14 @@ func findI18nDirectory() (string, error) {
 
 	for _, path := range searchPaths {
 		info, err := os.Stat(path)
-		if (err == nil || !os.IsNotExist(err)) && info.IsDir() {
+		if err != nil {
+			if !os.IsNotExist(err) {
+				logger.Get().Debug().Err(err).Str("path", path).Msg("Skipping i18n search path")
+			}
+			continue
+		}
+
+		if info.IsDir() {
 			absPath, _ := filepath.Abs(path)
 			logger.Get().Info().Str("path", absPath).Msg("Found i18n directory")
 			return absPath, nil
@@ -202,6 +210,8 @@ func loadAllTranslations(bundle *i18n.Bundle) {
 		logger.Get().Error().Msg("No translation files found.")
 		return
 	}
+
+	sort.Strings(files)
 
 	for _, file := range files {
 		if _, err := bundle.LoadMessageFile(file); err != nil {
@@ -229,8 +239,12 @@ func InitI18n() {
 	}
 
 	// Dynamically discover supported languages
+	supportedTags = nil
 	supportedCodes = make(map[string]struct{})
+
 	files, _ := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+	sort.Strings(files)
+
 	for _, file := range files {
 		matches := langFileRegex.FindStringSubmatch(filepath.Base(file))
 		if len(matches) > 1 {
