@@ -171,3 +171,109 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		"action":      action,
 	})
 }
+
+// UpdateVMResourcesHandler updates VM resources (CPU sockets/cores, memory, network bridge)
+func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ctx := NewHandlerContext(w, r, "UpdateVMResourcesHandler")
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	vmid := strings.TrimSpace(r.FormValue("vmid"))
+	node := strings.TrimSpace(r.FormValue("node"))
+	socketsStr := strings.TrimSpace(r.FormValue("sockets"))
+	coresStr := strings.TrimSpace(r.FormValue("cores"))
+	memoryStr := strings.TrimSpace(r.FormValue("memory"))
+	vmbr := strings.TrimSpace(r.FormValue("vmbr"))
+
+	if vmid == "" || node == "" {
+		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	vmidInt, err := strconv.Atoi(vmid)
+	if err != nil {
+		ctx.HandleError(err, "Invalid VM ID", http.StatusBadRequest)
+		return
+	}
+
+	// Parse and validate numeric values
+	sockets, err := strconv.Atoi(socketsStr)
+	if err != nil || sockets < 1 {
+		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+		return
+	}
+
+	cores, err := strconv.Atoi(coresStr)
+	if err != nil || cores < 1 {
+		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+		return
+	}
+
+	memory, err := strconv.ParseInt(memoryStr, 10, 64)
+	if err != nil || memory < 1 {
+		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+		return
+	}
+
+	if vmbr == "" {
+		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+		return
+	}
+
+	// Get Proxmox client
+	stateManager := getStateManager(r)
+	client := stateManager.GetProxmoxClient()
+	if client == nil {
+		ctx.HandleError(nil, "Proxmox client not available", http.StatusInternalServerError)
+		return
+	}
+
+	// Get current VM config to preserve network model
+	cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, node, vmidInt)
+	if err != nil {
+		ctx.Log.Warn().Err(err).Msg("Failed to get current VM config, using default network model")
+		cfg = nil
+	}
+
+	// Extract current network model from net0 if it exists
+	currentNetModel := "virtio" // default
+	if cfg != nil {
+		if net0Val, ok := cfg["net0"].(string); ok && net0Val != "" {
+			// Parse net0 format: "model=virtio,bridge=vmbr0" or "virtio,bridge=vmbr0"
+			parts := strings.Split(net0Val, ",")
+			for _, part := range parts {
+				if strings.HasPrefix(part, "model=") {
+					currentNetModel = strings.TrimPrefix(part, "model=")
+					break
+				} else if !strings.Contains(part, "=") && part != "" {
+					// First part without = is the model (old format)
+					currentNetModel = part
+					break
+				}
+			}
+		}
+	}
+
+	// Build update parameters - only update net0 with bridge, keep existing model
+	updateParams := map[string]string{
+		"sockets": socketsStr,
+		"cores":   coresStr,
+		"memory":  memoryStr,
+		"net0":    currentNetModel + ",bridge=" + vmbr,
+	}
+
+	// Update VM config
+	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, updateParams); err != nil {
+		ctx.Log.Error().Err(err).Msg("update resources failed")
+		ctx.RedirectWithError(buildVMDetailsURL(vmid), "Message.ActionFailed")
+		return
+	}
+
+	ctx.Log.Info().Str("vmid", vmid).Str("node", node).
+		Int("sockets", sockets).Int("cores", cores).Int64("memory", memory).
+		Str("vmbr", vmbr).Msg("VM resources updated successfully")
+
+	ctx.RedirectWithSuccess(buildVMDetailsURL(vmid), "Message.UpdatedSuccessfully")
+}

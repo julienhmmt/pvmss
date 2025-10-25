@@ -255,6 +255,14 @@
                     "Lang" .Lang
                     "ExtraClasses" "is-flex-wrap-wrap is-justify-content-center"
                 )}}
+                {{if .ProxmoxConnected}}
+                <div class="has-text-centered mt-4 pt-3" style="border-top: 1px solid rgb(0,0,0,6%);">
+                    <a href="{{printf "/vm/details/%d?edit=resources" .VM.VMID}}" class="button is-info is-light is-small">
+                        <span class="icon is-small"><i class="fas fa-sliders"></i></span>
+                        <span>{{T "VMDetails.ModifyResources"}}</span>
+                    </a>
+                </div>
+                {{end}}
             </div>
         </div>
 
@@ -447,6 +455,142 @@
                             <button type="submit" class="button is-primary has-text-white" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
                                 <span class="icon"><i class="fas fa-save"></i></span>
                                 <span>{{T "VMDetails.SaveTags"}}</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Edit Resources (CPU, Memory, Network) -->
+        {{if .ShowResourcesEditor}}
+        <div class="card mb-5">
+            <header class="card-header brand-header">
+                <p class="card-header-title">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-sliders"></i></span>
+                        <span>{{T "VMDetails.EditResourcesTitle"}}</span>
+                    </span>
+                </p>
+            </header>
+            <div class="card-content">
+                {{/* Check if VM is running */}}
+                {{$isRunning := eq .VM.Status "running"}}
+                
+                {{/* Show error notification if VM is running */}}
+                {{if $isRunning}}
+                {{template "notification" (dict "Type" "danger" "Title" (T "VMDetails.ResourcesDisabledTitle") "Message" (T "VMDetails.ResourcesDisabledMessage") "Icon" "fas fa-exclamation-circle" "Dismissible" false)}}
+                {{end}}
+
+                <form action="/vm/update/resources" method="post" {{if $isRunning}}disabled{{end}}>
+                    {{$ctx := .}}
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                    <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
+                    <input type="hidden" name="node" value="{{.VM.Node}}" />
+
+                    {{/* Extract VM limits from settings */}}
+                    {{$vm := index .Limits "vm"}}
+                    {{$vmSockMin := int (index (index $vm "sockets") "min")}}
+                    {{$vmSockMax := int (index (index $vm "sockets") "max")}}
+                    {{$vmCoreMin := int (index (index $vm "cores") "min")}}
+                    {{$vmCoreMax := int (index (index $vm "cores") "max")}}
+                    {{$vmRamMinGB := int (index (index $vm "ram") "min")}}
+                    {{$vmRamMaxGB := int (index (index $vm "ram") "max")}}
+                    {{$vmRamMinMB := int (mul $vmRamMinGB 1024)}}
+                    {{$vmRamMaxMB := int (mul $vmRamMaxGB 1024)}}
+
+                    <div class="notification is-light is-info mb-4">
+                        <p class="is-size-7">
+                            <strong>{{T "VMDetails.ResourcesWarning"}}</strong> {{T "VMDetails.ResourcesWarningText"}}
+                        </p>
+                    </div>
+
+                    <!-- CPU Configuration -->
+                    <div class="field" {{if $isRunning}}style="opacity: 0.6; pointer-events: none;"{{end}}>
+                        <label class="label has-text-weight-semibold">
+                            <span class="icon-text">
+                                <span class="icon"><i class="fas fa-microchip"></i></span>
+                                <span>{{T "VM.Create.CPUCores"}}</span>
+                            </span>
+                        </label>
+                        <div class="columns is-mobile is-variable is-2">
+                            <div class="column">
+                                <label class="label is-size-7 has-text-grey">{{T "VM.Create.CPUSockets"}}</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth is-medium">
+                                        <select name="sockets" required {{if $isRunning}}disabled{{end}}>
+                                            {{range $i := seq $vmSockMin (int (add $vmSockMax 1))}}
+                                            <option value="{{$i}}" {{if eq $i $ctx.CurrentSockets}}selected{{end}}>{{$i}}</option>
+                                            {{end}}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <label class="label is-size-7 has-text-grey">{{T "VM.Create.CPUCores"}}</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth is-medium">
+                                        <select name="cores" required {{if $isRunning}}disabled{{end}}>
+                                            {{range $i := seq $vmCoreMin (int (add $vmCoreMax 1))}}
+                                            <option value="{{$i}}" {{if eq $i $ctx.CurrentCores}}selected{{end}}>{{$i}}</option>
+                                            {{end}}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Memory Configuration -->
+                    <div class="field" {{if $isRunning}}style="opacity: 0.6; pointer-events: none;"{{end}}>
+                        <label for="memory" class="label has-text-weight-semibold">
+                            <span class="icon-text">
+                                <span class="icon"><i class="fas fa-memory"></i></span>
+                                <span>{{T "Common.Memory"}}</span>
+                            </span>
+                        </label>
+                        <div class="field has-addons">
+                            <div class="control is-expanded">
+                                <input id="memory" class="input is-medium" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{.CurrentMemory}}" required inputmode="numeric" {{if $isRunning}}disabled{{end}}>
+                            </div>
+                            <div class="control"><span class="button is-static is-medium">MB</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Network Bridge Selection -->
+                    {{if .AvailableVMBRs}}
+                    <div class="field" {{if $isRunning}}style="opacity: 0.6; pointer-events: none;"{{end}}>
+                        <label for="vmbr" class="label has-text-weight-semibold">
+                            <span class="icon-text">
+                                <span class="icon"><i class="fas fa-network-wired"></i></span>
+                                <span>{{T "VM.Create.Network"}}</span>
+                            </span>
+                        </label>
+                        <div class="control">
+                            <div class="select is-fullwidth is-medium">
+                                <select id="vmbr" name="vmbr" required {{if $isRunning}}disabled{{end}}>
+                                    {{range $bridge := .AvailableVMBRs}}
+                                    <option value="{{$bridge}}" {{if eq $bridge $ctx.CurrentVMBR}}selected{{end}}>{{$bridge}}</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+
+                    <hr class="my-4">
+                    <div class="field is-grouped is-justify-content-space-between">
+                        <div class="control">
+                            <a class="button is-light" href="{{printf "/vm/details/%d" .VM.VMID}}">
+                                <span class="icon"><i class="fas fa-times"></i></span>
+                                <span>{{T "Common.Cancel"}}</span>
+                            </a>
+                        </div>
+                        <div class="control">
+                            <button type="submit" class="button is-primary has-text-white" {{if or (not .ProxmoxConnected) $isRunning}}disabled{{end}} {{if $isRunning}}title="Stop the VM to modify resources"{{end}}>
+                                <span class="icon"><i class="fas fa-save"></i></span>
+                                <span>{{T "VMDetails.SaveResources"}}</span>
                             </button>
                         </div>
                     </div>

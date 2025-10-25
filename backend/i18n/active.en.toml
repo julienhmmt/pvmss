@@ -762,6 +762,20 @@ other = "MAC Address"
 other = "Bridge"
 ["VMDetails.NoDescription"]
 other = "No description available"
+["VMDetails.ModifyResources"]
+other = "Modify Resources"
+["VMDetails.EditResourcesTitle"]
+other = "Edit VM Resources"
+["VMDetails.ResourcesWarning"]
+other = "Warning:"
+["VMDetails.ResourcesWarningText"]
+other = "Changing resources on a running VM may cause performance issues or require a restart. It is recommended to stop the VM before making changes."
+["VMDetails.SaveResources"]
+other = "Save Resources"
+["VMDetails.ResourcesDisabledTitle"]
+other = "Cannot Modify Running VM"
+["VMDetails.ResourcesDisabledMessage"]
+other = "The VM is currently running. Please stop it before modifying resources to avoid performance issues or data loss."
 
 # ===========
 # VM Delete

@@ -804,6 +804,20 @@ other = "Adresse MAC"
 other = "Pont réseau"
 ["VMDetails.NoDescription"]
 other = "Aucune description disponible"
+["VMDetails.ModifyResources"]
+other = "Modifier les ressources"
+["VMDetails.EditResourcesTitle"]
+other = "Modifier les ressources de la VM"
+["VMDetails.ResourcesWarning"]
+other = "Attention :"
+["VMDetails.ResourcesWarningText"]
+other = "Modifier les ressources d'une VM en cours d'exécution peut causer des problèmes de performance ou nécessiter un redémarrage. Il est recommandé d'arrêter la VM avant de faire des modifications."
+["VMDetails.SaveResources"]
+other = "Enregistrer les ressources"
+["VMDetails.ResourcesDisabledTitle"]
+other = "Impossible de modifier une VM en cours d'exécution"
+["VMDetails.ResourcesDisabledMessage"]
+other = "La VM est actuellement en cours d'exécution. Veuillez l'arrêter avant de modifier les ressources pour éviter les problèmes de performance ou la perte de données."
 
 # ===========
 # VM Delete

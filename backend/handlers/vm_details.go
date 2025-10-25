@@ -165,6 +165,9 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/update/tags", SecureFormHandler("UpdateVMTags",
 		RequireAuthHandle(h.UpdateVMTagsHandler),
 	))
+	router.POST("/vm/update/resources", SecureFormHandler("UpdateVMResources",
+		RequireAuthHandle(h.UpdateVMResourcesHandler),
+	))
 	router.POST("/vm/action", SecureFormHandler("VMAction",
 		RequireAuthHandle(h.VMActionHandler),
 	))
@@ -350,6 +353,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	// Check for edit modes
 	showDescriptionEditor := r.URL.Query().Get("edit") == "description"
+	showResourcesEditor := r.URL.Query().Get("edit") == "resources"
 	showTagsEditor := r.URL.Query().Get("edit") == "tags"
 
 	// Get available tags from settings
@@ -368,23 +372,62 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		descriptionHTML = string(markdown.ToHTML([]byte(description), nil, nil))
 	}
 
+	// Get available VMBRs for the node when editing resources
+	var availableVMBRs []string
+	var currentCores = 1
+	var currentSockets = 1
+	var currentVMBR string
+	var currentMemoryMB = vm.MaxMem / 1024 // Convert bytes to MB
+
+	if showResourcesEditor {
+		if vmbrs, err := proxmox.GetVMBRsResty(r.Context(), restyClient, vm.Node); err == nil {
+			// Convert VMBR structs to strings (iface names)
+			for _, vmbr := range vmbrs {
+				availableVMBRs = append(availableVMBRs, vmbr.Iface)
+			}
+			// Get current VMBR from network bridges
+			if len(networkBridges) > 0 {
+				currentVMBR = networkBridges[0]
+			}
+		} else {
+			log.Warn().Err(err).Str("node", vm.Node).Msg("Failed to get VMBRs for resource editor")
+		}
+
+		// Extract sockets and cores from VM config
+		if cfg != nil {
+			if socketsVal, ok := cfg["sockets"].(float64); ok {
+				currentSockets = int(socketsVal)
+			}
+			if coresVal, ok := cfg["cores"].(float64); ok {
+				currentCores = int(coresVal)
+			}
+		}
+	}
+
 	// Build custom data for template
 	custom := map[string]interface{}{
-		"VM":                    vm,
-		"Tags":                  strings.Join(tags, ", "),
+		"AllTags":               allTags,
+		"AvailableVMBRs":        availableVMBRs,
+		"CSRFToken":             csrfToken,
+		"CurrentCores":          currentCores,
+		"CurrentMemory":         currentMemoryMB,
+		"CurrentSockets":        currentSockets,
+		"CurrentTags":           tags,
+		"CurrentVMBR":           currentVMBR,
 		"Description":           description,
 		"DescriptionHTML":       descriptionHTML,
-		"NetworkBridges":        networkBridgesStr,
-		"NetworkInterfaces":     networkInterfaces,
-		"CSRFToken":             csrfToken,
-		"ShowDescriptionEditor": showDescriptionEditor,
-		"ShowTagsEditor":        showTagsEditor,
-		"CurrentTags":           tags,
-		"AllTags":               allTags,
-		"FormattedMaxMem":       FormatBytes(vm.MaxMem),
 		"FormattedMaxDisk":      FormatBytes(vm.MaxDisk),
+		"FormattedMaxMem":       FormatBytes(vm.MaxMem),
 		"FormattedMem":          FormatBytes(vm.Mem),
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
+		"Limits":                settings.Limits,
+		"NetworkBridges":        networkBridgesStr,
+		"NetworkInterfaces":     networkInterfaces,
+		"ShowDescriptionEditor": showDescriptionEditor,
+		"ShowResourcesEditor":   showResourcesEditor,
+		"ShowTagsEditor":        showTagsEditor,
+		"Tags":                  strings.Join(tags, ", "),
+		"VM":                    vm,
 	}
 
 	// Render using standardized user page helper to include Success/Warning/Error messages
