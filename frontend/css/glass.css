@@ -93,12 +93,11 @@ body::before {
 .card.no-hover {
   overflow: visible;
   position: relative;
-  z-index: 0;
 }
 
 .card.no-hover:hover,
 .card.no-hover:focus-within {
-  z-index: 20;
+  z-index: 60;
 }
 
 .card.is-hoverable:hover,
