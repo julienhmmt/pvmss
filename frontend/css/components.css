@@ -1165,3 +1165,22 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   background-color: #f14668;
   color: white;
 }
+
+/* ============================================
+   FOOTER VERSION
+   ============================================ */
+.footer-version {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: #a0aec0;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  transition: opacity var(--transition-base), color var(--transition-base);
+}
+
+.footer-version:hover {
+  opacity: 1;
+  color: #718096;
+}

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/i18n"
 )
 
@@ -84,6 +85,9 @@ func GetBaseFuncMap() template.FuncMap {
 		"dateTimeShort":  dateTimeShort,
 		"toJSON":         toJSON,
 		"toJSONIndent":   toJSONIndent,
+
+		// Application version
+		"appVersion": func() string { return constants.AppVersion },
 
 		// Time functions
 		"now": func() time.Time { return time.Now() },
