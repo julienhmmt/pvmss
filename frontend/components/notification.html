@@ -4,12 +4,15 @@
   Usage: {{template "notification" (dict "Type" "success" "Title" "All good" "Message" "Operation completed" "Dismissible" true "AutoDismiss" true "AutoDismissDelay" 5000)}}
 */}}
 {{$type := lower (or .Type "info")}}
+{{$tone := lower (or .Tone $type)}}
 {{$lightValue := printf "%v" .Light}}
 {{$light := not (or (eq $lightValue "false") (eq $lightValue "0"))}}
 {{$dismissibleValue := printf "%v" .Dismissible}}
 {{$dismissible := not (or (eq $dismissibleValue "false") (eq $dismissibleValue "0"))}}
 {{$showIconValue := printf "%v" .ShowIcon}}
 {{$showIcon := not (or (eq $showIconValue "false") (eq $showIconValue "0"))}}
+{{$plainValue := printf "%v" .Plain}}
+{{$isPlain := or (eq $plainValue "true") (eq $plainValue "1")}}
 {{$icon := .Icon}}
 {{if not $icon}}
   {{if eq $type "success"}}
@@ -48,17 +51,22 @@
     {{$style = printf "--notification-duration: %dms;" $autoDelay}}
   {{end}}
 {{end}}
-<div class="notification is-{{$type}} {{if $light}}is-light{{end}} {{if .Compact}}is-compact{{end}} {{.ExtraClasses}}"
+<div class="notification is-{{$type}} {{if $light}}is-light{{end}} {{if .Compact}}is-compact{{end}} {{if $isPlain}}is-plain{{end}} {{.ExtraClasses}}"
      {{if .ID}}id="{{.ID}}"{{end}}
      role="{{$role}}"
      aria-live="{{$live}}"
      data-notification="true"
      data-notification-type="{{$type}}"
+     data-tone="{{$tone}}"
+     {{if $isPlain}}data-plain="true"{{end}}
      data-dismiss-announcement="{{T "Common.NotificationDismissed"}}"
      {{if $dismissible}}data-dismissible="true"{{end}}
      {{if .PersistKey}}data-notification-key="{{.PersistKey}}"{{end}}
      {{if $autoDismiss}}data-auto-dismiss="true" data-auto-dismiss-delay="{{$autoDelay}}"{{end}}
      {{if $style}}style="{{$style}}"{{end}}>
+  {{if not $isPlain}}
+  <span class="notification-accent" aria-hidden="true"></span>
+  {{end}}
   {{if $autoDismiss}}
   <span class="notification-progress" aria-hidden="true"></span>
   {{end}}
@@ -66,12 +74,15 @@
     <div class="notification-body">
       {{if and $showIcon $icon}}
       <div class="notification-icon">
-        <span class="icon has-text-{{if $light}}{{$type}}{{else}}white{{end}}">
+        <span class="icon notification-icon-badge">
           <i class="{{$icon}}" aria-hidden="true"></i>
         </span>
       </div>
       {{end}}
       <div class="notification-text">
+        {{if .Eyebrow}}
+        <p class="notification-eyebrow">{{.Eyebrow}}</p>
+        {{end}}
         {{if or .Title .Heading .Tag}}
         <div class="notification-heading">
           {{if or .Title .Heading}}
@@ -167,6 +178,11 @@
       </div>
       {{end}}
     </div>
+    {{end}}
+    {{if .FootnoteHTML}}
+    <div class="notification-footnote">{{safeHTML .FootnoteHTML}}</div>
+    {{else if .Footnote}}
+    <p class="notification-footnote">{{.Footnote}}</p>
     {{end}}
   </div>
 </div>
