@@ -30,6 +30,7 @@ type Client struct {
 
 	PVEAuthCookie       string
 	CSRFPreventionToken string
+	ClusterName         string
 }
 
 // ClientOption defines a function for applying configuration options to the Client.
@@ -109,7 +110,16 @@ func (c *Client) Login(ctx context.Context, username, password, realm string) er
 
 	c.PVEAuthCookie = ticket.Ticket
 	c.CSRFPreventionToken = ticket.CSRFPreventionToken
+	c.ClusterName = ticket.Clustername
 	return nil
+}
+
+// GetClusterName returns the Proxmox cluster name if available
+func (c *Client) GetClusterName() string {
+	if c == nil {
+		return ""
+	}
+	return c.ClusterName
 }
 
 // Get performs a GET request, using a default context with the client's timeout.

@@ -60,6 +60,25 @@ func (h *AdminHandler) AppInfoPageHandler(w http.ResponseWriter, r *http.Request
 	// Environment variables (safe only)
 	buildInfo["environmentVariables"] = envInfo
 
+	// Detect Proxmox cluster information
+	clusterInfo := map[string]interface{}{
+		"isCluster":   false,
+		"clusterName": "",
+	}
+	
+	if sm := getStateManager(r); sm != nil {
+		if client := sm.GetProxmoxClient(); client != nil {
+			clusterName := client.GetClusterName()
+			if clusterName != "" {
+				clusterInfo["isCluster"] = true
+				clusterInfo["clusterName"] = clusterName
+				log.Info().Str("cluster_name", clusterName).Msg("Proxmox cluster detected")
+			}
+		}
+	}
+	
+	buildInfo["clusterInfo"] = clusterInfo
+
 	data := AdminPageDataWithMessage("Application Info", "appinfo", "", "")
 	data["BuildInfo"] = buildInfo
 
