@@ -43,7 +43,7 @@ func (h *AdminHandler) AppInfoPageHandler(w http.ResponseWriter, r *http.Request
 	// Detect environment using PVMSS_ENV
 	environment := "production"
 	isOffline := os.Getenv("PVMSS_OFFLINE") == "true"
-	
+
 	if isOffline {
 		environment = "offline"
 	} else if !utils.IsProduction() {
@@ -65,7 +65,7 @@ func (h *AdminHandler) AppInfoPageHandler(w http.ResponseWriter, r *http.Request
 		"isCluster":   false,
 		"clusterName": "",
 	}
-	
+
 	if sm := getStateManager(r); sm != nil {
 		if client := sm.GetProxmoxClient(); client != nil {
 			clusterName := client.GetClusterName()
@@ -76,7 +76,7 @@ func (h *AdminHandler) AppInfoPageHandler(w http.ResponseWriter, r *http.Request
 			}
 		}
 	}
-	
+
 	buildInfo["clusterInfo"] = clusterInfo
 
 	data := AdminPageDataWithMessage("Application Info", "appinfo", "", "")

@@ -31,7 +31,7 @@ type NodeISOGroup struct {
 }
 
 // fetchAllISOs retrieves all ISOs from all nodes and storages using resty
-func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.ClientInterface, checkEnabled bool) ([]ISOEntry, error) {
+func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, error) {
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
@@ -142,19 +142,11 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client is nil despite connection status being true")
-		data["Warning"] = "Proxmox client unavailable."
-		renderTemplateInternal(w, r, "admin_iso", data)
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	// Fetch all ISOs with enabled check
-	isos, err := h.fetchAllISOs(ctx, client, true)
+	isos, err := h.fetchAllISOs(ctx, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
 		data["Warning"] = "Failed to fetch ISOs from Proxmox."

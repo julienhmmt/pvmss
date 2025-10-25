@@ -45,9 +45,22 @@
             </header>
             <div class="card-content">
                 <p class="mb-5 has-text-grey">{{T "UI.CreateVMDescription"}}</p>
-                        {{if .ValidationError}}
-                        {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
-                        {{end}}
+                
+                {{if .AllNodesSaturated}}
+                {{template "notification" (dict
+                    "Type" "warning"
+                    "Title" (T "VM.Create.ResourceLimitsTitle")
+                    "Message" (T "VM.Create.ResourceLimitsMessage")
+                    "Icon" "fas fa-exclamation-triangle"
+                    "Dismissible" false
+                    "Live" "assertive"
+                    "ExtraClasses" "mb-4"
+                )}}
+                {{end}}
+                
+                {{if .ValidationError}}
+                {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
+                {{end}}
                         {{if not .ProxmoxConnected}}
                         {{template "notification" (dict 
                             "Type" "warning" 
@@ -61,11 +74,11 @@
                         {{end}}
 
                         <form method="POST" action="/api/vm/create" id="vmCreateForm"
-                            aria-label="Create new virtual machine" {{if not .ProxmoxConnected}}onsubmit="return false;"{{end}}>
+                            aria-label="Create new virtual machine" {{if or (not .ProxmoxConnected) .AllNodesSaturated}}onsubmit="return false;" disabled{{end}}>
                             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-                            <fieldset {{if not .ProxmoxConnected}}disabled{{end}}
-                                aria-disabled="{{if not .ProxmoxConnected}}true{{else}}false{{end}}">
+                            <fieldset {{if or (not .ProxmoxConnected) .AllNodesSaturated}}disabled{{end}}
+                                aria-disabled="{{if or (not .ProxmoxConnected) .AllNodesSaturated}}true{{else}}false{{end}}">
 
                                 <!-- Variable Preparation -->
                                 {{/* Extract VM limits from settings (always defined in settings.json) */}}
@@ -382,6 +395,7 @@
                                                             </select>
                                                         </div>
                                                     </div>
+                                                    <p class="help is-size-7 has-text-grey-light mt-2">{{T "VM.Create.ProxmoxNodeHelp"}}</p>
                                                 </div>
                                                 <div class="field">
                                                     <label for="pool" class="form-label">
@@ -421,7 +435,7 @@
                                                         <div class="select is-fullwidth is-medium">
                                                             <select id="isoImage" name="iso" required aria-required="true" aria-describedby="isoImage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
-                                                                {{range sort .ISOs}}<option value="{{.}}" {{if eq . $.FormData.iso}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
+                                                                {{range .ISOs}}<option value="{{.}}" {{if eq . $.FormData.iso}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
                                                             </select>
                                                         </div>
                                                     </div>
@@ -444,7 +458,7 @@
                                                     <div class="control">
                                                         <div class="select is-fullwidth is-medium">
                                                             <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
-                                                                {{range $bridge := sort .Bridges}}
+                                                                {{range $bridge := .Bridges}}
                                                                 {{$rawDesc := index $.BridgeDescriptions $bridge}}
                                                                 {{$nodeName := index $.BridgeNodes $bridge}}
                                                                 {{$desc := $rawDesc}}
@@ -459,10 +473,46 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <div class="field">
+                                                    <label for="networkModel" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-network-wired"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.NetworkModel"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkModel"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkModel-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.NetworkModel"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="networkModel" name="network_model" required aria-required="true" aria-describedby="networkModel-help">
+                                                                <option value="virtio" {{if $.FormData.network_model}}{{if eq $.FormData.network_model "virtio"}}selected{{end}}{{else}}selected{{end}}>VirtIO</option>
+                                                                <option value="e1000" {{if eq $.FormData.network_model "e1000"}}selected{{end}}>E1000</option>
+                                                                <option value="e1000e" {{if eq $.FormData.network_model "e1000e"}}selected{{end}}>E1000E</option>
+                                                                <option value="rtl8139" {{if eq $.FormData.network_model "rtl8139"}}selected{{end}}>RTL8139</option>
+                                                                <option value="vmxnet3" {{if eq $.FormData.network_model "vmxnet3"}}selected{{end}}>VMXNet3</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p class="mb-1">{{T "VM.Create.NetworkModelHelp"}}</p>
+                                                        <ul class="ml-4">
+                                                            <li><strong>VirtIO</strong> — {{T "VM.Create.NetworkModelDesc.Virtio"}}</li>
+                                                            <li><strong>E1000</strong> — {{T "VM.Create.NetworkModelDesc.E1000"}}</li>
+                                                            <li><strong>E1000E</strong> — {{T "VM.Create.NetworkModelDesc.E1000E"}}</li>
+                                                            <li><strong>RTL8139</strong> — {{T "VM.Create.NetworkModelDesc.RTL8139"}}</li>
+                                                            <li><strong>VMXNet3</strong> — {{T "VM.Create.NetworkModelDesc.VMXNet3"}}</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-
                                     <!-- Tags Section -->
                                     <div class="column is-12-tablet is-6-desktop">
                                         <div class="card no-hover mb-5 mt-5">
@@ -478,20 +528,15 @@
                                                             <span class="icon"><i class="fas fa-tag"></i></span>
                                                         </span>
                                                         <span class="form-label-text">{{T "VM.Create.AvailableTags"}}</span>
-                                                        <span class="form-tooltip">
-                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Tags"}}">
-                                                                <i class="fas fa-info"></i>
-                                                            </button>
-                                                            <div class="form-tooltip-content" role="tooltip">
+                                                    </label>
+                                                    <div class="form-tooltip-content" role="tooltip">
                                                                 {{T "VM.Create.Tooltip.Tags"}}
                                                             </div>
-                                                        </span>
-                                                    </label>
                                                     <div class="tags are-medium">
                                                         {{if .AvailableTags}}
                                                         <span class="tag is-primary is-medium">pvmss</span>
                                                         <input type="hidden" name="tags" value="pvmss">
-                                                        {{range sort .AvailableTags}}
+                                                        {{range .AvailableTags}}
                                                         {{if ne . "pvmss"}}
                                                         <label>
                                                             <input type="checkbox" name="tags" value="{{.}}" class="is-hidden">

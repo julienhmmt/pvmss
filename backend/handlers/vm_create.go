@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -147,22 +148,23 @@ func getTPMDiskFormat(storageType string) (format string, compatible bool) {
 
 // VMCreateFormData holds the form data for VM creation (used for session storage)
 type VMCreateFormData struct {
-	Name        string
-	Description string
-	VMID        string
-	Sockets     string
-	Cores       string
-	Memory      string
-	DiskSize    string
-	ISO         string
-	Bridge      string
-	Node        string
-	Pool        string
-	Storage     string
-	Tags        []string
-	EnableEFI   string
-	EnableTPM   string
-	StartVM     string
+	Bridge       string
+	Cores        string
+	Description  string
+	DiskSize     string
+	EnableEFI    string
+	EnableTPM    string
+	ISO          string
+	Memory       string
+	Name         string
+	NetworkModel string
+	Node         string
+	Pool         string
+	Sockets      string
+	StartVM      string
+	Storage      string
+	Tags         []string
+	VMID         string
 }
 
 // Register VMCreateFormData with gob for session serialization
@@ -171,9 +173,20 @@ func init() {
 }
 
 type NodeOption struct {
-	Name           string
 	Disabled       bool
 	DisabledReason string
+	Name           string
+}
+
+var vmDiskCompatibleStorageTypes = map[string]struct{}{
+	"ceph":    {},
+	"cephfs":  {},
+	"dir":     {},
+	"lvm":     {},
+	"lvmthin": {},
+	"nfs":     {},
+	"rbd":     {},
+	"zfs":     {},
 }
 
 // CreateVMPage renders the VM creation form with pre-populated settings from settings.json
@@ -240,9 +253,18 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		}
 	}
 	if activeNode == "" {
+		log.Info().
+			Int("nodeOptions_count", len(nodeOptions)).
+			Msg("DEBUG: activeNode is empty, looking for enabled node")
 		for _, option := range nodeOptions {
+			log.Info().
+				Str("node", option.Name).
+				Bool("disabled", option.Disabled).
+				Str("reason", option.DisabledReason).
+				Msg("DEBUG: Checking node")
 			if !option.Disabled {
 				activeNode = option.Name
+				log.Info().Str("activeNode", activeNode).Msg("DEBUG: Selected enabled node")
 				break
 			}
 		}
@@ -269,22 +291,23 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		if savedFormData, ok := sessionManager.Get(ctx, "vm_create_form_data").(VMCreateFormData); ok {
 			// Convert struct to map for template
 			formData = map[string]interface{}{
-				"name":        savedFormData.Name,
-				"description": savedFormData.Description,
-				"vmid":        savedFormData.VMID,
-				"sockets":     savedFormData.Sockets,
-				"cores":       savedFormData.Cores,
-				"memory":      savedFormData.Memory,
-				"disk_size":   savedFormData.DiskSize,
-				"iso":         savedFormData.ISO,
-				"bridge":      savedFormData.Bridge,
-				"node":        savedFormData.Node,
-				"pool":        savedFormData.Pool,
-				"storage":     savedFormData.Storage,
-				"tags":        savedFormData.Tags,
-				"enable_efi":  savedFormData.EnableEFI,
-				"enable_tpm":  savedFormData.EnableTPM,
-				"start_vm":    savedFormData.StartVM,
+				"bridge":        savedFormData.Bridge,
+				"cores":         savedFormData.Cores,
+				"description":   savedFormData.Description,
+				"disk_size":     savedFormData.DiskSize,
+				"enable_efi":    savedFormData.EnableEFI,
+				"enable_tpm":    savedFormData.EnableTPM,
+				"iso":           savedFormData.ISO,
+				"memory":        savedFormData.Memory,
+				"name":          savedFormData.Name,
+				"network_model": savedFormData.NetworkModel,
+				"node":          savedFormData.Node,
+				"pool":          savedFormData.Pool,
+				"sockets":       savedFormData.Sockets,
+				"start_vm":      savedFormData.StartVM,
+				"storage":       savedFormData.Storage,
+				"tags":          savedFormData.Tags,
+				"vmid":          savedFormData.VMID,
 			}
 			sessionManager.Remove(ctx, "vm_create_form_data") // Clear after reading
 		}
@@ -293,10 +316,11 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	// If no saved form data, use defaults
 	if formData == nil {
 		formData = map[string]interface{}{
-			"tags":        []string{"pvmss"},
-			"enable_efi":  "1", // EFI enabled by default
-			"enable_tpm":  "",  // TPM disabled by default
-			"start_vm":    "1", // Start VM enabled by default
+			"enable_efi":    "1",      // EFI enabled by default
+			"enable_tpm":    "",       // TPM disabled by default
+			"network_model": "virtio", // virtio is the default network model
+			"start_vm":      "1",      // Start VM enabled by default
+			"tags":          []string{"pvmss"},
 		}
 	}
 
@@ -314,6 +338,11 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
 		} else if restyClient, err := getDefaultRestyClient(); err == nil {
 			for _, nodeName := range nodes {
+				// Skip disabled (saturated) nodes
+				if disabledNodes[nodeName] {
+					log.Debug().Str("node", nodeName).Msg("Skipping disabled node for VMBR retrieval")
+					continue
+				}
 				vmbrs, err := proxmox.GetVMBRsResty(r.Context(), restyClient, nodeName)
 				if err != nil {
 					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve VMBRs; continuing with remaining nodes")
@@ -337,51 +366,140 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 	}
 	for _, bridgeName := range settings.VMBRs {
 		bridgeDetails = append(bridgeDetails, map[string]string{
-			"name":        bridgeName,
 			"description": bridgeDescriptions[bridgeName],
+			"name":        bridgeName,
 			"node":        bridgeNodes[bridgeName],
 		})
 	}
 
+	// Sort lists for better UX
+	sort.Strings(settings.ISOs)
+	sort.Strings(settings.VMBRs)
+	sort.Strings(settings.Tags)
+
+	// Check if all nodes are disabled (saturated)
+	allNodesSaturated := len(nodeOptions) > 0
+	for _, option := range nodeOptions {
+		if !option.Disabled {
+			allNodesSaturated = false
+			break
+		}
+	}
+
 	data := map[string]interface{}{
-		"Title":              "Create VM",
-		"ISOs":               settings.ISOs,
-		"Bridges":            settings.VMBRs,
-		"BridgeDetails":      bridgeDetails,
-		"BridgeDescriptions": bridgeDescriptions,
-		"BridgeNodes":        bridgeNodes,
-		"AvailableTags":      settings.Tags,
-		"Limits":             settings.Limits,
-		"Nodes":              nodes,
-		"NodeOptions":        nodeOptions,
 		"ActiveNode":         activeNode,
+		"AllNodesSaturated":  allNodesSaturated,
+		"AvailableTags":      settings.Tags,
+		"BridgeDescriptions": bridgeDescriptions,
+		"BridgeDetails":      bridgeDetails,
+		"BridgeNodes":        bridgeNodes,
+		"Bridges":            settings.VMBRs,
 		"DefaultPool":        defaultPool,
 		"FormData":           formData,
+		"ISOs":               settings.ISOs,
+		"Limits":             settings.Limits,
+		"NodeOptions":        nodeOptions,
+		"Nodes":              nodes,
+		"Title":              "Create VM",
 		"ValidationError":    validationError,
 	}
 
-	// Get available storages for the selected node
+	// Get available storages for all non-saturated nodes (cluster support)
 	storages := []string{}
 	storageNodes := make(map[string]string)
-	if client != nil && activeNode != "" {
+	log.Info().
+		Str("activeNode", activeNode).
+		Bool("client_nil", client == nil).
+		Int("disabled_nodes_count", len(disabledNodes)).
+		Msg("DEBUG: Before storage retrieval")
+	if client != nil && len(nodes) > 0 {
 		if restyClient, err := getDefaultRestyClient(); err == nil {
-			if storageList, err := proxmox.GetNodeStoragesResty(r.Context(), restyClient, activeNode); err == nil {
-				// Create a map of enabled storages for quick lookup
-				enabledStorageMap := make(map[string]bool)
-				for _, enabledStorage := range settings.EnabledStorages {
-					enabledStorageMap[enabledStorage] = true
+			var globalStorageInfo map[string]proxmox.Storage
+			if globalList, err := proxmox.GetStoragesResty(r.Context(), restyClient); err != nil {
+				log.Warn().Err(err).Msg("Failed to fetch global storage list; continuing without additional metadata")
+			} else {
+				globalStorageInfo = make(map[string]proxmox.Storage, len(globalList))
+				for _, item := range globalList {
+					globalStorageInfo[item.Storage] = item
+				}
+			}
+
+			// Create a map of enabled storages for quick lookup
+			enabledStorageMap := make(map[string]bool)
+			for _, enabledStorage := range settings.EnabledStorages {
+				enabledStorageMap[enabledStorage] = true
+			}
+
+			// Iterate through all non-saturated nodes to collect storages
+			for _, nodeName := range nodes {
+				// Skip disabled (saturated) nodes
+				if disabledNodes[nodeName] {
+					log.Debug().Str("node", nodeName).Msg("Skipping disabled node for storage retrieval")
+					continue
+				}
+
+				storageList, err := proxmox.GetNodeStoragesResty(r.Context(), restyClient, nodeName)
+				if err != nil {
+					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve storages for node; continuing with remaining nodes")
+					continue
 				}
 
 				for _, storage := range storageList {
-					// Only include storages that are in enabled_storages list, enabled, and can hold VM disks
-					if enabledStorageMap[storage.Storage] && storage.Enabled == 1 && strings.Contains(storage.Content, "images") {
-						storages = append(storages, storage.Storage)
-						storageNodes[storage.Storage] = activeNode
+					storageInfo := storage
+					if globalStorageInfo != nil {
+						if global, exists := globalStorageInfo[storage.Storage]; exists {
+							if storageInfo.Content == "" && global.Content != "" {
+								storageInfo.Content = global.Content
+							}
+							if storageInfo.Type == "" && global.Type != "" {
+								storageInfo.Type = global.Type
+							}
+							if storageInfo.Description == "" && global.Description != "" {
+								storageInfo.Description = global.Description
+							}
+						}
+					}
+
+					// Only include storages that are enabled and can hold VM disks
+					// If EnabledStorages is empty, all storages are considered enabled
+					isEnabledStorage := len(settings.EnabledStorages) == 0 || enabledStorageMap[storage.Storage]
+					storageType := strings.ToLower(storageInfo.Type)
+					storageContent := strings.ToLower(storageInfo.Content)
+
+					supportsVMDisk := strings.Contains(storageContent, "images")
+					if !supportsVMDisk {
+						if _, ok := vmDiskCompatibleStorageTypes[storageType]; ok {
+							supportsVMDisk = true
+						}
+					}
+
+					if isEnabledStorage && storage.Enabled == 1 && supportsVMDisk {
+						// Only add if not already present (avoid duplicates across nodes)
+						alreadyExists := false
+						for _, existing := range storages {
+							if existing == storage.Storage {
+								alreadyExists = true
+								break
+							}
+						}
+						if !alreadyExists {
+							storages = append(storages, storage.Storage)
+						}
+						// Always store the node mapping (prefer first node if storage exists on multiple nodes)
+						if _, exists := storageNodes[storage.Storage]; !exists {
+							storageNodes[storage.Storage] = nodeName
+						}
 					}
 				}
 			}
+			// Sort storages alphabetically
+			sort.Strings(storages)
 		}
 	}
+	log.Info().
+		Int("storage_count", len(storages)).
+		Strs("storages", storages).
+		Msg("DEBUG: After storage retrieval")
 	data["Storages"] = storages
 	data["StorageNodes"] = storageNodes
 
@@ -414,9 +532,10 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	diskSizeGBStr := r.FormValue("disk_size")
 	enableEFI := r.FormValue("enable_efi") // "1" if checked, "" otherwise
 	enableTPM := r.FormValue("enable_tpm") // "1" if checked, "" otherwise
-	isoPath := r.FormValue("iso") // settings provides full volid or path string
-	memoryMBStr := r.FormValue("memory") // MB
+	isoPath := r.FormValue("iso")          // settings provides full volid or path string
+	memoryMBStr := r.FormValue("memory")   // MB
 	name := r.FormValue("name")
+	networkModel := r.FormValue("network_model") // virtio, e1000, e1000e, rtl8139, vmxnet3
 	poolName := r.FormValue("pool")
 	selectedNode := r.FormValue("node")
 	selectedStorage := r.FormValue("storage")
@@ -426,17 +545,22 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	tags := ensureMandatoryTag(selectedTags)
 	vmidStr := r.FormValue("vmid")
 
+	// Default to virtio if no model specified
+	if networkModel == "" {
+		networkModel = "virtio"
+	}
+
 	// Validate mandatory fields
 	validationErrors := validateRequiredFields(map[string]string{
-		"VM name":        name,
-		"Proxmox node":   selectedNode,
-		"CPU sockets":    socketsStr,
 		"CPU cores":      coresStr,
-		"Memory":         memoryMBStr,
+		"CPU sockets":    socketsStr,
 		"Disk size":      diskSizeGBStr,
-		"Storage":        selectedStorage,
 		"ISO image":      isoPath,
+		"Memory":         memoryMBStr,
 		"Network bridge": bridgeName,
+		"Proxmox node":   selectedNode,
+		"Storage":        selectedStorage,
+		"VM name":        name,
 	})
 
 	// If validation fails, redirect back to form with errors
@@ -449,22 +573,23 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 			session.Put(ctx, "vm_create_errors", strings.Join(validationErrors, "; "))
 			// Preserve form data using concrete struct (gob-serializable)
 			formData := VMCreateFormData{
-				Bridge:      bridgeName,
-				Cores:       coresStr,
-				Description: description,
-				DiskSize:    diskSizeGBStr,
-				EnableEFI:   enableEFI,
-				EnableTPM:   enableTPM,
-				ISO:         isoPath,
-				Memory:      memoryMBStr,
-				Name:        name,
-				Node:        selectedNode,
-				Pool:        poolName,
-				Sockets:     socketsStr,
-				StartVM:     startVM,
-				Storage:     selectedStorage,
-				Tags:        selectedTags,
-				VMID:        vmidStr,
+				Bridge:       bridgeName,
+				Cores:        coresStr,
+				Description:  description,
+				DiskSize:     diskSizeGBStr,
+				EnableEFI:    enableEFI,
+				EnableTPM:    enableTPM,
+				ISO:          isoPath,
+				Memory:       memoryMBStr,
+				Name:         name,
+				NetworkModel: networkModel,
+				Node:         selectedNode,
+				Pool:         poolName,
+				Sockets:      socketsStr,
+				StartVM:      startVM,
+				Storage:      selectedStorage,
+				Tags:         selectedTags,
+				VMID:         vmidStr,
 			}
 			session.Put(ctx, "vm_create_form_data", formData)
 		}
@@ -621,11 +746,11 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	// Build Proxmox create parameters
 	params := map[string]string{
-		"vmid":    strconv.Itoa(vmid),
+		"cores":   strconv.Itoa(cores),
+		"memory":  strconv.Itoa(memoryMB),
 		"name":    name,
 		"sockets": strconv.Itoa(sockets),
-		"cores":   strconv.Itoa(cores),
-		"memory":  strconv.Itoa(memoryMB), // MB
+		"vmid":    strconv.Itoa(vmid),
 	}
 
 	params["agent"] = "enabled=1"
@@ -649,9 +774,22 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		params["ide2"] = isoPath + ",media=cdrom"
 	}
 
-	// Network: virtio on selected bridge
+	// Network: use selected model on selected bridge
 	if bridgeName != "" {
-		params["net0"] = "virtio,bridge=" + bridgeName
+		// Validate network model (security: prevent injection)
+		validModels := map[string]bool{
+			"e1000":   true,
+			"e1000e":  true,
+			"rtl8139": true,
+			"virtio":  true,
+			"vmxnet3": true,
+		}
+		if !validModels[networkModel] {
+			log.Warn().Str("network_model", networkModel).Msg("Invalid network model, defaulting to virtio")
+			networkModel = "virtio"
+		}
+		params["net0"] = networkModel + ",bridge=" + bridgeName
+		log.Info().Str("network_model", networkModel).Str("bridge", bridgeName).Msg("Configuring network interface")
 	}
 
 	// Disk: use selected storage for VM disk
@@ -670,7 +808,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if enableEFI == "1" {
 		// Set BIOS to OVMF (UEFI firmware)
 		params["bios"] = "ovmf"
-		
+
 		// Create EFI disk in the same storage as the main disk
 		// Determine appropriate format based on storage type
 		if selectedStorage != "" {
@@ -689,11 +827,11 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 						break
 					}
 				}
-				
+
 				// Determine format based on storage type
 				efiFormat := getEFIDiskFormat(storageType)
 				params["efidisk0"] = selectedStorage + ":1,format=" + efiFormat + ",efitype=4m"
-				
+
 				log.Info().
 					Str("storage", selectedStorage).
 					Str("storage_type", storageType).
@@ -721,13 +859,13 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 						break
 					}
 				}
-				
+
 				// Check if storage is compatible with TPM (raw format)
 				tpmFormat, compatible := getTPMDiskFormat(storageType)
 				if compatible {
 					// Create TPM state disk with v2.0 (required for Windows 11)
 					params["tpmstate0"] = selectedStorage + ":4,version=v2.0"
-					
+
 					log.Info().
 						Str("storage", selectedStorage).
 						Str("storage_type", storageType).
