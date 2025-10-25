@@ -161,6 +161,9 @@ const (
 
 	// DefaultLoginRealm is the default Proxmox authentication realm
 	DefaultLoginRealm = "pve"
+
+	// AppVersion is the current application version
+	AppVersion = "0.2.0"
 )
 
 // Session Keys
