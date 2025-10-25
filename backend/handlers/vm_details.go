@@ -377,7 +377,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var currentCores = 1
 	var currentSockets = 1
 	var currentVMBR string
-	var currentMemoryMB = vm.MaxMem / 1024 // Convert bytes to MB
+	var currentMemoryMB = vm.MaxMem / (1024 * 1024) // Convert bytes to MB
 
 	if showResourcesEditor {
 		if vmbrs, err := proxmox.GetVMBRsResty(r.Context(), restyClient, vm.Node); err == nil {
@@ -418,7 +418,9 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"DescriptionHTML":       descriptionHTML,
 		"FormattedMaxDisk":      FormatBytes(vm.MaxDisk),
 		"FormattedMaxMem":       FormatBytes(vm.MaxMem),
+		"FormattedMaxMemGB":     FormatMemoryGB(vm.MaxMem, true), // bytes to GB
 		"FormattedMem":          FormatBytes(vm.Mem),
+		"FormattedMemGB":        FormatMemoryGB(vm.Mem, true), // bytes to GB
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
 		"Limits":                settings.Limits,
 		"NetworkBridges":        networkBridgesStr,

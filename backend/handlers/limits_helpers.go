@@ -116,7 +116,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 
 	// Convert RAM from MB to GB for display
 	for _, nodeUsage := range usage {
-		nodeUsage.RamGB = int(nodeUsage.RamMB / 1024)
+		nodeUsage.RamGB = int(MBToGB(nodeUsage.RamMB))
 	}
 
 	// Get limits from settings to populate max values
@@ -263,7 +263,7 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 		return nil
 	}
 
-	memoryGB := memoryMB / 1024
+	memoryGB := int(MBToGB(int64(memoryMB)))
 
 	// Validate cores
 	if nodeUsage.MaxCores > 0 {
