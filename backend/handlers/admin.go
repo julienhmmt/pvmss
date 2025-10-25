@@ -268,6 +268,10 @@ func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
 		h.NodesPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 	})))
 
+	router.GET("/admin/appinfo", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.AppInfoPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+
 	// Proxmox ticket test routes
 	router.GET("/admin/ticket-test", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 		h.ProxmoxTicketTestPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))

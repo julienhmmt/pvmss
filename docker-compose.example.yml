@@ -1,7 +1,7 @@
 ---
 services:
   pvmss:
-    image: jhmmt/pvmss:0.1
+    image: jhmmt/pvmss:0.2.0
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -20,6 +20,9 @@ services:
       ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
       LOG_LEVEL: "INFO"
       SESSION_SECRET: "changeMeWithSomethingElseUnique"
+      PVMSS_ENV: "production" # Environment: production/prod or development/dev/developpement
+      PVMSS_OFFLINE: "false"
+      PVMSS_SETTINGS_PATH: "/app/settings.json"
       TZ: "Europe/Paris"
     volumes:
       - ./backend/settings.json:/app/settings.json

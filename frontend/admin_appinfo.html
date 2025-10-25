@@ -1,0 +1,119 @@
+{{define "admin_appinfo"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_appinfo_section"}}
+<div class="container mt-4">
+  <div class="content mb-5">
+    <h1 class="title is-4">
+      <span class="icon"><i class="fas fa-info-circle"></i></span>
+      <span>{{T "Admin.AppInfo.Title"}}</span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey">{{T "Admin.AppInfo.Description"}}</p>
+  </div>
+
+  {{$buildInfo := .BuildInfo}}
+
+  <!-- Version and Build Info -->
+  <div class="box admin-box mb-5">
+    <div class="mb-5">
+      <h2 class="title is-5 mb-3">
+        <span class="icon"><i class="fas fa-cube"></i></span>
+        <span>{{T "Admin.AppInfo.BuildInfo"}}</span>
+      </h2>
+    </div>
+
+    <div class="columns is-multiline">
+      <!-- Version -->
+      <div class="column is-6">
+        <div class="box has-background-white-bis">
+          <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.Version"}}</p>
+          <p class="is-size-5 has-text-weight-bold has-text-primary">
+            v{{$buildInfo.version}}
+          </p>
+        </div>
+      </div>
+
+      <!-- Environment -->
+      <div class="column is-6">
+        <div class="box has-background-white-bis">
+          <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.Environment"}}</p>
+          <p class="is-size-5 has-text-weight-bold">
+            {{if eq $buildInfo.environment "development"}}
+              <span class="tag is-warning is-light">{{$buildInfo.environment}}</span>
+            {{else if eq $buildInfo.environment "offline"}}
+              <span class="tag is-info is-light">{{$buildInfo.environment}}</span>
+            {{else}}
+              <span class="tag is-success is-light">{{$buildInfo.environment}}</span>
+            {{end}}
+          </p>
+        </div>
+      </div>
+
+      <!-- Go Version -->
+      <div class="column is-6">
+        <div class="box has-background-white-bis">
+          <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.GoVersion"}}</p>
+          <p class="is-size-6 has-text-monospace">{{$buildInfo.goVersion}}</p>
+        </div>
+      </div>
+
+      <!-- OS/Arch -->
+      <div class="column is-6">
+        <div class="box has-background-white-bis">
+          <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.Platform"}}</p>
+          <p class="is-size-6">{{$buildInfo.goOS}} / {{$buildInfo.goArch}}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Environment Variables -->
+  <div class="box admin-box mb-5">
+    <div class="mb-5">
+      <h2 class="title is-5 mb-3">
+        <span class="icon"><i class="fas fa-sliders-h"></i></span>
+        <span>{{T "Admin.AppInfo.EnvironmentVariables"}}</span>
+      </h2>
+      <p class="subtitle is-6 has-text-grey">{{T "Admin.AppInfo.EnvironmentVariablesDescription"}}</p>
+    </div>
+
+    {{if $buildInfo.environmentVariables}}
+      <div class="table-container">
+        <table class="table is-fullwidth is-striped">
+          <thead>
+            <tr>
+              <th>{{T "Common.Name"}}</th>
+              <th>{{T "Common.Value"}}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range $key, $value := $buildInfo.environmentVariables}}
+            <tr>
+              <td>
+                <code class="has-text-primary">{{$key}}</code>
+              </td>
+              <td>
+                <code class="has-text-monospace">{{$value}}</code>
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <div class="notification is-info is-light">
+        <p>{{T "Admin.AppInfo.NoVariables"}}</p>
+      </div>
+    {{end}}
+  </div>
+
+  <!-- Information Notice -->
+  <div class="notification is-info is-light">
+    <p class="mb-2">
+      <span class="icon"><i class="fas fa-shield-alt"></i></span>
+      <strong>{{T "Admin.AppInfo.SecurityNote"}}</strong> {{T "Admin.AppInfo.SecurityMessage"}}
+    </p>
+  </div>
+</div>
+{{end}}

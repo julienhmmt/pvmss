@@ -2,13 +2,13 @@ package middleware
 
 import (
 	"net/http"
-	"os"
 	"strings"
+	"pvmss/utils"
 )
 
 var (
-	// isProduction is cached at initialization to avoid repeated ENV lookups
-	isProduction = strings.ToLower(os.Getenv("ENV")) == "production"
+	// isProduction is cached at initialization to avoid repeated PVMSS_ENV lookups
+	isProduction = utils.IsProduction()
 )
 
 // Headers adds security headers to all responses

@@ -150,6 +150,8 @@ other = "Update"
 other = "User"
 ["Common.Users"]
 other = "Users"
+["Common.Value"]
+other = "Value"
 ["Common.Pool"]
 other = "Pool"
 ["Common.Yes"]
@@ -1050,3 +1052,33 @@ other = "Delete ALL VMs in this pool, the user, then the pool? This cannot be un
 other = "Delete VMs, user, then pool"
 ["Admin.UserPool.DeletePurge"]
 other = "Delete (purge)"
+
+# Admin - Application Info
+["Admin.AppInfo.Title"]
+other = "Application Information"
+["Admin.AppInfo.Description"]
+other = "Build details, environment, and system information"
+["Admin.AppInfo.BuildInfo"]
+other = "Build Information"
+["Admin.AppInfo.Version"]
+other = "Version"
+["Admin.AppInfo.Environment"]
+other = "Environment"
+["Admin.AppInfo.GoVersion"]
+other = "Go Version"
+["Admin.AppInfo.Platform"]
+other = "Platform"
+["Admin.AppInfo.EnvironmentVariables"]
+other = "Environment Variables"
+["Admin.AppInfo.EnvironmentVariablesDescription"]
+other = "Safe configuration variables (secrets are not displayed)"
+["Admin.AppInfo.NoVariables"]
+other = "No environment variables configured."
+["Admin.AppInfo.SecurityNote"]
+other = "Security Note:"
+["Admin.AppInfo.SecurityMessage"]
+other = "This page displays only safe, non-sensitive configuration information. API tokens, passwords, and other secrets are never displayed."
+["Admin.VMs.Title"]
+other = "Gestion des VMs"
+["Admin.VMs.Description"]
+other = "Gestion des VMs Proxmox avec le tag pvmss"
