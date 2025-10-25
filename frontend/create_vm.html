@@ -170,6 +170,23 @@
                                                     </label>
                                                     <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.TPMHelp"}}</p>
                                                 </div>
+
+                                                <!-- Start VM Option -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="start_vm" value="1" {{if or (eq .FormData.start_vm "1") (not .FormData.start_vm)}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.StartVM"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.StartVM"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.StartVM"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.StartVMHelp"}}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

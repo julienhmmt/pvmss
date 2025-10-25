@@ -162,6 +162,7 @@ type VMCreateFormData struct {
 	Tags        []string
 	EnableEFI   string
 	EnableTPM   string
+	StartVM     string
 }
 
 // Register VMCreateFormData with gob for session serialization
@@ -283,6 +284,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 				"tags":        savedFormData.Tags,
 				"enable_efi":  savedFormData.EnableEFI,
 				"enable_tpm":  savedFormData.EnableTPM,
+				"start_vm":    savedFormData.StartVM,
 			}
 			sessionManager.Remove(ctx, "vm_create_form_data") // Clear after reading
 		}
@@ -294,6 +296,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 			"tags":        []string{"pvmss"},
 			"enable_efi":  "1", // EFI enabled by default
 			"enable_tpm":  "",  // TPM disabled by default
+			"start_vm":    "1", // Start VM enabled by default
 		}
 	}
 
@@ -419,6 +422,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	selectedStorage := r.FormValue("storage")
 	selectedTags := r.Form["tags"]
 	socketsStr := r.FormValue("sockets")
+	startVM := r.FormValue("start_vm") // "1" if checked, "" otherwise
 	tags := ensureMandatoryTag(selectedTags)
 	vmidStr := r.FormValue("vmid")
 
@@ -445,21 +449,22 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 			session.Put(ctx, "vm_create_errors", strings.Join(validationErrors, "; "))
 			// Preserve form data using concrete struct (gob-serializable)
 			formData := VMCreateFormData{
-				Name:        name,
-				Description: description,
-				VMID:        vmidStr,
-				Sockets:     socketsStr,
-				Cores:       coresStr,
-				Memory:      memoryMBStr,
-				DiskSize:    diskSizeGBStr,
-				ISO:         isoPath,
 				Bridge:      bridgeName,
-				Node:        selectedNode,
-				Pool:        poolName,
-				Storage:     selectedStorage,
-				Tags:        selectedTags,
+				Cores:       coresStr,
+				Description: description,
+				DiskSize:    diskSizeGBStr,
 				EnableEFI:   enableEFI,
 				EnableTPM:   enableTPM,
+				ISO:         isoPath,
+				Memory:      memoryMBStr,
+				Name:        name,
+				Node:        selectedNode,
+				Pool:        poolName,
+				Sockets:     socketsStr,
+				StartVM:     startVM,
+				Storage:     selectedStorage,
+				Tags:        selectedTags,
+				VMID:        vmidStr,
 			}
 			session.Put(ctx, "vm_create_form_data", formData)
 		}
@@ -739,8 +744,10 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		}
 	}
 
-	// Ask Proxmox to start the VM automatically after creation
-	params["start"] = "1"
+	// Start VM after creation if user selected this option (default: enabled)
+	if startVM == "1" {
+		params["start"] = "1"
+	}
 
 	// Perform API call: POST /nodes/{node}/qemu
 	path := "/nodes/" + url.PathEscape(node) + "/qemu"

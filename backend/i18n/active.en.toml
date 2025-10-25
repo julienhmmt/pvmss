@@ -642,6 +642,12 @@ other = "Categorization labels to organize your VMs (production, development, te
 other = "Enable UEFI (Unified Extensible Firmware Interface) boot mode instead of legacy BIOS. UEFI is required for modern operating systems like Windows 11, supports Secure Boot, and enables GPT disk partitioning. An EFI disk will be automatically created in the same storage as your main disk."
 ["VM.Create.Tooltip.TPM"]
 other = "Enable Trusted Platform Module (TPM) v2.0 for hardware-level security features. TPM is required for Windows 11, BitLocker drive encryption, Windows Hello, and other security features. A 4 MiB TPM state disk will be automatically created in the same storage as your main disk. TPM requires compatible storage that supports raw disk format."
+["VM.Create.StartVM"]
+other = "Start VM after creation"
+["VM.Create.StartVMHelp"]
+other = "Automatically start the virtual machine after it is created. Uncheck this option if you want to configure the VM before starting it."
+["VM.Create.Tooltip.StartVM"]
+other = "When enabled (default), the VM will automatically start after creation. Disable this option if you need to configure additional settings before starting the VM."
 
 # ===========
 # VM Details
