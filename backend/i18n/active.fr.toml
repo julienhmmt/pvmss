@@ -684,6 +684,12 @@ other = "Étiquettes de catégorisation pour organiser vos VMs. Cliquez sur un t
 other = "Active le mode de démarrage UEFI (Unified Extensible Firmware Interface) au lieu du BIOS traditionnel. UEFI est requis pour les systèmes d'exploitation modernes comme Windows 11, prend en charge Secure Boot et active le partitionnement de disque GPT. Un disque EFI sera automatiquement créé dans le même stockage que votre disque principal."
 ["VM.Create.Tooltip.TPM"]
 other = "Active le Trusted Platform Module (TPM) v2.0 pour des fonctionnalités de sécurité matérielles avancées. Le TPM est requis pour Windows 11, le chiffrement de disque BitLocker, Windows Hello et d'autres fonctionnalités de sécurité. Un disque d'état TPM de 4 Mio sera automatiquement créé dans le même stockage que votre disque principal. Le TPM nécessite un stockage compatible prenant en charge le format de disque brut (raw)."
+["VM.Create.StartVM"]
+other = "Démarrer la VM après sa création"
+["VM.Create.StartVMHelp"]
+other = "Démarre automatiquement la machine virtuelle après sa création. Décochez cette option si vous souhaitez configurer la VM avant de la démarrer."
+["VM.Create.Tooltip.StartVM"]
+other = "Lorsque cette option est activée (par défaut), la VM démarre automatiquement après sa création. Désactivez cette option si vous avez besoin de configurer des paramètres supplémentaires avant de démarrer la VM."
 
 # ===========
 # VM Details
