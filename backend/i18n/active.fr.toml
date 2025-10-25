@@ -592,6 +592,30 @@ other = "Quantité de mémoire en mégaoctets (512 Mo minimum)"
 other = "Pont réseau"
 ["VM.Create.NetworkBridgeHelp"]
 other = "Sélectionnez un pont réseau pour connecter la VM"
+["VM.Create.NetworkModel"]
+other = "Modèle de carte réseau"
+["VM.Create.NetworkModelHelp"]
+other = "Choisissez la carte réseau virtuelle la mieux adaptée à votre système."
+["VM.Create.NetworkModelDesc.Virtio"]
+other = "Meilleures performances. Recommandé pour les systèmes modernes (pilote VirtIO requis sous Windows)."
+["VM.Create.NetworkModelDesc.E1000"]
+other = "Compatibilité universelle. Fonctionne immédiatement sur la plupart des systèmes sans pilote supplémentaire."
+["VM.Create.NetworkModelDesc.E1000E"]
+other = "Adaptateur Intel plus récent avec large compatibilité et prise en charge native."
+["VM.Create.NetworkModelDesc.RTL8139"]
+other = "Adaptateur historique pour anciens systèmes (ex. Windows XP/2000). Limité à 100 Mbps."
+["VM.Create.NetworkModelDesc.VMXNet3"]
+other = "Adaptateur hautes performances pour les VM migrées depuis VMware/vSphere. Nécessite VMware Tools."
+["VM.Create.NetworkModel.Virtio"]
+other = "VirtIO (recommandé - meilleures performances, nécessite un pilote sous Windows)"
+["VM.Create.NetworkModel.E1000"]
+other = "Intel E1000 (compatibilité universelle, aucun pilote requis)"
+["VM.Create.NetworkModel.E1000E"]
+other = "Intel E1000E (compatibilité universelle, aucun pilote requis)"
+["VM.Create.NetworkModel.RTL8139"]
+other = "Realtek RTL8139 (systèmes anciens)"
+["VM.Create.NetworkModel.VMXNet3"]
+other = "VMware VMXNet3 (pour les VM importées de VMware vSphere)"
 ["VM.Create.NoBridges"]
 other = "Aucun pont réseau disponible"
 ["VM.Create.NoTagsAvailable"]
@@ -650,8 +674,14 @@ other = "Sélectionnez un stockage"
 other = "Aucun stockage disponible"
 ["VM.Create.ProxmoxNode"]
 other = "Noeud Proxmox"
+["VM.Create.ProxmoxNodeHelp"]
+other = "Sélectionnez le nœud Proxmox où votre VM sera créée. Seuls les nœuds avec des ressources disponibles sont affichés. Les options de stockage et réseau sont filtrées en fonction du nœud sélectionné."
 ["VM.Create.ResourcePool"]
 other = "Pool de ressources"
+["VM.Create.ResourceLimitsTitle"]
+other = "Limites de ressources atteintes"
+["VM.Create.ResourceLimitsMessage"]
+other = "Tous les nœuds ont atteint leurs limites de ressources. Vous ne pouvez pas créer de nouvelles machines virtuelles avant que des ressources ne soient libérées ou que les limites soient augmentées."
 ["VM.Create.StorageHelp"]
 other = "Sélectionnez un stockage pour votre machine virtuelle"
 
@@ -678,6 +708,8 @@ other = "Pool de ressources Proxmox pour regrouper et gérer vos VMs. Chaque uti
 other = "Image ISO du système d'exploitation à installer (Linux, Windows, etc.). L'ISO sera monté comme un CD-ROM virtuel au démarrage de la VM une seule fois."
 ["VM.Create.Tooltip.Network"]
 other = "Connexion réseau virtuelle pour la VM. Détermine le réseau auquel la VM aura accès (Internet, réseau interne, VLAN spécifique)."
+["VM.Create.Tooltip.NetworkModel"]
+other = "Modèle de carte réseau :\n• VirtIO : Meilleures performances, recommandé pour les systèmes modernes. Nécessite des pilotes VirtIO sous Windows (disponibles dans l'ISO VirtIO).\n• E1000/E1000E : Compatibilité universelle, fonctionne sans pilote supplémentaire. Idéal pour des installations rapides.\n• RTL8139 : Modèle ancien pour systèmes d'exploitation anciens.\n• VMXNet3 : Optimisé pour les VM migrées depuis des environnements VMware vSphere."
 ["VM.Create.Tooltip.Tags"]
 other = "Étiquettes de catégorisation pour organiser vos VMs. Cliquez sur un tag pour le sélectionner. Le tag 'pvmss' est obligatoire et ne peut pas être modifié."
 ["VM.Create.Tooltip.EFI"]

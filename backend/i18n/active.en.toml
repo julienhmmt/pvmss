@@ -550,6 +550,30 @@ other = "Amount of memory in megabytes (512MB minimum)"
 other = "Network Bridge"
 ["VM.Create.NetworkBridgeHelp"]
 other = "Select a network bridge to connect the VM"
+["VM.Create.NetworkModel"]
+other = "Network Card Model"
+["VM.Create.NetworkModelHelp"]
+other = "Choose the virtual network card that best fits your operating system."
+["VM.Create.NetworkModelDesc.Virtio"]
+other = "Best performance. Recommended for modern Linux and Windows (requires VirtIO driver on Windows)."
+["VM.Create.NetworkModelDesc.E1000"]
+other = "Universal compatibility. Works out-of-the-box on most systems without additional drivers."
+["VM.Create.NetworkModelDesc.E1000E"]
+other = "Updated Intel adapter with broad compatibility and native driver support."
+["VM.Create.NetworkModelDesc.RTL8139"]
+other = "Legacy adapter for very old operating systems (e.g. Windows XP/2000). Limited to 100 Mbps."
+["VM.Create.NetworkModelDesc.VMXNet3"]
+other = "High-performance adapter for VMs migrated from VMware/vSphere environments. Requires VMware tools."
+["VM.Create.NetworkModel.Virtio"]
+other = "VirtIO (recommended - best performance, requires driver on Windows)"
+["VM.Create.NetworkModel.E1000"]
+other = "Intel E1000 (universal compatibility, no driver needed)"
+["VM.Create.NetworkModel.E1000E"]
+other = "Intel E1000E (universal compatibility, no driver needed)"
+["VM.Create.NetworkModel.RTL8139"]
+other = "Realtek RTL8139 (legacy systems)"
+["VM.Create.NetworkModel.VMXNet3"]
+other = "VMware VMXNet3 (for VMs imported from VMware vSphere)"
 ["VM.Create.NoBridges"]
 other = "No network bridge available"
 ["VM.Create.NoTagsAvailable"]
@@ -608,8 +632,14 @@ other = "Select a storage"
 other = "No storage available"
 ["VM.Create.ProxmoxNode"]
 other = "Proxmox node"
+["VM.Create.ProxmoxNodeHelp"]
+other = "Select the Proxmox node where your VM will be created. Only nodes with available resources are shown. Storage and network options are filtered based on the selected node."
 ["VM.Create.ResourcePool"]
 other = "Resource pool"
+["VM.Create.ResourceLimitsTitle"]
+other = "Resource limits reached"
+["VM.Create.ResourceLimitsMessage"]
+other = "All nodes have reached their resource limits. You cannot create new virtual machines until resources are freed or limits are increased."
 ["VM.Create.StorageHelp"]
 other = "Select a storage for your virtual machine"
 
@@ -635,7 +665,9 @@ other = "Proxmox resource pool to group and manage your VMs. Each user has a ded
 ["VM.Create.Tooltip.ISO"]
 other = "Operating system ISO image to install (Linux, Windows, etc.). The ISO will be mounted as a virtual CD-ROM at VM startup."
 ["VM.Create.Tooltip.Network"]
-other = "Virtual network bridge for VM connection. Determines which network the VM will access (Internet, internal network, specific VLAN)."
+other = "The network bridge to which this VM will be connected. Select the appropriate bridge based on your network configuration."
+["VM.Create.Tooltip.NetworkModel"]
+other = "Network card model:\n• VirtIO: Best performance, recommended for modern systems. Requires VirtIO drivers on Windows (available in VirtIO ISO).\n• E1000/E1000E: Universal compatibility, works without additional drivers. Good for quick installations.\n• RTL8139: Legacy model for older operating systems.\n• VMXNet3: Optimized for VMs migrated from VMware vSphere environments."
 ["VM.Create.Tooltip.Tags"]
 other = "Categorization labels to organize your VMs (production, development, test). Click on a tag to select it. The 'pvmss' tag is required."
 ["VM.Create.Tooltip.EFI"]

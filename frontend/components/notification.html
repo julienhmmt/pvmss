@@ -1,33 +1,37 @@
 {{define "notification"}}
 {{/*
-  Reusable notification component
+  Reusable notification component with improved responsiveness
   Usage: {{template "notification" (dict "Type" "success" "Message" "Operation completed successfully" "Icon" "fas fa-check" "Dismissible" true)}}
 */}}
 <div class="notification is-{{or .Type "info"}} {{if ne .Light false}}is-light{{end}} {{.ExtraClasses}}" role="alert"
      {{if .Live}}aria-live="{{.Live}}"{{else}}aria-live="polite"{{end}}>
-  <div class="level is-mobile">
-    <div class="level-left">
+  <div class="notification-content">
+    <!-- Icon and Text Container -->
+    <div class="notification-body">
       {{if .Icon}}
-      <div class="level-item">
+      <div class="notification-icon">
         <span class="icon has-text-{{if ne .Light false}}{{or .Type "info"}}{{else}}white{{end}}">
           <i class="{{.Icon}}"></i>
         </span>
       </div>
       {{end}}
-      <div class="level-item">
+      <div class="notification-text">
         {{if .Title}}
         <div>
           <strong>{{.Title}}</strong>
-          {{if .Message}}<p>{{.Message}}</p>{{end}}
+          {{if .Message}}<p class="mt-2 mb-0">{{.Message}}</p>{{end}}
         </div>
         {{else}}
         {{.Message}}
         {{end}}
       </div>
     </div>
-    <div class="level-right">
+    
+    <!-- Action and Dismiss Container -->
+    {{if or .Action .Dismissible}}
+    <div class="notification-actions">
       {{if .Action}}
-      <div class="level-item">
+      <div class="notification-action">
         {{if .Action.Link}}
         <a href="{{.Action.Link}}" class="button is-{{or .Action.Type "primary"}} is-small">
           {{if .Action.Icon}}<span class="icon"><i class="{{.Action.Icon}}"></i></span>{{end}}
@@ -47,7 +51,7 @@
       </div>
       {{end}}
       {{if .Dismissible}}
-      <div class="level-item">
+      <div class="notification-dismiss">
         <button class="delete" 
                 aria-label="Dismiss notification" 
                 data-action="dismiss" 
@@ -58,6 +62,7 @@
       </div>
       {{end}}
     </div>
+    {{end}}
   </div>
 </div>
 {{end}}

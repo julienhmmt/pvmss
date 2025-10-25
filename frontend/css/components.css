@@ -1184,3 +1184,110 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   opacity: 1;
   color: #718096;
 }
+
+/* ===================================
+   Notification Component - Responsive
+   =================================== */
+
+.notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.notification-body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+}
+
+.notification-text {
+  flex: 1;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.notification-text p {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+.notification-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.notification-action {
+  flex-shrink: 0;
+}
+
+.notification-dismiss {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Mobile responsiveness */
+@media screen and (max-width: 768px) {
+  .notification-content {
+    gap: 0.75rem;
+  }
+
+  .notification-body {
+    gap: 0.75rem;
+  }
+
+  .notification-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .notification-dismiss {
+    margin-left: auto;
+  }
+}
+
+/* Extra small screens */
+@media screen and (max-width: 480px) {
+  .notification-body {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .notification-icon {
+    min-width: 1.25rem;
+  }
+
+  .notification-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .notification-action {
+    width: 100%;
+  }
+
+  .notification-action .button {
+    width: 100%;
+  }
+
+  .notification-dismiss {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}

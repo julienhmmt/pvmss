@@ -69,7 +69,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 		defer cancel()
 
 		// Get all VMs with pvmss tag first to get total count
-		allVMs, errMsg := h.getVMsWithPVMSSTag(ctx, client)
+		allVMs, errMsg := h.getVMsWithPVMSSTag(ctx)
 		if errMsg == "" {
 			totalVMs = len(allVMs)
 
@@ -144,7 +144,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 }
 
 // getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag using resty
-func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context, client proxmox.ClientInterface) ([]AdminVMInfo, string) {
+func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo, string) {
 	log := logger.Get().With().
 		Str("function", "getVMsWithPVMSSTag").
 		Logger()
