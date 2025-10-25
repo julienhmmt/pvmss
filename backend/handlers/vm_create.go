@@ -111,6 +111,40 @@ func getEFIDiskFormat(storageType string) string {
 	return "qcow2"
 }
 
+// getTPMDiskFormat determines the appropriate format for TPM disk based on storage type
+// TPM disks always use 'raw' format according to Proxmox documentation
+// Block-based storages work natively, file-based storages will use raw disk images
+// Returns true if the storage type is compatible with TPM
+func getTPMDiskFormat(storageType string) (format string, compatible bool) {
+	// Normalize storage type to lowercase for comparison
+	storageType = strings.ToLower(storageType)
+
+	// TPM format is always raw (fixed by Proxmox)
+	format = "raw"
+
+	// Check if storage supports raw disk images
+	// Block-based storages natively support raw
+	blockBasedStorages := map[string]bool{
+		"lvmthin": true,
+		"lvm":     true,
+		"zfs":     true,
+		"ceph":    true,
+		"iscsi":   true,
+	}
+
+	// File-based storages that support raw images
+	fileBasedStorages := map[string]bool{
+		"dir":  true,
+		"nfs":  true,
+		"cifs": true,
+	}
+
+	// Compatible if either block-based or file-based with raw support
+	compatible = blockBasedStorages[storageType] || fileBasedStorages[storageType]
+
+	return format, compatible
+}
+
 // VMCreateFormData holds the form data for VM creation (used for session storage)
 type VMCreateFormData struct {
 	Name        string
@@ -127,6 +161,7 @@ type VMCreateFormData struct {
 	Storage     string
 	Tags        []string
 	EnableEFI   string
+	EnableTPM   string
 }
 
 // Register VMCreateFormData with gob for session serialization
@@ -247,6 +282,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 				"storage":     savedFormData.Storage,
 				"tags":        savedFormData.Tags,
 				"enable_efi":  savedFormData.EnableEFI,
+				"enable_tpm":  savedFormData.EnableTPM,
 			}
 			sessionManager.Remove(ctx, "vm_create_form_data") // Clear after reading
 		}
@@ -257,6 +293,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		formData = map[string]interface{}{
 			"tags":        []string{"pvmss"},
 			"enable_efi":  "1", // EFI enabled by default
+			"enable_tpm":  "",  // TPM disabled by default
 		}
 	}
 
@@ -373,6 +410,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	description := r.FormValue("description")
 	diskSizeGBStr := r.FormValue("disk_size")
 	enableEFI := r.FormValue("enable_efi") // "1" if checked, "" otherwise
+	enableTPM := r.FormValue("enable_tpm") // "1" if checked, "" otherwise
 	isoPath := r.FormValue("iso") // settings provides full volid or path string
 	memoryMBStr := r.FormValue("memory") // MB
 	name := r.FormValue("name")
@@ -421,6 +459,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 				Storage:     selectedStorage,
 				Tags:        selectedTags,
 				EnableEFI:   enableEFI,
+				EnableTPM:   enableTPM,
 			}
 			session.Put(ctx, "vm_create_form_data", formData)
 		}
@@ -655,6 +694,47 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 					Str("storage_type", storageType).
 					Str("efi_format", efiFormat).
 					Msg("EFI boot enabled: creating EFI disk with appropriate format")
+			}
+		}
+	}
+
+	// TPM: Enable Trusted Platform Module (required for Windows 11, Secure Boot, etc.)
+	if enableTPM == "1" {
+		// Create TPM state disk in the same storage as the main disk
+		// TPM format is always 'raw' (fixed size of 4 MiB)
+		if selectedStorage != "" {
+			// Fetch storage information to verify compatibility
+			storageInfo, err := proxmox.GetNodeStoragesResty(ctx, restyClient, node)
+			if err != nil {
+				log.Warn().Err(err).Str("node", node).Msg("Failed to fetch storage info for TPM disk, skipping TPM creation")
+			} else {
+				// Find the selected storage and get its type
+				storageType := "dir" // Default fallback
+				for _, storage := range storageInfo {
+					if storage.Storage == selectedStorage {
+						storageType = storage.Type
+						break
+					}
+				}
+				
+				// Check if storage is compatible with TPM (raw format)
+				tpmFormat, compatible := getTPMDiskFormat(storageType)
+				if compatible {
+					// Create TPM state disk with v2.0 (required for Windows 11)
+					params["tpmstate0"] = selectedStorage + ":4,version=v2.0"
+					
+					log.Info().
+						Str("storage", selectedStorage).
+						Str("storage_type", storageType).
+						Str("tpm_format", tpmFormat).
+						Str("tpm_version", "v2.0").
+						Msg("TPM enabled: creating TPM state disk")
+				} else {
+					log.Warn().
+						Str("storage", selectedStorage).
+						Str("storage_type", storageType).
+						Msg("Storage type not compatible with TPM (raw format required), skipping TPM creation")
+				}
 			}
 		}
 	}
