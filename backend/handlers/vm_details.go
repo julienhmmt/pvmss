@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -44,6 +45,32 @@ func isGuestAgentUnavailableCached(node string, vmid int) bool {
 		// Entry expired, will be removed later
 	}
 	return false
+}
+
+func buildNetworkCardsData(cfg map[string]interface{}, maxCards int) []networkCardTemplateData {
+	if maxCards <= 0 {
+		maxCards = 1
+	}
+	cards := make([]networkCardTemplateData, maxCards)
+	for i := 0; i < maxCards; i++ {
+		key := fmt.Sprintf("net%d", i)
+		rawVal := ""
+		if cfg != nil {
+			if netVal, ok := cfg[key].(string); ok {
+				rawVal = netVal
+			}
+		}
+		model, mac, bridge, opts := parseNetworkConfig(rawVal)
+		cards[i] = networkCardTemplateData{
+			Index:   key,
+			Bridge:  bridge,
+			Model:   model,
+			MAC:     mac,
+			Exists:  rawVal != "",
+			Options: opts,
+		}
+	}
+	return cards
 }
 
 // cacheGuestAgentUnavailable marks a VM as having no guest agent
@@ -150,14 +177,76 @@ type VMStateManager interface {
 
 // VMHandler handles VM-related pages and API endpoints
 type VMHandler struct {
-	stateManager VMStateManager
+	stateManager state.StateManager
+}
+
+type networkCardTemplateData struct {
+	Index   string
+	Bridge  string
+	Model   string
+	MAC     string
+	Exists  bool
+	Options []string
+}
+
+var networkModelKeys = []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
+
+func parseNetworkConfig(raw string) (model, mac, bridge string, options []string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return
+	}
+
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		if strings.Contains(part, "=") {
+			kv := strings.SplitN(part, "=", 2)
+			key := strings.TrimSpace(kv[0])
+			value := ""
+			if len(kv) > 1 {
+				value = strings.TrimSpace(kv[1])
+			}
+
+			switch {
+			case key == "model":
+				model = value
+			case key == "bridge":
+				bridge = value
+			case containsString(networkModelKeys, key):
+				model = key
+				mac = strings.ToUpper(value)
+			default:
+				options = append(options, part)
+			}
+		} else if containsString(networkModelKeys, part) {
+			model = part
+		} else {
+			options = append(options, part)
+		}
+	}
+
+	if model == "" {
+		model = "virtio"
+	}
+	return
+}
+
+func containsString(items []string, target string) bool {
+	for _, item := range items {
+		if item == target {
+			return true
+		}
+	}
+	return false
 }
 
 // NewVMHandler creates a new VMHandler
-func NewVMHandler(stateManager VMStateManager) *VMHandler {
-	return &VMHandler{
-		stateManager: stateManager,
-	}
+func NewVMHandler(stateManager state.StateManager) *VMHandler {
+	return &VMHandler{stateManager: stateManager}
 }
 
 // RegisterRoutes registers VM-related routes
@@ -392,27 +481,44 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	// Get available VMBRs for the node when editing resources
 	var availableVMBRs []string
+	availableVMBRSet := make(map[string]struct{})
 	var currentCores = 1
 	var currentSockets = 1
 	var currentVMBR string
-	var currentNetworkModel = "virtio"              // default
 	var currentMemoryMB = vm.MaxMem / (1024 * 1024) // Convert bytes to MB
+
+	maxNetworkCards := settings.MaxNetworkCards
+	if maxNetworkCards <= 0 {
+		maxNetworkCards = 1
+	}
+
+	networkCardsData := buildNetworkCardsData(cfg, maxNetworkCards)
+
+	currentNetworkModel := networkCardsData[0].Model
+	if currentNetworkModel == "" {
+		currentNetworkModel = "virtio"
+	}
+	currentVMBR = networkCardsData[0].Bridge
+	if currentVMBR == "" && len(networkBridges) > 0 {
+		currentVMBR = networkBridges[0]
+	}
 
 	if showResourcesEditor {
 		if vmbrs, err := proxmox.GetVMBRsResty(r.Context(), restyClient, vm.Node); err == nil {
-			// Convert VMBR structs to strings (iface names)
 			for _, vmbr := range vmbrs {
-				availableVMBRs = append(availableVMBRs, vmbr.Iface)
+				iface := vmbr.Iface
+				if _, exists := availableVMBRSet[iface]; !exists {
+					availableVMBRSet[iface] = struct{}{}
+					availableVMBRs = append(availableVMBRs, iface)
+				}
 			}
-			// Get current VMBR from network bridges
-			if len(networkBridges) > 0 {
-				currentVMBR = networkBridges[0]
+			if currentVMBR == "" && len(availableVMBRs) > 0 {
+				currentVMBR = availableVMBRs[0]
 			}
 		} else {
 			log.Warn().Err(err).Str("node", vm.Node).Msg("Failed to get VMBRs for resource editor")
 		}
 
-		// Extract sockets, cores, and network model from VM config
 		if cfg != nil {
 			if socketsVal, ok := cfg["sockets"].(float64); ok {
 				currentSockets = int(socketsVal)
@@ -420,30 +526,14 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			if coresVal, ok := cfg["cores"].(float64); ok {
 				currentCores = int(coresVal)
 			}
-			// Extract network model from net0 configuration
-			if net0Val, ok := cfg["net0"].(string); ok && net0Val != "" {
-				// Parse net0 format: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0" or "model=virtio,bridge=vmbr0"
-				parts := strings.Split(net0Val, ",")
-				for _, part := range parts {
-					part = strings.TrimSpace(part)
-					// Check for model=xxx format (legacy)
-					if strings.HasPrefix(part, "model=") {
-						currentNetworkModel = strings.TrimPrefix(part, "model=")
-						break
-					}
-					// Check for virtio=MAC, e1000=MAC, etc. format (Proxmox standard)
-					validModels := []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
-					for _, model := range validModels {
-						if strings.HasPrefix(part, model+"=") {
-							currentNetworkModel = model
-							break
-						}
-					}
-					// If we found a model, exit outer loop
-					if currentNetworkModel != "virtio" {
-						break
-					}
-				}
+		}
+	}
+
+	for _, card := range networkCardsData {
+		if card.Bridge != "" {
+			if _, exists := availableVMBRSet[card.Bridge]; !exists {
+				availableVMBRSet[card.Bridge] = struct{}{}
+				availableVMBRs = append(availableVMBRs, card.Bridge)
 			}
 		}
 	}
@@ -467,9 +557,11 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"FormattedMem":          FormatBytes(vm.Mem),
 		"FormattedMemGB":        FormatMemoryGB(vm.Mem, true), // bytes to GB
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
+		"MaxNetworkCards":       maxNetworkCards,
 		"Limits":                settings.Limits,
 		"NetworkBridges":        networkBridgesStr,
 		"NetworkInterfaces":     networkInterfaces,
+		"NetworkCards":          networkCardsData,
 		"ShowDescriptionEditor": showDescriptionEditor,
 		"ShowResourcesEditor":   showResourcesEditor,
 		"ShowTagsEditor":        showTagsEditor,

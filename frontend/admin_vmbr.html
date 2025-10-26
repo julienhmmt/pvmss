@@ -27,6 +27,35 @@
     </h1>
     <p class="subtitle is-6 has-text-grey">{{T "Admin.VMBR.Description"}}</p>
   </div>
+
+  <!-- Network Cards Configuration -->
+  <div class="box admin-box mb-5">
+    <h2 class="title is-5 mb-4">
+      <span class="icon"><i class="fas fa-sliders-h"></i></span>
+      <span>{{T "Admin.VMBR.NetworkCardsConfig"}}</span>
+    </h2>
+    <form method="POST" action="/admin/vmbr/update-network-cards">
+      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      <div class="field">
+        <label class="label">{{T "Admin.VMBR.MaxNetworkCards"}}</label>
+        <div class="field has-addons">
+          <div class="control is-expanded">
+            <input type="number" name="max_network_cards" class="input is-medium" 
+                   value="{{.MaxNetworkCards}}" 
+                   min="1" max="10" required
+                   aria-label="{{T "Admin.VMBR.MaxNetworkCards"}}">
+          </div>
+          <div class="control">
+            <button type="submit" class="button is-primary is-medium">
+              <span class="icon"><i class="fas fa-save"></i></span>
+              <span>{{T "Common.Save"}}</span>
+            </button>
+          </div>
+        </div>
+        <p class="help">{{T "Admin.VMBR.MaxNetworkCardsHelp"}}</p>
+      </div>
+    </form>
+  </div>
   
   {{if .VMBRs}}
   <div class="box admin-box">

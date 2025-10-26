@@ -458,12 +458,23 @@
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <!-- Multiple Network Cards -->
+                                                {{$maxNetCards := toFloat .MaxNetworkCards}}
+                                                {{if not $maxNetCards}}{{$maxNetCards = 1}}{{end}}
+                                                {{range $cardIdx := iterate $maxNetCards}}
                                                 <div class="field">
-                                                    <label for="networkBridge" class="form-label">
+                                                    <label for="networkBridge_{{$cardIdx}}" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-ethernet"></i></span>
                                                         </span>
-                                                        <span class="form-label-text">{{T "VM.Create.Network"}}</span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.Network"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.Network"}} #{{add $cardIdx 1}} ({{T "VM.Create.NetworkOptional"}})
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
                                                         <span class="form-tooltip">
                                                             <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Network"}}">
                                                                 <i class="fas fa-info"></i>
@@ -472,18 +483,20 @@
                                                                 {{T "VM.Create.Tooltip.Network"}}
                                                             </div>
                                                         </span>
+                                                        {{end}}
                                                     </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth is-medium">
-                                                            <select id="networkBridge" name="bridge" required aria-required="true" aria-describedby="networkBridge-help">
-                                                                {{range $bridge := .Bridges}}
+                                                            <select id="networkBridge_{{$cardIdx}}" name="bridge_{{$cardIdx}}" {{if eq $cardIdx 0}}required{{end}} aria-describedby="networkBridge-help">
+                                                                {{if gt $cardIdx 0}}<option value="">-- {{T "VM.Create.NoNetwork"}} --</option>{{end}}
+                                                                {{range $bridge := $.Bridges}}
                                                                 {{$rawDesc := index $.BridgeDescriptions $bridge}}
                                                                 {{$nodeName := index $.BridgeNodes $bridge}}
                                                                 {{$desc := $rawDesc}}
                                                                 {{if not $desc}}
                                                                     {{$desc = ""}}
                                                                 {{end}}
-                                                                <option value="{{$bridge}}" {{if $.FormData.bridge}}{{if eq $bridge $.FormData.bridge}}selected{{end}}{{else if eq $bridge "vmbr0"}}selected{{end}}>
+                                                                <option value="{{$bridge}}" {{if eq $cardIdx 0}}{{if $.FormData.bridge}}{{if eq $bridge $.FormData.bridge}}selected{{end}}{{else if eq $bridge "vmbr0"}}selected{{end}}{{end}}>
                                                                     {{$bridge}}{{if $nodeName}} ({{$nodeName}}){{end}}{{if $desc}} &ndash; {{$desc}}{{end}}
                                                                 </option>
                                                                 {{end}}
@@ -492,11 +505,18 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
-                                                    <label for="networkModel" class="form-label">
+                                                    <label for="networkModel_{{$cardIdx}}" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-network-wired"></i></span>
                                                         </span>
-                                                        <span class="form-label-text">{{T "VM.Create.NetworkModel"}}</span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.NetworkModel"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.NetworkModel"}} #{{add $cardIdx 1}}
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
                                                         <span class="form-tooltip">
                                                             <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkModel"}}">
                                                                 <i class="fas fa-info"></i>
@@ -505,18 +525,20 @@
                                                                 {{T "VM.Create.Tooltip.NetworkModel"}}
                                                             </div>
                                                         </span>
+                                                        {{end}}
                                                     </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth is-medium">
-                                                            <select id="networkModel" name="network_model" required aria-required="true" aria-describedby="networkModel-help">
-                                                                <option value="virtio" {{if $.FormData.network_model}}{{if eq $.FormData.network_model "virtio"}}selected{{end}}{{else}}selected{{end}}>VirtIO</option>
-                                                                <option value="e1000" {{if eq $.FormData.network_model "e1000"}}selected{{end}}>E1000</option>
-                                                                <option value="e1000e" {{if eq $.FormData.network_model "e1000e"}}selected{{end}}>E1000E</option>
-                                                                <option value="rtl8139" {{if eq $.FormData.network_model "rtl8139"}}selected{{end}}>RTL8139</option>
-                                                                <option value="vmxnet3" {{if eq $.FormData.network_model "vmxnet3"}}selected{{end}}>VMXNet3</option>
+                                                            <select id="networkModel_{{$cardIdx}}" name="network_model_{{$cardIdx}}" {{if eq $cardIdx 0}}required{{end}} aria-describedby="networkModel-help">
+                                                                <option value="virtio" {{if eq $cardIdx 0}}{{if $.FormData.network_model}}{{if eq $.FormData.network_model "virtio"}}selected{{end}}{{else}}selected{{end}}{{else}}selected{{end}}>VirtIO</option>
+                                                                <option value="e1000">E1000</option>
+                                                                <option value="e1000e">E1000E</option>
+                                                                <option value="rtl8139">RTL8139</option>
+                                                                <option value="vmxnet3">VMXNet3</option>
                                                             </select>
                                                         </div>
                                                     </div>
+                                                    {{if eq $cardIdx 0}}
                                                     <div class="help is-size-7 has-text-grey-light mt-2">
                                                         <p class="mb-1">{{T "VM.Create.NetworkModelHelp"}}</p>
                                                         <ul class="ml-4">
@@ -527,7 +549,10 @@
                                                             <li><strong>VMXNet3</strong> — {{T "VM.Create.NetworkModelDesc.VMXNet3"}}</li>
                                                         </ul>
                                                     </div>
+                                                    {{end}}
                                                 </div>
+                                                {{if lt (addInt $cardIdx 1) (toInt $maxNetCards)}}<hr class="my-4">{{end}}
+                                                {{end}}
                                             </div>
                                         </div>
                                     </div>

@@ -59,12 +59,16 @@ func GetBaseFuncMap() template.FuncMap {
 
 		// Math functions
 		"add":      addNumbers,
+		"addInt":   addInt,
 		"subtract": subtractNumbers,
 		"sub":      subtractNumbers,
 		"multiply": multiplyNumbers,
 		"mul":      multiplyNumbers,
 		"divide":   divideNumbers,
 		"div":      divideNumbers,
+		"iterate":  iterate,
+		"toFloat":  toFloat,
+		"toInt":    toInt,
 
 		// Utility functions
 		"default":      defaultValue,
