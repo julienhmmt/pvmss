@@ -3,32 +3,34 @@
    ============================================ */
 
 /* Core Framework */
-@import 'bulma.min.css';
+@import url('bulma.min.css');
 
 /* Design Tokens & Variables */
-@import 'tokens.css';
+@import url('tokens.css');
 
 /* Base Styles */
-@import 'base.css';
+@import url('base.css');
 
 /* Components */
-@import 'components.css';
+@import url('components.css');
 
 /* Forms & Tooltips (consolidated) */
-@import 'forms.css';
+@import url('forms.css');
 
 /* Utilities */
-@import 'utilities.css';
+@import url('utilities.css');
 
 /* Theme Styles */
-@import 'style.css';
-@import 'glass.css';
+@import url('style.css');
+@import url('glass.css');
 
-/* Admin Styles (loaded conditionally) */
-/* @import 'admin.css'; */
+/* Admin Styles (loaded conditionally)
+   @import url('admin.css');
+*/
 
-/* Font Awesome (loaded separately for performance) */
-/* @import 'fontawesome.min.css'; */
-/* @import 'solid.min.css'; */
-/* @import 'regular.min.css'; */
-/* @import 'brands.min.css'; */
+/* Font Awesome (loaded separately for performance)
+   @import url('fontawesome.min.css');
+   @import url('solid.min.css');
+   @import url('regular.min.css');
+   @import url('brands.min.css');
+*/
