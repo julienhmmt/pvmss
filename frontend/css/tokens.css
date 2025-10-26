@@ -4,27 +4,32 @@
 
 :root {
   /* Brand colors */
-  --primary: #ff8800;
+  --primary: #f80;
   --primary-hover: #e67700;
   --primary-light: #ffa633;
-  --primary-dark: #cc6600;
+  --primary-dark: #c60;
 
   /* Glass effect colors */
-  --glass-white: rgba(255, 255, 255, 0.7);
-  --glass-white-hover: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.4);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --glass-white: rgb(255 255 255 / 70%);
+  --glass-white-hover: rgb(255 255 255 / 85%);
+  --glass-border: rgb(255 255 255 / 40%);
+  --glass-shadow: 0 8px 32px rgb(0 0 0 / 6%);
 
   /* Glass opacity levels - Hiérarchie claire */
-  --glass-opacity-light: rgba(255, 255, 255, 0.65);
+  --glass-opacity-light: rgb(255 255 255 / 65%);
+
   /* Boxes */
-  --glass-opacity-normal: rgba(255, 255, 255, 0.7);
+  --glass-opacity-normal: rgb(255 255 255 / 70%);
+
   /* Cards, navbar */
-  --glass-opacity-medium: rgba(255, 255, 255, 0.75);
+  --glass-opacity-medium: rgb(255 255 255 / 75%);
+
   /* Buttons light */
-  --glass-opacity-strong: rgba(255, 255, 255, 0.8);
+  --glass-opacity-strong: rgb(255 255 255 / 80%);
+
   /* Welcome block */
-  --glass-opacity-solid: rgba(255, 255, 255, 0.85);
+  --glass-opacity-solid: rgb(255 255 255 / 85%);
+
   /* Notifications */
 
   --bg: #fafafa;
@@ -37,36 +42,36 @@
   --muted-light: #9ca3af;
 
   /* Surface colors */
-  --surface: rgba(255, 255, 255, 0.85);
-  --surface-2: rgba(254, 253, 251, 0.85);
-  --surface-glass: rgba(255, 255, 255, 0.7);
-  --border: rgba(0, 0, 0, 0.05);
-  --border-light: rgba(0, 0, 0, 0.03);
+  --surface: rgb(255 255 255 / 85%);
+  --surface-2: rgb(254 253 251 / 85%);
+  --surface-glass: rgb(255 255 255 / 70%);
+  --border: rgb(0 0 0 / 5%);
+  --border-light: rgb(0 0 0 / 3%);
 
   /* Card backgrounds */
-  --card-bg: rgba(255, 255, 255, 0.7);
-  --card-hover-bg: rgba(255, 255, 255, 0.85);
+  --card-bg: rgb(255 255 255 / 70%);
+  --card-hover-bg: rgb(255 255 255 / 85%);
 
   /* Links */
   --link: var(--primary);
   --link-hover: var(--primary-hover);
 
   /* Shadows - Layered for depth */
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow: 0 1px 3px rgb(0 0 0 / 4%);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 6%), 0 2px 4px rgb(0 0 0 / 4%);
+  --shadow-lg: 0 8px 32px rgb(0 0 0 / 8%), 0 4px 12px rgb(0 0 0 / 5%);
+  --shadow-xl: 0 20px 60px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 8%);
+  --shadow-inner: inset 0 1px 0 rgb(255 255 255 / 60%);
 
   /* Status colors with alpha */
   --success: #10b981;
-  --success-light: rgba(209, 250, 229, 0.9);
+  --success-light: rgb(209 250 229 / 90%);
   --info: #3b82f6;
-  --info-light: rgba(219, 234, 254, 0.9);
+  --info-light: rgb(219 234 254 / 90%);
   --warning: #f59e0b;
-  --warning-light: rgba(254, 243, 199, 0.9);
+  --warning-light: rgb(254 243 199 / 90%);
   --danger: #ef4444;
-  --danger-light: rgba(254, 226, 226, 0.9);
+  --danger-light: rgb(254 226 226 / 90%);
 
   /* Blur values */
   --blur-sm: blur(10px);
