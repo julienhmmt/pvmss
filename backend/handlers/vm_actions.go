@@ -182,10 +182,8 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 	coresStr := strings.TrimSpace(r.FormValue("cores"))
 	memoryStr := strings.TrimSpace(r.FormValue("memory"))
-	networkModel := strings.TrimSpace(r.FormValue("network_model"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	socketsStr := strings.TrimSpace(r.FormValue("sockets"))
-	vmbr := strings.TrimSpace(r.FormValue("vmbr"))
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
 
 	if vmid == "" || node == "" {
@@ -218,12 +216,24 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if vmbr == "" {
-		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+	stateManager := getStateManager(r)
+	if stateManager == nil {
+		ctx.HandleError(nil, "State manager not available", http.StatusInternalServerError)
 		return
 	}
 
-	// Validate network model
+	settings := stateManager.GetSettings()
+	maxNetworkCards := 1
+	if settings != nil && settings.MaxNetworkCards > 0 {
+		maxNetworkCards = settings.MaxNetworkCards
+	}
+
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		ctx.HandleError(err, "Failed to create API client", http.StatusInternalServerError)
+		return
+	}
+
 	validModels := map[string]bool{
 		"virtio":  true,
 		"e1000":   true,
@@ -231,69 +241,69 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		"rtl8139": true,
 		"vmxnet3": true,
 	}
-	if networkModel == "" {
-		networkModel = "virtio" // default
-	} else if !validModels[networkModel] {
-		ctx.Log.Warn().Str("network_model", networkModel).Msg("Invalid network model, defaulting to virtio")
-		networkModel = "virtio"
-	}
 
-	// Get Proxmox client
-	stateManager := getStateManager(r)
-	client := stateManager.GetProxmoxClient()
-	if client == nil {
-		ctx.HandleError(nil, "Proxmox client not available", http.StatusInternalServerError)
-		return
-	}
+	values := url.Values{}
+	values.Set("sockets", socketsStr)
+	values.Set("cores", coresStr)
+	values.Set("memory", memoryStr)
 
-	// Get current VM config to preserve MAC address
-	cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, node, vmidInt)
-	if err != nil {
-		ctx.Log.Warn().Err(err).Msg("Failed to get current VM config, MAC address may not be preserved")
-		cfg = nil
-	}
+	deleteTargets := []string{}
 
-	// Extract current MAC address from net0 if it exists
-	currentMAC := ""
-	if cfg != nil {
-		if net0Val, ok := cfg["net0"].(string); ok && net0Val != "" {
-			// Parse net0 format to extract MAC: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0"
-			parts := strings.Split(net0Val, ",")
-			for _, part := range parts {
-				part = strings.TrimSpace(part)
-				// Check for model=MAC format (Proxmox standard)
-				validModels := []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
-				for _, model := range validModels {
-					if strings.HasPrefix(part, model+"=") {
-						currentMAC = strings.TrimPrefix(part, model+"=")
-						break
-					}
-				}
-				if currentMAC != "" {
-					break
+	for i := 0; i < maxNetworkCards; i++ {
+		bridge := strings.TrimSpace(r.FormValue(fmt.Sprintf("bridge_%d", i)))
+		model := strings.TrimSpace(r.FormValue(fmt.Sprintf("network_model_%d", i)))
+		mac := strings.TrimSpace(strings.ToUpper(r.FormValue(fmt.Sprintf("mac_%d", i))))
+		exists := strings.TrimSpace(r.FormValue(fmt.Sprintf("exists_%d", i))) == "1"
+		optionsRaw := strings.TrimSpace(r.FormValue(fmt.Sprintf("options_%d", i)))
+		var options []string
+		if optionsRaw != "" {
+			for _, opt := range strings.Split(optionsRaw, ",") {
+				opt = strings.TrimSpace(opt)
+				if opt != "" {
+					options = append(options, opt)
 				}
 			}
 		}
+
+		if i == 0 && bridge == "" {
+			ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+			return
+		}
+
+		if bridge == "" {
+			if exists {
+				deleteTargets = append(deleteTargets, fmt.Sprintf("net%d", i))
+			}
+			continue
+		}
+
+		if model == "" {
+			model = "virtio"
+		}
+		if !validModels[model] {
+			ctx.Log.Warn().Int("card_index", i).Str("network_model", model).Msg("Invalid network model, defaulting to virtio")
+			model = "virtio"
+		}
+
+		netParts := []string{}
+		if mac != "" {
+			netParts = append(netParts, model+"="+mac)
+		} else {
+			netParts = append(netParts, model)
+		}
+		netParts = append(netParts, "bridge="+bridge)
+		netParts = append(netParts, options...)
+
+		values.Set(fmt.Sprintf("net%d", i), strings.Join(netParts, ","))
 	}
 
-	// Build update parameters with selected network model and preserved MAC
-	// Format: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0"
-	net0Value := networkModel
-	if currentMAC != "" {
-		net0Value = networkModel + "=" + currentMAC
-	}
-	net0Value = net0Value + ",bridge=" + vmbr
-	ctx.Log.Debug().Str("net0_value", net0Value).Str("current_mac", currentMAC).Msg("Building net0 parameter")
-
-	updateParams := map[string]string{
-		"sockets": socketsStr,
-		"cores":   coresStr,
-		"memory":  memoryStr,
-		"net0":    net0Value,
+	for _, target := range deleteTargets {
+		values.Add("delete", target)
 	}
 
-	// Update VM config
-	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, updateParams); err != nil {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmidInt)
+	var response interface{}
+	if err := restyClient.Post(r.Context(), path, values, &response); err != nil {
 		ctx.Log.Error().Err(err).Msg("update resources failed")
 		ctx.RedirectWithError(buildVMDetailsURL(vmid), "Message.ActionFailed")
 		return
@@ -301,7 +311,7 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 	ctx.Log.Info().Str("vmid", vmid).Str("node", node).
 		Int("sockets", sockets).Int("cores", cores).Int64("memory", memory).
-		Str("vmbr", vmbr).Str("network_model", networkModel).Msg("VM resources updated successfully")
+		Int("network_cards", maxNetworkCards).Msg("VM resources updated successfully")
 
 	// Invalidate guest agent cache for this VM since network config changed
 	InvalidateGuestAgentCache(node, vmidInt)

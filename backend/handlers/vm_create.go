@@ -398,6 +398,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		"FormData":           formData,
 		"ISOs":               settings.ISOs,
 		"Limits":             settings.Limits,
+		"MaxNetworkCards":    settings.MaxNetworkCards,
 		"NodeOptions":        nodeOptions,
 		"Nodes":              nodes,
 		"Title":              "Create VM",
@@ -525,8 +526,10 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		return
 	}
 
+	// Get settings early for network cards configuration
+	settings := h.stateManager.GetSettings()
+
 	// Extract form fields
-	bridgeName := r.FormValue("bridge")
 	coresStr := r.FormValue("cores")
 	description := r.FormValue("description")
 	diskSizeGBStr := r.FormValue("disk_size")
@@ -535,7 +538,6 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	isoPath := r.FormValue("iso")          // settings provides full volid or path string
 	memoryMBStr := r.FormValue("memory")   // MB
 	name := r.FormValue("name")
-	networkModel := r.FormValue("network_model") // virtio, e1000, e1000e, rtl8139, vmxnet3
 	poolName := r.FormValue("pool")
 	selectedNode := r.FormValue("node")
 	selectedStorage := r.FormValue("storage")
@@ -545,10 +547,8 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	tags := ensureMandatoryTag(selectedTags)
 	vmidStr := r.FormValue("vmid")
 
-	// Default to virtio if no model specified
-	if networkModel == "" {
-		networkModel = "virtio"
-	}
+	// Validate at least the first network bridge is specified
+	firstBridge := r.FormValue("bridge_0")
 
 	// Validate mandatory fields
 	validationErrors := validateRequiredFields(map[string]string{
@@ -557,7 +557,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		"Disk size":      diskSizeGBStr,
 		"ISO image":      isoPath,
 		"Memory":         memoryMBStr,
-		"Network bridge": bridgeName,
+		"Network bridge": firstBridge,
 		"Proxmox node":   selectedNode,
 		"Storage":        selectedStorage,
 		"VM name":        name,
@@ -572,8 +572,9 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 			ctx := r.Context()
 			session.Put(ctx, "vm_create_errors", strings.Join(validationErrors, "; "))
 			// Preserve form data using concrete struct (gob-serializable)
+			// Note: Bridge and NetworkModel kept for backward compatibility (first card)
 			formData := VMCreateFormData{
-				Bridge:       bridgeName,
+				Bridge:       firstBridge,
 				Cores:        coresStr,
 				Description:  description,
 				DiskSize:     diskSizeGBStr,
@@ -582,7 +583,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 				ISO:          isoPath,
 				Memory:       memoryMBStr,
 				Name:         name,
-				NetworkModel: networkModel,
+				NetworkModel: r.FormValue("network_model_0"),
 				Node:         selectedNode,
 				Pool:         poolName,
 				Sockets:      socketsStr,
@@ -659,7 +660,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	}
 
 	// Validate against settings limits (vm and optional node-specific)
-	if settings := h.stateManager.GetSettings(); settings != nil && settings.Limits != nil {
+	if settings != nil && settings.Limits != nil {
 		// VM limits
 		if rawVM, ok := settings.Limits["vm"].(map[string]interface{}); ok {
 			if min, max, ok2 := readMinMax(rawVM, "sockets"); ok2 {
@@ -774,23 +775,65 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		params["ide2"] = isoPath + ",media=cdrom"
 	}
 
-	// Network: use selected model on selected bridge
-	if bridgeName != "" {
-		// Validate network model (security: prevent injection)
-		validModels := map[string]bool{
-			"e1000":   true,
-			"e1000e":  true,
-			"rtl8139": true,
-			"virtio":  true,
-			"vmxnet3": true,
+	// Network: configure multiple network cards based on admin settings
+	maxNetworkCards := settings.MaxNetworkCards
+	if maxNetworkCards <= 0 {
+		maxNetworkCards = 1 // Default to 1 if not configured
+	}
+	if maxNetworkCards > 10 {
+		maxNetworkCards = 10 // Cap at 10 for safety
+	}
+
+	// Validate network models (security: prevent injection)
+	validModels := map[string]bool{
+		"e1000":   true,
+		"e1000e":  true,
+		"rtl8139": true,
+		"virtio":  true,
+		"vmxnet3": true,
+	}
+
+	networkCardsConfigured := 0
+	for cardIdx := 0; cardIdx < maxNetworkCards; cardIdx++ {
+		bridgeParam := fmt.Sprintf("bridge_%d", cardIdx)
+		modelParam := fmt.Sprintf("network_model_%d", cardIdx)
+
+		bridgeName := r.FormValue(bridgeParam)
+		networkModel := r.FormValue(modelParam)
+
+		// Skip if no bridge specified (optional cards)
+		if bridgeName == "" {
+			continue
 		}
-		if !validModels[networkModel] {
-			log.Warn().Str("network_model", networkModel).Msg("Invalid network model, defaulting to virtio")
+
+		// Default to virtio if no model specified
+		if networkModel == "" {
 			networkModel = "virtio"
 		}
-		params["net0"] = networkModel + ",bridge=" + bridgeName
-		log.Info().Str("network_model", networkModel).Str("bridge", bridgeName).Msg("Configuring network interface")
+
+		// Validate model
+		if !validModels[networkModel] {
+			log.Warn().
+				Int("card_index", cardIdx).
+				Str("network_model", networkModel).
+				Msg("Invalid network model, defaulting to virtio")
+			networkModel = "virtio"
+		}
+
+		// Configure network interface netX
+		netParam := fmt.Sprintf("net%d", cardIdx)
+		params[netParam] = networkModel + ",bridge=" + bridgeName
+		networkCardsConfigured++
+
+		log.Info().
+			Int("card_index", cardIdx).
+			Str("net_param", netParam).
+			Str("network_model", networkModel).
+			Str("bridge", bridgeName).
+			Msg("Configured network interface")
 	}
+
+	log.Info().Int("network_cards_configured", networkCardsConfigured).Msg("Network configuration complete")
 
 	// Disk: use selected storage for VM disk
 	if selectedStorage != "" && diskSizeGBStr != "" {

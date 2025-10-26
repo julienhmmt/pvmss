@@ -474,6 +474,12 @@ other = "Disable"
 other = "Network bridge settings saved successfully"
 ["Admin.VMBR.SaveError"]
 other = "Failed to save network bridge settings"
+["Admin.VMBR.NetworkCardsConfig"]
+other = "Network Cards Configuration"
+["Admin.VMBR.MaxNetworkCards"]
+other = "Maximum Network Cards per VM"
+["Admin.VMBR.MaxNetworkCardsHelp"]
+other = "Number of network cards available when creating a new VM (1-10). Users can choose to use fewer cards, but this sets the maximum."
 
 # ======
 # Login
@@ -582,6 +588,10 @@ other = "Realtek RTL8139 (legacy systems)"
 other = "VMware VMXNet3 (for VMs imported from VMware vSphere)"
 ["VM.Create.NoBridges"]
 other = "No network bridge available"
+["VM.Create.NetworkOptional"]
+other = "Optional"
+["VM.Create.NoNetwork"]
+other = "No network"
 ["VM.Create.NoTagsAvailable"]
 other = "No tags available"
 ["VM.Create.NoBridgesAvailable"]

@@ -624,6 +624,10 @@ other = "Realtek RTL8139 (systèmes anciens)"
 other = "VMware VMXNet3 (pour les VM importées de VMware vSphere)"
 ["VM.Create.NoBridges"]
 other = "Aucun pont réseau disponible"
+["VM.Create.NetworkOptional"]
+other = "Optionnel"
+["VM.Create.NoNetwork"]
+other = "Aucun réseau"
 ["VM.Create.NoTagsAvailable"]
 other = "Aucune étiquette disponible"
 ["VM.Create.NoBridgesAvailable"]
@@ -958,6 +962,12 @@ other = "Désactiver"
 other = "Paramètres des ponts réseau enregistrés avec succès"
 ["Admin.VMBR.SaveError"]
 other = "Échec de l'enregistrement des paramètres des ponts réseau"
+["Admin.VMBR.NetworkCardsConfig"]
+other = "Configuration des cartes réseau"
+["Admin.VMBR.MaxNetworkCards"]
+other = "Nombre maximum de cartes réseau par VM"
+["Admin.VMBR.MaxNetworkCardsHelp"]
+other = "Nombre de cartes réseau disponibles lors de la création d'une nouvelle VM (1-10). Les utilisateurs peuvent choisir d'en utiliser moins, mais cela définit le maximum."
 ["Admin.VMBR.Error"]
 other = "Erreur lors de la récupération des données. Voir la console pour les détails."
 ["Admin.VMBR.Header.Description"]

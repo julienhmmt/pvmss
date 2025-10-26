@@ -13,22 +13,24 @@ import (
 // defaultSettings returns the default application settings
 func defaultSettings() *AppSettings {
 	return &AppSettings{
-		Tags:            []string{"pvmss"},
-		ISOs:            []string{},
-		VMBRs:           []string{},
 		EnabledStorages: []string{},
+		ISOs:            []string{},
 		Limits:          make(map[string]interface{}),
+		MaxNetworkCards: 1, // Default to 1 network card
+		Tags:            []string{"pvmss"},
+		VMBRs:           []string{},
 	}
 }
 
 var settingsMutex = &sync.Mutex{}
 
 type AppSettings struct {
-	Tags            []string               `json:"tags"`
-	ISOs            []string               `json:"isos"`
-	VMBRs           []string               `json:"vmbrs"`
 	EnabledStorages []string               `json:"enabled_storages"`
+	ISOs            []string               `json:"isos"`
 	Limits          map[string]interface{} `json:"limits"`
+	MaxNetworkCards int                    `json:"max_network_cards,omitempty"`
+	Tags            []string               `json:"tags"`
+	VMBRs           []string               `json:"vmbrs"`
 }
 
 // getSettingsFilePath returns the absolute path to the settings file.
@@ -117,6 +119,11 @@ func LoadSettings() (*AppSettings, bool, error) {
 			"ram":     map[string]int{"min": 1, "max": 4},
 			"disk":    map[string]int{"min": 1, "max": 10},
 		}
+	}
+	// Ensure MaxNetworkCards has a valid default value
+	if settings.MaxNetworkCards <= 0 || settings.MaxNetworkCards > 10 {
+		modified = true
+		settings.MaxNetworkCards = 1
 	}
 
 	log.Info().
