@@ -203,6 +203,23 @@ fieldset[disabled]::after {
   color: inherit;
 }
 
+/* Notification footnote before breadcrumb hover to satisfy specificity */
+.notification-footnote a {
+  color: currentcolor;
+  text-decoration: underline;
+}
+
+.notification-footnote:empty {
+  display: none;
+}
+
+/* Place dropdown icon rule before disabled variant to satisfy specificity */
+.navbar-dropdown-item .icon {
+  font-size: 1rem;
+  min-width: 1.25rem;
+  color: inherit;
+}
+
 .navbar-item .icon-text {
   display: flex;
   align-items: center;
@@ -241,6 +258,14 @@ fieldset[disabled]::after {
   text-shadow: 0 1px 3px rgb(0 0 0 / 20%);
 }
 
+/* Login/Admin header titles placed before brand-header variant to satisfy specificity */
+.login-card .card-header-title,
+.admin-danger-card .card-header-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
 .navbar-brand .navbar-item {
   font-size: 1.25rem;
   font-weight: 700;
@@ -274,6 +299,20 @@ fieldset[disabled]::after {
   width: 18px;
   left: calc(50% - 9px);
   transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.divider-with-text span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 0 1.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .navbar-burger span:nth-child(1) {
@@ -609,17 +648,12 @@ fieldset[disabled]::after {
   border-left: 3px solid transparent;
 }
 
+
 .navbar-dropdown-item:hover {
   background: rgb(255 136 0 / 8%);
   color: var(--primary);
   border-left-color: var(--primary);
   padding-left: calc(1.25rem + 2px);
-}
-
-.navbar-dropdown-item .icon {
-  font-size: 1rem;
-  min-width: 1.25rem;
-  color: inherit;
 }
 
 .navbar-dropdown-divider {
@@ -719,12 +753,6 @@ fieldset[disabled]::after {
     width: 100%;
   }
 
-  .navbar-menu-mobile .navbar-actions .language-buttons {
-    margin: 0;
-    width: 100%;
-    height: auto;
-  }
-
   .navbar-burger {
     display: block;
   }
@@ -766,6 +794,21 @@ fieldset[disabled]::after {
 
   .navbar-menu-mobile .navbar-item.is-active::after {
     display: none;
+  }
+
+  .navbar-menu-mobile .language-buttons {
+    margin: 1rem 0 0;
+    justify-content: center;
+    width: 100%;
+    background: rgb(255 255 255 / 50%);
+    padding: 0.25rem;
+    border-radius: 8px;
+  }
+
+  .navbar-menu-mobile .navbar-actions .language-buttons {
+    margin: 0;
+    width: 100%;
+    height: auto;
   }
 
   .navbar-menu-mobile .navbar-item .icon-text {
@@ -851,15 +894,6 @@ fieldset[disabled]::after {
     border-left-color: var(--primary);
     padding-left: calc(1.75rem - 1px);
   }
-
-  .navbar-menu-mobile .language-buttons {
-    margin: 1rem 0 0;
-    justify-content: center;
-    width: 100%;
-    background: rgb(255 255 255 / 50%);
-    padding: 0.25rem;
-    border-radius: 8px;
-  }
 }
 
 @media (width <=768px) {
@@ -895,23 +929,6 @@ fieldset[disabled]::after {
   .navbar-backdrop {
     display: none !important;
   }
-}
-
-.breadcrumb a {
-  color: var(--muted);
-  transition: color 0.15s ease;
-}
-
-.breadcrumb a:hover {
-  color: var(--text);
-}
-
-.breadcrumb li.is-active a {
-  color: var(--text);
-}
-
-.breadcrumb .icon {
-  color: var(--muted);
 }
 
 input[type="checkbox"],
@@ -1065,13 +1082,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   align-items: center;
 }
 
-.login-card .card-header-title,
-.admin-danger-card .card-header-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0;
-}
-
 .login-card .icon.is-large,
 .admin-danger-card .icon.is-large {
   margin-right: 0.75rem;
@@ -1122,20 +1132,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   border: none;
   border-top: 1px solid #e5e7eb;
   margin: 0;
-}
-
-.divider-with-text span {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  padding: 0 1.5rem;
-  color: #6b7280;
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .label {
@@ -1195,6 +1191,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   --notification-accent-color: #2563eb;
   --notification-icon-bg: rgb(255 255 255 / 18%);
   --notification-icon-color: currentcolor;
+  
   transition: opacity var(--notification-dismiss-duration) ease,
     transform var(--notification-dismiss-duration) ease;
 }
