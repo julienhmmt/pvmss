@@ -1,12 +1,3 @@
-.form-vertical .field+.field {
-    margin-top: 1.25rem;
-}
-
-.form-inline-fields .column {
-    display: flex;
-    flex-direction: column;
-}
-
 .form-label {
     display: flex;
     align-items: center;
@@ -23,8 +14,8 @@
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: rgba(255, 136, 0, 0.12);
-    color: #ff8800;
+    background: rgb(255 136 0 / 12%);
+    color: #f80;
     flex-shrink: 0;
 }
 
@@ -65,8 +56,8 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: rgba(255, 136, 0, 0.12);
-    color: #ff8800;
+    background: rgb(255 136 0 / 12%);
+    color: #f80;
 }
 
 .form-tooltip {
@@ -88,7 +79,7 @@
     align-items: center;
     justify-content: center;
     font-size: 0.75rem;
-    box-shadow: 0 4px 12px rgba(245, 124, 0, 0.25);
+    box-shadow: 0 4px 12px rgb(245 124 0 / 25%);
     cursor: help;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     padding: 0;
@@ -99,13 +90,13 @@
 }
 
 .form-tooltip-trigger:focus-visible {
-    outline: 2px solid rgba(245, 124, 0, 0.5);
+    outline: 2px solid rgb(245 124 0 / 50%);
     outline-offset: 2px;
 }
 
 .form-tooltip-trigger:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(245, 124, 0, 0.35);
+    box-shadow: 0 6px 16px rgb(245 124 0 / 35%);
 }
 
 .form-tooltip-content {
@@ -117,7 +108,7 @@
     color: #fff;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+    box-shadow: 0 15px 35px rgb(15 23 42 / 25%);
     min-width: 220px;
     max-width: 320px;
     font-size: 0.85rem;
@@ -137,7 +128,7 @@
     transform: translateX(-50%);
     border-width: 6px;
     border-style: solid;
-    border-color: transparent transparent #1f2937 transparent;
+    border-color: transparent transparent #1f2937;
 }
 
 .form-tooltip:hover .form-tooltip-content,
@@ -177,15 +168,15 @@
 }
 
 .form-footer .button.is-primary {
-    box-shadow: 0 12px 24px rgba(255, 136, 0, 0.25);
+    box-shadow: 0 12px 24px rgb(255 136 0 / 25%);
 }
 
 .form-footer .button.is-primary:hover {
-    box-shadow: 0 16px 32px rgba(255, 136, 0, 0.35);
+    box-shadow: 0 16px 32px rgb(255 136 0 / 35%);
 }
 
 .form-footer .button:focus-visible {
-    outline: 2px solid rgba(245, 124, 0, 0.4);
+    outline: 2px solid rgb(245 124 0 / 40%);
     outline-offset: 3px;
 }
 
@@ -194,7 +185,7 @@
 .textarea:focus,
 .select select:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.1);
+    box-shadow: 0 0 0 3px rgb(245 124 0 / 10%);
 }
 
 .input-lg {
@@ -230,12 +221,43 @@ input[type="number"] {
     font-size: 1rem;
 }
 
-/* Field Spacing */
+/* Tag Selection */
+.form-inline-fields .column {
+    display: flex;
+    flex-direction: column;
+}
+
+.column {
+    overflow: visible !important;
+}
+
+.field {
+    overflow: visible !important;
+}
+
+.form-vertical .field+.field {
+    margin-top: 1.25rem;
+}
+
 .field:not(:last-child) {
     margin-bottom: 1.25rem;
 }
 
-/* Select Enhancements */
+.form-vertical {
+    overflow: visible !important;
+}
+
+.card,
+.card-header,
+.card-content,
+.columns,
+.section,
+.container,
+fieldset,
+.form-label {
+    overflow: visible !important;
+}
+
 .select select {
     cursor: pointer;
 }
@@ -263,14 +285,6 @@ input[type="number"] {
 .help.has-text-grey-light {
     font-size: 0.8125rem;
     margin-top: 0.375rem;
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-}
-
-.help.has-text-grey-light::before {
-    content: "ℹ️";
-    font-size: 0.875rem;
 }
 
 /* Disabled State */
@@ -322,7 +336,6 @@ fieldset,
 }
 
 @media (prefers-reduced-motion: reduce) {
-
     .form-tooltip-trigger,
     .form-tooltip-content {
         transition: none;

@@ -26,7 +26,7 @@ body.app-body main {
   margin-top: auto;
 }
 
-@media screen and (max-width: 768px) {
+@media (width <= 768px) {
   :root {
     --navbar-height: 3.25rem;
   }
@@ -34,7 +34,6 @@ body.app-body main {
 
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
@@ -85,6 +84,10 @@ body.app-body main {
   transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 }
 
+.card.admin-card {
+  animation: fade-in 0.3s ease-out;
+}
+
 .card.no-hover,
 .card.admin-card {
   transition: none;
@@ -108,7 +111,7 @@ body.app-body main {
   font-weight: 600;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
   }
@@ -116,10 +119,6 @@ body.app-body main {
   to {
     opacity: 1;
   }
-}
-
-.card.admin-card {
-  animation: fadeIn 0.3s ease-out;
 }
 
 .field:not(:last-child) {
@@ -145,14 +144,14 @@ body.app-body main {
 .textarea:focus,
 .select select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.1);
+  box-shadow: 0 0 0 4px rgb(255 136 0 / 10%);
   outline: none;
 }
 
 .input.is-large:focus,
 .textarea.is-large:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.08);
+  box-shadow: 0 0 0 4px rgb(255 136 0 / 8%);
 }
 
 .help {
@@ -175,12 +174,12 @@ body.app-body main {
 
 .button.is-primary.is-large:hover,
 .button.is-danger.is-large:hover {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 30%);
 }
 
 .button.is-primary.is-large:active,
 .button.is-danger.is-large:active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
 }
 
 .button.is-light:hover {
@@ -231,7 +230,7 @@ body.app-body main {
   border-radius: 6px;
 }
 
-@media screen and (max-width: 800px) {
+@media (width <= 800px) {
   .container {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
@@ -240,6 +239,7 @@ body.app-body main {
   .section {
     padding: 1.25rem 0;
   }
+
   .card-content {
     padding: 1.25rem;
   }
@@ -252,6 +252,7 @@ body.app-body main {
     padding: 1.25rem;
     margin-bottom: 1rem;
   }
+
   .table-container {
     margin-left: -0.25rem;
     margin-right: -0.25rem;
@@ -269,6 +270,7 @@ body.app-body main {
   .field:not(:last-child) {
     margin-bottom: 1rem;
   }
+
   .buttons {
     margin-bottom: 0.5rem;
   }
@@ -279,7 +281,7 @@ body.app-body main {
   }
 }
 
-@media screen and (max-width: 768px) {
+@media (width <= 768px) {
   .modal-card {
     width: 100%;
     height: 100%;
