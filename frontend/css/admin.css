@@ -225,136 +225,51 @@
 }
 
 .admin-box .toolbar .input.is-rounded {
-    border-radius: 9999px;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
+border-radius: 9999px;
+padding-left: 1.25rem;
+padding-right: 1.25rem;
 }
 
 .admin-box .toolbar .button.is-rounded {
-    border-radius: 9999px;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+border-radius: 9999px;
+padding-left: 1.5rem;
+padding-right: 1.5rem;
 }
 
-.tag {
-    border-radius: 6px;
-    font-weight: 500;
-    padding: 0.5em 0.85em;
-    font-size: 0.875rem;
+/* Scoped fixes for admin action buttons:
+   Restore colored light variants for enable/disable actions without
+   affecting the global theme. These selectors outrank generic
+   .button.is-light styles defined elsewhere. */
+.section.admin-section .button.is-success.is-light {
+background-color: #d1fae5;
+border-color: #10b981;
+color: #065f46;
+font-weight: 600;
 }
 
-.tag.is-success {
-    background: #d1fae5;
-    color: #065f46;
+.section.admin-section .button.is-success.is-light:hover {
+background-color: #a7f3d0;
+border-color: #059669;
+color: #064e3b;
 }
 
-.tag.is-info {
-    background: #dbeafe;
-    color: #1e40af;
+.section.admin-section .button.is-success.is-light .icon {
+color: #10b981;
 }
 
-.tag.is-warning {
-    background: #fef3c7;
-    color: #92400e;
+.section.admin-section .button.is-danger.is-light {
+background-color: #fee2e2;
+border-color: #ef4444;
+color: #991b1b;
+font-weight: 600;
 }
 
-.tag.is-danger {
-    background: #fee2e2;
-    color: #991b1b;
+.section.admin-section .button.is-danger.is-light:hover {
+background-color: #fecaca;
+border-color: #dc2626;
+color: #7f1d1d;
 }
 
-.progress {
-    height: 8px;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.progress::-webkit-progress-bar {
-    background-color: rgb(0 0 0 / 6%);
-    border-radius: 4px;
-}
-
-.progress::-webkit-progress-value {
-    border-radius: 4px;
-    transition: width 0.3s ease;
-}
-
-.progress.is-success::-webkit-progress-value {
-    background: linear-gradient(90deg, #10b981 0%, #059669 100%);
-}
-
-.progress.is-warning::-webkit-progress-value {
-    background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
-}
-
-.progress.is-danger::-webkit-progress-value {
-    background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
-}
-
-.card.admin-card {
-    border-radius: 12px;
-    border: 1px solid rgb(0 0 0 / 6%);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 4%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card.admin-card .card-content {
-    padding: 1.5rem 1.25rem;
-}
-
-.card.admin-card .card-header {
-    padding: 0.75rem 1.25rem;
-    background: #f8f9fa;
-    border-bottom: 1px solid rgb(0 0 0 / 6%);
-}
-
-.card.admin-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgb(0 0 0 / 1%);
-}
-
-.button.is-success.is-light {
-    background-color: #d1fae5;
-    border-color: #10b981;
-    color: #065f46;
-    font-weight: 600;
-}
-
-.button.is-success.is-light:hover {
-    background-color: #a7f3d0;
-    border-color: #059669;
-    color: #064e3b;
-}
-
-.button.is-success.is-light .icon {
-    color: #10b981;
-}
-
-.button.is-ghost {
-    background-color: #f3f4f6;
-    border: 1px solid #d1d5db;
-    color: #6b7280;
-    font-weight: 600;
-}
-
-.button.is-ghost:hover {
-    background-color: #e5e7eb;
-    border-color: #9ca3af;
-    color: #4b5563;
-}
-
-.button.is-ghost .icon {
-    color: #9ca3af;
-}
-
-.button.is-small.is-success.is-light,
-.button.is-small.is-ghost {
-    min-width: 100px;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.button.is-small.is-success.is-light:active,
-.button.is-small.is-ghost:active {
-    transform: scale(0.95);
+.section.admin-section .button.is-danger.is-light .icon {
+color: #ef4444;
 }
