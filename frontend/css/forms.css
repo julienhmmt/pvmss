@@ -221,16 +221,18 @@ input[type="number"] {
     font-size: 1rem;
 }
 
+/* Base column before inline variant */
+.column {
+    overflow: visible !important;
+}
+
 /* Tag Selection */
 .form-inline-fields .column {
     display: flex;
     flex-direction: column;
 }
 
-.column {
-    overflow: visible !important;
-}
-
+/* Base field before form-vertical variant */
 .field {
     overflow: visible !important;
 }
@@ -239,6 +241,7 @@ input[type="number"] {
     margin-top: 1.25rem;
 }
 
+/* Spacing rule before the specific form-vertical rule above */
 .field:not(:last-child) {
     margin-bottom: 1.25rem;
 }
@@ -247,7 +250,7 @@ input[type="number"] {
     overflow: visible !important;
 }
 
-.card,
+/* Keep overflow visibles but avoid late duplicates that break specificity ordering */
 .card-header,
 .card-content,
 .columns,
@@ -258,6 +261,7 @@ fieldset,
     overflow: visible !important;
 }
 
+/* Define base select before :focus styles elsewhere */
 .select select {
     cursor: pointer;
 }
