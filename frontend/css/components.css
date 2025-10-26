@@ -192,13 +192,14 @@ fieldset[disabled]::after {
   color: var(--primary-hover);
 }
 
-.navbar-item.is-disabled {
-  color: #9ca3af;
-  pointer-events: none;
-  opacity: 0.6;
+.navbar .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
-.navbar-item.is-disabled .icon {
+.navbar-item .icon {
   color: inherit;
 }
 
@@ -208,14 +209,13 @@ fieldset[disabled]::after {
   gap: 0.5rem;
 }
 
-.navbar .icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+.navbar-item.is-disabled {
+  color: #9ca3af;
+  pointer-events: none;
+  opacity: 0.6;
 }
 
-.navbar-item .icon {
+.navbar-item.is-disabled .icon {
   color: inherit;
 }
 
@@ -1374,7 +1374,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 .notification-footnote a {
-  color: currentColor;
+  color: currentcolor;
   text-decoration: underline;
 }
 

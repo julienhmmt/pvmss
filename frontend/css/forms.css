@@ -301,7 +301,7 @@ fieldset[disabled]::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgb(255 255 255 / 50%);
     z-index: 10;
     pointer-events: none;
     border-radius: 6px;
@@ -323,7 +323,7 @@ fieldset,
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .form-tooltip-content {
         min-width: 180px;
         max-width: 240px;
