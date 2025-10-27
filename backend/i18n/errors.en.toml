@@ -6,10 +6,10 @@ other = "Previous page"
 ["Error.Generic"]
 other = "An unexpected error has occurred. Please try again or contact the administrator."
 ["Error.InternalServer"]
-other = "Internal Server Error"
+other = "Internal server error"
 ["Error.NotFound"]
-other = "Resource Not Found"
+other = "Resource not found"
 ["Error.Title"]
 other = "Error"
 ["Error.Unauthorized"]
-other = "Unauthorized"
+other = "Unauthorized access"

@@ -6,10 +6,10 @@ other = "Page précédente"
 ["Error.Generic"]
 other = "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur."
 ["Error.InternalServer"]
-other = "Erreur Interne du Serveur"
+other = "Erreur interne du serveur"
 ["Error.NotFound"]
-other = "Ressource Non Trouvée"
+other = "Ressource non trouvée"
 ["Error.Title"]
 other = "Erreur"
 ["Error.Unauthorized"]
-other = "Non Autorisé"
+other = "Non autorisé"

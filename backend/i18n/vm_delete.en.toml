@@ -1,10 +1,10 @@
 # VM Delete
 ["VMDelete.ConfirmTitle"]
-other = "Confirm VM Deletion"
+other = "Confirm VM deletion"
 ["VMDelete.ConfirmMessage"]
 other = "You are about to permanently delete this virtual machine."
 ["VMDelete.WarningTitle"]
-other = "Warning: This action is irreversible!"
+other = "Warning: this action is irreversible!"
 ["VMDelete.Warning1"]
 other = "The VM will be forcibly stopped if it is running"
 ["VMDelete.Warning2"]

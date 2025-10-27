@@ -120,7 +120,7 @@ other = "Image ISO"
 ["VM.Create.TagsHelp"]
 other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
 ["VM.Create.TagsPlaceholder"]
-other = "Appuyez sur Entrée pour ajouter une étiquette"
+other = "Appuyez sur entrée pour ajouter une étiquette"
 ["VM.Create.BootOptions"]
 other = "Options de démarrage"
 ["VM.Create.EnableEFI"]

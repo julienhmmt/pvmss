@@ -89,11 +89,11 @@ other = "Refresh"
 ["Common.TryAgain"]
 other = "Try again"
 ["Common.SelectAll"]
-other = "Select All"
+other = "Select all"
 ["Common.Selected"]
 other = "selected"
 ["Common.SelectNone"]
-other = "Select None"
+other = "Select none"
 ["Common.Settings"]
 other = "Settings"
 ["Common.Home"]

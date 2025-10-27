@@ -10,9 +10,9 @@ other = "Statut"
 ["Nodes.Header.CPUUsage"]
 other = "Utilisation CPU"
 ["Nodes.Header.MemoryUsage"]
-other = "Utilisation Mémoire"
+other = "Utilisation mémoire"
 ["Nodes.Header.DiskUsage"]
-other = "Utilisation Disque"
+other = "Utilisation disque"
 ["Nodes.Status.Online"]
 other = "En ligne"
 ["Nodes.Status.Offline"]

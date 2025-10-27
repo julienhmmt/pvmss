@@ -1,6 +1,6 @@
 # Admin - Application Info
 ["Admin.AppInfo.Title"]
-other = "Application Information"
+other = "Application information"
 ["Admin.AppInfo.Description"]
 other = "Build details, environment, and system information"
 ["Admin.AppInfo.BuildInfo"]
@@ -14,7 +14,7 @@ other = "Go version"
 ["Admin.AppInfo.Platform"]
 other = "Platform"
 ["Admin.AppInfo.EnvironmentVariables"]
-other = "Environment Variables"
+other = "Environment variables"
 ["Admin.AppInfo.EnvironmentVariablesDescription"]
 other = "Safe configuration variables (secrets are not displayed)"
 ["Admin.AppInfo.NoVariables"]

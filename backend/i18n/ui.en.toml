@@ -2,7 +2,7 @@
 ["Title"]
 other = "PVMSS"
 ["UI.AccessAdmin"]
-other = "Admin Access"
+other = "Admin access"
 ["UI.AdminDescription"]
 other = "Access administration settings and system configuration."
 ["UI.Body"]
@@ -18,7 +18,7 @@ other = "Find guides and detailed documentation to get the most out of PVMSS."
 ["UI.Footer"]
 other = 'PVMSS - Julien HOMMET. Made with ❤️ in 🇫🇷 🇪🇺.'
 ["UI.GetStarted"]
-other = "Get Started"
+other = "Get started"
 ["UI.Header"]
 other = "Proxmox VM Self-Service"
 ["UI.Subtitle"]

@@ -16,6 +16,6 @@ other = "Déconnexion"
 ["Navbar.SearchVM"]
 other = "Rechercher une VM"
 ["Navbar.UserDocs"]
-other = "Docs Utilisateur"
+other = "Docs utilisateur"
 ["Navbar.Profile"]
 other = "Profil"

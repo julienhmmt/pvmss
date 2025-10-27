@@ -2,7 +2,7 @@
 ["Admin.ISO.Description"]
 other = "Gérez les images ISO disponibles pour l'installation des machines virtuelles."
 ["Admin.ISO.Header.Enabled"]
-other = "Activé"  # Duplicate of Common.Enabled - consider removing if same meaning
+other = "Activé"
 ["Admin.ISO.Header.Name"]
 other = "Nom de l'ISO"
 ["Admin.ISO.Header.Size"]

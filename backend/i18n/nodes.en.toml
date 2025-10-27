@@ -8,11 +8,11 @@ other = "Node"
 ["Nodes.Header.Status"]
 other = "Status"
 ["Nodes.Header.CPUUsage"]
-other = "CPU Usage"
+other = "CPU usage"
 ["Nodes.Header.MemoryUsage"]
-other = "Memory Usage"
+other = "Memory usage"
 ["Nodes.Header.DiskUsage"]
-other = "Disk Usage"
+other = "Disk usage"
 ["Nodes.Status.Online"]
 other = "Online"
 ["Nodes.Status.Offline"]

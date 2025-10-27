@@ -4,7 +4,7 @@ other = "Confirmer la suppression de la VM"
 ["VMDelete.ConfirmMessage"]
 other = "Vous êtes sur le point de supprimer définitivement cette machine virtuelle."
 ["VMDelete.WarningTitle"]
-other = "Attention : Cette action est irréversible !"
+other = "Attention : cette action est irréversible !"
 ["VMDelete.Warning1"]
 other = "La VM sera forcée à s'arrêter si elle est en cours d'exécution"
 ["VMDelete.Warning2"]
