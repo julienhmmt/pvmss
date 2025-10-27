@@ -74,7 +74,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		Msg("Search request started")
 
 	data := map[string]interface{}{
-		"Title":           "Search VMs",
+		"TitleKey":        "Search.Title",
 		"Lang":            i18n.GetLanguage(r),
 		"IsAuthenticated": true,
 		"Results":         []map[string]interface{}{},

@@ -403,7 +403,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		"MaxNetworkCards":    settings.MaxNetworkCards,
 		"NodeOptions":        nodeOptions,
 		"Nodes":              nodes,
-		"Title":              "Create VM",
+		"TitleKey":           "VM.Create.Title",
 		"ValidationError":    validationError,
 	}
 

@@ -1,4 +1,12 @@
 {{define "vm_delete_confirm"}}
+<script>
+  (function(){
+    var base = '{{T "Title"}}';
+    if (document.title === base) {
+      document.title = '{{T "VMDelete.ConfirmTitle"}} - ' + base;
+    }
+  })();
+</script>
 <section class="section">
     <div class="container max-w-1200" style="max-width: 800px;">
         <div class="card">

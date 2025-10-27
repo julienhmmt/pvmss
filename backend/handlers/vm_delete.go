@@ -75,19 +75,17 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get CSRF token
 	handlerCtx := NewHandlerContext(w, r, "VMDeleteConfirmHandler")
 	csrfToken, _ := handlerCtx.GetCSRFToken()
 
-	// Build custom data for template
 	custom := map[string]interface{}{
 		"VM":        vm,
 		"CSRFToken": csrfToken,
 	}
 
-	// Render confirmation page
 	th := NewTemplateHelpers()
-	th.RenderUserPage(w, r, "vm_delete_confirm", "Confirm Delete VM", stateManager, custom)
+	title := handlerCtx.Translate("VMDelete.ConfirmTitle")
+	th.RenderUserPage(w, r, "vm_delete_confirm", title, stateManager, custom)
 }
 
 // VMDeleteHandler handles the actual VM deletion (force stop + delete)

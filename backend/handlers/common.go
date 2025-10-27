@@ -485,10 +485,9 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prepare data for the template
 	data := map[string]interface{}{
-		"Title": "PVMSS",
-		"Lang":  i18n.GetLanguage(r),
+		"TitleKey": "Navbar.Home",
+		"Lang":     i18n.GetLanguage(r),
 	}
 
 	ctx.RenderTemplate("index", data)

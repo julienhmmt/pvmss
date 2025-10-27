@@ -177,9 +177,8 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Prepare template data
 	data := map[string]interface{}{
-		"Title":       "Admin Login",
+		"TitleKey":    "AdminLogin.Title",
 		"Error":       errorMsg,
 		"CSRFToken":   csrfToken,
 		"RedirectURL": r.URL.Query().Get("redirect"),
@@ -520,7 +519,7 @@ func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, er
 
 	// Prepare template data with CSRF token
 	data := map[string]interface{}{
-		"Title":       "Login",
+		"TitleKey":    "Login.Title",
 		"Error":       errorMsg,
 		"Warning":     warning,
 		"CSRFToken":   csrfToken,

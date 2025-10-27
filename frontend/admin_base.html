@@ -1,4 +1,27 @@
 {{define "admin_base"}}
+<script>
+  (function(){
+    var base = '{{T "Title"}}';
+    if (document.title !== base) return;
+    var key = '{{.AdminActive}}';
+    var label = '';
+    switch (key) {
+      case 'appinfo': label = '{{T "Admin.AppInfo.Title"}}'; break;
+      case 'nodes': label = '{{T "Nodes.Title"}}'; break;
+      case 'vms': label = '{{T "Admin.VMs.Title"}}'; break;
+      case 'tags':
+      case 'tags_delete': label = '{{T "Admin.Tags.Title"}}'; break;
+      case 'storage': label = '{{T "Admin.Storage.Title"}}'; break;
+      case 'iso': label = '{{T "Admin.ISO.Title"}}'; break;
+      case 'vmbr': label = '{{T "Admin.VMBR.Title"}}'; break;
+      case 'limits': label = '{{T "Admin.Limits.Title"}}'; break;
+      case 'userpool':
+      case 'userpool_delete': label = '{{T "Admin.UserPool.Title"}}'; break;
+      default: label = '{{T "Navbar.Admin"}}';
+    }
+    document.title = label + ' - ' + base;
+  })();
+</script>
 <section class="section admin-section">
   <div class="container">
     <!-- Admin Header with dynamic actions -->

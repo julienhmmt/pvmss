@@ -14,11 +14,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>
         {{- if .Title -}}
-            {{.Title}} - {{T "UI.Header"}}
+            {{.Title}} - {{T "Title"}}
         {{- else if .TitleKey -}}
-            {{T .TitleKey}} - {{T "UI.Header"}}
+            {{T .TitleKey}} - {{T "Title"}}
         {{- else -}}
-            {{T "UI.Header"}}
+            {{T "Title"}}
         {{- end -}}
     </title>
 
