@@ -169,39 +169,8 @@
                                 <div class="has-text-info has-text-weight-semibold is-size-6">{{$diskCount}} disk{{if ne $diskCount 1}}s{{end}}</div>
                                 <div class="has-text-grey is-size-7">Total: {{.DisksTotalLabel}}</div>
                             </div>
-                            {{if .DiskSegments}}
-                            <div class="mb-2" style="display: grid; grid-template-columns: 1fr; gap: 6px;">
-                                {{range $seg := .DiskSegments}}
-                                <div>
-                                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-1">
-                                        <div class="is-size-7 has-text-grey">
-                                            <span class="has-text-weight-semibold">{{$seg.Index}}</span>
-                                            <span class="mx-1">·</span>
-                                            <span class="is-size-7" style="display:inline-flex; align-items:center; gap:6px;">
-                                                <span title="{{$seg.Bus}}" style="display:inline-block; width:8px; height:8px; border-radius:50%; background: {{$seg.Color}};"></span>
-                                                <span class="has-text-grey">{{$seg.Bus}}</span>
-                                            </span>
-                                            {{if $seg.Storage}}<span class="mx-1">·</span><span>{{$seg.Storage}}</span>{{end}}
-                                        </div>
-                                        <div class="is-size-7 has-text-grey">{{$seg.SizeLabel}}</div>
-                                    </div>
-                                    <div style="height: 6px; background: rgba(50,152,220,0.12); border-radius: 3px; overflow: hidden;">
-                                        <div title="{{$seg.Index}} · {{$seg.SizeLabel}}{{if $seg.Storage}} · {{$seg.Storage}}{{end}}" style="width: {{$seg.Percent}}%; height: 100%; background: {{$seg.Color}};"></div>
-                                    </div>
-                                </div>
-                                {{end}}
-                            </div>
-                            {{if gt .DiskBusCount 1}}
-                            <div class="is-flex is-justify-content-flex-end mb-2">
-                                <span class="icon has-text-grey" title="Bus legend: {{.DiskBusNamesString}}">
-                                    <i class="fas fa-info-circle"></i>
-                                </span>
-                            </div>
-                            {{end}}
-                            {{end}}
                             <div class="is-flex is-flex-wrap-wrap" style="gap: 0.5rem;">
                                 {{range $d := .Disks}}
-                                {{if eq $d.SizeGB 0}}
                                 <div class="tag is-light" style="border: 1px solid rgba(50,152,220,0.2);">
                                     <span class="icon is-small mr-1"><i class="fas fa-hdd"></i></span>
                                     <span class="has-text-info has-text-weight-semibold">{{$d.Index}}</span>
@@ -210,10 +179,9 @@
                                     {{if not $d.Storage}}<span class="mx-1">·</span><span>{{$d.Raw}}</span>{{end}}
                                 </div>
                                 {{end}}
-                                {{end}}
                             </div>
                             {{else}}
-                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">No disks found</p>
+                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">{{T "VM.Details.NoDisks"}}</p>
                             {{end}}
                         </div>
                     </div>
