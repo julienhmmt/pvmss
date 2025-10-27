@@ -16,6 +16,7 @@ import (
 	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/security"
+	"pvmss/state"
 )
 
 // readMinMax extracts min/max values from a nested map structure
@@ -835,35 +836,30 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	// Disk Bus Type: validate and set default if not specified
 	if diskBusType == "" {
-		diskBusType = "virtio" // Default to virtio if not specified
+		diskBusType = state.DiskBusVirtIO // Default to VirtIO if not specified
 	}
 
 	// Validate disk bus type (security: prevent injection)
+	// Use constants from state package for bus type validation
 	validBusTypes := map[string]bool{
-		"ide":    true,
-		"sata":   true,
-		"scsi":   true,
-		"virtio": true,
+		state.DiskBusIDE:    true,
+		state.DiskBusSATA:   true,
+		state.DiskBusSCSI:   true,
+		state.DiskBusVirtIO: true,
 	}
 	if !validBusTypes[diskBusType] {
-		log.Warn().Str("disk_bus_type", diskBusType).Msg("Invalid disk bus type, defaulting to virtio")
-		diskBusType = "virtio"
+		log.Warn().Str("disk_bus_type", diskBusType).Msg("Invalid disk bus type, defaulting to VirtIO")
+		diskBusType = state.DiskBusVirtIO
 	}
 
-	// Define hard limits for each bus type (Proxmox/QEMU limits)
-	busLimits := map[string]int{
-		"ide":    4,  // ide0-ide3
-		"sata":   6,  // sata0-sata5
-		"scsi":   14, // scsi0-scsi13
-		"virtio": 16, // virtio0-virtio15
-	}
-
+	// Get maximum disks for the selected bus type using state constants
 	maxDiskPerVM := settings.MaxDiskPerVM
 	if maxDiskPerVM <= 0 {
 		maxDiskPerVM = 1 // Default to 1 if not configured
 	}
+
 	// Enforce hard limit based on selected bus type
-	busLimit := busLimits[diskBusType]
+	busLimit := state.GetMaxDisksForBus(diskBusType)
 	if maxDiskPerVM > busLimit {
 		log.Warn().
 			Int("max_disk_per_vm", maxDiskPerVM).

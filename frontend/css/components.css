@@ -1515,3 +1515,53 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
     margin-left: 0;
   }
 }
+
+/* VM Details Header */
+.vm-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+  border-bottom: 1px solid rgb(0 0 0 / 6%);
+}
+
+/* VM Details Stat Cards */
+.stat-card {
+  background: linear-gradient(135deg, var(--stat-bg) 0%, #fff 100%);
+  border-left: 3px solid var(--stat-color);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+}
+
+.stat-card.cpu {
+  --stat-color: #ff8800;
+  --stat-bg: #fff5f5;
+}
+
+.stat-card.memory {
+  --stat-color: #3273dc;
+  --stat-bg: #f0f7ff;
+}
+
+.stat-card.disk {
+  --stat-color: #48c774;
+  --stat-bg: #f0fdf4;
+}
+
+.stat-card.network {
+  --stat-color: #ffdd57;
+  --stat-bg: #fffbf0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-card {
+    transition: none;
+  }
+
+  .stat-card:hover {
+    transform: none;
+  }
+}

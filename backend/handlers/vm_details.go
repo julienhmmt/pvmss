@@ -199,18 +199,12 @@ func buildDisksData(cfg map[string]interface{}) []diskTemplateData {
 	if cfg == nil {
 		return nil
 	}
-	// Bus limits per QEMU
-	busLimits := map[string]int{
-		"virtio": 16,
-		"scsi":   14,
-		"sata":   6,
-		"ide":    4,
-	}
-	busOrder := []string{"virtio", "scsi", "sata", "ide"}
+	// Bus order for display (VirtIO first as it's the default and most common)
+	busOrder := []string{state.DiskBusVirtIO, state.DiskBusSCSI, state.DiskBusSATA, state.DiskBusIDE}
 
 	disks := make([]diskTemplateData, 0, 8)
 	for _, bus := range busOrder {
-		max := busLimits[bus]
+		max := state.GetMaxDisksForBus(bus)
 		for i := 0; i < max; i++ {
 			key := fmt.Sprintf("%s%d", bus, i)
 			raw := ""
