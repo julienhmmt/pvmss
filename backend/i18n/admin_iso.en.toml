@@ -1,0 +1,15 @@
+# Admin - ISO Management
+["Admin.ISO.Description"]
+other = "Manage available ISO images for virtual machine installation."
+["Admin.ISO.Header.Enabled"]
+other = "Enabled"  # Duplicate of Common.Enabled - consider removing if same meaning
+["Admin.ISO.Header.Name"]
+other = "ISO Name"
+["Admin.ISO.Header.Size"]
+other = "Size (GB)"
+["Admin.ISO.Header.Storage"]
+other = "Storage"
+["Admin.ISO.Title"]
+other = "ISO Management"
+["Admin.ISO.NoISOs"]
+other = "No ISO or IMG found"

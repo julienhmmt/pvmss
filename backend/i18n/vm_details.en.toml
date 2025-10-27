@@ -1,0 +1,95 @@
+# VM Details
+["VMDetails.Action.Failed"]
+other = "Action failed: {{.Error}}"
+["VMDetails.Action.Processing"]
+other = "Processing..."
+["VMDetails.Action.Reboot"]
+other = "Reboot"
+["VMDetails.Action.Refresh"]
+other = "Refresh"
+["VMDetails.Action.Reset"]
+other = "Reset"
+["VMDetails.Action.Shutdown"]
+other = "Shutdown"
+["VMDetails.Action.Start"]
+other = "Start"
+["VMDetails.Action.Status"]
+other = "Status"
+["VMDetails.Action.Stop"]
+other = "Stop"
+["VMDetails.Action.Success"]
+other = "Action completed successfully"
+["VMDetails.Label.CPU"]
+other = "CPU"
+["VMDetails.Label.Description"]
+other = "Description"
+["VMDetails.Label.Disk"]
+other = "Disk"
+["VMDetails.Label.ID"]
+other = "ID"
+["VMDetails.Label.Name"]
+other = "Name"
+["VMDetails.Label.Network"]
+other = "Network"
+["VMDetails.Label.RAM"]
+other = "Memory"
+["VMDetails.Label.Status"]
+other = "Status"
+["VMDetails.Label.Uptime"]
+other = "Uptime"
+["VMDetails.Modify"]
+other = "Modify"
+["VMDetails.EditDescriptionTitle"]
+other = "Edit Description"
+["VMDetails.DescriptionLabel"]
+other = "Description (Markdown supported)"
+["VMDetails.DescriptionPlaceholder"]
+other = "Enter Markdown description..."
+["VMDetails.DescriptionHelp"]
+other = "Use Markdown for formatting. The rendered version shows in the table above."
+["VMDetails.SaveDescription"]
+other = "Save Description"
+["VMDetails.TagsCurrentlyAppliedPrefix"]
+other = "Currently applied:"
+["VMDetails.SelectTags"]
+other = "Select tags"
+["VMDetails.NoTagsAvailable"]
+other = "No tags available"
+["VMDetails.SaveTags"]
+other = "Save Tags"
+["VMDetails.Action.Console"]
+other = "Console"
+["VMDetails.Action.Delete"]
+other = "Delete"
+["VMDetails.Label.FirewallEnabled"]
+other = "Enabled"
+["VMDetails.Label.FirewallDisabled"]
+other = "Disabled"
+["VMDetails.Label.Firewall"]
+other = "Firewall"
+["VMDetails.Label.Interface"]
+other = "Interface"
+["VMDetails.Label.IPAddress"]
+other = "IP Address"
+["VMDetails.Label.MACAddress"]
+other = "MAC Address"
+["VMDetails.Label.Bridge"]
+other = "Bridge"
+["VMDetails.NoDescription"]
+other = "No description available"
+["VMDetails.ModifyResources"]
+other = "Modify Resources"
+["VMDetails.EditResourcesTitle"]
+other = "Edit VM Resources"
+["VMDetails.ResourcesWarning"]
+other = "Warning:"
+["VMDetails.ResourcesWarningText"]
+other = "Changing resources on a running VM may cause performance issues or require a restart. It is recommended to stop the VM before making changes."
+["VMDetails.SaveResources"]
+other = "Save Resources"
+["VMDetails.ResourcesDisabledTitle"]
+other = "Cannot Modify Running VM"
+["VMDetails.ResourcesDisabledMessage"]
+other = "The VM is currently running. Please stop it before modifying resources to avoid performance issues or data loss."
+["VMDetails.NoDisks"]
+other = "No disks found"

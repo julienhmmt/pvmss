@@ -1,0 +1,21 @@
+# Nodes
+["Nodes.Title"]
+other = "Nodes"
+["Nodes.Description"]
+other = "Overview of Proxmox cluster nodes and their resource usage"
+["Nodes.Header.Node"]
+other = "Node"
+["Nodes.Header.Status"]
+other = "Status"
+["Nodes.Header.CPUUsage"]
+other = "CPU Usage"
+["Nodes.Header.MemoryUsage"]
+other = "Memory Usage"
+["Nodes.Header.DiskUsage"]
+other = "Disk Usage"
+["Nodes.Status.Online"]
+other = "Online"
+["Nodes.Status.Offline"]
+other = "Offline"
+["Nodes.NoNodes"]
+other = "No nodes found"

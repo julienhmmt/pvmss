@@ -1,0 +1,5 @@
+# Admin
+["Admin.Description"]
+other = "Page d'administration de PVMSS"
+["Admin.SelectSectionPrompt"]
+other = "Sélectionnez une section d'administration dans le menu pour commencer."
