@@ -18,6 +18,93 @@ import (
 	"pvmss/state"
 )
 
+// VMHandler handles VM-related pages and API endpoints
+type VMHandler struct {
+	stateManager state.StateManager
+}
+
+// diskSegmentTemplate is used by the UI to render a stacked bar per disk
+type diskSegmentTemplate struct {
+	Index     string
+	Storage   string
+	Bus       string
+	SizeGB    int
+	Percent   float64
+	Color     string
+	SizeLabel string
+}
+
+func busColor(bus string) string {
+	switch bus {
+	case "virtio":
+		return "#3298dc" // info blue
+	case "scsi":
+		return "#48c774" // success green
+	case "sata":
+		return "#ffdd57" // warning yellow
+	case "ide":
+		return "#7a7a7a" // grey
+	default:
+		return "#b5b5b5"
+	}
+}
+
+func formatSizeLabelGB(sizeGB int) string {
+	if sizeGB >= 1024 {
+		tb := float64(sizeGB) / 1024.0
+		// format with max 1 decimal when not integer
+		if sizeGB%1024 == 0 {
+			return fmt.Sprintf("%d TB", sizeGB/1024)
+		}
+		return fmt.Sprintf("%.1f TB", tb)
+	}
+	return fmt.Sprintf("%d GB", sizeGB)
+}
+
+// NewVMHandler creates a new VMHandler
+func NewVMHandler(stateManager state.StateManager) *VMHandler {
+	return &VMHandler{stateManager: stateManager}
+}
+
+// RegisterRoutes registers VM-related routes
+func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
+	// VM creation routes
+	router.GET("/vm/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.CreateVMPage(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
+
+	// VM creation with CSRF protection
+	router.POST("/api/vm/create", SecureFormHandler("CreateVM",
+		HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateVMHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
+
+	// VM details and actions routes
+	router.GET("/vm/details/:vmid", RequireAuthHandle(h.VMDetailsHandler))
+
+	router.POST("/vm/update/description", SecureFormHandler("UpdateVMDescription",
+		RequireAuthHandle(h.UpdateVMDescriptionHandler),
+	))
+	router.POST("/vm/update/tags", SecureFormHandler("UpdateVMTags",
+		RequireAuthHandle(h.UpdateVMTagsHandler),
+	))
+	router.POST("/vm/update/resources", SecureFormHandler("UpdateVMResources",
+		RequireAuthHandle(h.UpdateVMResourcesHandler),
+	))
+	router.POST("/vm/action", SecureFormHandler("VMAction",
+		RequireAuthHandle(h.VMActionHandler),
+	))
+
+	// VM deletion routes
+	router.GET("/vm/delete/:vmid", RequireAuthHandle(h.VMDeleteConfirmHandler))
+	router.POST("/vm/delete", RequireAuthHandle(h.VMDeleteHandler))
+
+	// VM console routes
+	router.POST("/api/vm/vnc-ticket", RequireAuthHandle(h.GetVNCTicketHandler))
+	router.GET("/vm/console/websocket", RequireAuthHandle(h.VMConsoleWebSocketHandler))
+}
+
 // guestAgentCache stores VMs without guest agent to avoid repeated slow API calls
 var (
 	guestAgentUnavailableCache      = make(map[string]time.Time)
@@ -30,6 +117,173 @@ var (
 type guestAgentCacheEntry struct {
 	interfaces []proxmox.GuestAgentNetworkInterface
 	expiry     time.Time
+}
+
+// containsString checks if target exists in items
+func containsString(items []string, target string) bool {
+	for _, it := range items {
+		if it == target {
+			return true
+		}
+	}
+	return false
+}
+
+// Network cards display helpers
+type networkCardTemplateData struct {
+	Index   string
+	Bridge  string
+	Model   string
+	MAC     string
+	Exists  bool
+	Options []string
+}
+
+var networkModelKeys = []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
+
+func parseNetworkConfig(raw string) (model, mac, bridge string, options []string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return
+	}
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if strings.Contains(part, "=") {
+			kv := strings.SplitN(part, "=", 2)
+			key := strings.TrimSpace(kv[0])
+			value := ""
+			if len(kv) > 1 {
+				value = strings.TrimSpace(kv[1])
+			}
+			switch {
+			case key == "model":
+				model = value
+			case key == "bridge":
+				bridge = value
+			case containsString(networkModelKeys, key):
+				model = key
+				mac = strings.ToUpper(value)
+			default:
+				options = append(options, part)
+			}
+		} else if containsString(networkModelKeys, part) {
+			model = part
+		} else {
+			options = append(options, part)
+		}
+	}
+	if model == "" {
+		model = "virtio"
+	}
+	return
+}
+
+// diskTemplateData represents a single disk entry for the template
+type diskTemplateData struct {
+	Index     string // e.g., virtio0, scsi1
+	Bus       string // virtio, scsi, sata, ide
+	Number    int    // index number
+	Storage   string // storage name before ':'
+	SizeGB    int    // size in GB if parseable, 0 otherwise
+	SizeLabel string // human label GB/TB
+	Color     string // color derived from bus
+	Raw       string // raw value from config
+	Exists    bool
+}
+
+// buildDisksData extracts disk definitions from VM config for all supported buses
+func buildDisksData(cfg map[string]interface{}) []diskTemplateData {
+	if cfg == nil {
+		return nil
+	}
+	// Bus limits per QEMU
+	busLimits := map[string]int{
+		"virtio": 16,
+		"scsi":   14,
+		"sata":   6,
+		"ide":    4,
+	}
+	busOrder := []string{"virtio", "scsi", "sata", "ide"}
+
+	disks := make([]diskTemplateData, 0, 8)
+	for _, bus := range busOrder {
+		max := busLimits[bus]
+		for i := 0; i < max; i++ {
+			key := fmt.Sprintf("%s%d", bus, i)
+			raw := ""
+			if v, ok := cfg[key].(string); ok {
+				raw = strings.TrimSpace(v)
+			}
+			if raw == "" {
+				continue
+			}
+			// Skip CD-ROM drives (e.g., ide2: <iso>,media=cdrom)
+			if strings.Contains(strings.ToLower(raw), "media=cdrom") {
+				continue
+			}
+			storage := ""
+			sizeGB := 0
+			first := raw
+			if idx := strings.Index(raw, ","); idx >= 0 {
+				first = raw[:idx]
+			}
+			if parts := strings.SplitN(first, ":", 2); len(parts) == 2 {
+				storage = strings.TrimSpace(parts[0])
+				if n, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil {
+					sizeGB = n
+				}
+			}
+			// Try to parse size option like size=20G, size=512M, size=1T
+			if sizeGB == 0 && strings.Contains(raw, "size=") {
+				for _, seg := range strings.Split(raw, ",") {
+					seg = strings.TrimSpace(seg)
+					if strings.HasPrefix(seg, "size=") {
+						val := strings.TrimPrefix(seg, "size=")
+						val = strings.TrimSpace(val)
+						// Normalize suffix
+						suffix := ""
+						numStr := val
+						if len(val) > 0 {
+							last := val[len(val)-1]
+							if last == 'G' || last == 'g' || last == 'M' || last == 'm' || last == 'T' || last == 't' {
+								suffix = strings.ToUpper(string(last))
+								numStr = strings.TrimSpace(val[:len(val)-1])
+							}
+						}
+						if n, err := strconv.ParseFloat(numStr, 64); err == nil {
+							switch suffix {
+							case "M":
+								sizeGB = int(n / 1024.0)
+								if sizeGB == 0 && n > 0 {
+									sizeGB = 1
+								}
+							case "T":
+								sizeGB = int(n * 1024.0)
+							default: // "" or G
+								sizeGB = int(n)
+							}
+						}
+						break
+					}
+				}
+			}
+			disks = append(disks, diskTemplateData{
+				Index:     key,
+				Bus:       bus,
+				Number:    i,
+				Storage:   storage,
+				SizeGB:    sizeGB,
+				SizeLabel: formatSizeLabelGB(sizeGB),
+				Color:     busColor(bus),
+				Raw:       raw,
+				Exists:    true,
+			})
+		}
+	}
+	return disks
 }
 
 // isGuestAgentUnavailableCached checks if a VM is cached as having no guest agent
@@ -176,119 +430,6 @@ type VMStateManager interface {
 }
 
 // VMHandler handles VM-related pages and API endpoints
-type VMHandler struct {
-	stateManager state.StateManager
-}
-
-type networkCardTemplateData struct {
-	Index   string
-	Bridge  string
-	Model   string
-	MAC     string
-	Exists  bool
-	Options []string
-}
-
-var networkModelKeys = []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
-
-func parseNetworkConfig(raw string) (model, mac, bridge string, options []string) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return
-	}
-
-	for _, part := range strings.Split(raw, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-
-		if strings.Contains(part, "=") {
-			kv := strings.SplitN(part, "=", 2)
-			key := strings.TrimSpace(kv[0])
-			value := ""
-			if len(kv) > 1 {
-				value = strings.TrimSpace(kv[1])
-			}
-
-			switch {
-			case key == "model":
-				model = value
-			case key == "bridge":
-				bridge = value
-			case containsString(networkModelKeys, key):
-				model = key
-				mac = strings.ToUpper(value)
-			default:
-				options = append(options, part)
-			}
-		} else if containsString(networkModelKeys, part) {
-			model = part
-		} else {
-			options = append(options, part)
-		}
-	}
-
-	if model == "" {
-		model = "virtio"
-	}
-	return
-}
-
-func containsString(items []string, target string) bool {
-	for _, item := range items {
-		if item == target {
-			return true
-		}
-	}
-	return false
-}
-
-// NewVMHandler creates a new VMHandler
-func NewVMHandler(stateManager state.StateManager) *VMHandler {
-	return &VMHandler{stateManager: stateManager}
-}
-
-// RegisterRoutes registers VM-related routes
-func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
-	// VM creation routes
-	router.GET("/vm/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.CreateVMPage(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-
-	// VM creation with CSRF protection
-	router.POST("/api/vm/create", SecureFormHandler("CreateVM",
-		HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.CreateVMHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
-
-	// VM details and actions routes
-	router.GET("/vm/details/:vmid", RequireAuthHandle(h.VMDetailsHandler))
-
-	router.POST("/vm/update/description", SecureFormHandler("UpdateVMDescription",
-		RequireAuthHandle(h.UpdateVMDescriptionHandler),
-	))
-	router.POST("/vm/update/tags", SecureFormHandler("UpdateVMTags",
-		RequireAuthHandle(h.UpdateVMTagsHandler),
-	))
-	router.POST("/vm/update/resources", SecureFormHandler("UpdateVMResources",
-		RequireAuthHandle(h.UpdateVMResourcesHandler),
-	))
-	router.POST("/vm/action", SecureFormHandler("VMAction",
-		RequireAuthHandle(h.VMActionHandler),
-	))
-
-	// VM deletion routes
-	router.GET("/vm/delete/:vmid", RequireAuthHandle(h.VMDeleteConfirmHandler))
-	router.POST("/vm/delete", RequireAuthHandle(h.VMDeleteHandler))
-
-	// VM console routes
-	router.POST("/api/vm/vnc-ticket", RequireAuthHandle(h.GetVNCTicketHandler))
-	router.GET("/vm/console/websocket", RequireAuthHandle(h.VMConsoleWebSocketHandler))
-}
-
-// VMDetailsHandler displays detailed information about a specific VM
 func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := CreateHandlerLogger("VMDetailsHandler", r)
 
@@ -318,10 +459,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
-	// If 'refresh=1' is present, proactively invalidate caches for nodes and VM lists
-	// to avoid race conditions right after VM creation where cached lists don't include the new VM yet.
 	if r.URL.Query().Get("refresh") == "1" {
-		// Invalidate node list
 		client.InvalidateCache("/nodes")
 		if nodes, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil {
 			for _, n := range nodes {
@@ -332,7 +470,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 	}
 
-	// Get all VMs and find the one we want using resty
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
@@ -347,7 +484,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
-	// Find the VM by ID
 	var vm *proxmox.VM
 	for i := range vms {
 		if vms[i].VMID == vmidInt {
@@ -357,12 +493,9 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	}
 
 	if vm == nil {
-		// As a fallback (especially right after creation), try to locate the VM by querying
-		// each node's current status endpoint which is uncached per-VM.
 		if nodes, err := proxmox.GetNodeNamesResty(r.Context(), restyClient); err == nil {
 			for _, n := range nodes {
 				if cur, err2 := proxmox.GetVMCurrentResty(r.Context(), restyClient, n, vmidInt); err2 == nil && cur != nil {
-					// Found the VM on node 'n', synthesize a minimal VM struct for display
 					vm = &proxmox.VM{
 						VMID:   vmidInt,
 						Node:   n,
@@ -386,21 +519,21 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 	}
 
-	// Get VM config to fetch description and tags
-	var tags []string
 	var description string
+	var efiEnabled bool
+	var efiStorage string
 	var networkBridges []string
 	var networkInterfaces []proxmox.NetworkInterface
-	// First attempt using vm.Node (fast path) with resty
+	var tags []string
+	var tpmEnabled bool
 	cfg, cfgErr := proxmox.GetVMConfigResty(r.Context(), restyClient, vm.Node, vm.VMID)
 	if cfgErr != nil {
-		// Log and attempt a robust fallback by discovering the node
 		log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Primary VM config fetch failed, attempting node discovery fallback")
 		if nodes, nErr := proxmox.GetNodeNamesResty(r.Context(), restyClient); nErr == nil {
 			for _, n := range nodes {
 				if altCfg, altErr := proxmox.GetVMConfigResty(r.Context(), restyClient, n, vm.VMID); altErr == nil {
 					cfg = altCfg
-					vm.Node = n // update node for subsequent actions
+					vm.Node = n
 					cfgErr = nil
 					log.Info().Str("resolved_node", n).Int("vmid", vm.VMID).Msg("Resolved VM node via fallback and fetched config")
 					break
@@ -426,25 +559,38 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		networkBridges = proxmox.ExtractNetworkBridges(cfg)
 		networkInterfaces = proxmox.ExtractNetworkInterfaces(cfg)
 
-		// Try to enrich network interfaces with IP addresses from guest agent (only if VM is running)
-		// Use cache-first approach to avoid repeated slow API calls
+		// Detect EFI
+		if bios, ok := cfg["bios"].(string); ok && strings.ToLower(strings.TrimSpace(bios)) == "ovmf" {
+			efiEnabled = true
+		}
+		if rawEFI, ok := cfg["efidisk0"].(string); ok && strings.TrimSpace(rawEFI) != "" {
+			efiEnabled = true
+			first := rawEFI
+			if idx := strings.Index(rawEFI, ","); idx >= 0 {
+				first = rawEFI[:idx]
+			}
+			if parts := strings.SplitN(first, ":", 2); len(parts) == 2 {
+				efiStorage = strings.TrimSpace(parts[0])
+			}
+		}
+
+		// Detect TPM
+		if rawTPM, ok := cfg["tpmstate0"].(string); ok && strings.TrimSpace(rawTPM) != "" {
+			tpmEnabled = true
+		}
+
 		if vm.Status == "running" && len(networkInterfaces) > 0 && !isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
-			// Try cache first
 			if cachedIfaces, found := getGuestAgentIPsFromCache(vm.Node, vm.VMID); found {
 				proxmox.EnrichNetworkInterfacesWithIPs(networkInterfaces, cachedIfaces)
 				log.Debug().Int("vmid", vm.VMID).Msg("Using cached guest agent network info")
 			} else {
-				// Cache miss - fetch from API with short timeout
 				guestCtx, cancel := context.WithTimeout(r.Context(), constants.GuestAgentTimeout)
 				defer cancel()
-
 				if guestIfaces, err := proxmox.GetGuestAgentNetworkInterfaces(guestCtx, client, vm.Node, vm.VMID); err == nil {
 					proxmox.EnrichNetworkInterfacesWithIPs(networkInterfaces, guestIfaces)
-					// Cache successful result
 					cacheGuestAgentIPs(vm.Node, vm.VMID, guestIfaces)
 					log.Debug().Int("vmid", vm.VMID).Msg("Fetched and cached guest agent network info")
 				} else {
-					// Guest agent not available - cache this result to avoid repeated slow calls
 					cacheGuestAgentUnavailable(vm.Node, vm.VMID)
 					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Guest agent network info not available (cached unavailability)")
 				}
@@ -454,44 +600,37 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		log.Warn().Err(cfgErr).Int("vmid", vm.VMID).Msg("Unable to fetch VM config; description and tags may be empty")
 	}
 
-	// Get CSRF token
 	handlerCtx := NewHandlerContext(w, r, "VMDetailsHandler")
 	csrfToken, _ := handlerCtx.GetCSRFToken()
 
-	// Check for edit modes
 	showDescriptionEditor := r.URL.Query().Get("edit") == "description"
 	showResourcesEditor := r.URL.Query().Get("edit") == "resources"
 	showTagsEditor := r.URL.Query().Get("edit") == "tags"
 
-	// Get available tags from settings
 	settings := stateManager.GetSettings()
 	allTags := settings.Tags
 
-	// Format network bridges as string
 	networkBridgesStr := ""
 	if len(networkBridges) > 0 {
 		networkBridgesStr = strings.Join(networkBridges, ", ")
 	}
 
-	// Process description as markdown
 	descriptionHTML := ""
 	if description != "" {
 		descriptionHTML = string(markdown.ToHTML([]byte(description), nil, nil))
 	}
 
-	// Get available VMBRs for the node when editing resources
 	var availableVMBRs []string
 	availableVMBRSet := make(map[string]struct{})
 	var currentCores = 1
 	var currentSockets = 1
 	var currentVMBR string
-	var currentMemoryMB = vm.MaxMem / (1024 * 1024) // Convert bytes to MB
+	var currentMemoryMB = vm.MaxMem / (1024 * 1024)
 
 	maxNetworkCards := settings.MaxNetworkCards
 	if maxNetworkCards <= 0 {
 		maxNetworkCards = 1
 	}
-
 	networkCardsData := buildNetworkCardsData(cfg, maxNetworkCards)
 
 	currentNetworkModel := networkCardsData[0].Model
@@ -538,7 +677,45 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 	}
 
-	// Build custom data for template
+	// Build disks visualization data
+	disksData := buildDisksData(cfg)
+	totalGB := 0
+	for _, d := range disksData {
+		if d.SizeGB > 0 {
+			totalGB += d.SizeGB
+		}
+	}
+	segments := make([]diskSegmentTemplate, 0, len(disksData))
+	for _, d := range disksData {
+		if d.SizeGB <= 0 || totalGB == 0 {
+			continue
+		}
+		segments = append(segments, diskSegmentTemplate{
+			Index:     d.Index,
+			Storage:   d.Storage,
+			Bus:       d.Bus,
+			SizeGB:    d.SizeGB,
+			Percent:   (float64(d.SizeGB) / float64(totalGB)) * 100.0,
+			Color:     busColor(d.Bus),
+			SizeLabel: formatSizeLabelGB(d.SizeGB),
+		})
+	}
+	totalLabel := formatSizeLabelGB(totalGB)
+
+	// Build bus legend info
+	busSet := make(map[string]struct{})
+	busNames := make([]string, 0, 4)
+	for _, seg := range segments {
+		if seg.Bus == "" {
+			continue
+		}
+		if _, ok := busSet[seg.Bus]; !ok {
+			busSet[seg.Bus] = struct{}{}
+			busNames = append(busNames, seg.Bus)
+		}
+	}
+	busNamesStr := strings.Join(busNames, ", ")
+
 	custom := map[string]interface{}{
 		"AllTags":               allTags,
 		"AvailableVMBRs":        availableVMBRs,
@@ -551,25 +728,33 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"CurrentVMBR":           currentVMBR,
 		"Description":           description,
 		"DescriptionHTML":       descriptionHTML,
+		"Disks":                 disksData,
+		"DisksTotalGB":          totalGB,
+		"DisksTotalLabel":       totalLabel,
+		"DiskSegments":          segments,
+		"DiskBusCount":          len(busNames),
+		"DiskBusNamesString":    busNamesStr,
+		"EFIEnabled":            efiEnabled,
+		"EFIStorage":            efiStorage,
 		"FormattedMaxDisk":      FormatBytes(vm.MaxDisk),
 		"FormattedMaxMem":       FormatBytes(vm.MaxMem),
-		"FormattedMaxMemGB":     FormatMemoryGB(vm.MaxMem, true), // bytes to GB
+		"FormattedMaxMemGB":     FormatMemoryGB(vm.MaxMem, true),
 		"FormattedMem":          FormatBytes(vm.Mem),
-		"FormattedMemGB":        FormatMemoryGB(vm.Mem, true), // bytes to GB
+		"FormattedMemGB":        FormatMemoryGB(vm.Mem, true),
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
-		"MaxNetworkCards":       maxNetworkCards,
 		"Limits":                settings.Limits,
+		"MaxNetworkCards":       maxNetworkCards,
 		"NetworkBridges":        networkBridgesStr,
-		"NetworkInterfaces":     networkInterfaces,
 		"NetworkCards":          networkCardsData,
+		"NetworkInterfaces":     networkInterfaces,
 		"ShowDescriptionEditor": showDescriptionEditor,
 		"ShowResourcesEditor":   showResourcesEditor,
 		"ShowTagsEditor":        showTagsEditor,
+		"TPMEnabled":            tpmEnabled,
 		"Tags":                  strings.Join(tags, ", "),
 		"VM":                    vm,
 	}
 
-	// Render using standardized user page helper to include Success/Warning/Error messages
 	th := NewTemplateHelpers()
 	th.RenderUserPage(w, r, "vm_details", "VM Details", stateManager, custom)
 }

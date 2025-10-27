@@ -580,6 +580,24 @@ other = "Entrez une description (markdown supporté)"
 other = "Taille du disque (Go)"
 ["VM.Create.DiskSizeHelp"]
 other = "Taille du disque en gigaoctets (8 Go minimum)"
+["VM.Create.DiskBusType"]
+other = "Type de bus de disque"
+["VM.Create.DiskBusMax"]
+other = "max"
+["VM.Create.DiskBusTypeHelp"]
+other = "Choisissez le type de contrôleur de disque. Chaque type a un nombre maximum de disques différent."
+["VM.Create.DiskBusDesc.VirtIO"]
+other = "Meilleures performances pour les systèmes modernes. Pilote paravirtualisé. Maximum 16 disques."
+["VM.Create.DiskBusDesc.SCSI"]
+other = "Bon compromis entre compatibilité et performances. Pilote VirtIO-SCSI. Maximum 14 disques."
+["VM.Create.DiskBusDesc.SATA"]
+other = "Compatibilité universelle, aucun pilote supplémentaire nécessaire. Maximum 6 disques."
+["VM.Create.DiskBusDesc.IDE"]
+other = "Mode ancien pour systèmes très anciens. Performances limitées. Maximum 4 disques seulement."
+["VM.Create.DiskOptional"]
+other = "Optionnel"
+["VM.Create.DiskOptionalPlaceholder"]
+other = "Laisser vide si non nécessaire"
 ["VM.Create.Header"]
 other = "Créer une machine virtuelle"
 ["VM.Create.ISO"]
@@ -708,6 +726,8 @@ other = "Configuration des ressources CPU : sockets = nombre de CPU physiques (n
 other = "Mémoire vive allouée à la VM en mégaoctets (MB). Recommandé : minimum 2048 MB (2 GB)."
 ["VM.Create.Tooltip.DiskSize"]
 other = "Taille du disque virtuel en gigaoctets (GB). Prévoyez l'espace pour le système d'exploitation, les applications et vos données. Extensible ultérieurement si nécessaire."
+["VM.Create.Tooltip.DiskBusType"]
+other = "Type de contrôleur de disque :\n• VirtIO Block : Meilleures performances pour les systèmes modernes. Paravirtualisé, nécessite des pilotes VirtIO sous Windows. Maximum 16 disques.\n• SCSI : Bon compromis entre compatibilité et performances. Utilise le pilote VirtIO-SCSI. Maximum 14 disques.\n• SATA : Compatibilité universelle, aucun pilote supplémentaire nécessaire. Idéal pour Windows. Maximum 6 disques.\n• IDE : Mode ancien pour systèmes très anciens. Performances et fonctionnalités limitées. Maximum 4 disques seulement."
 ["VM.Create.Tooltip.Storage"]
 other = "Emplacement où sera créé le disque de la VM. Suivez les instructions ou demandez aux administrateurs pour sélectionner le stockage approprié."
 ["VM.Create.Tooltip.Node"]
@@ -944,6 +964,12 @@ other = "Type"
 other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
 ["Admin.Storage.Title"]
 other = "Gestion des stockages"
+["Admin.Storage.DiskConfig"]
+other = "Configuration des disques"
+["Admin.Storage.MaxDiskPerVM"]
+other = "Nombre maximum de disques par VM"
+["Admin.Storage.MaxDiskPerVMHelp"]
+other = "Nombre maximum de disques pouvant être ajoutés à une seule VM (1-16). La limite réelle dépend du type de bus sélectionné : IDE (4), SATA (6), SCSI (14), VirtIO (16)."
 
 # Admin - VMBR Management
 ["Admin.VMBR.Title"]

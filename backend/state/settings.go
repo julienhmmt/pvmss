@@ -17,6 +17,7 @@ func defaultSettings() *AppSettings {
 		ISOs:            []string{},
 		Limits:          make(map[string]interface{}),
 		MaxNetworkCards: 1, // Default to 1 network card
+		MaxDiskPerVM:    1, // Default to 1 disk per VM
 		Tags:            []string{"pvmss"},
 		VMBRs:           []string{},
 	}
@@ -29,6 +30,7 @@ type AppSettings struct {
 	ISOs            []string               `json:"isos"`
 	Limits          map[string]interface{} `json:"limits"`
 	MaxNetworkCards int                    `json:"max_network_cards,omitempty"`
+	MaxDiskPerVM    int                    `json:"max_disk_per_vm,omitempty"`
 	Tags            []string               `json:"tags"`
 	VMBRs           []string               `json:"vmbrs"`
 }
@@ -124,6 +126,11 @@ func LoadSettings() (*AppSettings, bool, error) {
 	if settings.MaxNetworkCards <= 0 || settings.MaxNetworkCards > 10 {
 		modified = true
 		settings.MaxNetworkCards = 1
+	}
+	// Ensure MaxDiskPerVM has a valid default value (1-16 for VirtIO Block max)
+	if settings.MaxDiskPerVM <= 0 || settings.MaxDiskPerVM > 16 {
+		modified = true
+		settings.MaxDiskPerVM = 1
 	}
 
 	log.Info().

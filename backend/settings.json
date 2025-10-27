@@ -5,6 +5,7 @@
     "isos": [],
     "vmbrs": [],
     "max_network_cards": 1,
+    "max_disk_per_vm": 1,
     "enabled_storages": [],
     "limits": {
         "nodes": {},

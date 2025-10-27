@@ -29,6 +29,8 @@ func buildSuccessMessage(r *http.Request) string {
 		return "Storage '" + storage + "' enabled"
 	case "disable":
 		return "Storage '" + storage + "' disabled"
+	case "update_disk_config":
+		return "Disk configuration updated successfully"
 	default:
 		return "Storage settings updated"
 	}
@@ -168,6 +170,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
 		data["Storages"] = []map[string]interface{}{}
 		data["EnabledStorages"] = enabledMap
+		data["MaxDiskPerVM"] = settings.MaxDiskPerVM
 
 		// Add translations and render
 		renderTemplateInternal(w, r, "admin_storage", data)
@@ -195,6 +198,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	data["Node"] = chosenNode
 	data["Storages"] = storages
 	data["EnabledMap"] = enabledMap
+	data["MaxDiskPerVM"] = settings.MaxDiskPerVM
 
 	renderTemplateInternal(w, r, "admin_storage", data)
 }

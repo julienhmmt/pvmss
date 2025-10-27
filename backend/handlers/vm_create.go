@@ -151,7 +151,7 @@ type VMCreateFormData struct {
 	Bridge       string
 	Cores        string
 	Description  string
-	DiskSize     string
+	DiskBusType  string
 	EnableEFI    string
 	EnableTPM    string
 	ISO          string
@@ -294,7 +294,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 				"bridge":        savedFormData.Bridge,
 				"cores":         savedFormData.Cores,
 				"description":   savedFormData.Description,
-				"disk_size":     savedFormData.DiskSize,
+				"disk_bus_type": savedFormData.DiskBusType,
 				"enable_efi":    savedFormData.EnableEFI,
 				"enable_tpm":    savedFormData.EnableTPM,
 				"iso":           savedFormData.ISO,
@@ -398,6 +398,7 @@ func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httpr
 		"FormData":           formData,
 		"ISOs":               settings.ISOs,
 		"Limits":             settings.Limits,
+		"MaxDiskPerVM":       settings.MaxDiskPerVM,
 		"MaxNetworkCards":    settings.MaxNetworkCards,
 		"NodeOptions":        nodeOptions,
 		"Nodes":              nodes,
@@ -532,11 +533,12 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	// Extract form fields
 	coresStr := r.FormValue("cores")
 	description := r.FormValue("description")
-	diskSizeGBStr := r.FormValue("disk_size")
-	enableEFI := r.FormValue("enable_efi") // "1" if checked, "" otherwise
-	enableTPM := r.FormValue("enable_tpm") // "1" if checked, "" otherwise
-	isoPath := r.FormValue("iso")          // settings provides full volid or path string
-	memoryMBStr := r.FormValue("memory")   // MB
+	diskBusType := r.FormValue("disk_bus_type")
+	enableEFI := r.FormValue("enable_efi")         // "1" if checked, "" otherwise
+	enableTPM := r.FormValue("enable_tpm")         // "1" if checked, "" otherwise
+	firstDiskSizeStr := r.FormValue("disk_size_0") // First disk is mandatory
+	isoPath := r.FormValue("iso")                  // settings provides full volid or path string
+	memoryMBStr := r.FormValue("memory")           // MB
 	name := r.FormValue("name")
 	poolName := r.FormValue("pool")
 	selectedNode := r.FormValue("node")
@@ -554,7 +556,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	validationErrors := validateRequiredFields(map[string]string{
 		"CPU cores":      coresStr,
 		"CPU sockets":    socketsStr,
-		"Disk size":      diskSizeGBStr,
+		"Disk size":      firstDiskSizeStr,
 		"ISO image":      isoPath,
 		"Memory":         memoryMBStr,
 		"Network bridge": firstBridge,
@@ -577,7 +579,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 				Bridge:       firstBridge,
 				Cores:        coresStr,
 				Description:  description,
-				DiskSize:     diskSizeGBStr,
+				DiskBusType:  diskBusType,
 				EnableEFI:    enableEFI,
 				EnableTPM:    enableTPM,
 				ISO:          isoPath,
@@ -653,11 +655,6 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		http.Error(w, "invalid memory", http.StatusBadRequest)
 		return
 	}
-	diskSizeGB, err := strconv.Atoi(diskSizeGBStr)
-	if err != nil {
-		http.Error(w, "invalid disk size", http.StatusBadRequest)
-		return
-	}
 
 	// Validate against settings limits (vm and optional node-specific)
 	if settings != nil && settings.Limits != nil {
@@ -683,12 +680,13 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 					return
 				}
 			}
-			if min, max, ok2 := readMinMax(rawVM, "disk"); ok2 {
-				if diskSizeGB < min || diskSizeGB > max {
-					http.Error(w, fmt.Sprintf("disk size must be between %d and %d GB", min, max), http.StatusBadRequest)
-					return
-				}
-			}
+			// Disk size validation is now handled per-disk in the disk configuration loop
+			// if min, max, ok2 := readMinMax(rawVM, "disk"); ok2 {
+			// 	if diskSizeGB < min || diskSizeGB > max {
+			// 		http.Error(w, fmt.Sprintf("disk size must be between %d and %d GB", min, max), http.StatusBadRequest)
+			// 		return
+			// 	}
+			// }
 		}
 
 		// Node-specific caps (optional) - per-VM limits
@@ -835,17 +833,107 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	log.Info().Int("network_cards_configured", networkCardsConfigured).Msg("Network configuration complete")
 
-	// Disk: use selected storage for VM disk
-	if selectedStorage != "" && diskSizeGBStr != "" {
-		params["scsi0"] = selectedStorage + ":" + strconv.Itoa(diskSizeGB)
+	// Disk Bus Type: validate and set default if not specified
+	if diskBusType == "" {
+		diskBusType = "virtio" // Default to virtio if not specified
+	}
+
+	// Validate disk bus type (security: prevent injection)
+	validBusTypes := map[string]bool{
+		"ide":    true,
+		"sata":   true,
+		"scsi":   true,
+		"virtio": true,
+	}
+	if !validBusTypes[diskBusType] {
+		log.Warn().Str("disk_bus_type", diskBusType).Msg("Invalid disk bus type, defaulting to virtio")
+		diskBusType = "virtio"
+	}
+
+	// Define hard limits for each bus type (Proxmox/QEMU limits)
+	busLimits := map[string]int{
+		"ide":    4,  // ide0-ide3
+		"sata":   6,  // sata0-sata5
+		"scsi":   14, // scsi0-scsi13
+		"virtio": 16, // virtio0-virtio15
+	}
+
+	maxDiskPerVM := settings.MaxDiskPerVM
+	if maxDiskPerVM <= 0 {
+		maxDiskPerVM = 1 // Default to 1 if not configured
+	}
+	// Enforce hard limit based on selected bus type
+	busLimit := busLimits[diskBusType]
+	if maxDiskPerVM > busLimit {
+		log.Warn().
+			Int("max_disk_per_vm", maxDiskPerVM).
+			Int("bus_limit", busLimit).
+			Str("bus_type", diskBusType).
+			Msg("MaxDiskPerVM exceeds bus limit, clamping to bus limit")
+		maxDiskPerVM = busLimit
+	}
+
+	// Disk: configure multiple disks based on admin settings
+	disksConfigured := 0
+	firstDisk := ""
+	for diskIdx := 0; diskIdx < maxDiskPerVM; diskIdx++ {
+		diskSizeParam := fmt.Sprintf("disk_size_%d", diskIdx)
+		diskSizeStr := r.FormValue(diskSizeParam)
+
+		// Skip if no size specified (optional disks)
+		if diskSizeStr == "" || diskSizeStr == "0" {
+			continue
+		}
+
+		diskSize, err := strconv.Atoi(diskSizeStr)
+		if err != nil || diskSize <= 0 {
+			log.Warn().
+				Int("disk_index", diskIdx).
+				Str("disk_size", diskSizeStr).
+				Msg("Invalid disk size, skipping")
+			continue
+		}
+
+		// Configure disk with appropriate bus prefix
+		diskParam := fmt.Sprintf("%s%d", diskBusType, diskIdx)
+		params[diskParam] = selectedStorage + ":" + strconv.Itoa(diskSize)
+
+		// Track first disk for boot configuration
+		if firstDisk == "" {
+			firstDisk = diskParam
+		}
+
+		disksConfigured++
+
+		log.Info().
+			Int("disk_index", diskIdx).
+			Str("disk_param", diskParam).
+			Str("bus_type", diskBusType).
+			Int("disk_size_gb", diskSize).
+			Str("storage", selectedStorage).
+			Msg("Configured disk")
+	}
+
+	// Configure bus-specific hardware if SCSI is used
+	if diskBusType == "scsi" && disksConfigured > 0 {
 		params["scsihw"] = "virtio-scsi-pci"
-		params["bootdisk"] = "scsi0"
+	}
+
+	// Configure boot disk (first disk configured)
+	if firstDisk != "" {
+		params["bootdisk"] = firstDisk
 		if isoPath != "" {
-			params["boot"] = "order=scsi0;ide2"
+			params["boot"] = "order=" + firstDisk + ";ide2"
 		} else {
-			params["boot"] = "order=scsi0"
+			params["boot"] = "order=" + firstDisk
 		}
 	}
+
+	log.Info().
+		Int("disks_configured", disksConfigured).
+		Str("disk_bus_type", diskBusType).
+		Str("boot_disk", firstDisk).
+		Msg("Disk configuration complete")
 
 	// EFI Boot: Enable UEFI firmware (OVMF) and create EFI disk
 	if enableEFI == "1" {
