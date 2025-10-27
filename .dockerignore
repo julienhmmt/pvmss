@@ -4,6 +4,7 @@
 # Allow files and directories
 !backend/
 !frontend/
+!.gitkeep
 !go.mod
 !go.sum
 
@@ -15,9 +16,6 @@
 *.log
 *.DS_Store
 
-# Ignore build artifacts
-dist/
-
 # Ignore local development files
 .env
 docker-compose.dev.yml
@@ -25,13 +23,6 @@ settings.dev.json
 
 # Ignore test files
 tests/
-
-# Ignore IDE specific files
-.vscode/
-.idea/
-
-# Keep empty directories
-!.gitkeep
 
 # Exclude unnecessary noVNC files to reduce image size
 frontend/components/noVNC-1.6.0/tests/
