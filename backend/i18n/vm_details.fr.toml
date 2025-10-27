@@ -91,5 +91,5 @@ other = "Enregistrer les ressources"
 other = "Impossible de modifier une VM en cours d'exécution"
 ["VMDetails.ResourcesDisabledMessage"]
 other = "La VM est actuellement en cours d'exécution. Veuillez l'arrêter avant de modifier les ressources pour éviter les problèmes de performance ou la perte de données."
-["VMDetails.NoDisks"]
+["VM.Details.NoDisks"]
 other = "Aucun disque trouvé"
