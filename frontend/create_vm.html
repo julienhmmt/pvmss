@@ -296,12 +296,60 @@
                                                     memoryInput.addEventListener('input', updateMemoryDisplay);
                                                     memoryInput.addEventListener('change', updateMemoryDisplay);
                                                 </script>
+                                                <!-- Disk Bus Type Selection -->
                                                 <div class="field">
-                                                    <label for="diskSize" class="form-label">
+                                                    <label for="diskBusType" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-microchip"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.DiskBusType"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.DiskBusType"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="diskBusType-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.DiskBusType"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="diskBusType" name="disk_bus_type" required aria-describedby="diskBusType-help">
+                                                                <option value="virtio" selected>VirtIO Block</option>
+                                                                <option value="scsi">SCSI</option>
+                                                                <option value="sata">SATA</option>
+                                                                <option value="ide">IDE</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p class="mb-1">{{T "VM.Create.DiskBusTypeHelp"}}</p>
+                                                        <ul class="ml-4">
+                                                            <li><strong>VirtIO</strong> — {{T "VM.Create.DiskBusDesc.VirtIO"}}</li>
+                                                            <li><strong>SCSI</strong> — {{T "VM.Create.DiskBusDesc.SCSI"}}</li>
+                                                            <li><strong>SATA</strong> — {{T "VM.Create.DiskBusDesc.SATA"}}</li>
+                                                            <li><strong>IDE</strong> — {{T "VM.Create.DiskBusDesc.IDE"}}</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Multiple Disks -->
+                                                {{$maxDisks := .MaxDiskPerVM}}
+                                                {{if not $maxDisks}}{{$maxDisks = 1}}{{end}}
+                                                {{range $diskIdx := iterate $maxDisks}}
+                                                <div class="field">
+                                                    <label for="diskSize_{{$diskIdx}}" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-hdd"></i></span>
                                                         </span>
-                                                        <span class="form-label-text">{{T "VM.Create.DiskSize"}}</span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $diskIdx 0}}
+                                                                {{T "VM.Create.DiskSize"}}{{if gt $maxDisks 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.DiskSize"}} #{{add $diskIdx 1}} ({{T "VM.Create.DiskOptional"}})
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $diskIdx 0}}
                                                         <span class="form-tooltip">
                                                             <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.DiskSize"}}">
                                                                 <i class="fas fa-info"></i>
@@ -310,14 +358,25 @@
                                                                 {{T "VM.Create.Tooltip.DiskSize"}}
                                                             </div>
                                                         </span>
+                                                        {{end}}
                                                     </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="diskSize" class="input is-medium" type="number" name="disk_size" min="{{$vmDiskMin}}" max="{{$vmDiskMax}}" step="1" value="{{$vmDiskMax}}" required aria-required="true" aria-describedby="diskSize-help" inputmode="numeric">
+                                                            <input id="diskSize_{{$diskIdx}}" class="input is-medium" type="number" name="disk_size_{{$diskIdx}}" 
+                                                                   min="{{if eq $diskIdx 0}}{{$vmDiskMin}}{{else}}0{{end}}" 
+                                                                   max="{{$vmDiskMax}}" 
+                                                                   step="1" 
+                                                                   value="{{if eq $diskIdx 0}}{{$vmDiskMax}}{{else}}{{end}}" 
+                                                                   {{if eq $diskIdx 0}}required{{end}} 
+                                                                   placeholder="{{if gt $diskIdx 0}}{{T "VM.Create.DiskOptionalPlaceholder"}}{{end}}"
+                                                                   aria-describedby="diskSize-help" 
+                                                                   inputmode="numeric">
                                                         </div>
                                                         <div class="control"><span class="button is-static is-medium">GB</span></div>
                                                     </div>
                                                 </div>
+                                                {{if lt (toInt (add $diskIdx 1)) $maxDisks}}<hr class="my-4">{{end}}
+                                                {{end}}
                                                 <div class="field">
                                                     <label for="storage" class="form-label">
                                                         <span class="form-label-icon">

@@ -131,6 +131,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	adminHandler := NewAdminHandler(stateManager)
 	adminVMsHandler := NewAdminVMsHandler(stateManager)
 	authHandler := NewAuthHandler(stateManager)
+	diskHandler := NewDiskHandler(stateManager)
 	docsHandler := NewDocsHandler()
 	healthHandler := NewHealthHandler(stateManager)
 	languageHandler := NewLanguageHandler()
@@ -148,6 +149,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		adminHandler,
 		adminVMsHandler,
 		authHandler,
+		diskHandler,
 		docsHandler,
 		healthHandler,
 		languageHandler,
@@ -253,6 +255,7 @@ func setupRoutes(
 	adminHandler *AdminHandler,
 	adminVMsHandler *AdminVMsHandler,
 	authHandler *AuthHandler,
+	diskHandler *DiskHandler,
 	docsHandler *DocsHandler,
 	healthHandler *HealthHandler,
 	languageHandler *LanguageHandler,
@@ -271,6 +274,7 @@ func setupRoutes(
 		adminHandler,
 		adminVMsHandler,
 		authHandler,
+		diskHandler,
 		docsHandler,
 		healthHandler,
 		languageHandler,

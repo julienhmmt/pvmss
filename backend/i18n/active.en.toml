@@ -544,6 +544,24 @@ other = "Enter a description (markdown supported)"
 other = "Disk Size (GB)"
 ["VM.Create.DiskSizeHelp"]
 other = "Disk size in gigabytes"
+["VM.Create.DiskBusType"]
+other = "Disk Bus Type"
+["VM.Create.DiskBusMax"]
+other = "max"
+["VM.Create.DiskBusTypeHelp"]
+other = "Choose the disk controller type. Each type has a different maximum number of disks."
+["VM.Create.DiskBusDesc.VirtIO"]
+other = "Best performance for modern systems. Paravirtualized driver. Maximum 16 disks."
+["VM.Create.DiskBusDesc.SCSI"]
+other = "Good compatibility and performance. VirtIO-SCSI driver. Maximum 14 disks."
+["VM.Create.DiskBusDesc.SATA"]
+other = "Universal compatibility, no additional drivers needed. Maximum 6 disks."
+["VM.Create.DiskBusDesc.IDE"]
+other = "Legacy mode for very old systems. Limited performance. Maximum 4 disks."
+["VM.Create.DiskOptional"]
+other = "Optional"
+["VM.Create.DiskOptionalPlaceholder"]
+other = "Leave empty if not needed"
 ["VM.Create.Header"]
 other = "Create a Virtual Machine"
 ["VM.Create.ISO"]
@@ -672,6 +690,8 @@ other = "Processor configuration: Sockets = number of physical CPUs, Cores = num
 other = "RAM allocated to the VM in megabytes (MB). More RAM allows running more applications simultaneously. Recommended: minimum 2048 MB (2 GB)."
 ["VM.Create.Tooltip.DiskSize"]
 other = "Virtual disk size in gigabytes (GB). Plan space for the operating system, applications, and your data. Can be extended later if needed."
+["VM.Create.Tooltip.DiskBusType"]
+other = "Disk controller type:\n• VirtIO Block: Best performance for modern systems. Paravirtualized, requires VirtIO drivers on Windows. Maximum 16 disks.\n• SCSI: Good balance of compatibility and performance. Uses VirtIO-SCSI driver. Maximum 14 disks.\n• SATA: Universal compatibility, no additional drivers needed. Good for Windows installations. Maximum 6 disks.\n• IDE: Legacy mode for very old systems. Limited performance and features. Maximum 4 disks only."
 ["VM.Create.Tooltip.Storage"]
 other = "Storage location where the VM disk will be created. Choose storage with sufficient available space and good performance."
 ["VM.Create.Tooltip.Node"]
@@ -970,6 +990,12 @@ other = "Type"
 other = "No storage found that can be used for virtual machines."
 ["Admin.Storage.Title"]
 other = "Storage Management"
+["Admin.Storage.DiskConfig"]
+other = "Disk Configuration"
+["Admin.Storage.MaxDiskPerVM"]
+other = "Maximum Disks per VM"
+["Admin.Storage.MaxDiskPerVMHelp"]
+other = "Maximum number of disks that can be added to a single VM (1-16). Actual limit depends on the bus type selected: IDE (4), SATA (6), SCSI (14), VirtIO (16)."
 
 # Admin - VMBR Management
 ["Admin.VMBR.Error"]

@@ -100,6 +100,36 @@
       </table>
     </div>
   </div>
+
+  <!-- Disk Configuration -->
+  <div class="box admin-box mb-5">
+    <h2 class="title is-5 mb-4">
+      <span class="icon"><i class="fas fa-hard-drive"></i></span>
+      <span>{{T "Admin.Storage.DiskConfig"}}</span>
+    </h2>
+    <form method="POST" action="/admin/storage/update-disk-config">
+      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      <div class="field">
+        <label class="label">{{T "Admin.Storage.MaxDiskPerVM"}}</label>
+        <div class="field has-addons">
+          <div class="control is-expanded">
+            <input type="number" name="max_disk_per_vm" class="input is-medium" 
+                   value="{{.MaxDiskPerVM}}" 
+                   min="1" max="16" required
+                   aria-label="{{T "Admin.Storage.MaxDiskPerVM"}}">
+          </div>
+          <div class="control">
+            <button type="submit" class="button is-primary is-medium">
+              <span class="icon"><i class="fas fa-save"></i></span>
+              <span>{{T "Common.Save"}}</span>
+            </button>
+          </div>
+        </div>
+        <p class="help">{{T "Admin.Storage.MaxDiskPerVMHelp"}}</p>
+      </div>
+    </form>
+  </div>
+
   {{else}}
   <div class="box admin-box">
     {{template "notification" (dict 

@@ -160,10 +160,61 @@
                                     <span class="icon has-text-info mr-2">
                                         <i class="fas fa-hdd"></i>
                                     </span>
-                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Disk</span>
+                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Disks</span>
                                 </div>
                             </div>
-                            <p class="title is-5 mb-1 has-text-info">{{.FormattedMaxDisk}}</p>
+                            {{$diskCount := len .Disks}}
+                            {{if gt $diskCount 0}}
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                                <div class="has-text-info has-text-weight-semibold is-size-6">{{$diskCount}} disk{{if ne $diskCount 1}}s{{end}}</div>
+                                <div class="has-text-grey is-size-7">Total: {{.DisksTotalLabel}}</div>
+                            </div>
+                            {{if .DiskSegments}}
+                            <div class="mb-2" style="display: grid; grid-template-columns: 1fr; gap: 6px;">
+                                {{range $seg := .DiskSegments}}
+                                <div>
+                                    <div class="is-flex is-justify-content-space-between is-align-items-center mb-1">
+                                        <div class="is-size-7 has-text-grey">
+                                            <span class="has-text-weight-semibold">{{$seg.Index}}</span>
+                                            <span class="mx-1">·</span>
+                                            <span class="is-size-7" style="display:inline-flex; align-items:center; gap:6px;">
+                                                <span title="{{$seg.Bus}}" style="display:inline-block; width:8px; height:8px; border-radius:50%; background: {{$seg.Color}};"></span>
+                                                <span class="has-text-grey">{{$seg.Bus}}</span>
+                                            </span>
+                                            {{if $seg.Storage}}<span class="mx-1">·</span><span>{{$seg.Storage}}</span>{{end}}
+                                        </div>
+                                        <div class="is-size-7 has-text-grey">{{$seg.SizeLabel}}</div>
+                                    </div>
+                                    <div style="height: 6px; background: rgba(50,152,220,0.12); border-radius: 3px; overflow: hidden;">
+                                        <div title="{{$seg.Index}} · {{$seg.SizeLabel}}{{if $seg.Storage}} · {{$seg.Storage}}{{end}}" style="width: {{$seg.Percent}}%; height: 100%; background: {{$seg.Color}};"></div>
+                                    </div>
+                                </div>
+                                {{end}}
+                            </div>
+                            {{if gt .DiskBusCount 1}}
+                            <div class="is-flex is-justify-content-flex-end mb-2">
+                                <span class="icon has-text-grey" title="Bus legend: {{.DiskBusNamesString}}">
+                                    <i class="fas fa-info-circle"></i>
+                                </span>
+                            </div>
+                            {{end}}
+                            {{end}}
+                            <div class="is-flex is-flex-wrap-wrap" style="gap: 0.5rem;">
+                                {{range $d := .Disks}}
+                                {{if eq $d.SizeGB 0}}
+                                <div class="tag is-light" style="border: 1px solid rgba(50,152,220,0.2);">
+                                    <span class="icon is-small mr-1"><i class="fas fa-hdd"></i></span>
+                                    <span class="has-text-info has-text-weight-semibold">{{$d.Index}}</span>
+                                    {{if $d.Bus}}<span class="mx-1">·</span><span class="is-size-7" style="display:inline-flex; align-items:center; gap:6px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background: {{$d.Color}};"></span><span>{{$d.Bus}}</span></span>{{end}}
+                                    {{if $d.Storage}}<span class="mx-1">·</span><span>{{$d.Storage}}</span>{{end}}
+                                    {{if not $d.Storage}}<span class="mx-1">·</span><span>{{$d.Raw}}</span>{{end}}
+                                </div>
+                                {{end}}
+                                {{end}}
+                            </div>
+                            {{else}}
+                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">No disks found</p>
+                            {{end}}
                         </div>
                     </div>
 
@@ -262,6 +313,30 @@
                         </div>
                     </div>
                     {{end}}
+
+                    <!-- Firmware & Security (EFI / TPM) -->
+                    <div class="column is-full-tablet is-full-mobile">
+                        <div style="background: linear-gradient(135deg, #f7f7f7 0%, #fff 100%); border-left: 3px solid #7a7a7a; border-radius: 8px; padding: 1rem;">
+                            <div class="is-flex is-align-items-center mb-2">
+                                <span class="icon has-text-grey mr-2"><i class="fas fa-shield-alt"></i></span>
+                                <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Firmware & Security</span>
+                            </div>
+                            <div class="tags are-small" style="gap: 0.35rem;">
+                                {{if .EFIEnabled}}
+                                <span class="tag is-success is-light"><span class="icon is-small mr-1"><i class="fas fa-check"></i></span>EFI</span>
+                                {{if .EFIStorage}}<span class="tag is-light"><span class="icon is-small mr-1"><i class="fas fa-database"></i></span>{{.EFIStorage}}</span>{{end}}
+                                {{else}}
+                                <span class="tag is-light">EFI: Off</span>
+                                {{end}}
+
+                                {{if .TPMEnabled}}
+                                <span class="tag is-success is-light"><span class="icon is-small mr-1"><i class="fas fa-check"></i></span>TPM</span>
+                                {{else}}
+                                <span class="tag is-light">TPM: Off</span>
+                                {{end}}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -290,6 +365,7 @@
             </div>
         </div>
 
+        
 
         <!-- Description & Tags Grid -->
         <div class="columns is-variable is-5">
