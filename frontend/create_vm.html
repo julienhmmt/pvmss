@@ -315,10 +315,10 @@
                                                     <div class="control">
                                                         <div class="select is-fullwidth is-medium">
                                                             <select id="diskBusType" name="disk_bus_type" required aria-describedby="diskBusType-help">
-                                                                <option value="virtio" selected>VirtIO Block</option>
-                                                                <option value="scsi">SCSI</option>
-                                                                <option value="sata">SATA</option>
-                                                                <option value="ide">IDE</option>
+                                                                <option value="virtio" {{if or (not .FormData.disk_bus_type) (eq .FormData.disk_bus_type "virtio")}}selected{{end}}>VirtIO Block</option>
+                                                                <option value="scsi" {{if eq .FormData.disk_bus_type "scsi"}}selected{{end}}>SCSI</option>
+                                                                <option value="sata" {{if eq .FormData.disk_bus_type "sata"}}selected{{end}}>SATA</option>
+                                                                <option value="ide" {{if eq .FormData.disk_bus_type "ide"}}selected{{end}}>IDE</option>
                                                             </select>
                                                         </div>
                                                     </div>

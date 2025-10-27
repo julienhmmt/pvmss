@@ -3,6 +3,8 @@
 {{end}}
 
 {{define "admin_vmbr_section"}}
+  {{$csrf := $.CSRFToken}}
+  {{$enabledVMBRs := $.EnabledVMBRs}}
   <div class="container mt-4">
 
   {{if .Error}}
@@ -35,7 +37,7 @@
       <span>{{T "Admin.VMBR.NetworkCardsConfig"}}</span>
     </h2>
     <form method="POST" action="/admin/vmbr/update-network-cards">
-      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      <input type="hidden" name="csrf_token" value="{{$csrf}}">
       <div class="field">
         <label class="label">{{T "Admin.VMBR.MaxNetworkCards"}}</label>
         <div class="field has-addons">
@@ -95,21 +97,22 @@
               {{end}}
             </td>
             <td class="has-text-right">
+              {{$isEnabled := index $enabledVMBRs $name}}
               <form method="POST" action="/admin/vmbr/toggle" class="is-inline">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="csrf_token" value="{{$csrf}}">
                 <input type="hidden" name="vmbr" value="{{$name}}">
-                <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
-                <button type="submit" class="button is-small {{if index $.EnabledVMBRs $name}}is-success is-light{{else}}is-ghost{{end}}"
-                  aria-label="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
-                  title="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
+                <input type="hidden" name="action" value="{{if $isEnabled}}disable{{else}}enable{{end}}">
+                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}"
+                  aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
+                  title="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
                   <span class="icon is-small">
-                    {{if index $.EnabledVMBRs $name}}
+                    {{if $isEnabled}}
                       <i class="fas fa-toggle-on"></i>
                     {{else}}
                       <i class="fas fa-toggle-off"></i>
                     {{end}}
                   </span>
-                  <span>{{if index $.EnabledVMBRs $name}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
+                  <span>{{if $isEnabled}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
                 </button>
               </form>
             </td>

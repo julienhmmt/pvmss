@@ -10,14 +10,43 @@ import (
 	"pvmss/logger"
 )
 
+// Disk bus types and their maximum device counts
+const (
+	// IDE bus: 4 disks maximum (ide0-ide3)
+	DiskBusIDE  = "ide"
+	MaxDisksIDE = 4
+
+	// SATA bus: 6 disks maximum (sata0-sata5)
+	DiskBusSATA  = "sata"
+	MaxDisksSATA = 6
+
+	// VirtIO Block bus: 16 disks maximum (virtio0-virtio15)
+	DiskBusVirtIO  = "virtio"
+	MaxDisksVirtIO = 16
+
+	// SCSI bus: 14 disks maximum (scsi0-scsi13)
+	DiskBusSCSI  = "scsi"
+	MaxDisksSCSI = 14
+)
+
+// Settings constants
+// MaxDiskPerVM is set to the highest limit (VirtIO Block: 16 disks)
+// Individual bus limits are enforced per bus type
+const (
+	MinNetworkCards = 1
+	MaxNetworkCards = 32 // Maximum network cards (net0-net31)
+	MinDiskPerVM    = 1
+	MaxDiskPerVM    = MaxDisksVirtIO // Maximum disks overall (VirtIO Block limit)
+)
+
 // defaultSettings returns the default application settings
 func defaultSettings() *AppSettings {
 	return &AppSettings{
 		EnabledStorages: []string{},
 		ISOs:            []string{},
 		Limits:          make(map[string]interface{}),
-		MaxNetworkCards: 1, // Default to 1 network card
-		MaxDiskPerVM:    1, // Default to 1 disk per VM
+		MaxNetworkCards: MinNetworkCards,
+		MaxDiskPerVM:    MinDiskPerVM,
 		Tags:            []string{"pvmss"},
 		VMBRs:           []string{},
 	}
@@ -84,8 +113,6 @@ func LoadSettings() (*AppSettings, bool, error) {
 		return nil, false, fmt.Errorf("failed to read settings file: %w", err)
 	}
 
-	log.Debug().Str("file_content", string(data)).Msg("Raw content of settings file")
-
 	var settings AppSettings
 	if err := json.Unmarshal(data, &settings); err != nil {
 		return nil, false, fmt.Errorf("failed to parse settings file: %w", err)
@@ -123,14 +150,14 @@ func LoadSettings() (*AppSettings, bool, error) {
 		}
 	}
 	// Ensure MaxNetworkCards has a valid default value
-	if settings.MaxNetworkCards <= 0 || settings.MaxNetworkCards > 10 {
+	if settings.MaxNetworkCards < MinNetworkCards || settings.MaxNetworkCards > MaxNetworkCards {
 		modified = true
-		settings.MaxNetworkCards = 1
+		settings.MaxNetworkCards = MinNetworkCards
 	}
-	// Ensure MaxDiskPerVM has a valid default value (1-16 for VirtIO Block max)
-	if settings.MaxDiskPerVM <= 0 || settings.MaxDiskPerVM > 16 {
+	// Ensure MaxDiskPerVM has a valid default value
+	if settings.MaxDiskPerVM < MinDiskPerVM || settings.MaxDiskPerVM > MaxDiskPerVM {
 		modified = true
-		settings.MaxDiskPerVM = 1
+		settings.MaxDiskPerVM = MinDiskPerVM
 	}
 
 	log.Info().
@@ -184,4 +211,21 @@ func WriteSettings(settings *AppSettings) error {
 		Str("settings_file", settingsFile).
 		Msg("Successfully wrote settings to file")
 	return nil
+}
+
+// GetMaxDisksForBus returns the maximum number of disks allowed for a specific bus type
+func GetMaxDisksForBus(busType string) int {
+	switch busType {
+	case DiskBusIDE:
+		return MaxDisksIDE
+	case DiskBusSATA:
+		return MaxDisksSATA
+	case DiskBusVirtIO:
+		return MaxDisksVirtIO
+	case DiskBusSCSI:
+		return MaxDisksSCSI
+	default:
+		// Default to VirtIO (most common and highest limit)
+		return MaxDisksVirtIO
+	}
 }

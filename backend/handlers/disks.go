@@ -20,7 +20,11 @@ func NewDiskHandler(sm state.StateManager) *DiskHandler {
 
 // UpdateDiskConfigHandler updates the maximum number of disks per VM
 func (h *DiskHandler) UpdateDiskConfigHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("UpdateDiskConfigHandler", r)
+	ctx := NewHandlerContext(w, r, "UpdateDiskConfigHandler")
+
+	if !ctx.RequireAdminAuth() {
+		return
+	}
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
@@ -28,24 +32,24 @@ func (h *DiskHandler) UpdateDiskConfigHandler(w http.ResponseWriter, r *http.Req
 
 	maxDiskPerVMStr := r.FormValue("max_disk_per_vm")
 	if maxDiskPerVMStr == "" {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
 		return
 	}
 
 	maxDiskPerVM := 1
 	if _, err := fmt.Sscanf(maxDiskPerVMStr, "%d", &maxDiskPerVM); err != nil {
-		log.Error().Err(err).Str("value", maxDiskPerVMStr).Msg("Failed to parse max_disk_per_vm")
-		http.Error(w, "Invalid number", http.StatusBadRequest)
+		ctx.Log.Error().Err(err).Str("value", maxDiskPerVMStr).Msg("Failed to parse max_disk_per_vm")
+		ctx.HandleError(err, "Invalid number", http.StatusBadRequest)
 		return
 	}
 
-	// Validate range (1-16 for VirtIO Block max)
-	if maxDiskPerVM < 1 || maxDiskPerVM > 16 {
-		log.Warn().Int("value", maxDiskPerVM).Msg("Max disk per VM out of range, clamping")
-		if maxDiskPerVM < 1 {
-			maxDiskPerVM = 1
+	// Validate range using constants
+	if maxDiskPerVM < state.MinDiskPerVM || maxDiskPerVM > state.MaxDiskPerVM {
+		ctx.Log.Warn().Int("value", maxDiskPerVM).Msg("Max disk per VM out of range, clamping")
+		if maxDiskPerVM < state.MinDiskPerVM {
+			maxDiskPerVM = state.MinDiskPerVM
 		} else {
-			maxDiskPerVM = 16
+			maxDiskPerVM = state.MaxDiskPerVM
 		}
 	}
 
@@ -53,14 +57,13 @@ func (h *DiskHandler) UpdateDiskConfigHandler(w http.ResponseWriter, r *http.Req
 	settings.MaxDiskPerVM = maxDiskPerVM
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
-		log.Error().Err(err).Msg("Failed to update settings")
-		http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+		ctx.Log.Error().Err(err).Msg("Failed to update settings")
+		ctx.HandleError(err, "Failed to update settings", http.StatusInternalServerError)
 		return
 	}
 
-	log.Info().Int("max_disk_per_vm", maxDiskPerVM).Msg("Updated max disk per VM setting")
-	redirectURL := "/admin/storage?success=1&action=update_disk_config"
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	ctx.Log.Info().Int("max_disk_per_vm", maxDiskPerVM).Msg("Updated max disk per VM setting")
+	ctx.RedirectWithSuccess("/admin/storage", "Admin.DiskConfig.Updated")
 }
 
 // RegisterRoutes registers the routes for disk management
