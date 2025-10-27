@@ -1,0 +1,31 @@
+# Admin - Tags Management
+["Admin.Tags.Description"]
+other = "Gérez les tags pour vos machines virtuelles. Les tags doivent contenir entre 3 et 24 caractères et ne peuvent contenir que des caractères alphanumériques."
+["Admin.Tags.Placeholder"]
+other = "Nom du tag"
+["Admin.Tags.Title"]
+other = "Gestion des tags"
+["Admin.Tags.Header.Name"]
+other = "Nom"
+["Admin.Tags.Header.Usage"]
+other = "Utilisation"
+["Admin.Tags.DefaultTag"]
+other = "Tag par défaut"
+["Admin.Tags.AddTag"]
+other = "Ajouter un tag"
+["Admin.Tags.Error.InvalidFormat"]
+other = "Format de tag invalide. Utilisez uniquement des lettres, chiffres, tirets et underscores (1 à 50 caractères)."
+["Admin.Tags.Error.Exists"]
+other = "Ce tag existe déjà."
+["Admin.Tags.Success.Created"]
+other = "Tag créé avec succès."
+["Admin.Tags.DeleteTag"]
+other = "Supprimer un tag"
+["Admin.Tags.DeleteConfirmTitle"]
+other = "Confirmation de suppression du tag"
+["Admin.Tags.DeleteConfirmMessage"]
+other = "Êtes-vous sûr de vouloir supprimer ce tag ? Cette action ne peut pas être annulée."
+["Admin.Tags.DeleteConfirmTitleShort"]
+other = "Supprimer le tag"
+["Admin.Tags.ValidationMessage"]
+other = "Seules les lettres, les chiffres, les tirets et les underscores sont autorisés"

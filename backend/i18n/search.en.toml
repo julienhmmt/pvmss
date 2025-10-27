@@ -1,0 +1,78 @@
+# Search
+# ===========
+["Search.ActionsHeader"]
+other = "Actions buttons"
+["Search.Actions"]
+other = "Actions"
+["Search.CreateVM"]
+other = "Create a VM"
+["Search.CPUs"]
+other = "CPU (Sockets/Cores)"
+["Search.CardView"]
+other = "Card View"
+["Search.Clear"]
+other = "Clear"
+["Search.Details"]
+other = "VM details"
+["Search.Filter"]
+other = "Filter"
+["Search.Memory"]
+other = "Memory"
+["Search.Name"]
+other = "Name"
+["Search.Description"]
+other = "Description"
+["Search.Node"]
+other = "Node"
+["Search.NoResults"]
+other = "No results found"
+["Search.NoName"]
+other = "No name"
+["Search.NoDescription"]
+other = "No description"
+["Search.NoResultsMessage"]
+other = "Try adjusting your search criteria or check if the VM exists."
+["Search.Placeholder"]
+other = "Search by ID or Name..."
+["Search.PlaceholderName"]
+other = "e.g. my-vm"
+["Search.PlaceholderVMID"]
+other = "Search by VM ID..."
+["Search.RAM"]
+other = "Memory"
+["Search.Results"]
+other = "Search Results"
+["Search.ResultsFor"]
+other = "Results for"
+["Search.ResultFound"]
+other = "{{.Count}} result found"
+["Search.ResultsFound"]
+other = "{{.Count}} results found"
+["Search.Status"]
+other = "Status"
+["Search.Storage"]
+other = "Storage"
+["Search.Submit"]
+other = "Search"
+["Search.Subtitle"]
+other = "Find your virtual machines quickly and easily"
+["Search.TableView"]
+other = "Table View"
+["Search.Tags"]
+other = "Tags"
+["Search.Title"]
+other = "Virtual Machine Search"
+["Search.TitleName"]
+other = "Please enter a VM name between 1 and 100 characters."
+["Search.TitleVMID"]
+other = "Please enter a VM ID with 1 to 10 digits."
+["Search.VMDetailsButton"]
+other = "VM Details"
+["Search.VMID"]
+other = "VM ID"
+["Search.YouSearchedFor"]
+other = "You searched for"
+["Search.Validation.MissingCriteria"]
+other = "Please provide at least one search criterion (ID or name)."
+["Search.Criterias"]
+other = "Search criterias"

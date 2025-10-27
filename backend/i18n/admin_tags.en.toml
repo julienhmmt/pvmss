@@ -1,0 +1,31 @@
+# Admin - Tags Management
+["Admin.Tags.Description"]
+other = "Manage tags for your virtual machines. Tags must be between 3 and 24 characters long and can only contain alphanumeric characters."
+["Admin.Tags.Placeholder"]
+other = "Tag name"
+["Admin.Tags.Title"]
+other = "Tags Management"
+["Admin.Tags.Header.Name"]
+other = "Name"
+["Admin.Tags.Header.Usage"]
+other = "Usage"
+["Admin.Tags.DefaultTag"]
+other = "Default Tag"
+["Admin.Tags.AddTag"]
+other = "Add Tag"
+["Admin.Tags.Error.InvalidFormat"]
+other = "Invalid tag format. Use only letters, numbers, hyphens, and underscores (1-50 characters)."
+["Admin.Tags.Error.Exists"]
+other = "This tag already exists."
+["Admin.Tags.Success.Created"]
+other = "Tag created successfully."
+["Admin.Tags.DeleteTag"]
+other = "Delete Tag"
+["Admin.Tags.DeleteConfirmTitle"]
+other = "Delete Tag Confirmation"
+["Admin.Tags.DeleteConfirmMessage"]
+other = "Are you sure you want to delete this tag? This action cannot be undone."
+["Admin.Tags.DeleteConfirmTitleShort"]
+other = "Delete Tag"
+["Admin.Tags.ValidationMessage"]
+other = "Only letters, numbers, hyphens, and underscores allowed"

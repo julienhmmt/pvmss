@@ -1,0 +1,138 @@
+["Common.Actions"]
+other = "Actions"
+["Common.Add"]
+other = "Add"
+["Common.Admin"]
+other = "Administration"
+["Common.Back"]
+other = "Back"
+["Common.BackToSearch"]
+other = "Back to search"
+["Common.CPU"]
+other = "CPU"
+["Common.Cancel"]
+other = "Cancel"
+["Common.Confirm"]
+other = "Confirm"
+["Common.Create"]
+other = "Create"
+["Common.Delete"]
+other = "Delete"
+["Common.Description"]
+other = "Description"
+["Common.Disk"]
+other = "Disk"
+["Common.Disable"]
+other = "Disable"
+["Common.DismissNotification"]
+other = "Dismiss notification"
+["Common.Disabled"]
+other = "Disabled"
+["Common.Edit"]
+other = "Edit"
+["Common.Enable"]
+other = "Enable"
+["Common.Enabled"]
+other = "Enabled"
+["Common.Error"]
+other = "Error"
+["Common.ID"]
+other = "ID"
+["Common.Loading"]
+other = "Loading..."
+["Common.Login"]
+other = "Login"
+["Common.Logout"]
+other = "Logout"
+["Common.Max"]
+other = "Max"
+["Common.Memory"]
+other = "Memory"
+["Common.Min"]
+other = "Min"
+["Common.Name"]
+other = "Name"
+["Common.Network"]
+other = "Network"
+["Common.NotificationDismissed"]
+other = "Notification dismissed"
+["Common.Next"]
+other = "Next"
+["Common.No"]
+other = "No"
+["Common.Node"]
+other = "Node"
+["Common.None"]
+other = "None"
+["Common.OK"]
+other = "OK"
+["Common.Optional"]
+other = "Optional"
+["Common.Previous"]
+other = "Previous"
+["Common.Required"]
+other = "Required"
+["Common.Reset"]
+other = "Reset"
+["Common.Save"]
+other = "Save"
+["Common.Saved"]
+other = "✓ Saved"
+["Common.Saving"]
+other = "Saving..."
+["Common.Search"]
+other = "Search"
+["Common.Select"]
+other = "Select"
+["Common.Refresh"]
+other = "Refresh"
+["Common.TryAgain"]
+other = "Try again"
+["Common.SelectAll"]
+other = "Select All"
+["Common.Selected"]
+other = "selected"
+["Common.SelectNone"]
+other = "Select None"
+["Common.Settings"]
+other = "Settings"
+["Common.Home"]
+other = "Home"
+["Common.Status"]
+other = "Status"
+["Common.Storage"]
+other = "Storage"
+["Common.Submit"]
+other = "Submit"
+["Common.Success"]
+other = "Success"
+["Common.Tags"]
+other = "Tags"
+["Common.Unauthorized"]
+other = "Unauthorized"
+["Common.Update"]
+other = "Update"
+["Common.User"]
+other = "User"
+["Common.Users"]
+other = "Users"
+["Common.Value"]
+other = "Value"
+["Common.Pool"]
+other = "Pool"
+["Common.Yes"]
+other = "Yes"
+["Common.Information"]
+other = "Information"
+["Common.PerPage"]
+other = "per page"
+["Common.Showing"]
+other = "Showing"
+["Common.To"]
+other = "to"
+["Common.Of"]
+other = "of"
+["Common.VMs"]
+other = "VMs"
+["Common.Page"]
+other = "Page"

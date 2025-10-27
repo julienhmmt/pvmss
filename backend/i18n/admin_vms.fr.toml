@@ -1,0 +1,9 @@
+# Admin - VMs
+["Admin.VMs.Title"]
+other = "Gestion des VMs"
+["Admin.VMs.Description"]
+other = "Gestion des VMs Proxmox avec le tag pvmss"
+["AdminVMs.Title"]
+other = "Machines Virtuelles PVMSS"
+["AdminVMs.Description"]
+other = "Liste de toutes les VMs PVMSS"

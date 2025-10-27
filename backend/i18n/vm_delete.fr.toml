@@ -1,0 +1,21 @@
+# Suppression de VM
+["VMDelete.ConfirmTitle"]
+other = "Confirmer la suppression de la VM"
+["VMDelete.ConfirmMessage"]
+other = "Vous êtes sur le point de supprimer définitivement cette machine virtuelle."
+["VMDelete.WarningTitle"]
+other = "Attention : Cette action est irréversible !"
+["VMDelete.Warning1"]
+other = "La VM sera forcée à s'arrêter si elle est en cours d'exécution"
+["VMDelete.Warning2"]
+other = "Toutes les données associées à cette VM seront définitivement supprimées"
+["VMDelete.Warning3"]
+other = "Cette action ne peut pas être annulée"
+["VMDelete.Question"]
+other = "Êtes-vous sûr de vouloir supprimer cette VM ?"
+["VMDelete.Success"]
+other = "VM supprimée avec succès"
+["VMDelete.BackInfo"]
+other = "Cliquez sur 'Non' pour revenir à la page des détails de la VM"
+["VMDelete.Error"]
+other = "Suppression de la VM échouée"

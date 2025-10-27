@@ -1,0 +1,15 @@
+# Errors
+["Error.Unexpected"]
+other = "An unexpected error occurred."
+["Error.PreviousPage"]
+other = "Previous page"
+["Error.Generic"]
+other = "An unexpected error has occurred. Please try again or contact the administrator."
+["Error.InternalServer"]
+other = "Internal Server Error"
+["Error.NotFound"]
+other = "Resource Not Found"
+["Error.Title"]
+other = "Error"
+["Error.Unauthorized"]
+other = "Unauthorized"

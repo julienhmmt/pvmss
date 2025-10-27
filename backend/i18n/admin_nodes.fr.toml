@@ -1,0 +1,5 @@
+# Admin - Nodes actions/cards
+["Admin.Node.DeleteCardTitle"]
+other = "Supprimer le nœud"
+["Admin.Node.DeleteCardDescription"]
+other = "Supprimer le nœud et toutes ses VMs ? Cette action est irréversible."

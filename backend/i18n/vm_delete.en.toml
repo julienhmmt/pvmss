@@ -1,0 +1,21 @@
+# VM Delete
+["VMDelete.ConfirmTitle"]
+other = "Confirm VM Deletion"
+["VMDelete.ConfirmMessage"]
+other = "You are about to permanently delete this virtual machine."
+["VMDelete.WarningTitle"]
+other = "Warning: This action is irreversible!"
+["VMDelete.Warning1"]
+other = "The VM will be forcibly stopped if it is running"
+["VMDelete.Warning2"]
+other = "All data associated with this VM will be permanently deleted"
+["VMDelete.Warning3"]
+other = "This action cannot be undone"
+["VMDelete.Question"]
+other = "Are you sure you want to delete this VM?"
+["VMDelete.Success"]
+other = "VM deleted successfully"
+["VMDelete.BackInfo"]
+other = "Click 'No' to go back to the VM details page"
+["VMDelete.Error"]
+other = "VM deletion failed"

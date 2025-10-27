@@ -1,0 +1,11 @@
+# Messages
+["Message.ActionFailed"]
+other = "Action failed"
+["Message.CreatedSuccessfully"]
+other = "Created successfully"
+["Message.DeletedSuccessfully"]
+other = "Deleted successfully"
+["Message.SavedSuccessfully"]
+other = "Saved successfully"
+["Message.UpdatedSuccessfully"]
+other = "Updated successfully"

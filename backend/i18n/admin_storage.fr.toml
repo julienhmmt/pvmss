@@ -1,0 +1,23 @@
+# Admin - Storage Management
+["Admin.Storage.Description"]
+other = "Affichez et gérez les espaces de stockage disponibles pour les machines virtuelles."
+["Admin.Storage.Error"]
+other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
+["Admin.Storage.Header.Content"]
+other = "Contenu"
+["Admin.Storage.Header.Name"]
+other = "Nom"
+["Admin.Storage.Header.Usage"]
+other = "Utilisation"
+["Admin.Storage.Header.Type"]
+other = "Type"
+["Admin.Storage.NoStorages"]
+other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
+["Admin.Storage.Title"]
+other = "Gestion des stockages"
+["Admin.Storage.DiskConfig"]
+other = "Configuration des disques"
+["Admin.Storage.MaxDiskPerVM"]
+other = "Nombre maximum de disques par VM"
+["Admin.Storage.MaxDiskPerVMHelp"]
+other = "Nombre maximum de disques pouvant être ajoutés à une seule VM (1-16). La limite réelle dépend du type de bus sélectionné : IDE (4), SATA (6), SCSI (14), VirtIO (16)."

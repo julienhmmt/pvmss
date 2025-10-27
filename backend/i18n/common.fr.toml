@@ -1,0 +1,138 @@
+["Common.Home"]
+other = "Accueil"
+["Common.Actions"]
+other = "Actions"
+["Common.Add"]
+other = "Ajouter"
+["Common.Admin"]
+other = "Administration"
+["Common.Back"]
+other = "Retour"
+["Common.BackToSearch"]
+other = "Retour à la recherche"
+["Common.CPU"]
+other = "CPU"
+["Common.Cancel"]
+other = "Annuler"
+["Common.Confirm"]
+other = "Confirmer"
+["Common.Create"]
+other = "Créer"
+["Common.Delete"]
+other = "Supprimer"
+["Common.Description"]
+other = "Description"
+["Common.Disk"]
+other = "Disque"
+["Common.Disable"]
+other = "Désactiver"
+["Common.DismissNotification"]
+other = "Fermer la notification"
+["Common.Disabled"]
+other = "Désactivé"
+["Common.Edit"]
+other = "Modifier"
+["Common.Enable"]
+other = "Activer"
+["Common.Enabled"]
+other = "Activé"
+["Common.Error"]
+other = "Erreur"
+["Common.ID"]
+other = "ID"
+["Common.Loading"]
+other = "Chargement..."
+["Common.Login"]
+other = "Connexion"
+["Common.Logout"]
+other = "Déconnexion"
+["Common.Max"]
+other = "Max"
+["Common.Memory"]
+other = "Mémoire"
+["Common.Min"]
+other = "Min"
+["Common.Select"]
+other = "Sélectionner"
+["Common.Refresh"]
+other = "Actualiser"
+["Common.Name"]
+other = "Nom"
+["Common.Network"]
+other = "Réseau"
+["Common.NotificationDismissed"]
+other = "Notification fermée"
+["Common.Next"]
+other = "Suivant"
+["Common.Node"]
+other = "Nœud"
+["Common.No"]
+other = "Non"
+["Common.None"]
+other = "Aucun"
+["Common.OK"]
+other = "OK"
+["Common.Optional"]
+other = "Optionnel"
+["Common.Previous"]
+other = "Précédent"
+["Common.Required"]
+other = "Requis"
+["Common.Reset"]
+other = "Réinitialiser"
+["Common.Save"]
+other = "Enregistrer"
+["Common.Saved"]
+other = "✓ Enregistré"
+["Common.Saving"]
+other = "Enregistrement en cours..."
+["Common.Search"]
+other = "Rechercher"
+["Common.SelectAll"]
+other = "Tout sélectionner"
+["Common.Selected"]
+other = "sélectionné(s)"
+["Common.SelectNone"]
+other = "Tout désélectionner"
+["Common.Settings"]
+other = "Paramètres"
+["Common.Status"]
+other = "Statut"
+["Common.Storage"]
+other = "Stockage"
+["Common.Submit"]
+other = "Envoyer"
+["Common.TryAgain"]
+other = "Réessayer"
+["Common.Success"]
+other = "Succès"
+["Common.Tags"]
+other = "Étiquettes"
+["Common.Unauthorized"]
+other = "Non autorisé"
+["Common.Update"]
+other = "Mettre à jour"
+["Common.User"]
+other = "Utilisateur"
+["Common.Users"]
+other = "Utilisateurs"
+["Common.Value"]
+other = "Valeur"
+["Common.Pool"]
+other = "Pool"
+["Common.Yes"]
+other = "Oui"
+["Common.Information"]
+other = "Information"
+["Common.PerPage"]
+other = "par page"
+["Common.Showing"]
+other = "Affichage de"
+["Common.To"]
+other = "à"
+["Common.Of"]
+other = "sur"
+["Common.VMs"]
+other = "VMs"
+["Common.Page"]
+other = "Page"

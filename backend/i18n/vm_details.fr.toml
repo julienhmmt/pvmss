@@ -1,0 +1,95 @@
+# Détails de la VM
+["VMDetails.Action.Failed"]
+other = "Échec de l'action: {{.Error}}"
+["VMDetails.Action.Processing"]
+other = "Traitement en cours..."
+["VMDetails.Action.Reboot"]
+other = "Redémarrer"
+["VMDetails.Action.Refresh"]
+other = "Actualiser"
+["VMDetails.Action.Reset"]
+other = "Reset"
+["VMDetails.Action.Shutdown"]
+other = "Éteindre"
+["VMDetails.Action.Start"]
+other = "Démarrer"
+["VMDetails.Action.Status"]
+other = "Statut"
+["VMDetails.Action.Stop"]
+other = "Arrêter"
+["VMDetails.Action.Success"]
+other = "Action réussie"
+["VMDetails.Label.CPU"]
+other = "CPU"
+["VMDetails.Label.Description"]
+other = "Description"
+["VMDetails.Label.Disk"]
+other = "Disque"
+["VMDetails.Label.ID"]
+other = "ID"
+["VMDetails.Label.Name"]
+other = "Nom"
+["VMDetails.Label.Network"]
+other = "Réseau"
+["VMDetails.Label.RAM"]
+other = "Mémoire"
+["VMDetails.Label.Status"]
+other = "Statut"
+["VMDetails.Label.Uptime"]
+other = "Temps de fonctionnement"
+["VMDetails.Modify"]
+other = "Modifier"
+["VMDetails.EditDescriptionTitle"]
+other = "Modifier la description"
+["VMDetails.DescriptionLabel"]
+other = "Description (Markdown supporté)"
+["VMDetails.DescriptionPlaceholder"]
+other = "Entrez une description en Markdown..."
+["VMDetails.DescriptionHelp"]
+other = "Utilisez le Markdown pour la mise en forme. La version rendue s'affiche dans le tableau ci-dessus."
+["VMDetails.SaveDescription"]
+other = "Enregistrer la description"
+["VMDetails.TagsCurrentlyAppliedPrefix"]
+other = "Actuellement appliqués :"
+["VMDetails.SelectTags"]
+other = "Sélectionner des étiquettes"
+["VMDetails.NoTagsAvailable"]
+other = "Aucune étiquette disponible"
+["VMDetails.SaveTags"]
+other = "Enregistrer les étiquettes"
+["VMDetails.Action.Console"]
+other = "Console"
+["VMDetails.Action.Delete"]
+other = "Supprimer"
+["VMDetails.Label.FirewallEnabled"]
+other = "Activé"
+["VMDetails.Label.FirewallDisabled"]
+other = "Désactivé"
+["VMDetails.Label.Firewall"]
+other = " Pare-feu"
+["VMDetails.Label.Interface"]
+other = "Interface"
+["VMDetails.Label.IPAddress"]
+other = "Adresse IP"
+["VMDetails.Label.MACAddress"]
+other = "Adresse MAC"
+["VMDetails.Label.Bridge"]
+other = "Pont réseau"
+["VMDetails.NoDescription"]
+other = "Aucune description disponible"
+["VMDetails.ModifyResources"]
+other = "Modifier les ressources"
+["VMDetails.EditResourcesTitle"]
+other = "Modifier les ressources de la VM"
+["VMDetails.ResourcesWarning"]
+other = "Attention :"
+["VMDetails.ResourcesWarningText"]
+other = "Modifier les ressources d'une VM en cours d'exécution peut causer des problèmes de performance ou nécessiter un redémarrage. Il est recommandé d'arrêter la VM avant de faire des modifications."
+["VMDetails.SaveResources"]
+other = "Enregistrer les ressources"
+["VMDetails.ResourcesDisabledTitle"]
+other = "Impossible de modifier une VM en cours d'exécution"
+["VMDetails.ResourcesDisabledMessage"]
+other = "La VM est actuellement en cours d'exécution. Veuillez l'arrêter avant de modifier les ressources pour éviter les problèmes de performance ou la perte de données."
+["VMDetails.NoDisks"]
+other = "Aucun disque trouvé"

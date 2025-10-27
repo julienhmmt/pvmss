@@ -1,0 +1,21 @@
+# Nodes
+["Nodes.Title"]
+other = "Nœuds"
+["Nodes.Description"]
+other = "Vue d'ensemble des nœuds du cluster Proxmox et leur utilisation des ressources"
+["Nodes.Header.Node"]
+other = "Nœud"
+["Nodes.Header.Status"]
+other = "Statut"
+["Nodes.Header.CPUUsage"]
+other = "Utilisation CPU"
+["Nodes.Header.MemoryUsage"]
+other = "Utilisation Mémoire"
+["Nodes.Header.DiskUsage"]
+other = "Utilisation Disque"
+["Nodes.Status.Online"]
+other = "En ligne"
+["Nodes.Status.Offline"]
+other = "Hors ligne"
+["Nodes.NoNodes"]
+other = "Aucun nœud trouvé"
