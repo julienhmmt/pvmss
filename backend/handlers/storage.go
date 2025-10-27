@@ -167,7 +167,8 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		successMsg := buildSuccessMessage(r)
 
 		// Prepare data for the template (empty Storages)
-		data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
+		data := AdminPageDataWithMessage("", "storage", successMsg, "")
+		data["TitleKey"] = "Admin.Storage.Title"
 		data["Storages"] = []map[string]interface{}{}
 		data["EnabledStorages"] = enabledMap
 		data["MaxDiskPerVM"] = settings.MaxDiskPerVM
@@ -194,7 +195,8 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 	successMsg := buildSuccessMessage(r)
 
-	data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
+	data := AdminPageDataWithMessage("", "storage", successMsg, "")
+	data["TitleKey"] = "Admin.Storage.Title"
 	data["Node"] = chosenNode
 	data["Storages"] = storages
 	data["EnabledMap"] = enabledMap

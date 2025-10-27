@@ -174,7 +174,8 @@ func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	data := AdminPageDataWithMessage("Delete Tag", "tags_delete", "", "")
+	data := AdminPageDataWithMessage("", "tags_delete", "", "")
+	data["TitleKey"] = "Admin.Tags.Title"
 	data["Tag"] = tagName
 
 	renderTemplateInternal(w, r, "admin_tags_delete", data)
@@ -241,7 +242,8 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sort.Strings(tags)
 	}
 
-	data := AdminPageDataWithMessage("Tag Management", "tags", successMsg, "")
+	data := AdminPageDataWithMessage("", "tags", successMsg, "")
+	data["TitleKey"] = "Admin.Tags.Title"
 	data["Tags"] = tags
 	data["SortOrder"] = sortOrder
 	data["TotalTags"] = len(settings.Tags)

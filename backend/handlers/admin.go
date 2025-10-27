@@ -94,7 +94,8 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 		log.Warn().Msg("Proxmox client is not initialized; rendering page without live node data")
 	}
 
-	data := AdminPageDataWithMessage("Node Management", "nodes", "", errMsg)
+	data := AdminPageDataWithMessage("", "nodes", "", errMsg)
+	data["TitleKey"] = "Nodes.Title"
 	data["ProxmoxConnected"] = proxmoxConnected
 	data["NodeDetails"] = nodeDetails
 	renderTemplateInternal(w, r, "admin_nodes", data)
@@ -113,7 +114,8 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	// Proxmox connection status from background monitor
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 
-	data := AdminPageDataWithMessage("Admin Dashboard", "dashboard", "", "")
+	data := AdminPageDataWithMessage("", "dashboard", "", "")
+	data["TitleKey"] = "Navbar.Admin"
 	data["ProxmoxConnected"] = proxmoxConnected
 	renderTemplateInternal(w, r, "admin_base", data)
 }
@@ -147,7 +149,8 @@ func (h *AdminHandler) ProxmoxTicketTestPageHandler(w http.ResponseWriter, r *ht
 		}
 	}
 
-	data := AdminPageDataWithMessage("Proxmox Ticket Test", "ticket-test", "", "")
+	data := AdminPageDataWithMessage("", "ticket-test", "", "")
+	data["TitleKey"] = "Navbar.Admin"
 	data["ProxmoxHost"] = proxmoxHost
 	data["AuthMethod"] = authMethod
 	renderTemplateInternal(w, r, "admin_ticket_test", data)
@@ -163,7 +166,8 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	password := r.FormValue("password")
 
 	if username == "" {
-		data := AdminPageDataWithMessage("Proxmox Ticket Test", "ticket-test", "", "Username is required")
+		data := AdminPageDataWithMessage("", "ticket-test", "", "Username is required")
+		data["TitleKey"] = "Navbar.Admin"
 		data["ProxmoxHost"] = r.FormValue("proxmox_host")
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
@@ -174,7 +178,8 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	if mainClient != nil {
 		// If main client exists and is working with API tokens, we can't test username/password
 		// because API token auth doesn't support the login endpoint
-		data := AdminPageDataWithMessage("Proxmox Ticket Test", "ticket-test", "", "Your Proxmox configuration uses API token authentication. Username/password testing is not available with API tokens.")
+		data := AdminPageDataWithMessage("", "ticket-test", "", "Your Proxmox configuration uses API token authentication. Username/password testing is not available with API tokens.")
+		data["TitleKey"] = "Navbar.Admin"
 		data["ProxmoxHost"] = r.FormValue("proxmox_host")
 		data["AuthMethod"] = "API Token"
 		data["Username"] = username
@@ -188,7 +193,8 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 
 	testClient, err := proxmox.NewClientCookieAuth("https://"+r.FormValue("proxmox_host")+":8006/api2/json", insecureSkipVerify)
 	if err != nil {
-		data := AdminPageDataWithMessage("Proxmox Ticket Test", "ticket-test", "", "Failed to create test client: "+err.Error())
+		data := AdminPageDataWithMessage("", "ticket-test", "", "Failed to create test client: "+err.Error())
+		data["TitleKey"] = "Navbar.Admin"
 		data["ProxmoxHost"] = r.FormValue("proxmox_host")
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
@@ -202,7 +208,8 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	// Try to login with username and password
 	err = testClient.Login(ctx, username, password, "")
 	if err != nil {
-		data := AdminPageDataWithMessage("Proxmox Ticket Test", "ticket-test", "", "Authentication failed: "+err.Error())
+		data := AdminPageDataWithMessage("", "ticket-test", "", "Authentication failed: "+err.Error())
+		data["TitleKey"] = "Navbar.Admin"
 		data["ProxmoxHost"] = r.FormValue("proxmox_host")
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
@@ -212,14 +219,16 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	var result map[string]interface{}
 	err = testClient.GetJSON(ctx, "/nodes", &result)
 	if err != nil {
-		data := AdminPageDataWithMessage("Proxmox Ticket Test", "ticket-test", "", "Ticket validation failed: "+err.Error())
+		data := AdminPageDataWithMessage("", "ticket-test", "", "Ticket validation failed: "+err.Error())
+		data["TitleKey"] = "Navbar.Admin"
 		data["ProxmoxHost"] = r.FormValue("proxmox_host")
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
 	}
 
 	// Success - show the results
-	data := AdminPageDataWithMessage("Proxmox Ticket Test", "ticket-test", "Authentication successful! Ticket obtained and validated.", "")
+	data := AdminPageDataWithMessage("", "ticket-test", "Authentication successful! Ticket obtained and validated.", "")
+	data["TitleKey"] = "Navbar.Admin"
 	data["ProxmoxHost"] = r.FormValue("proxmox_host")
 	data["Username"] = username
 
