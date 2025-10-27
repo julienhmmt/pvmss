@@ -1022,6 +1022,12 @@ other = "Utilisation"
 other = "Tag par défaut"
 ["Admin.Tags.AddTag"]
 other = "Ajouter un tag"
+["Admin.Tags.Error.InvalidFormat"]
+other = "Format de tag invalide. Utilisez uniquement des lettres, chiffres, tirets et underscores (1 à 50 caractères)."
+["Admin.Tags.Error.Exists"]
+other = "Ce tag existe déjà."
+["Admin.Tags.Success.Created"]
+other = "Tag créé avec succès."
 ["Admin.SelectSectionPrompt"]
 other = "Sélectionnez une section d'administration dans le menu pour commencer."
 ["Admin.Tags.DeleteTag"]

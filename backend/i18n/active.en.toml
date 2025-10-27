@@ -1026,6 +1026,12 @@ other = "Usage"
 other = "Default Tag"
 ["Admin.Tags.AddTag"]
 other = "Add Tag"
+["Admin.Tags.Error.InvalidFormat"]
+other = "Invalid tag format. Use only letters, numbers, hyphens, and underscores (1-50 characters)."
+["Admin.Tags.Error.Exists"]
+other = "This tag already exists."
+["Admin.Tags.Success.Created"]
+other = "Tag created successfully."
 ["Admin.Node.DeleteCardDescription"]
 other = "Remove a node from the managed cluster."
 ["Admin.SelectSectionPrompt"]

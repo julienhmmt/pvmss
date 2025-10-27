@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -114,7 +115,16 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if !validateTagName(tagName) {
 		log.Warn().Str("tag", tagName).Msg("Invalid tag name")
-		http.Error(w, "Invalid tag name. Use only letters, numbers, hyphens, and underscores (1-50 characters).", http.StatusBadRequest)
+		// Redirect back to tags page with localized error notification
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.InvalidFormat")
+		// Build URL with error parameters
+		u, _ := url.Parse("/admin/tags")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -122,7 +132,15 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if tagExists(settings.Tags, tagName) {
 		log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
-		http.Redirect(w, r, "/admin/tags?error=exists", http.StatusSeeOther)
+		// Redirect with localized "exists" error
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.Exists")
+		u, _ := url.Parse("/admin/tags")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -134,7 +152,16 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag added successfully")
-	http.Redirect(w, r, "/admin/tags?success=1&action=create&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
+	// Redirect with localized success message
+	localizer := i18n.GetLocalizerFromRequest(r)
+	// If you have a parameterized translation, keep it simple for now
+	successMsg := i18n.Localize(localizer, "Admin.Tags.Success.Created")
+	u, _ := url.Parse("/admin/tags")
+	q := u.Query()
+	q.Set("success", "1")
+	q.Set("success_msg", successMsg)
+	u.RawQuery = q.Encode()
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 // DeleteTagHandler handles tag deletion.
@@ -190,7 +217,25 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sortOrder = "asc" // default to ascending
 	}
 
-	successMsg := buildTagSuccessMessage(r)
+	// Prefer explicit localized messages from params when present
+	q := r.URL.Query()
+	successMsg := q.Get("success_msg")
+	if successMsg == "" {
+		successMsg = buildTagSuccessMessage(r)
+	}
+	// Determine error message (supports both new and legacy styles)
+	var errorMsg string
+	if q.Get("error") != "" {
+		// New style: error=1 with error_msg
+		if q.Get("error") == "1" {
+			errorMsg = q.Get("error_msg")
+		}
+		// Legacy style: error=exists
+		if errorMsg == "" && q.Get("error") == "exists" {
+			localizer := i18n.GetLocalizerFromRequest(r)
+			errorMsg = i18n.Localize(localizer, "Admin.Tags.Error.Exists")
+		}
+	}
 
 	// Proxmox status for consistent UI (even if tags don't need Proxmox)
 	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
@@ -242,7 +287,7 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sort.Strings(tags)
 	}
 
-	data := AdminPageDataWithMessage("", "tags", successMsg, "")
+	data := AdminPageDataWithMessage("", "tags", successMsg, errorMsg)
 	data["TitleKey"] = "Admin.Tags.Title"
 	data["Tags"] = tags
 	data["SortOrder"] = sortOrder

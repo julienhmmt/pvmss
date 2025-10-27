@@ -1,0 +1,25 @@
+# Admin - Users & Pools - Notifications
+["Admin.UserPool.Error.MissingPool"]
+other = "Pool identifier is required."
+["Admin.UserPool.Error.ClientUnavailable"]
+other = "Proxmox client not available. Please try again later."
+["Admin.UserPool.Error.ResolveMembers"]
+other = "Failed to resolve pool members. Please try again."
+["Admin.UserPool.Error.DeleteVM"]
+other = "Failed to delete a VM from the pool."
+["Admin.UserPool.Error.DeletePool"]
+other = "Failed to delete the pool."
+["Admin.UserPool.Error.MissingCredentials"]
+other = "Username and password are required."
+["Admin.UserPool.Error.EnsureUser"]
+other = "Failed to create or update the user."
+["Admin.UserPool.Error.EnsureRole"]
+other = "Failed to ensure the role exists."
+["Admin.UserPool.Error.EnsurePool"]
+other = "Failed to create or update the pool."
+["Admin.UserPool.Error.EnsureACL"]
+other = "Failed to grant pool permissions to the user."
+["Admin.UserPool.Success.Created"]
+other = "User and pool created successfully."
+["Admin.UserPool.Success.Deleted"]
+other = "Pool and user deleted successfully."
