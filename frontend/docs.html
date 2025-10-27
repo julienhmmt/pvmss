@@ -1,4 +1,13 @@
 {{define "docs"}}
+<script>
+  (function(){
+    var base = '{{T "Title"}}';
+    if (document.title === base) {
+      // Default to user docs title; admin page can still set Title/TitleKey from handler.
+      document.title = '{{T "Docs.User.Title"}} - ' + base;
+    }
+  })();
+</script>
 <section class="section">
   <div class="container">
 

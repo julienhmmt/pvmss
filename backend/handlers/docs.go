@@ -85,9 +85,12 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 
 	if found {
 		log.Debug().Str("cache_key", cacheKey).Msg("Serving cached documentation")
-		// Serve from cache
+		titleKey := "Docs.User.Title"
+		if docType == "admin" {
+			titleKey = "Docs.Admin.Title"
+		}
 		data := map[string]interface{}{
-			"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), "Docs.User.Title"),
+			"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
 			"Content":     cached.HTML,
 			"CurrentLang": lang,
 			"DocType":     docType,
@@ -126,8 +129,12 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 
 	log.Debug().Str("cache_key", cacheKey).Msg("Documentation cached")
 
-	// Prepare data for the template
+	titleKey := "Docs.User.Title"
+	if docType == "admin" {
+		titleKey = "Docs.Admin.Title"
+	}
 	data := map[string]interface{}{
+		"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
 		"Content":     htmlContent,
 		"CurrentLang": finalLang,
 		"DocType":     docType,

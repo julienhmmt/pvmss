@@ -710,6 +710,12 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	}
 	busNamesStr := strings.Join(busNames, ", ")
 
+	// Ensure vm is non-nil before dereferencing in the template data
+	if vm == nil {
+		http.Error(w, "VM not found", http.StatusNotFound)
+		return
+	}
+
 	custom := map[string]interface{}{
 		"AllTags":               allTags,
 		"AvailableVMBRs":        availableVMBRs,
@@ -749,6 +755,26 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"VM":                    vm,
 	}
 
+	title := ""
+	idLabel := "ID"
+	if handlerCtx != nil {
+		idLabel = handlerCtx.Translate("Common.ID")
+	}
+	if vm.Name != "" && vm.VMID > 0 {
+		title = fmt.Sprintf("%s (%s %d)", vm.Name, idLabel, vm.VMID)
+	} else if vm.VMID > 0 {
+		title = fmt.Sprintf("%s %d", idLabel, vm.VMID)
+	} else if vm.Name != "" {
+		title = vm.Name
+	}
+	if title == "" {
+		if handlerCtx != nil {
+			title = handlerCtx.Translate("VMDetails.EditResourcesTitle")
+		} else {
+			title = "VM Details"
+		}
+	}
+
 	th := NewTemplateHelpers()
-	th.RenderUserPage(w, r, "vm_details", "VM Details", stateManager, custom)
+	th.RenderUserPage(w, r, "vm_details", title, stateManager, custom)
 }
