@@ -1,0 +1,25 @@
+# Admin - Utilisateurs & Pools - Notifications
+["Admin.UserPool.Error.MissingPool"]
+other = "L'identifiant du pool est requis."
+["Admin.UserPool.Error.ClientUnavailable"]
+other = "Client Proxmox indisponible. Veuillez réessayer plus tard."
+["Admin.UserPool.Error.ResolveMembers"]
+other = "Échec de la récupération des membres du pool. Veuillez réessayer."
+["Admin.UserPool.Error.DeleteVM"]
+other = "Échec de la suppression d'une VM du pool."
+["Admin.UserPool.Error.DeletePool"]
+other = "Échec de la suppression du pool."
+["Admin.UserPool.Error.MissingCredentials"]
+other = "Le nom d'utilisateur et le mot de passe sont requis."
+["Admin.UserPool.Error.EnsureUser"]
+other = "Échec de la création ou mise à jour de l'utilisateur."
+["Admin.UserPool.Error.EnsureRole"]
+other = "Échec de la vérification/création du rôle."
+["Admin.UserPool.Error.EnsurePool"]
+other = "Échec de la création ou mise à jour du pool."
+["Admin.UserPool.Error.EnsureACL"]
+other = "Échec de l'attribution des permissions sur le pool à l'utilisateur."
+["Admin.UserPool.Success.Created"]
+other = "Utilisateur et pool créés avec succès."
+["Admin.UserPool.Success.Deleted"]
+other = "Pool et utilisateur supprimés avec succès."

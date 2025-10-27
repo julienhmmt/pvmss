@@ -44,7 +44,9 @@ var (
 	i18nDir        string // Discovered path to the i18n directory.
 	supportedTags  []language.Tag
 	supportedCodes map[string]struct{}
-	langFileRegex  = regexp.MustCompile(`^active\.([a-z]{2}(?:-[a-z]{2})?)\.toml$`)
+	// Matches any TOML ending with .<lang>.toml (e.g., active.en.toml, admin_userpool.en.toml)
+	// Captures the language code group.
+	langFileRegex = regexp.MustCompile(`(?i)^.*\.([a-z]{2}(?:-[a-z]{2})?)\.toml$`)
 )
 
 // GetLocalizer returns a localizer for the given language.
@@ -200,7 +202,8 @@ func findI18nDirectory() (string, error) {
 
 // loadAllTranslations discovers and loads all 'active.*.toml' files.
 func loadAllTranslations(bundle *i18n.Bundle) {
-	files, err := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+	// Load all TOML files in i18n directory to support split catalogs
+	files, err := filepath.Glob(filepath.Join(i18nDir, "*.toml"))
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to glob for translation files")
 		return
@@ -242,7 +245,8 @@ func InitI18n() {
 	supportedTags = nil
 	supportedCodes = make(map[string]struct{})
 
-	files, _ := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+	// Discover languages from all TOML files present
+	files, _ := filepath.Glob(filepath.Join(i18nDir, "*.toml"))
 	sort.Strings(files)
 
 	for _, file := range files {
