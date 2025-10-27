@@ -123,7 +123,8 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	from := offset + 1
 	to := offset + len(vms)
 
-	data := AdminPageDataWithMessage("PVMSS Virtual Machines", "vms", successMsg, errMsg)
+	data := AdminPageDataWithMessage("", "vms", successMsg, errMsg)
+	data["TitleKey"] = "Admin.VMs.Title"
 	data["ProxmoxConnected"] = proxmoxConnected
 	data["VMs"] = vms
 	data["TotalVMs"] = totalVMs

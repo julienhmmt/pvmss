@@ -224,7 +224,8 @@ func (h *UserPoolHandler) DeleteUserPoolConfirmHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	data := AdminPageDataWithMessage("Delete User & Pool", "userpool_delete", "", "")
+	data := AdminPageDataWithMessage("", "userpool_delete", "", "")
+	data["TitleKey"] = "Admin.UserPool.Title"
 	data["Pool"] = poolID
 	data["User"] = strings.TrimPrefix(poolID, "pvmss_")
 
@@ -301,7 +302,8 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 	w.Header().Set("Expires", "0")
 
 	// Build base template data
-	data := AdminPageDataWithMessage("Proxmox Users & Pools", "userpool", successMsg, "")
+	data := AdminPageDataWithMessage("", "userpool", successMsg, "")
+	data["TitleKey"] = "Admin.UserPool.Title"
 
 	// Fetch pools that match pattern pvmss_*
 	client := h.stateManager.GetProxmoxClient()

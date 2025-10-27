@@ -48,7 +48,8 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Use standard admin page helper
-	data := AdminPageDataWithMessage("Resource Limits", "limits", successMsg, errorMsg)
+	data := AdminPageDataWithMessage("", "limits", successMsg, errorMsg)
+	data["TitleKey"] = "Admin.Limits.Title"
 
 	// Add limits data
 	data["Limits"] = settings.Limits

@@ -128,7 +128,8 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 
-	data := AdminPageDataWithMessage("ISO Management", "iso", successMsg, "")
+	data := AdminPageDataWithMessage("", "iso", successMsg, "")
+	data["TitleKey"] = "Admin.ISO.Title"
 	data["ISOsList"] = []ISOInfo{}
 	data["EnabledISOs"] = enabledMap
 	data["ProxmoxConnected"] = proxmoxConnected

@@ -210,7 +210,8 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		})
 	}
 
-	templateData := AdminPageDataWithMessage("VMBR Management", "vmbr", successMsg, "")
+	templateData := AdminPageDataWithMessage("", "vmbr", successMsg, "")
+	templateData["TitleKey"] = "Admin.VMBR.Title"
 	templateData["EnabledVMBRs"] = enabledVMBRs
 	templateData["MaxNetworkCards"] = settings.MaxNetworkCards
 	templateData["VMBRs"] = vmbrsForTemplate

@@ -79,7 +79,8 @@ func (h *AdminHandler) AppInfoPageHandler(w http.ResponseWriter, r *http.Request
 
 	buildInfo["clusterInfo"] = clusterInfo
 
-	data := AdminPageDataWithMessage("Application Info", "appinfo", "", "")
+	data := AdminPageDataWithMessage("", "appinfo", "", "")
+	data["TitleKey"] = "Admin.AppInfo.Title"
 	data["BuildInfo"] = buildInfo
 
 	log.Info().Msg("Rendering Application Info page")
