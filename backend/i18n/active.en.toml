@@ -179,18 +179,6 @@ other = "Page"
 other = "PVMSS Virtual Machines"
 ["AdminVMs.Description"]
 other = "List of all PVMSS virtual machines"
-["Admin.UserPool.DeleteConfirmTitle"]
-other = "Confirm User & Pool Deletion"
-["Admin.UserPool.DeleteConfirmMessage"]
-other = "Are you sure you want to delete this user, pool, and all associated VMs? This action cannot be undone."
-["Admin.UserPool.DeleteWarning"]
-other = "Warning: This will permanently:"
-["Admin.UserPool.DeleteWarning1"]
-other = "Stop and delete all VMs in this pool"
-["Admin.UserPool.DeleteWarning2"]
-other = "Delete the pool and all its resources"
-["Admin.UserPool.DeleteWarning3"]
-other = "Delete the associated user account"
 
 ["Error.Generic"]
 other = "An unexpected error has occurred. Please try again or contact the administrator."
@@ -1132,42 +1120,6 @@ other = "Node Physical Capacity"
 other = "Aggregate limits cannot exceed the node's physical capacity."
 ["Admin.Limits.MinAlways1"]
 other = "Minimum is always 1"
-
-# Admin - Users & Pools
-["Admin.UserPool.Title"]
-other = "Users & Pools"
-["Admin.UserPool.Description"]
-other = "Create a PVE user, a dedicated pool (pvmss_<username>), and grant a role on that pool."
-["Admin.UserPool.UsernamePlaceholder"]
-other = "alice"
-["Admin.UserPool.UsernameHelp"]
-other = "Will create user alice@pve and pool pvmss_alice"
-["Admin.UserPool.EmailOptional"]
-other = "Email (optional)"
-["Admin.UserPool.EmailPlaceholder"]
-other = "alice@example.com"
-["Admin.UserPool.CommentOptional"]
-other = "Comment (optional)"
-["Admin.UserPool.CommentPlaceholder"]
-other = "Team member, expires end of Q3"
-["Admin.UserPool.RoleLabel"]
-other = "Role"
-["Admin.UserPool.RoleHelp"]
-other = "Default: PVEVMUser. You may define a custom minimal role later."
-["Admin.UserPool.PropagateACL"]
-other = "Propagate ACL to contained objects"
-["Admin.UserPool.ExistingTitle"]
-other = "Existing User Pools"
-["Admin.UserPool.VMCountHeader"]
-other = "# VMs in pool"
-["Admin.UserPool.RefreshPoolTitle"]
-other = "Refresh pool"
-["Admin.UserPool.DeleteConfirm"]
-other = "Delete ALL VMs in this pool, the user, then the pool? This cannot be undone."
-["Admin.UserPool.DeleteTitle"]
-other = "Delete VMs, user, then pool"
-["Admin.UserPool.DeletePurge"]
-other = "Delete (purge)"
 
 # Admin - Application Info
 ["Admin.AppInfo.Title"]
