@@ -163,26 +163,6 @@ other = "Tous les nœuds ont atteint leurs limites de ressources. Vous ne pouvez
 other = "Sélectionnez un stockage pour votre machine virtuelle"
 ["VM.Create.NodeLimitReached"]
 other = "Ce nœud a atteint ses limites de ressources PVMSS. Veuillez choisir un autre nœud ou contactez l'administrateur."
-["VM.Create.NetworkModelDesc.VirtIO"]
-other = "Meilleures performances. Recommandé pour les systèmes modernes (pilote VirtIO requis sous Windows)."
-["VM.Create.NetworkModelDesc.E1000"]
-other = "Compatibilité universelle. Fonctionne immédiatement sur la plupart des systèmes sans pilote supplémentaire."
-["VM.Create.NetworkModelDesc.E1000E"]
-other = "Adaptateur Intel plus récent avec large compatibilité et prise en charge native."
-["VM.Create.NetworkModelDesc.RTL8139"]
-other = "Adaptateur RTL8139 pour les systèmes très anciens (Windows XP/2000). Limite à 100 Mbps."
-["VM.Create.NetworkModelDesc.VMXNet3"]
-other = "Adaptateur VMXNet3 pour les VM migrées depuis VMware vSphere. Nécessite VMware Tools."
-["VM.Create.NetworkModel.Virtio"]
-other = "VirtIO (recommandé - meilleures performances, nécessite un pilote sous Windows)"
-["VM.Create.NetworkModel.E1000"]
-other = "Intel E1000 (compatibilité universelle, aucun pilote requis)"
-["VM.Create.NetworkModel.E1000E"]
-other = "Intel E1000E (compatibilité universelle, aucun pilote requis)"
-["VM.Create.NetworkModel.RTL8139"]
-other = "Realtek RTL8139 (systèmes anciens)"
-["VM.Create.NetworkModel.VMXNet3"]
-other = "VMware VMXNet3 (pour les VM importées de VMware vSphere)"
 
 # VM Creation - Tooltips
 ["VM.Create.Tooltip.Name"]

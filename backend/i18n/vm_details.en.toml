@@ -91,5 +91,5 @@ other = "Save resources"
 other = "Cannot modify running VM"
 ["VMDetails.ResourcesDisabledMessage"]
 other = "The VM is currently running. Please stop it before modifying resources to avoid performance issues or data loss."
-["VMDetails.NoDisks"]
+["VM.Details.NoDisks"]
 other = "No disks found"

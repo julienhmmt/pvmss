@@ -163,26 +163,6 @@ other = "All nodes have reached their resource limits. You cannot create new vir
 other = "Select a storage for your virtual machine"
 ["VM.Create.NodeLimitReached"]
 other = "This node has reached its PVMSS resource limits. Please select another Proxmox node or contact an administrator."
-["VM.Create.NetworkModelDesc.VirtIO"]
-other = "Best performance. Recommended for modern Linux and Windows (requires VirtIO driver on Windows)."
-["VM.Create.NetworkModelDesc.E1000"]
-other = "Universal compatibility. Works out-of-the-box on most systems without additional drivers."
-["VM.Create.NetworkModelDesc.E1000E"]
-other = "Updated Intel adapter with broad compatibility and native driver support."
-["VM.Create.NetworkModelDesc.RTL8139"]
-other = "Legacy adapter for very old operating systems (e.g. Windows XP/2000). Limited to 100 Mbps."
-["VM.Create.NetworkModelDesc.VMXNet3"]
-other = "High-performance adapter for VMs migrated from VMware vSphere environments. Requires VMware tools."
-["VM.Create.NetworkModel.Virtio"]
-other = "VirtIO (recommended - best performance, requires driver on Windows)"
-["VM.Create.NetworkModel.E1000"]
-other = "Intel E1000 (universal compatibility, no driver needed)"
-["VM.Create.NetworkModel.E1000E"]
-other = "Intel E1000E (universal compatibility, no driver needed)"
-["VM.Create.NetworkModel.RTL8139"]
-other = "Realtek RTL8139 (legacy systems)"
-["VM.Create.NetworkModel.VMXNet3"]
-other = "VMware VMXNet3 (for VMs imported from VMware vSphere)"
 
 # VM Creation - Tooltips
 ["VM.Create.Tooltip.Name"]
