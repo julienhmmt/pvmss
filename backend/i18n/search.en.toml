@@ -9,7 +9,7 @@ other = "Create a VM"
 ["Search.CPUs"]
 other = "CPU (Sockets/Cores)"
 ["Search.CardView"]
-other = "Card View"
+other = "Card view"
 ["Search.Clear"]
 other = "Clear"
 ["Search.Details"]
@@ -41,7 +41,7 @@ other = "Search by VM ID..."
 ["Search.RAM"]
 other = "Memory"
 ["Search.Results"]
-other = "Search Results"
+other = "Search results"
 ["Search.ResultsFor"]
 other = "Results for"
 ["Search.ResultFound"]
@@ -57,7 +57,7 @@ other = "Search"
 ["Search.Subtitle"]
 other = "Find your virtual machines quickly and easily"
 ["Search.TableView"]
-other = "Table View"
+other = "Table view"
 ["Search.Tags"]
 other = "Tags"
 ["Search.Title"]
@@ -67,7 +67,7 @@ other = "Please enter a VM name between 1 and 100 characters."
 ["Search.TitleVMID"]
 other = "Please enter a VM ID with 1 to 10 digits."
 ["Search.VMDetailsButton"]
-other = "VM Details"
+other = "VM details"
 ["Search.VMID"]
 other = "VM ID"
 ["Search.YouSearchedFor"]

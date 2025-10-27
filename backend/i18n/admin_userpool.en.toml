@@ -22,7 +22,7 @@ other = "Default: PVEVMUser. You may define a custom minimal role later."
 ["Admin.UserPool.PropagateACL"]
 other = "Propagate ACL to contained objects"
 ["Admin.UserPool.ExistingTitle"]
-other = "Existing User Pools"
+other = "Existing user pools"
 ["Admin.UserPool.VMCountHeader"]
 other = "# VMs in pool"
 ["Admin.UserPool.RefreshPoolTitle"]
@@ -34,11 +34,11 @@ other = "Delete VMs, user, then pool"
 ["Admin.UserPool.DeletePurge"]
 other = "Delete (purge)"
 ["Admin.UserPool.DeleteConfirmTitle"]
-other = "Confirm User & Pool Deletion"
+other = "Confirm user & pool deletion"
 ["Admin.UserPool.DeleteConfirmMessage"]
 other = "Are you sure you want to delete this user, pool, and all associated VMs? This action cannot be undone."
 ["Admin.UserPool.DeleteWarning"]
-other = "Warning: This will permanently:"
+other = "Warning: this will permanently:"
 ["Admin.UserPool.DeleteWarning1"]
 other = "Stop and delete all VMs in this pool"
 ["Admin.UserPool.DeleteWarning2"]

@@ -2,9 +2,9 @@
 ["Navbar.Admin"]
 other = "Administration"
 ["Navbar.AdminDocs"]
-other = "Admin Docs"
+other = "Admin docs"
 ["Navbar.CreateVM"]
-other = "Create a VM"
+other = "Create VM"
 ["Navbar.Documentation"]
 other = "Documentation"
 ["Navbar.Home"]
@@ -14,7 +14,7 @@ other = "Login"
 ["Navbar.Logout"]
 other = "Logout"
 ["Navbar.SearchVM"]
-other = "Search VMs"
+other = "Search VM"
 ["Navbar.UserDocs"]
 other = "User docs"
 ["Navbar.Profile"]

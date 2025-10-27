@@ -4,6 +4,6 @@ other = "Gestion des VMs"
 ["Admin.VMs.Description"]
 other = "Gestion des VMs Proxmox avec le tag pvmss"
 ["AdminVMs.Title"]
-other = "Machines Virtuelles PVMSS"
+other = "Machines virtuelles PVMSS"
 ["AdminVMs.Description"]
 other = "Liste de toutes les VMs PVMSS"

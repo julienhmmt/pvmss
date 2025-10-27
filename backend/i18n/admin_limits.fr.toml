@@ -58,9 +58,9 @@ other = "La valeur doit être un nombre positif"
 ["Admin.Limits.NetworkError"]
 other = "Une erreur réseau s'est produite. Veuillez réessayer"
 ["Admin.Limits.AggregateTitle"]
-other = "Ressources Agrégées (VMs PVMSS)"
+other = "Ressources agrégées (VMs PVMSS)"
 ["Admin.Limits.AggregateTotalVMs"]
-other = "VM(s) avec le tag \"pvmss\" sur ce nœud"
+other = "VM(s) avec le tag 'pvmss' sur ce nœud"
 ["Admin.Limits.AggregateCores"]
 other = "Cœurs :"
 ["Admin.Limits.AggregateMemory"]
@@ -68,15 +68,15 @@ other = "RAM :"
 ["Admin.Limits.AggregateNoLimit"]
 other = "Pas de limite"
 ["Admin.Limits.AggregateDescription"]
-other = "Ces limites représentent les ressources totales combinées que toutes les VMs avec le tag \"pvmss\" peuvent utiliser sur ce nœud."
+other = "Ces limites représentent les ressources totales combinées que toutes les VMs avec le tag 'pvmss' peuvent utiliser sur ce nœud."
 ["Admin.Limits.AggregateScopeNode"]
-other = "Définir les limites agrégées de ressources pour toutes les VMs PVMSS sur ce nœud. Ces limites contrôlent les ressources totales combinées que toutes les VMs avec le tag \"pvmss\" peuvent utiliser."
+other = "Définir les limites agrégées de ressources pour toutes les VMs PVMSS sur ce nœud. Ces limites contrôlent les ressources totales combinées que toutes les VMs avec le tag 'pvmss' peuvent utiliser."
 ["Admin.Limits.TotalCores"]
-other = "Total Cœurs (Agrégé)"
+other = "Total cœurs (agrégé)"
 ["Admin.Limits.TotalMemory"]
-other = "Total Mémoire (Agrégé)"
+other = "Total mémoire (agrégé)"
 ["Admin.Limits.NodePhysicalCapacity"]
-other = "Capacité Physique du Nœud"
+other = "Capacité physique du nœud"
 ["Admin.Limits.CapacityWarning"]
 other = "Les limites agrégées ne peuvent pas dépasser la capacité physique du nœud."
 ["Admin.Limits.MinAlways1"]

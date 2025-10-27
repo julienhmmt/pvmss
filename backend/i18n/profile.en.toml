@@ -10,7 +10,7 @@ other = "My virtual machines"
 ["Profile.VMID"]
 other = "VM ID"
 ["Profile.VMName"]
-other = "VM Name"
+other = "VM name"
 ["Profile.Description"]
 other = "Description"
 ["Profile.NoDescription"]
@@ -22,7 +22,7 @@ other = "Status"
 ["Profile.Actions"]
 other = "Actions"
 ["Profile.ViewDetails"]
-other = "View Details"
+other = "View details"
 ["Profile.Delete"]
 other = "Delete"
 ["Profile.NoVMs"]
@@ -36,33 +36,33 @@ other = "Create a new VM"
 ["Profile.SearchVM"]
 other = "Search VMs"
 ["Profile.ChangePassword"]
-other = "Change Password"
+other = "Change password"
 ["Profile.CurrentPassword"]
-other = "Current Password"
+other = "Current password"
 ["Profile.CurrentPasswordPlaceholder"]
 other = "Enter your current password"
 ["Profile.CurrentPasswordHelp"]
 other = "Enter your current password to verify your identity"
 ["Profile.NewPassword"]
-other = "New Password"
+other = "New password"
 ["Profile.NewPasswordPlaceholder"]
 other = "Enter your new password"
 ["Profile.NewPasswordHelp"]
 other = "Minimum 5 characters"
 ["Profile.ConfirmPassword"]
-other = "Confirm New Password"
+other = "Confirm new password"
 ["Profile.ConfirmPasswordPlaceholder"]
 other = "Re-enter your new password"
 ["Profile.UpdatePassword"]
-other = "Update Password"
+other = "Update password"
 ["Profile.PasswordUpdateSuccess"]
 other = "Password updated successfully!"
 ["Profile.ChangePasswordButton"]
-other = "Change My Password"
+other = "Change my password"
 ["Profile.ChangePasswordDescription"]
 other = "Click the button below to change your Proxmox password. You will need to provide your current password for verification."
 ["Profile.MyProfile"]
-other = "My Profile"
+other = "My profile"
 ["Profile.RunningVMs"]
 other = "Running VMs"
 ["Profile.StoppedVMs"]

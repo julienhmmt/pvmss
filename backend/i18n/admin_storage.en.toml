@@ -14,10 +14,10 @@ other = "Type"
 ["Admin.Storage.NoStorages"]
 other = "No storage found that can be used for virtual machines."
 ["Admin.Storage.Title"]
-other = "Storage Management"
+other = "Storage management"
 ["Admin.Storage.DiskConfig"]
-other = "Disk Configuration"
+other = "Disk configuration"
 ["Admin.Storage.MaxDiskPerVM"]
-other = "Maximum Disks per VM"
+other = "Maximum disks per VM"
 ["Admin.Storage.MaxDiskPerVMHelp"]
 other = "Maximum number of disks that can be added to a single VM (1-16). Actual limit depends on the bus type selected: IDE (4), SATA (6), SCSI (14), VirtIO (16)."

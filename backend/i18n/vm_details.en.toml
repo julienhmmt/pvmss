@@ -40,7 +40,7 @@ other = "Uptime"
 ["VMDetails.Modify"]
 other = "Modify"
 ["VMDetails.EditDescriptionTitle"]
-other = "Edit Description"
+other = "Edit description"
 ["VMDetails.DescriptionLabel"]
 other = "Description (Markdown supported)"
 ["VMDetails.DescriptionPlaceholder"]
@@ -48,7 +48,7 @@ other = "Enter Markdown description..."
 ["VMDetails.DescriptionHelp"]
 other = "Use Markdown for formatting. The rendered version shows in the table above."
 ["VMDetails.SaveDescription"]
-other = "Save Description"
+other = "Save description"
 ["VMDetails.TagsCurrentlyAppliedPrefix"]
 other = "Currently applied:"
 ["VMDetails.SelectTags"]
@@ -56,7 +56,7 @@ other = "Select tags"
 ["VMDetails.NoTagsAvailable"]
 other = "No tags available"
 ["VMDetails.SaveTags"]
-other = "Save Tags"
+other = "Save tags"
 ["VMDetails.Action.Console"]
 other = "Console"
 ["VMDetails.Action.Delete"]
@@ -70,25 +70,25 @@ other = "Firewall"
 ["VMDetails.Label.Interface"]
 other = "Interface"
 ["VMDetails.Label.IPAddress"]
-other = "IP Address"
+other = "IP address"
 ["VMDetails.Label.MACAddress"]
-other = "MAC Address"
+other = "MAC address"
 ["VMDetails.Label.Bridge"]
 other = "Bridge"
 ["VMDetails.NoDescription"]
 other = "No description available"
 ["VMDetails.ModifyResources"]
-other = "Modify Resources"
+other = "Modify resources"
 ["VMDetails.EditResourcesTitle"]
-other = "Edit VM Resources"
+other = "Edit VM resources"
 ["VMDetails.ResourcesWarning"]
 other = "Warning:"
 ["VMDetails.ResourcesWarningText"]
 other = "Changing resources on a running VM may cause performance issues or require a restart. It is recommended to stop the VM before making changes."
 ["VMDetails.SaveResources"]
-other = "Save Resources"
+other = "Save resources"
 ["VMDetails.ResourcesDisabledTitle"]
-other = "Cannot Modify Running VM"
+other = "Cannot modify running VM"
 ["VMDetails.ResourcesDisabledMessage"]
 other = "The VM is currently running. Please stop it before modifying resources to avoid performance issues or data loss."
 ["VMDetails.NoDisks"]

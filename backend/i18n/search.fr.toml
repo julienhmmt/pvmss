@@ -6,7 +6,7 @@ other = "Actions"
 ["Search.CPUs"]
 other = "CPU (Sockets/Cœurs)"
 ["Search.CardView"]
-other = "Vue Cartes"
+other = "Vue cartes"
 ["Search.Clear"]
 other = "Effacer"
 ["Search.CreateVM"]

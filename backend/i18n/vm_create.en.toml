@@ -1,32 +1,32 @@
 # VM Create
 ["VM.Create.Configuration"]
-other = "VM Configuration"
+other = "VM configuration"
 ["VM.Bridge.Description"]
 other = "Bridge for the virtual machine network"
 
 # VM Creation - Form Sections
 ["VM.Create.AddTags"]
-other = "Add Tags"
+other = "Add tags"
 ["VM.Create.AvailableTags"]
-other = "Available Tags"
+other = "Available tags"
 ["VM.Create.BasicInfo"]
-other = "Basic Information"
+other = "Basic information"
 ["VM.Create.CreateButton"]
 other = "Create VM"
 ["VM.Create.CPUCores"]
-other = "Cores per Socket"
+other = "Cores per socket"
 ["VM.Create.CPUSockets"]
-other = "CPU Sockets"
+other = "CPU sockets"
 ["VM.Create.Description"]
 other = "Description"
 ["VM.Create.DescriptionPlaceholder"]
 other = "Enter a description (markdown supported)"
 ["VM.Create.DiskSize"]
-other = "Disk Size (GB)"
+other = "Disk size (GB)"
 ["VM.Create.DiskSizeHelp"]
 other = "Disk size in gigabytes"
 ["VM.Create.DiskBusType"]
-other = "Disk Bus Type"
+other = "Disk bus type"
 ["VM.Create.DiskBusMax"]
 other = "max"
 ["VM.Create.DiskBusTypeHelp"]
@@ -44,25 +44,25 @@ other = "Optional"
 ["VM.Create.DiskOptionalPlaceholder"]
 other = "Leave empty if not needed"
 ["VM.Create.Header"]
-other = "Create a Virtual Machine"
+other = "Create a virtual machine"
 ["VM.Create.ISO"]
-other = "ISO Image"
+other = "ISO image"
 ["VM.Create.ISOImageHelp"]
 other = "Select an ISO image to install the operating system"
 ["VM.Create.MediaNetwork"]
-other = "ISO Image & Network"
+other = "ISO image & network"
 ["VM.Create.Memory"]
 other = "Memory (MB)"
 ["VM.Create.MemoryHelp"]
 other = "Amount of memory in megabytes (512MB minimum)"
 ["VM.Create.Network"]
-other = "Network Configuration"
+other = "Network configuration"
 ["VM.Create.NetworkBridge"]
-other = "Network Bridge"
+other = "Network bridge"
 ["VM.Create.NetworkBridgeHelp"]
 other = "Select a network bridge to connect the VM"
 ["VM.Create.NetworkModel"]
-other = "Network Card Model"
+other = "Network card model"
 ["VM.Create.NetworkModelHelp"]
 other = "Choose the virtual network card that best fits your operating system."
 ["VM.Create.NetworkModelDesc.Virtio"]
@@ -72,7 +72,7 @@ other = "Universal compatibility. Works out-of-the-box on most systems without a
 ["VM.Create.NetworkModelDesc.E1000E"]
 other = "Updated Intel adapter with broad compatibility and native driver support."
 ["VM.Create.NetworkModelDesc.RTL8139"]
-other = "Legacy adapter for very old operating systems (e.g. Windows XP/2000). Limited to 100 Mbps."
+other = "Legacy adapter for very old operating systems (e.g. Windows XP/2000)."
 ["VM.Create.NetworkModelDesc.VMXNet3"]
 other = "High-performance adapter for VMs migrated from VMware vSphere environments. Requires VMware tools."
 ["VM.Create.NetworkModel.Virtio"]
@@ -120,7 +120,7 @@ other = "ISO Image"
 ["VM.Create.TagsHelp"]
 other = "Select one or more tags (PVMSS is required)"
 ["VM.Create.TagsPlaceholder"]
-other = "Press Enter to add a tag"
+other = "Press enter to add a tag"
 ["VM.Create.BootOptions"]
 other = "Boot options"
 ["VM.Create.EnableEFI"]
@@ -132,9 +132,9 @@ other = "Enable TPM (Trusted Platform Module)"
 ["VM.Create.TPMHelp"]
 other = "Enable Trusted Platform Module v2.0 for enhanced security features. Required for Windows 11, BitLocker encryption, and secure boot. A 4 MiB TPM state disk will be created."
 ["VM.Create.Title"]
-other = "Create a New Virtual Machine"
+other = "Create a new virtual machine"
 ["VM.Create.VMName"]
-other = "VM Name"
+other = "VM name"
 ["VM.Create.VMNameHelp"]
 other = "A unique name for your virtual machine"
 ["VM.Create.VMNamePlaceholder"]
