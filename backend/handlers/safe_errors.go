@@ -13,7 +13,7 @@ func RespondWithSafeError(w http.ResponseWriter, r *http.Request, statusCode int
 	if internalErr != nil {
 		logger.Get().Error().Err(internalErr).Str("i18n_key", i18nKey).Str("path", r.URL.Path).Msg("Internal error occurred")
 	}
-	
+
 	// Return safe, localized error message to client
 	localizer := i18n.GetLocalizerFromRequest(r)
 	errorMessage := i18n.Localize(localizer, i18nKey)
