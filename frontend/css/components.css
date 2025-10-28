@@ -203,6 +203,12 @@ fieldset[disabled]::after {
   color: inherit;
 }
 
+.notification-footnote {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: rgb(71 85 105 / 90%);
+}
+
 /* Notification footnote before breadcrumb hover to satisfy specificity */
 .notification-footnote a {
   color: currentcolor;
@@ -251,19 +257,19 @@ fieldset[disabled]::after {
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 50%), transparent);
 }
 
-.card-header.brand-header .card-header-title,
-.card-header.brand-header .card-header-icon,
-.card-header.brand-header .icon {
-  color: #fff;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 20%);
-}
-
 /* Login/Admin header titles placed before brand-header variant to satisfy specificity */
 .login-card .card-header-title,
 .admin-danger-card .card-header-title {
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 0;
+}
+
+.card-header.brand-header .card-header-title,
+.card-header.brand-header .card-header-icon,
+.card-header.brand-header .icon {
+  color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 20%);
 }
 
 .navbar-brand .navbar-item {
@@ -1364,24 +1370,9 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   opacity: 0.85;
 }
 
-.notification-footnote {
-  margin-top: 0.75rem;
-  font-size: 0.8rem;
-  color: rgb(71 85 105 / 90%);
-}
-
-.notification-footnote a {
-  color: currentcolor;
-  text-decoration: underline;
-}
-
 .notification[data-plain="true"] .notification-footnote {
   color: inherit;
   opacity: 0.85;
-}
-
-.notification-footnote:empty {
-  display: none;
 }
 
 .notification-html > * + * {
@@ -1537,7 +1528,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 .stat-card.cpu {
-  --stat-color: #ff8800;
+  --stat-color: #f80;
   --stat-bg: #fff5f5;
 }
 
