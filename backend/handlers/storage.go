@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -189,7 +190,8 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	storages, enabledMap, chosenNode, err := FetchRenderableStorages(client, node, settings.EnabledStorages, refresh)
 	if err != nil {
 		log.Error().Err(err).Msg("Error retrieving storages")
-		http.Error(w, "Error retrieving storages: "+err.Error(), http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
