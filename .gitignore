@@ -6,4 +6,3 @@
 Makefile
 docker-compose.dev.yml
 settings.dev.json
-tests/
