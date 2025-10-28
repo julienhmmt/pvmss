@@ -321,13 +321,14 @@ func (c *Client) setAuthHeaders(req *http.Request) {
 // newHTTPClient creates a new http.Client with optimized transport settings.
 func newHTTPClient(insecureSkipVerify bool, timeout time.Duration) *http.Client {
 	tr := &http.Transport{
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+		// Used only for development/testing with self-signed certificates
+		ExpectContinueTimeout: constants.HTTPExpectContinueTimeout,
+		IdleConnTimeout:       constants.HTTPIdleConnTimeout,
 		MaxIdleConns:          constants.HTTPMaxIdleConns,
 		MaxIdleConnsPerHost:   constants.HTTPMaxIdleConnsPerHost,
-		IdleConnTimeout:       constants.HTTPIdleConnTimeout,
-		TLSHandshakeTimeout:   constants.HTTPTLSHandshakeTimeout,
-		ExpectContinueTimeout: constants.HTTPExpectContinueTimeout,
 		ResponseHeaderTimeout: constants.HTTPResponseHeaderTimeout,
+		TLSClientConfig:       &tls.Config{InsecureSkipVerify: insecureSkipVerify}, // #nosec G402 - Controlled by PROXMOX_VERIFY_SSL; allowed for dev/test with self-signed certs
+		TLSHandshakeTimeout:   constants.HTTPTLSHandshakeTimeout,
 	}
 	return &http.Client{Transport: tr, Timeout: timeout}
 }
@@ -381,7 +382,8 @@ func NewRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerif
 
 	// Configure TLS
 	if insecureSkipVerify {
-		client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+		// Used only for development/testing with self-signed certificates
+		client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}) // #nosec G402 - Controlled by PROXMOX_VERIFY_SSL; allowed for dev/test
 	}
 
 	// Set authentication header for API token

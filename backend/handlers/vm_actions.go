@@ -10,7 +10,6 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"pvmss/i18n"
 	"pvmss/proxmox"
 )
 
@@ -29,6 +28,11 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	desc := r.FormValue("description")
+	// Sanitize description
+	{
+		s := NewInputSanitizer()
+		desc = s.RemoveScriptTags(s.SanitizeString(desc, 2000))
+	}
 	// If user is not authenticated, redirect to login with return + context to show a friendly notice
 	if !IsAuthenticated(r) {
 		returnTo := "/"
@@ -84,6 +88,18 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 
 	// Get selected tags (comes as array of selected checkbox values)
 	selectedTags := r.Form["tags"]
+	// Sanitize tags
+	if len(selectedTags) > 0 {
+		s := NewInputSanitizer()
+		cleaned := make([]string, 0, len(selectedTags))
+		for _, t := range selectedTags {
+			st := s.SanitizeString(strings.TrimSpace(t), 64)
+			if st != "" {
+				cleaned = append(cleaned, st)
+			}
+		}
+		selectedTags = cleaned
+	}
 	tagsStr := strings.Join(selectedTags, ";")
 
 	client := ctx.StateManager.GetProxmoxClient()
@@ -114,32 +130,28 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	action := r.FormValue("action")
 	if vmid == "" || node == "" || action == "" {
 		log.Warn().Str("vmid", vmid).Str("node", node).Str("action", action).Msg("missing required fields")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
+		RespondWithError(w, r, ErrBadRequest)
 		return
 	}
 
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
 		log.Error().Err(err).Str("vmid", vmid).Msg("invalid VM ID")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
+		RespondWithError(w, r, ErrBadRequest)
 		return
 	}
 
 	stateManager := getStateManager(r)
 	if stateManager == nil {
 		log.Error().Msg("state manager not available")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusInternalServerError)
+		RespondWithError(w, r, ErrInternalServer)
 		return
 	}
 
 	client := stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusInternalServerError)
+		RespondWithError(w, r, ErrProxmoxConnection)
 		return
 	}
 

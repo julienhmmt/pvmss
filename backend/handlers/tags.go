@@ -147,7 +147,7 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 	settings.Tags = append(settings.Tags, tagName)
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		RespondWithError(w, r, ErrInternalServer)
 		return
 	}
 
@@ -185,7 +185,7 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings after deletion")
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		RespondWithError(w, r, ErrInternalServer)
 		return
 	}
 

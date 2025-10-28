@@ -37,6 +37,37 @@ func WithFormValidation(handler httprouter.Handle) httprouter.Handle {
 			return
 		}
 
+		// Security audit: detect suspicious input patterns
+		if len(r.Form) > 0 {
+			patterns := []string{"<script", "script>", "union ", "select ", "drop ", "insert ", "update ", "delete "}
+			matches := make([]string, 0)
+			for key, vals := range r.Form {
+				for _, v := range vals {
+					lv := strings.ToLower(v)
+					for _, p := range patterns {
+						if strings.Contains(lv, p) {
+							matches = append(matches, key)
+							break
+						}
+					}
+				}
+			}
+			if len(matches) > 0 {
+				u := ""
+				if s := security.GetSession(r); s != nil {
+					if name, ok := s.Get(r.Context(), "username").(string); ok {
+						u = name
+					}
+				}
+				logger.Get().Warn().
+					Str("ip", r.RemoteAddr).
+					Str("path", r.URL.Path).
+					Str("username", u).
+					Strs("form_keys", matches).
+					Msg("Suspicious input patterns detected")
+			}
+		}
+
 		handler(w, r, ps)
 	}
 }
@@ -60,12 +91,24 @@ func WithCSRFValidation(handler httprouter.Handle) httprouter.Handle {
 		if session := security.GetSession(r); session != nil {
 			expectedToken, ok := session.Get(r.Context(), "csrf_token").(string)
 			if !ok || expectedToken == "" || token != expectedToken {
-				logger.Get().Warn().Str("path", r.URL.Path).Bool("token_present", token != "").Msg("CSRF validation failed")
+				u := ""
+				if name, ok := session.Get(r.Context(), "username").(string); ok {
+					u = name
+				}
+				logger.Get().Warn().
+					Str("ip", r.RemoteAddr).
+					Str("path", r.URL.Path).
+					Str("username", u).
+					Bool("token_present", token != "").
+					Msg("CSRF validation failed")
 				http.Error(w, "Invalid or missing CSRF token", http.StatusForbidden)
 				return
 			}
 		} else {
-			logger.Get().Error().Msg("Session not available for CSRF validation")
+			logger.Get().Error().
+				Str("ip", r.RemoteAddr).
+				Str("path", r.URL.Path).
+				Msg("Session not available for CSRF validation")
 			http.Error(w, "Session error", http.StatusInternalServerError)
 			return
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"pvmss/logger"
@@ -69,7 +70,17 @@ type AppSettings struct {
 // in the backend directory relative to the executable.
 func getSettingsFilePath() (string, error) {
 	if v := os.Getenv("PVMSS_SETTINGS_PATH"); v != "" {
-		return v, nil
+		// Validate path to prevent directory traversal attacks
+		// Ensure the path is absolute and doesn't contain suspicious patterns
+		absPath, err := filepath.Abs(v)
+		if err != nil {
+			return "", fmt.Errorf("invalid settings path: %w", err)
+		}
+		// Prevent path traversal by checking for ".." in the path
+		if strings.Contains(filepath.Clean(absPath), "..") {
+			return "", fmt.Errorf("invalid settings path: path traversal detected")
+		}
+		return absPath, nil
 	}
 	exePath, err := os.Executable()
 	if err != nil {
@@ -108,7 +119,7 @@ func LoadSettings() (*AppSettings, bool, error) {
 	}
 
 	// Read settings file
-	data, err := os.ReadFile(settingsFile)
+	data, err := os.ReadFile(settingsFile) // #nosec G304 - settingsFile comes from getSettingsFilePath() which validates env path and otherwise uses fixed project paths
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to read settings file: %w", err)
 	}

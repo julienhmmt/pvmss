@@ -553,6 +553,22 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 	// Validate at least the first network bridge is specified
 	firstBridge := r.FormValue("bridge_0")
 
+	// Sanitize inputs
+	sanitizer := NewInputSanitizer()
+	name = sanitizer.SanitizeString(name, 100)
+	description = sanitizer.RemoveScriptTags(sanitizer.SanitizeString(description, 1000))
+	poolName = sanitizer.SanitizeString(poolName, 100)
+	if len(selectedTags) > 0 {
+		sanitizedTags := make([]string, 0, len(selectedTags))
+		for _, t := range selectedTags {
+			st := sanitizer.SanitizeString(t, 64)
+			if st != "" { // skip empties after sanitize
+				sanitizedTags = append(sanitizedTags, st)
+			}
+		}
+		selectedTags = sanitizedTags
+	}
+
 	// Validate mandatory fields
 	validationErrors := validateRequiredFields(map[string]string{
 		"CPU cores":      coresStr,
@@ -721,7 +737,7 @@ func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ ht
 		// Validate aggregate node limits (sum of all pvmss VMs)
 		if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, sockets, cores, memoryMB); err != nil {
 			log.Warn().Err(err).Str("node", node).Msg("VM creation would exceed aggregate node limits")
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, "Invalid request", http.StatusBadRequest)
 			return
 		}
 	}
