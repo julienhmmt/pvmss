@@ -180,6 +180,11 @@
     outline-offset: 3px;
 }
 
+/* Define base select before :focus styles elsewhere */
+.select select {
+    cursor: pointer;
+}
+
 /* Input Enhancements */
 .input:focus,
 .textarea:focus,
@@ -221,12 +226,17 @@ input[type="number"] {
     font-size: 1rem;
 }
 
+.tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 /* Base column before inline variant */
 .column {
     overflow: visible !important;
 }
 
-/* Tag Selection */
 .form-inline-fields .column {
     display: flex;
     flex-direction: column;
@@ -237,13 +247,12 @@ input[type="number"] {
     overflow: visible !important;
 }
 
-.form-vertical .field+.field {
-    margin-top: 1.25rem;
-}
-
-/* Spacing rule before the specific form-vertical rule above */
 .field:not(:last-child) {
     margin-bottom: 1.25rem;
+}
+
+.form-vertical .field+.field {
+    margin-top: 1.25rem;
 }
 
 .form-vertical {
@@ -256,8 +265,7 @@ input[type="number"] {
 .columns,
 .section,
 .container,
-fieldset,
-.form-label {
+fieldset {
     overflow: visible !important;
 }
 
@@ -316,7 +324,6 @@ fieldset[disabled]::after {
 .card-header,
 .card-content,
 .columns,
-.column,
 .section,
 .container,
 fieldset,
