@@ -260,6 +260,7 @@ input[type="number"] {
 }
 
 /* Keep overflow visibles but avoid late duplicates that break specificity ordering */
+.card,
 .card-header,
 .card-content,
 .columns,
@@ -320,7 +321,6 @@ fieldset[disabled]::after {
 }
 
 /* Overflow Management for Tooltips */
-.card,
 .card-header,
 .card-content,
 .columns,
@@ -328,8 +328,7 @@ fieldset[disabled]::after {
 .container,
 fieldset,
 .form-vertical,
-.form-label,
-.field {
+.form-label {
     overflow: visible !important;
 }
 
