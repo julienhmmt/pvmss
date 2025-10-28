@@ -181,13 +181,13 @@ const (
 	SessionKeyCSRFToken = "csrf_token"
 
 	// SessionKeyPVEAuthCookie is the session key for Proxmox auth cookie
-	SessionKeyPVEAuthCookie = "pve_auth_cookie"
+	SessionKeyPVEAuthCookie = "pve_auth_cookie" // #nosec G101 - This is a session key name, not a credential
 
 	// SessionKeyPVECSRFToken is the session key for Proxmox CSRF token
-	SessionKeyPVECSRFToken = "pve_csrf_token"
+	SessionKeyPVECSRFToken = "pve_csrf_token" // #nosec G101 - This is a session key name, not a credential
 
 	// SessionKeyPVEUsername is the session key for Proxmox username
-	SessionKeyPVEUsername = "pve_username"
+	SessionKeyPVEUsername = "pve_username" // #nosec G101 - This is a session key name, not a credential
 
 	// SessionKeyPVETicketCreated is the session key for ticket creation timestamp
 	SessionKeyPVETicketCreated = "pve_ticket_created"

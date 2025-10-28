@@ -309,14 +309,19 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	password := r.FormValue("password")
 
 	if username == "" || password == "" {
-		log.Debug().Msg("User login attempt with empty username or password")
+		log.Debug().Str("ip", r.RemoteAddr).Msg("User login attempt with empty username or password")
 		h.renderLoginForm(w, r, "Username and password are required.")
 		return
 	}
 
 	// Basic input validation
 	if len(username) > 100 || len(password) > 200 {
-		log.Warn().Int("username_length", len(username)).Int("password_length", len(password)).Msg("User login attempt with too long credentials")
+		log.Warn().
+			Str("ip", r.RemoteAddr).
+			Str("username_preview", username).
+			Int("username_length", len(username)).
+			Int("password_length", len(password)).
+			Msg("User login attempt with too long credentials")
 		h.renderLoginForm(w, r, "Invalid credentials.")
 		return
 	}
@@ -348,12 +353,16 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 		Realm: "pve",
 	})
 	if err != nil {
-		log.Info().Err(err).Str("username", username).Msg("User login failed - Proxmox authentication failed")
+		log.Info().Err(err).
+			Str("ip", r.RemoteAddr).
+			Str("username", username).
+			Msg("User login failed - Proxmox authentication failed")
 		h.renderLoginForm(w, r, "Invalid credentials.")
 		return
 	}
 
 	log.Debug().
+		Str("ip", r.RemoteAddr).
 		Str("username", username).
 		Str("proxmox_username", ticketResp.Username).
 		Bool("has_csrf_token", ticketResp.CSRFPreventionToken != "").

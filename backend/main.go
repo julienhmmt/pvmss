@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"html"
 	"html/template"
 	"net/http"
 	"os"
@@ -33,6 +34,11 @@ func main() {
 
 	if err := godotenv.Load("../.env"); err != nil {
 		logger.Get().Warn().Msg("No .env file found, using environment variables")
+	}
+
+	// Validate required environment variables for security
+	if err := security.ValidateRequiredEnvVars(); err != nil {
+		logger.Get().Fatal().Err(err).Msg("Environment validation failed - check your configuration")
 	}
 
 	if err := initializeApp(stateManager); err != nil {
@@ -202,7 +208,8 @@ func initTemplates() (*template.Template, string, error) {
 	funcMap["T"] = func(messageID string, args ...interface{}) template.HTML {
 		localizer := i18n.GetLocalizer(i18n.DefaultLang)
 		localized := i18n.Localize(localizer, messageID)
-		return template.HTML(localized)
+		// Trusted i18n bundle; still escape to avoid gosec G203 and ensure safety
+		return template.HTML(html.EscapeString(localized)) // #nosec G203 -- trusted i18n key, escaped content; wrapper marks as HTML for templates
 	}
 
 	_, filename, _, ok := runtime.Caller(0)

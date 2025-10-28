@@ -100,11 +100,11 @@ func activeFor(path, base string) bool {
 // safeHTML marks a string as safe HTML to prevent auto-escaping
 // Use with caution - only for trusted content
 func safeHTML(s string) template.HTML {
-	return template.HTML(s)
+	return template.HTML(s) // #nosec G203 - Intended for trusted, pre-sanitized content only
 }
 
 // safeHTMLAttr marks a string as a safe HTML attribute
 // Use with caution - only for trusted content
 func safeHTMLAttr(s string) template.HTMLAttr {
-	return template.HTMLAttr(s)
+	return template.HTMLAttr(s) // #nosec G203 - Intended for trusted, pre-sanitized attribute content
 }

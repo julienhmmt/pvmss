@@ -27,6 +27,16 @@ func SetFrontendPath(path string) {
 	// This will be set during initialization in main.go
 }
 
+// maxBodySizeMiddleware limits the size of request bodies globally
+func maxBodySizeMiddleware(next http.Handler, maxSize int64) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // getFrontendPath returns the frontend path from the state manager
 func getFrontendPath(sm state.StateManager) string {
 	if sm == nil {
@@ -212,6 +222,8 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	appHandler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(appHandler)
 	appHandler = middleware.RateLimitMiddleware(rateLimiter)(appHandler)
 	appHandler = trailingSlashRedirectMiddleware(appHandler)
+	// Limit request body size globally for the application to mitigate DoS via large uploads
+	appHandler = maxBodySizeMiddleware(appHandler, int64(constants.MaxFormSize))
 	appHandler = recoverMiddleware(appHandler) // Innermost recovery for the app
 
 	// Route requests to the appropriate middleware chain.
