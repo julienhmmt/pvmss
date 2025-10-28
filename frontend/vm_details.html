@@ -111,98 +111,161 @@
                 <div class="columns is-mobile is-multiline is-variable is-2">
                     <!-- CPU Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div class="stat-card cpu">
-                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                            <!-- Header -->
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
-                                    <span class="icon has-text-primary mr-2">
+                                    <span class="icon has-text-primary mr-3" style="font-size: 1.25rem;">
                                         <i class="fas fa-microchip"></i>
                                     </span>
-                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">CPU</span>
+                                    <div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">CPU</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Processor usage</div>
+                                    </div>
                                 </div>
-                                <span class="tag is-light is-small" style="font-size: 0.65rem; opacity: 0.7;">{{.VM.CPUs}} vCPU{{if gt .VM.CPUs 1}}s{{end}}</span>
+                                <div class="has-text-right">
+                                    <div class="has-text-primary is-size-5" style="font-weight: 600;">
+                                        {{if eq .VM.Status "running"}}{{printf "%.0f" (mul .VM.CPU 100)}}%{{else}}--{{end}}
+                                    </div>
+                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{.VM.CPUs}} vCPU{{if gt .VM.CPUs 1}}s{{end}}</div>
+                                </div>
                             </div>
-                            <p class="title is-5 mb-1 has-text-primary">
-                                {{if eq .VM.Status "running"}}{{printf "%.0f" (mul .VM.CPU 100)}}%{{else}}<span class="has-text-grey-light">--</span>{{end}}
-                            </p>
-                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">
+                            
+                            <!-- CPU Details -->
+                            <div style="margin-top: 1.5rem;">
+                                <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                    <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                    {{.VM.CPUs}} core{{if gt .VM.CPUs 1}}s{{end}}
+                                    {{if eq .VM.Status "running"}}
+                                    <span class="tag" style="background: rgba(59,130,246,0.08); color: #2563eb; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
+                                        Active
+                                    </span>
+                                    {{end}}
+                                </div>
                                 {{if eq .VM.Status "running"}}
-                                <span class="icon-text">
-                                    <span class="icon is-small"><i class="fas fa-tachometer-alt"></i></span>
-                                    <span>{{.VM.CPUs}} core{{if gt .VM.CPUs 1}}s{{end}} actif{{if gt .VM.CPUs 1}}s{{end}}</span>
-                                </span>
-                                {{else}}
-                                <span>{{.VM.CPUs}} core{{if gt .VM.CPUs 1}}s{{end}}</span>
+                                <div style="margin-top: 0.75rem;">
+                                    <progress class="progress is-small is-primary" value="{{mul .VM.CPU 100}}" max="100" style="height: 6px; border-radius: 3px;"></progress>
+                                </div>
                                 {{end}}
-                            </p>
-                            {{if eq .VM.Status "running"}}
-                            <progress class="progress is-small is-primary mt-2" value="{{mul .VM.CPU 100}}" max="100" style="height: 4px;"></progress>
-                            {{end}}
+                            </div>
                         </div>
                     </div>
 
                     <!-- RAM Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div class="stat-card memory">
-                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                            <!-- Header -->
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
-                                    <span class="icon has-text-success mr-2">
+                                    <span class="icon has-text-success mr-3" style="font-size: 1.25rem;">
                                         <i class="fas fa-memory"></i>
                                     </span>
-                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">RAM</span>
+                                    <div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">RAM</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Memory usage</div>
+                                    </div>
+                                </div>
+                                <div class="has-text-right">
+                                    <div class="has-text-success is-size-5" style="font-weight: 600;">
+                                        {{if eq .VM.Status "running"}}{{.FormattedMemGB}}{{else}}--{{end}}
+                                    </div>
+                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">
+                                        {{if eq .VM.Status "running"}}{{printf "%.0f" (mul (div (float64 .VM.Mem) (float64 .VM.MaxMem)) 100)}}%{{else}}Total{{end}}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- RAM Details -->
+                            <div style="margin-top: 1.5rem;">
+                                <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                    <i class="fas fa-memory" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                    {{if eq .VM.Status "running"}}{{.FormattedMemGB}} / {{.FormattedMaxMemGB}} used{{else}}{{.FormattedMaxMemGB}} total{{end}}
+                                    {{if eq .VM.Status "running"}}
+                                    <span class="tag" style="background: rgba(34,197,94,0.08); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
+                                        In use
+                                    </span>
+                                    {{end}}
                                 </div>
                                 {{if eq .VM.Status "running"}}
-                                <span class="tag is-light is-small" style="font-size: 0.65rem; opacity: 0.7;">{{printf "%.0f" (mul (div (float64 .VM.Mem) (float64 .VM.MaxMem)) 100)}}%</span>
+                                <div style="margin-top: 0.75rem;">
+                                    <progress class="progress is-small is-success" value="{{.VM.Mem}}" max="{{.VM.MaxMem}}" style="height: 6px; border-radius: 3px;"></progress>
+                                </div>
                                 {{end}}
                             </div>
-                            <p class="title is-5 mb-1 has-text-success">
-                                {{if eq .VM.Status "running"}}{{.FormattedMemGB}}{{else}}<span class="has-text-grey-light">--</span>{{end}}
-                            </p>
-                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">
-                                {{if eq .VM.Status "running"}}
-                                <span class="icon-text">
-                                    <span class="icon is-small"><i class="fas fa-memory"></i></span>
-                                    <span>/ {{.FormattedMaxMemGB}} alloué</span>
-                                </span>
-                                {{else}}
-                                <span>{{.FormattedMaxMemGB}} total</span>
-                                {{end}}
-                            </p>
-                            {{if eq .VM.Status "running"}}
-                            <progress class="progress is-success is-small mt-2" value="{{.VM.Mem}}" max="{{.VM.MaxMem}}" style="height: 4px;"></progress>
-                            {{end}}
                         </div>
                     </div>
 
                     <!-- Disk Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div style="background: linear-gradient(135deg, #eff6ff 0%, #fff 100%); border-left: 3px solid #3298dc; border-radius: 8px; padding: 1rem;">
-                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%;">
+                            <!-- Header -->
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
-                                    <span class="icon has-text-info mr-2">
+                                    <span class="icon has-text-info mr-3" style="font-size: 1.25rem;">
                                         <i class="fas fa-hdd"></i>
                                     </span>
-                                    <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Disks</span>
+                                    <div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">Disks</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Storage volumes</div>
+                                    </div>
                                 </div>
+                                {{$diskCount := len .Disks}}
+                                {{if gt $diskCount 0}}
+                                <div class="has-text-right">
+                                    <div class="has-text-info is-size-5" style="font-weight: 600;">{{$diskCount}}</div>
+                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">Total: {{.DisksTotalLabel}}</div>
+                                </div>
+                                {{end}}
                             </div>
-                            {{$diskCount := len .Disks}}
+                            
                             {{if gt $diskCount 0}}
-                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-2">
-                                <div class="has-text-info has-text-weight-semibold is-size-6">{{$diskCount}} disk{{if ne $diskCount 1}}s{{end}}</div>
-                                <div class="has-text-grey is-size-7">Total: {{.DisksTotalLabel}}</div>
-                            </div>
-                            <div class="is-flex is-flex-wrap-wrap" style="gap: 0.5rem;">
-                                {{range $d := .Disks}}
-                                <div class="tag is-light" style="border: 1px solid rgba(50,152,220,0.2);">
-                                    <span class="icon is-small mr-1"><i class="fas fa-hdd"></i></span>
-                                    <span class="has-text-info has-text-weight-semibold">{{$d.Index}}</span>
-                                    {{if $d.Bus}}<span class="mx-1">·</span><span class="is-size-7" style="display:inline-flex; align-items:center; gap:6px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background: {{$d.Color}};"></span><span>{{$d.Bus}}</span></span>{{end}}
-                                    {{if $d.Storage}}<span class="mx-1">·</span><span>{{$d.Storage}}</span>{{end}}
-                                    {{if not $d.Storage}}<span class="mx-1">·</span><span>{{$d.Raw}}</span>{{end}}
+                            <!-- Disks List -->
+                            <div style="margin-top: 1.5rem;">
+                                {{range $i, $d := .Disks}}
+                                <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="is-flex is-align-items-start is-justify-content-between">
+                                        <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
+                                            <span class="has-text-info" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
+                                                <i class="fas fa-hdd" style="color: #3298dc;"></i>
+                                                {{$d.Index}}
+                                            </span>
+                                            <div class="is-flex" style="gap: 0.5rem; flex-wrap: wrap;">
+                                                {{if $d.Bus}}
+                                                <span class="tag" style="background: rgba(50,152,220,0.08); color: #2b6cb0; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; display: inline-flex; align-items: center; gap: 4px;">
+                                                    <span style="width: 6px; height: 6px; border-radius: 50%; background: {{$d.Color}}; display: inline-block;"></span>
+                                                    {{$d.Bus}}
+                                                </span>
+                                                {{end}}
+                                                {{if $d.Storage}}
+                                                <span class="tag" style="background: rgba(102,126,234,0.08); color: #4c51bf; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    {{$d.Storage}}
+                                                </span>
+                                                {{else}}
+                                                <span class="tag" style="background: rgba(245,158,11,0.08); color: #92400e; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    {{$d.Raw}}
+                                                </span>
+                                                {{end}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{if gt $d.SizeGB 0}}
+                                    <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500; margin-top: 0.75rem;">
+                                        <i class="fas fa-database" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                        {{$d.SizeLabel}}
+                                    </div>
+                                    {{end}}
                                 </div>
                                 {{end}}
                             </div>
                             {{else}}
-                            <p class="is-size-7 has-text-grey-light" style="opacity: 0.8;">{{T "VM.Details.NoDisks"}}</p>
+                            <!-- Empty State -->
+                            <div style="text-align: center; padding: 2rem 0;">
+                                <span class="icon has-text-grey-light" style="font-size: 2.5rem;">
+                                    <i class="fas fa-hdd"></i>
+                                </span>
+                                <p class="has-text-grey is-size-6" style="margin-top: 1rem;">No disks configured</p>
+                                <p class="has-text-grey-light is-size-7" style="margin-top: 0.5rem;">Add storage volumes to this VM</p>
+                            </div>
                             {{end}}
                         </div>
                     </div>
@@ -211,118 +274,135 @@
                     {{if .NetworkInterfaces}}
                     {{$ifaceCount := len .NetworkInterfaces}}
                     <div class="column {{if eq $ifaceCount 1}}is-one-third-tablet is-half-mobile{{else}}is-full-tablet{{end}}">
-                        <div style="background: linear-gradient(135deg, #faf5ff 0%, #fff 100%); border-left: 3px solid #9b59b6; border-radius: 8px; padding: 1rem;">
-                            <div class="is-flex is-align-items-center mb-2">
-                                <span class="icon has-text-purple mr-2">
-                                    <i class="fas fa-network-wired"></i>
-                                </span>
-                                <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Network</span>
+                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                            <!-- Header -->
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
+                                <div class="is-flex is-align-items-center">
+                                    <span class="icon has-text-purple mr-3" style="font-size: 1.25rem;">
+                                        <i class="fas fa-network-wired"></i>
+                                    </span>
+                                    <div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">Network</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Network interfaces</div>
+                                    </div>
+                                </div>
+                                <div class="has-text-right">
+                                    <div class="has-text-purple is-size-5" style="font-weight: 600;">{{$ifaceCount}}</div>
+                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">Interface{{if ne $ifaceCount 1}}s{{end}}</div>
+                                </div>
                             </div>
-                            {{if eq $ifaceCount 1}}
-                            {{range $iface := .NetworkInterfaces}}
-                            <div class="mb-2">
-                                <span class="tag is-info is-light mb-2">{{$iface.Index}}</span>
-                                {{if $iface.LinkDown}}
-                                <span class="tag is-warning is-small ml-1"><i class="fas fa-link-slash"></i></span>
-                                {{end}}
-                            </div>
-                            {{if $iface.IPAddresses}}
-                            {{range $ip := $iface.IPAddresses}}
-                            <p class="is-size-7 has-text-grey-dark mb-1">
-                                <span class="icon is-small has-text-success"><i class="fas fa-circle" style="font-size: 0.4rem;"></i></span>
-                                <span>{{$ip}}</span>
-                            </p>
-                            {{end}}
-                            {{end}}
-                            {{if $iface.Bridge}}
-                            <p class="is-size-7 has-text-grey mt-2">
-                                <span class="icon-text">
-                                    <span class="icon is-small"><i class="fas fa-project-diagram"></i></span>
-                                    <span>{{$iface.Bridge}}</span>
-                                </span>
-                            </p>
-                            {{end}}
-                            {{if $iface.ModelLabel}}
-                            <p class="is-size-7 has-text-grey mt-1">
-                                <span class="icon-text">
-                                    <span class="icon is-small"><i class="fas fa-microchip"></i></span>
-                                    {{if $iface.ModelTranslationSuffix}}
-                                    <span title="{{T (printf "VM.Create.NetworkModelDesc.%s" $iface.ModelTranslationSuffix)}}">{{$iface.ModelLabel}}</span>
-                                    {{else}}
-                                    <span>{{$iface.ModelLabel}}</span>
-                                    {{end}}
-                                </span>
-                            </p>
-                            {{end}}
-                            {{end}}
-                            {{else}}
-                            <div class="is-flex is-flex-wrap-wrap" style="gap: 0.75rem;">
-                                {{range $iface := .NetworkInterfaces}}
-                                <div class="box" style="background: white; padding: 0.75rem; margin-bottom: 0; flex: 1; min-width: 200px;">
-                                    <div class="is-flex is-justify-content-space-between is-align-items-start mb-2">
-                                        <span class="tag is-info is-light">{{$iface.Index}}</span>
-                                        {{if $iface.LinkDown}}
-                                        <span class="tag is-warning is-small"><i class="fas fa-link-slash"></i></span>
-                                        {{end}}
+                            <!-- Network Interfaces List -->
+                            <div style="margin-top: 1.5rem;">
+                                {{range $i, $iface := .NetworkInterfaces}}
+                                <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq $ifaceCount (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="is-flex is-align-items-start is-justify-content-between">
+                                        <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
+                                            <span class="has-text-purple" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
+                                                <i class="fas fa-network-wired" style="color: #9333ea;"></i>
+                                                {{$iface.Index}}
+                                            </span>
+                                            <div class="is-flex" style="gap: 0.5rem; flex-wrap: wrap;">
+                                                {{if $iface.Bridge}}
+                                                <span class="tag" style="background: rgba(147,51,234,0.08); color: #7c3aed; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    {{$iface.Bridge}}
+                                                </span>
+                                                {{end}}
+                                                {{if $iface.ModelLabel}}
+                                                <span class="tag" style="background: rgba(99,102,241,0.08); color: #6366f1; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    {{$iface.ModelLabel}}
+                                                </span>
+                                                {{end}}
+                                                {{if $iface.LinkDown}}
+                                                <span class="tag" style="background: rgba(245,158,11,0.08); color: #d97706; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    <i class="fas fa-link-slash" style="font-size: 0.7rem;"></i> Down
+                                                </span>
+                                                {{end}}
+                                            </div>
+                                        </div>
                                     </div>
                                     {{if $iface.IPAddresses}}
-                                    <div class="mb-2">
-                                        {{range $ip := $iface.IPAddresses}}
-                                        <p class="is-size-7 has-text-grey-dark mb-1">
-                                            <span class="icon is-small has-text-success"><i class="fas fa-circle" style="font-size: 0.4rem;"></i></span>
-                                            <span>{{$ip}}</span>
-                                        </p>
+                                    <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500; margin-top: 0.75rem;">
+                                        <i class="fas fa-ethernet" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                        {{range $j, $ip := $iface.IPAddresses}}
+                                            {{if gt $j 0}}, {{end}}{{$ip}}
                                         {{end}}
                                     </div>
                                     {{end}}
-                                    <div class="is-size-7 has-text-grey">
-                                        {{if $iface.Bridge}}
-                                        <span class="icon-text">
-                                            <span class="icon is-small"><i class="fas fa-project-diagram"></i></span>
-                                            <span>{{$iface.Bridge}}</span>
-                                        </span>
-                                        {{end}}
-                                        {{if $iface.ModelLabel}}
-                                        <div class="mt-1">
-                                            <span class="icon-text">
-                                                <span class="icon is-small"><i class="fas fa-microchip"></i></span>
-                                                {{if $iface.ModelTranslationSuffix}}
-                                                <span title="{{T (printf "VM.Create.NetworkModelDesc.%s" $iface.ModelTranslationSuffix)}}">{{$iface.ModelLabel}}</span>
-                                                {{else}}
-                                                <span>{{$iface.ModelLabel}}</span>
-                                                {{end}}
-                                            </span>
-                                        </div>
-                                        {{end}}
-                                    </div>
                                 </div>
                                 {{end}}
                             </div>
-                            {{end}}
-                        </div>
+                                                    </div>
                     </div>
                     {{end}}
 
                     <!-- Firmware & Security (EFI / TPM) -->
                     <div class="column is-full-tablet is-full-mobile">
-                        <div style="background: linear-gradient(135deg, #f7f7f7 0%, #fff 100%); border-left: 3px solid #7a7a7a; border-radius: 8px; padding: 1rem;">
-                            <div class="is-flex is-align-items-center mb-2">
-                                <span class="icon has-text-grey mr-2"><i class="fas fa-shield-alt"></i></span>
-                                <span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">Firmware & Security</span>
+                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                            <!-- Header -->
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
+                                <div class="is-flex is-align-items-center">
+                                    <span class="icon has-text-grey mr-3" style="font-size: 1.25rem;">
+                                        <i class="fas fa-shield-alt"></i>
+                                    </span>
+                                    <div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">Firmware & Security</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Boot & security features</div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="tags are-small" style="gap: 0.35rem;">
-                                {{if .EFIEnabled}}
-                                <span class="tag is-success is-light"><span class="icon is-small mr-1"><i class="fas fa-check"></i></span>EFI</span>
-                                {{if .EFIStorage}}<span class="tag is-light"><span class="icon is-small mr-1"><i class="fas fa-database"></i></span>{{.EFIStorage}}</span>{{end}}
-                                {{else}}
-                                <span class="tag is-light">EFI: Off</span>
-                                {{end}}
+                            
+                            <!-- Security Features -->
+                            <div style="margin-top: 1.5rem;">
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                                    {{if .EFIEnabled}}
+                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                        <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                            <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
+                                            EFI Boot
+                                            <span class="tag" style="background: rgba(34,197,94,0.08); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
+                                                Enabled
+                                            </span>
+                                        </div>
+                                        {{if .EFIStorage}}
+                                        <div class="has-text-grey" style="font-size: 0.85rem; margin-top: 0.5rem;">
+                                            Storage: {{.EFIStorage}}
+                                        </div>
+                                        {{end}}
+                                    </div>
+                                    {{else}}
+                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                        <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                            <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                            EFI Boot
+                                            <span class="tag" style="background: rgba(156,163,175,0.08); color: #6b7280; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
+                                                Disabled
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {{end}}
 
-                                {{if .TPMEnabled}}
-                                <span class="tag is-success is-light"><span class="icon is-small mr-1"><i class="fas fa-check"></i></span>TPM</span>
-                                {{else}}
-                                <span class="tag is-light">TPM: Off</span>
-                                {{end}}
+                                    {{if .TPMEnabled}}
+                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                        <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                            <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
+                                            TPM v2.0
+                                            <span class="tag" style="background: rgba(34,197,94,0.08); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
+                                                Enabled
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {{else}}
+                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                        <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                            <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                            TPM v2.0
+                                            <span class="tag" style="background: rgba(156,163,175,0.08); color: #6b7280; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
+                                                Disabled
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {{end}}
+                                </div>
                             </div>
                         </div>
                     </div>
