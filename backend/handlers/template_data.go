@@ -255,7 +255,11 @@ func NewMessageHelper() *MessageHelper {
 
 // BuildSuccessURL builds a URL with success parameters
 func (m *MessageHelper) BuildSuccessURL(basePath string, message string, params map[string]string) string {
-	u, _ := url.Parse(basePath)
+	u, err := url.Parse(basePath)
+	if err != nil {
+		// Return basePath as-is if parsing fails
+		return basePath
+	}
 	q := u.Query()
 
 	q.Set("success", "1")
@@ -273,7 +277,11 @@ func (m *MessageHelper) BuildSuccessURL(basePath string, message string, params 
 
 // BuildErrorURL builds a URL with error parameters
 func (m *MessageHelper) BuildErrorURL(basePath string, message string) string {
-	u, _ := url.Parse(basePath)
+	u, err := url.Parse(basePath)
+	if err != nil {
+		// Return basePath as-is if parsing fails
+		return basePath
+	}
 	q := u.Query()
 
 	q.Set("error", "1")
@@ -287,7 +295,11 @@ func (m *MessageHelper) BuildErrorURL(basePath string, message string) string {
 
 // BuildWarningURL builds a URL with warning parameters
 func (m *MessageHelper) BuildWarningURL(basePath string, message string) string {
-	u, _ := url.Parse(basePath)
+	u, err := url.Parse(basePath)
+	if err != nil {
+		// Return basePath as-is if parsing fails
+		return basePath
+	}
 	q := u.Query()
 
 	q.Set("warning", "1")
