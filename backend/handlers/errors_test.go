@@ -54,15 +54,19 @@ func TestErrorHelper(t *testing.T) {
 
 	if helper == nil {
 		t.Fatal("Expected ErrorHelper to be created")
+		return
 	}
 	if helper.Writer == nil {
 		t.Error("ErrorHelper should have Writer set")
+		return
 	}
 	if helper.Request == nil {
 		t.Error("ErrorHelper should have Request set")
+		return
 	}
 	if helper.Localizer == nil {
 		t.Error("ErrorHelper should have Localizer set")
+		return
 	}
 }
 
