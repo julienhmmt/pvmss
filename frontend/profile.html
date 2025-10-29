@@ -20,7 +20,7 @@
             <div class="level-right">
                 <div class="level-item">
                     <div class="buttons">
-                        <a href="/vm/create" class="button is-primary has-text-white">
+                        <a href="/vm/create" class="button is-primary">
                             <span class="icon"><i class="fas fa-plus-square"></i></span>
                             <span>{{T "Profile.CreateVM"}}</span>
                         </a>
@@ -189,7 +189,7 @@
                                 <td class="has-text-centered is-vcentered">
                                     <div class="buttons is-centered mb-0">
                                         <a href="{{printf "/vm/details/%d" .VMID}}" 
-                                           class="button is-small is-primary has-text-white"
+                                           class="button is-small is-primary"
                                            title="{{T "Profile.ViewDetails"}}">
                                             <span class="icon">
                                                 <i class="fas fa-eye"></i>
@@ -321,7 +321,7 @@
                                     </a>
                                 </div>
                                 <div class="control">
-                                    <button type="submit" class="button is-small is-primary has-text-white">
+                                    <button type="submit" class="button is-small is-primary">
                                         <span class="icon is-small"><i class="fas fa-check"></i></span>
                                         <span>{{T "Profile.UpdatePassword"}}</span>
                                     </button>
@@ -345,7 +345,7 @@
                     </div>
                     <div class="level-right">
                         <div class="level-item">
-                            <a href="/profile?show_password_form=1" class="button is-primary has-text-white">
+                            <a href="/profile?show_password_form=1" class="button is-primary">
                                 <span class="icon"><i class="fas fa-edit"></i></span>
                                 <span>{{T "Profile.ChangePasswordButton"}}</span>
                             </a>

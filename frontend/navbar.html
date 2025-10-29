@@ -77,7 +77,7 @@
                     {{if .IsAuthenticated}}
                         <div class="navbar-user-menu">
                             <input type="checkbox" id="user-menu-toggle" class="user-menu-toggle" hidden>
-                            <label for="user-menu-toggle" class="button is-primary has-text-white navbar-user-toggle" title="User menu">
+                            <label for="user-menu-toggle" class="button is-primary navbar-user-toggle" title="User menu">
                                 <span class="icon"><i class="fas fa-user-circle"></i></span>
                                 <span class="navbar-username">{{.Username}}</span>
                                 <span class="icon"><i class="fas fa-chevron-down"></i></span>
@@ -101,7 +101,7 @@
                             </div>
                         </div>
                     {{else}}
-                        <a class="button is-primary has-text-white navbar-login-btn" href="/login" title="{{T "Navbar.Login"}}">
+                        <a class="button is-primary navbar-login-btn" href="/login" title="{{T "Navbar.Login"}}">
                             <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
                             <span class="navbar-login-text">{{T "Navbar.Login"}}</span>
                         </a>
@@ -176,7 +176,7 @@
             {{if .IsAuthenticated}}
                 <div class="navbar-user-menu">
                     <input type="checkbox" id="user-menu-toggle-mobile" class="user-menu-toggle" hidden>
-                    <label for="user-menu-toggle-mobile" class="button is-primary has-text-white navbar-user-toggle" title="User menu">
+                    <label for="user-menu-toggle-mobile" class="button is-primary navbar-user-toggle" title="User menu">
                         <span class="icon"><i class="fas fa-user-circle"></i></span>
                         <span class="navbar-username">{{.Username}}</span>
                         <span class="icon"><i class="fas fa-chevron-down"></i></span>
@@ -200,7 +200,7 @@
                     </div>
                 </div>
             {{else}}
-                <a class="button is-primary has-text-white navbar-login-btn" href="/login" title="{{T "Navbar.Login"}}">
+                <a class="button is-primary navbar-login-btn" href="/login" title="{{T "Navbar.Login"}}">
                     <span class="icon"><i class="fas fa-sign-in-alt"></i></span>
                     <span class="navbar-login-text">{{T "Navbar.Login"}}</span>
                 </a>
