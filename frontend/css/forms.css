@@ -185,7 +185,7 @@
     cursor: pointer;
 }
 
-.select:not(.is-multiple):not(.is-loading)::after {
+.select:not(.is-multiple, .is-loading)::after {
     border-color: var(--primary);
 }
 
