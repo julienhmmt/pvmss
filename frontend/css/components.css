@@ -1194,7 +1194,8 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   overflow: hidden;
 
   --notification-dismiss-duration: 200ms;
-  --notification-accent-color: #2563eb;
+  --notification-accent-color: var(--info);
+  --notification-accent-color-fade: rgba(255 136 0 / 0.6);
   --notification-icon-bg: rgb(255 255 255 / 18%);
   --notification-icon-color: currentcolor;
   
@@ -1204,23 +1205,27 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 
 .notification[data-tone="success"] {
   --notification-accent-color: #16a34a;
+  --notification-accent-color-fade: rgba(22 163 74 / 0.6);
 }
 
 .notification[data-tone="warning"] {
   --notification-accent-color: #f59e0b;
+  --notification-accent-color-fade: rgba(245 158 11 / 0.6);
 }
 
 .notification[data-tone="danger"],
 .notification[data-tone="error"] {
   --notification-accent-color: #dc2626;
+  --notification-accent-color-fade: rgba(220 38 38 / 0.6);
 }
 
 .notification[data-tone="info"] {
-  --notification-accent-color: #2563eb;
+  --notification-accent-color: var(--info);
+  --notification-accent-color-fade: rgba(255 136 0 / 0.6);
 }
 
 .notification.is-light {
-  --notification-icon-bg: rgb(37 99 235 / 10%);
+  --notification-icon-bg: var(--info-light);
 }
 
 .notification[data-tone="success"].is-light {
@@ -1266,7 +1271,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--notification-accent-color), rgb(37 99 235 / 60%));
+  background: linear-gradient(180deg, var(--notification-accent-color), var(--notification-accent-color-fade));
 }
 
 .notification[data-plain="true"] .notification-accent {
@@ -1533,8 +1538,8 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 .stat-card.memory {
-  --stat-color: #3273dc;
-  --stat-bg: #f0f7ff;
+  --stat-color: var(--primary);
+  --stat-bg: #fff4e6;
 }
 
 .stat-card.disk {
