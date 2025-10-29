@@ -94,10 +94,20 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 		log.Warn().Msg("Proxmox client is not initialized; rendering page without live node data")
 	}
 
-	data := AdminPageDataWithMessage("", "nodes", "", errMsg)
-	data["TitleKey"] = "Nodes.Title"
-	data["ProxmoxConnected"] = proxmoxConnected
-	data["NodeDetails"] = nodeDetails
+	builder := NewTemplateData("").
+		SetAdminActive("nodes").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r)
+
+	if errMsg != "" {
+		builder.SetError(errMsg)
+	}
+
+	builder.AddData("TitleKey", "Nodes.Title").
+		AddData("NodeDetails", nodeDetails)
+
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_nodes", data)
 }
 
@@ -111,12 +121,14 @@ func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, 
 	log := CreateHandlerLogger("AdminPageHandler", r)
 	log.Debug().Msg("Rendering admin dashboard")
 
-	// Proxmox connection status from background monitor
-	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	builder := NewTemplateData("").
+		SetAdminActive("dashboard").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Navbar.Admin")
 
-	data := AdminPageDataWithMessage("", "dashboard", "", "")
-	data["TitleKey"] = "Navbar.Admin"
-	data["ProxmoxConnected"] = proxmoxConnected
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_base", data)
 }
 
@@ -149,10 +161,16 @@ func (h *AdminHandler) ProxmoxTicketTestPageHandler(w http.ResponseWriter, r *ht
 		}
 	}
 
-	data := AdminPageDataWithMessage("", "ticket-test", "", "")
-	data["TitleKey"] = "Navbar.Admin"
-	data["ProxmoxHost"] = proxmoxHost
-	data["AuthMethod"] = authMethod
+	builder := NewTemplateData("").
+		SetAdminActive("ticket-test").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Navbar.Admin").
+		AddData("ProxmoxHost", proxmoxHost).
+		AddData("AuthMethod", authMethod)
+
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_ticket_test", data)
 }
 
@@ -166,9 +184,15 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	password := r.FormValue("password")
 
 	if username == "" {
-		data := AdminPageDataWithMessage("", "ticket-test", "", "Username is required")
-		data["TitleKey"] = "Navbar.Admin"
-		data["ProxmoxHost"] = r.FormValue("proxmox_host")
+		builder := NewTemplateData("").
+			SetAdminActive("ticket-test").
+			SetAuth(r).
+			SetProxmoxStatus(h.stateManager).
+			SetError("Username is required").
+			AddData("TitleKey", "Navbar.Admin").
+			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
+
+		data := builder.Build().ToMap()
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
 	}
@@ -178,11 +202,17 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	if mainClient != nil {
 		// If main client exists and is working with API tokens, we can't test username/password
 		// because API token auth doesn't support the login endpoint
-		data := AdminPageDataWithMessage("", "ticket-test", "", "Your Proxmox configuration uses API token authentication. Username/password testing is not available with API tokens.")
-		data["TitleKey"] = "Navbar.Admin"
-		data["ProxmoxHost"] = r.FormValue("proxmox_host")
-		data["AuthMethod"] = "API Token"
-		data["Username"] = username
+		builder := NewTemplateData("").
+			SetAdminActive("ticket-test").
+			SetAuth(r).
+			SetProxmoxStatus(h.stateManager).
+			SetError("Your Proxmox configuration uses API token authentication. Username/password testing is not available with API tokens.").
+			AddData("TitleKey", "Navbar.Admin").
+			AddData("ProxmoxHost", r.FormValue("proxmox_host")).
+			AddData("AuthMethod", "API Token").
+			AddData("Username", username)
+
+		data := builder.Build().ToMap()
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
 	}
@@ -193,9 +223,14 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 
 	testClient, err := proxmox.NewClientCookieAuth("https://"+r.FormValue("proxmox_host")+":8006/api2/json", insecureSkipVerify)
 	if err != nil {
-		data := AdminPageDataWithMessage("", "ticket-test", "", "Failed to create test client: "+err.Error())
-		data["TitleKey"] = "Navbar.Admin"
-		data["ProxmoxHost"] = r.FormValue("proxmox_host")
+		builder := NewTemplateData("").
+			SetAdminActive("ticket-test").
+			SetAuth(r).
+			SetProxmoxStatus(h.stateManager).
+			SetError("Failed to create test client: "+err.Error()).
+			AddData("TitleKey", "Navbar.Admin").
+			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
+		data := builder.Build().ToMap()
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
 	}
@@ -208,9 +243,14 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	// Try to login with username and password
 	err = testClient.Login(ctx, username, password, "")
 	if err != nil {
-		data := AdminPageDataWithMessage("", "ticket-test", "", "Authentication failed: "+err.Error())
-		data["TitleKey"] = "Navbar.Admin"
-		data["ProxmoxHost"] = r.FormValue("proxmox_host")
+		builder := NewTemplateData("").
+			SetAdminActive("ticket-test").
+			SetAuth(r).
+			SetProxmoxStatus(h.stateManager).
+			SetError("Authentication failed: "+err.Error()).
+			AddData("TitleKey", "Navbar.Admin").
+			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
+		data := builder.Build().ToMap()
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
 	}
@@ -219,18 +259,28 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	var result map[string]interface{}
 	err = testClient.GetJSON(ctx, "/nodes", &result)
 	if err != nil {
-		data := AdminPageDataWithMessage("", "ticket-test", "", "Ticket validation failed: "+err.Error())
-		data["TitleKey"] = "Navbar.Admin"
-		data["ProxmoxHost"] = r.FormValue("proxmox_host")
+		builder := NewTemplateData("").
+			SetAdminActive("ticket-test").
+			SetAuth(r).
+			SetProxmoxStatus(h.stateManager).
+			SetError("Ticket validation failed: "+err.Error()).
+			AddData("TitleKey", "Navbar.Admin").
+			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
+		data := builder.Build().ToMap()
 		renderTemplateInternal(w, r, "admin_ticket_test", data)
 		return
 	}
 
 	// Success - show the results
-	data := AdminPageDataWithMessage("", "ticket-test", "Authentication successful! Ticket obtained and validated.", "")
-	data["TitleKey"] = "Navbar.Admin"
-	data["ProxmoxHost"] = r.FormValue("proxmox_host")
-	data["Username"] = username
+	builder := NewTemplateData("").
+		SetAdminActive("ticket-test").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		SetSuccess("Authentication successful! Ticket obtained and validated.").
+		AddData("TitleKey", "Navbar.Admin").
+		AddData("ProxmoxHost", r.FormValue("proxmox_host")).
+		AddData("Username", username)
+	data := builder.Build().ToMap()
 
 	// Extract ticket information
 	pveAuthCookie := testClient.GetPVEAuthCookie()

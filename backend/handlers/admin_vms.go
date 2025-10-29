@@ -123,24 +123,35 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	from := offset + 1
 	to := offset + len(vms)
 
-	data := AdminPageDataWithMessage("", "vms", successMsg, errMsg)
-	data["TitleKey"] = "Admin.VMs.Title"
-	data["ProxmoxConnected"] = proxmoxConnected
-	data["VMs"] = vms
-	data["TotalVMs"] = totalVMs
-	data["CurrentPage"] = page
-	data["Limit"] = limit
-	data["TotalPages"] = totalPages
-	data["HasNextPage"] = hasNextPage
-	data["HasPrevPage"] = hasPrevPage
-	data["NextPage"] = page + 1
-	data["PrevPage"] = page - 1
-	data["PaginationPages"] = paginationPages
-	data["PaginationInfo"] = map[string]int{
-		"From": from,
-		"To":   to,
+	builder := NewTemplateData("").
+		SetAdminActive("vms").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.VMs.Title").
+		AddData("VMs", vms).
+		AddData("TotalVMs", totalVMs).
+		AddData("CurrentPage", page).
+		AddData("Limit", limit).
+		AddData("TotalPages", totalPages).
+		AddData("HasNextPage", hasNextPage).
+		AddData("HasPrevPage", hasPrevPage).
+		AddData("NextPage", page+1).
+		AddData("PrevPage", page-1).
+		AddData("PaginationPages", paginationPages).
+		AddData("PaginationInfo", map[string]int{
+			"From": from,
+			"To":   to,
+		})
+
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+	if errMsg != "" {
+		builder.SetError(errMsg)
 	}
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_vms", data)
 }
 

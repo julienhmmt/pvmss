@@ -152,7 +152,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	log := CreateHandlerLogger("VMBRPageHandler", r)
 
 	client := h.stateManager.GetProxmoxClient()
-	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 
 	// Collect all VMBRs using common helper when online; otherwise short-circuit
 	var allVMBRs []map[string]string
@@ -210,20 +210,24 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		})
 	}
 
-	templateData := AdminPageDataWithMessage("", "vmbr", successMsg, "")
-	templateData["TitleKey"] = "Admin.VMBR.Title"
-	templateData["EnabledVMBRs"] = enabledVMBRs
-	templateData["MaxNetworkCards"] = settings.MaxNetworkCards
-	templateData["VMBRs"] = vmbrsForTemplate
-	if err != nil {
-		templateData["Error"] = err.Error()
+	builder := NewTemplateData("").
+		SetAdminActive("vmbr").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.VMBR.Title").
+		AddData("EnabledVMBRs", enabledVMBRs).
+		AddData("MaxNetworkCards", settings.MaxNetworkCards).
+		AddData("VMBRs", vmbrsForTemplate)
+
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
 	}
-	// Pass Proxmox status flags for consistent UI behavior
-	templateData["ProxmoxConnected"] = proxmoxConnected
-	if !proxmoxConnected && proxmoxMsg != "" {
-		templateData["ProxmoxError"] = proxmoxMsg
+	if err != nil {
+		builder.AddData("Error", err.Error())
 	}
 
+	templateData := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 

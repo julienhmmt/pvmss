@@ -45,6 +45,7 @@ func CreateHandlerLogger(handlerName string, r *http.Request) zerolog.Logger {
 }
 
 // AdminPageData creates common data structure for admin pages
+// DEPRECATED: Use NewTemplateData(title).SetAdminActive(section).Build().ToMap() instead
 func AdminPageData(title, activeSection string) map[string]interface{} {
 	return map[string]interface{}{
 		"Title":       title,
@@ -53,6 +54,7 @@ func AdminPageData(title, activeSection string) map[string]interface{} {
 }
 
 // AdminPageDataWithMessage creates admin page data with success/error messages
+// DEPRECATED: Use NewTemplateData(title).SetAdminActive(section).SetSuccess/SetError(msg).Build().ToMap() instead
 func AdminPageDataWithMessage(title, activeSection, successMsg, errorMsg string) map[string]interface{} {
 	data := AdminPageData(title, activeSection)
 

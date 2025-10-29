@@ -168,13 +168,21 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		successMsg := buildSuccessMessage(r)
 
 		// Prepare data for the template (empty Storages)
-		data := AdminPageDataWithMessage("", "storage", successMsg, "")
-		data["TitleKey"] = "Admin.Storage.Title"
-		data["Storages"] = []map[string]interface{}{}
-		data["EnabledStorages"] = enabledMap
-		data["MaxDiskPerVM"] = settings.MaxDiskPerVM
+		builder := NewTemplateData("").
+			SetAdminActive("storage").
+			SetAuth(r).
+			SetProxmoxStatus(h.stateManager).
+			ParseMessages(r).
+			AddData("TitleKey", "Admin.Storage.Title").
+			AddData("Storages", []map[string]interface{}{}).
+			AddData("EnabledStorages", enabledMap).
+			AddData("MaxDiskPerVM", settings.MaxDiskPerVM)
 
-		// Add translations and render
+		if successMsg != "" {
+			builder.SetSuccess(successMsg)
+		}
+
+		data := builder.Build().ToMap()
 		renderTemplateInternal(w, r, "admin_storage", data)
 		return
 	}
@@ -197,13 +205,22 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 	successMsg := buildSuccessMessage(r)
 
-	data := AdminPageDataWithMessage("", "storage", successMsg, "")
-	data["TitleKey"] = "Admin.Storage.Title"
-	data["Node"] = chosenNode
-	data["Storages"] = storages
-	data["EnabledMap"] = enabledMap
-	data["MaxDiskPerVM"] = settings.MaxDiskPerVM
+	builder := NewTemplateData("").
+		SetAdminActive("storage").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.Storage.Title").
+		AddData("Node", chosenNode).
+		AddData("Storages", storages).
+		AddData("EnabledMap", enabledMap).
+		AddData("MaxDiskPerVM", settings.MaxDiskPerVM)
 
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_storage", data)
 }
 

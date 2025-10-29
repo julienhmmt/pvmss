@@ -79,10 +79,15 @@ func (h *AdminHandler) AppInfoPageHandler(w http.ResponseWriter, r *http.Request
 
 	buildInfo["clusterInfo"] = clusterInfo
 
-	data := AdminPageDataWithMessage("", "appinfo", "", "")
-	data["TitleKey"] = "Admin.AppInfo.Title"
-	data["BuildInfo"] = buildInfo
+	builder := NewTemplateData("").
+		SetAdminActive("appinfo").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.AppInfo.Title").
+		AddData("BuildInfo", buildInfo)
 
+	data := builder.Build().ToMap()
 	log.Info().Msg("Rendering Application Info page")
 	renderTemplateInternal(w, r, "admin_appinfo", data)
 }
