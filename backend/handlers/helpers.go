@@ -166,11 +166,14 @@ func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message
 
 // HandlerContext provides common context for handlers
 type HandlerContext struct {
-	Log            zerolog.Logger
-	StateManager   state.StateManager
-	SessionManager *scs.SessionManager
-	Request        *http.Request
-	ResponseWriter http.ResponseWriter
+	Log             zerolog.Logger
+	StateManager    state.StateManager
+	SessionManager  *scs.SessionManager
+	Request         *http.Request
+	ResponseWriter  http.ResponseWriter
+	isAuthenticated bool // cached on creation
+	isAdmin         bool // cached on creation
+	authCached      bool // flag to indicate if auth state has been cached
 }
 
 // Translate looks up a translation key using the request's locale, falling back to the key.
@@ -192,34 +195,55 @@ func NewHandlerContext(w http.ResponseWriter, r *http.Request, handlerName strin
 		sessionManager = stateManager.GetSessionManager()
 	}
 
-	return &HandlerContext{
+	ctx := &HandlerContext{
 		Log:            log,
 		StateManager:   stateManager,
 		SessionManager: sessionManager,
 		Request:        r,
 		ResponseWriter: w,
 	}
+
+	// Cache authentication state once on creation
+	if ctx.SessionManager != nil {
+		authenticated, ok := ctx.SessionManager.Get(ctx.Request.Context(), "authenticated").(bool)
+		ctx.isAuthenticated = ok && authenticated
+
+		isAdmin, ok := ctx.SessionManager.Get(ctx.Request.Context(), "is_admin").(bool)
+		ctx.isAdmin = ok && isAdmin
+
+		ctx.authCached = true
+	}
+
+	return ctx
 }
 
 // IsAuthenticated checks if the current request is authenticated
+// Returns cached value set during context creation (O(1) instead of map lookup)
 func (ctx *HandlerContext) IsAuthenticated() bool {
-	if ctx.SessionManager == nil {
-		ctx.Log.Error().Msg("Session manager not available")
-		return false
+	if !ctx.authCached {
+		// Fallback if auth state wasn't cached (shouldn't happen in normal operation)
+		if ctx.SessionManager == nil {
+			ctx.Log.Error().Msg("Session manager not available")
+			return false
+		}
+		authenticated, ok := ctx.SessionManager.Get(ctx.Request.Context(), "authenticated").(bool)
+		return ok && authenticated
 	}
-
-	authenticated, ok := ctx.SessionManager.Get(ctx.Request.Context(), "authenticated").(bool)
-	return ok && authenticated
+	return ctx.isAuthenticated
 }
 
 // IsAdmin checks if the current user is an admin
+// Returns cached value set during context creation (O(1) instead of map lookup)
 func (ctx *HandlerContext) IsAdmin() bool {
-	if ctx.SessionManager == nil {
-		return false
+	if !ctx.authCached {
+		// Fallback if auth state wasn't cached (shouldn't happen in normal operation)
+		if ctx.SessionManager == nil {
+			return false
+		}
+		isAdmin, ok := ctx.SessionManager.Get(ctx.Request.Context(), "is_admin").(bool)
+		return ok && isAdmin
 	}
-
-	isAdmin, ok := ctx.SessionManager.Get(ctx.Request.Context(), "is_admin").(bool)
-	return ok && isAdmin
+	return ctx.isAdmin
 }
 
 // GetUsername returns the current username if authenticated
