@@ -270,11 +270,6 @@ fieldset {
     overflow: visible !important;
 }
 
-/* Define base select before :focus styles elsewhere */
-.select select {
-    cursor: pointer;
-}
-
 .select select option:disabled {
     color: var(--muted-light);
     font-style: italic;
