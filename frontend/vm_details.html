@@ -554,7 +554,7 @@
                             </a>
                         </div>
                         <div class="control">
-                            <button type="submit" class="button is-primary" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
+                            <button type="submit" class="button is-primary is-medium" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
                                 <span class="icon"><i class="fas fa-save"></i></span>
                                 <span>{{T "VMDetails.SaveDescription"}}</span>
                             </button>
@@ -621,7 +621,7 @@
                             </a>
                         </div>
                         <div class="control">
-                            <button type="submit" class="button is-primary" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
+                            <button type="submit" class="button is-primary is-medium" {{if not .ProxmoxConnected}}disabled title="Offline mode"{{end}}>
                                 <span class="icon"><i class="fas fa-save"></i></span>
                                 <span>{{T "VMDetails.SaveTags"}}</span>
                             </button>
@@ -797,7 +797,7 @@
                             </a>
                         </div>
                         <div class="control">
-                            <button type="submit" class="button is-primary" {{if or (not .ProxmoxConnected) $isRunning}}disabled{{end}} {{if $isRunning}}title="Stop the VM to modify resources"{{end}}>
+                            <button type="submit" class="button is-primary is-medium" {{if or (not .ProxmoxConnected) $isRunning}}disabled{{end}} {{if $isRunning}}title="Stop the VM to modify resources"{{end}}>
                                 <span class="icon"><i class="fas fa-save"></i></span>
                                 <span>{{T "VMDetails.SaveResources"}}</span>
                             </button>

@@ -3,7 +3,7 @@
     align-items: center;
     gap: 0.75rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text);
     margin-bottom: 0.5rem;
 }
 
@@ -15,7 +15,7 @@
     height: 34px;
     border-radius: 50%;
     background: rgb(255 136 0 / 12%);
-    color: #f80;
+    color: var(--primary);
     flex-shrink: 0;
 }
 
@@ -35,7 +35,7 @@
 .form-sublabel {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--muted);
     margin-bottom: 0.4rem;
 }
 
@@ -45,7 +45,7 @@
     gap: 0.5rem;
     margin-top: 0.5rem;
     font-size: 0.875rem;
-    color: #4b5563;
+    color: var(--text-light);
     line-height: 1.4;
 }
 
@@ -57,7 +57,7 @@
     height: 20px;
     border-radius: 50%;
     background: rgb(255 136 0 / 12%);
-    color: #f80;
+    color: var(--primary);
 }
 
 .form-tooltip {
@@ -128,7 +128,7 @@
     transform: translateX(-50%);
     border-width: 6px;
     border-style: solid;
-    border-color: transparent transparent #1f2937;
+    border-color: transparent transparent var(--text);
 }
 
 .form-tooltip:hover .form-tooltip-content,
@@ -216,7 +216,7 @@ input[type="number"] {
     border-radius: 10px;
     border: 2px solid #e5e7eb;
     background: #f9f9f9;
-    color: #4b5563;
+    color: var(--text-light);
     font-weight: 600;
 }
 
@@ -276,7 +276,7 @@ fieldset {
 }
 
 .select select option:disabled {
-    color: #9ca3af;
+    color: var(--muted-light);
     font-style: italic;
 }
 
