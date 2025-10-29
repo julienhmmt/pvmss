@@ -113,7 +113,7 @@ qualif: ## Lance tous les contrôles qualité (format, lint, tests)
 	@echo "$(GREEN)✓ Contrôles et tests réussis!$(NC)"
 	@echo ""
 	@echo "$(BLUE)Démarrage de l'application...$(NC)"
-	@$(MAKE) dev-logs
+	@$(MAKE) dev
 	@echo ""
 
 .DEFAULT_GOAL := help
