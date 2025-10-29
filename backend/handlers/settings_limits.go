@@ -69,7 +69,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	client := h.stateManager.GetProxmoxClient()
 	proxmoxConnected := client != nil
 
-	if proxmoxConnected && client != nil {
+	if proxmoxConnected {
 		pc, ok := client.(*proxmox.Client)
 		if ok {
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
@@ -92,7 +92,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	// Get resource usage for all nodes
 	var nodeUsage map[string]*NodeResourceUsage
 	var nodeCapacities map[string]*NodeCapacity
-	if proxmoxConnected && client != nil {
+	if proxmoxConnected {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		if usage, err := CalculateNodeResourceUsage(ctx, client, h.stateManager); err != nil {
