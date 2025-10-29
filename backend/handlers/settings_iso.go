@@ -126,18 +126,25 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	builder := NewTemplateData("").
+		SetAdminActive("iso").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.ISO.Title").
+		AddData("ISOsList", []ISOInfo{}).
+		AddData("EnabledISOs", enabledMap).
+		AddData("AllISOs", []ISOEntry{}).
+		AddData("ISOGroupByNode", []NodeISOGroup{})
 
-	data := AdminPageDataWithMessage("", "iso", successMsg, "")
-	data["TitleKey"] = "Admin.ISO.Title"
-	data["ISOsList"] = []ISOInfo{}
-	data["EnabledISOs"] = enabledMap
-	data["ProxmoxConnected"] = proxmoxConnected
-	data["AllISOs"] = []ISOEntry{}
-	data["ISOGroupByNode"] = []NodeISOGroup{}
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+
+	data := builder.Build().ToMap()
 
 	// Return early if Proxmox not connected
-	if !proxmoxConnected {
+	if !data["ProxmoxConnected"].(bool) {
 		data["Warning"] = "Proxmox connection unavailable. Displaying cached ISO data."
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return

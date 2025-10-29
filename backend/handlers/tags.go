@@ -201,10 +201,15 @@ func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	data := AdminPageDataWithMessage("", "tags_delete", "", "")
-	data["TitleKey"] = "Admin.Tags.Title"
-	data["Tag"] = tagName
+	builder := NewTemplateData("").
+		SetAdminActive("tags_delete").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.Tags.Title").
+		AddData("Tag", tagName)
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_tags_delete", data)
 }
 
@@ -236,9 +241,6 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 			errorMsg = i18n.Localize(localizer, "Admin.Tags.Error.Exists")
 		}
 	}
-
-	// Proxmox status for consistent UI (even if tags don't need Proxmox)
-	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
 
 	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available using resty
 	// Proxmox typically separates tags with ';' but some environments may contain
@@ -287,19 +289,26 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sort.Strings(tags)
 	}
 
-	data := AdminPageDataWithMessage("", "tags", successMsg, errorMsg)
-	data["TitleKey"] = "Admin.Tags.Title"
-	data["Tags"] = tags
-	data["SortOrder"] = sortOrder
-	data["TotalTags"] = len(settings.Tags)
-	data["FilteredTags"] = len(tags)
-	// Always expose TagCounts so the template can safely render a value (including zero)
-	data["TagCounts"] = tagCounts
-	data["ProxmoxConnected"] = proxmoxConnected
-	if !proxmoxConnected && proxmoxMsg != "" {
-		data["ProxmoxError"] = proxmoxMsg
+	builder := NewTemplateData("").
+		SetAdminActive("tags").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.Tags.Title").
+		AddData("Tags", tags).
+		AddData("SortOrder", sortOrder).
+		AddData("TotalTags", len(settings.Tags)).
+		AddData("FilteredTags", len(tags)).
+		AddData("TagCounts", tagCounts)
+
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+	if errorMsg != "" {
+		builder.SetError(errorMsg)
 	}
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_tags", data)
 }
 
