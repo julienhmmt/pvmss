@@ -66,8 +66,8 @@
   /* Status colors with alpha */
   --success: #10b981;
   --success-light: rgb(209 250 229 / 90%);
-  --info: #3b82f6;
-  --info-light: rgb(219 234 254 / 90%);
+  --info: var(--primary);
+  --info-light: rgb(255 136 0 / 12%);
   --warning: #f59e0b;
   --warning-light: rgb(254 243 199 / 90%);
   --danger: #ef4444;

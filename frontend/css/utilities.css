@@ -65,7 +65,7 @@
 }
 
 .border-left-info {
-  border-left: 4px solid #3298dc;
+  border-left: 4px solid var(--primary);
 }
 
 .border-left-warning {
@@ -73,7 +73,7 @@
 }
 
 .border-left-link {
-  border-left: 4px solid #3273dc;
+  border-left: 4px solid var(--primary-dark);
 }
 
 .border-dashed {

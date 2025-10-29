@@ -37,7 +37,7 @@ type diskSegmentTemplate struct {
 func busColor(bus string) string {
 	switch bus {
 	case "virtio":
-		return "#3298dc" // info blue
+		return "#f80" // primary orange
 	case "scsi":
 		return "#48c774" // success green
 	case "sata":

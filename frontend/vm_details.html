@@ -137,7 +137,7 @@
                                     <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
                                     {{.VM.CPUs}} core{{if gt .VM.CPUs 1}}s{{end}}
                                     {{if eq .VM.Status "running"}}
-                                    <span class="tag" style="background: rgba(59,130,246,0.08); color: #2563eb; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
+                                    <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
                                         Active
                                     </span>
                                     {{end}}
@@ -201,7 +201,7 @@
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
-                                    <span class="icon has-text-info mr-3" style="font-size: 1.25rem;">
+                                    <span class="icon has-text-primary mr-3" style="font-size: 1.25rem;">
                                         <i class="fas fa-hdd"></i>
                                     </span>
                                     <div>
@@ -212,7 +212,7 @@
                                 {{$diskCount := len .Disks}}
                                 {{if gt $diskCount 0}}
                                 <div class="has-text-right">
-                                    <div class="has-text-info is-size-5" style="font-weight: 600;">{{$diskCount}}</div>
+                                    <div class="has-text-primary is-size-5" style="font-weight: 600;">{{$diskCount}}</div>
                                     <div class="has-text-grey is-size-7" style="margin-top: 2px;">Total: {{.DisksTotalLabel}}</div>
                                 </div>
                                 {{end}}
@@ -225,19 +225,19 @@
                                 <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
-                                            <span class="has-text-info" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
-                                                <i class="fas fa-hdd" style="color: #3298dc;"></i>
+                                            <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
+                                                <i class="fas fa-hdd"></i>
                                                 {{$d.Index}}
                                             </span>
                                             <div class="is-flex" style="gap: 0.5rem; flex-wrap: wrap;">
                                                 {{if $d.Bus}}
-                                                <span class="tag" style="background: rgba(50,152,220,0.08); color: #2b6cb0; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; display: inline-flex; align-items: center; gap: 4px;">
+                                                <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; display: inline-flex; align-items: center; gap: 4px;">
                                                     <span style="width: 6px; height: 6px; border-radius: 50%; background: {{$d.Color}}; display: inline-block;"></span>
                                                     {{$d.Bus}}
                                                 </span>
                                                 {{end}}
                                                 {{if $d.Storage}}
-                                                <span class="tag" style="background: rgba(102,126,234,0.08); color: #4c51bf; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     {{$d.Storage}}
                                                 </span>
                                                 {{else}}
