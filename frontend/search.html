@@ -54,7 +54,7 @@
                                     <span>{{T "Search.VMID"}}</span>
                                 </label>
                                 <div class="control has-icons-left">
-                                    <input class="input" type="number" id="vmid" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{T "Search.PlaceholderVMID"}}" min="1" max="999999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}>
+                                    <input class="input is-medium" type="number" id="vmid" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{T "Search.PlaceholderVMID"}}" min="1" max="999999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}>
                                     <span class="icon is-small is-left">
                                         <i class="fas fa-hashtag"></i>
                                     </span>
@@ -70,7 +70,7 @@
                                     <span>{{T "Search.Name"}}</span>
                                 </label>
                                 <div class="control has-icons-left">
-                                    <input class="input" type="text" id="name" name="name" autocomplete="off" placeholder="{{T "Search.PlaceholderName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}>
+                                    <input class="input is-medium" type="text" id="name" name="name" autocomplete="off" placeholder="{{T "Search.PlaceholderName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}>
                                     <span class="icon is-small is-left">
                                         <i class="fas fa-tag"></i>
                                     </span>
@@ -83,13 +83,13 @@
                     
                     <div class="field is-grouped is-grouped-right">
                         <div class="control">
-                            <a href="/search" class="button is-light">
+                            <a href="/search" class="button is-light is-medium">
                                 <span class="icon"><i class="fas fa-eraser"></i></span>
                                 <span>{{T "Search.Clear"}}</span>
                             </a>
                         </div>
                         <div class="control">
-                            <button type="submit" class="button is-primary">
+                            <button type="submit" class="button is-primary is-medium">
                                 <span class="icon"><i class="fas fa-search"></i></span>
                                 <span>{{T "Search.Submit"}}</span>
                             </button>
