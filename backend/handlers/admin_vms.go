@@ -59,6 +59,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	// Proxmox connection status
 	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
+	offlineMode := h.stateManager.IsOfflineMode()
 
 	var vms []AdminVMInfo
 	var totalVMs int
@@ -87,11 +88,15 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 			log.Warn().Str("error", errMsg).Msg("Failed to retrieve VMs")
 		}
 	} else {
-		errMsg = "Proxmox connection not available"
-		if proxmoxMsg != "" {
-			errMsg = proxmoxMsg
+		if offlineMode {
+			log.Info().Msg("Offline mode enabled; skipping Proxmox VM retrieval")
+		} else {
+			errMsg = "Proxmox connection not available"
+			if proxmoxMsg != "" {
+				errMsg = proxmoxMsg
+			}
+			log.Warn().Msg("Proxmox client is not initialized")
 		}
-		log.Warn().Msg("Proxmox client is not initialized")
 	}
 
 	// Build success message from query params
@@ -142,7 +147,8 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 		AddData("PaginationInfo", map[string]int{
 			"From": from,
 			"To":   to,
-		})
+		}).
+		AddData("OfflineMode", offlineMode)
 
 	if successMsg != "" {
 		builder.SetSuccess(successMsg)
