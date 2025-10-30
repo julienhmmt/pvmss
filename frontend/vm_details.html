@@ -19,6 +19,38 @@
       document.title = title + ' - ' + base;
     }
   })();
+  
+  // Network card toggle function
+  function toggleNetworkCard(cardIndex, enabled, csrfToken, vmid, node) {
+    const formData = new URLSearchParams();
+    formData.append('csrf_token', csrfToken);
+    formData.append('vmid', vmid);
+    formData.append('node', node);
+    formData.append('card_index', cardIndex);
+    formData.append('enabled', enabled ? '1' : '0');
+    
+    fetch('/vm/toggle/network', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData
+    })
+    .then(response => {
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else if (response.ok) {
+        window.location.reload();
+      } else {
+        console.error('Network toggle failed');
+        alert('Failed to toggle network card');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error toggling network card');
+    });
+  }
 </script>
 <section class="section">
     <div class="container max-w-1200">
@@ -54,11 +86,11 @@
             <div class="level-right">
                 <div class="level-item">
                     <div class="buttons">
-                        <a href="/profile" class="button is-primary is-light is-small">
+                        <a href="/profile" class="button is-primary">
                             <span class="icon is-small"><i class="fas fa-user"></i></span>
                             <span>{{T "Navbar.Profile"}}</span>
                         </a>
-                        <a href="/search" class="button is-primary is-light is-small">
+                        <a href="/search" class="button is-primary">
                             <span class="icon is-small"><i class="fas fa-search"></i></span>
                             <span>{{T "Common.Search"}}</span>
                         </a>
@@ -729,7 +761,8 @@
 
                     <!-- Network Configuration -->
                     {{if .NetworkCards}}
-                    <div class="field" {{if $isRunning}}style="opacity: 0.6; pointer-events: none;"{{end}}>
+                    <hr class="my-4">
+                    <div class="field">
                         <label class="label has-text-weight-semibold">
                             <span class="icon-text">
                                 <span class="icon"><i class="fas fa-network-wired"></i></span>
@@ -737,46 +770,66 @@
                             </span>
                         </label>
                         {{range $idx, $card := .NetworkCards}}
-                        <div class="box is-shadowless p-3 mb-3" style="background: rgba(0,0,0,0.02);">
+                        <div class="box is-shadowless p-3 mb-3" style="background: rgba(0,0,0,0.02); position: relative;">
                             <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
                                 <strong>{{T "VM.Create.Network"}} #{{addInt $idx 1}}</strong>
-                                {{if and (gt $.MaxNetworkCards 1) (gt (addInt $idx 1) 1)}}
-                                <span class="tag is-light is-size-7">{{T "VM.Create.NetworkOptional"}}</span>
-                                {{end}}
-                            </div>
-                            <div class="columns is-mobile is-variable is-2">
-                                <div class="column">
-                                    <label class="label is-size-7 has-text-grey" for="networkBridge_{{$idx}}">{{T "VM.Create.NetworkBridge"}}</label>
-                                    <div class="control">
-                                        <div class="select is-fullwidth is-medium">
-                                            <select id="networkBridge_{{$idx}}" name="bridge_{{$idx}}" {{if eq $idx 0}}required{{end}} {{if $isRunning}}disabled{{end}}>
-                                                {{if and (gt (addInt $idx 1) 1) (not $card.Exists)}}<option value="" selected>-- {{T "VM.Create.NoNetwork"}} --</option>{{end}}
-                                                {{if and (gt (addInt $idx 1) 1) $card.Exists}}<option value="">-- {{T "VM.Create.NoNetwork"}} --</option>{{end}}
-                                                {{range $bridge := $.AvailableVMBRs}}
-                                                <option value="{{$bridge}}" {{if eq $bridge $card.Bridge}}selected{{end}}>{{$bridge}}</option>
-                                                {{end}}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="column">
-                                    <label class="label is-size-7 has-text-grey" for="networkModel_{{$idx}}">{{T "VM.Create.NetworkModel"}}</label>
-                                    <div class="control">
-                                        <div class="select is-fullwidth is-medium">
-                                            <select id="networkModel_{{$idx}}" name="network_model_{{$idx}}" {{if eq $idx 0}}required{{end}} {{if $isRunning}}disabled{{end}}>
-                                                <option value="virtio" title="{{T "VM.Create.NetworkModel.Virtio"}}" {{if eq $card.Model "virtio"}}selected{{end}}>VirtIO</option>
-                                                <option value="e1000" title="{{T "VM.Create.NetworkModel.E1000"}}" {{if eq $card.Model "e1000"}}selected{{end}}>E1000</option>
-                                                <option value="e1000e" title="{{T "VM.Create.NetworkModel.E1000E"}}" {{if eq $card.Model "e1000e"}}selected{{end}}>E1000E</option>
-                                                <option value="rtl8139" title="{{T "VM.Create.NetworkModel.RTL8139"}}" {{if eq $card.Model "rtl8139"}}selected{{end}}>RTL8139</option>
-                                                <option value="vmxnet3" title="{{T "VM.Create.NetworkModel.VMXNet3"}}" {{if eq $card.Model "vmxnet3"}}selected{{end}}>VMXNet3</option>
-                                            </select>
-                                        </div>
-                                    </div>
+                                <div class="is-flex is-align-items-center">
+                                    {{if and (gt $.MaxNetworkCards 1) (gt (addInt $idx 1) 1)}}
+                                    <span class="tag is-light is-size-7 mr-2">{{T "VM.Create.NetworkOptional"}}</span>
+                                    {{end}}
+                                    {{if $card.Exists}}
+                                    <label class="network-toggle-switch" 
+                                      title="{{if $card.LinkDown}}{{T "Common.Enable"}}{{else}}{{T "Common.Disable"}}{{end}} {{T "VM.Create.Network"}} #{{addInt $idx 1}}">
+                                      <input type="checkbox" 
+                                        {{if not $card.LinkDown}}checked{{end}}
+                                        {{if and $isRunning (eq $idx 0)}}disabled{{end}}
+                                        onchange="toggleNetworkCard({{$idx}}, this.checked, '{{$.CSRFToken}}', '{{$.VM.VMID}}', '{{$.VM.Node}}')">
+                                      <span class="network-toggle-slider"></span>
+                                      <span class="network-toggle-label">
+                                        {{if $card.LinkDown}}
+                                          <i class="fas fa-plug-circle-xmark has-text-grey"></i> {{T "Common.Disabled"}}
+                                        {{else}}
+                                          <i class="fas fa-plug-circle-check has-text-success"></i> {{T "Common.Enabled"}}
+                                        {{end}}
+                                      </span>
+                                    </label>
+                                    {{end}}
                                 </div>
                             </div>
+                                    <div class="columns is-mobile is-variable is-2">
+                                        <div class="column">
+                                            <label class="label is-size-7 has-text-grey" for="networkBridge_{{$idx}}">{{T "VM.Create.NetworkBridge"}}</label>
+                                            <div class="control">
+                                                <div class="select is-fullwidth is-medium">
+                                                    <select id="networkBridge_{{$idx}}" name="bridge_{{$idx}}" {{if eq $idx 0}}required{{end}} {{if $isRunning}}disabled{{end}}>
+                                                        {{if and (gt (addInt $idx 1) 1) (not $card.Exists)}}<option value="" selected>-- {{T "VM.Create.NoNetwork"}} --</option>{{end}}
+                                                        {{if and (gt (addInt $idx 1) 1) $card.Exists}}<option value="">-- {{T "VM.Create.NoNetwork"}} --</option>{{end}}
+                                                        {{range $bridge := $.AvailableVMBRs}}
+                                                        <option value="{{$bridge}}" {{if eq $bridge $card.Bridge}}selected{{end}}>{{$bridge}}</option>
+                                                        {{end}}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="column">
+                                            <label class="label is-size-7 has-text-grey" for="networkModel_{{$idx}}">{{T "VM.Create.NetworkModel"}}</label>
+                                            <div class="control">
+                                                <div class="select is-fullwidth is-medium">
+                                                    <select id="networkModel_{{$idx}}" name="network_model_{{$idx}}" {{if eq $idx 0}}required{{end}} {{if $isRunning}}disabled{{end}}>
+                                                        <option value="virtio" title="{{T "VM.Create.NetworkModel.Virtio"}}" {{if eq $card.Model "virtio"}}selected{{end}}>VirtIO</option>
+                                                        <option value="e1000" title="{{T "VM.Create.NetworkModel.E1000"}}" {{if eq $card.Model "e1000"}}selected{{end}}>E1000</option>
+                                                        <option value="e1000e" title="{{T "VM.Create.NetworkModel.E1000E"}}" {{if eq $card.Model "e1000e"}}selected{{end}}>E1000E</option>
+                                                        <option value="rtl8139" title="{{T "VM.Create.NetworkModel.RTL8139"}}" {{if eq $card.Model "rtl8139"}}selected{{end}}>RTL8139</option>
+                                                        <option value="vmxnet3" title="{{T "VM.Create.NetworkModel.VMXNet3"}}" {{if eq $card.Model "vmxnet3"}}selected{{end}}>VMXNet3</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                             <input type="hidden" name="mac_{{$idx}}" value="{{$card.MAC}}">
                             <input type="hidden" name="exists_{{$idx}}" value="{{if $card.Exists}}1{{else}}0{{end}}">
                             <input type="hidden" name="options_{{$idx}}" value="{{if $card.Options}}{{join $card.Options ","}}{{end}}">
+                            <input type="hidden" name="link_down_{{$idx}}" value="{{if $card.LinkDown}}1{{else}}0{{end}}">
                             {{if $card.MAC}}
                             <p class="help is-size-7 mt-1">MAC: {{$card.MAC}}</p>
                             {{end}}

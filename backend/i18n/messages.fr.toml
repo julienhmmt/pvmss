@@ -5,7 +5,13 @@ other = "L'action a échoué"
 other = "Créé avec succès"
 ["Message.DeletedSuccessfully"]
 other = "Supprimé avec succès"
+["Message.NetworkCardDisabled"]
+other = "Carte réseau désactivée avec succès"
+["Message.NetworkCardEnabled"]
+other = "Carte réseau activée avec succès"
 ["Message.SavedSuccessfully"]
 other = "Enregistré avec succès"
 ["Message.UpdatedSuccessfully"]
 other = "Mis à jour avec succès"
+["VMDetails.CannotModifyPrimaryNICWhileRunning"]
+other = "Impossible de modifier l'interface réseau principale pendant l'exécution de la VM"

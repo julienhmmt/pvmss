@@ -151,6 +151,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	storageHandler := NewStorageHandler(stateManager)
 	tagsHandler := NewTagsHandler(stateManager)
 	userPoolHandler := NewUserPoolHandler(stateManager)
+	vmCreateHandler := NewVMCreateOptimizedHandler(stateManager)
 	vmHandler := NewVMHandler(stateManager)
 	vmbrHandler := NewVMBRHandler(stateManager)
 
@@ -170,6 +171,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		storageHandler,
 		tagsHandler,
 		userPoolHandler,
+		vmCreateHandler,
 		vmHandler,
 		vmbrHandler,
 	)
@@ -278,6 +280,7 @@ func setupRoutes(
 	storageHandler *StorageHandler,
 	tagsHandler *TagsHandler,
 	userPoolHandler *UserPoolHandler,
+	vmCreateHandler *VMCreateOptimizedHandler,
 	vmHandler *VMHandler,
 	vmbrHandler *VMBRHandler,
 ) {
@@ -296,6 +299,7 @@ func setupRoutes(
 		storageHandler,
 		tagsHandler,
 		userPoolHandler,
+		vmCreateHandler,
 		vmHandler,
 		vmbrHandler,
 	}
