@@ -7,3 +7,7 @@ other = "Gestion des VMs Proxmox avec le tag pvmss"
 other = "Machines virtuelles PVMSS"
 ["AdminVMs.Description"]
 other = "Liste de toutes les VMs PVMSS"
+["Admin.VMs.NoVMsTitle"]
+other = "Aucune VM trouvée"
+["Admin.VMs.NoVMsMessage"]
+other = "Aucune machine virtuelle avec le tag 'pvmss' n'a été trouvée. Les VMs doivent être taguées 'pvmss' pour être gérées par le système."
