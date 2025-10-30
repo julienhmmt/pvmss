@@ -137,19 +137,19 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Prepare form data
 	formData := map[string]string{
-		"bridge":            "",
-		"cpu_cores":         "2",
-		"cpu_sockets":       "1",
+		"bridge_0":          "",
+		"cores":             "1",
+		"sockets":           "1",
 		"description":       "",
-		"disk_bus":          "virtio",
-		"disk_gb":           "20",
+		"disk_bus_type":     "virtio",
+		"disk_size_0":       "12",
 		"enable_efi":        "1",
 		"enable_tpm":        "",
-		"iso_image":         "",
-		"memory_mb":         "2048",
+		"iso":               "",
+		"memory":            "1024",
 		"name":              "",
 		"network_enabled_0": "1", // First network card enabled by default
-		"network_model":     "virtio",
+		"network_model_0":   "virtio",
 		"node":              activeNode,
 		"pool":              fmt.Sprintf("pvmss_%s", username),
 		"storage":           "",
@@ -172,24 +172,24 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Prepare template data
 	data := map[string]interface{}{
-		"TitleKey":         "VM.Create.Title",
-		"Lang":             i18n.GetLanguage(r),
-		"IsAuthenticated":  true,
-		"IsAdmin":          isAdmin,
-		"Username":         username,
+		"BridgeDetails":    bridgeDetails,
+		"FormData":         formData,
 		"ISOs":             settings.ISOs,
+		"IsAdmin":          isAdmin,
+		"IsAuthenticated":  true,
+		"Lang":             i18n.GetLanguage(r),
 		"Limits":           settings.Limits,
 		"MaxDiskPerVM":     settings.MaxDiskPerVM,
 		"MaxNetworkCards":  settings.MaxNetworkCards,
 		"NodeOptions":      nodeOptions,
 		"Nodes":            nodes,
-		"Storages":         storages,
-		"StorageNodes":     storageNodes,
-		"BridgeDetails":    bridgeDetails,
-		"Tags":             settings.Tags,
-		"FormData":         formData,
-		"ValidationError":  "",
 		"ProxmoxConnected": client != nil,
+		"StorageNodes":     storageNodes,
+		"Storages":         storages,
+		"Tags":             settings.Tags,
+		"TitleKey":         "VM.Create.Title",
+		"Username":         username,
+		"ValidationError":  "",
 	}
 
 	// Extract bridges from BridgeDetails for template compatibility
@@ -589,19 +589,19 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	node := strings.TrimSpace(r.FormValue("node"))
 	pool := strings.TrimSpace(r.FormValue("pool"))
 	storage := strings.TrimSpace(r.FormValue("storage"))
-	isoImage := strings.TrimSpace(r.FormValue("iso_image"))
+	isoImage := strings.TrimSpace(r.FormValue("iso"))
 	bridgeName := strings.TrimSpace(r.FormValue("bridge_0"))
-	networkModel := strings.TrimSpace(r.FormValue("network_model"))
-	diskBus := strings.TrimSpace(r.FormValue("disk_bus"))
+	networkModel := strings.TrimSpace(r.FormValue("network_model_0"))
+	diskBus := strings.TrimSpace(r.FormValue("disk_bus_type"))
 	tags := strings.TrimSpace(r.FormValue("tags"))
 	enableEFI := r.FormValue("enable_efi")
 	enableTPM := r.FormValue("enable_tpm")
 
 	// Parse numeric values
-	memoryMBStr := strings.TrimSpace(r.FormValue("memory_mb"))
-	cpuSocketsStr := strings.TrimSpace(r.FormValue("cpu_sockets"))
-	cpuCoresStr := strings.TrimSpace(r.FormValue("cpu_cores"))
-	diskSizeGBStr := strings.TrimSpace(r.FormValue("disk_gb"))
+	memoryMBStr := strings.TrimSpace(r.FormValue("memory"))
+	cpuSocketsStr := strings.TrimSpace(r.FormValue("sockets"))
+	cpuCoresStr := strings.TrimSpace(r.FormValue("cores"))
+	diskSizeGBStr := strings.TrimSpace(r.FormValue("disk_size_0"))
 
 	// Simple validation
 	if name == "" {
@@ -616,34 +616,103 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Parse integers
-	memoryMB := 2048
-	if memoryMBStr != "" {
-		if val, err := fmt.Sscanf(memoryMBStr, "%d", &memoryMB); err != nil || val != 1 {
-			memoryMB = 2048
+	// Parse integers with robust extraction
+	settings := h.stateManager.GetSettings()
+
+	// Helper function to extract integer from string with validation
+	extractInt := func(str string, defaultValue int, minVal, maxVal int, fieldName string) int {
+		if str == "" {
+			return defaultValue
+		}
+		// Remove any non-digit characters and parse
+		cleanStr := strings.TrimSpace(str)
+		var value int
+		if val, err := fmt.Sscanf(cleanStr, "%d", &value); err != nil || val != 1 {
+			log.Warn().Str("field", fieldName).Str("input", str).Int("default", defaultValue).Msg("Invalid numeric value, using default")
+			return defaultValue
+		}
+		// Validate range
+		if value < minVal || value > maxVal {
+			log.Warn().Str("field", fieldName).Int("value", value).Int("min", minVal).Int("max", maxVal).Int("default", defaultValue).Msg("Value out of range, using default")
+			return defaultValue
+		}
+		return value
+	}
+
+	// Get limits from settings or use defaults
+	var memoryMin, memoryMax int = 512, 32768 // 512MB to 32GB
+	var socketsMin, socketsMax int = 1, 8
+	var coresMin, coresMax int = 1, 32
+	var diskMin, diskMax int = 1, 1024 // 1GB to 1TB
+
+	if settings != nil && settings.Limits != nil {
+		if vmLimits, ok := settings.Limits["vm"]; ok {
+			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
+				if ram, ok := vmLimitsMap["ram"]; ok {
+					if ramMap, ok := ram.(map[string]interface{}); ok {
+						if min, ok := ramMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								memoryMin = int(minVal) * 1024 // Convert GB to MB
+							}
+						}
+						if max, ok := ramMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								memoryMax = int(maxVal) * 1024 // Convert GB to MB
+							}
+						}
+					}
+				}
+				if sockets, ok := vmLimitsMap["sockets"]; ok {
+					if socketsMap, ok := sockets.(map[string]interface{}); ok {
+						if min, ok := socketsMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								socketsMin = int(minVal)
+							}
+						}
+						if max, ok := socketsMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								socketsMax = int(maxVal)
+							}
+						}
+					}
+				}
+				if cores, ok := vmLimitsMap["cores"]; ok {
+					if coresMap, ok := cores.(map[string]interface{}); ok {
+						if min, ok := coresMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								coresMin = int(minVal)
+							}
+						}
+						if max, ok := coresMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								coresMax = int(maxVal)
+							}
+						}
+					}
+				}
+				if disk, ok := vmLimitsMap["disk"]; ok {
+					if diskMap, ok := disk.(map[string]interface{}); ok {
+						if min, ok := diskMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								diskMin = int(minVal)
+							}
+						}
+						if max, ok := diskMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								diskMax = int(maxVal)
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 
-	cpuSockets := 1
-	if cpuSocketsStr != "" {
-		if val, err := fmt.Sscanf(cpuSocketsStr, "%d", &cpuSockets); err != nil || val != 1 {
-			cpuSockets = 1
-		}
-	}
-
-	cpuCores := 2
-	if cpuCoresStr != "" {
-		if val, err := fmt.Sscanf(cpuCoresStr, "%d", &cpuCores); err != nil || val != 1 {
-			cpuCores = 2
-		}
-	}
-
-	diskSizeGB := 20
-	if diskSizeGBStr != "" {
-		if val, err := fmt.Sscanf(diskSizeGBStr, "%d", &diskSizeGB); err != nil || val != 1 {
-			diskSizeGB = 20
-		}
-	}
+	// Parse values with proper validation
+	memoryMB := extractInt(memoryMBStr, 2048, memoryMin, memoryMax, "memory")
+	cpuSockets := extractInt(cpuSocketsStr, 1, socketsMin, socketsMax, "sockets")
+	cpuCores := extractInt(cpuCoresStr, 2, coresMin, coresMax, "cores")
+	diskSizeGB := extractInt(diskSizeGBStr, 20, diskMin, diskMax, "disk_size")
 
 	// Defaults
 	if diskBus == "" {
@@ -715,14 +784,35 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		params.Set("tpmstate0", storage+":4,version=v2.0")
 	}
 
-	// Disk
+	// Disk - Primary disk (disk 0)
 	diskParam := diskBus + "0"
 	params.Set(diskParam, fmt.Sprintf("%s:%d", storage, diskSizeGB))
 	if diskBus == "scsi" {
 		params.Set("scsihw", "virtio-scsi-pci")
 	}
 
-	// Network - create if bridge selected, enable/disable based on checkbox
+	// Additional disks (disk 1, 2, 3, etc.) if configured
+	if settings != nil && settings.MaxDiskPerVM > 1 {
+		for diskIdx := 1; diskIdx < settings.MaxDiskPerVM; diskIdx++ {
+			diskSizeStr := strings.TrimSpace(r.FormValue(fmt.Sprintf("disk_size_%d", diskIdx)))
+			if diskSizeStr == "" || diskSizeStr == "0" {
+				// Optional disk not configured, skip
+				continue
+			}
+			additionalDiskSize := 0
+			if val, err := fmt.Sscanf(diskSizeStr, "%d", &additionalDiskSize); err != nil || val != 1 || additionalDiskSize <= 0 {
+				// Invalid size, skip
+				log.Warn().Int("disk_idx", diskIdx).Str("size", diskSizeStr).Msg("Invalid additional disk size, skipping")
+				continue
+			}
+			// Create additional disk with same bus type
+			additionalDiskParam := fmt.Sprintf("%s%d", diskBus, diskIdx)
+			params.Set(additionalDiskParam, fmt.Sprintf("%s:%d", storage, additionalDiskSize))
+			log.Info().Int("disk_idx", diskIdx).Int("size_gb", additionalDiskSize).Str("param", additionalDiskParam).Msg("Added additional disk")
+		}
+	}
+
+	// Network - Primary network card (net0)
 	networkEnabled := r.FormValue("network_enabled_0") == "1"
 	if bridgeName != "" {
 		netConfig := networkModel + ",bridge=" + bridgeName
@@ -730,6 +820,34 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			netConfig += ",link_down=1"
 		}
 		params.Set("net0", netConfig)
+		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Bool("enabled", networkEnabled).Msg("Configured primary network card")
+	}
+
+	// Additional network cards (net1, net2, etc.) if configured
+	if settings != nil && settings.MaxNetworkCards > 1 {
+		for netIdx := 1; netIdx < settings.MaxNetworkCards; netIdx++ {
+			additionalBridge := strings.TrimSpace(r.FormValue(fmt.Sprintf("bridge_%d", netIdx)))
+			if additionalBridge == "" {
+				// Optional network card not configured, skip
+				continue
+			}
+			// Get network model for this card
+			additionalModel := strings.TrimSpace(r.FormValue(fmt.Sprintf("network_model_%d", netIdx)))
+			if additionalModel == "" {
+				additionalModel = "virtio" // Default
+			}
+			// Check if network is enabled
+			additionalEnabled := r.FormValue(fmt.Sprintf("network_enabled_%d", netIdx)) == "1"
+			// Build config
+			additionalNetConfig := additionalModel + ",bridge=" + additionalBridge
+			if !additionalEnabled {
+				additionalNetConfig += ",link_down=1"
+			}
+			// Set parameter
+			netParam := fmt.Sprintf("net%d", netIdx)
+			params.Set(netParam, additionalNetConfig)
+			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Bool("enabled", additionalEnabled).Msg("Added additional network card")
+		}
 	}
 
 	// Agent
