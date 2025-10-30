@@ -35,6 +35,10 @@ type appState struct {
 	// Offline mode flag
 	offlineMode bool
 
+	// Connection failure tracking for automatic offline mode
+	proxmoxConnectionLostTime     time.Time
+	proxmoxConnectionFailureCount int
+
 	// Security-related fields
 	csrfTokens map[string]time.Time
 	securityMu sync.RWMutex // Mutex for CSRF token operations
@@ -195,6 +199,12 @@ func (s *appState) SetOfflineMode() {
 	s.offlineMode = true
 	s.mu.Unlock()
 
+	// Reset failure tracking when manually setting offline mode
+	s.proxmoxMu.Lock()
+	s.proxmoxConnectionLostTime = time.Time{}
+	s.proxmoxConnectionFailureCount = 0
+	s.proxmoxMu.Unlock()
+
 	// Update status to reflect offline mode
 	s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxOfflineMode))
 	logger.Get().Info().Msg("Offline mode activated")
@@ -235,20 +245,72 @@ func (s *appState) CheckProxmoxConnection() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.ProxmoxConnectionCheckTimeout)
 	defer cancel()
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+
 	if err != nil || len(nodes) == 0 {
-		errMsg := "Failed to connect to Proxmox"
-		if err != nil {
-			errMsg = fmt.Sprintf("%s: %v", errMsg, err)
-		} else if len(nodes) == 0 {
-			errMsg = fmt.Sprintf("%s: no nodes returned", errMsg)
-		}
-		s.updateProxmoxStatus(false, errMsg)
+		s.handleConnectionFailure()
 		return false
 	}
 
 	// If we got here, the connection is good
-	s.updateProxmoxStatus(true, "")
+	s.handleConnectionRecovery()
 	return true
+}
+
+// handleConnectionFailure manages connection failures and automatic offline mode
+func (s *appState) handleConnectionFailure() {
+	s.proxmoxMu.Lock()
+	defer s.proxmoxMu.Unlock()
+
+	now := time.Now()
+
+	// Track failure time and count
+	if s.proxmoxConnectionLostTime.IsZero() {
+		s.proxmoxConnectionLostTime = now
+		logger.Get().Warn().Time("failure_started", now).Msg("Proxmox connection failures detected")
+	}
+
+	s.proxmoxConnectionFailureCount++
+
+	// Check if we've exceeded the threshold for automatic offline mode
+	if now.Sub(s.proxmoxConnectionLostTime) >= constants.ProxmoxOfflineThreshold {
+		if !s.offlineMode {
+			logger.Get().Warn().
+				Dur("failure_duration", now.Sub(s.proxmoxConnectionLostTime)).
+				Int("failure_count", s.proxmoxConnectionFailureCount).
+				Msg("Proxmox connection failed for 2 minutes, switching to offline mode automatically")
+
+			// Switch to offline mode
+			s.offlineMode = true
+			s.updateProxmoxStatus(false, "Automatic offline mode: Proxmox unreachable for 2 minutes")
+		}
+	} else {
+		// Still within threshold, update error message
+		errMsg := fmt.Sprintf("Failed to connect to Proxmox (failure #%d, duration: %v)",
+			s.proxmoxConnectionFailureCount, now.Sub(s.proxmoxConnectionLostTime).Round(time.Second))
+		s.updateProxmoxStatus(false, errMsg)
+	}
+}
+
+// handleConnectionRecovery resets failure tracking when connection is restored
+func (s *appState) handleConnectionRecovery() {
+	s.proxmoxMu.Lock()
+	defer s.proxmoxMu.Unlock()
+
+	// Reset failure tracking if we were in failure state
+	if !s.proxmoxConnectionLostTime.IsZero() {
+		logger.Get().Info().
+			Time("failure_started", s.proxmoxConnectionLostTime).
+			Int("failure_count", s.proxmoxConnectionFailureCount).
+			Dur("total_downtime", time.Since(s.proxmoxConnectionLostTime)).
+			Msg("Proxmox connection restored after failures")
+
+		// Reset tracking
+		s.proxmoxConnectionLostTime = time.Time{}
+		s.proxmoxConnectionFailureCount = 0
+	}
+
+	// Update status to connected
+	s.updateProxmoxStatus(true, "")
 }
 
 // updateProxmoxStatus updates the Proxmox connection status in a thread-safe way
