@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -82,6 +83,11 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 					for detail := range detailsChan {
 						nodeDetails = append(nodeDetails, detail)
 					}
+
+					// Sort nodes alphabetically by name
+					sort.Slice(nodeDetails, func(i, j int) bool {
+						return nodeDetails[i].Node < nodeDetails[j].Node
+					})
 
 					log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with resty")
 				}
