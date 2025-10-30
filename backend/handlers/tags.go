@@ -246,8 +246,11 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Proxmox typically separates tags with ';' but some environments may contain
 	// comma-separated lists inside a single part (e.g. "pvmss,test"). We split on
 	// both ';' and ',' to ensure each individual tag is counted.
+	log := logger.Get()
 	tagCounts := make(map[string]int)
-	if restyClient, err := getDefaultRestyClient(); err == nil {
+	if h.stateManager.IsOfflineMode() {
+		log.Debug().Msg("Offline mode enabled; skipping tag usage lookup")
+	} else if restyClient, err := getDefaultRestyClient(); err == nil {
 		if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
 			for i := range vms {
 				if cfg, err := proxmox.GetVMConfigResty(r.Context(), restyClient, vms[i].Node, vms[i].VMID); err == nil {
@@ -271,11 +274,14 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 					}
 				}
 			}
+		} else {
+			log.Debug().Err(err).Msg("Failed to retrieve VM list for tag usage lookup")
 		}
+	} else {
+		log.Debug().Err(err).Msg("Failed to create resty client for tag usage lookup")
 	}
 
 	// Debug logging for tag counts
-	log := logger.Get()
 	log.Info().Interface("tag_counts", tagCounts).Msg("Tag counts calculated")
 
 	// Filter and sort tags by name for display
