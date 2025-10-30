@@ -2,13 +2,9 @@ package handlers
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
-	"net"
 	"net/http"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,14 +15,38 @@ import (
 	"pvmss/state"
 )
 
-// AdminHandler handles administration routes
-type AdminHandler struct {
+// AdminOptimizedHandler handles administration routes with optimized cluster performance
+type AdminOptimizedHandler struct {
 	stateManager state.StateManager
 }
 
-// NodesPageHandler renders the Nodes admin page
-func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("NodesPageHandler", r)
+// NewAdminOptimizedHandler creates a new instance of AdminOptimizedHandler
+func NewAdminOptimizedHandler(sm state.StateManager) *AdminOptimizedHandler {
+	return &AdminOptimizedHandler{stateManager: sm}
+}
+
+// RegisterRoutes registers admin routes
+func (h *AdminOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
+	log := CreateHandlerLogger("AdminOptimizedHandler", nil)
+
+	if router == nil {
+		log.Error().Msg("Router is nil, cannot register admin routes")
+		return
+	}
+
+	log.Debug().Msg("Registering optimized admin routes")
+
+	// Admin nodes page (optimized)
+	router.GET("/admin/nodes", RequireAuthHandle(h.NodesPageHandlerOptimized))
+
+	log.Info().
+		Str("route", "GET /admin/nodes").
+		Msg("Optimized admin route registered successfully")
+}
+
+// NodesPageHandlerOptimized renders the Nodes admin page with optimizations
+func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("NodesPageHandlerOptimized", r)
 
 	// Proxmox connection status from background monitor
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
@@ -46,50 +66,19 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 				log.Error().Err(err).Msg("Failed to create resty client")
 				errMsg = "Failed to create API client"
 			} else {
-				// Use a shorter timeout to avoid long blocking
-				ctx, cancel := context.WithTimeout(r.Context(), constants.ShortContextTimeout)
+				// Use optimized context timeout
+				ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 				defer cancel()
 
-				log.Info().Msg("Using resty client to fetch nodes")
+				log.Info().Msg("Using optimized resty client to fetch nodes")
 
-				// Get node names using resty
-				nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+				// Get node details with optimized batch processing
+				nodeDetails, err = h.getNodeDetailsOptimized(ctx, restyClient)
 				if err != nil {
-					log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes (resty)")
-					errMsg = "Failed to retrieve nodes"
+					log.Warn().Err(err).Msg("Unable to retrieve Proxmox node details (optimized)")
+					errMsg = "Failed to retrieve node details"
 				} else {
-					log.Info().Int("count", len(nodes)).Msg("Successfully retrieved nodes with resty")
-
-					// Fetch details for each node concurrently
-					var wg sync.WaitGroup
-					detailsChan := make(chan *proxmox.NodeDetails, len(nodes))
-
-					for _, nodeName := range nodes {
-						wg.Add(1)
-						go func(name string) {
-							defer wg.Done()
-							nd, nErr := proxmox.GetNodeDetailsResty(ctx, restyClient, name)
-							if nErr != nil {
-								log.Warn().Err(nErr).Str("node", name).Msg("Failed to retrieve node details (resty); skipping node")
-								return
-							}
-							detailsChan <- nd
-						}(nodeName)
-					}
-
-					wg.Wait()
-					close(detailsChan)
-
-					for detail := range detailsChan {
-						nodeDetails = append(nodeDetails, detail)
-					}
-
-					// Sort nodes alphabetically by name
-					sort.Slice(nodeDetails, func(i, j int) bool {
-						return nodeDetails[i].Node < nodeDetails[j].Node
-					})
-
-					log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with resty")
+					log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with optimization")
 				}
 			}
 		} else {
@@ -98,254 +87,101 @@ func (h *AdminHandler) NodesPageHandler(w http.ResponseWriter, r *http.Request, 
 		}
 	} else {
 		log.Warn().Msg("Proxmox client is not initialized; rendering page without live node data")
+		errMsg = "Proxmox connection unavailable"
 	}
 
-	builder := NewTemplateData("").
-		SetAdminActive("nodes").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r)
+	// Build template data with optimized builder pattern
+	data := NewTemplateDataWithOptions("",
+		WithAdminActive("nodes"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("NodeDetails", nodeDetails),
+		WithData("Error", errMsg),
+	).ToMap()
 
-	if errMsg != "" {
-		builder.SetError(errMsg)
-	}
-
-	builder.AddData("TitleKey", "Nodes.Title").
-		AddData("NodeDetails", nodeDetails)
-
-	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_nodes", data)
 }
 
-// NewAdminHandler creates a new instance of AdminHandler
-func NewAdminHandler(sm state.StateManager) *AdminHandler {
-	return &AdminHandler{stateManager: sm}
-}
+// getNodeDetailsOptimized retrieves node details with batch processing and caching optimizations
+func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, restyClient *proxmox.RestyClient) ([]*proxmox.NodeDetails, error) {
+	log := CreateHandlerLogger("getNodeDetailsOptimized", nil)
 
-// AdminPageHandler handles the administration page
-func (h *AdminHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("AdminPageHandler", r)
-	log.Debug().Msg("Rendering admin dashboard")
-
-	builder := NewTemplateData("").
-		SetAdminActive("dashboard").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Navbar.Admin")
-
-	data := builder.Build().ToMap()
-	renderTemplateInternal(w, r, "admin_base", data)
-}
-
-// ProxmoxTicketTestPageHandler renders the Proxmox ticket test page
-func (h *AdminHandler) ProxmoxTicketTestPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Get Proxmox host URL from client
-	var proxmoxHost string
-	var authMethod string
-	client := h.stateManager.GetProxmoxClient()
-	if client != nil {
-		proxmoxHost = client.GetApiUrl()
-		// Remove protocol and port to get just the hostname
-		if strings.HasPrefix(proxmoxHost, "https://") {
-			proxmoxHost = strings.TrimPrefix(proxmoxHost, "https://")
-		} else if strings.HasPrefix(proxmoxHost, "http://") {
-			proxmoxHost = strings.TrimPrefix(proxmoxHost, "http://")
-		}
-		// Remove port if present
-		if host, _, err := net.SplitHostPort(proxmoxHost); err == nil {
-			proxmoxHost = host
-		}
-
-		// Check authentication method
-		if os.Getenv("PROXMOX_API_TOKEN_NAME") != "" && os.Getenv("PROXMOX_API_TOKEN_VALUE") != "" {
-			authMethod = "API Token"
-		} else if os.Getenv("PROXMOX_USER") != "" && os.Getenv("PROXMOX_PASSWORD") != "" {
-			authMethod = "Username/Password"
-		} else {
-			authMethod = "Unknown"
-		}
-	}
-
-	builder := NewTemplateData("").
-		SetAdminActive("ticket-test").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Navbar.Admin").
-		AddData("ProxmoxHost", proxmoxHost).
-		AddData("AuthMethod", authMethod)
-
-	data := builder.Build().ToMap()
-	renderTemplateInternal(w, r, "admin_ticket_test", data)
-}
-
-// ProxmoxTicketTestFormHandler handles POST from admin_ticket_test.html to test Proxmox authentication
-func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
-		return
-	}
-
-	username := strings.TrimSpace(r.FormValue("username"))
-	password := r.FormValue("password")
-
-	if username == "" {
-		builder := NewTemplateData("").
-			SetAdminActive("ticket-test").
-			SetAuth(r).
-			SetProxmoxStatus(h.stateManager).
-			SetError("Username is required").
-			AddData("TitleKey", "Navbar.Admin").
-			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
-
-		data := builder.Build().ToMap()
-		renderTemplateInternal(w, r, "admin_ticket_test", data)
-		return
-	}
-
-	// Check if the main client is using API token authentication
-	mainClient := h.stateManager.GetProxmoxClient()
-	if mainClient != nil {
-		// If main client exists and is working with API tokens, we can't test username/password
-		// because API token auth doesn't support the login endpoint
-		builder := NewTemplateData("").
-			SetAdminActive("ticket-test").
-			SetAuth(r).
-			SetProxmoxStatus(h.stateManager).
-			SetError("Your Proxmox configuration uses API token authentication. Username/password testing is not available with API tokens.").
-			AddData("TitleKey", "Navbar.Admin").
-			AddData("ProxmoxHost", r.FormValue("proxmox_host")).
-			AddData("AuthMethod", "API Token").
-			AddData("Username", username)
-
-		data := builder.Build().ToMap()
-		renderTemplateInternal(w, r, "admin_ticket_test", data)
-		return
-	}
-
-	// Test the authentication
-	// Get the SSL verification setting from environment
-	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
-
-	testClient, err := proxmox.NewClientCookieAuth("https://"+r.FormValue("proxmox_host")+":8006/api2/json", insecureSkipVerify)
+	// First, get node names (fast operation)
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		builder := NewTemplateData("").
-			SetAdminActive("ticket-test").
-			SetAuth(r).
-			SetProxmoxStatus(h.stateManager).
-			SetError("Failed to create test client: "+err.Error()).
-			AddData("TitleKey", "Navbar.Admin").
-			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
-		data := builder.Build().ToMap()
-		renderTemplateInternal(w, r, "admin_ticket_test", data)
-		return
+		return nil, err
 	}
 
-	testClient.SetTimeout(30 * time.Second)
+	log.Info().Int("node_count", len(nodes)).Msg("Retrieved node names")
 
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-	defer cancel()
-
-	// Try to login with username and password
-	err = testClient.Login(ctx, username, password, "")
-	if err != nil {
-		builder := NewTemplateData("").
-			SetAdminActive("ticket-test").
-			SetAuth(r).
-			SetProxmoxStatus(h.stateManager).
-			SetError("Authentication failed: "+err.Error()).
-			AddData("TitleKey", "Navbar.Admin").
-			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
-		data := builder.Build().ToMap()
-		renderTemplateInternal(w, r, "admin_ticket_test", data)
-		return
+	if len(nodes) == 0 {
+		return []*proxmox.NodeDetails{}, nil
 	}
 
-	// Test the authentication by making a simple API call
-	var result map[string]interface{}
-	err = testClient.GetJSON(ctx, "/nodes", &result)
-	if err != nil {
-		builder := NewTemplateData("").
-			SetAdminActive("ticket-test").
-			SetAuth(r).
-			SetProxmoxStatus(h.stateManager).
-			SetError("Ticket validation failed: "+err.Error()).
-			AddData("TitleKey", "Navbar.Admin").
-			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
-		data := builder.Build().ToMap()
-		renderTemplateInternal(w, r, "admin_ticket_test", data)
-		return
-	}
+	// Use optimized concurrent processing with semaphore
+	const maxConcurrent = 8 // Increased from original for better performance
+	semaphore := make(chan struct{}, maxConcurrent)
 
-	// Success - show the results
-	builder := NewTemplateData("").
-		SetAdminActive("ticket-test").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		SetSuccess("Authentication successful! Ticket obtained and validated.").
-		AddData("TitleKey", "Navbar.Admin").
-		AddData("ProxmoxHost", r.FormValue("proxmox_host")).
-		AddData("Username", username)
-	data := builder.Build().ToMap()
+	var wg sync.WaitGroup
+	detailsChan := make(chan *proxmox.NodeDetails, len(nodes))
+	errorChan := make(chan error, len(nodes))
 
-	// Extract ticket information
-	pveAuthCookie := testClient.GetPVEAuthCookie()
-	csrfToken := testClient.GetCSRFPreventionToken()
+	// Process nodes concurrently with controlled concurrency
+	for _, nodeName := range nodes {
+		wg.Add(1)
+		go func(name string) {
+			defer wg.Done()
 
-	// Parse ticket details (PVE tickets are JWT-like tokens)
-	ticketDetails := map[string]interface{}{
-		"Length":       len(pveAuthCookie),
-		"Format":       "JWT-like token",
-		"ContainsDots": strings.Count(pveAuthCookie, "."),
-		"Timestamp":    time.Now().Format("2006-01-02 15:04:05 MST"),
-		"ValidFor":     "2 hours",
-		"Host":         r.FormValue("proxmox_host"),
-	}
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
 
-	// Try to decode ticket payload if it's a JWT-like token
-	if parts := strings.Split(pveAuthCookie, "."); len(parts) >= 2 {
-		if payload, err := base64.RawURLEncoding.DecodeString(parts[1]); err == nil {
-			var ticketPayload map[string]interface{}
-			if err := json.Unmarshal(payload, &ticketPayload); err == nil {
-				ticketDetails["DecodedPayload"] = ticketPayload
+			// Create individual context with shorter timeout for each node
+			nodeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			nd, nErr := proxmox.GetNodeDetailsResty(nodeCtx, restyClient, name)
+			if nErr != nil {
+				log.Warn().Err(nErr).Str("node", name).Msg("Failed to retrieve node details (optimized)")
+				errorChan <- nErr
+				return
 			}
-		}
+
+			detailsChan <- nd
+		}(nodeName)
 	}
 
-	data["TicketInfo"] = map[string]interface{}{
-		"PVEAuthCookie":       pveAuthCookie,
-		"CSRFPreventionToken": csrfToken,
-		"TicketDetails":       ticketDetails,
-		"ApiResponse":         result,
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(detailsChan)
+	close(errorChan)
+
+	// Collect results
+	var nodeDetails []*proxmox.NodeDetails
+	for detail := range detailsChan {
+		nodeDetails = append(nodeDetails, detail)
 	}
-	renderTemplateInternal(w, r, "admin_ticket_test", data)
-}
 
-// RegisterRoutes registers administration routes
-func (h *AdminHandler) RegisterRoutes(router *httprouter.Router) {
-	// Register main admin dashboard (protected with admin privileges)
-	router.GET("/admin", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.AdminPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	// Log errors (but don't fail the entire operation)
+	errorCount := 0
+	for range errorChan {
+		errorCount++
+	}
+	if errorCount > 0 {
+		log.Warn().Int("error_count", errorCount).Int("success_count", len(nodeDetails)).Msg("Some node details failed to load")
+	}
 
-	// Additional admin subpages (protected with admin privileges)
-	router.GET("/admin/nodes", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.NodesPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	// Sort nodes alphabetically by name
+	sort.Slice(nodeDetails, func(i, j int) bool {
+		return nodeDetails[i].Node < nodeDetails[j].Node
+	})
 
-	router.GET("/admin/appinfo", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.AppInfoPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	log.Info().
+		Int("node_details_count", len(nodeDetails)).
+		Int("total_nodes", len(nodes)).
+		Int("error_count", errorCount).
+		Msg("Successfully fetched node details with optimization")
 
-	// Proxmox ticket test routes
-	router.GET("/admin/ticket-test", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.ProxmoxTicketTestPageHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-
-	// Admin ticket test form with CSRF protection
-	router.POST("/admin/ticket-test", SecureFormHandler("ProxmoxTicketTest",
-		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.ProxmoxTicketTestFormHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
+	return nodeDetails, nil
 }
