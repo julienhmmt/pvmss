@@ -325,6 +325,11 @@ body::before {
   box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
 }
 
+.tag.is-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
 .tag.is-success {
   background: var(--success-light);
 }
