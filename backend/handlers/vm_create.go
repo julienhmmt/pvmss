@@ -312,10 +312,8 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 
 	// Create global storage info map for quick lookup
 	globalStorageInfo := make(map[string]proxmox.Storage)
-	if globalList != nil {
-		for _, item := range globalList {
-			globalStorageInfo[item.Storage] = item
-		}
+	for _, item := range globalList {
+		globalStorageInfo[item.Storage] = item
 	}
 
 	// Create enabled storage map for quick lookup
@@ -462,7 +460,13 @@ func (h *VMCreateOptimizedHandler) getOptimizedBridges(ctx context.Context, rest
 
 	// Build bridge details
 	var bridgeDetails []map[string]string
-	for _, bridgeName := range settings.VMBRs {
+	for _, bridgeIdentifier := range settings.VMBRs {
+		// Extract bridge name from node:vmbr format
+		bridgeName := bridgeIdentifier
+		if colonIndex := strings.Index(bridgeIdentifier, ":"); colonIndex != -1 {
+			bridgeName = bridgeIdentifier[colonIndex+1:]
+		}
+		
 		bridgeDetails = append(bridgeDetails, map[string]string{
 			"description": bridgeDescriptions[bridgeName],
 			"name":        bridgeName,

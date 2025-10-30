@@ -101,11 +101,15 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	}
 
 	name := r.FormValue("vmbr")
+	node := r.FormValue("node")
 	action := r.FormValue("action") // enable|disable
-	if name == "" || (action != "enable" && action != "disable") {
+	if name == "" || node == "" || (action != "enable" && action != "disable") {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+
+	// Create unique identifier combining node and vmbr name
+	uniqueID := node + ":" + name
 
 	settings := h.stateManager.GetSettings()
 	if settings.VMBRs == nil {
@@ -119,13 +123,13 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 
 	changed := false
 	if action == "enable" {
-		if !enabled[name] {
-			settings.VMBRs = append(settings.VMBRs, name)
+		if !enabled[uniqueID] {
+			settings.VMBRs = append(settings.VMBRs, uniqueID)
 			changed = true
 		}
 	} else { // disable
-		if enabled[name] {
-			settings.VMBRs = removeFromList(settings.VMBRs, name)
+		if enabled[uniqueID] {
+			settings.VMBRs = removeFromList(settings.VMBRs, uniqueID)
 			changed = true
 		}
 	}
@@ -182,10 +186,13 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Map to template shape used previously: name field instead of iface
 	vmbrsForTemplate := make([]map[string]string, 0, len(allVMBRs))
 	for _, v := range allVMBRs {
+		// Create unique identifier combining node and vmbr name
+		uniqueID := v["node"] + ":" + v["iface"]
 		vmbrsForTemplate = append(vmbrsForTemplate, map[string]string{
 			"node":        v["node"],
 			"name":        v["iface"],
 			"description": v["description"],
+			"unique_id":   uniqueID,
 		})
 	}
 
