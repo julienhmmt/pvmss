@@ -41,9 +41,11 @@ func main() {
 		logger.Get().Fatal().Err(err).Msg("Environment validation failed - check your configuration")
 	}
 
+	logger.Get().Debug().Msg("Starting application initialization")
 	if err := initializeApp(stateManager); err != nil {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize application")
 	}
+	logger.Get().Debug().Msg("Application initialization completed")
 
 	sessionManager, err := security.InitSecurity()
 	if err != nil {
@@ -129,6 +131,8 @@ func initializeApp(stateManager state.StateManager) error {
 			logger.Get().Warn().
 				Str("error", errorMsg).
 				Msg("Proxmox server not reachable, starting in read-only mode")
+		} else {
+			logger.Get().Info().Msg("Proxmox connection verified successfully")
 		}
 	}
 
@@ -203,6 +207,7 @@ func initProxmoxClient() (*proxmox.Client, error) {
 }
 
 func initTemplates() (*template.Template, string, error) {
+	logger.Get().Debug().Msg("Starting template initialization")
 	funcMap := templates.GetBaseFuncMap()
 
 	funcMap["T"] = func(messageID string, args ...interface{}) template.HTML {
@@ -219,16 +224,20 @@ func initTemplates() (*template.Template, string, error) {
 
 	rootDir := filepath.Dir(filepath.Dir(filename))
 	frontendPath := filepath.Join(rootDir, "frontend")
+	logger.Get().Debug().Str("frontend_path", frontendPath).Msg("Frontend path determined")
 
 	templateFiles, err := templates.FindTemplateFiles(frontendPath)
 	if err != nil {
 		return nil, "", fmt.Errorf("error finding template files: %w", err)
 	}
+	logger.Get().Debug().Int("template_count", len(templateFiles)).Msg("Template files found")
 
+	logger.Get().Debug().Msg("Starting to parse templates")
 	tmpl, err := template.New("main").Funcs(funcMap).ParseFiles(templateFiles...)
 	if err != nil {
 		return nil, "", fmt.Errorf("error parsing templates: %w", err)
 	}
+	logger.Get().Debug().Msg("Templates parsed successfully")
 
 	handlers.SetFrontendPath(frontendPath)
 
