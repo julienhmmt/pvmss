@@ -205,3 +205,7 @@ other = "Enable network card"
 other = "Turn on/off the network card. When disabled, the network interface will be created but will be down (no traffic)."
 ["VM.Create.Tooltip.NetworkEnabled"]
 other = "Enable or disable the network card. When disabled, the network interface is created but remains down until manually enabled in the VM or Proxmox."
+["VM.Create.NoNodesAvailableTitle"]
+other = "No nodes available"
+["VM.Create.NoNodesAvailableMessage"]
+other = "No Proxmox nodes are currently available. This may be due to network connectivity issues or nodes being offline. Please contact your administrator."

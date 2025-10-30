@@ -244,22 +244,22 @@ func (s *appState) CheckProxmoxConnection() bool {
 	// Try to get node names as a simple connection test
 	ctx, cancel := context.WithTimeout(context.Background(), constants.ProxmoxConnectionCheckTimeout)
 	defer cancel()
-	
+
 	logger.Get().Debug().Msg("Starting Proxmox connection check")
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
-	
+
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Proxmox connection check failed with error")
 		s.handleConnectionFailure()
 		return false
 	}
-	
+
 	if len(nodes) == 0 {
 		logger.Get().Error().Msg("Proxmox connection check returned empty node list")
 		s.handleConnectionFailure()
 		return false
 	}
-	
+
 	logger.Get().Debug().Int("node_count", len(nodes)).Msg("Proxmox connection check successful")
 
 	// If we got here, the connection is good

@@ -205,3 +205,7 @@ other = "Activer la carte réseau"
 other = "Activer/désactiver la carte réseau. Lorsque désactivée, l'interface réseau sera créée mais restera inactive (pas de trafic)."
 ["VM.Create.Tooltip.NetworkEnabled"]
 other = "Activer ou désactiver la carte réseau. Lorsque désactivée, l'interface réseau est créée mais reste inactive jusqu'à ce qu'elle soit manuellement activée dans la VM ou Proxmox."
+["VM.Create.NoNodesAvailableTitle"]
+other = "Aucun nœud disponible"
+["VM.Create.NoNodesAvailableMessage"]
+other = "Aucun nœud Proxmox n'est actuellement disponible. Ceci peut être dû à des problèmes de connectivité réseau ou des nœuds hors ligne. Veuillez contacter votre administrateur."

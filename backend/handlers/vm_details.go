@@ -68,19 +68,6 @@ func NewVMHandler(stateManager state.StateManager) *VMHandler {
 
 // RegisterRoutes registers VM-related routes
 func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
-	// VM creation routes
-	router.GET("/vm/create", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.CreateVMPage(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-
-	// VM creation with CSRF protection
-	router.POST("/api/vm/create", SecureFormHandler("CreateVM",
-		HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.CreateVMHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
-
-	// VM details and actions routes
 	router.GET("/vm/details/:vmid", RequireAuthHandle(h.VMDetailsHandler))
 
 	router.POST("/vm/update/description", SecureFormHandler("UpdateVMDescription",
@@ -91,6 +78,9 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	))
 	router.POST("/vm/update/resources", SecureFormHandler("UpdateVMResources",
 		RequireAuthHandle(h.UpdateVMResourcesHandler),
+	))
+	router.POST("/vm/toggle/network", SecureFormHandler("ToggleNetworkCard",
+		RequireAuthHandle(h.ToggleNetworkCardHandler),
 	))
 	router.POST("/vm/action", SecureFormHandler("VMAction",
 		RequireAuthHandle(h.VMActionHandler),
@@ -131,17 +121,18 @@ func containsString(items []string, target string) bool {
 
 // Network cards display helpers
 type networkCardTemplateData struct {
-	Index   string
-	Bridge  string
-	Model   string
-	MAC     string
-	Exists  bool
-	Options []string
+	Index    string
+	Bridge   string
+	Model    string
+	MAC      string
+	Exists   bool
+	Options  []string
+	LinkDown bool // true = disabled, false = enabled
 }
 
 var networkModelKeys = []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
 
-func parseNetworkConfig(raw string) (model, mac, bridge string, options []string) {
+func parseNetworkConfig(raw string) (model, mac, bridge string, options []string, linkDown bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return
@@ -163,6 +154,8 @@ func parseNetworkConfig(raw string) (model, mac, bridge string, options []string
 				model = value
 			case key == "bridge":
 				bridge = value
+			case key == "link_down":
+				linkDown = (value == "1" || value == "true")
 			case containsString(networkModelKeys, key):
 				model = key
 				mac = strings.ToUpper(value)
@@ -171,6 +164,8 @@ func parseNetworkConfig(raw string) (model, mac, bridge string, options []string
 			}
 		} else if containsString(networkModelKeys, part) {
 			model = part
+		} else if part == "link_down" {
+			linkDown = true
 		} else {
 			options = append(options, part)
 		}
@@ -308,14 +303,15 @@ func buildNetworkCardsData(cfg map[string]interface{}, maxCards int) []networkCa
 				rawVal = netVal
 			}
 		}
-		model, mac, bridge, opts := parseNetworkConfig(rawVal)
+		model, mac, bridge, opts, linkDown := parseNetworkConfig(rawVal)
 		cards[i] = networkCardTemplateData{
-			Index:   key,
-			Bridge:  bridge,
-			Model:   model,
-			MAC:     mac,
-			Exists:  rawVal != "",
-			Options: opts,
+			Index:    key,
+			Bridge:   bridge,
+			Model:    model,
+			MAC:      mac,
+			Exists:   rawVal != "",
+			Options:  opts,
+			LinkDown: linkDown,
 		}
 	}
 	return cards

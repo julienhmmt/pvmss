@@ -58,6 +58,18 @@
                 )}}
                 {{end}}
                 
+                {{if .NoNodesAvailable}}
+                {{template "notification" (dict
+                    "Type" "danger"
+                    "Title" (T "VM.Create.NoNodesAvailableTitle")
+                    "Message" (T "VM.Create.NoNodesAvailableMessage")
+                    "Icon" "fas fa-server"
+                    "Dismissible" false
+                    "Live" "assertive"
+                    "ExtraClasses" "mb-4"
+                )}}
+                {{end}}
+                
                 {{if .ValidationError}}
                 {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
                 {{end}}
@@ -73,12 +85,12 @@
                         )}}
                         {{end}}
 
-                        <form method="POST" action="/api/vm/create" id="vmCreateForm"
-                            aria-label="Create new virtual machine" {{if or (not .ProxmoxConnected) .AllNodesSaturated}}onsubmit="return false;" disabled{{end}}>
+                        <form method="POST" action="/vm/create" id="vmCreateForm"
+                            aria-label="Create new virtual machine" {{if or (not .ProxmoxConnected) .AllNodesSaturated .NoNodesAvailable}}onsubmit="return false;" disabled{{end}}>
                             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
-                            <fieldset {{if or (not .ProxmoxConnected) .AllNodesSaturated}}disabled{{end}}
-                                aria-disabled="{{if or (not .ProxmoxConnected) .AllNodesSaturated}}true{{else}}false{{end}}">
+                            <fieldset {{if or (not .ProxmoxConnected) .AllNodesSaturated .NoNodesAvailable}}disabled{{end}}
+                                aria-disabled="{{if or (not .ProxmoxConnected) .AllNodesSaturated .NoNodesAvailable}}true{{else}}false{{end}}">
 
                                 <!-- Variable Preparation -->
                                 {{/* Extract VM limits from settings (always defined in settings.json) */}}
@@ -457,8 +469,8 @@
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
                                                                 {{if .NodeOptions}}
                                                                 {{range .NodeOptions}}
-                                                                <option value="{{.Name}}" {{if $.FormData.node}}{{if eq .Name $.FormData.node}}selected{{end}}{{else if eq .Name $.ActiveNode}}selected{{end}} {{if .Disabled}}disabled title="{{T .DisabledReason}}" class="has-text-grey-light"{{end}}>
-                                                                    {{.Name}}{{if .Disabled}} — {{T .DisabledReason}}{{end}}
+                                                                <option value="{{.value}}" {{if $.FormData.node}}{{if eq .value $.FormData.node}}selected{{end}}{{else if eq .value $.ActiveNode}}selected{{end}} {{if .disabled}}disabled title="{{.reason}}" class="has-text-grey-light"{{end}}>
+                                                                    {{.text}}{{if .disabled}} — {{.reason}}{{end}}
                                                                 </option>
                                                                 {{end}}
                                                                 {{else}}
@@ -546,8 +558,8 @@
                                                     </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth is-medium">
-                                                            <select id="networkBridge_{{$cardIdx}}" name="bridge_{{$cardIdx}}" {{if eq $cardIdx 0}}required{{end}} aria-describedby="networkBridge-help">
-                                                                {{if gt $cardIdx 0}}<option value="">-- {{T "VM.Create.NoNetwork"}} --</option>{{end}}
+                                                            <select id="networkBridge_{{$cardIdx}}" name="bridge_{{$cardIdx}}" aria-describedby="networkBridge-help">
+                                                                <option value="">-- {{T "VM.Create.NoNetwork"}} --</option>
                                                                 {{range $bridge := $.Bridges}}
                                                                 {{$rawDesc := index $.BridgeDescriptions $bridge}}
                                                                 {{$nodeName := index $.BridgeNodes $bridge}}
@@ -555,7 +567,7 @@
                                                                 {{if not $desc}}
                                                                     {{$desc = ""}}
                                                                 {{end}}
-                                                                <option value="{{$bridge}}" {{if eq $cardIdx 0}}{{if $.FormData.bridge}}{{if eq $bridge $.FormData.bridge}}selected{{end}}{{else if eq $bridge "vmbr0"}}selected{{end}}{{end}}>
+                                                                <option value="{{$bridge}}" {{if eq $cardIdx 0}}{{if $.FormData.bridge_0}}{{if eq $bridge $.FormData.bridge_0}}selected{{end}}{{end}}{{else}}{{if index $.FormData (printf "bridge_%d" $cardIdx)}}{{if eq $bridge (index $.FormData (printf "bridge_%d" $cardIdx))}}selected{{end}}{{end}}{{end}}>
                                                                     {{$bridge}}{{if $nodeName}} ({{$nodeName}}){{end}}{{if $desc}} &ndash; {{$desc}}{{end}}
                                                                 </option>
                                                                 {{end}}
