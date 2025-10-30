@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -198,6 +199,9 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 			})
 		}
 	}
+
+	// Sort by VMID ascending for consistent display order
+	sort.Slice(vms, func(i, j int) bool { return vms[i].VMID < vms[j].VMID })
 
 	log.Info().
 		Str("pool", poolName).

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -246,11 +247,6 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 
 		// VM passed initial filters, add to filtered list
 		filteredVMs = append(filteredVMs, vmInfo)
-
-		// Limit early to avoid unnecessary config calls
-		if len(filteredVMs) >= 50 {
-			break
-		}
 	}
 
 	log.Info().
@@ -332,17 +328,24 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 		}
 
 		results = append(results, map[string]interface{}{
-			"vmid":        vm.VMID,
+			"vmid":        vmidInt,
 			"name":        vm.Name,
 			"description": description,
 			"node":        vm.Node,
 			"status":      strings.ToLower(status),
 		})
+	}
 
-		// Limit results to 50
-		if len(results) >= 50 {
-			break
-		}
+	// Sort results by VMID ascending before returning
+	sort.Slice(results, func(i, j int) bool {
+		vi, _ := results[i]["vmid"].(int)
+		vj, _ := results[j]["vmid"].(int)
+		return vi < vj
+	})
+
+	// Apply limit after sorting for deterministic ordering
+	if len(results) > 50 {
+		results = results[:50]
 	}
 
 	log.Info().
