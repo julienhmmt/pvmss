@@ -17,5 +17,7 @@ other = "Utilisation disque"
 other = "En ligne"
 ["Nodes.Status.Offline"]
 other = "Hors ligne"
+["Nodes.OfflineMessage"]
+other = "Le nœud est hors ligne - informations d'utilisation des ressources indisponibles"
 ["Nodes.NoNodes"]
 other = "Aucun nœud trouvé"

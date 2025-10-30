@@ -15,6 +15,12 @@ import (
 	"pvmss/state"
 )
 
+// NodeError captures an error along with the node name
+type NodeError struct {
+	Node  string
+	Error error
+}
+
 // AdminOptimizedHandler handles administration routes with optimized cluster performance
 type AdminOptimizedHandler struct {
 	stateManager state.StateManager
@@ -104,6 +110,7 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 }
 
 // getNodeDetailsOptimized retrieves node details with batch processing and caching optimizations
+// Returns ALL nodes including offline ones in cluster mode
 func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, restyClient *proxmox.RestyClient) ([]*proxmox.NodeDetails, error) {
 	log := CreateHandlerLogger("getNodeDetailsOptimized", nil)
 
@@ -119,13 +126,17 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 		return []*proxmox.NodeDetails{}, nil
 	}
 
+	// Check if we're in cluster mode by trying to get cluster status
+	clusterInfo, clusterErr := proxmox.GetClusterStatusResty(ctx, restyClient)
+	isClusterMode := clusterErr == nil && clusterInfo != nil && clusterInfo.IsCluster
+
 	// Use optimized concurrent processing with semaphore
 	const maxConcurrent = 8 // Increased from original for better performance
 	semaphore := make(chan struct{}, maxConcurrent)
 
 	var wg sync.WaitGroup
 	detailsChan := make(chan *proxmox.NodeDetails, len(nodes))
-	errorChan := make(chan error, len(nodes))
+	errorChan := make(chan NodeError, len(nodes))
 
 	// Process nodes concurrently with controlled concurrency
 	for _, nodeName := range nodes {
@@ -144,7 +155,25 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 			nd, nErr := proxmox.GetNodeDetailsResty(nodeCtx, restyClient, name)
 			if nErr != nil {
 				log.Warn().Err(nErr).Str("node", name).Msg("Failed to retrieve node details (optimized)")
-				errorChan <- nErr
+				errorChan <- NodeError{Node: name, Error: nErr}
+				
+				// In cluster mode, create fallback NodeDetails for offline nodes
+				if isClusterMode {
+					fallbackDetails := &proxmox.NodeDetails{
+						Node:   name,
+						Status: "offline", // Mark as offline
+						CPU:    0,
+						MaxCPU: 0,
+						Sockets: 0,
+						Memory: 0,
+						MaxMemory: 0,
+						Disk: 0,
+						MaxDisk: 0,
+						Uptime: 0,
+					}
+					detailsChan <- fallbackDetails
+					log.Info().Str("node", name).Msg("Created fallback details for offline node in cluster mode")
+				}
 				return
 			}
 
@@ -165,10 +194,17 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 
 	// Log errors (but don't fail the entire operation)
 	errorCount := 0
+	fallbackCount := 0
 	for range errorChan {
 		errorCount++
+		if isClusterMode {
+			fallbackCount++ // Each error in cluster mode creates a fallback
+		}
 	}
-	if errorCount > 0 {
+	
+	if isClusterMode && fallbackCount > 0 {
+		log.Info().Int("fallback_count", fallbackCount).Msg("Created fallback entries for offline nodes in cluster mode")
+	} else if errorCount > 0 {
 		log.Warn().Int("error_count", errorCount).Int("success_count", len(nodeDetails)).Msg("Some node details failed to load")
 	}
 
@@ -181,6 +217,7 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 		Int("node_details_count", len(nodeDetails)).
 		Int("total_nodes", len(nodes)).
 		Int("error_count", errorCount).
+		Bool("cluster_mode", isClusterMode).
 		Msg("Successfully fetched node details with optimization")
 
 	return nodeDetails, nil

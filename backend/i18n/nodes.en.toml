@@ -17,5 +17,7 @@ other = "Disk usage"
 other = "Online"
 ["Nodes.Status.Offline"]
 other = "Offline"
+["Nodes.OfflineMessage"]
+other = "Node is offline - resource usage information unavailable"
 ["Nodes.NoNodes"]
 other = "No nodes found"
