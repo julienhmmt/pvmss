@@ -412,7 +412,7 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	var newLinkDown bool
 	if enabledParam != "" {
 		// enabled=1 means link should be UP (link_down=false)
-		newLinkDown = !(enabledParam == "1")
+		newLinkDown = enabledParam != "1"
 	} else {
 		newLinkDown = (action == "disable")
 	}
