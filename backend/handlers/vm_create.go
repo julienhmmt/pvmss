@@ -112,22 +112,23 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Prepare form data
 	formData := map[string]string{
-		"name":          "",
-		"description":   "",
-		"vmid":          "",
-		"cpu_cores":     "2",
-		"cpu_sockets":   "1",
-		"memory_mb":     "2048",
-		"disk_gb":       "20",
-		"storage":       "",
-		"iso_image":     "",
-		"bridge":        "",
-		"network_model": "virtio",
-		"disk_bus":      "virtio",
-		"enable_efi":    "1",
-		"enable_tpm":    "",
-		"node":          activeNode,
-		"tags":          "",
+		"name":              "",
+		"description":       "",
+		"vmid":              "",
+		"cpu_cores":         "2",
+		"cpu_sockets":       "1",
+		"memory_mb":         "2048",
+		"disk_gb":           "20",
+		"storage":           "",
+		"iso_image":         "",
+		"bridge":            "",
+		"network_model":     "virtio",
+		"disk_bus":          "virtio",
+		"enable_efi":        "1",
+		"enable_tpm":        "",
+		"node":              activeNode,
+		"tags":              "",
+		"network_enabled_0": "1", // First network card enabled by default
 	}
 
 	// Override with session data if available (for form repopulation after validation errors)
@@ -466,7 +467,7 @@ func (h *VMCreateOptimizedHandler) getOptimizedBridges(ctx context.Context, rest
 		if colonIndex := strings.Index(bridgeIdentifier, ":"); colonIndex != -1 {
 			bridgeName = bridgeIdentifier[colonIndex+1:]
 		}
-		
+
 		bridgeDetails = append(bridgeDetails, map[string]string{
 			"description": bridgeDescriptions[bridgeName],
 			"name":        bridgeName,

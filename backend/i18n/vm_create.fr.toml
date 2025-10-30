@@ -199,3 +199,9 @@ other = "Démarrer la VM immédiatement après sa création."
 other = "Modèle de carte réseau virtuelle pour la VM. Détermine le type de carte réseau à utiliser (VirtIO, E1000, E1000E, RTL8139, VMXNet3)."
 ["VM.Create.Tooltip.DiskBusType"]
 other = "Type de contrôleur de disque pour la VM. Détermine le type de contrôleur de disque à utiliser (VirtIO, SCSI, SATA, IDE)."
+["VM.Create.NetworkEnabled"]
+other = "Activer la carte réseau"
+["VM.Create.NetworkEnabledHelp"]
+other = "Activer/désactiver la carte réseau. Lorsque désactivée, l'interface réseau sera créée mais restera inactive (pas de trafic)."
+["VM.Create.Tooltip.NetworkEnabled"]
+other = "Activer ou désactiver la carte réseau. Lorsque désactivée, l'interface réseau est créée mais reste inactive jusqu'à ce qu'elle soit manuellement activée dans la VM ou Proxmox."
