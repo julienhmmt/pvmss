@@ -321,6 +321,13 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 	cfgByName := make(map[string]proxmox.Storage)
 	for _, s := range globalStorages {
 		cfgByName[s.Storage] = s
+		log.Debug().
+			Str("storage", s.Storage).
+			Str("type", s.Type).
+			Str("used", s.Used.String()).
+			Str("total", s.Total.String()).
+			Str("content", s.Content).
+			Msg("Global storage config")
 	}
 
 	nodeStorages, err := proxmox.GetNodeStoragesResty(context.Background(), restyClient, chosen)
@@ -348,26 +355,53 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 			continue
 		}
 
-		used, _ := st.Used.Int64()
-		total, _ := st.Total.Int64()
+		// Extract used/total values with detailed logging
+		usedRaw := st.Used.String()
+		totalRaw := st.Total.String()
+		used, usedErr := st.Used.Int64()
+		total, totalErr := st.Total.Int64()
+		
+		log.Debug().
+			Str("storage", st.Storage).
+			Str("type", st.Type).
+			Str("used_raw", usedRaw).
+			Str("total_raw", totalRaw).
+			Int64("used", used).
+			Int64("total", total).
+			Bool("used_err", usedErr != nil).
+			Bool("total_err", totalErr != nil).
+			Msg("Storage usage data")
+		
 		percent := 0
-		if total > 0 {
+		hasValidData := totalErr == nil && usedErr == nil && total > 0
+		
+		if hasValidData {
 			percent = int((used * 100) / total)
 			if percent < 0 {
 				percent = 0
 			} else if percent > 100 {
 				percent = 100
 			}
+		} else {
+			// Log warning when storage data is invalid
+			if totalRaw != "" || usedRaw != "" {
+				log.Warn().
+					Str("storage", st.Storage).
+					Str("used_raw", usedRaw).
+					Str("total_raw", totalRaw).
+					Msg("Invalid or missing storage usage data")
+			}
 		}
 
 		item := map[string]interface{}{
-			"Storage":     st.Storage,
-			"Type":        st.Type,
-			"Used":        used,
-			"Total":       total,
-			"Description": st.Description,
-			"Content":     st.Content,
-			"UsedPercent": percent,
+			"Storage":       st.Storage,
+			"Type":          st.Type,
+			"Used":          used,
+			"Total":         total,
+			"Description":   st.Description,
+			"Content":       st.Content,
+			"UsedPercent":   percent,
+			"HasValidData":  hasValidData,
 		}
 		if st.Avail.String() != "" {
 			if avail, err := st.Avail.Int64(); err == nil {

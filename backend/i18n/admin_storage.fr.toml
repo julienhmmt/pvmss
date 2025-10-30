@@ -20,4 +20,10 @@ other = "Configuration des disques"
 ["Admin.Storage.MaxDiskPerVM"]
 other = "Nombre maximum de disques par VM"
 ["Admin.Storage.MaxDiskPerVMHelp"]
-other = "Nombre maximum de disques pouvant être ajoutés à une seule VM (1-16). La limite réelle dépend du type de bus sélectionné : IDE (4), SATA (6), SCSI (14), VirtIO (16)."
+other = "Nombre maximum de disques qui peuvent être attachés à une VM (1-16)"
+["Admin.Storage.NoDataAvailable"]
+other = "Données d'utilisation non disponibles"
+["Admin.Storage.RefreshData"]
+other = "Rafraîchir les données de stockage"
+["Admin.Storage.NoDataAvailableHelp"]
+other = "Les données d'utilisation du stockage n'ont pas pu être récupérées depuis Proxmox. Ceci peut être dû à des limitations de l'API ou au type de stockage ne supportant pas les statistiques d'utilisation."
