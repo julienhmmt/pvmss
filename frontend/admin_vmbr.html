@@ -79,6 +79,8 @@
         <tbody>
           {{range .VMBRs}}
           {{$name := index . "name"}}
+          {{$node := index . "node"}}
+          {{$uniqueID := index . "unique_id"}}
           <tr>
             <td>
               <span class="has-text-weight-semibold">{{$name}}</span>
@@ -86,7 +88,7 @@
             <td>
               <span class="tag is-light">
                 <span class="icon is-small"><i class="fas fa-server"></i></span>
-                <span>{{index . "node"}}</span>
+                <span>{{$node}}</span>
               </span>
             </td>
             <td>
@@ -97,14 +99,15 @@
               {{end}}
             </td>
             <td class="has-text-right">
-              {{$isEnabled := index $enabledVMBRs $name}}
+              {{$isEnabled := index $enabledVMBRs $uniqueID}}
               <form method="POST" action="/admin/vmbr/toggle" class="is-inline">
                 <input type="hidden" name="csrf_token" value="{{$csrf}}">
                 <input type="hidden" name="vmbr" value="{{$name}}">
+                <input type="hidden" name="node" value="{{$node}}">
                 <input type="hidden" name="action" value="{{if $isEnabled}}disable{{else}}enable{{end}}">
                 <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}"
-                  aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
-                  title="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
+                  aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}} on {{$node}}"
+                  title="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}} on {{$node}}">
                   <span class="icon is-small">
                     {{if $isEnabled}}
                       <i class="fas fa-toggle-on"></i>
