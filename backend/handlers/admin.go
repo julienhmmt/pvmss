@@ -156,20 +156,20 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 			if nErr != nil {
 				log.Warn().Err(nErr).Str("node", name).Msg("Failed to retrieve node details (optimized)")
 				errorChan <- NodeError{Node: name, Error: nErr}
-				
+
 				// In cluster mode, create fallback NodeDetails for offline nodes
 				if isClusterMode {
 					fallbackDetails := &proxmox.NodeDetails{
-						Node:   name,
-						Status: "offline", // Mark as offline
-						CPU:    0,
-						MaxCPU: 0,
-						Sockets: 0,
-						Memory: 0,
+						Node:      name,
+						Status:    "offline", // Mark as offline
+						CPU:       0,
+						MaxCPU:    0,
+						Sockets:   0,
+						Memory:    0,
 						MaxMemory: 0,
-						Disk: 0,
-						MaxDisk: 0,
-						Uptime: 0,
+						Disk:      0,
+						MaxDisk:   0,
+						Uptime:    0,
 					}
 					detailsChan <- fallbackDetails
 					log.Info().Str("node", name).Msg("Created fallback details for offline node in cluster mode")
@@ -201,7 +201,7 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 			fallbackCount++ // Each error in cluster mode creates a fallback
 		}
 	}
-	
+
 	if isClusterMode && fallbackCount > 0 {
 		log.Info().Int("fallback_count", fallbackCount).Msg("Created fallback entries for offline nodes in cluster mode")
 	} else if errorCount > 0 {
