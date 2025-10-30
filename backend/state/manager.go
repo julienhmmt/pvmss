@@ -292,13 +292,13 @@ func (s *appState) handleConnectionFailure() {
 
 			// Switch to offline mode
 			s.offlineMode = true
-			s.updateProxmoxStatus(false, "Automatic offline mode: Proxmox unreachable for 2 minutes")
+			s.updateProxmoxStatusInternal(false, "Automatic offline mode: Proxmox unreachable for 2 minutes")
 		}
 	} else {
 		// Still within threshold, update error message
 		errMsg := fmt.Sprintf("Failed to connect to Proxmox (failure #%d, duration: %v)",
 			s.proxmoxConnectionFailureCount, now.Sub(s.proxmoxConnectionLostTime).Round(time.Second))
-		s.updateProxmoxStatus(false, errMsg)
+		s.updateProxmoxStatusInternal(false, errMsg)
 	}
 }
 
@@ -320,29 +320,34 @@ func (s *appState) handleConnectionRecovery() {
 		s.proxmoxConnectionFailureCount = 0
 	}
 
-	// Update status to connected
-	s.updateProxmoxStatus(true, "")
+	// Update status to connected (using internal method, already holding lock)
+	s.updateProxmoxStatusInternal(true, "")
 }
 
-// updateProxmoxStatus updates the Proxmox connection status in a thread-safe way
-func (s *appState) updateProxmoxStatus(connected bool, errorMsg string) {
-	s.proxmoxMu.Lock()
-	defer s.proxmoxMu.Unlock()
-
+// updateProxmoxStatusInternal updates status without locking (caller must hold lock)
+func (s *appState) updateProxmoxStatusInternal(connected bool, errorMsg string) {
 	// Only log if status changed
 	if s.proxmoxConnected != connected || s.proxmoxError != errorMsg {
 		status := "connected"
 		if !connected {
 			status = fmt.Sprintf("disconnected: %s", errorMsg)
 		}
-		logger.Get().Info().
+		logger.Get().Debug().
 			Bool("connected", connected).
+			Str("status", status).
 			Str("error", errorMsg).
-			Msgf("Proxmox connection status changed: %s", status)
-
-		s.proxmoxConnected = connected
-		s.proxmoxError = errorMsg
+			Msg("Proxmox status updated")
 	}
+
+	s.proxmoxConnected = connected
+	s.proxmoxError = errorMsg
+}
+
+// updateProxmoxStatus updates the Proxmox connection status in a thread-safe way
+func (s *appState) updateProxmoxStatus(connected bool, errorMsg string) {
+	s.proxmoxMu.Lock()
+	defer s.proxmoxMu.Unlock()
+	s.updateProxmoxStatusInternal(connected, errorMsg)
 }
 
 // GetSettings returns the application settings
