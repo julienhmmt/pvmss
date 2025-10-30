@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
+	"pvmss/proxmox"
 	"pvmss/utils"
 )
 
@@ -64,15 +65,33 @@ func (h *AdminHandler) AppInfoPageHandler(w http.ResponseWriter, r *http.Request
 	clusterInfo := map[string]interface{}{
 		"isCluster":   false,
 		"clusterName": "",
+		"nodeCount":   0,
 	}
 
 	if sm := getStateManager(r); sm != nil {
 		if client := sm.GetProxmoxClient(); client != nil {
-			clusterName := client.GetClusterName()
-			if clusterName != "" {
-				clusterInfo["isCluster"] = true
-				clusterInfo["clusterName"] = clusterName
-				log.Info().Str("cluster_name", clusterName).Msg("Proxmox cluster detected")
+			// Try to get cluster status using the new API method
+			if clusterStatus, err := proxmox.GetClusterStatus(r.Context(), client); err == nil {
+				clusterInfo["isCluster"] = clusterStatus.IsCluster
+				clusterInfo["clusterName"] = clusterStatus.ClusterName
+				clusterInfo["nodeCount"] = clusterStatus.NodeCount
+				if clusterStatus.IsCluster {
+					log.Info().
+						Str("cluster_name", clusterStatus.ClusterName).
+						Int("nodes", clusterStatus.NodeCount).
+						Msg("Proxmox cluster detected via /cluster/status")
+				} else {
+					log.Info().Msg("Proxmox standalone mode detected via /cluster/status")
+				}
+			} else {
+				// Fallback to the old method using cluster name from ticket
+				log.Warn().Err(err).Msg("Failed to get cluster status, falling back to cluster name detection")
+				clusterName := client.GetClusterName()
+				if clusterName != "" {
+					clusterInfo["isCluster"] = true
+					clusterInfo["clusterName"] = clusterName
+					log.Info().Str("cluster_name", clusterName).Msg("Proxmox cluster detected via fallback method")
+				}
 			}
 		}
 	}

@@ -96,10 +96,18 @@
 
       <!-- Cluster Name -->
       {{if $clusterInfo.isCluster}}
-      <div class="column is-6">
+      <div class="column is-4">
         <div class="box has-background-white-bis">
           <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.ClusterName"}}</p>
           <p class="is-size-6 has-text-monospace">{{$clusterInfo.clusterName}}</p>
+        </div>
+      </div>
+      
+      <!-- Node Count -->
+      <div class="column is-4">
+        <div class="box has-background-white-bis">
+          <p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{{T "Admin.AppInfo.NodeCount"}}</p>
+          <p class="is-size-6 has-text-monospace">{{$clusterInfo.nodeCount}} {{T "Admin.AppInfo.Nodes"}}</p>
         </div>
       </div>
       {{end}}

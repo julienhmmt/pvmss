@@ -33,3 +33,7 @@ other = "Cluster mode"
 other = "Standalone mode"
 ["Admin.AppInfo.ClusterName"]
 other = "Cluster name"
+["Admin.AppInfo.NodeCount"]
+other = "Node count"
+["Admin.AppInfo.Nodes"]
+other = "nodes"
