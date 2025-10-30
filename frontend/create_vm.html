@@ -613,7 +613,7 @@
                                                 <!-- Network Enable/Disable Toggle -->
                                                 <div class="field">
                                                     <label class="checkbox">
-                                                        <input type="checkbox" name="network_enabled_{{$cardIdx}}" value="1" {{if or (eq $cardIdx 0) (eq (index .FormData (printf "network_enabled_%d" $cardIdx)) "1")}}checked{{end}}>
+                                                        <input type="checkbox" name="network_enabled_{{$cardIdx}}" value="1" {{if or (eq $cardIdx 0) (eq (index $.FormData (printf "network_enabled_%d" $cardIdx)) "1")}}checked{{end}}>
                                                         <span class="form-label-text ml-2">{{T "VM.Create.NetworkEnabled"}}</span>
                                                         <span class="form-tooltip ml-2">
                                                             <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkEnabled"}}">
