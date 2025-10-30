@@ -640,10 +640,10 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	}
 
 	// Get limits from settings or use defaults
-	var memoryMin, memoryMax int = 512, 32768 // 512MB to 32GB
-	var socketsMin, socketsMax int = 1, 8
-	var coresMin, coresMax int = 1, 32
-	var diskMin, diskMax int = 1, 1024 // 1GB to 1TB
+	var memoryMin, memoryMax = 512, 32768 // 512MB to 32GB
+	var socketsMin, socketsMax = 1, 8
+	var coresMin, coresMax = 1, 32
+	var diskMin, diskMax = 1, 1024 // 1GB to 1TB
 
 	if settings != nil && settings.Limits != nil {
 		if vmLimits, ok := settings.Limits["vm"]; ok {
