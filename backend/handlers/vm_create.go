@@ -190,7 +190,7 @@ func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, cli
 	log := CreateHandlerLogger("getOptimizedNodeInfo", nil)
 
 	if client == nil {
-		return nil, nil, "", fmt.Errorf("Proxmox client not available")
+		return nil, nil, "", fmt.Errorf("proxmox client not available")
 	}
 
 	// Create resty client
@@ -250,7 +250,7 @@ func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, cl
 	log := CreateHandlerLogger("getOptimizedResources", nil)
 
 	if client == nil || len(nodes) == 0 {
-		return nil, nil, nil, fmt.Errorf("Proxmox client not available or no nodes")
+		return nil, nil, nil, fmt.Errorf("proxmox client not available or no nodes")
 	}
 
 	// Create resty client
