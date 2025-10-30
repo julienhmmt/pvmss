@@ -196,8 +196,8 @@
     {{else}}
     {{template "notification" (dict 
       "Type" "info" 
-      "Title" "No VMs Found" 
-      "Message" "No virtual machines with the 'pvmss' tag were found. VMs must be tagged with 'pvmss' to be managed by this system." 
+      "Title" (T "Admin.VMs.NoVMsTitle") 
+      "Message" (T "Admin.VMs.NoVMsMessage") 
       "Icon" "fas fa-info-circle" 
       "Dismissible" false
     )}}
