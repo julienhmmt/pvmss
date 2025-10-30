@@ -16,6 +16,10 @@ const (
 
 	// ProxmoxConnectionCheckTimeout is the timeout for connectivity checks
 	ProxmoxConnectionCheckTimeout = 5 * time.Second
+
+	// ProxmoxOfflineThreshold is how long to wait before switching to offline mode
+	// If no connection for 2 minutes, app goes offline automatically
+	ProxmoxOfflineThreshold = 2 * time.Minute
 )
 
 // Console Session Configuration
