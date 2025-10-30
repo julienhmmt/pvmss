@@ -33,3 +33,7 @@ other = "Mode cluster"
 other = "Mode autonome"
 ["Admin.AppInfo.ClusterName"]
 other = "Nom du cluster"
+["Admin.AppInfo.NodeCount"]
+other = "Nombre de nœuds"
+["Admin.AppInfo.Nodes"]
+other = "nœuds"

@@ -360,7 +360,7 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 		totalRaw := st.Total.String()
 		used, usedErr := st.Used.Int64()
 		total, totalErr := st.Total.Int64()
-		
+
 		log.Debug().
 			Str("storage", st.Storage).
 			Str("type", st.Type).
@@ -371,10 +371,10 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 			Bool("used_err", usedErr != nil).
 			Bool("total_err", totalErr != nil).
 			Msg("Storage usage data")
-		
+
 		percent := 0
 		hasValidData := totalErr == nil && usedErr == nil && total > 0
-		
+
 		if hasValidData {
 			percent = int((used * 100) / total)
 			if percent < 0 {
@@ -394,14 +394,14 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 		}
 
 		item := map[string]interface{}{
-			"Storage":       st.Storage,
-			"Type":          st.Type,
-			"Used":          used,
-			"Total":         total,
-			"Description":   st.Description,
-			"Content":       st.Content,
-			"UsedPercent":   percent,
-			"HasValidData":  hasValidData,
+			"Storage":      st.Storage,
+			"Type":         st.Type,
+			"Used":         used,
+			"Total":        total,
+			"Description":  st.Description,
+			"Content":      st.Content,
+			"UsedPercent":  percent,
+			"HasValidData": hasValidData,
 		}
 		if st.Avail.String() != "" {
 			if avail, err := st.Avail.Int64(); err == nil {
