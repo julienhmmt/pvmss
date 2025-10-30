@@ -199,3 +199,9 @@ other = "Start VM immediately after creation"
 other = "Virtual network card model for the VM. Determines the type of virtual network card to use (VirtIO, E1000, E1000E, RTL8139, VMXNet3)."
 ["VM.Create.Tooltip.DiskBusType"]
 other = "Disk controller type for the VM. Determines the type of disk controller to use (VirtIO, SCSI, SATA, IDE)."
+["VM.Create.NetworkEnabled"]
+other = "Enable network card"
+["VM.Create.NetworkEnabledHelp"]
+other = "Turn on/off the network card. When disabled, the network interface will be created but will be down (no traffic)."
+["VM.Create.Tooltip.NetworkEnabled"]
+other = "Enable or disable the network card. When disabled, the network interface is created but remains down until manually enabled in the VM or Proxmox."

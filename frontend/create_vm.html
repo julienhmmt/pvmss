@@ -610,6 +610,22 @@
                                                     </div>
                                                     {{end}}
                                                 </div>
+                                                <!-- Network Enable/Disable Toggle -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="network_enabled_{{$cardIdx}}" value="1" {{if or (eq $cardIdx 0) (eq (index .FormData (printf "network_enabled_%d" $cardIdx)) "1")}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.NetworkEnabled"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkEnabled"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.NetworkEnabled"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.NetworkEnabledHelp"}}</p>
+                                                </div>
                                                 {{if lt (addInt $cardIdx 1) (toInt $maxNetCards)}}<hr class="my-4">{{end}}
                                                 {{end}}
                                             </div>
