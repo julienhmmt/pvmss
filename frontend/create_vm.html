@@ -289,7 +289,7 @@
                                                         <div class="control"><span class="button is-static is-medium">MB</span></div>
                                                     </div>
                                                     <p class="help has-text-grey is-size-7 mt-2">
-                                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                                        <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
                                                         <span id="memory-display">{{T "Common.Selected"}}: {{$vmRamMinGB}} GB ({{$vmRamMinMB}} MB)</span>
                                                         <span class="ml-2">• {{T "Common.Min"}}: {{$vmRamMinGB}} GB ({{$vmRamMinMB}} MB)</span>
                                                         <span class="ml-2">• {{T "Common.Max"}}: {{$vmRamMaxGB}} GB ({{$vmRamMaxMB}} MB)</span>
@@ -390,7 +390,7 @@
                                                     </div>
                                                     {{if eq $diskIdx 0}}
                                                     <p class="help has-text-grey is-size-7 mt-2">
-                                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                                        <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
                                                         <span>{{T "Common.Min"}}: {{$vmDiskMin}} GB — {{T "Common.Max"}}: {{$vmDiskMax}} GB</span>
                                                     </p>
                                                     {{end}}

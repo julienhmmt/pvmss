@@ -484,7 +484,7 @@
                                     </div>
                                     <div class="tags has-addons mb-0">
                                         <span class="tag is-light">Node</span>
-                                        <span class="tag is-info">{{.VM.Node}}</span>
+                                        <span class="tag is-primary is-light">{{.VM.Node}}</span>
                                     </div>
                                     <div class="tags has-addons mb-0">
                                         <span class="tag is-light"><i class="fas fa-clock"></i></span>
@@ -674,7 +674,7 @@
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
-                                    <span class="icon has-text-purple mr-3" style="font-size: 1.25rem;">
+                                    <span class="icon has-text-primary mr-3" style="font-size: 1.25rem;">
                                         <i class="fas fa-network-wired"></i>
                                     </span>
                                     <div>
@@ -683,7 +683,7 @@
                                     </div>
                                 </div>
                                 <div class="has-text-right">
-                                    <div class="has-text-purple is-size-5" style="font-weight: 600;">{{$ifaceCount}}</div>
+                                    <div class="has-text-primary is-size-5" style="font-weight: 600;">{{$ifaceCount}}</div>
                                     <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{if eq $ifaceCount 1}}{{T "VMDetails.Network.InterfaceSingular"}}{{else}}{{T "VMDetails.Network.InterfacePlural"}}{{end}}</div>
                                 </div>
                             </div>
@@ -693,18 +693,18 @@
                                 <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq $ifaceCount (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
-                                            <span class="has-text-purple" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
-                                                <i class="fas fa-network-wired" style="color: #9333ea;"></i>
+                                            <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
+                                                <i class="fas fa-network-wired" style="color: var(--primary);"></i>
                                                 {{$iface.Index}}
                                             </span>
                                             <div class="is-flex" style="gap: 0.5rem; flex-wrap: wrap;">
                                                 {{if $iface.Bridge}}
-                                                <span class="tag" style="background: rgba(147,51,234,0.08); color: #7c3aed; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     {{$iface.Bridge}}
                                                 </span>
                                                 {{end}}
                                                 {{if $iface.ModelLabel}}
-                                                <span class="tag" style="background: rgba(99,102,241,0.08); color: #6366f1; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     {{$iface.ModelLabel}}
                                                 </span>
                                                 {{end}}
@@ -718,7 +718,7 @@
                                     </div>
                                     {{if $iface.IPAddresses}}
                                     <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500; margin-top: 0.75rem;">
-                                        <i class="fas fa-ethernet" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                        <i class="fas fa-ethernet has-text-primary" style="font-size: 0.85rem; margin-right: 6px;"></i>
                                         {{range $j, $ip := $iface.IPAddresses}}
                                             {{if gt $j 0}}, {{end}}{{$ip}}
                                         {{end}}
@@ -821,7 +821,7 @@
                 )}}
                 {{if .ProxmoxConnected}}
                 <div class="has-text-centered mt-4 pt-3" style="border-top: 1px solid rgb(0,0,0,6%);">
-                    <a href="{{printf "/vm/details/%d?edit=resources" .VM.VMID}}" class="button is-info is-light is-small">
+                    <a href="{{printf "/vm/details/%d?edit=resources" .VM.VMID}}" class="button is-primary">
                         <span class="icon is-small"><i class="fas fa-sliders"></i></span>
                         <span>{{T "VMDetails.ModifyResources"}}</span>
                     </a>
@@ -845,7 +845,7 @@
                             </span>
                         </p>
                         {{if .ProxmoxConnected}}
-                        <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-small is-light mr-3">
+                        <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-light mr-3">
                             <span class="icon is-small"><i class="fas fa-edit"></i></span>
                             <span class="is-hidden-mobile">{{T "VMDetails.Modify"}}</span>
                         </a>
@@ -877,7 +877,7 @@
                             </span>
                         </p>
                         {{if .ProxmoxConnected}}
-                        <a href="{{printf "/vm/details/%d?edit=tags" .VM.VMID}}" class="button is-small is-light mr-3">
+                        <a href="{{printf "/vm/details/%d?edit=tags" .VM.VMID}}" class="button is-light mr-3">
                             <span class="icon is-small"><i class="fas fa-edit"></i></span>
                             <span class="is-hidden-mobile">{{T "VMDetails.Modify"}}</span>
                         </a>
@@ -978,7 +978,7 @@
                     <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
                     <input type="hidden" name="node" value="{{.VM.Node}}" />
                     {{if .CurrentTags}}
-                    <div class="notification is-light is-info mb-4">
+                    <div class="notification is-light is-primary mb-4">
                         <p class="is-size-7">
                             <strong>{{T "VMDetails.TagsCurrentlyAppliedPrefix"}}</strong> {{join .CurrentTags ", "}}
                         </p>
@@ -1065,7 +1065,7 @@
                     {{$vmRamMinMB := int (mul $vmRamMinGB 1024)}}
                     {{$vmRamMaxMB := int (mul $vmRamMaxGB 1024)}}
 
-                    <div class="notification is-light is-info mb-4">
+                    <div class="notification is-light is-primary mb-4">
                         <p class="is-size-7">
                             <strong>{{T "VMDetails.ResourcesWarning"}}</strong> {{T "VMDetails.ResourcesWarningText"}}
                         </p>
@@ -1252,7 +1252,7 @@
                         <span class="icon"><i class="fas fa-keyboard"></i></span>
                         <span class="is-hidden-mobile">Ctrl+Alt+Del</span>
                     </button>
-                    <button id="console-scale-toggle" class="button is-small is-info" disabled title="Toggle viewport scaling to fit screen">
+                    <button id="console-scale-toggle" class="button is-small is-primary" disabled title="Toggle viewport scaling to fit screen">
                         <span class="icon"><i class="fas fa-expand-arrows-alt"></i></span>
                         <span class="is-hidden-mobile">Scale: On</span>
                     </button>
