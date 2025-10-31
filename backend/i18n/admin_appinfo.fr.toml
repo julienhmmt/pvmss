@@ -20,7 +20,7 @@ other = "Variables de configuration sûres (les secrets ne sont pas affichés)"
 ["Admin.AppInfo.NoVariables"]
 other = "Aucune variable d'environnement configurée."
 ["Admin.AppInfo.SecurityNote"]
-other = "Note de Sécurité :"
+other = "Note de sécurité :"
 ["Admin.AppInfo.SecurityMessage"]
 other = "Cette page affiche uniquement des informations de configuration sûres et non sensibles. Les jetons API, mots de passe et autres secrets ne sont jamais affichés."
 ["Admin.AppInfo.ProxmoxInfo"]

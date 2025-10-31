@@ -93,3 +93,29 @@ other = "Cannot modify running VM"
 other = "The VM is currently running. Please stop it before modifying resources to avoid performance issues or data loss."
 ["VM.Details.NoDisks"]
 other = "No disks found"
+["VMDetails.Section.Disks"]
+other = "Disks"
+["VMDetails.Section.DisksDescription"]
+other = "Storage volumes"
+["VMDetails.Disks.Total"]
+other = "Total"
+["VMDetails.Disks.EmptyTitle"]
+other = "No disks configured"
+["VMDetails.Disks.EmptySubtitle"]
+other = "Add storage volumes to this VM"
+["VMDetails.Section.Network"]
+other = "Network"
+["VMDetails.Section.NetworkDescription"]
+other = "Network interfaces"
+["VMDetails.Network.InterfaceSingular"]
+other = "Interface"
+["VMDetails.Network.InterfacePlural"]
+other = "Interfaces"
+["VMDetails.Section.Security"]
+other = "Firmware & Security"
+["VMDetails.Section.SecurityDescription"]
+other = "Boot & security features"
+["VMDetails.Security.EFIBoot"]
+other = "EFI Boot"
+["VMDetails.Security.TPM"]
+other = "TPM v2.0"
