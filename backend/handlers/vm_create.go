@@ -223,6 +223,51 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		data["CSRFToken"] = csrfToken
 	}
 
+	// Compute explicit VM limits for template (avoids nil map indexing in templates)
+	// RAM: keep MB for inputs, derive GB for display (ceil)
+	vmRamMinMB, vmRamMaxMB := 512, 32768 // defaults in MB (512MB to 32GB)
+	socketsMin, socketsMax := 1, 8
+	coresMin, coresMax := 1, 32
+	diskMin, diskMax := 1, 1024 // in GB to match POST defaults
+	if settings.Limits != nil {
+		if vmLimits, ok := settings.Limits["vm"]; ok {
+			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
+				if ram, ok := vmLimitsMap["ram"]; ok {
+					if ramMap, ok := ram.(map[string]interface{}); ok {
+						if min, ok := ramMap["min"]; ok { if minVal, ok := min.(float64); ok { vmRamMinMB = int(minVal) * 1024 } }
+						if max, ok := ramMap["max"]; ok { if maxVal, ok := max.(float64); ok { vmRamMaxMB = int(maxVal) * 1024 } }
+					}
+				}
+				if sockets, ok := vmLimitsMap["sockets"]; ok {
+					if socketsMap, ok := sockets.(map[string]interface{}); ok {
+						if min, ok := socketsMap["min"]; ok { if v, ok := min.(float64); ok { socketsMin = int(v) } }
+						if max, ok := socketsMap["max"]; ok { if v, ok := max.(float64); ok { socketsMax = int(v) } }
+					}
+				}
+				if cores, ok := vmLimitsMap["cores"]; ok {
+					if coresMap, ok := cores.(map[string]interface{}); ok {
+						if min, ok := coresMap["min"]; ok { if v, ok := min.(float64); ok { coresMin = int(v) } }
+						if max, ok := coresMap["max"]; ok { if v, ok := max.(float64); ok { coresMax = int(v) } }
+					}
+				}
+				if disk, ok := vmLimitsMap["disk"]; ok {
+					if diskMap, ok := disk.(map[string]interface{}); ok {
+						if min, ok := diskMap["min"]; ok { if v, ok := min.(float64); ok { diskMin = int(v) } }
+						if max, ok := diskMap["max"]; ok { if v, ok := max.(float64); ok { diskMax = int(v) } }
+					}
+				}
+			}
+		}
+	}
+	// derive GB for display as ceiling of MB/1024
+	vmRamMinGB := (vmRamMinMB + 1023) / 1024
+	vmRamMaxGB := (vmRamMaxMB + 1023) / 1024
+	data["VMSocketsMin"], data["VMSocketsMax"] = socketsMin, socketsMax
+	data["VMCoresMin"], data["VMCoresMax"] = coresMin, coresMax
+	data["VMRamMinGB"], data["VMRamMaxGB"] = vmRamMinGB, vmRamMaxGB
+	data["VMRamMinMB"], data["VMRamMaxMB"] = vmRamMinMB, vmRamMaxMB
+	data["VMDiskMin"], data["VMDiskMax"] = diskMin, diskMax
+
 	// Check if all nodes are disabled (saturated)
 	allNodesSaturated := len(nodeOptions) > 0
 	for _, option := range nodeOptions {
@@ -246,6 +291,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Add no nodes available flag for template
 	data["NoNodesAvailable"] = noNodesAvailable
+	data["AllNodesSaturated"] = allNodesSaturated
 
 	log.Debug().
 		Int("data_keys", len(data)).
@@ -852,6 +898,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	// Agent
 	params.Set("agent", "1")
+
+	// Validate against aggregate node limits before creating the VM
+	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB); err != nil {
+		log.Warn().Err(err).Str("node", node).Msg("VM resources exceed aggregate node limits")
+		data["ValidationError"] = err.Error()
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
+	}
 
 	// Create VM
 	path := "/nodes/" + url.PathEscape(node) + "/qemu"
