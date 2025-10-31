@@ -259,6 +259,18 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 	values.Set("cores", coresStr)
 	values.Set("memory", memoryStr)
 
+	// Handle CD-ROM ISO update
+	cdromISO := strings.TrimSpace(r.FormValue("cdrom_iso"))
+	if cdromISO != "" {
+		// Set new ISO
+		values.Set("ide2", cdromISO+",media=cdrom")
+		ctx.Log.Info().Str("vmid", vmid).Str("node", node).Str("iso", cdromISO).Msg("Updating CD-ROM ISO")
+	} else {
+		// Eject ISO (remove ide2)
+		values.Add("delete", "ide2")
+		ctx.Log.Info().Str("vmid", vmid).Str("node", node).Msg("Ejecting CD-ROM ISO")
+	}
+
 	deleteTargets := []string{}
 
 	for i := 0; i < maxNetworkCards; i++ {

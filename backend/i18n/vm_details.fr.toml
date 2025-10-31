@@ -130,4 +130,28 @@ other = "En cours d'utilisation"
 ["VMDetails.RAM.Total"]
 other = "Total"
 ["VMDetails.RAM.Used"]
-other = "utilisés"
+other = "Utilisé"
+["VMDetails.Section.CDROM"]
+other = "CD-ROM"
+["VMDetails.Section.CDROMDescription"]
+other = "Configuration du lecteur CD-ROM et image ISO"
+["VMDetails.CDROM.Drive"]
+other = "Lecteur CD-ROM"
+["VMDetails.CDROM.NoISO"]
+other = "Aucune ISO insérée"
+["VMDetails.CDROM.CurrentISO"]
+other = "ISO actuelle"
+["VMDetails.CDROM.SelectISO"]
+other = "Sélectionner une image ISO"
+["VMDetails.CDROM.ChangeISO"]
+other = "Changer l'ISO"
+["VMDetails.CDROM.EjectISO"]
+other = "Éjecter l'ISO"
+["VMDetails.CDROM.UpdateISO"]
+other = "Mettre à jour le CD-ROM"
+["VMDetails.CDROM.ISOUpdated"]
+other = "ISO du CD-ROM mise à jour avec succès"
+["VMDetails.CDROM.ISOEjected"]
+other = "ISO du CD-ROM éjectée avec succès"
+["VMDetails.CDROM.RuntimeHelp"]
+other = "L'ISO du CD-ROM peut être modifiée même lorsque la VM est en cours d'exécution"

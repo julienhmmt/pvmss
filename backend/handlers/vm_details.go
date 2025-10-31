@@ -520,6 +520,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var networkInterfaces []proxmox.NetworkInterface
 	var tags []string
 	var tpmEnabled bool
+	var currentISO string
+	var hasCDROM bool
 	cfg, cfgErr := proxmox.GetVMConfigResty(r.Context(), restyClient, vm.Node, vm.VMID)
 	if cfgErr != nil {
 		log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Primary VM config fetch failed, attempting node discovery fallback")
@@ -571,6 +573,24 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		// Detect TPM
 		if rawTPM, ok := cfg["tpmstate0"].(string); ok && strings.TrimSpace(rawTPM) != "" {
 			tpmEnabled = true
+		}
+
+		// Detect CD-ROM ISO (ide2) - All VMs have CD-ROM by default in PVMSS
+		if ide2, ok := cfg["ide2"].(string); ok && strings.TrimSpace(ide2) != "" {
+			hasCDROM = true
+			// Parse ide2 format: "storage:iso,media=cdrom"
+			parts := strings.SplitN(ide2, ":", 2)
+			if len(parts) == 2 {
+				isoPart := strings.TrimSpace(parts[1])
+				// Remove ",media=cdrom" suffix if present
+				if idx := strings.Index(isoPart, ",media=cdrom"); idx >= 0 {
+					isoPart = strings.TrimSpace(isoPart[:idx])
+				}
+				currentISO = isoPart
+			}
+		} else {
+			// No ide2 config means VM has empty CD-ROM drive
+			hasCDROM = true
 		}
 
 		if vm.Status == "running" && len(networkInterfaces) > 0 && !isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
@@ -651,14 +671,27 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		} else {
 			log.Warn().Err(err).Str("node", vm.Node).Msg("Failed to get VMBRs for resource editor")
 		}
+	}
 
-		if cfg != nil {
-			if socketsVal, ok := cfg["sockets"].(float64); ok {
-				currentSockets = int(socketsVal)
-			}
-			if coresVal, ok := cfg["cores"].(float64); ok {
-				currentCores = int(coresVal)
-			}
+	// Get available ISOs for CD-ROM editor - Use admin-approved ISOs from settings
+	var availableISOs []string
+	if showResourcesEditor {
+		settings := stateManager.GetSettings()
+		if settings != nil {
+			// Use only ISOs approved by administrators from settings.json
+			availableISOs = settings.ISOs
+			log.Debug().Int("iso_count", len(availableISOs)).Msg("Using admin-approved ISOs from settings")
+		} else {
+			log.Warn().Msg("Settings not available, no ISOs will be shown")
+		}
+	}
+
+	if cfg != nil {
+		if socketsVal, ok := cfg["sockets"].(float64); ok {
+			currentSockets = int(socketsVal)
+		}
+		if coresVal, ok := cfg["cores"].(float64); ok {
+			currentCores = int(coresVal)
 		}
 	}
 
@@ -719,8 +752,10 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	custom := map[string]interface{}{
 		"AllTags":               allTags,
 		"AvailableVMBRs":        availableVMBRs,
+		"AvailableISOs":         availableISOs,
 		"CSRFToken":             csrfToken,
 		"CurrentCores":          currentCores,
+		"CurrentISO":            currentISO,
 		"CurrentMemory":         currentMemoryMB,
 		"CurrentNetworkModel":   currentNetworkModel,
 		"CurrentSockets":        currentSockets,
@@ -742,6 +777,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"FormattedMem":          FormatBytes(vm.Mem),
 		"FormattedMemGB":        FormatMemoryGB(vm.Mem, true),
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
+		"HasCDROM":              hasCDROM,
 		"Limits":                settings.Limits,
 		"MaxNetworkCards":       maxNetworkCards,
 		"NetworkBridges":        networkBridgesStr,
