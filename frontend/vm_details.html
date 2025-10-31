@@ -666,6 +666,47 @@
                         </div>
                     </div>
 
+                    <!-- CD-ROM Summary Card -->
+                    <div class="column is-one-third-tablet is-half-mobile">
+                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%;">
+                            <!-- Header -->
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
+                                <div class="is-flex is-align-items-center">
+                                    <span class="icon has-text-primary mr-3" style="font-size: 1.25rem;">
+                                        <i class="fas fa-compact-disc"></i>
+                                    </span>
+                                    <div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">{{T "VMDetails.Section.CDROM"}}</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.Section.CDROMDescription"}}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- CD-ROM Status -->
+                            <div style="margin-top: 1.5rem;">
+                                <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="is-flex is-align-items-start is-justify-content-between">
+                                        <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
+                                            <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
+                                                <i class="fas fa-compact-disc"></i>
+                                                {{T "VMDetails.CDROM.Drive"}}
+                                            </span>
+                                            <div class="is-flex" style="gap: 0.5rem; flex-wrap: wrap;">
+                                                <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    IDE
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500; margin-top: 0.75rem;">
+                                        <i class="fas fa-compact-disc" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
+                                        {{if .CurrentISO}}{{.CurrentISO}}{{else}}{{T "VMDetails.CDROM.NoISO"}}{{end}}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Network Summary Card -->
                     {{if .NetworkInterfaces}}
                     {{$ifaceCount := len .NetworkInterfaces}}
@@ -1203,6 +1244,44 @@
                         {{end}}
                     </div>
                     {{end}}
+
+                    <!-- CD-ROM Configuration -->
+                    <hr class="my-4">
+                    <div class="field">
+                        <label class="label has-text-weight-semibold">
+                            <span class="icon-text">
+                                <span class="icon"><i class="fas fa-compact-disc"></i></span>
+                                <span>{{T "VMDetails.Section.CDROM"}}</span>
+                            </span>
+                        </label>
+                        <div class="box is-shadowless p-3 mb-3" style="background: rgba(0,0,0,0.02);">
+                            <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                                <strong>{{T "VMDetails.CDROM.Drive"}} (IDE)</strong>
+                                <div class="has-text-grey is-size-7">
+                                    {{if .CurrentISO}}{{T "VMDetails.CDROM.CurrentISO"}}: {{.CurrentISO}}{{else}}{{T "VMDetails.CDROM.NoISO"}}{{end}}
+                                </div>
+                            </div>
+                            <div class="columns is-mobile is-variable is-2">
+                                <div class="column is-full">
+                                    <label class="label is-size-7 has-text-grey" for="cdromISO">{{T "VMDetails.CDROM.ChangeISO"}}</label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth is-medium">
+                                            <select id="cdromISO" name="cdrom_iso">
+                                                <option value="">{{T "VMDetails.CDROM.EjectISO"}}</option>
+                                                {{range $iso := .AvailableISOs}}
+                                                <option value="{{$iso}}" {{if eq $iso $.CurrentISO}}selected{{end}}>{{$iso}}</option>
+                                                {{end}}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p class="help is-size-7 has-text-grey mt-1">
+                                        <i class="fas fa-info-circle" style="font-size: 0.75rem;"></i>
+                                        {{T "VMDetails.CDROM.RuntimeHelp"}}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <hr class="my-4">
                     <div class="field is-grouped is-justify-content-space-between">
