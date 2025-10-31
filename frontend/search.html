@@ -199,4 +199,111 @@
         {{end}}
     </div>
 </section>
+
+<script>
+// Live search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const vmidInput = document.getElementById('vmid');
+    const nameInput = document.getElementById('name');
+    const tableRows = document.querySelectorAll('table tbody tr');
+    
+    if (!vmidInput || !nameInput || tableRows.length === 0) {
+        return; // Exit if we're not on search results page
+    }
+
+    function filterTable() {
+        const vmidValue = vmidInput.value.trim();
+        const nameValue = nameInput.value.trim().toLowerCase();
+        
+        tableRows.forEach(row => {
+            const vmidCell = row.querySelector('td:nth-child(1)'); // VMID column
+            const nameCell = row.querySelector('td:nth-child(2)');  // Name column
+            
+            if (!vmidCell || !nameCell) return;
+            
+            const vmidText = vmidCell.textContent.trim();
+            const nameText = nameCell.textContent.trim().toLowerCase();
+            
+            // Check if row matches both filters
+            const vmidMatch = vmidValue === '' || vmidText.includes(vmidValue);
+            const nameMatch = nameText.includes(nameValue);
+            
+            if (vmidMatch && nameMatch) {
+                row.style.display = '';
+                // Add highlight class for matching cells
+                if (vmidValue && vmidText.includes(vmidValue)) {
+                    vmidCell.style.backgroundColor = 'rgba(255, 136, 0, 0.1)';
+                } else {
+                    vmidCell.style.backgroundColor = '';
+                }
+                
+                if (nameValue && nameText.includes(nameValue)) {
+                    nameCell.style.backgroundColor = 'rgba(255, 136, 0, 0.1)';
+                } else {
+                    nameCell.style.backgroundColor = '';
+                }
+            } else {
+                row.style.display = 'none';
+                vmidCell.style.backgroundColor = '';
+                nameCell.style.backgroundColor = '';
+            }
+        });
+        
+        // Update results count
+        const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
+        updateResultsCount(visibleRows.length);
+    }
+
+    function updateResultsCount(count) {
+        let countElement = document.getElementById('live-results-count');
+        if (!countElement) {
+            // Create count element if it doesn't exist
+            const resultsHeader = document.querySelector('.card-header-title');
+            if (resultsHeader) {
+                countElement = document.createElement('span');
+                countElement.id = 'live-results-count';
+                countElement.className = 'tag is-info is-light';
+                countElement.style.marginLeft = '0.5rem';
+                resultsHeader.appendChild(countElement);
+            }
+        }
+        
+        if (countElement) {
+            countElement.textContent = count + ' filtered';
+        }
+    }
+
+    // Add event listeners with debouncing
+    let debounceTimer;
+    function debouncedFilter() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(filterTable, 300);
+    }
+
+    vmidInput.addEventListener('input', debouncedFilter);
+    nameInput.addEventListener('input', debouncedFilter);
+    
+    // Clear highlights when inputs are cleared
+    vmidInput.addEventListener('change', function() {
+        if (this.value.trim() === '') {
+            tableRows.forEach(row => {
+                const vmidCell = row.querySelector('td:nth-child(1)');
+                if (vmidCell) vmidCell.style.backgroundColor = '';
+            });
+        }
+    });
+    
+    nameInput.addEventListener('change', function() {
+        if (this.value.trim() === '') {
+            tableRows.forEach(row => {
+                const nameCell = row.querySelector('td:nth-child(2)');
+                if (nameCell) nameCell.style.backgroundColor = '';
+            });
+        }
+    });
+    
+    // Initial filter
+    filterTable();
+});
+</script>
 {{end}}

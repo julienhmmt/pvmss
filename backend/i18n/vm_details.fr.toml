@@ -84,13 +84,13 @@ other = "Modifier les ressources de la VM"
 ["VMDetails.ResourcesWarning"]
 other = "Attention :"
 ["VMDetails.ResourcesWarningText"]
-other = "Modifier les ressources d'une VM en cours d'exécution peut causer des problèmes de performance ou nécessiter un redémarrage. Il est recommandé d'arrêter la VM avant de faire des modifications."
+other = "Modifier les ressources CPU, mémoire ou disque d'une VM en cours d'exécution peut causer des problèmes de performance ou nécessiter un redémarrage. Les cartes réseau peuvent être activées/désactivées même lorsque la VM est en cours d'exécution. Il est recommandé d'arrêter la VM avant de faire des modifications."
 ["VMDetails.SaveResources"]
 other = "Enregistrer les ressources"
 ["VMDetails.ResourcesDisabledTitle"]
 other = "Impossible de modifier une VM en cours d'exécution"
 ["VMDetails.ResourcesDisabledMessage"]
-other = "La VM est actuellement en cours d'exécution. Veuillez l'arrêter avant de modifier les ressources pour éviter les problèmes de performance ou la perte de données."
+other = "La VM est actuellement en cours d'exécution. Les modifications de CPU, mémoire et disque sont désactivées pour éviter les problèmes de performance ou la perte de données. Les cartes réseau peuvent toujours être activées/désactivées."
 ["VM.Details.NoDisks"]
 other = "Aucun disque trouvé"
 ["VMDetails.Section.Disks"]
@@ -119,3 +119,15 @@ other = "Fonctionnalités de démarrage et de sécurité"
 other = "Démarrage EFI"
 ["VMDetails.Security.TPM"]
 other = "Module de plateforme sécurisée (TPM) v2.0"
+["VMDetails.CPU.UsageLabel"]
+other = "Utilisation du processeur"
+["VMDetails.CPU.Active"]
+other = "Actif"
+["VMDetails.RAM.UsageLabel"]
+other = "Utilisation de la mémoire"
+["VMDetails.RAM.InUse"]
+other = "En cours d'utilisation"
+["VMDetails.RAM.Total"]
+other = "Total"
+["VMDetails.RAM.Used"]
+other = "utilisés"

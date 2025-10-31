@@ -84,13 +84,13 @@ other = "Edit VM resources"
 ["VMDetails.ResourcesWarning"]
 other = "Warning:"
 ["VMDetails.ResourcesWarningText"]
-other = "Changing resources on a running VM may cause performance issues or require a restart. It is recommended to stop the VM before making changes."
+other = "Changing CPU, memory, or disk resources on a running VM may cause performance issues or require a restart. Network cards can be enabled/disabled while the VM is running. It is recommended to stop the VM before making resource changes."
 ["VMDetails.SaveResources"]
 other = "Save resources"
 ["VMDetails.ResourcesDisabledTitle"]
 other = "Cannot modify running VM"
 ["VMDetails.ResourcesDisabledMessage"]
-other = "The VM is currently running. Please stop it before modifying resources to avoid performance issues or data loss."
+other = "The VM is currently running. CPU, memory, and disk modifications are disabled to avoid performance issues or data loss. Network cards can still be enabled/disabled."
 ["VM.Details.NoDisks"]
 other = "No disks found"
 ["VMDetails.Section.Disks"]
@@ -119,3 +119,15 @@ other = "Boot & security features"
 other = "EFI Boot"
 ["VMDetails.Security.TPM"]
 other = "TPM v2.0"
+["VMDetails.CPU.UsageLabel"]
+other = "Processor usage"
+["VMDetails.CPU.Active"]
+other = "Active"
+["VMDetails.RAM.UsageLabel"]
+other = "Memory usage"
+["VMDetails.RAM.InUse"]
+other = "In use"
+["VMDetails.RAM.Total"]
+other = "Total"
+["VMDetails.RAM.Used"]
+other = "used"

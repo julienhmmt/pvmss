@@ -20,8 +20,19 @@
     }
   })();
   
-  // Network card toggle function
+  // Network card toggle function - Enhanced for instant feedback
   function toggleNetworkCard(cardIndex, enabled, csrfToken, vmid, node) {
+    const toggleContainer = document.querySelector(`#network-toggle-${cardIndex}`);
+    const toggleLabel = document.querySelector(`#network-toggle-${cardIndex} .network-toggle-label`);
+    const toggleInput = document.querySelector(`#network-toggle-${cardIndex} input[type="checkbox"]`);
+    const toggleSlider = document.querySelector(`#network-toggle-${cardIndex} .network-toggle-slider`);
+    
+    // Show loading state immediately
+    const originalLabel = toggleLabel.innerHTML;
+    toggleContainer.classList.add('loading');
+    toggleLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{T "Common.Processing"}}...';
+    toggleInput.disabled = true;
+    
     const formData = new URLSearchParams();
     formData.append('csrf_token', csrfToken);
     formData.append('vmid', vmid);
@@ -39,18 +50,371 @@
     .then(response => {
       if (response.redirected) {
         window.location.href = response.url;
-      } else if (response.ok) {
-        window.location.reload();
+        return;
+      }
+      
+      toggleContainer.classList.remove('loading');
+      
+      if (response.ok) {
+        // Add success animation
+        toggleContainer.classList.add('success');
+        setTimeout(() => toggleContainer.classList.remove('success'), 600);
+        
+        // Update UI immediately for instant feedback
+        updateNetworkCardUI(cardIndex, enabled);
+        
+        // Show success notification
+        const successMsg = enabled ? '{{T "Message.NetworkCardEnabled"}}' : '{{T "Message.NetworkCardDisabled"}}';
+        showSuccess(successMsg);
+        
+        // Optional: Refresh data in background after a short delay
+        setTimeout(() => {
+          refreshNetworkData();
+        }, 1000);
+        
       } else {
+        // Add error animation
+        toggleContainer.classList.add('error');
+        setTimeout(() => toggleContainer.classList.remove('error'), 500);
+        
+        // Revert UI on failure
+        toggleInput.checked = !enabled;
+        toggleLabel.innerHTML = originalLabel;
+        toggleInput.disabled = false;
+        
         console.error('Network toggle failed');
-        alert('Failed to toggle network card');
+        showError('{{T "Message.ActionFailed"}}');
       }
     })
     .catch(error => {
+      toggleContainer.classList.remove('loading');
+      
+      // Add error animation
+      toggleContainer.classList.add('error');
+      setTimeout(() => toggleContainer.classList.remove('error'), 500);
+      
+      // Revert UI on error
+      toggleInput.checked = !enabled;
+      toggleLabel.innerHTML = originalLabel;
+      toggleInput.disabled = false;
+      
       console.error('Error:', error);
-      alert('Error toggling network card');
+      showError('{{T "Message.ActionFailed"}}');
     });
   }
+  
+  // Update network card UI instantly
+  function updateNetworkCardUI(cardIndex, enabled) {
+    const toggleLabel = document.querySelector(`#network-toggle-${cardIndex} .network-toggle-label`);
+    const toggleInput = document.querySelector(`#network-toggle-${cardIndex} input[type="checkbox"]`);
+    const toggleContainer = document.querySelector(`#network-toggle-${cardIndex}`);
+    
+    // Update checkbox state
+    toggleInput.checked = enabled;
+    
+    // Update label with smooth transition
+    toggleLabel.style.opacity = '0';
+    setTimeout(() => {
+      if (enabled) {
+        toggleLabel.innerHTML = '<i class="fas fa-plug-circle-check has-text-success"></i> {{T "Common.Enabled"}}';
+      } else {
+        toggleLabel.innerHTML = '<i class="fas fa-plug-circle-xmark has-text-grey"></i> {{T "Common.Disabled"}}';
+      }
+      toggleLabel.style.opacity = '1';
+    }, 100);
+    
+    // Re-enable controls
+    toggleInput.disabled = false;
+    
+    // Update tooltip
+    const action = enabled ? '{{T "Common.Disable"}}' : '{{T "Common.Enable"}}';
+    toggleContainer.title = `${action} {{T "VM.Create.Network"}} #${parseInt(cardIndex) + 1}`;
+  }
+  
+  // Refresh network data in background (optional)
+  function refreshNetworkData() {
+    // This could refresh network interface data without full page reload
+    // For now, we'll skip it to keep the experience fast
+    console.log('Network data refreshed');
+  }
+
+  // Auto-refresh VM metrics
+  let autoRefreshInterval;
+  let isAutoRefreshEnabled = true;
+  const vmid = '{{.VM.VMID}}';
+  const node = '{{.VM.Node}}';
+
+  function startAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    
+    autoRefreshInterval = setInterval(() => {
+      if (!isAutoRefreshEnabled) return;
+      
+      fetch(`/api/vm/${vmid}/metrics`)
+        .then(response => {
+          if (!response.ok) throw new Error('Failed to fetch metrics');
+          return response.json();
+        })
+        .then(data => {
+          updateVMMetrics(data);
+        })
+        .catch(error => {
+          console.log('Auto-refresh paused:', error.message);
+          // Don't show error to user, just pause refresh
+        });
+    }, 30000); // Refresh every 30 seconds
+  }
+
+  function updateVMMetrics(data) {
+    // Update CPU usage
+    const cpuElement = document.querySelector('[data-metric="cpu"]');
+    if (cpuElement && data.cpu !== undefined) {
+      const cpuPercent = Math.round(data.cpu * 100);
+      cpuElement.textContent = cpuPercent + '%';
+      
+      // Update progress bar
+      const cpuBar = document.querySelector('[data-progress="cpu"]');
+      if (cpuBar) {
+        cpuBar.value = cpuPercent;
+      }
+    }
+
+    // Update RAM usage
+    const ramElement = document.querySelector('[data-metric="ram"]');
+    if (ramElement && data.mem !== undefined && data.maxmem !== undefined) {
+      const ramPercent = Math.round((data.mem / data.maxmem) * 100);
+      ramElement.textContent = formatBytes(data.mem) + ' / ' + formatBytes(data.maxmem);
+      
+      // Update progress bar
+      const ramBar = document.querySelector('[data-progress="ram"]');
+      if (ramBar) {
+        ramBar.value = data.mem;
+        ramBar.max = data.maxmem;
+      }
+    }
+
+    // Update status if changed
+    const statusBadge = document.getElementById('vm-status-badge');
+    if (statusBadge && data.status) {
+      const currentStatus = statusBadge.textContent.trim();
+      if (currentStatus !== data.status) {
+        // Status changed, show notification and reload
+        showNotification('VM status changed to ' + data.status, 'info');
+        setTimeout(() => window.location.reload(), 2000);
+      }
+    }
+  }
+
+  function formatBytes(bytes) {
+    const gb = bytes / (1024 * 1024 * 1024);
+    if (gb >= 1) {
+      return gb.toFixed(1) + ' GB';
+    }
+    const mb = bytes / (1024 * 1024);
+    return mb.toFixed(0) + ' MB';
+  }
+
+  function formatUptime(seconds) {
+    if (seconds < 60) return seconds + 's';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
+    return Math.floor(seconds / 86400) + 'd';
+  }
+
+  function showNotification(message, type = 'info', autoDismiss = true) {
+    // Enhanced notification system with auto-dismissal and stacking
+    const notificationId = 'notification-' + Date.now();
+    const notification = document.createElement('div');
+    notification.id = notificationId;
+    notification.className = `notification is-${type} is-light`;
+    notification.style.cssText = `
+      position: fixed; 
+      top: 20px; 
+      right: 20px; 
+      z-index: 9999; 
+      max-width: 350px;
+      min-width: 250px;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    // Add icon based on type
+    let icon = 'fas fa-info-circle';
+    if (type === 'success') icon = 'fas fa-check-circle';
+    if (type === 'warning') icon = 'fas fa-exclamation-triangle';
+    if (type === 'danger') icon = 'fas fa-times-circle';
+    
+    notification.innerHTML = `
+      <button class="delete" onclick="dismissNotification('${notificationId}')"></button>
+      <div class="media">
+        <div class="media-left">
+          <span class="icon has-text-${type}">
+            <i class="${icon}"></i>
+          </span>
+        </div>
+        <div class="media-content">
+          <p>${message}</p>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Position notification with stacking
+    positionNotification(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.style.opacity = '1';
+      notification.style.transform = 'translateX(0)';
+    }, 50);
+    
+    // Auto-dismiss after specified time
+    if (autoDismiss) {
+      const dismissTime = type === 'success' ? 3000 : type === 'danger' ? 8000 : 5000;
+      setTimeout(() => {
+        dismissNotification(notificationId);
+      }, dismissTime);
+    }
+    
+    return notificationId;
+  }
+
+  function dismissNotification(notificationId) {
+    const notification = document.getElementById(notificationId);
+    if (!notification) return;
+    
+    // Animate out
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateX(100%)';
+    
+    // Remove after animation
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove();
+        // Reposition remaining notifications
+        repositionAllNotifications();
+      }
+    }, 300);
+  }
+
+  function positionNotification(notification) {
+    const existingNotifications = document.querySelectorAll('.notification[id^="notification-"]:not([id="' + notification.id + '"])');
+    const topOffset = 20 + (existingNotifications.length * 80);
+    notification.style.top = topOffset + 'px';
+  }
+
+  function repositionAllNotifications() {
+    const notifications = document.querySelectorAll('.notification[id^="notification-"]');
+    notifications.forEach((notif, index) => {
+      const topOffset = 20 + (index * 80);
+      notif.style.top = topOffset + 'px';
+    });
+  }
+
+  // Global notification shortcuts
+  window.showSuccess = (message) => showNotification(message, 'success');
+  window.showError = (message) => showNotification(message, 'danger');
+  window.showWarning = (message) => showNotification(message, 'warning');
+  window.showInfo = (message) => showNotification(message, 'info');
+
+  // Pause auto-refresh when user is interacting
+  function pauseAutoRefresh() {
+    isAutoRefreshEnabled = false;
+    setTimeout(() => {
+      isAutoRefreshEnabled = true;
+    }, 60000); // Resume after 1 minute of inactivity
+  }
+
+  // Loading indicators for VM actions
+  function showLoadingOnButton(button, loadingText) {
+    if (!button) return;
+    
+    // Store original content
+    const originalContent = button.innerHTML;
+    button.setAttribute('data-original-content', originalContent);
+    
+    // Show loading state
+    button.innerHTML = `
+      <span class="icon">
+        <i class="fas fa-spinner fa-spin"></i>
+      </span>
+      <span>${loadingText}</span>
+    `;
+    button.disabled = true;
+    button.classList.add('is-loading');
+  }
+
+  function restoreButton(button) {
+    if (!button) return;
+    
+    const originalContent = button.getAttribute('data-original-content');
+    if (originalContent) {
+      button.innerHTML = originalContent;
+      button.removeAttribute('data-original-content');
+    }
+    button.disabled = false;
+    button.classList.remove('is-loading');
+  }
+
+  // Enhanced form submission with loading indicators
+  function enhanceVMActionForms() {
+    const actionForms = document.querySelectorAll('form[action="/vm/action"]');
+    
+    actionForms.forEach(form => {
+      form.addEventListener('submit', function(e) {
+        const submitButton = form.querySelector('button[type="submit"]');
+        const action = form.querySelector('input[name="action"]').value;
+        
+        let loadingText = 'Processing...';
+        switch(action) {
+          case 'start': loadingText = 'Starting...'; break;
+          case 'stop': loadingText = 'Stopping...'; break;
+          case 'reboot': loadingText = 'Rebooting...'; break;
+          case 'shutdown': loadingText = 'Shutting down...'; break;
+          case 'reset': loadingText = 'Resetting...'; break;
+        }
+        
+        showLoadingOnButton(submitButton, loadingText);
+        
+        // Disable all other action buttons during operation
+        const allActionButtons = document.querySelectorAll('form[action="/vm/action"] button');
+        allActionButtons.forEach(btn => {
+          if (btn !== submitButton) {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+          }
+        });
+      });
+    });
+  }
+
+  // Initialize auto-refresh
+  document.addEventListener('DOMContentLoaded', function() {
+    // Only start auto-refresh for running VMs
+    const statusBadge = document.getElementById('vm-status-badge');
+    if (statusBadge && statusBadge.textContent.includes('Running')) {
+      startAutoRefresh();
+    }
+
+    // Pause refresh on user interaction
+    document.addEventListener('click', pauseAutoRefresh);
+    document.addEventListener('keypress', pauseAutoRefresh);
+    
+    // Show refresh indicator
+    const refreshBtn = document.querySelector('a[href*="refresh=1"]');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.location.href = this.href;
+      });
+    }
+
+    // Enhance VM action forms with loading indicators
+    enhanceVMActionForms();
+  });
 </script>
 <section class="section">
     <div class="container max-w-1200">
@@ -124,7 +488,7 @@
                                     </div>
                                     <div class="tags has-addons mb-0">
                                         <span class="tag is-light"><i class="fas fa-clock"></i></span>
-                                        <span class="tag is-warning">{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
+                                        <span class="tag is-warning" data-metric="uptime">{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
                                     </div>
                                 </div>
                             </div>
@@ -151,12 +515,12 @@
                                         <i class="fas fa-microchip"></i>
                                     </span>
                                     <div>
-                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">CPU</div>
-                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Processor usage</div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">{{T "VMDetails.Label.CPU"}}</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.CPU.UsageLabel"}}</div>
                                     </div>
                                 </div>
                                 <div class="has-text-right">
-                                    <div class="has-text-primary is-size-5" style="font-weight: 600;">
+                                    <div class="has-text-primary is-size-5" style="font-weight: 600;" data-metric="cpu">
                                         {{if eq .VM.Status "running"}}{{printf "%.0f" (mul .VM.CPU 100)}}%{{else}}--{{end}}
                                     </div>
                                     <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{.VM.CPUs}} vCPU{{if gt .VM.CPUs 1}}s{{end}}</div>
@@ -170,13 +534,13 @@
                                     {{.VM.CPUs}} core{{if gt .VM.CPUs 1}}s{{end}}
                                     {{if eq .VM.Status "running"}}
                                     <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
-                                        Active
+                                        {{T "VMDetails.CPU.Active"}}
                                     </span>
                                     {{end}}
                                 </div>
                                 {{if eq .VM.Status "running"}}
                                 <div style="margin-top: 0.75rem;">
-                                    <progress class="progress is-small is-primary" value="{{mul .VM.CPU 100}}" max="100" style="height: 6px; border-radius: 3px;"></progress>
+                                    <progress class="progress is-small is-primary" value="{{mul .VM.CPU 100}}" max="100" data-progress="cpu" style="height: 6px; border-radius: 3px;"></progress>
                                 </div>
                                 {{end}}
                             </div>
@@ -193,16 +557,16 @@
                                         <i class="fas fa-memory"></i>
                                     </span>
                                     <div>
-                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">RAM</div>
-                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Memory usage</div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">{{T "VMDetails.Label.RAM"}}</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.RAM.UsageLabel"}}</div>
                                     </div>
                                 </div>
                                 <div class="has-text-right">
-                                    <div class="has-text-success is-size-5" style="font-weight: 600;">
+                                    <div class="has-text-success is-size-5" style="font-weight: 600;" data-metric="ram">
                                         {{if eq .VM.Status "running"}}{{.FormattedMemGB}}{{else}}--{{end}}
                                     </div>
                                     <div class="has-text-grey is-size-7" style="margin-top: 2px;">
-                                        {{if eq .VM.Status "running"}}{{printf "%.0f" (mul (div (float64 .VM.Mem) (float64 .VM.MaxMem)) 100)}}%{{else}}Total{{end}}
+                                        {{if eq .VM.Status "running"}}{{printf "%.0f" (mul (div (float64 .VM.Mem) (float64 .VM.MaxMem)) 100)}}%{{else}}{{T "VMDetails.RAM.Total"}}{{end}}
                                     </div>
                                 </div>
                             </div>
@@ -211,16 +575,16 @@
                             <div style="margin-top: 1.5rem;">
                                 <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                     <i class="fas fa-memory" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
-                                    {{if eq .VM.Status "running"}}{{.FormattedMemGB}} / {{.FormattedMaxMemGB}} used{{else}}{{.FormattedMaxMemGB}} total{{end}}
+                                    {{if eq .VM.Status "running"}}{{.FormattedMemGB}} / {{.FormattedMaxMemGB}} {{T "VMDetails.RAM.Used"}}{{else}}{{.FormattedMaxMemGB}} {{T "VMDetails.RAM.Total"}}{{end}}
                                     {{if eq .VM.Status "running"}}
                                     <span class="tag" style="background: rgba(34,197,94,0.08); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
-                                        In use
+                                        {{T "VMDetails.RAM.InUse"}}
                                     </span>
                                     {{end}}
                                 </div>
                                 {{if eq .VM.Status "running"}}
                                 <div style="margin-top: 0.75rem;">
-                                    <progress class="progress is-small is-success" value="{{.VM.Mem}}" max="{{.VM.MaxMem}}" style="height: 6px; border-radius: 3px;"></progress>
+                                    <progress class="progress is-small is-success" value="{{.VM.Mem}}" max="{{.VM.MaxMem}}" data-progress="ram" style="height: 6px; border-radius: 3px;"></progress>
                                 </div>
                                 {{end}}
                             </div>
@@ -778,11 +1142,10 @@
                                     <span class="tag is-light is-size-7 mr-2">{{T "VM.Create.NetworkOptional"}}</span>
                                     {{end}}
                                     {{if $card.Exists}}
-                                    <label class="network-toggle-switch" 
+                                    <label id="network-toggle-{{$idx}}" class="network-toggle-switch" 
                                       title="{{if $card.LinkDown}}{{T "Common.Enable"}}{{else}}{{T "Common.Disable"}}{{end}} {{T "VM.Create.Network"}} #{{addInt $idx 1}}">
                                       <input type="checkbox" 
                                         {{if not $card.LinkDown}}checked{{end}}
-                                        {{if and $isRunning (eq $idx 0)}}disabled{{end}}
                                         onchange="toggleNetworkCard({{$idx}}, this.checked, '{{$.CSRFToken}}', '{{$.VM.VMID}}', '{{$.VM.Node}}')">
                                       <span class="network-toggle-slider"></span>
                                       <span class="network-toggle-label">
