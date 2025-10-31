@@ -20,6 +20,8 @@ other = "Confirmer"
 other = "Créer"
 ["Common.Delete"]
 other = "Supprimer"
+["Common.Processing"]
+other = "Traitement"
 ["Common.Description"]
 other = "Description"
 ["Common.Disk"]

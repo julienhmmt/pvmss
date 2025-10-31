@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -69,6 +70,9 @@ func NewVMHandler(stateManager state.StateManager) *VMHandler {
 // RegisterRoutes registers VM-related routes
 func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/vm/details/:vmid", RequireAuthHandle(h.VMDetailsHandler))
+
+	// API routes for dynamic updates
+	router.GET("/api/vm/:vmid/metrics", RequireAuthHandle(h.VMMetricsHandler))
 
 	router.POST("/vm/update/description", SecureFormHandler("UpdateVMDescription",
 		RequireAuthHandle(h.UpdateVMDescriptionHandler),
@@ -773,4 +777,73 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	th := NewTemplateHelpers()
 	th.RenderUserPage(w, r, "vm_details", title, stateManager, custom)
+}
+
+// VMMetricsHandler returns VM metrics as JSON for dynamic updates
+func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	log := CreateHandlerLogger("VMMetricsHandler", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodGet) {
+		return
+	}
+
+	vmid := ps.ByName("vmid")
+	if vmid == "" {
+		log.Error().Msg("VM ID is required")
+		http.Error(w, "VM ID is required", http.StatusBadRequest)
+		return
+	}
+
+	vmidInt, err := strconv.Atoi(vmid)
+	if err != nil {
+		log.Error().Err(err).Str("vmid", vmid).Msg("Invalid VM ID")
+		http.Error(w, "Invalid VM ID", http.StatusBadRequest)
+		return
+	}
+
+	// Get Proxmox client
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		log.Error().Msg("Proxmox client not available")
+		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+		return
+	}
+
+	// Get resty client for API calls
+	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		http.Error(w, "Failed to create API client", http.StatusInternalServerError)
+		return
+	}
+
+	// Get current VM status and metrics
+	vmCurrent, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, "", vmidInt)
+	if err != nil {
+		log.Error().Err(err).Int("vmid", vmidInt).Msg("Failed to get VM metrics")
+		http.Error(w, "Failed to get VM metrics", http.StatusInternalServerError)
+		return
+	}
+
+	// Prepare response
+	metrics := map[string]interface{}{
+		"status": vmCurrent.Status,
+		"cpu":    vmCurrent.CPU,
+		"mem":    vmCurrent.Mem,
+		"maxmem": vmCurrent.MaxMem,
+	}
+
+	// Set JSON response
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
+	if err := json.NewEncoder(w).Encode(metrics); err != nil {
+		log.Error().Err(err).Msg("Failed to encode metrics response")
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+
+	log.Debug().Int("vmid", vmidInt).Str("status", vmCurrent.Status).Float64("cpu", vmCurrent.CPU).Int64("mem", vmCurrent.Mem).Msg("VM metrics served")
 }

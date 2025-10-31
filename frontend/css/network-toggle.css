@@ -72,10 +72,67 @@
 .network-toggle-switch input[type="checkbox"]:disabled + .network-toggle-slider {
   opacity: 0.5;
   cursor: not-allowed;
+  background-color: #f5f5f5;
 }
 
 .network-toggle-switch input[type="checkbox"]:disabled ~ .network-toggle-label {
-  opacity: 0.5;
+  opacity: 0.6;
+  color: #999;
+}
+
+/* Loading state */
+.network-toggle-switch.loading .network-toggle-slider {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+
+.network-toggle-switch.loading .network-toggle-label {
+  opacity: 0.7;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Success state animation */
+.network-toggle-switch.success .network-toggle-slider {
+  animation: success-pulse 0.6s ease-out;
+}
+
+@keyframes success-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(72, 199, 116, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(72, 199, 116, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(72, 199, 116, 0);
+  }
+}
+
+/* Error state animation */
+.network-toggle-switch.error .network-toggle-slider {
+  animation: error-shake 0.5s ease-out;
+  background-color: #ff3860;
+}
+
+@keyframes error-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
 }
 
 /* Label styling */
@@ -87,6 +144,20 @@
   align-items: center;
   gap: 0.5rem;
   white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.network-toggle-label i.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive adjustments */
