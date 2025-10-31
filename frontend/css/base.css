@@ -1,5 +1,9 @@
 :root {
   --navbar-height: 3.75rem;
+  --bulma-arrow-color: var(--primary);
+  --bulma-input-arrow: var(--primary);
+  --bulma-input-icon-focus-color: var(--primary);
+  --bulma-link-on-scheme: var(--primary);
 }
 
 html {
