@@ -237,15 +237,15 @@
                                         <i class="fas fa-hdd"></i>
                                     </span>
                                     <div>
-                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">Disks</div>
-                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Storage volumes</div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">{{T "VMDetails.Section.Disks"}}</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.Section.DisksDescription"}}</div>
                                     </div>
                                 </div>
                                 {{$diskCount := len .Disks}}
                                 {{if gt $diskCount 0}}
                                 <div class="has-text-right">
                                     <div class="has-text-primary is-size-5" style="font-weight: 600;">{{$diskCount}}</div>
-                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">Total: {{.DisksTotalLabel}}</div>
+                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.Disks.Total"}}: {{.DisksTotalLabel}}</div>
                                 </div>
                                 {{end}}
                             </div>
@@ -295,8 +295,8 @@
                                 <span class="icon has-text-grey-light" style="font-size: 2.5rem;">
                                     <i class="fas fa-hdd"></i>
                                 </span>
-                                <p class="has-text-grey is-size-6" style="margin-top: 1rem;">No disks configured</p>
-                                <p class="has-text-grey-light is-size-7" style="margin-top: 0.5rem;">Add storage volumes to this VM</p>
+                                <p class="has-text-grey is-size-6" style="margin-top: 1rem;">{{T "VMDetails.Disks.EmptyTitle"}}</p>
+                                <p class="has-text-grey-light is-size-7" style="margin-top: 0.5rem;">{{T "VMDetails.Disks.EmptySubtitle"}}</p>
                             </div>
                             {{end}}
                         </div>
@@ -314,13 +314,13 @@
                                         <i class="fas fa-network-wired"></i>
                                     </span>
                                     <div>
-                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">Network</div>
-                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Network interfaces</div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">{{T "VMDetails.Section.Network"}}</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.Section.NetworkDescription"}}</div>
                                     </div>
                                 </div>
                                 <div class="has-text-right">
                                     <div class="has-text-purple is-size-5" style="font-weight: 600;">{{$ifaceCount}}</div>
-                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">Interface{{if ne $ifaceCount 1}}s{{end}}</div>
+                                    <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{if eq $ifaceCount 1}}{{T "VMDetails.Network.InterfaceSingular"}}{{else}}{{T "VMDetails.Network.InterfacePlural"}}{{end}}</div>
                                 </div>
                             </div>
                             <!-- Network Interfaces List -->
@@ -346,7 +346,7 @@
                                                 {{end}}
                                                 {{if $iface.LinkDown}}
                                                 <span class="tag" style="background: rgba(245,158,11,0.08); color: #d97706; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
-                                                    <i class="fas fa-link-slash" style="font-size: 0.7rem;"></i> Down
+                                                    <i class="fas fa-link-slash" style="font-size: 0.7rem;"></i> {{T "Status.Down"}}
                                                 </span>
                                                 {{end}}
                                             </div>
@@ -377,8 +377,8 @@
                                         <i class="fas fa-shield-alt"></i>
                                     </span>
                                     <div>
-                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">Firmware & Security</div>
-                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">Boot & security features</div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">{{T "VMDetails.Section.Security"}}</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.Section.SecurityDescription"}}</div>
                                     </div>
                                 </div>
                             </div>
@@ -390,14 +390,14 @@
                                     <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
-                                            EFI Boot
+                                            {{T "VMDetails.Security.EFIBoot"}}
                                             <span class="tag" style="background: rgba(34,197,94,0.08); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
-                                                Enabled
+                                                {{T "Common.Enabled"}}
                                             </span>
                                         </div>
                                         {{if .EFIStorage}}
                                         <div class="has-text-grey" style="font-size: 0.85rem; margin-top: 0.5rem;">
-                                            Storage: {{.EFIStorage}}
+                                            {{T "Common.Storage"}}: {{.EFIStorage}}
                                         </div>
                                         {{end}}
                                     </div>
@@ -405,9 +405,9 @@
                                     <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
-                                            EFI Boot
+                                            {{T "VMDetails.Security.EFIBoot"}}
                                             <span class="tag" style="background: rgba(156,163,175,0.08); color: #6b7280; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
-                                                Disabled
+                                                {{T "Common.Disabled"}}
                                             </span>
                                         </div>
                                     </div>
@@ -417,9 +417,9 @@
                                     <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
-                                            TPM v2.0
+                                            {{T "VMDetails.Security.TPM"}}
                                             <span class="tag" style="background: rgba(34,197,94,0.08); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
-                                                Enabled
+                                                {{T "Common.Enabled"}}
                                             </span>
                                         </div>
                                     </div>
@@ -427,9 +427,9 @@
                                     <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
-                                            TPM v2.0
+                                            {{T "VMDetails.Security.TPM"}}
                                             <span class="tag" style="background: rgba(156,163,175,0.08); color: #6b7280; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; margin-left: 0.5rem;">
-                                                Disabled
+                                                {{T "Common.Disabled"}}
                                             </span>
                                         </div>
                                     </div>

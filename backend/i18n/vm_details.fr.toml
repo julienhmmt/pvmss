@@ -93,3 +93,29 @@ other = "Impossible de modifier une VM en cours d'exécution"
 other = "La VM est actuellement en cours d'exécution. Veuillez l'arrêter avant de modifier les ressources pour éviter les problèmes de performance ou la perte de données."
 ["VM.Details.NoDisks"]
 other = "Aucun disque trouvé"
+["VMDetails.Section.Disks"]
+other = "Disques"
+["VMDetails.Section.DisksDescription"]
+other = "Volumes de stockage"
+["VMDetails.Disks.Total"]
+other = "Total"
+["VMDetails.Disks.EmptyTitle"]
+other = "Aucun disque configuré"
+["VMDetails.Disks.EmptySubtitle"]
+other = "Ajoutez des volumes de stockage à cette VM"
+["VMDetails.Section.Network"]
+other = "Réseau"
+["VMDetails.Section.NetworkDescription"]
+other = "Interfaces réseau"
+["VMDetails.Network.InterfaceSingular"]
+other = "Interface"
+["VMDetails.Network.InterfacePlural"]
+other = "Interfaces"
+["VMDetails.Section.Security"]
+other = "Firmware & Sécurité"
+["VMDetails.Section.SecurityDescription"]
+other = "Fonctionnalités de démarrage et de sécurité"
+["VMDetails.Security.EFIBoot"]
+other = "Démarrage EFI"
+["VMDetails.Security.TPM"]
+other = "Module de plateforme sécurisée (TPM) v2.0"
