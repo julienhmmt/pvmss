@@ -16,7 +16,7 @@
 }
 
 .network-toggle-switch:hover {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: rgb(0 0 0 / 2%);
 }
 
 /* Hide the default checkbox */
@@ -50,37 +50,24 @@
   background-color: white;
   border-radius: 50%;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
 }
 
-/* Checked state - green background */
-.network-toggle-switch input[type="checkbox"]:checked + .network-toggle-slider {
-  background-color: #48c774;
-}
+/* Label styling */
 
-/* Checked state - move dot to the right */
-.network-toggle-switch input[type="checkbox"]:checked + .network-toggle-slider::before {
-  transform: translateX(24px);
-}
-
-/* Focus state for accessibility */
-.network-toggle-switch input[type="checkbox"]:focus + .network-toggle-slider {
-  box-shadow: 0 0 0 3px rgba(72, 199, 116, 0.25);
-}
-
-/* Disabled state */
-.network-toggle-switch input[type="checkbox"]:disabled + .network-toggle-slider {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background-color: #f5f5f5;
-}
-
-.network-toggle-switch input[type="checkbox"]:disabled ~ .network-toggle-label {
-  opacity: 0.6;
-  color: #999;
+.network-toggle-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #363636;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
 /* Loading state */
+
 .network-toggle-switch.loading .network-toggle-slider {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
@@ -101,23 +88,25 @@
 }
 
 /* Success state animation */
+
 .network-toggle-switch.success .network-toggle-slider {
   animation: success-pulse 0.6s ease-out;
 }
 
 @keyframes success-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(72, 199, 116, 0.7);
+    box-shadow: 0 0 0 0 rgb(72 199 116 / 70%);
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(72, 199, 116, 0);
+    box-shadow: 0 0 0 10px rgb(72 199 116 / 0%);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(72, 199, 116, 0);
+    box-shadow: 0 0 0 0 rgb(72 199 116 / 0%);
   }
 }
 
 /* Error state animation */
+
 .network-toggle-switch.error .network-toggle-slider {
   animation: error-shake 0.5s ease-out;
   background-color: #ff3860;
@@ -135,16 +124,35 @@
   }
 }
 
-/* Label styling */
-.network-toggle-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #363636;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  white-space: nowrap;
-  transition: all 0.2s ease;
+/* Checked state - green background */
+
+.network-toggle-switch input[type="checkbox"]:checked + .network-toggle-slider {
+  background-color: #48c774;
+}
+
+/* Checked state - move dot to the right */
+
+.network-toggle-switch input[type="checkbox"]:checked + .network-toggle-slider::before {
+  transform: translateX(24px);
+}
+
+/* Focus state for accessibility */
+
+.network-toggle-switch input[type="checkbox"]:focus + .network-toggle-slider {
+  box-shadow: 0 0 0 3px rgb(72 199 116 / 25%);
+}
+
+/* Disabled state */
+
+.network-toggle-switch input[type="checkbox"]:disabled + .network-toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
+.network-toggle-switch input[type="checkbox"]:disabled ~ .network-toggle-label {
+  opacity: 0.6;
+  color: #999;
 }
 
 .network-toggle-label i.fa-spinner {
@@ -161,7 +169,7 @@
 }
 
 /* Responsive adjustments */
-@media screen and (max-width: 768px) {
+@media (max-width: 768px) {
   .network-toggle-label {
     font-size: 0.8125rem;
   }
