@@ -290,18 +290,21 @@
                                                     </div>
                                                     <p class="help has-text-grey is-size-7 mt-2">
                                                         <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
-                                                        <span id="memory-display">{{$vmRamMinGB}} GB minimum ({{$vmRamMinMB}} MB)</span>
+                                                        <span id="memory-display">{{T "Common.Selected"}}: {{$vmRamMinGB}} GB ({{$vmRamMinMB}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Min"}}: {{$vmRamMinGB}} GB ({{$vmRamMinMB}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Max"}}: {{$vmRamMaxGB}} GB ({{$vmRamMaxMB}} MB)</span>
                                                     </p>
                                                 </div>
                                                 <script>
                                                     // Real-time memory display conversion
                                                     const memoryInput = document.getElementById('memory');
                                                     const memoryDisplay = document.getElementById('memory-display');
+                                                    const memorySelectedLabel = '{{T "Common.Selected"}}';
                                                     
                                                     function updateMemoryDisplay() {
                                                         const mb = parseInt(memoryInput.value) || 0;
                                                         const gb = (mb / 1024).toFixed(1);
-                                                        memoryDisplay.textContent = gb + ' GB (' + mb + ' MB)';
+                                                        memoryDisplay.textContent = memorySelectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
                                                     }
                                                     
                                                     memoryInput.addEventListener('input', updateMemoryDisplay);
@@ -385,6 +388,12 @@
                                                         </div>
                                                         <div class="control"><span class="button is-static is-medium">GB</span></div>
                                                     </div>
+                                                    {{if eq $diskIdx 0}}
+                                                    <p class="help has-text-grey is-size-7 mt-2">
+                                                        <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                                                        <span>{{T "Common.Min"}}: {{$vmDiskMin}} GB — {{T "Common.Max"}}: {{$vmDiskMax}} GB</span>
+                                                    </p>
+                                                    {{end}}
                                                 </div>
                                                 {{if lt (toInt (add $diskIdx 1)) $maxDisks}}<hr class="my-4">{{end}}
                                                 {{end}}
