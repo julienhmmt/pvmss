@@ -138,6 +138,8 @@ spec:
               value: "false" # Set to true to disable Proxmox connection
             - name: PVMSS_SETTINGS_PATH
               value: "/data/settings.json"
+            - name: CSRF_TOKEN_TTL
+              value: "2h" # duration (e.g.: 10m, 4d)
             - name: TZ
               value: "Europe/Paris"
           volumeMounts:

@@ -234,26 +234,58 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
 				if ram, ok := vmLimitsMap["ram"]; ok {
 					if ramMap, ok := ram.(map[string]interface{}); ok {
-						if min, ok := ramMap["min"]; ok { if minVal, ok := min.(float64); ok { vmRamMinMB = int(minVal) * 1024 } }
-						if max, ok := ramMap["max"]; ok { if maxVal, ok := max.(float64); ok { vmRamMaxMB = int(maxVal) * 1024 } }
+						if min, ok := ramMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								vmRamMinMB = int(minVal) * 1024
+							}
+						}
+						if max, ok := ramMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								vmRamMaxMB = int(maxVal) * 1024
+							}
+						}
 					}
 				}
 				if sockets, ok := vmLimitsMap["sockets"]; ok {
 					if socketsMap, ok := sockets.(map[string]interface{}); ok {
-						if min, ok := socketsMap["min"]; ok { if v, ok := min.(float64); ok { socketsMin = int(v) } }
-						if max, ok := socketsMap["max"]; ok { if v, ok := max.(float64); ok { socketsMax = int(v) } }
+						if min, ok := socketsMap["min"]; ok {
+							if v, ok := min.(float64); ok {
+								socketsMin = int(v)
+							}
+						}
+						if max, ok := socketsMap["max"]; ok {
+							if v, ok := max.(float64); ok {
+								socketsMax = int(v)
+							}
+						}
 					}
 				}
 				if cores, ok := vmLimitsMap["cores"]; ok {
 					if coresMap, ok := cores.(map[string]interface{}); ok {
-						if min, ok := coresMap["min"]; ok { if v, ok := min.(float64); ok { coresMin = int(v) } }
-						if max, ok := coresMap["max"]; ok { if v, ok := max.(float64); ok { coresMax = int(v) } }
+						if min, ok := coresMap["min"]; ok {
+							if v, ok := min.(float64); ok {
+								coresMin = int(v)
+							}
+						}
+						if max, ok := coresMap["max"]; ok {
+							if v, ok := max.(float64); ok {
+								coresMax = int(v)
+							}
+						}
 					}
 				}
 				if disk, ok := vmLimitsMap["disk"]; ok {
 					if diskMap, ok := disk.(map[string]interface{}); ok {
-						if min, ok := diskMap["min"]; ok { if v, ok := min.(float64); ok { diskMin = int(v) } }
-						if max, ok := diskMap["max"]; ok { if v, ok := max.(float64); ok { diskMax = int(v) } }
+						if min, ok := diskMap["min"]; ok {
+							if v, ok := min.(float64); ok {
+								diskMin = int(v)
+							}
+						}
+						if max, ok := diskMap["max"]; ok {
+							if v, ok := max.(float64); ok {
+								diskMax = int(v)
+							}
+						}
 					}
 				}
 			}

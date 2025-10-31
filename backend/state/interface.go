@@ -3,7 +3,7 @@
 //
 // Usage:
 //   - Use StateManager interface with dependency injection (RECOMMENDED)
-//   - Avoid global helper functions like GetGlobalState() (DEPRECATED - see global.go)
+
 package state
 
 import (
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+
 	"pvmss/proxmox"
 )
 

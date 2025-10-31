@@ -44,33 +44,6 @@ func CreateHandlerLogger(handlerName string, r *http.Request) zerolog.Logger {
 	return logContext.Logger()
 }
 
-// AdminPageData creates common data structure for admin pages
-// DEPRECATED: Use NewTemplateData(title).SetAdminActive(section).Build().ToMap() instead
-func AdminPageData(title, activeSection string) map[string]interface{} {
-	return map[string]interface{}{
-		"Title":       title,
-		"AdminActive": activeSection,
-	}
-}
-
-// AdminPageDataWithMessage creates admin page data with success/error messages
-// DEPRECATED: Use NewTemplateData(title).SetAdminActive(section).SetSuccess/SetError(msg).Build().ToMap() instead
-func AdminPageDataWithMessage(title, activeSection, successMsg, errorMsg string) map[string]interface{} {
-	data := AdminPageData(title, activeSection)
-
-	if successMsg != "" {
-		data["Success"] = true
-		data["SuccessMessage"] = successMsg
-	}
-
-	if errorMsg != "" {
-		data["Error"] = true
-		data["ErrorMessage"] = errorMsg
-	}
-
-	return data
-}
-
 // PostOnlyHandler wraps a handler to only accept POST requests
 func PostOnlyHandler(handler httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
