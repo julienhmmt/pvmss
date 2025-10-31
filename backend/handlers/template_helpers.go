@@ -237,11 +237,6 @@ func (cmh *ContextualMessageHelper) GenerateNodeMessages(action string, nodeName
 	}
 }
 
-// AdminPageDataWithRequest provides backward compatibility for AdminPageData function with request context
-func AdminPageDataWithRequest(title string, r *http.Request, sm state.StateManager) map[string]interface{} {
-	return StandardAdminPageData(title, r, sm, "")
-}
-
 // AdminPageDataWithSection provides backward compatibility with admin section
 func AdminPageDataWithSection(title string, r *http.Request, sm state.StateManager, section string) map[string]interface{} {
 	return StandardAdminPageData(title, r, sm, section)

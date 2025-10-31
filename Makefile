@@ -9,6 +9,9 @@ GREEN=\033[0;32m
 RED=\033[0;31m
 NC=\033[0m # No Color
 
+# Test configuration
+TEST_SETTINGS_PATH=/tmp/settings.test.json
+
 # =============================================================================
 # Commandes de base
 
@@ -64,22 +67,26 @@ logs:
 
 coverage: ## Génère un rapport de couverture de code
 	@echo "$(BLUE)Génération du rapport de couverture...$(NC)"
-	cd backend && go test -v -race -coverprofile=coverage.out ./...
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./...
 	@echo "$(GREEN)✓ Rapport généré: backend/coverage.out$(NC)"
 
 test-unit: ## Lance les tests unitaires Go
 	@echo "$(BLUE)Lancement des tests unitaires Go...$(NC)"
-	cd backend && go test -v -race -coverprofile=coverage.out ./...
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./...
 	@echo "$(GREEN)✓ Tests unitaires terminés$(NC)"
 
 test-integration: ## Lance les tests d'intégration (requiert docker-compose.test.yml)
 	@echo "$(BLUE)Lancement des tests d'intégration...$(NC)"
-	cd backend && go test -v -race -tags=integration -timeout=5m ./tests/...
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests d'intégration terminés$(NC)"
 
 test-routes: ## Lance les tests de routes (requiert l'app en cours d'exécution)
 	@echo "$(BLUE)Lancement des tests de routes...$(NC)"
-	cd backend && go test -v -run TestRouteAccessibility ./tests
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -run TestRouteAccessibility ./tests
 	@echo "$(GREEN)✓ Tests de routes terminés$(NC)"
 
 test: test-unit test-integration test-routes ## Lance tous les tests Go

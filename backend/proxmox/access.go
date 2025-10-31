@@ -13,11 +13,11 @@ import (
 
 // TicketResponse represents the response from the /access/ticket endpoint.
 type TicketResponse struct {
-	Username            string `json:"username"`
-	Ticket              string `json:"ticket"`
-	CSRFPreventionToken string `json:"CSRFPreventionToken"`
 	Cap                 any    `json:"cap,omitempty"`
 	Clustername         string `json:"clustername,omitempty"`
+	CSRFPreventionToken string `json:"CSRFPreventionToken"`
+	Ticket              string `json:"ticket"`
+	Username            string `json:"username"`
 }
 
 // CreateTicketOptions holds optional parameters for ticket creation.
