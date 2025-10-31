@@ -93,18 +93,17 @@
                                 aria-disabled="{{if or (not .ProxmoxConnected) .AllNodesSaturated .NoNodesAvailable}}true{{else}}false{{end}}">
 
                                 <!-- Variable Preparation -->
-                                {{/* Extract VM limits from settings (always defined in settings.json) */}}
-                                {{$vm := index .Limits "vm"}}
-                                {{$vmSockMin := int (index (index $vm "sockets") "min")}}
-                                {{$vmSockMax := int (index (index $vm "sockets") "max")}}
-                                {{$vmCoreMin := int (index (index $vm "cores") "min")}}
-                                {{$vmCoreMax := int (index (index $vm "cores") "max")}}
-                                {{$vmRamMinGB := int (index (index $vm "ram") "min")}}
-                                {{$vmRamMaxGB := int (index (index $vm "ram") "max")}}
-                                {{$vmDiskMin := int (index (index $vm "disk") "min")}}
-                                {{$vmDiskMax := int (index (index $vm "disk") "max")}}
-                                {{$vmRamMinMB := int (mul $vmRamMinGB 1024)}}
-                                {{$vmRamMaxMB := int (mul $vmRamMaxGB 1024)}}
+                                {{/* Use explicit VM limit values passed by handler to avoid nil map indexing */}}
+                                {{$vmSockMin := .VMSocketsMin}}
+                                {{$vmSockMax := .VMSocketsMax}}
+                                {{$vmCoreMin := .VMCoresMin}}
+                                {{$vmCoreMax := .VMCoresMax}}
+                                {{$vmRamMinGB := .VMRamMinGB}}
+                                {{$vmRamMaxGB := .VMRamMaxGB}}
+                                {{$vmDiskMin := .VMDiskMin}}
+                                {{$vmDiskMax := .VMDiskMax}}
+                                {{$vmRamMinMB := .VMRamMinMB}}
+                                {{$vmRamMaxMB := .VMRamMaxMB}}
                                 {{/* Node limits map for per-node caps (optional, used in cluster mode) */}}
                                 {{$nodesLimits := index .Limits "nodes"}}
 
@@ -378,7 +377,7 @@
                                                                    min="{{if eq $diskIdx 0}}{{$vmDiskMin}}{{else}}0{{end}}" 
                                                                    max="{{$vmDiskMax}}" 
                                                                    step="1" 
-                                                                   value="{{if eq $diskIdx 0}}{{$vmDiskMax}}{{else}}{{end}}" 
+                                                                   value="{{if eq $diskIdx 0}}{{$vmDiskMin}}{{else}}{{end}}" 
                                                                    {{if eq $diskIdx 0}}required{{end}} 
                                                                    placeholder="{{if gt $diskIdx 0}}{{T "VM.Create.DiskOptionalPlaceholder"}}{{end}}"
                                                                    aria-describedby="diskSize-help" 
@@ -435,6 +434,81 @@
                                                     </label>
                                                     <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.EFIHelp"}}</p>
                                                 </div>
+
+                                                <script>
+                                                    const vmRamGlobalMaxMB = {{.VMRamMaxMB}};
+                                                    const vmRamGlobalMinMB = {{.VMRamMinMB}};
+                                                    const vmCoresGlobalMax = {{.VMCoresMax}};
+                                                    const vmSocketsGlobalMax = {{.VMSocketsMax}};
+
+                                                    const nodeSelectEl = document.getElementById('node');
+                                                    const memoryField = document.getElementById('memory');
+                                                    const cpuSocketsEl = document.getElementById('cpuSockets');
+                                                    const cpuCoresEl = document.getElementById('cpuCores');
+
+                                                    function toInt(v) { return parseInt(v, 10) || 0; }
+
+                                                    function updateSelectMax(selectEl, newMax) {
+                                                        const maxAllowed = Math.max(1, newMax);
+                                                        for (const opt of selectEl.options) {
+                                                            const val = toInt(opt.value);
+                                                            opt.disabled = val > maxAllowed;
+                                                        }
+                                                        if (toInt(selectEl.value) > maxAllowed) {
+                                                            selectEl.value = String(maxAllowed);
+                                                        }
+                                                    }
+
+                                                    function applyNodeLimits() {
+                                                        const opt = nodeSelectEl && nodeSelectEl.selectedIndex >= 0 ? nodeSelectEl.options[nodeSelectEl.selectedIndex] : null;
+                                                        const coresMax = opt && opt.dataset.coresMax ? toInt(opt.dataset.coresMax) : 0;
+                                                        const ramMaxGB = opt && opt.dataset.ramMaxGb ? toInt(opt.dataset.ramMaxGb) : 0;
+                                                        let ramMaxMB = vmRamGlobalMaxMB;
+                                                        if (ramMaxGB && ramMaxGB > 0) {
+                                                            ramMaxMB = Math.min(vmRamGlobalMaxMB, ramMaxGB * 1024);
+                                                        }
+                                                        memoryField.max = String(ramMaxMB);
+                                                        memoryField.min = String(vmRamGlobalMinMB);
+                                                        if (toInt(memoryField.value) > toInt(memoryField.max)) {
+                                                            memoryField.value = memoryField.max;
+                                                        }
+                                                        if (typeof updateMemoryDisplay === 'function') { updateMemoryDisplay(); }
+
+                                                        let coresGlobalMax = vmCoresGlobalMax;
+                                                        let socketsGlobalMax = vmSocketsGlobalMax;
+                                                        if (coresMax && coresMax > 0) {
+                                                            coresGlobalMax = Math.min(vmCoresGlobalMax, coresMax);
+                                                            socketsGlobalMax = Math.min(vmSocketsGlobalMax, coresMax);
+                                                        }
+                                                        updateSelectMax(cpuCoresEl, coresGlobalMax);
+                                                        updateSelectMax(cpuSocketsEl, socketsGlobalMax);
+
+                                                        const sockets = toInt(cpuSocketsEl.value);
+                                                        const cores = toInt(cpuCoresEl.value);
+                                                        const maxCoresTotal = coresMax && coresMax > 0 ? coresMax : (vmCoresGlobalMax * vmSocketsGlobalMax);
+                                                        if (sockets * cores > maxCoresTotal) {
+                                                            let newCores = Math.min(cores, Math.floor(maxCoresTotal / Math.max(1, sockets)));
+                                                            if (newCores < 1) {
+                                                                newCores = 1;
+                                                                const newSockets = Math.max(1, Math.floor(maxCoresTotal / newCores));
+                                                                cpuSocketsEl.value = String(Math.min(newSockets, toInt(cpuSocketsEl.value)));
+                                                            }
+                                                            cpuCoresEl.value = String(Math.max(1, newCores));
+                                                        }
+                                                    }
+
+                                                    if (nodeSelectEl) {
+                                                        nodeSelectEl.addEventListener('change', applyNodeLimits);
+                                                    }
+                                                    if (cpuSocketsEl) {
+                                                        cpuSocketsEl.addEventListener('change', applyNodeLimits);
+                                                    }
+                                                    if (cpuCoresEl) {
+                                                        cpuCoresEl.addEventListener('change', applyNodeLimits);
+                                                    }
+                                                    document.addEventListener('DOMContentLoaded', applyNodeLimits);
+                                                    window.addEventListener('load', applyNodeLimits);
+                                                </script>
                                             </div>
                                         </div>
                                     </div>
@@ -469,7 +543,13 @@
                                                             <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
                                                                 {{if .NodeOptions}}
                                                                 {{range .NodeOptions}}
-                                                                <option value="{{.value}}" {{if $.FormData.node}}{{if eq .value $.FormData.node}}selected{{end}}{{else if eq .value $.ActiveNode}}selected{{end}} {{if .disabled}}disabled title="{{.reason}}" class="has-text-grey-light"{{end}}>
+                                                                {{/* Lookup per-node limits for this option */}}
+                                                                {{$optNode := .value}}
+                                                                {{$nodeLimit := index $nodesLimits $optNode}}
+                                                                <option value="{{.value}}"
+                                                                        data-cores-max="{{with $nodeLimit}}{{with index . "cores"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
+                                                                        data-ram-max-gb="{{with $nodeLimit}}{{with index . "ram"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
+                                                                        {{if $.FormData.node}}{{if eq .value $.FormData.node}}selected{{end}}{{else if eq .value $.ActiveNode}}selected{{end}} {{if .disabled}}disabled title="{{.reason}}" class="has-text-grey-light"{{end}}>
                                                                     {{.text}}{{if .disabled}} — {{.reason}}{{end}}
                                                                 </option>
                                                                 {{end}}
