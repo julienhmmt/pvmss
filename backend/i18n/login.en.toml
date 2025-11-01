@@ -1,0 +1,33 @@
+# Login
+["Login.Button"]
+other = "Login"
+["Login.PasswordLabel"]
+other = "Password"
+["Login.Title"]
+other = "Login"
+["Login.UsernameLabel"]
+other = "Username"
+["Login.UserLogin"]
+other = "User login"
+["Login.AdminLoginLink"]
+other = "Administrator login"
+["Login.LoginAs"]
+other = "Login as"
+["Login.SwitchToAdmin"]
+other = "Switch to administrator login"
+["Login.SwitchToUser"]
+other = "Switch to user login"
+["Login.Warning.General"]
+other = "Please log in to continue."
+["Login.Warning.UpdateDescription"]
+other = "Please log in to update the VM description."
+
+# Admin Login
+["AdminLogin.Button"]
+other = "Administrator login"
+["AdminLogin.PasswordLabel"]
+other = "Administrator password"
+["AdminLogin.Title"]
+other = "Administrator login"
+["AdminLogin.UserLoginLink"]
+other = "Regular user login"

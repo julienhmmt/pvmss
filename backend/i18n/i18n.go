@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,7 +44,9 @@ var (
 	i18nDir        string // Discovered path to the i18n directory.
 	supportedTags  []language.Tag
 	supportedCodes map[string]struct{}
-	langFileRegex  = regexp.MustCompile(`^active\.([a-z]{2}(?:-[a-z]{2})?)\.toml$`)
+	// Matches any TOML ending with .<lang>.toml (e.g., active.en.toml, admin_userpool.en.toml)
+	// Captures the language code group.
+	langFileRegex = regexp.MustCompile(`(?i)^.*\.([a-z]{2}(?:-[a-z]{2})?)\.toml$`)
 )
 
 // GetLocalizer returns a localizer for the given language.
@@ -181,7 +184,14 @@ func findI18nDirectory() (string, error) {
 
 	for _, path := range searchPaths {
 		info, err := os.Stat(path)
-		if (err == nil || !os.IsNotExist(err)) && info.IsDir() {
+		if err != nil {
+			if !os.IsNotExist(err) {
+				logger.Get().Debug().Err(err).Str("path", path).Msg("Skipping i18n search path")
+			}
+			continue
+		}
+
+		if info.IsDir() {
 			absPath, _ := filepath.Abs(path)
 			logger.Get().Info().Str("path", absPath).Msg("Found i18n directory")
 			return absPath, nil
@@ -192,7 +202,8 @@ func findI18nDirectory() (string, error) {
 
 // loadAllTranslations discovers and loads all 'active.*.toml' files.
 func loadAllTranslations(bundle *i18n.Bundle) {
-	files, err := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+	// Load all TOML files in i18n directory to support split catalogs
+	files, err := filepath.Glob(filepath.Join(i18nDir, "*.toml"))
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to glob for translation files")
 		return
@@ -202,6 +213,8 @@ func loadAllTranslations(bundle *i18n.Bundle) {
 		logger.Get().Error().Msg("No translation files found.")
 		return
 	}
+
+	sort.Strings(files)
 
 	for _, file := range files {
 		if _, err := bundle.LoadMessageFile(file); err != nil {
@@ -213,6 +226,7 @@ func loadAllTranslations(bundle *i18n.Bundle) {
 
 // InitI18n discovers languages, loads translations, and pre-warms the cache.
 func InitI18n() {
+	logger.Get().Debug().Msg("Starting i18n initialization")
 	var err error
 	i18nDir, err = findI18nDirectory()
 	if err != nil {
@@ -227,10 +241,18 @@ func InitI18n() {
 		}
 		logger.Get().Fatal().Err(err).Msg("Could not initialize i18n")
 	}
+	logger.Get().Debug().Str("i18n_dir", i18nDir).Msg("i18n directory found")
 
 	// Dynamically discover supported languages
+	supportedTags = nil
 	supportedCodes = make(map[string]struct{})
-	files, _ := filepath.Glob(filepath.Join(i18nDir, "active.*.toml"))
+
+	// Discover languages from all TOML files present
+	logger.Get().Debug().Msg("Discovering supported languages")
+	files, _ := filepath.Glob(filepath.Join(i18nDir, "*.toml"))
+	sort.Strings(files)
+	logger.Get().Debug().Int("toml_files_found", len(files)).Msg("TOML files discovered")
+
 	for _, file := range files {
 		matches := langFileRegex.FindStringSubmatch(filepath.Base(file))
 		if len(matches) > 1 {
@@ -244,12 +266,15 @@ func InitI18n() {
 			supportedCodes[code] = struct{}{}
 		}
 	}
+	logger.Get().Debug().Int("supported_languages", len(supportedCodes)).Msg("Languages discovered")
 
 	// Create a new bundle with English as default language
+	logger.Get().Debug().Msg("Creating i18n bundle")
 	Bundle = i18n.NewBundle(language.English)
 	Bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 
 	// Load all discovered translation files
+	logger.Get().Debug().Msg("Loading translation files")
 	loadAllTranslations(Bundle)
 
 	logger.Get().Info().Strs("languages", mapsKeys(supportedCodes)).Msg("Initialized i18n for languages")

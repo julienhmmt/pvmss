@@ -1,16 +1,36 @@
 :root {
   --navbar-height: 3.75rem;
+  --bulma-arrow-color: var(--primary);
+  --bulma-input-arrow: var(--primary);
+  --bulma-input-icon-focus-color: var(--primary);
+  --bulma-link-on-scheme: var(--primary);
 }
 
 html {
   scroll-behavior: smooth;
+  height: 100%;
 }
 
-.app-body {
+body {
+  min-height: 100%;
+}
+
+body.app-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   padding-top: var(--navbar-height);
 }
 
-@media screen and (max-width: 768px) {
+body.app-body main {
+  flex: 1 0 auto;
+}
+
+.footer {
+  margin-top: auto;
+}
+
+@media (width <= 768px) {
   :root {
     --navbar-height: 3.25rem;
   }
@@ -18,7 +38,6 @@ html {
 
 /* Respect user motion preferences */
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {
@@ -69,6 +88,10 @@ html {
   transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 }
 
+.card.admin-card {
+  animation: fade-in 0.3s ease-out;
+}
+
 .card.no-hover,
 .card.admin-card {
   transition: none;
@@ -92,7 +115,7 @@ html {
   font-weight: 600;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
   }
@@ -100,10 +123,6 @@ html {
   to {
     opacity: 1;
   }
-}
-
-.card.admin-card {
-  animation: fadeIn 0.3s ease-out;
 }
 
 .field:not(:last-child) {
@@ -129,14 +148,14 @@ html {
 .textarea:focus,
 .select select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.1);
+  box-shadow: 0 0 0 4px rgb(255 136 0 / 10%);
   outline: none;
 }
 
 .input.is-large:focus,
 .textarea.is-large:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(255, 136, 0, 0.08);
+  box-shadow: 0 0 0 4px rgb(255 136 0 / 8%);
 }
 
 .help {
@@ -159,12 +178,12 @@ html {
 
 .button.is-primary.is-large:hover,
 .button.is-danger.is-large:hover {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 30%);
 }
 
 .button.is-primary.is-large:active,
 .button.is-danger.is-large:active {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
 }
 
 .button.is-light:hover {
@@ -174,6 +193,11 @@ html {
 
 .button.is-light:active {
   background-color: #f3f4f6;
+}
+
+/* Ensure primary buttons have readable text color globally */
+.button.is-primary {
+  color: #fff;
 }
 
 .table {
@@ -204,33 +228,13 @@ html {
   background-color: #f9fafb;
 }
 
-.progress::-webkit-progress-bar,
-.progress::-moz-progress-bar {
-  background-color: #f5f5f5;
-}
-
-.progress::-webkit-progress-value,
-.progress::-moz-progress-bar {
-  background-color: #ff8800;
-}
-
-.progress.is-success::-webkit-progress-value,
-.progress.is-success::-moz-progress-bar {
-  background-color: #48c774;
-}
-
-.progress.is-warning::-webkit-progress-value,
-.progress.is-warning::-moz-progress-bar {
-  background-color: #ffe08a;
-}
-
 :where(a, button, input, select, textarea, .button):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
-@media screen and (max-width: 800px) {
+@media (width <= 800px) {
   .container {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
@@ -239,6 +243,7 @@ html {
   .section {
     padding: 1.25rem 0;
   }
+
   .card-content {
     padding: 1.25rem;
   }
@@ -251,6 +256,7 @@ html {
     padding: 1.25rem;
     margin-bottom: 1rem;
   }
+
   .table-container {
     margin-left: -0.25rem;
     margin-right: -0.25rem;
@@ -268,6 +274,7 @@ html {
   .field:not(:last-child) {
     margin-bottom: 1rem;
   }
+
   .buttons {
     margin-bottom: 0.5rem;
   }
@@ -278,7 +285,7 @@ html {
   }
 }
 
-@media screen and (max-width: 768px) {
+@media (width <= 768px) {
   .modal-card {
     width: 100%;
     height: 100%;

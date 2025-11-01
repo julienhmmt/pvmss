@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -114,7 +115,16 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if !validateTagName(tagName) {
 		log.Warn().Str("tag", tagName).Msg("Invalid tag name")
-		http.Error(w, "Invalid tag name. Use only letters, numbers, hyphens, and underscores (1-50 characters).", http.StatusBadRequest)
+		// Redirect back to tags page with localized error notification
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.InvalidFormat")
+		// Build URL with error parameters
+		u, _ := url.Parse("/admin/tags")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -122,19 +132,36 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if tagExists(settings.Tags, tagName) {
 		log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
-		http.Redirect(w, r, "/admin/tags?error=exists", http.StatusSeeOther)
+		// Redirect with localized "exists" error
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.Exists")
+		u, _ := url.Parse("/admin/tags")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
 	settings.Tags = append(settings.Tags, tagName)
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		RespondWithError(w, r, ErrInternalServer)
 		return
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag added successfully")
-	http.Redirect(w, r, "/admin/tags?success=1&action=create&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
+	// Redirect with localized success message
+	localizer := i18n.GetLocalizerFromRequest(r)
+	// If you have a parameterized translation, keep it simple for now
+	successMsg := i18n.Localize(localizer, "Admin.Tags.Success.Created")
+	u, _ := url.Parse("/admin/tags")
+	q := u.Query()
+	q.Set("success", "1")
+	q.Set("success_msg", successMsg)
+	u.RawQuery = q.Encode()
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 // DeleteTagHandler handles tag deletion.
@@ -158,7 +185,7 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings after deletion")
-		http.Error(w, "Internal server error.", http.StatusInternalServerError)
+		RespondWithError(w, r, ErrInternalServer)
 		return
 	}
 
@@ -174,9 +201,15 @@ func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	data := AdminPageDataWithMessage("Delete Tag", "tags_delete", "", "")
-	data["Tag"] = tagName
+	builder := NewTemplateData("").
+		SetAdminActive("tags_delete").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.Tags.Title").
+		AddData("Tag", tagName)
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_tags_delete", data)
 }
 
@@ -189,20 +222,38 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sortOrder = "asc" // default to ascending
 	}
 
-	successMsg := buildTagSuccessMessage(r)
+	// Prefer explicit localized messages from params when present
+	q := r.URL.Query()
+	successMsg := q.Get("success_msg")
+	if successMsg == "" {
+		successMsg = buildTagSuccessMessage(r)
+	}
+	// Determine error message (supports both new and legacy styles)
+	var errorMsg string
+	if q.Get("error") != "" {
+		// New style: error=1 with error_msg
+		if q.Get("error") == "1" {
+			errorMsg = q.Get("error_msg")
+		}
+		// Legacy style: error=exists
+		if errorMsg == "" && q.Get("error") == "exists" {
+			localizer := i18n.GetLocalizerFromRequest(r)
+			errorMsg = i18n.Localize(localizer, "Admin.Tags.Error.Exists")
+		}
+	}
 
-	// Proxmox status for consistent UI (even if tags don't need Proxmox)
-	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
-
-	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available
+	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available using resty
 	// Proxmox typically separates tags with ';' but some environments may contain
 	// comma-separated lists inside a single part (e.g. "pvmss,test"). We split on
 	// both ';' and ',' to ensure each individual tag is counted.
+	log := logger.Get()
 	tagCounts := make(map[string]int)
-	if client := h.stateManager.GetProxmoxClient(); client != nil {
-		if vms, err := proxmox.GetVMsWithContext(r.Context(), client); err == nil {
+	if h.stateManager.IsOfflineMode() {
+		log.Debug().Msg("Offline mode enabled; skipping tag usage lookup")
+	} else if restyClient, err := getDefaultRestyClient(); err == nil {
+		if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
 			for i := range vms {
-				if cfg, err := proxmox.GetVMConfigWithContext(r.Context(), client, vms[i].Node, vms[i].VMID); err == nil {
+				if cfg, err := proxmox.GetVMConfigResty(r.Context(), restyClient, vms[i].Node, vms[i].VMID); err == nil {
 					if v, ok := cfg["tags"].(string); ok && v != "" {
 						// First split by ';'
 						semiParts := strings.Split(v, ";")
@@ -223,11 +274,14 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 					}
 				}
 			}
+		} else {
+			log.Debug().Err(err).Msg("Failed to retrieve VM list for tag usage lookup")
 		}
+	} else {
+		log.Debug().Err(err).Msg("Failed to create resty client for tag usage lookup")
 	}
 
 	// Debug logging for tag counts
-	log := logger.Get()
 	log.Info().Interface("tag_counts", tagCounts).Msg("Tag counts calculated")
 
 	// Filter and sort tags by name for display
@@ -241,18 +295,26 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sort.Strings(tags)
 	}
 
-	data := AdminPageDataWithMessage("Tag Management", "tags", successMsg, "")
-	data["Tags"] = tags
-	data["SortOrder"] = sortOrder
-	data["TotalTags"] = len(settings.Tags)
-	data["FilteredTags"] = len(tags)
-	// Always expose TagCounts so the template can safely render a value (including zero)
-	data["TagCounts"] = tagCounts
-	data["ProxmoxConnected"] = proxmoxConnected
-	if !proxmoxConnected && proxmoxMsg != "" {
-		data["ProxmoxError"] = proxmoxMsg
+	builder := NewTemplateData("").
+		SetAdminActive("tags").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.Tags.Title").
+		AddData("Tags", tags).
+		AddData("SortOrder", sortOrder).
+		AddData("TotalTags", len(settings.Tags)).
+		AddData("FilteredTags", len(tags)).
+		AddData("TagCounts", tagCounts)
+
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+	if errorMsg != "" {
+		builder.SetError(errorMsg)
 	}
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_tags", data)
 }
 

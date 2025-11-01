@@ -12,6 +12,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -76,13 +77,27 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 
 	poolID := strings.TrimSpace(r.FormValue("pool"))
 	if poolID == "" {
-		http.Error(w, "pool is required", http.StatusBadRequest)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.MissingPool")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		http.Error(w, "Proxmox client not available", http.StatusServiceUnavailable)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ClientUnavailable")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -104,7 +119,14 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 	}
 	if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(poolID), &detailResp); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("Failed to get pool members before deletion")
-		http.Error(w, "failed to resolve pool members: "+err.Error(), http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ResolveMembers")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 	// First, stop each guest in bulk (concurrently), then wait a short fixed delay
@@ -120,17 +142,23 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 			}
 			m := m // capture loop var
 			wg.Add(1)
-			go func() {
+			go func(member struct {
+				Type string `json:"type"`
+				VMID int    `json:"vmid"`
+				Node string `json:"node"`
+			}) {
 				defer wg.Done()
-				switch strings.ToLower(m.Type) {
+				switch strings.ToLower(member.Type) {
 				case "qemu":
-					if _, err := proxmox.VMActionWithContext(ctx, client, m.Node, strconv.Itoa(m.VMID), "stop"); err != nil {
-						log.Warn().Err(err).Int("vmid", m.VMID).Str("node", m.Node).Msg("Failed to stop QEMU VM; continuing")
+					if restyClient, err := getDefaultRestyClient(); err == nil {
+						if _, err := proxmox.VMActionResty(ctx, restyClient, member.Node, strconv.Itoa(member.VMID), "stop"); err != nil {
+							log.Warn().Err(err).Int("vmid", member.VMID).Str("node", member.Node).Msg("Failed to stop QEMU VM (resty); continuing")
+						}
 					}
 				default:
 					// ignore other member types
 				}
-			}()
+			}(m)
 		}
 		wg.Wait()
 		// Fixed small wait to give Proxmox time to transition state
@@ -151,7 +179,14 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 			path := "/nodes/" + url.PathEscape(m.Node) + "/qemu/" + url.PathEscape(strconv.Itoa(m.VMID)) + "?purge=1"
 			if _, err := client.DeleteWithContext(ctx, path, nil); err != nil {
 				log.Error().Err(err).Str("path", path).Msg("Failed to delete VM")
-				http.Error(w, "failed to delete VM "+strconv.Itoa(m.VMID)+": "+err.Error(), http.StatusInternalServerError)
+				localizer := i18n.GetLocalizerFromRequest(r)
+				errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.DeleteVM")
+				u, _ := url.Parse("/admin/userpool")
+				q := u.Query()
+				q.Set("error", "1")
+				q.Set("error_msg", errMsg)
+				u.RawQuery = q.Encode()
+				http.Redirect(w, r, u.String(), http.StatusSeeOther)
 				return
 			}
 		default:
@@ -187,7 +222,14 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 	// Delete the pool first
 	if _, err := client.DeleteWithContext(ctx, "/pools/"+url.PathEscape(poolID), nil); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("Failed to delete pool")
-		http.Error(w, "failed to delete pool "+poolID+": "+err.Error(), http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.DeletePool")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -201,9 +243,17 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	// Redirect with success
-	redir := "/admin/userpool?success=1&action=delete&pool=" + url.QueryEscape(poolID)
-	http.Redirect(w, r, redir, http.StatusSeeOther)
+	// Redirect with success (localized)
+	localizer := i18n.GetLocalizerFromRequest(r)
+	successMsg := i18n.Localize(localizer, "Admin.UserPool.Success.Deleted")
+	u, _ := url.Parse("/admin/userpool")
+	q := u.Query()
+	q.Set("success", "1")
+	q.Set("success_msg", successMsg)
+	q.Set("action", "delete")
+	q.Set("pool", poolID)
+	u.RawQuery = q.Encode()
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 func NewUserPoolHandler(sm state.StateManager) *UserPoolHandler {
@@ -218,10 +268,16 @@ func (h *UserPoolHandler) DeleteUserPoolConfirmHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	data := AdminPageDataWithMessage("Delete User & Pool", "userpool_delete", "", "")
-	data["Pool"] = poolID
-	data["User"] = strings.TrimPrefix(poolID, "pvmss_")
+	builder := NewTemplateData("").
+		SetAdminActive("userpool_delete").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.UserPool.Title").
+		AddData("Pool", poolID).
+		AddData("User", strings.TrimPrefix(poolID, "pvmss_"))
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_userpool_delete", data)
 }
 
@@ -287,7 +343,16 @@ func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
 
 // UserPoolPage renders the admin page for creating users/pools
 func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	successMsg := buildUserPoolSuccessMessage(r)
+	// Prefer explicit localized messages from params
+	q := r.URL.Query()
+	successMsg := q.Get("success_msg")
+	if successMsg == "" {
+		successMsg = buildUserPoolSuccessMessage(r)
+	}
+	var errorMsg string
+	if q.Get("error") == "1" {
+		errorMsg = q.Get("error_msg")
+	}
 
 	// Instruct browser not to cache this page; data must reflect current PVE state
 	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -295,7 +360,21 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 	w.Header().Set("Expires", "0")
 
 	// Build base template data
-	data := AdminPageDataWithMessage("Proxmox Users & Pools", "userpool", successMsg, "")
+	builder := NewTemplateData("").
+		SetAdminActive("userpool").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.UserPool.Title")
+
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+	if errorMsg != "" {
+		builder.SetError(errorMsg)
+	}
+
+	data := builder.Build().ToMap()
 
 	// Fetch pools that match pattern pvmss_*
 	client := h.stateManager.GetProxmoxClient()
@@ -412,13 +491,27 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	propagate := r.FormValue("propagate") == "true" || r.FormValue("propagate") == "1" || strings.EqualFold(r.FormValue("propagate"), "on")
 
 	if username == "" || password == "" {
-		http.Error(w, "username and password are required", http.StatusBadRequest)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.MissingCredentials")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		http.Error(w, "Proxmox client not available", http.StatusServiceUnavailable)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ClientUnavailable")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -428,7 +521,14 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	// Ensure user
 	if err := proxmox.EnsureUser(ctx, client, username, password, email, comment, "pve", true); err != nil {
 		log.Error().Err(err).Str("username", username).Msg("EnsureUser failed")
-		http.Error(w, "failed to ensure user: "+err.Error(), http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureUser")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -443,7 +543,14 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	}
 	if err := proxmox.EnsureRole(ctx, client, roleID, privileges); err != nil {
 		log.Error().Err(err).Str("role", roleID).Msg("EnsureRole failed")
-		http.Error(w, "failed to ensure role: "+err.Error(), http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureRole")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -451,7 +558,14 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	poolID := "pvmss_" + sanitizeID(username)
 	if err := proxmox.EnsurePool(ctx, client, poolID, "PVMSS pool for "+username); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("EnsurePool failed")
-		http.Error(w, "failed to ensure pool: "+err.Error(), http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsurePool")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
@@ -462,13 +576,29 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	}
 	if err := proxmox.EnsurePoolACL(ctx, client, userID, poolID, role, propagate); err != nil {
 		log.Error().Err(err).Str("user", userID).Str("pool", poolID).Str("role", role).Msg("EnsurePoolACL failed")
-		http.Error(w, "failed to grant pool ACL: "+err.Error(), http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureACL")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
 
-	// Redirect with success banner
-	redir := "/admin/userpool?success=1&action=create&user=" + url.QueryEscape(userID) + "&pool=" + url.QueryEscape(poolID)
-	http.Redirect(w, r, redir, http.StatusSeeOther)
+	// Redirect with success (localized)
+	localizer := i18n.GetLocalizerFromRequest(r)
+	successMsg := i18n.Localize(localizer, "Admin.UserPool.Success.Created")
+	u, _ := url.Parse("/admin/userpool")
+	q := u.Query()
+	q.Set("success", "1")
+	q.Set("success_msg", successMsg)
+	q.Set("action", "create")
+	q.Set("user", userID)
+	q.Set("pool", poolID)
+	u.RawQuery = q.Encode()
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 func sanitizeID(s string) string {

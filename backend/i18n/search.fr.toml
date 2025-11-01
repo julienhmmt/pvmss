@@ -1,0 +1,77 @@
+# Search
+["Search.ActionsHeader"]
+other = "Boutons d'actions"
+["Search.Actions"]
+other = "Actions"
+["Search.CPUs"]
+other = "CPU (Sockets/Cœurs)"
+["Search.CardView"]
+other = "Vue cartes"
+["Search.Clear"]
+other = "Effacer"
+["Search.CreateVM"]
+other = "Créer une VM"
+["Search.Details"]
+other = "Détails de la VM"
+["Search.Filter"]
+other = "Filtrer"
+["Search.Memory"]
+other = "Mémoire"
+["Search.Name"]
+other = "Nom"
+["Search.Description"]
+other = "Description"
+["Search.Node"]
+other = "Nœud"
+["Search.NoResults"]
+other = "Aucune machine virtuelle ne correspond à vos critères."
+["Search.NoResultsMessage"]
+other = "Essayez d'ajuster vos critères de recherche ou vérifiez si la VM existe."
+["Search.NoName"]
+other = "Sans nom"
+["Search.NoDescription"]
+other = "Sans description"
+["Search.Placeholder"]
+other = "Rechercher par ID ou Nom..."
+["Search.PlaceholderName"]
+other = "ex. ma-vm"
+["Search.PlaceholderVMID"]
+other = "ex. 100"
+["Search.RAM"]
+other = "Mémoire vive"
+["Search.Results"]
+other = "Résultats de la recherche"
+["Search.ResultsFor"]
+other = "Résultats pour"
+["Search.ResultFound"]
+other = "résultat trouvé"
+["Search.ResultsFound"]
+other = "résultats trouvés"
+["Search.Status"]
+other = "Statut"
+["Search.Storage"]
+other = "Stockage"
+["Search.Submit"]
+other = "Rechercher"
+["Search.Subtitle"]
+other = "Trouvez vos machines virtuelles rapidement et facilement"
+["Search.TableView"]
+other = "Vue tableau"
+["Search.Tags"]
+other = "Tags"
+["Search.Title"]
+other = "Recherche de machines virtuelles"
+["Search.TitleName"]
+other = "Veuillez entrer un nom de VM entre 1 et 100 caractères."
+["Search.TitleVMID"]
+other = "Veuillez entrer un ID de VM avec 1 à 10 chiffres."
+["Search.VMDetailsButton"]
+other = "Détails de la VM"
+["Search.VMID"]
+other = "ID de la VM"
+["Search.YouSearchedFor"]
+other = "Vous avez recherché"
+["Search.Validation.MissingCriteria"]
+other = "Veuillez fournir au moins un critère de recherche (ID ou nom)."
+["Search.Criterias"]
+other = "Critères de recherche"

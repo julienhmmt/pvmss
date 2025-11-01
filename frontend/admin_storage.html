@@ -30,6 +30,29 @@
   
   {{if .Storages}}
   <div class="box admin-box">
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+      <div>
+        <h2 class="title is-5 mb-2">
+          <span class="icon"><i class="fas fa-hdd"></i></span>
+          <span>{{T "Admin.Storage.Title"}}</span>
+        </h2>
+        {{if .Nodes}}
+        <div class="field is-grouped">
+          <label class="label">{{T "Admin.Storage.FilterByNode"}}:</label>
+          <div class="control">
+            <div class="select is-small">
+              <select id="nodeFilter" onchange="filterStoragesByNode(this.value)">
+                <option value="">{{T "Admin.Storage.AllNodes"}}</option>
+                {{range .Nodes}}
+                <option value="{{.}}">{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
     <div class="table-container">
       <table class="table modern is-fullwidth is-hoverable">
         <thead>
@@ -49,24 +72,48 @@
           {{range .Storages}}
           {{$used := .Used}}
           {{$total := .Total}}
-          {{$percent := mul (div $used $total) 100.0}}
-          <tr>
+          {{$hasValidData := .HasValidData}}
+          {{$isFromCache := .IsFromCache}}
+          {{$storageName := .Storage}}
+          {{$nodeName := .Node}}
+          {{$uniqueID := printf "%s:%s" $nodeName $storageName}}
+          {{$isEnabled := index $.EnabledMap $uniqueID}}
+          <tr data-node="{{$nodeName}}"{{if $isFromCache}} class="has-background-grey-lighter"{{end}}>
             <td>
-              <span class="has-text-weight-semibold">{{.Storage}}</span>
+              <span class="has-text-weight-semibold">{{$storageName}}</span>
+              {{if $isFromCache}}
+                <span class="tag is-warning is-light ml-2" title="{{T "Admin.Storage.FromCache"}}">
+                  <span class="icon is-small"><i class="fas fa-clock"></i></span>
+                  <span>{{T "Admin.Storage.Cached"}}</span>
+                </span>
+              {{end}}
+              {{if $nodeName}}
+                <br><small class="has-text-grey">{{T "Admin.Storage.Node"}}: {{$nodeName}}</small>
+              {{end}}
             </td>
             <td>
-              <div class="mb-2">
-                <progress class="progress {{if lt $percent 70.0}}is-success{{else if lt $percent 90.0}}is-warning{{else}}is-danger{{end}}" 
-                  value="{{printf "%.0f" $percent}}" max="100" 
-                  title="{{printf "%.0f%%" $percent}}">
-                </progress>
-              </div>
-              <div class="is-flex is-align-items-center is-justify-content-space-between is-size-7">
-                <span class="has-text-grey">{{$used | humanBytes}} / {{$total | humanBytes}}</span>
-                <span class="tag {{if lt $percent 70.0}}is-success{{else if lt $percent 90.0}}is-warning{{else}}is-danger{{end}} is-light">
-                  {{printf "%.0f" $percent}}%
-                </span>
-              </div>
+              {{if $hasValidData}}
+                {{$percent := toFloat .UsedPercent}}
+                <div class="mb-2">
+                  <progress class="progress {{if lt $percent 70.0}}is-success{{else if lt $percent 90.0}}is-warning{{else}}is-danger{{end}}" 
+                    value="{{printf "%.0f" $percent}}" max="100" 
+                    title="{{printf "%.0f%%" $percent}}">
+                  </progress>
+                </div>
+                <div class="is-flex is-align-items-center is-justify-content-space-between is-size-7">
+                  <span class="has-text-grey">{{$used | humanBytes}} / {{$total | humanBytes}}</span>
+                  <span class="tag {{if lt $percent 70.0}}is-success{{else if lt $percent 90.0}}is-warning{{else}}is-danger{{end}} is-light">
+                    {{printf "%.0f" $percent}}%
+                  </span>
+                </div>
+              {{else}}
+                <div class="is-flex is-align-items-center is-justify-content-center is-size-7 has-text-grey" title="{{T "Admin.Storage.NoDataAvailableHelp"}}">
+                  <span class="icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </span>
+                  <span>{{T "Admin.Storage.NoDataAvailable"}}</span>
+                </div>
+              {{end}}
             </td>
             <td>
               <div class="tags">
@@ -78,19 +125,21 @@
             <td class="has-text-right">
               <form method="POST" action="/admin/storage/toggle" class="is-inline">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="storage" value="{{.Storage}}">
-                <input type="hidden" name="action" value="{{if index $.EnabledMap .Storage}}disable{{else}}enable{{end}}">
-                <button type="submit" class="button is-small {{if index $.EnabledMap .Storage}}is-success is-light{{else}}is-ghost{{end}}"
-                  aria-label="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}"
-                  title="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}">
+                <input type="hidden" name="storage" value="{{$storageName}}">
+                <input type="hidden" name="node" value="{{$nodeName}}">
+                <input type="hidden" name="action" value="{{if $isEnabled}}disable{{else}}enable{{end}}">
+                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}{{if $isFromCache}} is-disabled{{end}}"
+                  aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storageName}}"
+                  title="{{if $isFromCache}}{{T "Admin.Storage.NodeOffline"}}{{else}}{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storageName}}{{end}}"
+                  {{if $isFromCache}}disabled{{end}}>
                   <span class="icon is-small">
-                    {{if index $.EnabledMap .Storage}}
+                    {{if $isEnabled}}
                       <i class="fas fa-toggle-on"></i>
                     {{else}}
                       <i class="fas fa-toggle-off"></i>
                     {{end}}
                   </span>
-                  <span>{{if index $.EnabledMap .Storage}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
+                  <span>{{if $isEnabled}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
                 </button>
               </form>
             </td>
@@ -100,6 +149,36 @@
       </table>
     </div>
   </div>
+
+  <!-- Disk Configuration -->
+  <div class="box admin-box mb-5">
+    <h2 class="title is-5 mb-4">
+      <span class="icon"><i class="fas fa-hard-drive"></i></span>
+      <span>{{T "Admin.Storage.DiskConfig"}}</span>
+    </h2>
+    <form method="POST" action="/admin/storage/update-disk-config">
+      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+      <div class="field">
+        <label class="label">{{T "Admin.Storage.MaxDiskPerVM"}}</label>
+        <div class="field has-addons">
+          <div class="control is-expanded">
+            <input type="number" name="max_disk_per_vm" class="input is-medium" 
+                   value="{{.MaxDiskPerVM}}" 
+                   min="1" max="16" required
+                   aria-label="{{T "Admin.Storage.MaxDiskPerVM"}}">
+          </div>
+          <div class="control">
+            <button type="submit" class="button is-primary is-medium">
+              <span class="icon"><i class="fas fa-save"></i></span>
+              <span>{{T "Common.Save"}}</span>
+            </button>
+          </div>
+        </div>
+        <p class="help">{{T "Admin.Storage.MaxDiskPerVMHelp"}}</p>
+      </div>
+    </form>
+  </div>
+
   {{else}}
   <div class="box admin-box">
     {{template "notification" (dict 
@@ -112,4 +191,22 @@
   {{end}}
   {{end}}
 </div>
+
+<script>
+function filterStoragesByNode(node) {
+  const rows = document.querySelectorAll('tbody tr[data-node]');
+  rows.forEach(row => {
+    if (node === '') {
+      row.style.display = '';
+    } else {
+      const rowNode = row.getAttribute('data-node');
+      if (rowNode === node) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    }
+  });
+}
+</script>
 {{end}}

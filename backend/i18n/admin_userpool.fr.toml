@@ -1,0 +1,73 @@
+# Admin - Utilisateurs & Pools
+["Admin.UserPool.Title"]
+other = "Utilisateurs & Pools"
+["Admin.UserPool.Description"]
+other = "Créer un utilisateur PVE, un pool dédié (pvmss_<username>), et accorder un rôle sur ce pool."
+["Admin.UserPool.UsernamePlaceholder"]
+other = "alice"
+["Admin.UserPool.UsernameHelp"]
+other = "Créera l'utilisateur alice@pve et le pool pvmss_alice"
+["Admin.UserPool.EmailOptional"]
+other = "Email (optionnel)"
+["Admin.UserPool.EmailPlaceholder"]
+other = "alice@example.com"
+["Admin.UserPool.CommentOptional"]
+other = "Commentaire (optionnel)"
+["Admin.UserPool.CommentPlaceholder"]
+other = "Membre de l'équipe, expire fin T3"
+["Admin.UserPool.RoleLabel"]
+other = "Rôle"
+["Admin.UserPool.RoleHelp"]
+other = "Par défaut : PVEVMUser. Vous pourrez définir plus tard un rôle minimal personnalisé."
+["Admin.UserPool.PropagateACL"]
+other = "Propager l'ACL aux objets contenus"
+["Admin.UserPool.ExistingTitle"]
+other = "Pools d'utilisateurs existants"
+["Admin.UserPool.VMCountHeader"]
+other = "# VMs dans le pool"
+["Admin.UserPool.RefreshPoolTitle"]
+other = "Actualiser le pool"
+["Admin.UserPool.DeleteConfirm"]
+other = "Supprimer TOUTES les VMs de ce pool, l'utilisateur, puis le pool ? Cette action est irréversible."
+["Admin.UserPool.DeleteTitle"]
+other = "Supprimer les VMs, l'utilisateur, puis le pool"
+["Admin.UserPool.DeletePurge"]
+other = "Supprimer (purge)"
+["Admin.UserPool.DeleteConfirmTitle"]
+other = "Confirmer la suppression de l'utilisateur et du pool"
+["Admin.UserPool.DeleteConfirmMessage"]
+other = "Êtes-vous sûr de vouloir supprimer cet utilisateur, ce pool et toutes les VMs associées ? Cette action est irréversible."
+["Admin.UserPool.DeleteWarning"]
+other = "Attention : Cela va définitivement :"
+["Admin.UserPool.DeleteWarning1"]
+other = "Arrêter et supprimer toutes les VMs de ce pool"
+["Admin.UserPool.DeleteWarning2"]
+other = "Supprimer le pool et toutes ses ressources"
+["Admin.UserPool.DeleteWarning3"]
+other = "Supprimer le compte utilisateur associé"
+
+# Admin - Utilisateurs & Pools - Notifications
+["Admin.UserPool.Error.MissingPool"]
+other = "L'identifiant du pool est requis."
+["Admin.UserPool.Error.ClientUnavailable"]
+other = "Client Proxmox indisponible. Veuillez réessayer plus tard."
+["Admin.UserPool.Error.ResolveMembers"]
+other = "Échec de la récupération des membres du pool. Veuillez réessayer."
+["Admin.UserPool.Error.DeleteVM"]
+other = "Échec de la suppression d'une VM du pool."
+["Admin.UserPool.Error.DeletePool"]
+other = "Échec de la suppression du pool."
+["Admin.UserPool.Error.MissingCredentials"]
+other = "Le nom d'utilisateur et le mot de passe sont requis."
+["Admin.UserPool.Error.EnsureUser"]
+other = "Échec de la création ou mise à jour de l'utilisateur."
+["Admin.UserPool.Error.EnsureRole"]
+other = "Échec de la vérification/création du rôle."
+["Admin.UserPool.Error.EnsurePool"]
+other = "Échec de la création ou mise à jour du pool."
+["Admin.UserPool.Error.EnsureACL"]
+other = "Échec de l'attribution des permissions sur le pool à l'utilisateur."
+["Admin.UserPool.Success.Created"]
+other = "Utilisateur et pool créés avec succès."
+["Admin.UserPool.Success.Deleted"]
+other = "Pool et utilisateur supprimés avec succès."

@@ -1,18 +1,9 @@
-.form-vertical .field+.field {
-    margin-top: 1.25rem;
-}
-
-.form-inline-fields .column {
-    display: flex;
-    flex-direction: column;
-}
-
 .form-label {
     display: flex;
     align-items: center;
     gap: 0.75rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text);
     margin-bottom: 0.5rem;
 }
 
@@ -23,8 +14,8 @@
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: rgba(255, 136, 0, 0.12);
-    color: #ff8800;
+    background: rgb(255 136 0 / 12%);
+    color: var(--primary);
     flex-shrink: 0;
 }
 
@@ -44,7 +35,7 @@
 .form-sublabel {
     font-size: 0.75rem;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--muted);
     margin-bottom: 0.4rem;
 }
 
@@ -54,7 +45,7 @@
     gap: 0.5rem;
     margin-top: 0.5rem;
     font-size: 0.875rem;
-    color: #4b5563;
+    color: var(--text-light);
     line-height: 1.4;
 }
 
@@ -65,8 +56,8 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: rgba(255, 136, 0, 0.12);
-    color: #ff8800;
+    background: rgb(255 136 0 / 12%);
+    color: var(--primary);
 }
 
 .form-tooltip {
@@ -88,7 +79,7 @@
     align-items: center;
     justify-content: center;
     font-size: 0.75rem;
-    box-shadow: 0 4px 12px rgba(245, 124, 0, 0.25);
+    box-shadow: 0 4px 12px rgb(245 124 0 / 25%);
     cursor: help;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     padding: 0;
@@ -99,13 +90,13 @@
 }
 
 .form-tooltip-trigger:focus-visible {
-    outline: 2px solid rgba(245, 124, 0, 0.5);
+    outline: 2px solid rgb(245 124 0 / 50%);
     outline-offset: 2px;
 }
 
 .form-tooltip-trigger:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(245, 124, 0, 0.35);
+    box-shadow: 0 6px 16px rgb(245 124 0 / 35%);
 }
 
 .form-tooltip-content {
@@ -117,7 +108,7 @@
     color: #fff;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);
+    box-shadow: 0 15px 35px rgb(15 23 42 / 25%);
     min-width: 220px;
     max-width: 320px;
     font-size: 0.85rem;
@@ -126,7 +117,7 @@
     visibility: hidden;
     pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-    z-index: 30;
+    z-index: 1500;
 }
 
 .form-tooltip-content::after {
@@ -137,7 +128,7 @@
     transform: translateX(-50%);
     border-width: 6px;
     border-style: solid;
-    border-color: transparent transparent #1f2937 transparent;
+    border-color: transparent transparent var(--text);
 }
 
 .form-tooltip:hover .form-tooltip-content,
@@ -177,16 +168,25 @@
 }
 
 .form-footer .button.is-primary {
-    box-shadow: 0 12px 24px rgba(255, 136, 0, 0.25);
+    box-shadow: 0 12px 24px rgb(255 136 0 / 25%);
 }
 
 .form-footer .button.is-primary:hover {
-    box-shadow: 0 16px 32px rgba(255, 136, 0, 0.35);
+    box-shadow: 0 16px 32px rgb(255 136 0 / 35%);
 }
 
 .form-footer .button:focus-visible {
-    outline: 2px solid rgba(245, 124, 0, 0.4);
+    outline: 2px solid rgb(245 124 0 / 40%);
     outline-offset: 3px;
+}
+
+/* Define base select before :focus styles elsewhere */
+.select select {
+    cursor: pointer;
+}
+
+.select:not(.is-multiple, .is-loading)::after {
+    border-color: var(--primary);
 }
 
 /* Input Enhancements */
@@ -194,7 +194,7 @@
 .textarea:focus,
 .select select:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(245, 124, 0, 0.1);
+    box-shadow: 0 0 0 3px rgb(245 124 0 / 10%);
 }
 
 .input-lg {
@@ -220,7 +220,7 @@ input[type="number"] {
     border-radius: 10px;
     border: 2px solid #e5e7eb;
     background: #f9f9f9;
-    color: #4b5563;
+    color: var(--text-light);
     font-weight: 600;
 }
 
@@ -230,18 +230,52 @@ input[type="number"] {
     font-size: 1rem;
 }
 
-/* Field Spacing */
+.tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* Base column before inline variant */
+.column {
+    overflow: visible !important;
+}
+
+.form-inline-fields .column {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Base field before form-vertical variant */
+.field {
+    overflow: visible !important;
+}
+
 .field:not(:last-child) {
     margin-bottom: 1.25rem;
 }
 
-/* Select Enhancements */
-.select select {
-    cursor: pointer;
+.form-vertical .field+.field {
+    margin-top: 1.25rem;
+}
+
+.form-vertical {
+    overflow: visible !important;
+}
+
+/* Keep overflow visibles but avoid late duplicates that break specificity ordering */
+.card,
+.card-header,
+.card-content,
+.columns,
+.section,
+.container,
+fieldset {
+    overflow: visible !important;
 }
 
 .select select option:disabled {
-    color: #9ca3af;
+    color: var(--muted-light);
     font-style: italic;
 }
 
@@ -263,14 +297,6 @@ input[type="number"] {
 .help.has-text-grey-light {
     font-size: 0.8125rem;
     margin-top: 0.375rem;
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-}
-
-.help.has-text-grey-light::before {
-    content: "ℹ️";
-    font-size: 0.875rem;
 }
 
 /* Disabled State */
@@ -287,29 +313,26 @@ fieldset[disabled]::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgb(255 255 255 / 50%);
     z-index: 10;
     pointer-events: none;
     border-radius: 6px;
 }
 
 /* Overflow Management for Tooltips */
-.card,
 .card-header,
 .card-content,
 .columns,
-.column,
 .section,
 .container,
 fieldset,
 .form-vertical,
-.form-label,
-.field {
+.form-label {
     overflow: visible !important;
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     .form-tooltip-content {
         min-width: 180px;
         max-width: 240px;
@@ -322,7 +345,6 @@ fieldset,
 }
 
 @media (prefers-reduced-motion: reduce) {
-
     .form-tooltip-trigger,
     .form-tooltip-content {
         transition: none;

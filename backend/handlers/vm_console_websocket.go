@@ -206,7 +206,7 @@ func proxyVNCWebSocket(w http.ResponseWriter, r *http.Request, proxmoxWSURL, pve
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 	dialer := websocket.Dialer{
 		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: insecureSkipVerify,
+			InsecureSkipVerify: insecureSkipVerify, // #nosec G402 - Controlled by PROXMOX_VERIFY_SSL; allowed for dev/test with self-signed certs
 		},
 		HandshakeTimeout: 10 * time.Second,
 		ReadBufferSize:   4096,

@@ -1,0 +1,17 @@
+# Messages
+["Message.ActionFailed"]
+other = "Action failed"
+["Message.CreatedSuccessfully"]
+other = "Created successfully"
+["Message.DeletedSuccessfully"]
+other = "Deleted successfully"
+["Message.NetworkCardDisabled"]
+other = "Network card disabled successfully"
+["Message.NetworkCardEnabled"]
+other = "Network card enabled successfully"
+["Message.SavedSuccessfully"]
+other = "Saved successfully"
+["Message.UpdatedSuccessfully"]
+other = "Updated successfully"
+["VMDetails.CannotModifyPrimaryNICWhileRunning"]
+other = "Cannot modify primary network interface while VM is running"

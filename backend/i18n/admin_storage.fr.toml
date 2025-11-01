@@ -1,0 +1,43 @@
+# Admin - Storage Management
+["Admin.Storage.Description"]
+other = "Affichez et gérez les espaces de stockage disponibles pour les machines virtuelles."
+["Admin.Storage.Error"]
+other = "Erreur lors de la récupération des stockages. Veuillez vérifier les logs du backend."
+["Admin.Storage.Header.Content"]
+other = "Contenu"
+["Admin.Storage.Header.Name"]
+other = "Nom"
+["Admin.Storage.Header.Usage"]
+other = "Utilisation"
+["Admin.Storage.Header.Type"]
+other = "Type"
+["Admin.Storage.NoStorages"]
+other = "Aucun stockage trouvé pouvant être utilisé pour les machines virtuelles."
+["Admin.Storage.Title"]
+other = "Gestion des stockages"
+["Admin.Storage.DiskConfig"]
+other = "Configuration des disques"
+["Admin.Storage.MaxDiskPerVM"]
+other = "Nombre maximum de disques par VM"
+["Admin.Storage.MaxDiskPerVMHelp"]
+other = "Nombre maximum de disques qui peuvent être attachés à une VM (1-16)"
+["Admin.Storage.NoDataAvailable"]
+other = "Données d'utilisation non disponibles"
+["Admin.Storage.RefreshData"]
+other = "Rafraîchir les données de stockage"
+["Admin.Storage.NoDataAvailableHelp"]
+other = "Les données d'utilisation du stockage n'ont pas pu être récupérées depuis Proxmox. Ceci peut être dû à des limitations de l'API ou au type de stockage ne supportant pas les statistiques d'utilisation."
+["Admin.Storage.FromCache"]
+other = "Données du cache (nœud hors ligne)"
+["Admin.Storage.Cached"]
+other = "En cache"
+["Admin.Storage.Node"]
+other = "Nœud"
+["Admin.Storage.NodeOffline"]
+other = "Le nœud est hors ligne - actions désactivées"
+["Admin.Storage.FilterByNode"]
+other = "Filtrer par nœud"
+["Admin.Storage.AllNodes"]
+other = "Tous les nœuds"
+["Admin.Storage.ShowAllNodes"]
+other = "Afficher tous les nœuds"

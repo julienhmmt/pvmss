@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,12 +25,19 @@ type NodeResourceUsage struct {
 }
 
 // CalculateNodeResourceUsage calculates the aggregated resources used by VMs with the "pvmss" tag
-// for each node in the Proxmox cluster
+// for each node in the Proxmox cluster using resty
 func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
 	log := logger.Get().With().Str("function", "CalculateNodeResourceUsage").Logger()
 
+	// Create resty client
+	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, err
+	}
+
 	// Get all nodes
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get nodes")
 		return nil, err
@@ -44,7 +53,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	}
 
 	// Get all VMs
-	vms, err := proxmox.GetVMsWithContext(ctx, client)
+	vms, err := proxmox.GetVMsResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get VMs")
 		return usage, nil // Return empty usage instead of error
@@ -53,7 +62,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	// Iterate through VMs and accumulate resources for pvmss-tagged VMs
 	for _, vm := range vms {
 		// Get VM config to check tags
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
 			log.Warn().Err(err).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Failed to get VM config")
 			continue
@@ -109,7 +118,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 
 	// Convert RAM from MB to GB for display
 	for _, nodeUsage := range usage {
-		nodeUsage.RamGB = int(nodeUsage.RamMB / 1024)
+		nodeUsage.RamGB = int(MBToGB(nodeUsage.RamMB))
 	}
 
 	// Get limits from settings to populate max values
@@ -152,6 +161,82 @@ func parseTags(tagsStr string) []string {
 	return tags
 }
 
+// readMinMax extracts integer min/max values for a given key from a generic map
+// representation typically loaded from JSON settings.
+func readMinMax(entry map[string]interface{}, key string) (int, int, bool) {
+	raw, exists := entry[key]
+	if !exists {
+		return 0, 0, false
+	}
+
+	limitMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return 0, 0, false
+	}
+
+	var minVal int
+	if minRaw, exists := limitMap["min"]; exists {
+		parsedMin, ok := parseNumericValue(minRaw)
+		if !ok {
+			return 0, 0, false
+		}
+		minVal = parsedMin
+	}
+
+	maxRaw, exists := limitMap["max"]
+	if !exists {
+		return 0, 0, false
+	}
+
+	parsedMax, ok := parseNumericValue(maxRaw)
+	if !ok {
+		return 0, 0, false
+	}
+
+	return minVal, parsedMax, true
+}
+
+// parseNumericValue converts different numeric representations (float64, int, string)
+// into an int, returning false when parsing is not possible.
+func parseNumericValue(value interface{}) (int, bool) {
+	switch v := value.(type) {
+	case float64:
+		return int(v), true
+	case float32:
+		return int(v), true
+	case int:
+		return v, true
+	case int32:
+		return int(v), true
+	case int64:
+		return int(v), true
+	case uint:
+		return int(v), true
+	case uint32:
+		return int(v), true
+	case uint64:
+		return int(v), true
+	case json.Number:
+		i64, err := v.Int64()
+		if err != nil {
+			return 0, false
+		}
+		return int(i64), true
+	case string:
+		s := strings.TrimSpace(v)
+		if s == "" {
+			return 0, false
+		}
+		i, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, false
+		}
+		return i, true
+	default:
+		return 0, false
+	}
+}
+
 // LimitsGetter defines the minimal interface needed to get settings
 type LimitsGetter interface {
 	GetSettings() *state.AppSettings
@@ -165,11 +250,18 @@ type NodeCapacity struct {
 	MemoryMB int64 // Total RAM in MB
 }
 
-// GetNodeCapacity retrieves the physical hardware capacity of a node
+// GetNodeCapacity retrieves the physical hardware capacity of a node using resty
 func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string) (*NodeCapacity, error) {
 	log := logger.Get().With().Str("function", "GetNodeCapacity").Logger()
 
-	nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, client, nodeName)
+	// Create resty client
+	restyClient, err := proxmox.NewRestyClientFromEnv(10 * time.Second)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, err
+	}
+
+	nodeDetails, err := proxmox.GetNodeDetailsResty(ctx, restyClient, nodeName)
 	if err != nil {
 		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
 		return nil, err
@@ -249,7 +341,7 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 		return nil
 	}
 
-	memoryGB := memoryMB / 1024
+	memoryGB := int(MBToGB(int64(memoryMB)))
 
 	// Validate cores
 	if nodeUsage.MaxCores > 0 {

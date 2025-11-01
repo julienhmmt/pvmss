@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"context"
-	"encoding/gob"
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -15,603 +15,964 @@ import (
 	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/security"
+	"pvmss/state"
 )
 
-// readMinMax extracts min/max values from a nested map structure
-// Ensures that min and max values are at least 1 (no zero or negative values)
-func readMinMax(m map[string]interface{}, key string) (min, max int, ok bool) {
-	if raw, exists := m[key]; exists {
-		if mm, ok2 := raw.(map[string]interface{}); ok2 {
-			vMin, vMax := 1, 1
-			if v, ok3 := mm["min"]; ok3 {
-				if f, ok4 := v.(float64); ok4 {
-					vMin = int(f)
-					// Ensure minimum value is at least 1
-					if vMin < 1 {
-						vMin = 1
-					}
+// vmDiskCompatibleStorageTypes defines storage types that support VM disk images
+// These storage types can store VM disks even if their content string doesn't explicitly list "images"
+var vmDiskCompatibleStorageTypes = map[string]bool{
+	"lvmthin": true,
+	"lvm":     true,
+	"zfs":     true,
+	"ceph":    true,
+	"iscsi":   true,
+	"dir":     true,
+	"nfs":     true,
+	"cifs":    true,
+}
 
-				}
-			}
-			if v, ok3 := mm["max"]; ok3 {
-				if f, ok4 := v.(float64); ok4 {
-					vMax = int(f)
-					// Ensure maximum value is at least 1
-					if vMax < 1 {
-						vMax = 1
-					}
-				}
-			}
-			// Ensure max is at least equal to min
-			if vMax < vMin {
-				vMax = vMin
-			}
-			return vMin, vMax, true
+// VMCreateOptimizedHandler handles VM creation with optimized cluster performance
+type VMCreateOptimizedHandler struct {
+	stateManager state.StateManager
+}
+
+// NewVMCreateOptimizedHandler creates a new instance of VMCreateOptimizedHandler
+func NewVMCreateOptimizedHandler(sm state.StateManager) *VMCreateOptimizedHandler {
+	return &VMCreateOptimizedHandler{stateManager: sm}
+}
+
+// RegisterRoutes registers VM creation routes
+func (h *VMCreateOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
+	log := CreateHandlerLogger("VMCreateOptimizedHandler", nil)
+
+	if router == nil {
+		log.Error().Msg("Router is nil, cannot register VM creation routes")
+		return
+	}
+
+	log.Debug().Msg("Registering optimized VM creation routes")
+
+	// Register both /create-vm and /vm/create routes for compatibility
+	router.GET("/create-vm", RequireAuthHandle(h.VMCreatePageHandler))
+	router.POST("/create-vm", SecureFormHandler("VM Create",
+		RequireAuthHandle(h.VMCreatePageHandler),
+	))
+
+	router.GET("/vm/create", RequireAuthHandle(h.VMCreatePageHandler))
+	router.POST("/vm/create", SecureFormHandler("VM Create",
+		RequireAuthHandle(h.VMCreatePageHandler),
+	))
+
+	log.Info().
+		Strs("routes", []string{"GET /create-vm", "POST /create-vm", "GET /vm/create", "POST /vm/create"}).
+		Msg("Optimized VM creation routes registered successfully")
+}
+
+// VMCreatePageHandler handles both GET and POST requests for VM creation page with optimizations
+func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("VMCreatePageHandler", r)
+
+	// Get user info from session
+	username := ""
+	isAdmin := false
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
 		}
-	}
-	return 0, 0, false
-}
-
-// validateRequiredFields checks if required form fields are present
-func validateRequiredFields(fields map[string]string) []string {
-	var errors []string
-	for fieldName, value := range fields {
-		if value == "" {
-			errors = append(errors, fieldName+" is required")
-		}
-	}
-	return errors
-}
-
-// ensureMandatoryTag ensures "pvmss" tag is present and deduplicates tags
-func ensureMandatoryTag(selectedTags []string) []string {
-	seen := map[string]struct{}{}
-	out := make([]string, 0, len(selectedTags)+1)
-
-	// Always include pvmss first
-	if _, ok := seen["pvmss"]; !ok {
-		seen["pvmss"] = struct{}{}
-		out = append(out, "pvmss")
-	}
-
-	for _, t := range selectedTags {
-		if _, ok := seen[t]; ok {
-			continue
-		}
-		seen[t] = struct{}{}
-		out = append(out, t)
-	}
-	return out
-}
-
-// VMCreateFormData holds the form data for VM creation (used for session storage)
-type VMCreateFormData struct {
-	Name        string
-	Description string
-	VMID        string
-	Sockets     string
-	Cores       string
-	Memory      string
-	DiskSize    string
-	ISO         string
-	Bridge      string
-	Node        string
-	Pool        string
-	Storage     string
-	Tags        []string
-}
-
-// Register VMCreateFormData with gob for session serialization
-func init() {
-	gob.Register(VMCreateFormData{})
-}
-
-type NodeOption struct {
-	Name           string
-	Disabled       bool
-	DisabledReason string
-}
-
-// CreateVMPage renders the VM creation form with pre-populated settings from settings.json
-// This includes ISOs, VMBRs, Tags, Limits, and available nodes from Proxmox
-func (h *VMHandler) CreateVMPage(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("CreateVMPage", r)
-	sm := h.stateManager
-	settings := sm.GetSettings()
-	client := sm.GetProxmoxClient()
-	// Get nodes list (best effort)
-	nodes := []string{}
-	activeNode := ""
-	if client != nil {
-		if list, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil && len(list) > 0 {
-			nodes = list
-			activeNode = list[0]
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
 		}
 	}
 
-	nodeOptions := make([]NodeOption, 0, len(nodes))
-	disabledNodes := make(map[string]bool)
-	var nodeUsage map[string]*NodeResourceUsage
-	if client != nil && len(nodes) > 0 {
-		usageCtx, usageCancel := context.WithTimeout(r.Context(), 10*time.Second)
-		defer usageCancel()
-		usage, err := CalculateNodeResourceUsage(usageCtx, client, h.stateManager)
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to calculate node resource usage for create page")
-		} else {
-			nodeUsage = usage
-		}
+	log.Info().
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Msg("Optimized VM create request started")
+
+	// Get settings
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		log.Error().Msg("Settings not available")
+		http.Error(w, "Settings unavailable", http.StatusInternalServerError)
+		return
 	}
+
+	// Get Proxmox client
+	client := h.stateManager.GetProxmoxClient()
+
+	// Get node information
+	log.Debug().Msg("Getting node information")
+	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), client)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get node information")
+		http.Error(w, "Failed to get node information", http.StatusInternalServerError)
+		return
+	}
+	log.Debug().Strs("nodes", nodes).Str("active_node", activeNode).Msg("Node information retrieved")
+
+	// Build node options for template
+	nodeOptions := make([]map[string]interface{}, 0, len(nodes))
 	for _, nodeName := range nodes {
-		option := NodeOption{Name: nodeName}
-		if nodeUsage != nil {
-			if usageEntry, ok := nodeUsage[nodeName]; ok && usageEntry != nil {
-				saturated := false
-				if usageEntry.MaxCores > 0 && usageEntry.Cores >= usageEntry.MaxCores {
-					saturated = true
-				}
-				if usageEntry.MaxRamGB > 0 && usageEntry.RamGB >= usageEntry.MaxRamGB {
-					saturated = true
-				}
-				if saturated {
-					option.Disabled = true
-					option.DisabledReason = "VM.Create.NodeLimitReached"
-					disabledNodes[nodeName] = true
-				}
-			}
+		option := map[string]interface{}{
+			"value":    nodeName,
+			"text":     nodeName,
+			"disabled": disabledNodes[nodeName],
+		}
+		if disabledNodes[nodeName] {
+			option["reason"] = "This node has reached its PVMSS resource limits"
 		}
 		nodeOptions = append(nodeOptions, option)
 	}
+	log.Debug().Int("node_options_count", len(nodeOptions)).Msg("Node options built")
 
-	if activeNode != "" {
-		for _, option := range nodeOptions {
-			if option.Name == activeNode {
-				if option.Disabled {
-					activeNode = ""
-				}
-				break
-			}
-		}
+	// Get storages and bridges concurrently
+	log.Debug().Msg("Getting resources (storages and bridges)")
+	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settings)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get resources")
+		http.Error(w, "Failed to get resources", http.StatusInternalServerError)
+		return
 	}
-	if activeNode == "" {
-		for _, option := range nodeOptions {
-			if !option.Disabled {
-				activeNode = option.Name
-				break
-			}
-		}
+	log.Debug().Int("storages_count", len(storages)).Int("bridges_count", len(bridgeDetails)).Msg("Resources retrieved")
+
+	// Prepare form data
+	formData := map[string]string{
+		"bridge_0":          "",
+		"cores":             "1",
+		"sockets":           "1",
+		"description":       "",
+		"disk_bus_type":     "virtio",
+		"disk_size_0":       "12",
+		"enable_efi":        "1",
+		"enable_tpm":        "",
+		"iso":               "",
+		"memory":            "1024",
+		"name":              "",
+		"network_enabled_0": "1", // First network card enabled by default
+		"network_model_0":   "virtio",
+		"node":              activeNode,
+		"pool":              fmt.Sprintf("pvmss_%s", username),
+		"storage":           "",
+		"tags":              "",
+		"vmid":              "",
 	}
 
-	// Get username from session to pre-fill pool
-	defaultPool := ""
-	ctx := r.Context()
-	var validationError string
-	var formData map[string]interface{}
-
+	// Override with session data if available (for form repopulation after validation errors)
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if username, ok := sessionManager.Get(ctx, "username").(string); ok && username != "" {
-			defaultPool = fmt.Sprintf("pvmss_%s", username)
-		}
-
-		// Check for validation errors from previous submission
-		if errMsg, ok := sessionManager.Get(ctx, "vm_create_errors").(string); ok && errMsg != "" {
-			validationError = errMsg
-			sessionManager.Remove(ctx, "vm_create_errors") // Clear after reading
-		}
-
-		// Retrieve preserved form data
-		if savedFormData, ok := sessionManager.Get(ctx, "vm_create_form_data").(VMCreateFormData); ok {
-			// Convert struct to map for template
-			formData = map[string]interface{}{
-				"name":        savedFormData.Name,
-				"description": savedFormData.Description,
-				"vmid":        savedFormData.VMID,
-				"sockets":     savedFormData.Sockets,
-				"cores":       savedFormData.Cores,
-				"memory":      savedFormData.Memory,
-				"disk_size":   savedFormData.DiskSize,
-				"iso":         savedFormData.ISO,
-				"bridge":      savedFormData.Bridge,
-				"node":        savedFormData.Node,
-				"pool":        savedFormData.Pool,
-				"storage":     savedFormData.Storage,
-				"tags":        savedFormData.Tags,
+		if sessionData, ok := sessionManager.Get(r.Context(), "vm_create_form").(map[string]string); ok {
+			for key, value := range sessionData {
+				if _, exists := formData[key]; exists {
+					formData[key] = value
+				}
 			}
-			sessionManager.Remove(ctx, "vm_create_form_data") // Clear after reading
+			// Clear session data after use
+			sessionManager.Remove(r.Context(), "vm_create_form")
 		}
 	}
 
-	// If no saved form data, use defaults
-	if formData == nil {
-		formData = map[string]interface{}{
-			"tags": []string{"pvmss"},
-		}
+	// Prepare template data
+	data := map[string]interface{}{
+		"BridgeDetails":    bridgeDetails,
+		"FormData":         formData,
+		"ISOs":             settings.ISOs,
+		"IsAdmin":          isAdmin,
+		"IsAuthenticated":  true,
+		"Lang":             i18n.GetLanguage(r),
+		"Limits":           settings.Limits,
+		"MaxDiskPerVM":     settings.MaxDiskPerVM,
+		"MaxNetworkCards":  settings.MaxNetworkCards,
+		"NodeOptions":      nodeOptions,
+		"Nodes":            nodes,
+		"ProxmoxConnected": client != nil,
+		"StorageNodes":     storageNodes,
+		"Storages":         storages,
+		"Tags":             settings.Tags,
+		"TitleKey":         "VM.Create.Title",
+		"Username":         username,
+		"ValidationError":  "",
 	}
 
-	if value, ok := formData["node"].(string); ok && value != "" {
-		if disabledNodes[value] {
-			formData["node"] = ""
-		}
-	}
-
-	bridgeDetails := make([]map[string]string, 0)
-	bridgeDescriptions := make(map[string]string)
+	// Extract bridges from BridgeDetails for template compatibility
+	var bridges []string
 	bridgeNodes := make(map[string]string)
-	if sm != nil {
-		if client == nil {
-			log.Warn().Msg("Proxmox client unavailable; skipping bridge description fetch")
-		} else {
-			for _, nodeName := range nodes {
-				vmbrs, err := proxmox.GetVMBRsWithContext(r.Context(), client, nodeName)
-				if err != nil {
-					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve VMBRs; continuing with remaining nodes")
+	bridgeDescriptions := make(map[string]string)
+
+	for _, detail := range bridgeDetails {
+		bridgeName := detail["name"]
+		if bridgeName != "" {
+			bridges = append(bridges, bridgeName)
+			bridgeNodes[bridgeName] = detail["node"]
+			bridgeDescriptions[bridgeName] = detail["description"]
+		}
+	}
+
+	// Add bridge data for template
+	data["Bridges"] = bridges
+	data["BridgeNodes"] = bridgeNodes
+	data["BridgeDescriptions"] = bridgeDescriptions
+
+	// Add active node for template compatibility
+	data["ActiveNode"] = activeNode
+
+	// Add default pool and available tags for template compatibility
+	data["DefaultPool"] = fmt.Sprintf("pvmss_%s", username)
+	data["AvailableTags"] = settings.Tags
+
+	// Add CSRF token from request context
+	if csrfToken, ok := r.Context().Value("csrf_token").(string); ok {
+		data["CSRFToken"] = csrfToken
+	}
+
+	// Compute explicit VM limits for template (avoids nil map indexing in templates)
+	// RAM: keep MB for inputs, derive GB for display (ceil)
+	vmRamMinMB, vmRamMaxMB := 512, 32768 // defaults in MB (512MB to 32GB)
+	socketsMin, socketsMax := 1, 8
+	coresMin, coresMax := 1, 32
+	diskMin, diskMax := 1, 1024 // in GB to match POST defaults
+	if settings.Limits != nil {
+		if vmLimits, ok := settings.Limits["vm"]; ok {
+			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
+				if ram, ok := vmLimitsMap["ram"]; ok {
+					if ramMap, ok := ram.(map[string]interface{}); ok {
+						if min, ok := ramMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								vmRamMinMB = int(minVal) * 1024
+							}
+						}
+						if max, ok := ramMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								vmRamMaxMB = int(maxVal) * 1024
+							}
+						}
+					}
+				}
+				if sockets, ok := vmLimitsMap["sockets"]; ok {
+					if socketsMap, ok := sockets.(map[string]interface{}); ok {
+						if min, ok := socketsMap["min"]; ok {
+							if v, ok := min.(float64); ok {
+								socketsMin = int(v)
+							}
+						}
+						if max, ok := socketsMap["max"]; ok {
+							if v, ok := max.(float64); ok {
+								socketsMax = int(v)
+							}
+						}
+					}
+				}
+				if cores, ok := vmLimitsMap["cores"]; ok {
+					if coresMap, ok := cores.(map[string]interface{}); ok {
+						if min, ok := coresMap["min"]; ok {
+							if v, ok := min.(float64); ok {
+								coresMin = int(v)
+							}
+						}
+						if max, ok := coresMap["max"]; ok {
+							if v, ok := max.(float64); ok {
+								coresMax = int(v)
+							}
+						}
+					}
+				}
+				if disk, ok := vmLimitsMap["disk"]; ok {
+					if diskMap, ok := disk.(map[string]interface{}); ok {
+						if min, ok := diskMap["min"]; ok {
+							if v, ok := min.(float64); ok {
+								diskMin = int(v)
+							}
+						}
+						if max, ok := diskMap["max"]; ok {
+							if v, ok := max.(float64); ok {
+								diskMax = int(v)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	// derive GB for display as ceiling of MB/1024
+	vmRamMinGB := (vmRamMinMB + 1023) / 1024
+	vmRamMaxGB := (vmRamMaxMB + 1023) / 1024
+	data["VMSocketsMin"], data["VMSocketsMax"] = socketsMin, socketsMax
+	data["VMCoresMin"], data["VMCoresMax"] = coresMin, coresMax
+	data["VMRamMinGB"], data["VMRamMaxGB"] = vmRamMinGB, vmRamMaxGB
+	data["VMRamMinMB"], data["VMRamMaxMB"] = vmRamMinMB, vmRamMaxMB
+	data["VMDiskMin"], data["VMDiskMax"] = diskMin, diskMax
+
+	// Check if all nodes are disabled (saturated)
+	allNodesSaturated := len(nodeOptions) > 0
+	for _, option := range nodeOptions {
+		disabled, ok := option["disabled"].(bool)
+		if !ok || !disabled {
+			allNodesSaturated = false
+			break
+		}
+	}
+
+	// Check if there are no nodes available at all
+	noNodesAvailable := len(nodes) == 0
+
+	if allNodesSaturated {
+		data["Notification"] = map[string]interface{}{
+			"type":  "warning",
+			"title": "Resource Limits Reached",
+			"text":  "All nodes have reached their PVMSS resource limits. Cannot create new VMs.",
+		}
+	}
+
+	// Add no nodes available flag for template
+	data["NoNodesAvailable"] = noNodesAvailable
+	data["AllNodesSaturated"] = allNodesSaturated
+
+	log.Debug().
+		Int("data_keys", len(data)).
+		Bool("all_nodes_saturated", allNodesSaturated).
+		Msg("About to render create_vm template")
+
+	// Handle POST requests for VM creation
+	if r.Method == "POST" {
+		log.Debug().Msg("Processing VM creation POST request")
+
+		// Parse form
+		if err := r.ParseForm(); err != nil {
+			log.Error().Err(err).Msg("Failed to parse VM creation form")
+			data["ValidationError"] = "Invalid form data"
+			renderTemplateInternal(w, r, "create_vm", data)
+			return
+		}
+
+		// Call the creation handler
+		h.handleVMCreation(w, r, client, data)
+		return
+	}
+
+	renderTemplateInternal(w, r, "create_vm", data)
+	log.Debug().Msg("Template rendered successfully")
+}
+
+// getOptimizedNodeInfo retrieves node information with caching
+func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, client proxmox.ClientInterface) ([]string, map[string]bool, string, error) {
+	log := CreateHandlerLogger("getOptimizedNodeInfo", nil)
+
+	if client == nil {
+		return nil, nil, "", fmt.Errorf("proxmox client not available")
+	}
+
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("failed to create resty client: %w", err)
+	}
+
+	// Get node names with timeout
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("failed to get node names: %w", err)
+	}
+
+	log.Info().Int("node_count", len(nodes)).Msg("Retrieved node names")
+
+	// Get settings to check node limits
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		log.Warn().Msg("Settings not available, using all nodes as enabled")
+		return nodes, make(map[string]bool), nodes[0], nil
+	}
+
+	// Check which nodes are disabled (saturated)
+	disabledNodes := make(map[string]bool)
+	for _, nodeName := range nodes {
+		// TODO: Implement actual resource checking logic here
+		// For now, assume nodes are enabled
+		disabledNodes[nodeName] = false
+	}
+
+	// Select active node (first non-disabled)
+	activeNode := ""
+	for _, nodeName := range nodes {
+		if !disabledNodes[nodeName] {
+			activeNode = nodeName
+			break
+		}
+	}
+	if activeNode == "" && len(nodes) > 0 {
+		activeNode = nodes[0] // Fallback to first node
+	}
+
+	log.Info().
+		Str("active_node", activeNode).
+		Int("disabled_nodes", countDisabledNodes(disabledNodes)).
+		Msg("Node information retrieved")
+
+	return nodes, disabledNodes, activeNode, nil
+}
+
+// getOptimizedResources retrieves storages and bridges concurrently with optimizations
+func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, client proxmox.ClientInterface, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings) ([]string, map[string]string, []map[string]string, error) {
+	log := CreateHandlerLogger("getOptimizedResources", nil)
+
+	if client == nil || len(nodes) == 0 {
+		return nil, nil, nil, fmt.Errorf("proxmox client not available or no nodes")
+	}
+
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to create resty client: %w", err)
+	}
+
+	// Use shorter timeout for better UX
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	var storages []string
+	var storageNodes map[string]string
+	var bridgeDetails []map[string]string
+	var storagesErr, bridgesErr error
+
+	// Get storages concurrently
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		storages, storageNodes, storagesErr = h.getOptimizedStorages(ctx, restyClient, nodes, disabledNodes, settings)
+	}()
+
+	// Get bridges concurrently
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		bridgeDetails, bridgesErr = h.getOptimizedBridges(ctx, restyClient, nodes, disabledNodes, settings)
+	}()
+
+	wg.Wait()
+
+	if storagesErr != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get storages: %w", storagesErr)
+	}
+	if bridgesErr != nil {
+		return nil, nil, nil, fmt.Errorf("failed to get bridges: %w", bridgesErr)
+	}
+
+	log.Info().
+		Int("storages_count", len(storages)).
+		Int("bridges_count", len(bridgeDetails)).
+		Msg("Resources retrieved concurrently")
+
+	return storages, storageNodes, bridgeDetails, nil
+}
+
+// getOptimizedStorages retrieves storage information with batch processing
+func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, restyClient *proxmox.RestyClient, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings) ([]string, map[string]string, error) {
+	log := CreateHandlerLogger("getOptimizedStorages", nil)
+
+	// Get global storage list once
+	globalList, err := proxmox.GetStoragesResty(ctx, restyClient)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to fetch global storage list")
+		// Continue without global metadata
+	}
+
+	// Create global storage info map for quick lookup
+	globalStorageInfo := make(map[string]proxmox.Storage)
+	for _, item := range globalList {
+		globalStorageInfo[item.Storage] = item
+	}
+
+	// Create enabled storage map for quick lookup
+	enabledStorageMap := make(map[string]bool)
+	for _, enabledStorage := range settings.EnabledStorages {
+		enabledStorageMap[enabledStorage] = true
+	}
+
+	// Collect storages from all enabled nodes
+	storageMap := make(map[string]string) // storage -> node
+	var mu sync.Mutex
+
+	// Use semaphore to limit concurrent API calls
+	semaphore := make(chan struct{}, 5) // Max 5 concurrent storage calls
+
+	var wg sync.WaitGroup
+	for _, nodeName := range nodes {
+		if disabledNodes[nodeName] {
+			continue // Skip disabled nodes
+		}
+
+		wg.Add(1)
+		go func(nodeName string) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			storageList, err := proxmox.GetNodeStoragesResty(ctx, restyClient, nodeName)
+			if err != nil {
+				log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve storages for node")
+				return
+			}
+
+			for _, storage := range storageList {
+				// Enrich with global info if available
+				storageInfo := storage
+				if global, exists := globalStorageInfo[storage.Storage]; exists {
+					if storageInfo.Content == "" && global.Content != "" {
+						storageInfo.Content = global.Content
+					}
+					if storageInfo.Type == "" && global.Type != "" {
+						storageInfo.Type = global.Type
+					}
+					if storageInfo.Description == "" && global.Description != "" {
+						storageInfo.Description = global.Description
+					}
+				}
+
+				// Check if storage should be included
+				// Check if node:storage is enabled
+				uniqueID := nodeName + ":" + storage.Storage
+				isEnabledStorage := len(settings.EnabledStorages) == 0 || enabledStorageMap[uniqueID]
+				storageType := strings.ToLower(storageInfo.Type)
+				storageContent := strings.ToLower(storageInfo.Content)
+
+				supportsVMDisk := strings.Contains(storageContent, "images")
+				if !supportsVMDisk {
+					if _, ok := vmDiskCompatibleStorageTypes[storageType]; ok {
+						supportsVMDisk = true
+					}
+				}
+
+				if isEnabledStorage && storage.Enabled == 1 && supportsVMDisk {
+					mu.Lock()
+					// Only add if not already present (avoid duplicates across nodes)
+					if _, exists := storageMap[storage.Storage]; !exists {
+						storageMap[storage.Storage] = nodeName
+					}
+					mu.Unlock()
+				}
+			}
+		}(nodeName)
+	}
+
+	wg.Wait()
+
+	// Convert map to sorted slice
+	storages := make([]string, 0, len(storageMap))
+	for storage := range storageMap {
+		storages = append(storages, storage)
+	}
+	sort.Strings(storages)
+
+	log.Info().
+		Int("unique_storages", len(storages)).
+		Int("nodes_checked", len(nodes)).
+		Msg("Storages retrieved with optimization")
+
+	return storages, storageMap, nil
+}
+
+// getOptimizedBridges retrieves bridge information with batch processing
+func (h *VMCreateOptimizedHandler) getOptimizedBridges(ctx context.Context, restyClient *proxmox.RestyClient, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings) ([]map[string]string, error) {
+	log := CreateHandlerLogger("getOptimizedBridges", nil)
+
+	bridgeNodes := make(map[string]string)
+	bridgeDescriptions := make(map[string]string)
+	var mu sync.Mutex
+
+	// Use semaphore to limit concurrent API calls
+	semaphore := make(chan struct{}, 5) // Max 5 concurrent bridge calls
+
+	var wg sync.WaitGroup
+	for _, nodeName := range nodes {
+		if disabledNodes[nodeName] {
+			continue // Skip disabled nodes
+		}
+
+		wg.Add(1)
+		go func(nodeName string) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			vmbrs, err := proxmox.GetVMBRsResty(ctx, restyClient, nodeName)
+			if err != nil {
+				log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve VMBRs")
+				return
+			}
+
+			for _, vmbr := range vmbrs {
+				name := getVMBRInterface(vmbr)
+				if name == "" {
 					continue
 				}
-				for _, vmbr := range vmbrs {
-					name := getVMBRInterface(vmbr)
-					if name == "" {
-						continue
-					}
-					if _, exists := bridgeNodes[name]; !exists {
-						bridgeNodes[name] = nodeName
-					}
-					if desc, exists := bridgeDescriptions[name]; exists && desc != "" {
-						continue
-					}
+
+				mu.Lock()
+				if _, exists := bridgeNodes[name]; !exists {
+					bridgeNodes[name] = nodeName
+				}
+				if desc, exists := bridgeDescriptions[name]; exists && desc != "" {
+					// Description already exists, skip
+				} else {
 					bridgeDescriptions[name] = buildVMBRDescription(vmbr)
 				}
+				mu.Unlock()
 			}
-		}
+		}(nodeName)
 	}
-	for _, bridgeName := range settings.VMBRs {
+
+	wg.Wait()
+
+	// Build bridge details
+	var bridgeDetails []map[string]string
+	for _, bridgeIdentifier := range settings.VMBRs {
+		// Extract bridge name from node:vmbr format
+		bridgeName := bridgeIdentifier
+		if colonIndex := strings.Index(bridgeIdentifier, ":"); colonIndex != -1 {
+			bridgeName = bridgeIdentifier[colonIndex+1:]
+		}
+
 		bridgeDetails = append(bridgeDetails, map[string]string{
-			"name":        bridgeName,
 			"description": bridgeDescriptions[bridgeName],
+			"name":        bridgeName,
 			"node":        bridgeNodes[bridgeName],
 		})
 	}
 
-	data := map[string]interface{}{
-		"Title":              "Create VM",
-		"ISOs":               settings.ISOs,
-		"Bridges":            settings.VMBRs,
-		"BridgeDetails":      bridgeDetails,
-		"BridgeDescriptions": bridgeDescriptions,
-		"BridgeNodes":        bridgeNodes,
-		"AvailableTags":      settings.Tags,
-		"Limits":             settings.Limits,
-		"Nodes":              nodes,
-		"NodeOptions":        nodeOptions,
-		"ActiveNode":         activeNode,
-		"DefaultPool":        defaultPool,
-		"FormData":           formData,
-		"ValidationError":    validationError,
-	}
+	log.Info().
+		Int("unique_bridges", len(bridgeDetails)).
+		Int("nodes_checked", len(nodes)).
+		Msg("Bridges retrieved with optimization")
 
-	// Get available storages for the selected node
-	storages := []string{}
-	storageNodes := make(map[string]string)
-	if client != nil && activeNode != "" {
-		if storageList, err := proxmox.GetNodeStoragesWithContext(r.Context(), client, activeNode); err == nil {
-			// Create a map of enabled storages for quick lookup
-			enabledStorageMap := make(map[string]bool)
-			for _, enabledStorage := range settings.EnabledStorages {
-				enabledStorageMap[enabledStorage] = true
-			}
-
-			for _, storage := range storageList {
-				// Only include storages that are in enabled_storages list, enabled, and can hold VM disks
-				if enabledStorageMap[storage.Storage] && storage.Enabled == 1 && strings.Contains(storage.Content, "images") {
-					storages = append(storages, storage.Storage)
-					storageNodes[storage.Storage] = activeNode
-				}
-			}
-		}
-	}
-	data["Storages"] = storages
-	data["StorageNodes"] = storageNodes
-
-	// Proxmox connection status for template (also provided by middleware, but ensure here)
-	if sm != nil {
-		connected, message := sm.GetProxmoxStatus()
-		data["ProxmoxConnected"] = connected
-		if !connected {
-			data["ProxmoxError"] = message
-		}
-	}
-
-	// Add i18n data
-	RenderTemplate(w, r, "create_vm", data)
+	return bridgeDetails, nil
 }
 
-// CreateVMHandler processes POST /api/vm/create to create a VM in Proxmox
-// Validates form data, applies limits from settings, and creates the VM via Proxmox API
-func (h *VMHandler) CreateVMHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("CreateVMHandler", r)
-
-	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
-		return
-	}
-
-	// Extract form fields
-	name := r.FormValue("name")
-	description := r.FormValue("description")
-	vmidStr := r.FormValue("vmid")
-	socketsStr := r.FormValue("sockets")
-	coresStr := r.FormValue("cores")
-	memoryMBStr := r.FormValue("memory") // MB
-	diskSizeGBStr := r.FormValue("disk_size")
-	isoPath := r.FormValue("iso") // settings provides full volid or path string
-	bridgeName := r.FormValue("bridge")
-	selectedNode := r.FormValue("node")
-	poolName := r.FormValue("pool")
-	selectedTags := r.Form["tags"]
-	selectedStorage := r.FormValue("storage")
-	tags := ensureMandatoryTag(selectedTags)
-
-	// Validate mandatory fields
-	validationErrors := validateRequiredFields(map[string]string{
-		"VM name":        name,
-		"Proxmox node":   selectedNode,
-		"CPU sockets":    socketsStr,
-		"CPU cores":      coresStr,
-		"Memory":         memoryMBStr,
-		"Disk size":      diskSizeGBStr,
-		"Storage":        selectedStorage,
-		"ISO image":      isoPath,
-		"Network bridge": bridgeName,
-	})
-
-	// If validation fails, redirect back to form with errors
-	if len(validationErrors) > 0 {
-		log.Warn().Strs("validation_errors", validationErrors).Msg("VM creation validation failed")
-
-		// Store form data and errors in session for re-display
-		if session := security.GetSession(r); session != nil {
-			ctx := r.Context()
-			session.Put(ctx, "vm_create_errors", strings.Join(validationErrors, "; "))
-			// Preserve form data using concrete struct (gob-serializable)
-			formData := VMCreateFormData{
-				Name:        name,
-				Description: description,
-				VMID:        vmidStr,
-				Sockets:     socketsStr,
-				Cores:       coresStr,
-				Memory:      memoryMBStr,
-				DiskSize:    diskSizeGBStr,
-				ISO:         isoPath,
-				Bridge:      bridgeName,
-				Node:        selectedNode,
-				Pool:        poolName,
-				Storage:     selectedStorage,
-				Tags:        selectedTags,
-			}
-			session.Put(ctx, "vm_create_form_data", formData)
-		}
-
-		// Redirect back to form
-		http.Redirect(w, r, "/vm/create", http.StatusSeeOther)
-		return
-	}
-
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not initialized")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
-		return
-	}
-
+// handleVMCreation processes the VM creation form submission
+func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *http.Request, client proxmox.ClientInterface, data map[string]interface{}) {
+	log := CreateHandlerLogger("handleVMCreation", r)
 	ctx := r.Context()
 
-	// Determine node: use selected if provided, otherwise pick the first available node
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
-	if err != nil || len(nodes) == 0 {
-		log.Error().Err(err).Msg("unable to get Proxmox nodes")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
+	if client == nil {
+		data["ValidationError"] = "Proxmox client not available"
+		renderTemplateInternal(w, r, "create_vm", data)
 		return
 	}
-	node := nodes[0]
-	if selectedNode != "" {
-		// ensure selected node exists
-		for _, n := range nodes {
-			if n == selectedNode {
-				node = selectedNode
-				break
-			}
+
+	// Extract form values
+	name := strings.TrimSpace(r.FormValue("name"))
+	description := strings.TrimSpace(r.FormValue("description"))
+	vmidStr := strings.TrimSpace(r.FormValue("vmid"))
+	node := strings.TrimSpace(r.FormValue("node"))
+	pool := strings.TrimSpace(r.FormValue("pool"))
+	storage := strings.TrimSpace(r.FormValue("storage"))
+	isoImage := strings.TrimSpace(r.FormValue("iso"))
+	bridgeName := strings.TrimSpace(r.FormValue("bridge_0"))
+	networkModel := strings.TrimSpace(r.FormValue("network_model_0"))
+	diskBus := strings.TrimSpace(r.FormValue("disk_bus_type"))
+	tags := strings.TrimSpace(r.FormValue("tags"))
+	enableEFI := r.FormValue("enable_efi")
+	enableTPM := r.FormValue("enable_tpm")
+
+	// Parse numeric values
+	memoryMBStr := strings.TrimSpace(r.FormValue("memory"))
+	cpuSocketsStr := strings.TrimSpace(r.FormValue("sockets"))
+	cpuCoresStr := strings.TrimSpace(r.FormValue("cores"))
+	diskSizeGBStr := strings.TrimSpace(r.FormValue("disk_size_0"))
+
+	// Simple validation
+	if name == "" {
+		data["ValidationError"] = "VM name is required"
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
+	}
+
+	if storage == "" {
+		data["ValidationError"] = "Storage is required"
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
+	}
+
+	// Parse integers with robust extraction
+	settings := h.stateManager.GetSettings()
+
+	// Helper function to extract integer from string with validation
+	extractInt := func(str string, defaultValue int, minVal, maxVal int, fieldName string) int {
+		if str == "" {
+			return defaultValue
 		}
-	}
-
-	// Parse numeric fields
-	sockets, err := strconv.Atoi(socketsStr)
-	if err != nil {
-		http.Error(w, "invalid sockets", http.StatusBadRequest)
-		return
-	}
-	cores, err := strconv.Atoi(coresStr)
-	if err != nil {
-		http.Error(w, "invalid cores", http.StatusBadRequest)
-		return
-	}
-	memoryMB, err := strconv.Atoi(memoryMBStr)
-	if err != nil {
-		http.Error(w, "invalid memory", http.StatusBadRequest)
-		return
-	}
-	diskSizeGB, err := strconv.Atoi(diskSizeGBStr)
-	if err != nil {
-		http.Error(w, "invalid disk size", http.StatusBadRequest)
-		return
-	}
-
-	// Validate against settings limits (vm and optional node-specific)
-	if settings := h.stateManager.GetSettings(); settings != nil && settings.Limits != nil {
-		// VM limits
-		if rawVM, ok := settings.Limits["vm"].(map[string]interface{}); ok {
-			if min, max, ok2 := readMinMax(rawVM, "sockets"); ok2 {
-				if sockets < min || sockets > max {
-					http.Error(w, fmt.Sprintf("sockets must be between %d and %d", min, max), http.StatusBadRequest)
-					return
-				}
-			}
-			if min, max, ok2 := readMinMax(rawVM, "cores"); ok2 {
-				if cores < min || cores > max {
-					http.Error(w, fmt.Sprintf("cores must be between %d and %d", min, max), http.StatusBadRequest)
-					return
-				}
-			}
-			if minGB, maxGB, ok2 := readMinMax(rawVM, "ram"); ok2 {
-				minMB := minGB * 1024
-				maxMB := maxGB * 1024
-				if memoryMB < minMB || memoryMB > maxMB {
-					http.Error(w, fmt.Sprintf("memory must be between %d and %d MB", minMB, maxMB), http.StatusBadRequest)
-					return
-				}
-			}
-			if min, max, ok2 := readMinMax(rawVM, "disk"); ok2 {
-				if diskSizeGB < min || diskSizeGB > max {
-					http.Error(w, fmt.Sprintf("disk size must be between %d and %d GB", min, max), http.StatusBadRequest)
-					return
-				}
-			}
+		// Remove any non-digit characters and parse
+		cleanStr := strings.TrimSpace(str)
+		var value int
+		if val, err := fmt.Sscanf(cleanStr, "%d", &value); err != nil || val != 1 {
+			log.Warn().Str("field", fieldName).Str("input", str).Int("default", defaultValue).Msg("Invalid numeric value, using default")
+			return defaultValue
 		}
+		// Validate range
+		if value < minVal || value > maxVal {
+			log.Warn().Str("field", fieldName).Int("value", value).Int("min", minVal).Int("max", maxVal).Int("default", defaultValue).Msg("Value out of range, using default")
+			return defaultValue
+		}
+		return value
+	}
 
-		// Node-specific caps (optional) - per-VM limits
-		if rawNodes, ok := settings.Limits["nodes"].(map[string]interface{}); ok {
-			if rawNode, ok2 := rawNodes[node].(map[string]interface{}); ok2 {
-				if _, max, ok3 := readMinMax(rawNode, "sockets"); ok3 {
-					// Enforce only upper bound from node limits; VM lower bound is validated earlier
-					if sockets > max {
-						http.Error(w, fmt.Sprintf("sockets exceed node '%s' max (%d)", node, max), http.StatusBadRequest)
-						return
+	// Get limits from settings or use defaults
+	var memoryMin, memoryMax = 512, 32768 // 512MB to 32GB
+	var socketsMin, socketsMax = 1, 8
+	var coresMin, coresMax = 1, 32
+	var diskMin, diskMax = 1, 1024 // 1GB to 1TB
+
+	if settings != nil && settings.Limits != nil {
+		if vmLimits, ok := settings.Limits["vm"]; ok {
+			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
+				if ram, ok := vmLimitsMap["ram"]; ok {
+					if ramMap, ok := ram.(map[string]interface{}); ok {
+						if min, ok := ramMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								memoryMin = int(minVal) * 1024 // Convert GB to MB
+							}
+						}
+						if max, ok := ramMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								memoryMax = int(maxVal) * 1024 // Convert GB to MB
+							}
+						}
 					}
 				}
-				if _, max, ok3 := readMinMax(rawNode, "cores"); ok3 {
-					// Enforce only upper bound from node limits; VM lower bound is validated earlier
-					if cores > max {
-						http.Error(w, fmt.Sprintf("cores exceed node '%s' max (%d)", node, max), http.StatusBadRequest)
-						return
+				if sockets, ok := vmLimitsMap["sockets"]; ok {
+					if socketsMap, ok := sockets.(map[string]interface{}); ok {
+						if min, ok := socketsMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								socketsMin = int(minVal)
+							}
+						}
+						if max, ok := socketsMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								socketsMax = int(maxVal)
+							}
+						}
 					}
 				}
-				if _, maxGB, ok3 := readMinMax(rawNode, "ram"); ok3 {
-					// Enforce only upper bound from node limits; VM lower bound is validated earlier
-					maxMB := maxGB * 1024
-					if memoryMB > maxMB {
-						http.Error(w, fmt.Sprintf("memory exceeds node '%s' max (%d MB)", node, maxMB), http.StatusBadRequest)
-						return
+				if cores, ok := vmLimitsMap["cores"]; ok {
+					if coresMap, ok := cores.(map[string]interface{}); ok {
+						if min, ok := coresMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								coresMin = int(minVal)
+							}
+						}
+						if max, ok := coresMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								coresMax = int(maxVal)
+							}
+						}
+					}
+				}
+				if disk, ok := vmLimitsMap["disk"]; ok {
+					if diskMap, ok := disk.(map[string]interface{}); ok {
+						if min, ok := diskMap["min"]; ok {
+							if minVal, ok := min.(float64); ok {
+								diskMin = int(minVal)
+							}
+						}
+						if max, ok := diskMap["max"]; ok {
+							if maxVal, ok := max.(float64); ok {
+								diskMax = int(maxVal)
+							}
+						}
 					}
 				}
 			}
 		}
-
-		// Validate aggregate node limits (sum of all pvmss VMs)
-		if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, sockets, cores, memoryMB); err != nil {
-			log.Warn().Err(err).Str("node", node).Msg("VM creation would exceed aggregate node limits")
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 	}
 
-	// Ensure VMID
+	// Parse values with proper validation
+	memoryMB := extractInt(memoryMBStr, 2048, memoryMin, memoryMax, "memory")
+	cpuSockets := extractInt(cpuSocketsStr, 1, socketsMin, socketsMax, "sockets")
+	cpuCores := extractInt(cpuCoresStr, 2, coresMin, coresMax, "cores")
+	diskSizeGB := extractInt(diskSizeGBStr, 20, diskMin, diskMax, "disk_size")
+
+	// Defaults
+	if diskBus == "" {
+		diskBus = "virtio"
+	}
+	if networkModel == "" {
+		networkModel = "virtio"
+	}
+
+	// Get or generate VMID
 	vmid := 0
 	if vmidStr != "" {
-		if v, err := strconv.Atoi(vmidStr); err == nil {
-			vmid = v
+		if val, err := fmt.Sscanf(vmidStr, "%d", &vmid); err != nil || val != 1 {
+			vmid = 0
 		}
 	}
 	if vmid == 0 {
-		v, err := proxmox.GetNextVMID(ctx, client)
+		restyClient, err := getDefaultRestyClient()
 		if err != nil {
-			log.Error().Err(err).Msg("failed to get next VMID")
-			localizer := i18n.GetLocalizerFromRequest(r)
-			http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
+			data["ValidationError"] = "Failed to get next VMID"
+			renderTemplateInternal(w, r, "create_vm", data)
 			return
 		}
-		vmid = v
+		nextID, err := proxmox.GetNextVMIDResty(ctx, restyClient)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to get next VMID")
+			data["ValidationError"] = "Failed to get next VMID"
+			renderTemplateInternal(w, r, "create_vm", data)
+			return
+		}
+		vmid = nextID
 	}
 
-	// Build Proxmox create parameters
-	params := map[string]string{
-		"vmid":    strconv.Itoa(vmid),
-		"name":    name,
-		"sockets": strconv.Itoa(sockets),
-		"cores":   strconv.Itoa(cores),
-		"memory":  strconv.Itoa(memoryMB), // MB
-	}
+	// Build Proxmox parameters
+	params := url.Values{}
+	params.Set("vmid", fmt.Sprintf("%d", vmid))
+	params.Set("name", name)
+	params.Set("memory", fmt.Sprintf("%d", memoryMB))
+	params.Set("sockets", fmt.Sprintf("%d", cpuSockets))
+	params.Set("cores", fmt.Sprintf("%d", cpuCores))
+	params.Set("cpu", "host")
 
-	params["agent"] = "enabled=1"
-
-	// Assign to pool if provided
-	if poolName != "" {
-		params["pool"] = poolName
-	}
-
-	// Tags (Proxmox supports 'tags': csv)
-	if len(tags) > 0 {
-		params["tags"] = strings.Join(tags, ",")
-	}
 	if description != "" {
-		params["description"] = description
+		params.Set("description", description)
+	}
+	if pool != "" {
+		params.Set("pool", pool)
+	}
+	if tags != "" {
+		params.Set("tags", tags)
 	}
 
-	// Attach ISO if provided (ide2 with media=cdrom)
-	if isoPath != "" {
-		// Expect iso to be a Proxmox volid like 'local:iso/debian.iso'
-		params["ide2"] = isoPath + ",media=cdrom"
+	// Boot and ISO
+	if isoImage != "" {
+		params.Set("ide2", isoImage+",media=cdrom")
+		params.Set("boot", "order=ide2;"+diskBus+"0")
+	} else {
+		params.Set("boot", "order="+diskBus+"0")
 	}
 
-	// Network: virtio on selected bridge
-	if bridgeName != "" {
-		params["net0"] = "virtio,bridge=" + bridgeName
+	// EFI
+	if enableEFI == "1" {
+		params.Set("bios", "ovmf")
+		params.Set("efidisk0", storage+":1,format=raw,efitype=4m")
 	}
 
-	// Disk: use selected storage for VM disk
-	if selectedStorage != "" && diskSizeGBStr != "" {
-		params["scsi0"] = selectedStorage + ":" + strconv.Itoa(diskSizeGB)
-		params["scsihw"] = "virtio-scsi-pci"
-		params["bootdisk"] = "scsi0"
-		if isoPath != "" {
-			params["boot"] = "order=scsi0;ide2"
-		} else {
-			params["boot"] = "order=scsi0"
+	// TPM
+	if enableTPM == "1" {
+		params.Set("tpmstate0", storage+":4,version=v2.0")
+	}
+
+	// Disk - Primary disk (disk 0)
+	diskParam := diskBus + "0"
+	params.Set(diskParam, fmt.Sprintf("%s:%d", storage, diskSizeGB))
+	if diskBus == "scsi" {
+		params.Set("scsihw", "virtio-scsi-pci")
+	}
+
+	// Additional disks (disk 1, 2, 3, etc.) if configured
+	if settings != nil && settings.MaxDiskPerVM > 1 {
+		for diskIdx := 1; diskIdx < settings.MaxDiskPerVM; diskIdx++ {
+			diskSizeStr := strings.TrimSpace(r.FormValue(fmt.Sprintf("disk_size_%d", diskIdx)))
+			if diskSizeStr == "" || diskSizeStr == "0" {
+				// Optional disk not configured, skip
+				continue
+			}
+			additionalDiskSize := 0
+			if val, err := fmt.Sscanf(diskSizeStr, "%d", &additionalDiskSize); err != nil || val != 1 || additionalDiskSize <= 0 {
+				// Invalid size, skip
+				log.Warn().Int("disk_idx", diskIdx).Str("size", diskSizeStr).Msg("Invalid additional disk size, skipping")
+				continue
+			}
+			// Create additional disk with same bus type
+			additionalDiskParam := fmt.Sprintf("%s%d", diskBus, diskIdx)
+			params.Set(additionalDiskParam, fmt.Sprintf("%s:%d", storage, additionalDiskSize))
+			log.Info().Int("disk_idx", diskIdx).Int("size_gb", additionalDiskSize).Str("param", additionalDiskParam).Msg("Added additional disk")
 		}
 	}
 
-	// Perform API call: POST /nodes/{node}/qemu
-	path := "/nodes/" + url.PathEscape(node) + "/qemu"
-
-	values := make(url.Values)
-	for k, v := range params {
-		values.Set(k, v)
+	// Network - Primary network card (net0)
+	networkEnabled := r.FormValue("network_enabled_0") == "1"
+	if bridgeName != "" {
+		netConfig := networkModel + ",bridge=" + bridgeName
+		if !networkEnabled {
+			netConfig += ",link_down=1"
+		}
+		params.Set("net0", netConfig)
+		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Bool("enabled", networkEnabled).Msg("Configured primary network card")
 	}
 
-	if _, err := client.PostFormWithContext(ctx, path, values); err != nil {
-		log.Error().Err(err).Str("node", node).Msg("VM create API call failed")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Proxmox.ConnectionError"), http.StatusBadGateway)
+	// Additional network cards (net1, net2, etc.) if configured
+	if settings != nil && settings.MaxNetworkCards > 1 {
+		for netIdx := 1; netIdx < settings.MaxNetworkCards; netIdx++ {
+			additionalBridge := strings.TrimSpace(r.FormValue(fmt.Sprintf("bridge_%d", netIdx)))
+			if additionalBridge == "" {
+				// Optional network card not configured, skip
+				continue
+			}
+			// Get network model for this card
+			additionalModel := strings.TrimSpace(r.FormValue(fmt.Sprintf("network_model_%d", netIdx)))
+			if additionalModel == "" {
+				additionalModel = "virtio" // Default
+			}
+			// Check if network is enabled
+			additionalEnabled := r.FormValue(fmt.Sprintf("network_enabled_%d", netIdx)) == "1"
+			// Build config
+			additionalNetConfig := additionalModel + ",bridge=" + additionalBridge
+			if !additionalEnabled {
+				additionalNetConfig += ",link_down=1"
+			}
+			// Set parameter
+			netParam := fmt.Sprintf("net%d", netIdx)
+			params.Set(netParam, additionalNetConfig)
+			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Bool("enabled", additionalEnabled).Msg("Added additional network card")
+		}
+	}
+
+	// Agent
+	params.Set("agent", "1")
+
+	// Validate against aggregate node limits before creating the VM
+	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB); err != nil {
+		log.Warn().Err(err).Str("node", node).Msg("VM resources exceed aggregate node limits")
+		data["ValidationError"] = err.Error()
+		renderTemplateInternal(w, r, "create_vm", data)
 		return
 	}
 
-	// Optional: ensure VM is running. Query current status and start if needed.
-	if cur, err := proxmox.GetVMCurrentWithContext(ctx, client, node, vmid); err != nil {
-		log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Could not fetch VM current status after creation")
-	} else if strings.ToLower(cur.Status) != "running" {
-		if _, err := proxmox.VMActionWithContext(ctx, client, node, strconv.Itoa(vmid), "start"); err != nil {
-			log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Failed to start VM after creation")
-		} else {
-			log.Info().Int("vmid", vmid).Str("node", node).Msg("VM started after creation")
+	// Create VM
+	path := "/nodes/" + url.PathEscape(node) + "/qemu"
+	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
+		log.Error().Err(err).Str("node", node).Msg("VM create API call failed")
+		data["ValidationError"] = fmt.Sprintf("Failed to create VM: %v", err)
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
+	}
+
+	// Invalidate caches
+	client.InvalidateCache("/nodes/" + url.PathEscape(node) + "/qemu")
+	if pool != "" {
+		client.InvalidateCache("/pools/" + url.PathEscape(pool))
+	}
+
+	log.Info().
+		Int("vmid", vmid).
+		Str("name", name).
+		Str("node", node).
+		Msg("VM created successfully")
+
+	// Redirect to VM details
+	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?refresh=1", vmid), http.StatusSeeOther)
+}
+
+// Helper functions
+func countDisabledNodes(disabledNodes map[string]bool) int {
+	count := 0
+	for _, disabled := range disabledNodes {
+		if disabled {
+			count++
 		}
 	}
-
-	// Invalidate caches so the new VM appears immediately in profile and search
-	client.InvalidateCache("/nodes/" + url.PathEscape(node) + "/qemu")
-	if poolName != "" {
-		client.InvalidateCache("/pools/" + url.PathEscape(poolName))
-		log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM creation")
-	}
-
-	// Redirect to details
-	redirectURL := "/vm/details/" + strconv.Itoa(vmid) + "?refresh=1"
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	return count
 }

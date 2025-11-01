@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"pvmss/i18n"
@@ -18,20 +19,20 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// SearchHandler handles search requests with simplified logic
-type SearchHandler struct {
+// SearchOptimizedHandler handles search requests with optimized cluster performance
+type SearchOptimizedHandler struct {
 	stateManager state.StateManager
 }
 
-// NewSearchHandler creates a new instance of SearchHandler
-func NewSearchHandler(sm state.StateManager) *SearchHandler {
-	return &SearchHandler{stateManager: sm}
+// NewSearchOptimizedHandler creates a new instance of SearchOptimizedHandler
+func NewSearchOptimizedHandler(sm state.StateManager) *SearchOptimizedHandler {
+	return &SearchOptimizedHandler{stateManager: sm}
 }
 
 // RegisterRoutes registers search routes
-func (h *SearchHandler) RegisterRoutes(router *httprouter.Router) {
+func (h *SearchOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
 	log := logger.Get().With().
-		Str("component", "SearchHandler").
+		Str("component", "SearchOptimizedHandler").
 		Str("function", "RegisterRoutes").
 		Logger()
 
@@ -40,7 +41,7 @@ func (h *SearchHandler) RegisterRoutes(router *httprouter.Router) {
 		return
 	}
 
-	log.Debug().Msg("Registering search routes")
+	log.Debug().Msg("Registering optimized search routes")
 
 	router.GET("/search", RequireAuthHandle(h.SearchPageHandler))
 	router.POST("/search", SecureFormHandler("Search",
@@ -49,11 +50,11 @@ func (h *SearchHandler) RegisterRoutes(router *httprouter.Router) {
 
 	log.Info().
 		Strs("routes", []string{"GET /search", "POST /search"}).
-		Msg("Search routes registered successfully")
+		Msg("Optimized search routes registered successfully")
 }
 
-// SearchPageHandler handles both GET and POST requests for search page
-func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// SearchPageHandler handles both GET and POST requests for search page with optimizations
+func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("SearchPageHandler", r)
 
 	// Get user info from session
@@ -71,10 +72,10 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 	log.Info().
 		Str("username", username).
 		Bool("is_admin", isAdmin).
-		Msg("Search request started")
+		Msg("Optimized search request started")
 
 	data := map[string]interface{}{
-		"Title":           "Search VMs",
+		"TitleKey":        "Search.Title",
 		"Lang":            i18n.GetLanguage(r),
 		"IsAuthenticated": true,
 		"Results":         []map[string]interface{}{},
@@ -98,7 +99,7 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 		log.Info().
 			Str("vmid_query", vmidQuery).
 			Str("name_query", nameQuery).
-			Msg("Processing search query")
+			Msg("Processing optimized search query")
 
 		// Build query display string
 		var queryParts []string
@@ -128,14 +129,14 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// Create context with timeout
-		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		// Create context with timeout (shorter for better UX)
+		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 
-		// Perform search
-		results, err := h.searchVMs(ctx, client, vmidQuery, nameQuery, username, isAdmin)
+		// Perform optimized search
+		results, err := h.searchVMsOptimized(ctx, client, vmidQuery, nameQuery, username, isAdmin)
 		if err != nil {
-			log.Error().Err(err).Msg("Search failed")
+			log.Error().Err(err).Msg("Optimized search failed")
 			data["Error"] = fmt.Sprintf("Search failed: %v", err)
 			renderTemplateInternal(w, r, "search", data)
 			return
@@ -149,29 +150,35 @@ func (h *SearchHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request
 
 		log.Info().
 			Int("results_count", len(results)).
-			Msg("Search completed successfully")
+			Msg("Optimized search completed successfully")
 	}
 
 	renderTemplateInternal(w, r, "search", data)
 }
 
-// searchVMs performs the actual VM search with filtering
-func (h *SearchHandler) searchVMs(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery, username string, isAdmin bool) ([]map[string]interface{}, error) {
+// searchVMsOptimized performs VM search with batch API calls and concurrent processing
+func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery, username string, isAdmin bool) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
-		Str("function", "searchVMs").
+		Str("function", "searchVMsOptimized").
 		Str("vmid_query", vmidQuery).
 		Str("name_query", nameQuery).
 		Str("username", username).
 		Bool("is_admin", isAdmin).
 		Logger()
 
-	// Get all VMs from Proxmox
-	allVMs, err := proxmox.GetVMsWithContext(ctx, client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get VMs: %w", err)
+		return nil, fmt.Errorf("failed to create resty client: %w", err)
 	}
 
-	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs")
+	// Get all VMs from Proxmox using resty
+	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VMs (resty): %w", err)
+	}
+
+	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")
 
 	// For non-admin users, get their pool VMs
 	var userPoolVMIDs map[int]bool
@@ -184,37 +191,36 @@ func (h *SearchHandler) searchVMs(ctx context.Context, client proxmox.ClientInte
 			Msg("Retrieved user pool VMs")
 	}
 
-	// Filter VMs
-	results := []map[string]interface{}{}
+	// Filter VMs first before getting configs (reduces API calls)
+	filteredVMs := []proxmox.VMInfo{}
 	lowerVMIDQuery := strings.ToLower(vmidQuery)
 	lowerNameQuery := strings.ToLower(nameQuery)
 
 	for _, vm := range allVMs {
+		// Convert VM to VMInfo for consistency
+		vmInfo := proxmox.VMInfo{
+			VMID:     strconv.Itoa(vm.VMID),
+			Name:     vm.Name,
+			Status:   vm.Status,
+			Node:     vm.Node,
+			CPU:      vm.CPUs,
+			Memory:   vm.MaxMem,
+			Disk:     vm.MaxDisk,
+			Template: false, // Will be determined from config if needed
+		}
+
 		// Check 1: Pool membership for non-admin users
 		if !isAdmin && userPoolVMIDs != nil {
-			if !userPoolVMIDs[vm.VMID] {
+			vmidInt, err := strconv.Atoi(vmInfo.VMID)
+			if err != nil {
+				continue // Skip invalid VMID
+			}
+			if !userPoolVMIDs[vmidInt] {
 				continue // VM not in user's pool
 			}
 		}
 
-		// Check 2: Get VM config and check for "pvmss" tag
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
-		if err != nil {
-			log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config, skipping")
-			continue
-		}
-
-		// Check for pvmss tag
-		if !h.hasTag(cfg, "pvmss") {
-			log.Info().
-				Int("vmid", vm.VMID).
-				Str("name", vm.Name).
-				Interface("tags", cfg["tags"]).
-				Msg("SEARCH V2: VM does not have pvmss tag, skipping")
-			continue
-		}
-
-		// Check 3: Match search criteria (if provided)
+		// Check 2: Match search criteria (if provided) - do this BEFORE getting config
 		if vmidQuery != "" || nameQuery != "" {
 			vmidStr := strconv.Itoa(vm.VMID)
 			vmName := strings.ToLower(vm.Name)
@@ -239,7 +245,78 @@ func (h *SearchHandler) searchVMs(ctx context.Context, client proxmox.ClientInte
 			}
 		}
 
-		// VM passed all filters, add to results
+		// VM passed initial filters, add to filtered list
+		filteredVMs = append(filteredVMs, vmInfo)
+	}
+
+	log.Info().
+		Int("filtered_vms", len(filteredVMs)).
+		Int("original_vms", len(allVMs)).
+		Msg("VMs filtered before config check")
+
+	// BATCH: Get configs only for filtered VMs using concurrent goroutines
+	vmConfigs := make(map[int]map[string]interface{})
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	// Use semaphore to limit concurrent API calls (prevents overwhelming Proxmox)
+	semaphore := make(chan struct{}, 10) // Max 10 concurrent config calls
+
+	for _, vm := range filteredVMs {
+		wg.Add(1)
+		go func(vmInfo proxmox.VMInfo) {
+			defer wg.Done()
+
+			// Acquire semaphore
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			vmidInt, err := strconv.Atoi(vmInfo.VMID)
+			if err != nil {
+				log.Debug().Err(err).Str("vmid", vmInfo.VMID).Msg("Invalid VMID, skipping")
+				return
+			}
+			cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vmInfo.Node, vmidInt)
+			if err != nil {
+				log.Debug().Err(err).Int("vmid", vmidInt).Msg("Failed to get VM config, skipping")
+				return
+			}
+
+			// Check for pvmss tag
+			if !h.hasTag(cfg, "pvmss") {
+				log.Debug().
+					Int("vmid", vmidInt).
+					Str("name", vmInfo.Name).
+					Msg("VM does not have pvmss tag, skipping")
+				return
+			}
+
+			// Store config
+			mu.Lock()
+			vmConfigs[vmidInt] = cfg
+			mu.Unlock()
+		}(vm)
+	}
+
+	wg.Wait()
+
+	log.Info().
+		Int("vms_with_pvmss_tag", len(vmConfigs)).
+		Msg("VMs with pvmss tag identified")
+
+	// Build final results
+	results := []map[string]interface{}{}
+	for _, vm := range filteredVMs {
+		vmidInt, err := strconv.Atoi(vm.VMID)
+		if err != nil {
+			continue // Skip invalid VMID
+		}
+		cfg, hasConfig := vmConfigs[vmidInt]
+		if !hasConfig {
+			continue // Skip VMs without pvmss tag or config errors
+		}
+
+		// Build result
 		description := ""
 		if desc, ok := cfg["description"].(string); ok {
 			description = desc
@@ -251,34 +328,37 @@ func (h *SearchHandler) searchVMs(ctx context.Context, client proxmox.ClientInte
 		}
 
 		results = append(results, map[string]interface{}{
-			"vmid":        vm.VMID,
+			"vmid":        vmidInt,
 			"name":        vm.Name,
 			"description": description,
 			"node":        vm.Node,
 			"status":      strings.ToLower(status),
 		})
+	}
 
-		log.Info().
-			Int("vmid", vm.VMID).
-			Str("name", vm.Name).
-			Msg("SEARCH V2: VM matched all criteria")
+	// Sort results by VMID ascending before returning
+	sort.Slice(results, func(i, j int) bool {
+		vi, _ := results[i]["vmid"].(int)
+		vj, _ := results[j]["vmid"].(int)
+		return vi < vj
+	})
 
-		// Limit results to 50
-		if len(results) >= 50 {
-			break
-		}
+	// Apply limit after sorting for deterministic ordering
+	if len(results) > 50 {
+		results = results[:50]
 	}
 
 	log.Info().
 		Int("results_count", len(results)).
 		Int("vms_checked", len(allVMs)).
-		Msg("Search filtering completed")
+		Int("config_calls_made", len(filteredVMs)).
+		Msg("Optimized search filtering completed")
 
 	return results, nil
 }
 
-// getPoolVMIDs retrieves VM IDs from a Proxmox pool
-func (h *SearchHandler) getPoolVMIDs(ctx context.Context, client proxmox.ClientInterface, poolName string) map[int]bool {
+// getPoolVMIDs retrieves VM IDs from a Proxmox pool (same as original)
+func (h *SearchOptimizedHandler) getPoolVMIDs(ctx context.Context, client proxmox.ClientInterface, poolName string) map[int]bool {
 	log := logger.Get().With().
 		Str("function", "getPoolVMIDs").
 		Str("pool", poolName).
@@ -296,7 +376,7 @@ func (h *SearchHandler) getPoolVMIDs(ctx context.Context, client proxmox.ClientI
 		} `json:"data"`
 	}
 
-	if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(poolName), &poolResp); err != nil {
+	if err := client.GetJSON(ctx, "/pools/"+poolName, &poolResp); err != nil {
 		log.Warn().Err(err).Msg("Failed to fetch pool members")
 		return vmids
 	}
@@ -314,8 +394,8 @@ func (h *SearchHandler) getPoolVMIDs(ctx context.Context, client proxmox.ClientI
 	return vmids
 }
 
-// hasTag checks if a VM config contains a specific tag
-func (h *SearchHandler) hasTag(cfg map[string]interface{}, targetTag string) bool {
+// hasTag checks if a VM config contains a specific tag (same as original)
+func (h *SearchOptimizedHandler) hasTag(cfg map[string]interface{}, targetTag string) bool {
 	tagsStr, ok := cfg["tags"].(string)
 	if !ok || tagsStr == "" {
 		return false

@@ -1,0 +1,87 @@
+# Profile
+["Profile.Title"]
+other = "My profile"
+["Profile.Username"]
+other = "Username"
+["Profile.Pool"]
+other = "Pool"
+["Profile.MyVMs"]
+other = "My virtual machines"
+["Profile.VMID"]
+other = "VM ID"
+["Profile.VMName"]
+other = "VM name"
+["Profile.Description"]
+other = "Description"
+["Profile.NoDescription"]
+other = "No description"
+["Profile.Node"]
+other = "Node"
+["Profile.Status"]
+other = "Status"
+["Profile.Actions"]
+other = "Actions"
+["Profile.ViewDetails"]
+other = "View details"
+["Profile.Delete"]
+other = "Delete"
+["Profile.NoVMs"]
+other = "No virtual machines"
+["Profile.NoVMsMessage"]
+other = "You don't have any virtual machines yet. Create a VM to get started."
+["Profile.CreateFirstVM"]
+other = "Create a VM"
+["Profile.CreateVM"]
+other = "Create a new VM"
+["Profile.SearchVM"]
+other = "Search VMs"
+["Profile.ChangePassword"]
+other = "Change password"
+["Profile.CurrentPassword"]
+other = "Current password"
+["Profile.CurrentPasswordPlaceholder"]
+other = "Enter your current password"
+["Profile.CurrentPasswordHelp"]
+other = "Enter your current password to verify your identity"
+["Profile.NewPassword"]
+other = "New password"
+["Profile.NewPasswordPlaceholder"]
+other = "Enter your new password"
+["Profile.NewPasswordHelp"]
+other = "Minimum 5 characters"
+["Profile.ConfirmPassword"]
+other = "Confirm new password"
+["Profile.ConfirmPasswordPlaceholder"]
+other = "Re-enter your new password"
+["Profile.UpdatePassword"]
+other = "Update password"
+["Profile.PasswordUpdateSuccess"]
+other = "Password updated successfully!"
+["Profile.ChangePasswordButton"]
+other = "Change my password"
+["Profile.ChangePasswordDescription"]
+other = "Click the button below to change your Proxmox password. You will need to provide your current password for verification."
+["Profile.MyProfile"]
+other = "My profile"
+["Profile.RunningVMs"]
+other = "Running VMs"
+["Profile.StoppedVMs"]
+other = "Stopped VMs"
+["Profile.PausedVMs"]
+other = "Paused VMs"
+["Profile.Overview"]
+other = "Overview"
+["Profile.Security"]
+other = "Security"
+["Profile.SecurityDescription"]
+other = "Manage your account security settings."
+["Profile.TotalVMs"]
+other = "Total VMs"
+["Profile.TotalRunningVMs"]
+other = "Running VMs"
+["Profile.TotalStoppedVMs"]
+other = "Stopped VMs"
+["Profile.TotalPausedVMs"]
+other = "Paused VMs"
+["Profile.PasswordChangeDescription"]
+other = "Click the button below to change your Proxmox password. You will need to provide your current password for verification."

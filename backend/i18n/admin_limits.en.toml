@@ -1,0 +1,83 @@
+# Admin - Resource Limits
+["Admin.Limits.Cores"]
+other = "Cores per Socket"
+["Admin.Limits.Description"]
+other = "Configure minimum and maximum resources that can be allocated to virtual machines"
+["Admin.Limits.Disk"]
+other = "Disk space (GB)"
+["Admin.Limits.Error"]
+other = "Error"
+["Admin.Limits.GB"]
+other = "GB"
+["Admin.Limits.Node"]
+other = "Node"
+["Admin.Limits.Memory"]
+other = "Memory (GB)"
+["Admin.Limits.NodeLabel"]
+other = "Node:"
+["Admin.Limits.NodeSection"]
+other = "Node resource limits"
+["Admin.Limits.NoNodes"]
+other = "No nodes are available to configure limits. Please check your Proxmox connection and node status."
+["Admin.Limits.ResetToDefaults"]
+other = "Reset to defaults"
+["Admin.Limits.Saved"]
+other = "✓ Saved"
+["Admin.Limits.Saving"]
+other = "Saving..."
+["Admin.Limits.Sockets"]
+other = "Sockets"
+["Admin.Limits.Title"]
+other = "Resource limits"
+["Admin.Limits.VM"]
+other = "VM limits"
+["Admin.Limits.ScopeVM"]
+other = "Global limits for all VMs"
+["Admin.Limits.ScopeNode"]
+other = "Node-specific resource limits"
+["Admin.Limits.NoNodeSelected"]
+other = "No node selected"
+["Admin.Limits.SelectNodePrompt"]
+other = "Please select a node to configure its limits:"
+["Admin.Limits.SelectNode"]
+other = "Select a node..."
+["Admin.Limits.VMSection"]
+other = "Default VM resource limits"
+["Admin.Limits.DefaultsRestored"]
+other = "Default values have been successfully restored"
+["Admin.Limits.Validation.InProgress"]
+other = "Validation in progress..."
+["Admin.Limits.Validation.Success"]
+other = "Validation successful"
+["Admin.Limits.Validation.MinMax"]
+other = "Maximum value must be greater than or equal to the minimum value."
+["Admin.Limits.Validation.Required"]
+other = "This field is required"
+["Admin.Limits.Validation.Positive"]
+other = "Value must be a positive number"
+["Admin.Limits.NetworkError"]
+other = "A network error occurred. Please try again"
+["Admin.Limits.AggregateTitle"]
+other = "Aggregate resources (PVMSS VMs)"
+["Admin.Limits.AggregateTotalVMs"]
+other = "VM(s) with tag \"pvmss\" on this node"
+["Admin.Limits.AggregateCores"]
+other = "Cores:"
+["Admin.Limits.AggregateMemory"]
+other = "RAM:"
+["Admin.Limits.AggregateNoLimit"]
+other = "No limit"
+["Admin.Limits.AggregateDescription"]
+other = "These limits represent the total combined resources that all VMs with the \"pvmss\" tag can use on this node."
+["Admin.Limits.AggregateScopeNode"]
+other = "Set aggregate resource limits for all PVMSS VMs on this node. These limits control the total combined resources that all VMs with the \"pvmss\" tag can use."
+["Admin.Limits.TotalCores"]
+other = "Total cores (Aggregate)"
+["Admin.Limits.TotalMemory"]
+other = "Total memory (Aggregate)"
+["Admin.Limits.NodePhysicalCapacity"]
+other = "Node physical capacity"
+["Admin.Limits.CapacityWarning"]
+other = "Aggregate limits cannot exceed the node's physical capacity."
+["Admin.Limits.MinAlways1"]
+other = "Minimum is always 1"

@@ -35,7 +35,7 @@
         </form>
         
         {{else if eq . "console"}}
-        <button id="console-button" class="button is-primary has-text-white" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
+        <button id="console-button" class="button is-primary" {{if or (not $connected) (ne $status "running")}}disabled{{end}}>
             <span class="icon"><i class="fas fa-terminal"></i></span>
             <span>{{T "VMDetails.Action.Console"}}</span>
         </button>

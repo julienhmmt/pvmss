@@ -1,0 +1,5 @@
+# Admin - Nodes actions/cards
+["Admin.Node.DeleteCardTitle"]
+other = "Delete node"
+["Admin.Node.DeleteCardDescription"]
+other = "Remove a node from the managed cluster."

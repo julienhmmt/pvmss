@@ -5,7 +5,7 @@ package constants
 // Authentication & Authorization Messages
 const (
 	MsgAuthRequired       = "Auth.Required"
-	MsgAuthInvalidCreds   = "Auth.InvalidCredentials"
+	MsgAuthInvalidCreds   = "Auth.InvalidCredentials" // #nosec G101 - Message key identifier, not a credential
 	MsgAuthLoginSuccess   = "Auth.LoginSuccess"
 	MsgAuthLogoutSuccess  = "Auth.LogoutSuccess"
 	MsgAuthSessionExpired = "Auth.SessionExpired"

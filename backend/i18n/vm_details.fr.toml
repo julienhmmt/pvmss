@@ -1,0 +1,157 @@
+# Détails de la VM
+["VMDetails.Action.Failed"]
+other = "Échec de l'action: {{.Error}}"
+["VMDetails.Action.Processing"]
+other = "Traitement en cours..."
+["VMDetails.Action.Reboot"]
+other = "Redémarrer"
+["VMDetails.Action.Refresh"]
+other = "Actualiser"
+["VMDetails.Action.Reset"]
+other = "Reset"
+["VMDetails.Action.Shutdown"]
+other = "Éteindre"
+["VMDetails.Action.Start"]
+other = "Démarrer"
+["VMDetails.Action.Status"]
+other = "Statut"
+["VMDetails.Action.Stop"]
+other = "Arrêter"
+["VMDetails.Action.Success"]
+other = "Action réussie"
+["VMDetails.Label.CPU"]
+other = "CPU"
+["VMDetails.Label.Description"]
+other = "Description"
+["VMDetails.Label.Disk"]
+other = "Disque"
+["VMDetails.Label.ID"]
+other = "ID"
+["VMDetails.Label.Name"]
+other = "Nom"
+["VMDetails.Label.Network"]
+other = "Réseau"
+["VMDetails.Label.RAM"]
+other = "Mémoire"
+["VMDetails.Label.Status"]
+other = "Statut"
+["VMDetails.Label.Uptime"]
+other = "Temps de fonctionnement"
+["VMDetails.Modify"]
+other = "Modifier"
+["VMDetails.EditDescriptionTitle"]
+other = "Modifier la description"
+["VMDetails.DescriptionLabel"]
+other = "Description (Markdown supporté)"
+["VMDetails.DescriptionPlaceholder"]
+other = "Entrez une description en Markdown..."
+["VMDetails.DescriptionHelp"]
+other = "Utilisez le Markdown pour la mise en forme. La version rendue s'affiche dans le tableau ci-dessus."
+["VMDetails.SaveDescription"]
+other = "Enregistrer la description"
+["VMDetails.TagsCurrentlyAppliedPrefix"]
+other = "Actuellement appliqués :"
+["VMDetails.SelectTags"]
+other = "Sélectionner des étiquettes"
+["VMDetails.NoTagsAvailable"]
+other = "Aucune étiquette disponible"
+["VMDetails.SaveTags"]
+other = "Enregistrer les étiquettes"
+["VMDetails.Action.Console"]
+other = "Console"
+["VMDetails.Action.Delete"]
+other = "Supprimer"
+["VMDetails.Label.FirewallEnabled"]
+other = "Activé"
+["VMDetails.Label.FirewallDisabled"]
+other = "Désactivé"
+["VMDetails.Label.Firewall"]
+other = " Pare-feu"
+["VMDetails.Label.Interface"]
+other = "Interface"
+["VMDetails.Label.IPAddress"]
+other = "Adresse IP"
+["VMDetails.Label.MACAddress"]
+other = "Adresse MAC"
+["VMDetails.Label.Bridge"]
+other = "Pont réseau"
+["VMDetails.NoDescription"]
+other = "Aucune description disponible"
+["VMDetails.ModifyResources"]
+other = "Modifier les ressources"
+["VMDetails.EditResourcesTitle"]
+other = "Modifier les ressources de la VM"
+["VMDetails.ResourcesWarning"]
+other = "Attention :"
+["VMDetails.ResourcesWarningText"]
+other = "Modifier les ressources CPU, mémoire ou disque d'une VM en cours d'exécution peut causer des problèmes de performance ou nécessiter un redémarrage. Les cartes réseau peuvent être activées/désactivées même lorsque la VM est en cours d'exécution. Il est recommandé d'arrêter la VM avant de faire des modifications."
+["VMDetails.SaveResources"]
+other = "Enregistrer les ressources"
+["VMDetails.ResourcesDisabledTitle"]
+other = "Impossible de modifier une VM en cours d'exécution"
+["VMDetails.ResourcesDisabledMessage"]
+other = "La VM est actuellement en cours d'exécution. Les modifications de CPU, mémoire et disque sont désactivées pour éviter les problèmes de performance ou la perte de données. Les cartes réseau peuvent toujours être activées/désactivées."
+["VM.Details.NoDisks"]
+other = "Aucun disque trouvé"
+["VMDetails.Section.Disks"]
+other = "Disques"
+["VMDetails.Section.DisksDescription"]
+other = "Volumes de stockage"
+["VMDetails.Disks.Total"]
+other = "Total"
+["VMDetails.Disks.EmptyTitle"]
+other = "Aucun disque configuré"
+["VMDetails.Disks.EmptySubtitle"]
+other = "Ajoutez des volumes de stockage à cette VM"
+["VMDetails.Section.Network"]
+other = "Réseau"
+["VMDetails.Section.NetworkDescription"]
+other = "Interfaces réseau"
+["VMDetails.Network.InterfaceSingular"]
+other = "Interface"
+["VMDetails.Network.InterfacePlural"]
+other = "Interfaces"
+["VMDetails.Section.Security"]
+other = "Firmware & Sécurité"
+["VMDetails.Section.SecurityDescription"]
+other = "Fonctionnalités de démarrage et de sécurité"
+["VMDetails.Security.EFIBoot"]
+other = "Démarrage EFI"
+["VMDetails.Security.TPM"]
+other = "Module de plateforme sécurisée (TPM) v2.0"
+["VMDetails.CPU.UsageLabel"]
+other = "Utilisation du processeur"
+["VMDetails.CPU.Active"]
+other = "Actif"
+["VMDetails.RAM.UsageLabel"]
+other = "Utilisation de la mémoire"
+["VMDetails.RAM.InUse"]
+other = "En cours d'utilisation"
+["VMDetails.RAM.Total"]
+other = "Total"
+["VMDetails.RAM.Used"]
+other = "Utilisé"
+["VMDetails.Section.CDROM"]
+other = "CD-ROM"
+["VMDetails.Section.CDROMDescription"]
+other = "Configuration du lecteur CD-ROM et image ISO"
+["VMDetails.CDROM.Drive"]
+other = "Lecteur CD-ROM"
+["VMDetails.CDROM.NoISO"]
+other = "Aucune ISO insérée"
+["VMDetails.CDROM.CurrentISO"]
+other = "ISO actuelle"
+["VMDetails.CDROM.SelectISO"]
+other = "Sélectionner une image ISO"
+["VMDetails.CDROM.ChangeISO"]
+other = "Changer l'ISO"
+["VMDetails.CDROM.EjectISO"]
+other = "Éjecter l'ISO"
+["VMDetails.CDROM.UpdateISO"]
+other = "Mettre à jour le CD-ROM"
+["VMDetails.CDROM.ISOUpdated"]
+other = "ISO du CD-ROM mise à jour avec succès"
+["VMDetails.CDROM.ISOEjected"]
+other = "ISO du CD-ROM éjectée avec succès"
+["VMDetails.CDROM.RuntimeHelp"]
+other = "L'ISO du CD-ROM peut être modifiée même lorsque la VM est en cours d'exécution"

@@ -1,0 +1,43 @@
+# Admin - VMBR Management
+["Admin.VMBR.Title"]
+other = "Network bridges"
+["Admin.VMBR.Description"]
+other = "Manage network bridges that will be available for VM creation"
+["Admin.VMBR.AvailableBridges"]
+other = "Available network bridges"
+["Admin.VMBR.NoVMBRs"]
+other = "No network bridges found. Please check your Proxmox configuration."
+["Admin.VMBR.Enable"]
+other = "Enable"
+["Admin.VMBR.Disable"]
+other = "Disable"
+["Admin.VMBR.SaveSuccess"]
+other = "Network bridge settings saved successfully"
+["Admin.VMBR.SaveError"]
+other = "Failed to save network bridge settings"
+["Admin.VMBR.NetworkCardsConfig"]
+other = "Network cards configuration"
+["Admin.VMBR.MaxNetworkCards"]
+other = "Maximum network cards per VM"
+["Admin.VMBR.MaxNetworkCardsHelp"]
+other = "Number of network cards available when creating a new VM (1-10). Users can choose to use fewer cards, but this sets the maximum."
+["Admin.VMBR.Error"]
+other = "Error retrieving data. See console for details."
+["Admin.VMBR.Header.Description"]
+other = "Description"
+["Admin.VMBR.Header.Enabled"]
+other = "Enabled"
+["Admin.VMBR.Header.Name"]
+other = "Bridge name"
+["Admin.VMBR.Header.Node"]
+other = "Node"
+["Admin.VMBR.FromCache"]
+other = "Data from cache (node offline)"
+["Admin.VMBR.Cached"]
+other = "Cached"
+["Admin.VMBR.NodeOffline"]
+other = "Node is offline - actions disabled"
+["Admin.VMBR.FilterByNode"]
+other = "Filter by node"
+["Admin.VMBR.AllNodes"]
+other = "All nodes"

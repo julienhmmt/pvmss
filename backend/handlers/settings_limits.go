@@ -48,21 +48,28 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Use standard admin page helper
-	data := AdminPageDataWithMessage("Resource Limits", "limits", successMsg, errorMsg)
+	builder := NewTemplateData("").
+		SetAdminActive("limits").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.Limits.Title").
+		AddData("Limits", settings.Limits).
+		AddData("Node", r.URL.Query().Get("node"))
 
-	// Add limits data
-	data["Limits"] = settings.Limits
-
-	// Add selected node from query params
-	nodeParam := r.URL.Query().Get("node")
-	data["Node"] = nodeParam
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+	if errorMsg != "" {
+		builder.SetError(errorMsg)
+	}
 
 	// Get node names for dropdown
 	var nodeNames []string
-	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
+	proxmoxConnected := client != nil
 
-	if proxmoxConnected && client != nil {
+	if proxmoxConnected {
 		pc, ok := client.(*proxmox.Client)
 		if ok {
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
@@ -80,12 +87,12 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	if nodeNames == nil {
 		nodeNames = []string{}
 	}
-	data["NodeNames"] = nodeNames
+	builder.AddData("NodeNames", nodeNames)
 
 	// Get resource usage for all nodes
 	var nodeUsage map[string]*NodeResourceUsage
 	var nodeCapacities map[string]*NodeCapacity
-	if proxmoxConnected && client != nil {
+	if proxmoxConnected {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		if usage, err := CalculateNodeResourceUsage(ctx, client, h.stateManager); err != nil {
@@ -104,9 +111,10 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
-	data["NodeUsage"] = nodeUsage
-	data["NodeCapacities"] = nodeCapacities
+	builder.AddData("NodeUsage", nodeUsage).
+		AddData("NodeCapacities", nodeCapacities)
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_limits", data)
 }
 

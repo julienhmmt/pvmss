@@ -19,18 +19,10 @@ type ISO struct {
 	Size   int64  `json:"size"`
 }
 
-// GetISOList fetches ISO files from a specific storage on a specific node in Proxmox node.
-// It uses the client's default timeout for the API request.
-func GetISOList(client ClientInterface, node, storage string) ([]ISO, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
-	defer cancel()
-	return GetISOListWithContext(ctx, client, node, storage)
-}
-
-// GetISOListWithContext retrieves the list of ISO images from a specific storage on a given Proxmox node
-// using the provided context for timeout and cancellation control.
-// This is the underlying function that performs the actual API call.
-func GetISOListWithContext(ctx context.Context, client ClientInterface, node, storage string) ([]ISO, error) {
+// GetISOListResty retrieves the list of ISO images from a specific storage on a given Proxmox node
+// using resty for improved performance and modern HTTP client features.
+// Endpoint: GET /nodes/{node}/storage/{storage}/content
+func GetISOListResty(ctx context.Context, restyClient *RestyClient, node, storage string) ([]ISO, error) {
 	if node == "" {
 		return nil, fmt.Errorf("node name cannot be empty")
 	}
@@ -40,14 +32,13 @@ func GetISOListWithContext(ctx context.Context, client ClientInterface, node, st
 
 	path := fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage))
 
-	// Use the new GetJSON method to directly unmarshal into our typed response
 	var response ListResponse[ISO]
-	if err := client.GetJSON(ctx, path, &response); err != nil {
+	if err := restyClient.Get(ctx, path, &response); err != nil {
 		logger.Get().Error().
 			Err(err).
 			Str("node", node).
 			Str("storage", storage).
-			Msg("Failed to get ISO list from Proxmox API")
+			Msg("Failed to get ISO list from Proxmox API (resty)")
 		return nil, fmt.Errorf("failed to get ISO list: %w", err)
 	}
 
@@ -62,8 +53,40 @@ func GetISOListWithContext(ctx context.Context, client ClientInterface, node, st
 	logger.Get().Info().
 		Str("node", node).
 		Str("storage", storage).
-		Int("count", len(isos)).
-		Msg("Successfully fetched ISO list")
+		Int("total_items", len(response.Data)).
+		Int("iso_count", len(isos)).
+		Msg("Successfully fetched ISO list (resty)")
 
 	return isos, nil
+}
+
+// GetAllStorageContentResty retrieves all content (ISOs, disk images, etc.) from a storage
+// This is useful if you want to see all types of files, not just ISOs
+func GetAllStorageContentResty(ctx context.Context, restyClient *RestyClient, node, storage string) ([]ISO, error) {
+	if node == "" {
+		return nil, fmt.Errorf("node name cannot be empty")
+	}
+	if storage == "" {
+		return nil, fmt.Errorf("storage name cannot be empty")
+	}
+
+	path := fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage))
+
+	var response ListResponse[ISO]
+	if err := restyClient.Get(ctx, path, &response); err != nil {
+		logger.Get().Error().
+			Err(err).
+			Str("node", node).
+			Str("storage", storage).
+			Msg("Failed to get storage content from Proxmox API (resty)")
+		return nil, fmt.Errorf("failed to get storage content: %w", err)
+	}
+
+	logger.Get().Info().
+		Str("node", node).
+		Str("storage", storage).
+		Int("total_items", len(response.Data)).
+		Msg("Successfully fetched all storage content (resty)")
+
+	return response.Data, nil
 }

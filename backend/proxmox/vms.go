@@ -63,14 +63,27 @@ func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node
 
 // NetworkInterface represents a VM network interface configuration
 type NetworkInterface struct {
-	Index       string   // e.g., "net0", "net1"
-	Model       string   // e.g., "virtio", "e1000"
-	MACAddress  string   // e.g., "AA:BB:CC:DD:EE:FF"
-	Bridge      string   // e.g., "vmbr0"
-	Firewall    bool     // whether firewall is enabled
-	LinkDown    bool     // whether link is down
-	Rate        string   // bandwidth limit if set
-	IPAddresses []string // IP addresses from guest agent
+	Bridge                 string   // e.g., "vmbr0"
+	Firewall               bool     // whether firewall is enabled
+	IPAddresses            []string // IP addresses from guest agent
+	Index                  string   // e.g., "net0", "net1"
+	LinkDown               bool     // whether link is down
+	MACAddress             string   // e.g., "AA:BB:CC:DD:EE:FF"
+	Model                  string   // e.g., "virtio", "e1000"
+	ModelLabel             string   // e.g., "VirtIO", "E1000"
+	ModelTranslationSuffix string
+	Rate                   string // bandwidth limit if set
+}
+
+var networkModelMetadata = map[string]struct {
+	label             string
+	translationSuffix string
+}{
+	"e1000":   {label: "E1000", translationSuffix: "E1000"},
+	"e1000e":  {label: "E1000E", translationSuffix: "E1000E"},
+	"rtl8139": {label: "RTL8139", translationSuffix: "RTL8139"},
+	"virtio":  {label: "VirtIO", translationSuffix: "VirtIO"},
+	"vmxnet3": {label: "VMXNet3", translationSuffix: "VMXNet3"},
 }
 
 // ExtractNetworkInterfaces parses the VM config map and returns a list of network interfaces
@@ -106,12 +119,19 @@ func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
 
 			// Parse model and MAC address (first part, e.g., "virtio=AA:BB:CC:DD:EE:FF")
 			if strings.Contains(p, "=") && (strings.HasPrefix(p, "virtio=") ||
-				strings.HasPrefix(p, "e1000=") || strings.HasPrefix(p, "rtl8139=") ||
-				strings.HasPrefix(p, "vmxnet3=")) {
+				strings.HasPrefix(p, "e1000=") || strings.HasPrefix(p, "e1000e=") ||
+				strings.HasPrefix(p, "rtl8139=") || strings.HasPrefix(p, "vmxnet3=")) {
 				kv := strings.SplitN(p, "=", 2)
 				if len(kv) == 2 {
-					iface.Model = kv[0]
+					modelKey := strings.ToLower(kv[0])
+					iface.Model = modelKey
 					iface.MACAddress = strings.ToUpper(kv[1])
+					if meta, ok := networkModelMetadata[modelKey]; ok {
+						iface.ModelLabel = meta.label
+						iface.ModelTranslationSuffix = meta.translationSuffix
+					} else {
+						iface.ModelLabel = strings.ToUpper(modelKey)
+					}
 				}
 			} else if strings.HasPrefix(p, "bridge=") {
 				iface.Bridge = strings.TrimPrefix(p, "bridge=")
@@ -275,70 +295,16 @@ type VM struct {
 	VMID    int     `json:"vmid"`
 }
 
-// GetVMsWithContext retrieves a comprehensive list of all VMs across all available Proxmox nodes.
-// It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeWithContext for each.
-func GetVMsWithContext(ctx context.Context, client ClientInterface) ([]VM, error) {
-	// Get all nodes first
-	nodes, err := GetNodeNamesWithContext(ctx, client)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get node list while fetching VMs")
-		return nil, fmt.Errorf("failed to get node list: %w", err)
-	}
-
-	// Collect VMs from all nodes
-	allVMs := make([]VM, 0)
-
-	for _, node := range nodes {
-		nodeVMs, err := GetVMsForNodeWithContext(ctx, client, node)
-		if err != nil {
-			logger.Get().Warn().Err(err).Str("node", node).Msg("Failed to get VMs for node")
-			continue
-		}
-		allVMs = append(allVMs, nodeVMs...)
-	}
-
-	logger.Get().Info().Int("total_vms", len(allVMs)).Msg("Successfully fetched all VMs")
-	return allVMs, nil
-}
-
-// GetVMsForNodeWithContext fetches all VMs located on a single, specified Proxmox node.
-// It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
-func GetVMsForNodeWithContext(ctx context.Context, client ClientInterface, nodeName string) ([]VM, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(nodeName))
-
-	// Use the new GetJSON method to directly unmarshal into our typed response
-	var response ListResponse[VM]
-	if err := client.GetJSON(ctx, path, &response); err != nil {
-		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMs for node from Proxmox API")
-		return nil, fmt.Errorf("failed to get VMs for node %s: %w", nodeName, err)
-	}
-
-	// Set the node name for each VM
-	for i := range response.Data {
-		response.Data[i].Node = nodeName
-	}
-
-	logger.Get().Debug().Str("node", nodeName).Int("count", len(response.Data)).Msg("Fetched VMs for node")
-	return response.Data, nil
-}
-
-// GetNextVMID determines the next available unique ID for a new VM.
-// It fetches all existing VMs, finds the highest current VMID, and returns that value incremented by one.
-func GetNextVMID(ctx context.Context, client ClientInterface) (int, error) {
-	vms, err := GetVMsWithContext(ctx, client)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get VMs to calculate next VMID: %w", err)
-	}
-
-	highestVMID := 0
-	for _, vm := range vms {
-		if vm.VMID > highestVMID {
-			highestVMID = vm.VMID
-		}
-	}
-
-	return highestVMID + 1, nil
-}
+// LEGACY FUNCTIONS REMOVED - Use resty versions instead:
+// - GetVMsWithContext → GetVMsResty
+// - GetVMsForNodeWithContext → GetVMsForNodeResty
+// - GetVMConfigWithContext → GetVMConfigResty
+// - GetVMCurrentWithContext → GetVMCurrentResty
+// - UpdateVMConfigWithContext → UpdateVMConfigResty
+// - GetNextVMID → GetNextVMIDResty
+// - VMActionWithContext → VMActionResty
+// - DeleteVMWithContext → DeleteVMResty
+// See resty_vms.go for modern implementations
 
 // VMActionWithContext performs a lifecycle action on a VM via the Proxmox API.
 // Supported actions map to the following endpoints:
@@ -393,4 +359,179 @@ func DeleteVMWithContext(ctx context.Context, client ClientInterface, node strin
 	}
 
 	return nil
+}
+
+// GetVMsResty retrieves a comprehensive list of all VMs across all available Proxmox nodes using resty.
+// It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeResty for each.
+func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
+	// Get all nodes first
+	nodes, err := GetNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to get node list while fetching VMs (resty)")
+		return nil, fmt.Errorf("failed to get node list: %w", err)
+	}
+
+	// Collect VMs from all nodes
+	allVMs := make([]VM, 0)
+
+	for _, node := range nodes {
+		nodeVMs, err := GetVMsForNodeResty(ctx, restyClient, node)
+		if err != nil {
+			logger.Get().Warn().Err(err).Str("node", node).Msg("Failed to get VMs for node (resty)")
+			continue
+		}
+		allVMs = append(allVMs, nodeVMs...)
+	}
+
+	logger.Get().Info().Int("total_vms", len(allVMs)).Msg("Successfully fetched all VMs (resty)")
+	return allVMs, nil
+}
+
+// GetVMsForNodeResty fetches all VMs located on a single, specified Proxmox node using resty.
+// It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
+func GetVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName string) ([]VM, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(nodeName))
+
+	var response ListResponse[VM]
+	if err := restyClient.Get(ctx, path, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", nodeName).Msg("Failed to get VMs for node from Proxmox API (resty)")
+		return nil, fmt.Errorf("failed to get VMs for node %s: %w", nodeName, err)
+	}
+
+	// Set the node name for each VM
+	for i := range response.Data {
+		response.Data[i].Node = nodeName
+	}
+
+	logger.Get().Debug().Str("node", nodeName).Int("count", len(response.Data)).Msg("Fetched VMs for node (resty)")
+	return response.Data, nil
+}
+
+// GetVMConfigResty fetches the VM configuration from Proxmox using resty:
+// GET /nodes/{node}/qemu/{vmid}/config
+// It returns the raw "data" map as provided by the API so callers can extract
+// fields such as description, tags, and network interfaces (net0/net1...).
+func GetVMConfigResty(ctx context.Context, restyClient *RestyClient, node string, vmid int) (map[string]interface{}, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
+
+	var resp struct {
+		Data map[string]interface{} `json:"data"`
+	}
+
+	if err := restyClient.Get(ctx, path, &resp); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get VM config (resty)")
+		return nil, fmt.Errorf("failed to get config for vm %d on node %s: %w", vmid, node, err)
+	}
+
+	return resp.Data, nil
+}
+
+// GetVMCurrentResty fetches the current runtime metrics for a VM using resty
+// GET /nodes/{node}/qemu/{vmid}/status/current
+func GetVMCurrentResty(ctx context.Context, restyClient *RestyClient, node string, vmid int) (*VMCurrent, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid)
+
+	var resp Response[VMCurrent]
+	if err := restyClient.Get(ctx, path, &resp); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get current VM status (resty)")
+		return nil, fmt.Errorf("failed to get current status for vm %d on node %s: %w", vmid, node, err)
+	}
+
+	return &resp.Data, nil
+}
+
+// UpdateVMConfigResty updates VM configuration fields (e.g., description, tags) using resty
+// by POSTing form parameters to:
+//
+//	POST /nodes/{node}/qemu/{vmid}/config
+//
+// Params may include keys like "description" and "tags" (semicolon-separated).
+func UpdateVMConfigResty(ctx context.Context, restyClient *RestyClient, node string, vmid int, params map[string]string) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
+
+	values := make(url.Values)
+	for k, v := range params {
+		values.Set(k, v)
+	}
+
+	var response interface{}
+	if err := restyClient.Post(ctx, path, values, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to update VM config (resty)")
+		return fmt.Errorf("failed to update config for vm %d on node %s: %w", vmid, node, err)
+	}
+
+	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM config updated successfully (resty)")
+	return nil
+}
+
+// VMActionResty performs a lifecycle action on a VM via the Proxmox API using resty.
+// Supported actions map to the following endpoints:
+//
+//	POST /nodes/{node}/qemu/{vmid}/status/{action}
+//
+// Where action is one of: start, stop, shutdown, reboot, reset
+// Returns the UPID string on success (for async tasks), or an empty string when not applicable.
+func VMActionResty(ctx context.Context, restyClient *RestyClient, node string, vmid string, action string) (string, error) {
+	// Validate action
+	switch action {
+	case "start", "stop", "shutdown", "reboot", "reset":
+	default:
+		return "", fmt.Errorf("unsupported VM action: %s", action)
+	}
+
+	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", url.PathEscape(node), url.PathEscape(vmid), action)
+
+	var response Response[string]
+	// Use PostEmpty to send POST with empty form data
+	// Proxmox may return empty JSON for some actions
+	if err := restyClient.PostEmpty(ctx, path, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action failed (resty)")
+		return "", err
+	}
+
+	// The task ID (UPID) is returned in the 'data' field.
+	// Some actions may not return a UPID, which is acceptable
+	if response.Data == "" {
+		logger.Get().Info().Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action executed (no UPID returned)")
+		return "", nil
+	}
+
+	logger.Get().Info().Str("node", node).Str("vmid", vmid).Str("action", action).Str("upid", response.Data).Msg("VM action executed (resty)")
+	return response.Data, nil
+}
+
+// DeleteVMResty deletes a VM from Proxmox using resty.
+// This performs a DELETE request to /nodes/{node}/qemu/{vmid}
+// Note: The VM must be stopped before deletion. Use VMActionResty to stop it first.
+func DeleteVMResty(ctx context.Context, restyClient *RestyClient, node string, vmid int) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d", url.PathEscape(node), vmid)
+
+	var response interface{}
+	if err := restyClient.Delete(ctx, path, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("VM deletion failed (resty)")
+		return fmt.Errorf("failed to delete VM %d on node %s: %w", vmid, node, err)
+	}
+
+	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM deleted successfully (resty)")
+	return nil
+}
+
+// GetNextVMIDResty determines the next available unique ID for a new VM using resty.
+// It fetches all existing VMs, finds the highest current VMID, and returns that value incremented by one.
+func GetNextVMIDResty(ctx context.Context, restyClient *RestyClient) (int, error) {
+	vms, err := GetVMsResty(ctx, restyClient)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get VMs to calculate next VMID: %w", err)
+	}
+
+	highestVMID := 0
+	for _, vm := range vms {
+		if vm.VMID > highestVMID {
+			highestVMID = vm.VMID
+		}
+	}
+
+	nextVMID := highestVMID + 1
+	logger.Get().Info().Int("next_vmid", nextVMID).Msg("Calculated next VMID (resty)")
+	return nextVMID, nil
 }

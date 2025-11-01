@@ -1,0 +1,33 @@
+# Login
+["Login.Button"]
+other = "Se connecter"
+["Login.PasswordLabel"]
+other = "Mot de passe"
+["Login.Title"]
+other = "Connexion"
+["Login.UsernameLabel"]
+other = "Nom d'utilisateur"
+["Login.UserLogin"]
+other = "Connexion utilisateur"
+["Login.AdminLoginLink"]
+other = "Connexion administrateur"
+["Login.LoginAs"]
+other = "Se connecter en tant que"
+["Login.SwitchToAdmin"]
+other = "Basculer vers la connexion administrateur"
+["Login.SwitchToUser"]
+other = "Basculer vers la connexion utilisateur"
+["Login.Warning.General"]
+other = "Veuillez vous connecter pour continuer."
+["Login.Warning.UpdateDescription"]
+other = "Veuillez vous connecter pour mettre à jour la description de la VM."
+
+# Admin Login
+["AdminLogin.Button"]
+other = "Connexion administrateur"
+["AdminLogin.PasswordLabel"]
+other = "Mot de passe administrateur"
+["AdminLogin.Title"]
+other = "Connexion administrateur"
+["AdminLogin.UserLoginLink"]
+other = "Connexion utilisateur"

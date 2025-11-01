@@ -1,0 +1,15 @@
+# Errors
+["Error.Unexpected"]
+other = "Une erreur inattendue s'est produite."
+["Error.PreviousPage"]
+other = "Page précédente"
+["Error.Generic"]
+other = "Une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur."
+["Error.InternalServer"]
+other = "Erreur interne du serveur"
+["Error.NotFound"]
+other = "Ressource non trouvée"
+["Error.Title"]
+other = "Erreur"
+["Error.Unauthorized"]
+other = "Non autorisé"

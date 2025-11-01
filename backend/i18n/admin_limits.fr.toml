@@ -1,0 +1,83 @@
+# Admin - Resource Limits
+["Admin.Limits.Cores"]
+other = "Cœurs par socket"
+["Admin.Limits.Description"]
+other = "Configurez les ressources minimales et maximales pouvant être allouées aux machines virtuelles"
+["Admin.Limits.Disk"]
+other = "Espace disque (Go)"
+["Admin.Limits.Error"]
+other = "Erreur"
+["Admin.Limits.GB"]
+other = "Go"
+["Admin.Limits.Node"]
+other = "Nœud"
+["Admin.Limits.Memory"]
+other = "Mémoire (Go)"
+["Admin.Limits.NodeLabel"]
+other = "Nœud :"
+["Admin.Limits.NodeSection"]
+other = "Limites de ressources des nœuds"
+["Admin.Limits.NoNodes"]
+other = "Aucun nœud n'est disponible pour configurer les limites. Veuillez vérifier votre connexion Proxmox et l'état des nœuds."
+["Admin.Limits.ResetToDefaults"]
+other = "Réinitialiser"
+["Admin.Limits.Saved"]
+other = "✓ Enregistré"
+["Admin.Limits.Saving"]
+other = "Enregistrement..."
+["Admin.Limits.Sockets"]
+other = "Sockets"
+["Admin.Limits.Title"]
+other = "Limites des ressources"
+["Admin.Limits.VM"]
+other = "Limites de VM"
+["Admin.Limits.ScopeVM"]
+other = "Limites globales pour toutes les VMs"
+["Admin.Limits.ScopeNode"]
+other = "Limites de ressources spécifiques au nœud"
+["Admin.Limits.NoNodeSelected"]
+other = "Aucun nœud sélectionné"
+["Admin.Limits.SelectNodePrompt"]
+other = "Veuillez sélectionner un nœud pour configurer ses limites :"
+["Admin.Limits.SelectNode"]
+other = "Sélectionnez un nœud..."
+["Admin.Limits.VMSection"]
+other = "Limites de ressources par défaut des VMs"
+["Admin.Limits.DefaultsRestored"]
+other = "Valeurs par défaut restaurées avec succès"
+["Admin.Limits.Validation.InProgress"]
+other = "Validation en cours..."
+["Admin.Limits.Validation.Success"]
+other = "Validation réussie"
+["Admin.Limits.Validation.MinMax"]
+other = "La valeur maximale doit être supérieure ou égale à la valeur minimale."
+["Admin.Limits.Validation.Required"]
+other = "Ce champ est obligatoire"
+["Admin.Limits.Validation.Positive"]
+other = "La valeur doit être un nombre positif"
+["Admin.Limits.NetworkError"]
+other = "Une erreur réseau s'est produite. Veuillez réessayer"
+["Admin.Limits.AggregateTitle"]
+other = "Ressources agrégées (VMs PVMSS)"
+["Admin.Limits.AggregateTotalVMs"]
+other = "VM(s) avec le tag 'pvmss' sur ce nœud"
+["Admin.Limits.AggregateCores"]
+other = "Cœurs :"
+["Admin.Limits.AggregateMemory"]
+other = "RAM :"
+["Admin.Limits.AggregateNoLimit"]
+other = "Pas de limite"
+["Admin.Limits.AggregateDescription"]
+other = "Ces limites représentent les ressources totales combinées que toutes les VMs avec le tag 'pvmss' peuvent utiliser sur ce nœud."
+["Admin.Limits.AggregateScopeNode"]
+other = "Définir les limites agrégées de ressources pour toutes les VMs PVMSS sur ce nœud. Ces limites contrôlent les ressources totales combinées que toutes les VMs avec le tag 'pvmss' peuvent utiliser."
+["Admin.Limits.TotalCores"]
+other = "Total cœurs (agrégé)"
+["Admin.Limits.TotalMemory"]
+other = "Total mémoire (agrégé)"
+["Admin.Limits.NodePhysicalCapacity"]
+other = "Capacité physique du nœud"
+["Admin.Limits.CapacityWarning"]
+other = "Les limites agrégées ne peuvent pas dépasser la capacité physique du nœud."
+["Admin.Limits.MinAlways1"]
+other = "Le minimum est toujours 1"

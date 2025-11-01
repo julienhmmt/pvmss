@@ -1,0 +1,21 @@
+# Validation
+["Validation.Required"]
+other = "This input is required"
+["Validation.InvalidFormat"]
+other = "Invalid format"
+["Validation.MinLength"]
+other = "Must be a minimum of {{.Limit}} characters"
+["Validation.MaxLength"]
+other = "Cannot exceed {{.Limit}} characters"
+["Validation.Email"]
+other = "Must be a valid email address"
+["Validation.URL"]
+other = "Must be a valid URL"
+["Validation.Numeric"]
+other = "Must be a number"
+["Validation.IP"]
+other = "Must be a valid IP address"
+["Validation.Positive"]
+other = "Must be a positive number"
+["Validation.Negative"]
+other = "Must be a negative number"

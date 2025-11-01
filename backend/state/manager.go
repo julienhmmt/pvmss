@@ -35,6 +35,10 @@ type appState struct {
 	// Offline mode flag
 	offlineMode bool
 
+	// Connection failure tracking for automatic offline mode
+	proxmoxConnectionLostTime     time.Time
+	proxmoxConnectionFailureCount int
+
 	// Security-related fields
 	csrfTokens map[string]time.Time
 	securityMu sync.RWMutex // Mutex for CSRF token operations
@@ -195,6 +199,12 @@ func (s *appState) SetOfflineMode() {
 	s.offlineMode = true
 	s.mu.Unlock()
 
+	// Reset failure tracking when manually setting offline mode
+	s.proxmoxMu.Lock()
+	s.proxmoxConnectionLostTime = time.Time{}
+	s.proxmoxConnectionFailureCount = 0
+	s.proxmoxMu.Unlock()
+
 	// Update status to reflect offline mode
 	s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxOfflineMode))
 	logger.Get().Info().Msg("Offline mode activated")
@@ -221,7 +231,9 @@ func (s *appState) CheckProxmoxConnection() bool {
 	offline := s.offlineMode
 	s.mu.RUnlock()
 
-	if offline {
+	// Check if we're in manual offline mode (PVMSS_OFFLINE=true)
+	// In this case, we don't try to recover
+	if offline && s.isManualOfflineMode() {
 		s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxOfflineMode))
 		return false
 	}
@@ -234,42 +246,127 @@ func (s *appState) CheckProxmoxConnection() bool {
 	// Try to get node names as a simple connection test
 	ctx, cancel := context.WithTimeout(context.Background(), constants.ProxmoxConnectionCheckTimeout)
 	defer cancel()
+
+	logger.Get().Debug().Msg("Starting Proxmox connection check")
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
-	if err != nil || len(nodes) == 0 {
-		errMsg := "Failed to connect to Proxmox"
-		if err != nil {
-			errMsg = fmt.Sprintf("%s: %v", errMsg, err)
-		} else if len(nodes) == 0 {
-			errMsg = fmt.Sprintf("%s: no nodes returned", errMsg)
-		}
-		s.updateProxmoxStatus(false, errMsg)
+
+	if err != nil {
+		logger.Get().Error().Err(err).Msg("Proxmox connection check failed with error")
+		s.handleConnectionFailure()
 		return false
 	}
 
-	// If we got here, the connection is good
-	s.updateProxmoxStatus(true, "")
+	if len(nodes) == 0 {
+		logger.Get().Error().Msg("Proxmox connection check returned empty node list")
+		s.handleConnectionFailure()
+		return false
+	}
+
+	logger.Get().Debug().Int("node_count", len(nodes)).Msg("Proxmox connection check successful")
+
+	// If we got here, the connection is good - attempt recovery
+	s.handleConnectionRecovery()
 	return true
 }
 
-// updateProxmoxStatus updates the Proxmox connection status in a thread-safe way
-func (s *appState) updateProxmoxStatus(connected bool, errorMsg string) {
+// isManualOfflineMode checks if offline mode was set manually (via PVMSS_OFFLINE)
+// vs automatic offline mode due to connection failures
+func (s *appState) isManualOfflineMode() bool {
+	// If we're in offline mode but have no failure tracking, it's manual
+	s.proxmoxMu.RLock()
+	defer s.proxmoxMu.RUnlock()
+	return s.proxmoxConnectionLostTime.IsZero()
+}
+
+// handleConnectionFailure manages connection failures and automatic offline mode
+func (s *appState) handleConnectionFailure() {
 	s.proxmoxMu.Lock()
 	defer s.proxmoxMu.Unlock()
 
+	now := time.Now()
+
+	// Track failure time and count
+	if s.proxmoxConnectionLostTime.IsZero() {
+		s.proxmoxConnectionLostTime = now
+		logger.Get().Warn().Time("failure_started", now).Msg("Proxmox connection failures detected")
+	}
+
+	s.proxmoxConnectionFailureCount++
+
+	// Check if we've exceeded the threshold for automatic offline mode
+	if now.Sub(s.proxmoxConnectionLostTime) >= constants.ProxmoxOfflineThreshold {
+		if !s.offlineMode {
+			logger.Get().Warn().
+				Dur("failure_duration", now.Sub(s.proxmoxConnectionLostTime)).
+				Int("failure_count", s.proxmoxConnectionFailureCount).
+				Msg("Proxmox connection failed for 2 minutes, switching to offline mode automatically")
+
+			// Switch to offline mode
+			s.offlineMode = true
+			s.updateProxmoxStatusInternal(false, "Automatic offline mode: Proxmox unreachable for 2 minutes")
+		}
+	} else {
+		// Still within threshold, update error message
+		errMsg := fmt.Sprintf("Failed to connect to Proxmox (failure #%d, duration: %v)",
+			s.proxmoxConnectionFailureCount, now.Sub(s.proxmoxConnectionLostTime).Round(time.Second))
+		s.updateProxmoxStatusInternal(false, errMsg)
+	}
+}
+
+// handleConnectionRecovery resets failure tracking when connection is restored
+func (s *appState) handleConnectionRecovery() {
+	s.proxmoxMu.Lock()
+	defer s.proxmoxMu.Unlock()
+
+	// Reset failure tracking if we were in failure state
+	if !s.proxmoxConnectionLostTime.IsZero() {
+		logger.Get().Info().
+			Time("failure_started", s.proxmoxConnectionLostTime).
+			Int("failure_count", s.proxmoxConnectionFailureCount).
+			Dur("total_downtime", time.Since(s.proxmoxConnectionLostTime)).
+			Msg("Proxmox connection restored after failures")
+
+		// Reset tracking
+		s.proxmoxConnectionLostTime = time.Time{}
+		s.proxmoxConnectionFailureCount = 0
+
+		// Exit automatic offline mode
+		if s.offlineMode {
+			s.mu.Lock()
+			s.offlineMode = false
+			s.mu.Unlock()
+			logger.Get().Info().Msg("Exiting automatic offline mode - back to online")
+		}
+	}
+
+	// Update status to connected (using internal method, already holding lock)
+	s.updateProxmoxStatusInternal(true, "")
+}
+
+// updateProxmoxStatusInternal updates status without locking (caller must hold lock)
+func (s *appState) updateProxmoxStatusInternal(connected bool, errorMsg string) {
 	// Only log if status changed
 	if s.proxmoxConnected != connected || s.proxmoxError != errorMsg {
 		status := "connected"
 		if !connected {
 			status = fmt.Sprintf("disconnected: %s", errorMsg)
 		}
-		logger.Get().Info().
+		logger.Get().Debug().
 			Bool("connected", connected).
+			Str("status", status).
 			Str("error", errorMsg).
-			Msgf("Proxmox connection status changed: %s", status)
-
-		s.proxmoxConnected = connected
-		s.proxmoxError = errorMsg
+			Msg("Proxmox status updated")
 	}
+
+	s.proxmoxConnected = connected
+	s.proxmoxError = errorMsg
+}
+
+// updateProxmoxStatus updates the Proxmox connection status in a thread-safe way
+func (s *appState) updateProxmoxStatus(connected bool, errorMsg string) {
+	s.proxmoxMu.Lock()
+	defer s.proxmoxMu.Unlock()
+	s.updateProxmoxStatusInternal(connected, errorMsg)
 }
 
 // GetSettings returns the application settings

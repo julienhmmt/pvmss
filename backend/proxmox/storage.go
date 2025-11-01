@@ -24,21 +24,13 @@ type Storage struct {
 	Description string      `json:"description,omitempty"`
 }
 
-// GetStorages is a convenience function that retrieves the list of all available storages across all nodes.
-// It calls GetStoragesWithContext using the client's default timeout.
-func GetStorages(client ClientInterface) ([]Storage, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
-	defer cancel()
-	return GetStoragesWithContext(ctx, client)
-}
-
-// GetStoragesWithContext fetches the list of all storages from the `/storage` endpoint of the Proxmox API
-// using the provided context for timeout and cancellation control.
-func GetStoragesWithContext(ctx context.Context, client ClientInterface) ([]Storage, error) {
-	// Use the new GetJSON method to directly unmarshal into our typed response
+// GetStoragesResty fetches the list of all storages from the `/storage` endpoint of the Proxmox API
+// using resty for improved performance and error handling.
+func GetStoragesResty(ctx context.Context, restyClient *RestyClient) ([]Storage, error) {
 	var response ListResponse[Storage]
-	if err := client.GetJSON(ctx, "/storage", &response); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to fetch storages from Proxmox API")
+
+	if err := restyClient.Get(ctx, "/storage", &response); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to fetch storages from Proxmox API (resty)")
 		return nil, fmt.Errorf("failed to fetch storages: %w", err)
 	}
 
@@ -52,27 +44,21 @@ func GetStoragesWithContext(ctx context.Context, client ClientInterface) ([]Stor
 			Str("total", storage.Total.String()).
 			Str("avail", storage.Avail.String()).
 			Int("active", storage.Active).
-			Msg("Parsed storage entry")
+			Msg("Parsed storage entry (resty)")
 	}
 
-	logger.Get().Info().Int("count", len(response.Data)).Msg("Successfully fetched storage list")
+	logger.Get().Info().Int("count", len(response.Data)).Msg("Successfully fetched storage list (resty)")
 	return response.Data, nil
 }
 
-// GetNodeStorages returns storages with live status for a specific node from /nodes/{node}/storage.
-// It uses the client's default timeout.
-func GetNodeStorages(client ClientInterface, node string) ([]Storage, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), client.GetTimeout())
-	defer cancel()
-	return GetNodeStoragesWithContext(ctx, client, node)
-}
-
-// GetNodeStoragesWithContext fetches storages for a specific node with status fields (used/total/avail).
-func GetNodeStoragesWithContext(ctx context.Context, client ClientInterface, node string) ([]Storage, error) {
+// GetNodeStoragesResty fetches storages for a specific node with status fields (used/total/avail) using resty.
+// Endpoint: GET /nodes/{node}/storage
+func GetNodeStoragesResty(ctx context.Context, restyClient *RestyClient, node string) ([]Storage, error) {
 	var response ListResponse[Storage]
 	path := "/nodes/" + url.PathEscape(node) + "/storage"
-	if err := client.GetJSON(ctx, path, &response); err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Msg("Failed to fetch node storages from Proxmox API")
+
+	if err := restyClient.Get(ctx, path, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Msg("Failed to fetch node storages from Proxmox API (resty)")
 		return nil, fmt.Errorf("failed to fetch node storages: %w", err)
 	}
 
@@ -86,9 +72,9 @@ func GetNodeStoragesWithContext(ctx context.Context, client ClientInterface, nod
 			Str("total", storage.Total.String()).
 			Str("avail", storage.Avail.String()).
 			Int("active", storage.Active).
-			Msg("Parsed node storage entry")
+			Msg("Parsed node storage entry (resty)")
 	}
 
-	logger.Get().Info().Str("node", node).Int("count", len(response.Data)).Msg("Successfully fetched node storage list")
+	logger.Get().Info().Str("node", node).Int("count", len(response.Data)).Msg("Successfully fetched node storage list (resty)")
 	return response.Data, nil
 }

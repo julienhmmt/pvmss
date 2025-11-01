@@ -27,6 +27,16 @@ func SetFrontendPath(path string) {
 	// This will be set during initialization in main.go
 }
 
+// maxBodySizeMiddleware limits the size of request bodies globally
+func maxBodySizeMiddleware(next http.Handler, maxSize int64) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // getFrontendPath returns the frontend path from the state manager
 func getFrontendPath(sm state.StateManager) string {
 	if sm == nil {
@@ -128,9 +138,10 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	}
 
 	// Initialize all handlers
-	adminHandler := NewAdminHandler(stateManager)
+	adminHandler := NewAdminOptimizedHandler(stateManager)
 	adminVMsHandler := NewAdminVMsHandler(stateManager)
 	authHandler := NewAuthHandler(stateManager)
+	diskHandler := NewDiskHandler(stateManager)
 	docsHandler := NewDocsHandler()
 	healthHandler := NewHealthHandler(stateManager)
 	languageHandler := NewLanguageHandler()
@@ -140,6 +151,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	storageHandler := NewStorageHandler(stateManager)
 	tagsHandler := NewTagsHandler(stateManager)
 	userPoolHandler := NewUserPoolHandler(stateManager)
+	vmCreateHandler := NewVMCreateOptimizedHandler(stateManager)
 	vmHandler := NewVMHandler(stateManager)
 	vmbrHandler := NewVMBRHandler(stateManager)
 
@@ -148,6 +160,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		adminHandler,
 		adminVMsHandler,
 		authHandler,
+		diskHandler,
 		docsHandler,
 		healthHandler,
 		languageHandler,
@@ -158,6 +171,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 		storageHandler,
 		tagsHandler,
 		userPoolHandler,
+		vmCreateHandler,
 		vmHandler,
 		vmbrHandler,
 	)
@@ -210,6 +224,8 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	appHandler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(appHandler)
 	appHandler = middleware.RateLimitMiddleware(rateLimiter)(appHandler)
 	appHandler = trailingSlashRedirectMiddleware(appHandler)
+	// Limit request body size globally for the application to mitigate DoS via large uploads
+	appHandler = maxBodySizeMiddleware(appHandler, int64(constants.MaxFormSize))
 	appHandler = recoverMiddleware(appHandler) // Innermost recovery for the app
 
 	// Route requests to the appropriate middleware chain.
@@ -250,9 +266,10 @@ type handlerRegistrar interface {
 
 // setupRoutes configures all application routes
 func setupRoutes(
-	adminHandler *AdminHandler,
+	adminHandler *AdminOptimizedHandler,
 	adminVMsHandler *AdminVMsHandler,
 	authHandler *AuthHandler,
+	diskHandler *DiskHandler,
 	docsHandler *DocsHandler,
 	healthHandler *HealthHandler,
 	languageHandler *LanguageHandler,
@@ -263,6 +280,7 @@ func setupRoutes(
 	storageHandler *StorageHandler,
 	tagsHandler *TagsHandler,
 	userPoolHandler *UserPoolHandler,
+	vmCreateHandler *VMCreateOptimizedHandler,
 	vmHandler *VMHandler,
 	vmbrHandler *VMBRHandler,
 ) {
@@ -271,6 +289,7 @@ func setupRoutes(
 		adminHandler,
 		adminVMsHandler,
 		authHandler,
+		diskHandler,
 		docsHandler,
 		healthHandler,
 		languageHandler,
@@ -280,6 +299,7 @@ func setupRoutes(
 		storageHandler,
 		tagsHandler,
 		userPoolHandler,
+		vmCreateHandler,
 		vmHandler,
 		vmbrHandler,
 	}

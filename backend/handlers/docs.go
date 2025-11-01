@@ -85,9 +85,12 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 
 	if found {
 		log.Debug().Str("cache_key", cacheKey).Msg("Serving cached documentation")
-		// Serve from cache
+		titleKey := "Docs.User.Title"
+		if docType == "admin" {
+			titleKey = "Docs.Admin.Title"
+		}
 		data := map[string]interface{}{
-			"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), "Docs.User.Title"),
+			"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
 			"Content":     cached.HTML,
 			"CurrentLang": lang,
 			"DocType":     docType,
@@ -106,15 +109,38 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	}
 
 	// Read and convert markdown
-	content, err := os.ReadFile(docFile)
+	// Validate docFile path to prevent directory traversal
+	absDocFile, err := filepath.Abs(docFile)
 	if err != nil {
-		log.Error().Err(err).Str("file", docFile).Msg("Failed to read documentation")
+		log.Error().Err(err).Str("file", docFile).Msg("Invalid documentation file path")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Ensure the resolved file is under the configured docs directory
+	absDocsDir, err := filepath.Abs(h.docsDir)
+	if err != nil {
+		log.Error().Err(err).Str("docs_dir", h.docsDir).Msg("Invalid docs directory path")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	cleanedFile := filepath.Clean(absDocFile)
+	cleanedDir := filepath.Clean(absDocsDir)
+	if cleanedFile != cleanedDir && !strings.HasPrefix(cleanedFile+string(os.PathSeparator), cleanedDir+string(os.PathSeparator)) {
+		log.Warn().Str("file", cleanedFile).Str("docs_dir", cleanedDir).Msg("Attempt to access file outside docs directory")
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+
+	content, err := os.ReadFile(absDocFile) // #nosec G304 - absDocFile validated and confined under docs directory
+	if err != nil {
+		log.Error().Err(err).Str("file", absDocFile).Msg("Failed to read documentation")
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	// Convert Markdown to HTML
-	htmlContent := template.HTML(markdown.ToHTML(content, nil, nil))
+	htmlContent := template.HTML(markdown.ToHTML(content, nil, nil)) // #nosec G203 - Source markdown files are trusted and come from local docs directory
 
 	// Store in cache
 	h.mu.Lock()
@@ -126,8 +152,12 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 
 	log.Debug().Str("cache_key", cacheKey).Msg("Documentation cached")
 
-	// Prepare data for the template
+	titleKey := "Docs.User.Title"
+	if docType == "admin" {
+		titleKey = "Docs.Admin.Title"
+	}
 	data := map[string]interface{}{
+		"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
 		"Content":     htmlContent,
 		"CurrentLang": finalLang,
 		"DocType":     docType,

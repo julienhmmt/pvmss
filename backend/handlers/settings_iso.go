@@ -30,14 +30,20 @@ type NodeISOGroup struct {
 	ISOs []ISOEntry `json:"isos"`
 }
 
-// fetchAllISOs retrieves all ISOs from all nodes and storages
-func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.ClientInterface, checkEnabled bool) ([]ISOEntry, error) {
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+// fetchAllISOs retrieves all ISOs from all nodes and storages using resty
+func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, error) {
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		return nil, err
 	}
 
-	storages, err := proxmox.GetStoragesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		return nil, err
+	}
+
+	storages, err := proxmox.GetStoragesResty(ctx, restyClient)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +68,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 				continue
 			}
 
-			isoList, err := proxmox.GetISOListWithContext(ctx, client, nodeName, storage.Storage)
+			isoList, err := proxmox.GetISOListResty(ctx, restyClient, nodeName, storage.Storage)
 			if err != nil {
 				logger.Get().Debug().Err(err).
 					Str("node", nodeName).
@@ -120,26 +126,26 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	builder := NewTemplateData("").
+		SetAdminActive("iso").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.ISO.Title").
+		AddData("ISOsList", []ISOInfo{}).
+		AddData("EnabledISOs", enabledMap).
+		AddData("AllISOs", []ISOEntry{}).
+		AddData("ISOGroupByNode", []NodeISOGroup{})
 
-	data := AdminPageDataWithMessage("ISO Management", "iso", successMsg, "")
-	data["ISOsList"] = []ISOInfo{}
-	data["EnabledISOs"] = enabledMap
-	data["ProxmoxConnected"] = proxmoxConnected
-	data["AllISOs"] = []ISOEntry{}
-	data["ISOGroupByNode"] = []NodeISOGroup{}
-
-	// Return early if Proxmox not connected
-	if !proxmoxConnected {
-		data["Warning"] = "Proxmox connection unavailable. Displaying cached ISO data."
-		renderTemplateInternal(w, r, "admin_iso", data)
-		return
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client is nil despite connection status being true")
-		data["Warning"] = "Proxmox client unavailable."
+	data := builder.Build().ToMap()
+
+	// Return early if Proxmox not connected
+	if !data["ProxmoxConnected"].(bool) {
+		data["Warning"] = "Proxmox connection unavailable. Displaying cached ISO data."
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
@@ -148,7 +154,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	defer cancel()
 
 	// Fetch all ISOs with enabled check
-	isos, err := h.fetchAllISOs(ctx, client, true)
+	isos, err := h.fetchAllISOs(ctx, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
 		data["Warning"] = "Failed to fetch ISOs from Proxmox."

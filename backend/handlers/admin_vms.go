@@ -59,6 +59,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	// Proxmox connection status
 	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
+	offlineMode := h.stateManager.IsOfflineMode()
 
 	var vms []AdminVMInfo
 	var totalVMs int
@@ -69,7 +70,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 		defer cancel()
 
 		// Get all VMs with pvmss tag first to get total count
-		allVMs, errMsg := h.getVMsWithPVMSSTag(ctx, client)
+		allVMs, errMsg := h.getVMsWithPVMSSTag(ctx)
 		if errMsg == "" {
 			totalVMs = len(allVMs)
 
@@ -87,11 +88,15 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 			log.Warn().Str("error", errMsg).Msg("Failed to retrieve VMs")
 		}
 	} else {
-		errMsg = "Proxmox connection not available"
-		if proxmoxMsg != "" {
-			errMsg = proxmoxMsg
+		if offlineMode {
+			log.Info().Msg("Offline mode enabled; skipping Proxmox VM retrieval")
+		} else {
+			errMsg = "Proxmox connection not available"
+			if proxmoxMsg != "" {
+				errMsg = proxmoxMsg
+			}
+			log.Warn().Msg("Proxmox client is not initialized")
 		}
-		log.Warn().Msg("Proxmox client is not initialized")
 	}
 
 	// Build success message from query params
@@ -123,46 +128,66 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	from := offset + 1
 	to := offset + len(vms)
 
-	data := AdminPageDataWithMessage("PVMSS Virtual Machines", "vms", successMsg, errMsg)
-	data["ProxmoxConnected"] = proxmoxConnected
-	data["VMs"] = vms
-	data["TotalVMs"] = totalVMs
-	data["CurrentPage"] = page
-	data["Limit"] = limit
-	data["TotalPages"] = totalPages
-	data["HasNextPage"] = hasNextPage
-	data["HasPrevPage"] = hasPrevPage
-	data["NextPage"] = page + 1
-	data["PrevPage"] = page - 1
-	data["PaginationPages"] = paginationPages
-	data["PaginationInfo"] = map[string]int{
-		"From": from,
-		"To":   to,
+	builder := NewTemplateData("").
+		SetAdminActive("vms").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.VMs.Title").
+		AddData("VMs", vms).
+		AddData("TotalVMs", totalVMs).
+		AddData("CurrentPage", page).
+		AddData("Limit", limit).
+		AddData("TotalPages", totalPages).
+		AddData("HasNextPage", hasNextPage).
+		AddData("HasPrevPage", hasPrevPage).
+		AddData("NextPage", page+1).
+		AddData("PrevPage", page-1).
+		AddData("PaginationPages", paginationPages).
+		AddData("PaginationInfo", map[string]int{
+			"From": from,
+			"To":   to,
+		}).
+		AddData("OfflineMode", offlineMode)
+
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
+	}
+	if errMsg != "" {
+		builder.SetError(errMsg)
 	}
 
+	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_vms", data)
 }
 
-// getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag
-func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context, client proxmox.ClientInterface) ([]AdminVMInfo, string) {
+// getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag using resty
+func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo, string) {
 	log := logger.Get().With().
 		Str("function", "getVMsWithPVMSSTag").
 		Logger()
 
-	// Get all VMs from Proxmox
-	allVMs, err := proxmox.GetVMsWithContext(ctx, client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get VMs")
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, "Failed to create API client"
+	}
+
+	// Get all VMs from Proxmox using resty
+	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get VMs (resty)")
 		return nil, "Failed to retrieve VMs from Proxmox"
 	}
 
-	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs")
+	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")
 
 	// Filter VMs with pvmss tag
 	results := []AdminVMInfo{}
 	for _, vm := range allVMs {
 		// Get VM config to check for pvmss tag
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
 			log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config, skipping")
 			continue

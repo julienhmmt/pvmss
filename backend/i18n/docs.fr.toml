@@ -1,0 +1,9 @@
+# Documentation
+["Docs.Admin.Description"]
+other = "Guide complet pour l'administration et la configuration de PVMSS"
+["Docs.Admin.Title"]
+other = "Documentation administrateur"
+["Docs.User.Description"]
+other = "Instructions pour utiliser PVMSS et gérer vos machines virtuelles"
+["Docs.User.Title"]
+other = "Documentation utilisateur"

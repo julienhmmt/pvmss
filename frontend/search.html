@@ -1,7 +1,6 @@
 {{define "search"}}
 {{$lang := .Lang}}
 
-<!-- Search Page Template -->
 <section class="section">
     <div class="container">
         <!-- Page Header -->
@@ -21,11 +20,11 @@
             <div class="level-right">
                 <div class="level-item">
                     <div class="buttons">
-                        <a href="/vm/create" class="button is-primary has-text-white">
+                        <a href="/vm/create" class="button is-primary">
                             <span class="icon"><i class="fas fa-plus-square"></i></span>
                             <span>{{T "Profile.CreateVM"}}</span>
                         </a>
-                        <a href="/profile" class="button is-link is-light">
+                        <a href="/profile" class="button is-primary is-light has-text-dark">
                             <span class="icon"><i class="fas fa-user"></i></span>
                             <span>{{T "Profile.MyProfile"}}</span>
                         </a>
@@ -55,7 +54,7 @@
                                     <span>{{T "Search.VMID"}}</span>
                                 </label>
                                 <div class="control has-icons-left">
-                                    <input class="input" type="number" id="vmid" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{T "Search.PlaceholderVMID"}}" min="1" max="999999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}>
+                                    <input class="input is-medium" type="number" id="vmid" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{T "Search.PlaceholderVMID"}}" min="1" max="999999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}>
                                     <span class="icon is-small is-left">
                                         <i class="fas fa-hashtag"></i>
                                     </span>
@@ -71,7 +70,7 @@
                                     <span>{{T "Search.Name"}}</span>
                                 </label>
                                 <div class="control has-icons-left">
-                                    <input class="input" type="text" id="name" name="name" autocomplete="off" placeholder="{{T "Search.PlaceholderName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}>
+                                    <input class="input is-medium" type="text" id="name" name="name" autocomplete="off" placeholder="{{T "Search.PlaceholderName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}>
                                     <span class="icon is-small is-left">
                                         <i class="fas fa-tag"></i>
                                     </span>
@@ -84,13 +83,13 @@
                     
                     <div class="field is-grouped is-grouped-right">
                         <div class="control">
-                            <a href="/search" class="button is-light">
+                            <a href="/search" class="button is-light is-medium">
                                 <span class="icon"><i class="fas fa-eraser"></i></span>
                                 <span>{{T "Search.Clear"}}</span>
                             </a>
                         </div>
                         <div class="control">
-                            <button type="submit" class="button is-primary">
+                            <button type="submit" class="button is-primary is-medium">
                                 <span class="icon"><i class="fas fa-search"></i></span>
                                 <span>{{T "Search.Submit"}}</span>
                             </button>
@@ -200,4 +199,111 @@
         {{end}}
     </div>
 </section>
+
+<script>
+// Live search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const vmidInput = document.getElementById('vmid');
+    const nameInput = document.getElementById('name');
+    const tableRows = document.querySelectorAll('table tbody tr');
+    
+    if (!vmidInput || !nameInput || tableRows.length === 0) {
+        return; // Exit if we're not on search results page
+    }
+
+    function filterTable() {
+        const vmidValue = vmidInput.value.trim();
+        const nameValue = nameInput.value.trim().toLowerCase();
+        
+        tableRows.forEach(row => {
+            const vmidCell = row.querySelector('td:nth-child(1)'); // VMID column
+            const nameCell = row.querySelector('td:nth-child(2)');  // Name column
+            
+            if (!vmidCell || !nameCell) return;
+            
+            const vmidText = vmidCell.textContent.trim();
+            const nameText = nameCell.textContent.trim().toLowerCase();
+            
+            // Check if row matches both filters
+            const vmidMatch = vmidValue === '' || vmidText.includes(vmidValue);
+            const nameMatch = nameText.includes(nameValue);
+            
+            if (vmidMatch && nameMatch) {
+                row.style.display = '';
+                // Add highlight class for matching cells
+                if (vmidValue && vmidText.includes(vmidValue)) {
+                    vmidCell.style.backgroundColor = 'rgba(255, 136, 0, 0.1)';
+                } else {
+                    vmidCell.style.backgroundColor = '';
+                }
+                
+                if (nameValue && nameText.includes(nameValue)) {
+                    nameCell.style.backgroundColor = 'rgba(255, 136, 0, 0.1)';
+                } else {
+                    nameCell.style.backgroundColor = '';
+                }
+            } else {
+                row.style.display = 'none';
+                vmidCell.style.backgroundColor = '';
+                nameCell.style.backgroundColor = '';
+            }
+        });
+        
+        // Update results count
+        const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
+        updateResultsCount(visibleRows.length);
+    }
+
+    function updateResultsCount(count) {
+        let countElement = document.getElementById('live-results-count');
+        if (!countElement) {
+            // Create count element if it doesn't exist
+            const resultsHeader = document.querySelector('.card-header-title');
+            if (resultsHeader) {
+                countElement = document.createElement('span');
+                countElement.id = 'live-results-count';
+                countElement.className = 'tag is-info is-light';
+                countElement.style.marginLeft = '0.5rem';
+                resultsHeader.appendChild(countElement);
+            }
+        }
+        
+        if (countElement) {
+            countElement.textContent = count + ' filtered';
+        }
+    }
+
+    // Add event listeners with debouncing
+    let debounceTimer;
+    function debouncedFilter() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(filterTable, 300);
+    }
+
+    vmidInput.addEventListener('input', debouncedFilter);
+    nameInput.addEventListener('input', debouncedFilter);
+    
+    // Clear highlights when inputs are cleared
+    vmidInput.addEventListener('change', function() {
+        if (this.value.trim() === '') {
+            tableRows.forEach(row => {
+                const vmidCell = row.querySelector('td:nth-child(1)');
+                if (vmidCell) vmidCell.style.backgroundColor = '';
+            });
+        }
+    });
+    
+    nameInput.addEventListener('change', function() {
+        if (this.value.trim() === '') {
+            tableRows.forEach(row => {
+                const nameCell = row.querySelector('td:nth-child(2)');
+                if (nameCell) nameCell.style.backgroundColor = '';
+            });
+        }
+    });
+    
+    // Initial filter
+    filterTable();
+});
+</script>
 {{end}}

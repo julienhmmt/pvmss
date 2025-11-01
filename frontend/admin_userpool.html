@@ -8,7 +8,7 @@
   {{template "notification" (dict 
     "Type" "danger" 
     "Title" (T "Common.Error") 
-    "Message" .Error 
+    "Message" .ErrorMessage 
     "Icon" "fas fa-exclamation-triangle" 
     "Dismissible" true 
     "Light" false 
@@ -76,7 +76,7 @@
       
       <div class="field is-grouped is-grouped-right">
         <div class="control">
-          <button class="button is-primary has-text-white" type="submit">
+          <button class="button is-primary is-medium" type="submit">
             <span class="icon is-small"><i class="fas fa-plus"></i></span>
             <span>{{T "Common.Create"}}</span>
           </button>

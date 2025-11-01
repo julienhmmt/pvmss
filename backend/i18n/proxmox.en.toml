@@ -1,0 +1,23 @@
+# Proxmox
+["Proxmox.ConnectionError"]
+other = "Connection error"
+["Proxmox.ConnectionErrorDescription"]
+other = "Please check the Proxmox host connection and try again."
+["Proxmox.ConnectionErrorTitle"]
+other = "Connection error"
+["Proxmox.ConnectionRequired"]
+other = "Proxmox connection required"
+["Proxmox.NotConnected"]
+other = "Proxmox host is down or not connected"
+["Proxmox.NotConnectedMessage"]
+other = "Cannot create VM: Proxmox host is not connected."
+["Proxmox.NotConnectedTitle"]
+other = "Proxmox host is down or not connected"
+["Proxmox.CheckConnection"]
+other = "Please check the Proxmox host connection and try again."
+["Proxmox.CheckConnectionTitle"]
+other = "Connection error"
+["Proxmox.OfflineModeEnabled"]
+other = "Offline mode enabled (PVMSS_OFFLINE=true)"
+["Proxmox.ClientNotInitialized"]
+other = "Proxmox client not initialized"

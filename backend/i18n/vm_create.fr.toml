@@ -1,0 +1,211 @@
+# VM Create
+["VM.Create.Configuration"]
+other = "Configuration de la VM"
+["VM.Bridge.Description"]
+other = "Pont pour le réseau de la machine virtuelle"
+
+# VM Creation - Form Sections
+["VM.Create.AddTags"]
+other = "Ajouter des étiquettes"
+["VM.Create.AvailableTags"]
+other = "Étiquettes disponibles"
+["VM.Create.BasicInfo"]
+other = "Informations de base"
+["VM.Create.CreateButton"]
+other = "Créer la VM"
+["VM.Create.CPUCores"]
+other = "Cœurs par socket"
+["VM.Create.CPUSockets"]
+other = "Sockets CPU"
+["VM.Create.Description"]
+other = "Description"
+["VM.Create.DescriptionPlaceholder"]
+other = "Entrez une description (markdown supporté)"
+["VM.Create.DiskSize"]
+other = "Taille du disque (Go)"
+["VM.Create.DiskSizeHelp"]
+other = "Taille du disque en gigaoctets (8 Go minimum)"
+["VM.Create.DiskBusType"]
+other = "Type de bus de disque"
+["VM.Create.DiskBusMax"]
+other = "max"
+["VM.Create.DiskBusTypeHelp"]
+other = "Choisissez le type de contrôleur de disque. Chaque type a un nombre maximum de disques différent."
+["VM.Create.DiskBusDesc.VirtIO"]
+other = "Meilleures performances pour les systèmes modernes. Pilote paravirtualisé. Maximum 16 disques."
+["VM.Create.DiskBusDesc.SCSI"]
+other = "Bon compromis entre compatibilité et performances. Pilote VirtIO-SCSI. Maximum 14 disques."
+["VM.Create.DiskBusDesc.SATA"]
+other = "Compatibilité universelle, aucun pilote supplémentaire nécessaire. Maximum 6 disques."
+["VM.Create.DiskBusDesc.IDE"]
+other = "Mode ancien pour systèmes très anciens. Performances limitées. Maximum 4 disques seulement."
+["VM.Create.DiskOptional"]
+other = "Optionnel"
+["VM.Create.DiskOptionalPlaceholder"]
+other = "Laisser vide si non nécessaire"
+["VM.Create.Header"]
+other = "Créer une machine virtuelle"
+["VM.Create.ISO"]
+other = "Image ISO"
+["VM.Create.ISOImageHelp"]
+other = "Sélectionnez une image ISO pour installer le système d'exploitation"
+["VM.Create.MediaNetwork"]
+other = "Image ISO & Réseau"
+["VM.Create.Memory"]
+other = "Mémoire (Mo)"
+["VM.Create.MemoryHelp"]
+other = "Quantité de mémoire en mégaoctets (512 Mo minimum)"
+["VM.Create.Network"]
+other = "Configuration réseau"
+["VM.Create.NetworkBridge"]
+other = "Pont réseau"
+["VM.Create.NetworkBridgeHelp"]
+other = "Sélectionnez un pont réseau pour connecter la VM"
+["VM.Create.NetworkModel"]
+other = "Modèle de carte réseau"
+["VM.Create.NetworkModelHelp"]
+other = "Choisissez la carte réseau virtuelle la mieux adaptée à votre système."
+["VM.Create.NetworkModelDesc.Virtio"]
+other = "Meilleures performances. Recommandé pour les systèmes modernes (pilote VirtIO requis sous Windows)."
+["VM.Create.NetworkModelDesc.E1000"]
+other = "Compatibilité universelle. Fonctionne immédiatement sur la plupart des systèmes sans pilote supplémentaire."
+["VM.Create.NetworkModelDesc.E1000E"]
+other = "Adaptateur Intel plus récent avec large compatibilité et prise en charge native."
+["VM.Create.NetworkModelDesc.RTL8139"]
+other = "Adaptateur historique pour anciens systèmes (ex. Windows XP/2000). Limité à 100 Mbps."
+["VM.Create.NetworkModelDesc.VMXNet3"]
+other = "Adaptateur hautes performances pour les VM migrées depuis VMware/vSphere. Nécessite VMware Tools."
+["VM.Create.NetworkModel.Virtio"]
+other = "VirtIO (recommandé - meilleures performances, nécessite un pilote sous Windows)"
+["VM.Create.NetworkModel.E1000"]
+other = "Intel E1000 (compatibilité universelle, aucun pilote requis)"
+["VM.Create.NetworkModel.E1000E"]
+other = "Intel E1000E (compatibilité universelle, aucun pilote requis)"
+["VM.Create.NetworkModel.RTL8139"]
+other = "Realtek RTL8139 (systèmes anciens)"
+["VM.Create.NetworkModel.VMXNet3"]
+other = "VMware VMXNet3 (pour les VM importées de VMware vSphere)"
+["VM.Create.NoBridges"]
+other = "Aucun pont réseau disponible"
+["VM.Create.NetworkOptional"]
+other = "Optionnel"
+["VM.Create.NoNetwork"]
+other = "Aucun réseau"
+["VM.Create.NoTagsAvailable"]
+other = "Aucune étiquette disponible"
+["VM.Create.NoBridgesAvailable"]
+other = "Aucun pont réseau disponible"
+["VM.Create.NoISOs"]
+other = "Aucune image ISO disponible. Veuillez contacter un administrateur."
+["VM.Create.NoISOsAvailable"]
+other = "Aucune image ISO disponible"
+["VM.Create.ResetButton"]
+other = "Réinitialiser"
+["VM.Create.Resources"]
+other = "Ressources"
+["VM.Create.SelectISO"]
+other = "Sélectionnez une ISO"
+["VM.Create.SelectNetwork"]
+other = "Sélectionnez un pont réseau"
+["VM.Create.Storage"]
+other = "Stockage (Go)"
+["VM.Create.StartVM"]
+other = "Démarrer la VM immédiatement après sa création"
+["VM.Create.StartVMHelp"]
+other = "Démarrer la VM immédiatement après sa création"
+["VM.Create.Tags"]
+other = "Étiquettes"
+["VM.Create.ISOImage"]
+other = "Image ISO"
+["VM.Create.TagsHelp"]
+other = "Sélectionnez un ou plusieurs tags (PVMSS est requis)"
+["VM.Create.TagsPlaceholder"]
+other = "Appuyez sur entrée pour ajouter une étiquette"
+["VM.Create.BootOptions"]
+other = "Options de démarrage"
+["VM.Create.EnableEFI"]
+other = "Activer le démarrage EFI (UEFI)"
+["VM.Create.EFIHelp"]
+other = "Active le firmware UEFI (OVMF) pour les systèmes d'exploitation modernes. Requis pour Windows 11, Secure Boot et les disques GPT."
+["VM.Create.EnableTPM"]
+other = "Activer le TPM (Trusted Platform Module)"
+["VM.Create.TPMHelp"]
+other = "Active le Trusted Platform Module v2.0 pour des fonctionnalités de sécurité avancées. Requis pour Windows 11, le chiffrement BitLocker et le démarrage sécurisé. Un disque d'état TPM de 4 Mio sera créé."
+["VM.Create.Title"]
+other = "Créer une nouvelle machine virtuelle"
+["VM.Create.VMName"]
+other = "Nom de la VM"
+["VM.Create.VMNameHelp"]
+other = "Un nom unique pour votre machine virtuelle"
+["VM.Create.VMNamePlaceholder"]
+other = "ex. ma-vm-01"
+["VM.Create.VMID"]
+other = "ID VM (Optionnel)"
+["VM.Create.VMID.Help"]
+other = "Si vous laissez ce champ vide, le prochain ID de VM disponible sera automatiquement attribué."
+["VM.Create.VMIDPlaceholder"]
+other = "Auto-attribué si vide"
+["VM.Create.SelectStorage"]
+other = "Sélectionnez un stockage"
+["VM.Create.NoStoragesAvailable"]
+other = "Aucun stockage disponible"
+["VM.Create.ProxmoxNode"]
+other = "Noeud Proxmox"
+["VM.Create.ProxmoxNodeHelp"]
+other = "Sélectionnez le nœud Proxmox où votre VM sera créée. Seuls les nœuds avec des ressources disponibles sont affichés. Les options de stockage et réseau sont filtrées en fonction du nœud sélectionné."
+["VM.Create.ResourcePool"]
+other = "Pool de ressources"
+["VM.Create.ResourceLimitsTitle"]
+other = "Limites de ressources atteintes"
+["VM.Create.ResourceLimitsMessage"]
+other = "Tous les nœuds ont atteint leurs limites de ressources. Vous ne pouvez pas créer de nouvelles machines virtuelles avant que des ressources ne soient libérées ou que les limites soient augmentées."
+["VM.Create.StorageHelp"]
+other = "Sélectionnez un stockage pour votre machine virtuelle"
+["VM.Create.NodeLimitReached"]
+other = "Ce nœud a atteint ses limites de ressources PVMSS. Veuillez choisir un autre nœud ou contactez l'administrateur."
+
+# VM Creation - Tooltips
+["VM.Create.Tooltip.Name"]
+other = "Nom de votre machine virtuelle. Utilisez un nom descriptif pour faciliter la gestion ou en cohérence avec les normes de votre organisation (ex : web-server, jh-pvmss-01-fr)."
+["VM.Create.Tooltip.Description"]
+other = "Description de la VM. Ajoutez des informations sur le projet, l'environnement ou les services hébergés. Le markdown est supporté."
+["VM.Create.Tooltip.VMID"]
+other = "Identifiant unique de la VM dans Proxmox (100-999999999). Cet ID permet de retrouver et d'organiser les machines virtuelles. Laissez vide pour génération automatique."
+["VM.Create.Tooltip.CPU"]
+other = "Configuration des ressources CPU : sockets = nombre de CPU physiques (ne pas excéder le nombre de sockets disponibles), cores = nombre de cœurs par socket. Plus de cores peut améliorer les performances multi-tâches, selon le type d'utilisation."
+["VM.Create.Tooltip.Memory"]
+other = "Mémoire vive allouée à la VM en mégaoctets (MB). Recommandé : minimum 2048 MB (2 GB)."
+["VM.Create.Tooltip.DiskSize"]
+other = "Taille du disque virtuel en gigaoctets (GB). Prévoyez l'espace pour le système d'exploitation, les applications et vos données. Extensible ultérieurement si nécessaire."
+["VM.Create.Tooltip.Storage"]
+other = "Emplacement où sera créé le disque de la VM. Suivez les instructions ou demandez aux administrateurs pour sélectionner le stockage approprié."
+["VM.Create.Tooltip.Node"]
+other = "Serveur Proxmox physique où sera hébergée la VM. Suivez les instructions ou demandez aux administrateurs pour sélectionner le nœud approprié."
+["VM.Create.Tooltip.Pool"]
+other = "Pool de ressources Proxmox pour regrouper et gérer vos VMs. Chaque utilisateur dispose d'un pool dédié pour l'organisation et les quotas."
+["VM.Create.Tooltip.ISO"]
+other = "Image ISO du système d'exploitation à installer (Linux, Windows, etc.). L'ISO sera monté comme un CD-ROM virtuel au démarrage de la VM une seule fois."
+["VM.Create.Tooltip.Network"]
+other = "Connexion réseau virtuelle pour la VM. Détermine le réseau auquel la VM aura accès (Internet, réseau interne, VLAN spécifique)."
+["VM.Create.Tooltip.Tags"]
+other = "Étiquettes de catégorisation pour organiser vos VMs. Cliquez sur un tag pour le sélectionner. Le tag 'pvmss' est obligatoire et ne peut pas être modifié."
+["VM.Create.Tooltip.EFI"]
+other = "Active le firmware UEFI (OVMF) pour les systèmes d'exploitation modernes. Requis pour Windows 11, Secure Boot et les disques GPT."
+["VM.Create.Tooltip.TPM"]
+other = "Active le Trusted Platform Module v2.0 pour des fonctionnalités de sécurité avancées. Requis pour Windows 11, le chiffrement BitLocker et le démarrage sécurisé. Un disque d'état TPM de 4 Mio sera créé."
+["VM.Create.Tooltip.StartVM"]
+other = "Démarrer la VM immédiatement après sa création."
+["VM.Create.Tooltip.NetworkModel"]
+other = "Modèle de carte réseau virtuelle pour la VM. Détermine le type de carte réseau à utiliser (VirtIO, E1000, E1000E, RTL8139, VMXNet3)."
+["VM.Create.Tooltip.DiskBusType"]
+other = "Type de contrôleur de disque pour la VM. Détermine le type de contrôleur de disque à utiliser (VirtIO, SCSI, SATA, IDE)."
+["VM.Create.NetworkEnabled"]
+other = "Activer la carte réseau"
+["VM.Create.NetworkEnabledHelp"]
+other = "Activer/désactiver la carte réseau. Lorsque désactivée, l'interface réseau sera créée mais restera inactive (pas de trafic)."
+["VM.Create.Tooltip.NetworkEnabled"]
+other = "Activer ou désactiver la carte réseau. Lorsque désactivée, l'interface réseau est créée mais reste inactive jusqu'à ce qu'elle soit manuellement activée dans la VM ou Proxmox."
+["VM.Create.NoNodesAvailableTitle"]
+other = "Aucun nœud disponible"
+["VM.Create.NoNodesAvailableMessage"]
+other = "Aucun nœud Proxmox n'est actuellement disponible. Ceci peut être dû à des problèmes de connectivité réseau ou des nœuds hors ligne. Veuillez contacter votre administrateur."

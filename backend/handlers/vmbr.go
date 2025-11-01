@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
 
 	"github.com/julienschmidt/httprouter"
+
+	"pvmss/proxmox"
 	"pvmss/state"
 )
 
@@ -34,6 +37,8 @@ func buildVMBRSuccessMessage(r *http.Request) string {
 		return "VMBR '" + name + "' enabled"
 	case "disable":
 		return "VMBR '" + name + "' disabled"
+	case "update_network_cards":
+		return "Network cards configuration updated successfully"
 	default:
 		return "VMBR settings updated"
 	}
@@ -42,6 +47,51 @@ func buildVMBRSuccessMessage(r *http.Request) string {
 // VMBRHandler handles VMBR-related operations.
 type VMBRHandler struct {
 	stateManager state.StateManager
+}
+
+// UpdateNetworkCardsHandler updates the maximum number of network cards per VM
+func (h *VMBRHandler) UpdateNetworkCardsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("UpdateNetworkCardsHandler", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	maxNetworkCardsStr := r.FormValue("max_network_cards")
+	if maxNetworkCardsStr == "" {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	maxNetworkCards := 1
+	if _, err := fmt.Sscanf(maxNetworkCardsStr, "%d", &maxNetworkCards); err != nil {
+		log.Error().Err(err).Str("value", maxNetworkCardsStr).Msg("Failed to parse max_network_cards")
+		http.Error(w, "Invalid number", http.StatusBadRequest)
+		return
+	}
+
+	// Validate range (1-10)
+	if maxNetworkCards < 1 || maxNetworkCards > 10 {
+		log.Warn().Int("value", maxNetworkCards).Msg("Max network cards out of range, clamping")
+		if maxNetworkCards < 1 {
+			maxNetworkCards = 1
+		} else {
+			maxNetworkCards = 10
+		}
+	}
+
+	settings := h.stateManager.GetSettings()
+	settings.MaxNetworkCards = maxNetworkCards
+
+	if err := h.stateManager.SetSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Failed to update settings")
+		http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+		return
+	}
+
+	log.Info().Int("max_network_cards", maxNetworkCards).Msg("Updated max network cards setting")
+	redirectURL := "/admin/vmbr?success=1&action=update_network_cards"
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // ToggleVMBRHandler toggles a single VMBR enable state (auto-save without JS)
@@ -53,11 +103,15 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	}
 
 	name := r.FormValue("vmbr")
+	node := r.FormValue("node")
 	action := r.FormValue("action") // enable|disable
-	if name == "" || (action != "enable" && action != "disable") {
+	if name == "" || node == "" || (action != "enable" && action != "disable") {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+
+	// Create unique identifier combining node and vmbr name
+	uniqueID := node + ":" + name
 
 	settings := h.stateManager.GetSettings()
 	if settings.VMBRs == nil {
@@ -71,13 +125,13 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 
 	changed := false
 	if action == "enable" {
-		if !enabled[name] {
-			settings.VMBRs = append(settings.VMBRs, name)
+		if !enabled[uniqueID] {
+			settings.VMBRs = append(settings.VMBRs, uniqueID)
 			changed = true
 		}
 	} else { // disable
-		if enabled[name] {
-			settings.VMBRs = removeFromList(settings.VMBRs, name)
+		if enabled[uniqueID] {
+			settings.VMBRs = removeFromList(settings.VMBRs, uniqueID)
 			changed = true
 		}
 	}
@@ -104,7 +158,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	log := CreateHandlerLogger("VMBRPageHandler", r)
 
 	client := h.stateManager.GetProxmoxClient()
-	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 
 	// Collect all VMBRs using common helper when online; otherwise short-circuit
 	var allVMBRs []map[string]string
@@ -121,6 +175,12 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		log.Info().Int("vmbr_total", len(allVMBRs)).Msg("Total VMBRs prepared for template")
 	}
 
+	// Get all nodes for the selector
+	var allNodes []string
+	if client != nil {
+		allNodes, _ = proxmox.GetNodeNames(client)
+	}
+
 	// Get current settings to check which VMBRs are enabled
 	settings := h.stateManager.GetSettings()
 	enabledVMBRs := make(map[string]bool, len(settings.VMBRs))
@@ -134,10 +194,13 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Map to template shape used previously: name field instead of iface
 	vmbrsForTemplate := make([]map[string]string, 0, len(allVMBRs))
 	for _, v := range allVMBRs {
+		// Create unique identifier combining node and vmbr name
+		uniqueID := v["node"] + ":" + v["iface"]
 		vmbrsForTemplate = append(vmbrsForTemplate, map[string]string{
 			"node":        v["node"],
 			"name":        v["iface"],
 			"description": v["description"],
+			"unique_id":   uniqueID,
 		})
 	}
 
@@ -162,18 +225,25 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		})
 	}
 
-	templateData := AdminPageDataWithMessage("VMBR Management", "vmbr", successMsg, "")
-	templateData["VMBRs"] = vmbrsForTemplate
-	templateData["EnabledVMBRs"] = enabledVMBRs
-	if err != nil {
-		templateData["Error"] = err.Error()
+	builder := NewTemplateData("").
+		SetAdminActive("vmbr").
+		SetAuth(r).
+		SetProxmoxStatus(h.stateManager).
+		ParseMessages(r).
+		AddData("TitleKey", "Admin.VMBR.Title").
+		AddData("EnabledVMBRs", enabledVMBRs).
+		AddData("Nodes", allNodes).
+		AddData("MaxNetworkCards", settings.MaxNetworkCards).
+		AddData("VMBRs", vmbrsForTemplate)
+
+	if successMsg != "" {
+		builder.SetSuccess(successMsg)
 	}
-	// Pass Proxmox status flags for consistent UI behavior
-	templateData["ProxmoxConnected"] = proxmoxConnected
-	if !proxmoxConnected && proxmoxMsg != "" {
-		templateData["ProxmoxError"] = proxmoxMsg
+	if err != nil {
+		builder.AddData("Error", err.Error())
 	}
 
+	templateData := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 
@@ -186,4 +256,7 @@ func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
 		"page":   h.VMBRPageHandler,
 		"toggle": h.ToggleVMBRHandler,
 	})
+
+	// Register custom route for network cards configuration
+	routeHelpers.helpers.RegisterAdminRoute(router, "POST", "/admin/vmbr/update-network-cards", h.UpdateNetworkCardsHandler)
 }

@@ -1,0 +1,43 @@
+# Admin - Storage Management
+["Admin.Storage.Description"]
+other = "View and manage storage spaces available for virtual machines."
+["Admin.Storage.Error"]
+other = "Error retrieving storage information. Please check the backend logs."
+["Admin.Storage.Header.Content"]
+other = "Content"
+["Admin.Storage.Header.Name"]
+other = "Name"
+["Admin.Storage.Header.Usage"]
+other = "Usage"
+["Admin.Storage.Header.Type"]
+other = "Type"
+["Admin.Storage.NoStorages"]
+other = "No storage found that can be used for virtual machines."
+["Admin.Storage.Title"]
+other = "Storage management"
+["Admin.Storage.DiskConfig"]
+other = "Disk configuration"
+["Admin.Storage.MaxDiskPerVM"]
+other = "Maximum disks per VM"
+["Admin.Storage.MaxDiskPerVMHelp"]
+other = "Maximum number of disk devices that can be attached to a VM (1-16)"
+["Admin.Storage.NoDataAvailable"]
+other = "Usage data not available"
+["Admin.Storage.RefreshData"]
+other = "Refresh storage data"
+["Admin.Storage.NoDataAvailableHelp"]
+other = "Storage usage data could not be retrieved from Proxmox. This may be due to API limitations or storage type not supporting usage statistics."
+["Admin.Storage.FromCache"]
+other = "Data from cache (node offline)"
+["Admin.Storage.Cached"]
+other = "Cached"
+["Admin.Storage.Node"]
+other = "Node"
+["Admin.Storage.NodeOffline"]
+other = "Node is offline - actions disabled"
+["Admin.Storage.FilterByNode"]
+other = "Filter by node"
+["Admin.Storage.AllNodes"]
+other = "All nodes"
+["Admin.Storage.ShowAllNodes"]
+other = "Show all nodes"

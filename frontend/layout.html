@@ -14,11 +14,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>
         {{- if .Title -}}
-            {{.Title}} - {{T "UI.Header"}}
+            {{.Title}} - {{T "Title"}}
         {{- else if .TitleKey -}}
-            {{T .TitleKey}} - {{T "UI.Header"}}
+            {{T .TitleKey}} - {{T "Title"}}
         {{- else -}}
-            {{T "UI.Header"}}
+            {{T "Title"}}
         {{- end -}}
     </title>
 
@@ -34,29 +34,22 @@
     </style>
     
     <!-- Main CSS (consolidated imports) -->
-    <link rel="preload" href="/css/main.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/main.css"></noscript>
+    <link rel="stylesheet" href="/css/main.css">
     
     <!-- Admin styles (conditional) -->
     {{if .IsAdminPage}}
-    <link rel="preload" href="/css/admin.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/admin.css"></noscript>
+    <link rel="stylesheet" href="/css/admin.css">
     {{end}}
     
     <!-- Font Awesome - only load what's needed -->
-    <link rel="preload" href="/css/fontawesome.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/fontawesome.min.css"></noscript>
-    
-    <link rel="preload" href="/css/solid.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/solid.min.css"></noscript>
+    <link rel="stylesheet" href="/css/fontawesome.min.css">
+    <link rel="stylesheet" href="/css/solid.min.css">
     
     {{if .NeedsRegularIcons}}
-    <link rel="preload" href="/css/regular.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/regular.min.css"></noscript>
+    <link rel="stylesheet" href="/css/regular.min.css">
     {{end}}
     {{if .NeedsBrandIcons}}
-    <link rel="preload" href="/css/brands.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="/css/brands.min.css"></noscript>
+    <link rel="stylesheet" href="/css/brands.min.css">
     {{end}}
     
     <!-- Font preloading -->
@@ -117,7 +110,7 @@
 
     <footer class="footer">
         <div class="container has-text-centered">
-            <p>{{T "UI.Footer"}}</p>
+            <p>{{T "UI.Footer"}} <span class="footer-version" title="Application version">v{{appVersion}}</span></p>
         </div>
     </footer>
 

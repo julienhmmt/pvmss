@@ -22,6 +22,10 @@ func convertToInt(v interface{}) int {
 	case int64:
 		return int(v)
 	case uint:
+		// Check for overflow: uint max is 2^32 or 2^64 depending on platform
+		if v > uint(^uint(0)>>1) { // max int value
+			return 0
+		}
 		return int(v)
 	case uint8:
 		return int(v)
@@ -30,6 +34,10 @@ func convertToInt(v interface{}) int {
 	case uint32:
 		return int(v)
 	case uint64:
+		// Check for overflow: int64 max is 2^63-1
+		if v > 9223372036854775807 { // math.MaxInt64
+			return 0
+		}
 		return int(v)
 	case float32:
 		return int(v)

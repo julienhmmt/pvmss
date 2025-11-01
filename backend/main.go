@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"html"
 	"html/template"
 	"net/http"
 	"os"
@@ -35,9 +36,16 @@ func main() {
 		logger.Get().Warn().Msg("No .env file found, using environment variables")
 	}
 
+	// Validate required environment variables for security
+	if err := security.ValidateRequiredEnvVars(); err != nil {
+		logger.Get().Fatal().Err(err).Msg("Environment validation failed - check your configuration")
+	}
+
+	logger.Get().Debug().Msg("Starting application initialization")
 	if err := initializeApp(stateManager); err != nil {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize application")
 	}
+	logger.Get().Debug().Msg("Application initialization completed")
 
 	sessionManager, err := security.InitSecurity()
 	if err != nil {
@@ -123,6 +131,8 @@ func initializeApp(stateManager state.StateManager) error {
 			logger.Get().Warn().
 				Str("error", errorMsg).
 				Msg("Proxmox server not reachable, starting in read-only mode")
+		} else {
+			logger.Get().Info().Msg("Proxmox connection verified successfully")
 		}
 	}
 
@@ -197,12 +207,14 @@ func initProxmoxClient() (*proxmox.Client, error) {
 }
 
 func initTemplates() (*template.Template, string, error) {
+	logger.Get().Debug().Msg("Starting template initialization")
 	funcMap := templates.GetBaseFuncMap()
 
 	funcMap["T"] = func(messageID string, args ...interface{}) template.HTML {
 		localizer := i18n.GetLocalizer(i18n.DefaultLang)
 		localized := i18n.Localize(localizer, messageID)
-		return template.HTML(localized)
+		// Trusted i18n bundle; still escape to avoid gosec G203 and ensure safety
+		return template.HTML(html.EscapeString(localized)) // #nosec G203 -- trusted i18n key, escaped content; wrapper marks as HTML for templates
 	}
 
 	_, filename, _, ok := runtime.Caller(0)
@@ -212,16 +224,20 @@ func initTemplates() (*template.Template, string, error) {
 
 	rootDir := filepath.Dir(filepath.Dir(filename))
 	frontendPath := filepath.Join(rootDir, "frontend")
+	logger.Get().Debug().Str("frontend_path", frontendPath).Msg("Frontend path determined")
 
 	templateFiles, err := templates.FindTemplateFiles(frontendPath)
 	if err != nil {
 		return nil, "", fmt.Errorf("error finding template files: %w", err)
 	}
+	logger.Get().Debug().Int("template_count", len(templateFiles)).Msg("Template files found")
 
+	logger.Get().Debug().Msg("Starting to parse templates")
 	tmpl, err := template.New("main").Funcs(funcMap).ParseFiles(templateFiles...)
 	if err != nil {
 		return nil, "", fmt.Errorf("error parsing templates: %w", err)
 	}
+	logger.Get().Debug().Msg("Templates parsed successfully")
 
 	handlers.SetFrontendPath(frontendPath)
 

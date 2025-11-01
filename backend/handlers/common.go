@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"html"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -208,9 +209,11 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 			// Use pvmss/i18n.Localize wrapper instead of direct bundle call
 			localized := i18n.Localize(localizer, messageID)
 			if localized == "" {
-				return template.HTML(messageID)
+				// messageID is a translation key (safe), not user input
+				return template.HTML(html.EscapeString(messageID)) // #nosec G203 - Escaped translation key wrapped as HTML for template usage
 			}
-			return template.HTML(localized)
+			// localized comes from i18n bundle (safe), not user input
+			return template.HTML(html.EscapeString(localized)) // #nosec G203 - Escaped i18n string wrapped as HTML for template usage
 		},
 	})
 
@@ -226,7 +229,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	}
 
 	// Inject the rendered content into the main data map for the layout.
-	data["Content"] = template.HTML(buf.String())
+	data["Content"] = template.HTML(buf.String()) // #nosec G203 - Content is produced by Go templates (already sanitized by template engine)
 
 	// Execute the layout template with the combined data.
 	if err := instance.ExecuteTemplate(w, "layout", data); err != nil {
@@ -485,10 +488,9 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prepare data for the template
 	data := map[string]interface{}{
-		"Title": "PVMSS",
-		"Lang":  i18n.GetLanguage(r),
+		"TitleKey": "Navbar.Home",
+		"Lang":     i18n.GetLanguage(r),
 	}
 
 	ctx.RenderTemplate("index", data)

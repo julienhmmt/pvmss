@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -59,7 +60,7 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	username := ctx.GetUsername()
 	if username == "" {
 		ctx.Log.Error().Msg("No username in session")
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		RespondWithError(w, r, ErrSessionExpired)
 		return
 	}
 
@@ -70,18 +71,7 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		ctx.Log.Error().Msg("Proxmox client not available")
-		// Render page without VMs
-		data := map[string]interface{}{
-			"Title":           ctx.Translate("Profile.Title"),
-			"Username":        username,
-			"PoolName":        poolName,
-			"VMs":             []VMInfo{},
-			"ProxmoxError":    true,
-			"Lang":            i18n.GetLanguage(r),
-			"IsAuthenticated": true,
-			"IsAdmin":         ctx.IsAdmin(),
-		}
-		ctx.RenderTemplate("profile", data)
+		RespondWithError(w, r, ErrProxmoxConnection)
 		return
 	}
 
@@ -163,10 +153,16 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 		return []VMInfo{}
 	}
 
-	// Get all VMs with their status (already populated by GetVMsWithContext)
-	allVMs, err := proxmox.GetVMsWithContext(fetchCtx, client)
+	// Get all VMs with their status using resty
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get all VMs")
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return []VMInfo{}
+	}
+
+	allVMs, err := proxmox.GetVMsResty(fetchCtx, restyClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get all VMs (resty)")
 		return []VMInfo{}
 	}
 
@@ -203,6 +199,9 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 			})
 		}
 	}
+
+	// Sort by VMID ascending for consistent display order
+	sort.Slice(vms, func(i, j int) bool { return vms[i].VMID < vms[j].VMID })
 
 	log.Info().
 		Str("pool", poolName).

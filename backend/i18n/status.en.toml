@@ -1,0 +1,35 @@
+# Status
+["Status.Active"]
+other = "Active"
+["Status.Connected"]
+other = "Connected"
+["Status.Disabled"]
+other = "Disabled"
+["Status.Disconnected"]
+other = "Disconnected"
+["Status.Down"]
+other = "Down"
+["Status.Error"]
+other = "Error"
+["Status.Failed"]
+other = "Failed"
+["Status.Offline"]
+other = "Offline"
+["Status.Online"]
+other = "Online"
+["Status.Paused"]
+other = "Paused"
+["Status.Pending"]
+other = "Pending"
+["Status.Running"]
+other = "Running"
+["Status.Stopped"]
+other = "Stopped"
+["Status.Success"]
+other = "Success"
+["Status.Unknown"]
+other = "Unknown"
+["Status.Updating"]
+other = "Updating"
+["Status.Warning"]
+other = "Warning"

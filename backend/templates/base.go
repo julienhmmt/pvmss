@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/i18n"
 )
 
@@ -58,12 +59,16 @@ func GetBaseFuncMap() template.FuncMap {
 
 		// Math functions
 		"add":      addNumbers,
+		"addInt":   addInt,
 		"subtract": subtractNumbers,
 		"sub":      subtractNumbers,
 		"multiply": multiplyNumbers,
 		"mul":      multiplyNumbers,
 		"divide":   divideNumbers,
 		"div":      divideNumbers,
+		"iterate":  iterate,
+		"toFloat":  toFloat,
+		"toInt":    toInt,
 
 		// Utility functions
 		"default":      defaultValue,
@@ -84,6 +89,9 @@ func GetBaseFuncMap() template.FuncMap {
 		"dateTimeShort":  dateTimeShort,
 		"toJSON":         toJSON,
 		"toJSONIndent":   toJSONIndent,
+
+		// Application version
+		"appVersion": func() string { return constants.AppVersion },
 
 		// Time functions
 		"now": func() time.Time { return time.Now() },

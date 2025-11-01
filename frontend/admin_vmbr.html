@@ -3,6 +3,8 @@
 {{end}}
 
 {{define "admin_vmbr_section"}}
+  {{$csrf := $.CSRFToken}}
+  {{$enabledVMBRs := $.EnabledVMBRs}}
   <div class="container mt-4">
 
   {{if .Error}}
@@ -27,9 +29,61 @@
     </h1>
     <p class="subtitle is-6 has-text-grey">{{T "Admin.VMBR.Description"}}</p>
   </div>
+
+  <!-- Network Cards Configuration -->
+  <div class="box admin-box mb-5">
+    <h2 class="title is-5 mb-4">
+      <span class="icon"><i class="fas fa-sliders-h"></i></span>
+      <span>{{T "Admin.VMBR.NetworkCardsConfig"}}</span>
+    </h2>
+    <form method="POST" action="/admin/vmbr/update-network-cards">
+      <input type="hidden" name="csrf_token" value="{{$csrf}}">
+      <div class="field">
+        <label class="label">{{T "Admin.VMBR.MaxNetworkCards"}}</label>
+        <div class="field has-addons">
+          <div class="control is-expanded">
+            <input type="number" name="max_network_cards" class="input is-medium" 
+                   value="{{.MaxNetworkCards}}" 
+                   min="1" max="10" required
+                   aria-label="{{T "Admin.VMBR.MaxNetworkCards"}}">
+          </div>
+          <div class="control">
+            <button type="submit" class="button is-primary is-medium">
+              <span class="icon"><i class="fas fa-save"></i></span>
+              <span>{{T "Common.Save"}}</span>
+            </button>
+          </div>
+        </div>
+        <p class="help">{{T "Admin.VMBR.MaxNetworkCardsHelp"}}</p>
+      </div>
+    </form>
+  </div>
   
   {{if .VMBRs}}
   <div class="box admin-box">
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+      <div>
+        <h2 class="title is-5 mb-2">
+          <span class="icon"><i class="fas fa-network-wired"></i></span>
+          <span>{{T "Admin.VMBR.Title"}}</span>
+        </h2>
+        {{if .Nodes}}
+        <div class="field is-grouped">
+          <label class="label">{{T "Admin.VMBR.FilterByNode"}}:</label>
+          <div class="control">
+            <div class="select is-small">
+              <select onchange="filterVMBRsByNode(this.value)">
+                <option value="">{{T "Admin.VMBR.AllNodes"}}</option>
+                {{range .Nodes}}
+                <option value="{{.}}">{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
     <div class="table-container">
       <table class="table modern is-fullwidth is-hoverable">
         <thead>
@@ -48,14 +102,23 @@
         <tbody>
           {{range .VMBRs}}
           {{$name := index . "name"}}
-          <tr>
+          {{$node := index . "node"}}
+          {{$uniqueID := index . "unique_id"}}
+          {{$isFromCache := eq (index . "isFromCache") "true"}}
+          <tr{{if $isFromCache}} class="has-background-grey-lighter"{{end}}>
             <td>
               <span class="has-text-weight-semibold">{{$name}}</span>
+              {{if $isFromCache}}
+                <span class="tag is-warning is-light ml-2" title="{{T "Admin.VMBR.FromCache"}}">
+                  <span class="icon is-small"><i class="fas fa-clock"></i></span>
+                  <span>{{T "Admin.VMBR.Cached"}}</span>
+                </span>
+              {{end}}
             </td>
             <td>
               <span class="tag is-light">
                 <span class="icon is-small"><i class="fas fa-server"></i></span>
-                <span>{{index . "node"}}</span>
+                <span>{{$node}}</span>
               </span>
             </td>
             <td>
@@ -66,21 +129,24 @@
               {{end}}
             </td>
             <td class="has-text-right">
+              {{$isEnabled := index $enabledVMBRs $uniqueID}}
               <form method="POST" action="/admin/vmbr/toggle" class="is-inline">
-                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                <input type="hidden" name="csrf_token" value="{{$csrf}}">
                 <input type="hidden" name="vmbr" value="{{$name}}">
-                <input type="hidden" name="action" value="{{if index $.EnabledVMBRs $name}}disable{{else}}enable{{end}}">
-                <button type="submit" class="button is-small {{if index $.EnabledVMBRs $name}}is-success is-light{{else}}is-ghost{{end}}"
-                  aria-label="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}"
-                  title="{{if index $.EnabledVMBRs $name}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}}">
+                <input type="hidden" name="node" value="{{$node}}">
+                <input type="hidden" name="action" value="{{if $isEnabled}}disable{{else}}enable{{end}}">
+                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}{{if $isFromCache}} is-disabled{{end}}"
+                  aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}} on {{$node}}"
+                  title="{{if $isFromCache}}{{T "Admin.VMBR.NodeOffline"}}{{else}}{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}} on {{$node}}{{end}}"
+                  {{if $isFromCache}}disabled{{end}}>
                   <span class="icon is-small">
-                    {{if index $.EnabledVMBRs $name}}
+                    {{if $isEnabled}}
                       <i class="fas fa-toggle-on"></i>
                     {{else}}
                       <i class="fas fa-toggle-off"></i>
                     {{end}}
                   </span>
-                  <span>{{if index $.EnabledVMBRs $name}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
+                  <span>{{if $isEnabled}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
                 </button>
               </form>
             </td>
@@ -102,5 +168,23 @@
   {{end}}
   {{end}}
   </div>
+
+<script>
+function filterVMBRsByNode(node) {
+  const rows = document.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    if (node === '') {
+      row.style.display = '';
+    } else {
+      const nodeCell = row.querySelector('td:nth-child(2) span');
+      if (nodeCell && nodeCell.textContent.trim() === node) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    }
+  });
+}
+</script>
 {{end}}
 

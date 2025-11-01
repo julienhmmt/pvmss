@@ -1,0 +1,211 @@
+# VM Create
+["VM.Create.Configuration"]
+other = "VM configuration"
+["VM.Bridge.Description"]
+other = "Bridge for the virtual machine network"
+
+# VM Creation - Form Sections
+["VM.Create.AddTags"]
+other = "Add tags"
+["VM.Create.AvailableTags"]
+other = "Available tags"
+["VM.Create.BasicInfo"]
+other = "Basic information"
+["VM.Create.CreateButton"]
+other = "Create VM"
+["VM.Create.CPUCores"]
+other = "Cores per socket"
+["VM.Create.CPUSockets"]
+other = "CPU sockets"
+["VM.Create.Description"]
+other = "Description"
+["VM.Create.DescriptionPlaceholder"]
+other = "Enter a description (markdown supported)"
+["VM.Create.DiskSize"]
+other = "Disk size (GB)"
+["VM.Create.DiskSizeHelp"]
+other = "Disk size in gigabytes"
+["VM.Create.DiskBusType"]
+other = "Disk bus type"
+["VM.Create.DiskBusMax"]
+other = "max"
+["VM.Create.DiskBusTypeHelp"]
+other = "Choose the disk controller type. Each type has a different maximum number of disks."
+["VM.Create.DiskBusDesc.VirtIO"]
+other = "Best performance for modern systems. Paravirtualized driver. Maximum 16 disks."
+["VM.Create.DiskBusDesc.SCSI"]
+other = "Good compatibility and performance. VirtIO-SCSI driver. Maximum 14 disks."
+["VM.Create.DiskBusDesc.SATA"]
+other = "Universal compatibility, no additional drivers needed. Maximum 6 disks."
+["VM.Create.DiskBusDesc.IDE"]
+other = "Legacy mode for very old systems. Limited performance. Maximum 4 disks."
+["VM.Create.DiskOptional"]
+other = "Optional"
+["VM.Create.DiskOptionalPlaceholder"]
+other = "Leave empty if not needed"
+["VM.Create.Header"]
+other = "Create a virtual machine"
+["VM.Create.ISO"]
+other = "ISO image"
+["VM.Create.ISOImageHelp"]
+other = "Select an ISO image to install the operating system"
+["VM.Create.MediaNetwork"]
+other = "ISO image & network"
+["VM.Create.Memory"]
+other = "Memory (MB)"
+["VM.Create.MemoryHelp"]
+other = "Amount of memory in megabytes (512MB minimum)"
+["VM.Create.Network"]
+other = "Network configuration"
+["VM.Create.NetworkBridge"]
+other = "Network bridge"
+["VM.Create.NetworkBridgeHelp"]
+other = "Select a network bridge to connect the VM"
+["VM.Create.NetworkModel"]
+other = "Network card model"
+["VM.Create.NetworkModelHelp"]
+other = "Choose the virtual network card that best fits your operating system."
+["VM.Create.NetworkModelDesc.Virtio"]
+other = "Best performance. Recommended for modern Linux and Windows (requires VirtIO driver on Windows)."
+["VM.Create.NetworkModelDesc.E1000"]
+other = "Universal compatibility. Works out-of-the-box on most systems without additional drivers."
+["VM.Create.NetworkModelDesc.E1000E"]
+other = "Updated Intel adapter with broad compatibility and native driver support."
+["VM.Create.NetworkModelDesc.RTL8139"]
+other = "Legacy adapter for very old operating systems (e.g. Windows XP/2000)."
+["VM.Create.NetworkModelDesc.VMXNet3"]
+other = "High-performance adapter for VMs migrated from VMware vSphere environments. Requires VMware tools."
+["VM.Create.NetworkModel.Virtio"]
+other = "VirtIO (recommended - best performance, requires driver on Windows)"
+["VM.Create.NetworkModel.E1000"]
+other = "Intel E1000 (universal compatibility, no driver needed)"
+["VM.Create.NetworkModel.E1000E"]
+other = "Intel E1000E (universal compatibility, no driver needed)"
+["VM.Create.NetworkModel.RTL8139"]
+other = "Realtek RTL8139 (legacy systems)"
+["VM.Create.NetworkModel.VMXNet3"]
+other = "VMware VMXNet3 (for VMs imported from VMware vSphere)"
+["VM.Create.NoBridges"]
+other = "No network bridge available"
+["VM.Create.NetworkOptional"]
+other = "Optional"
+["VM.Create.NoNetwork"]
+other = "No network"
+["VM.Create.NoTagsAvailable"]
+other = "No tags available"
+["VM.Create.NoBridgesAvailable"]
+other = "No network bridge available"
+["VM.Create.NoISOs"]
+other = "No ISO image available. Please contact an administrator."
+["VM.Create.NoISOsAvailable"]
+other = "No ISO image available"
+["VM.Create.ResetButton"]
+other = "Reset"
+["VM.Create.Resources"]
+other = "Resources"
+["VM.Create.SelectISO"]
+other = "Select an ISO"
+["VM.Create.SelectNetwork"]
+other = "Select a network bridge"
+["VM.Create.StartVM"]
+other = "Start VM immediately after creation"
+["VM.Create.StartVMHelp"]
+other = "Start VM immediately after creation"
+["VM.Create.Storage"]
+other = "Storage (GB)"
+["VM.Create.Tags"]
+other = "Tags"
+["VM.Create.ISOImage"]
+other = "ISO Image"
+["VM.Create.TagsHelp"]
+other = "Select one or more tags (PVMSS is required)"
+["VM.Create.TagsPlaceholder"]
+other = "Press enter to add a tag"
+["VM.Create.BootOptions"]
+other = "Boot options"
+["VM.Create.EnableEFI"]
+other = "Enable EFI boot (UEFI)"
+["VM.Create.EFIHelp"]
+other = "Enable UEFI firmware (OVMF) for modern operating systems. Required for Windows 11, secure boot, and GPT disks."
+["VM.Create.EnableTPM"]
+other = "Enable TPM (Trusted Platform Module)"
+["VM.Create.TPMHelp"]
+other = "Enable Trusted Platform Module v2.0 for enhanced security features. Required for Windows 11, BitLocker encryption, and secure boot. A 4 MiB TPM state disk will be created."
+["VM.Create.Title"]
+other = "Create a new virtual machine"
+["VM.Create.VMName"]
+other = "VM name"
+["VM.Create.VMNameHelp"]
+other = "A unique name for your virtual machine"
+["VM.Create.VMNamePlaceholder"]
+other = "e.g. my-vm-01"
+["VM.Create.VMID"]
+other = "VM ID (Optional)"
+["VM.Create.VMID.Help"]
+other = "If you leave this field empty, the next available VM ID will be automatically assigned."
+["VM.Create.VMIDPlaceholder"]
+other = "Auto-assigned if empty"
+["VM.Create.SelectStorage"]
+other = "Select a storage"
+["VM.Create.NoStoragesAvailable"]
+other = "No storage available"
+["VM.Create.ProxmoxNode"]
+other = "Proxmox node"
+["VM.Create.ProxmoxNodeHelp"]
+other = "Select the Proxmox node where your VM will be created. Only nodes with available resources are shown. Storage and network options are filtered based on the selected node."
+["VM.Create.ResourcePool"]
+other = "Resource pool"
+["VM.Create.ResourceLimitsTitle"]
+other = "Resource limits reached"
+["VM.Create.ResourceLimitsMessage"]
+other = "All nodes have reached their resource limits. You cannot create new virtual machines until resources are freed or limits are increased."
+["VM.Create.StorageHelp"]
+other = "Select a storage for your virtual machine"
+["VM.Create.NodeLimitReached"]
+other = "This node has reached its PVMSS resource limits. Please select another Proxmox node or contact an administrator."
+
+# VM Creation - Tooltips
+["VM.Create.Tooltip.Name"]
+other = "Identification name for your virtual machine. Use a descriptive name for easier management (e.g., web-server, dev-env)."
+["VM.Create.Tooltip.Description"]
+other = "Detailed description of this VM's purpose. Add information about the project, environment, or hosted services."
+["VM.Create.Tooltip.VMID"]
+other = "Unique VM identifier in Proxmox (100-999999999). This ID helps locate and organize your virtual machines. Leave empty for automatic generation."
+["VM.Create.Tooltip.CPU"]
+other = "Processor configuration: Sockets = number of physical CPUs, Cores = number of cores per socket. More cores improve multi-tasking performance."
+["VM.Create.Tooltip.Memory"]
+other = "RAM allocated to the VM in megabytes (MB). More RAM allows running more applications simultaneously. Recommended: minimum 2048 MB (2 GB)."
+["VM.Create.Tooltip.DiskSize"]
+other = "Virtual disk size in gigabytes (GB). Plan space for the operating system, applications, and your data. Can be extended later if needed."
+["VM.Create.Tooltip.Storage"]
+other = "Storage location where the VM disk will be created. Choose storage with sufficient available space and good performance."
+["VM.Create.Tooltip.Node"]
+other = "Physical Proxmox server where the VM will be hosted. Choose a node with available resources and geographically close if needed."
+["VM.Create.Tooltip.Pool"]
+other = "Proxmox resource pool to group and manage your VMs. Each user has a dedicated pool for organization and quotas."
+["VM.Create.Tooltip.ISO"]
+other = "Operating system ISO image to install (Linux, Windows, etc.). The ISO will be mounted as a virtual CD-ROM at VM startup."
+["VM.Create.Tooltip.Network"]
+other = "Virtual network bridge for VM connection. Determines which network the VM will access (Internet, internal network, specific VLAN)."
+["VM.Create.Tooltip.Tags"]
+other = "Categorization labels to organize your VMs (production, development, test). Click on a tag to select it. The 'pvmss' tag is required."
+["VM.Create.Tooltip.EFI"]
+other = "Enable UEFI firmware (OVMF) for modern operating systems. Required for Windows 11, secure boot, and GPT disks."
+["VM.Create.Tooltip.TPM"]
+other = "Enable Trusted Platform Module v2.0 for enhanced security features. Required for Windows 11, BitLocker encryption, and secure boot. A 4 MiB TPM state disk will be created."
+["VM.Create.Tooltip.StartVM"]
+other = "Start VM immediately after creation"
+["VM.Create.Tooltip.NetworkModel"]
+other = "Virtual network card model for the VM. Determines the type of virtual network card to use (VirtIO, E1000, E1000E, RTL8139, VMXNet3)."
+["VM.Create.Tooltip.DiskBusType"]
+other = "Disk controller type for the VM. Determines the type of disk controller to use (VirtIO, SCSI, SATA, IDE)."
+["VM.Create.NetworkEnabled"]
+other = "Enable network card"
+["VM.Create.NetworkEnabledHelp"]
+other = "Turn on/off the network card. When disabled, the network interface will be created but will be down (no traffic)."
+["VM.Create.Tooltip.NetworkEnabled"]
+other = "Enable or disable the network card. When disabled, the network interface is created but remains down until manually enabled in the VM or Proxmox."
+["VM.Create.NoNodesAvailableTitle"]
+other = "No nodes available"
+["VM.Create.NoNodesAvailableMessage"]
+other = "No Proxmox nodes are currently available. This may be due to network connectivity issues or nodes being offline. Please contact your administrator."

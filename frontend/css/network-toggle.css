@@ -1,0 +1,184 @@
+/* ===================================================================
+   Network Card Toggle Switch Component
+   Modern ON/OFF switch for network interface management
+   =================================================================== */
+
+.network-toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.network-toggle-switch:hover {
+  background-color: rgb(0 0 0 / 2%);
+}
+
+/* Hide the default checkbox */
+.network-toggle-switch input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider (switch background) */
+.network-toggle-slider {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+  background-color: #ccc;
+  border-radius: 24px;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+/* The slider dot */
+.network-toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 20%);
+}
+
+/* Label styling */
+
+.network-toggle-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #363636;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+/* Loading state */
+
+.network-toggle-switch.loading .network-toggle-slider {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+
+.network-toggle-switch.loading .network-toggle-label {
+  opacity: 0.7;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Success state animation */
+
+.network-toggle-switch.success .network-toggle-slider {
+  animation: success-pulse 0.6s ease-out;
+}
+
+@keyframes success-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(72 199 116 / 70%);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgb(72 199 116 / 0%);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(72 199 116 / 0%);
+  }
+}
+
+/* Error state animation */
+
+.network-toggle-switch.error .network-toggle-slider {
+  animation: error-shake 0.5s ease-out;
+  background-color: #ff3860;
+}
+
+@keyframes error-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+/* Checked state - green background */
+
+.network-toggle-switch input[type="checkbox"]:checked + .network-toggle-slider {
+  background-color: #48c774;
+}
+
+/* Checked state - move dot to the right */
+
+.network-toggle-switch input[type="checkbox"]:checked + .network-toggle-slider::before {
+  transform: translateX(24px);
+}
+
+/* Focus state for accessibility */
+
+.network-toggle-switch input[type="checkbox"]:focus + .network-toggle-slider {
+  box-shadow: 0 0 0 3px rgb(72 199 116 / 25%);
+}
+
+/* Disabled state */
+
+.network-toggle-switch input[type="checkbox"]:disabled + .network-toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
+.network-toggle-switch input[type="checkbox"]:disabled ~ .network-toggle-label {
+  opacity: 0.6;
+  color: #999;
+}
+
+.network-toggle-label i.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .network-toggle-label {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Animation for smooth transitions */
+@media (prefers-reduced-motion: reduce) {
+  .network-toggle-slider,
+  .network-toggle-slider::before {
+    transition: none;
+  }
+}
