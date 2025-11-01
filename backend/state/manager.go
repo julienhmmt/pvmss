@@ -231,7 +231,9 @@ func (s *appState) CheckProxmoxConnection() bool {
 	offline := s.offlineMode
 	s.mu.RUnlock()
 
-	if offline {
+	// Check if we're in manual offline mode (PVMSS_OFFLINE=true)
+	// In this case, we don't try to recover
+	if offline && s.isManualOfflineMode() {
 		s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxOfflineMode))
 		return false
 	}
@@ -262,9 +264,18 @@ func (s *appState) CheckProxmoxConnection() bool {
 
 	logger.Get().Debug().Int("node_count", len(nodes)).Msg("Proxmox connection check successful")
 
-	// If we got here, the connection is good
+	// If we got here, the connection is good - attempt recovery
 	s.handleConnectionRecovery()
 	return true
+}
+
+// isManualOfflineMode checks if offline mode was set manually (via PVMSS_OFFLINE)
+// vs automatic offline mode due to connection failures
+func (s *appState) isManualOfflineMode() bool {
+	// If we're in offline mode but have no failure tracking, it's manual
+	s.proxmoxMu.RLock()
+	defer s.proxmoxMu.RUnlock()
+	return s.proxmoxConnectionLostTime.IsZero()
 }
 
 // handleConnectionFailure manages connection failures and automatic offline mode
@@ -318,6 +329,14 @@ func (s *appState) handleConnectionRecovery() {
 		// Reset tracking
 		s.proxmoxConnectionLostTime = time.Time{}
 		s.proxmoxConnectionFailureCount = 0
+
+		// Exit automatic offline mode
+		if s.offlineMode {
+			s.mu.Lock()
+			s.offlineMode = false
+			s.mu.Unlock()
+			logger.Get().Info().Msg("Exiting automatic offline mode - back to online")
+		}
 	}
 
 	// Update status to connected (using internal method, already holding lock)
