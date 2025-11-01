@@ -532,7 +532,9 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 				}
 
 				// Check if storage should be included
-				isEnabledStorage := len(settings.EnabledStorages) == 0 || enabledStorageMap[storage.Storage]
+				// Check if node:storage is enabled
+				uniqueID := nodeName + ":" + storage.Storage
+				isEnabledStorage := len(settings.EnabledStorages) == 0 || enabledStorageMap[uniqueID]
 				storageType := strings.ToLower(storageInfo.Type)
 				storageContent := strings.ToLower(storageInfo.Content)
 

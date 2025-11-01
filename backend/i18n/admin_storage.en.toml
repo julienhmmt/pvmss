@@ -27,3 +27,17 @@ other = "Usage data not available"
 other = "Refresh storage data"
 ["Admin.Storage.NoDataAvailableHelp"]
 other = "Storage usage data could not be retrieved from Proxmox. This may be due to API limitations or storage type not supporting usage statistics."
+["Admin.Storage.FromCache"]
+other = "Data from cache (node offline)"
+["Admin.Storage.Cached"]
+other = "Cached"
+["Admin.Storage.Node"]
+other = "Node"
+["Admin.Storage.NodeOffline"]
+other = "Node is offline - actions disabled"
+["Admin.Storage.FilterByNode"]
+other = "Filter by node"
+["Admin.Storage.AllNodes"]
+other = "All nodes"
+["Admin.Storage.ShowAllNodes"]
+other = "Show all nodes"

@@ -31,3 +31,13 @@ other = "Activé"
 other = "Nom du pont réseau"
 ["Admin.VMBR.Header.Node"]
 other = "Nœud"
+["Admin.VMBR.FromCache"]
+other = "Données du cache (nœud hors ligne)"
+["Admin.VMBR.Cached"]
+other = "En cache"
+["Admin.VMBR.NodeOffline"]
+other = "Le nœud est hors ligne - actions désactivées"
+["Admin.VMBR.FilterByNode"]
+other = "Filtrer par nœud"
+["Admin.VMBR.AllNodes"]
+other = "Tous les nœuds"

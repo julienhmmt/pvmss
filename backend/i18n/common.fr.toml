@@ -136,5 +136,7 @@ other = "à"
 other = "sur"
 ["Common.VMs"]
 other = "VMs"
+["Common.ShowAll"]
+other = "Tout afficher"
 ["Common.Page"]
 other = "Page"

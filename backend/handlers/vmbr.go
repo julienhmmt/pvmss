@@ -7,6 +7,8 @@ import (
 	"sort"
 
 	"github.com/julienschmidt/httprouter"
+
+	"pvmss/proxmox"
 	"pvmss/state"
 )
 
@@ -173,6 +175,12 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		log.Info().Int("vmbr_total", len(allVMBRs)).Msg("Total VMBRs prepared for template")
 	}
 
+	// Get all nodes for the selector
+	var allNodes []string
+	if client != nil {
+		allNodes, _ = proxmox.GetNodeNames(client)
+	}
+
 	// Get current settings to check which VMBRs are enabled
 	settings := h.stateManager.GetSettings()
 	enabledVMBRs := make(map[string]bool, len(settings.VMBRs))
@@ -224,6 +232,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		ParseMessages(r).
 		AddData("TitleKey", "Admin.VMBR.Title").
 		AddData("EnabledVMBRs", enabledVMBRs).
+		AddData("Nodes", allNodes).
 		AddData("MaxNetworkCards", settings.MaxNetworkCards).
 		AddData("VMBRs", vmbrsForTemplate)
 
