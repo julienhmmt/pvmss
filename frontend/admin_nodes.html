@@ -1,5 +1,11 @@
 {{define "admin_nodes"}}
   {{template "admin_base" .}}
+  <script>
+    // Auto-refresh page every 30 seconds to check for node status changes
+    setInterval(function() {
+      window.location.reload();
+    }, 30000);
+  </script>
 {{end}}
 
 {{define "admin_nodes_section"}}
@@ -72,6 +78,12 @@
                 <i class="fas fa-exclamation-triangle"></i>
               </span>
               <span>{{T "Nodes.OfflineMessage"}}</span>
+            </div>
+            
+            <!-- Additional offline info -->
+            <div class="has-text-centered is-size-7 has-text-grey">
+              <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+              <span>{{T "Nodes.OfflineInfo"}}</span>
             </div>
             {{else}}
             <!-- CPU Usage -->

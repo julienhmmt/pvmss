@@ -19,5 +19,7 @@ other = "Online"
 other = "Offline"
 ["Nodes.OfflineMessage"]
 other = "Node is offline - resource usage information unavailable"
+["Nodes.OfflineInfo"]
+other = "This node is currently unreachable. The page will automatically refresh when the node comes back online."
 ["Nodes.NoNodes"]
 other = "No nodes found"

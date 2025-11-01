@@ -138,7 +138,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	}
 
 	// Initialize all handlers
-	adminHandler := NewAdminHandler(stateManager)
+	adminHandler := NewAdminOptimizedHandler(stateManager)
 	adminVMsHandler := NewAdminVMsHandler(stateManager)
 	authHandler := NewAuthHandler(stateManager)
 	diskHandler := NewDiskHandler(stateManager)
@@ -266,7 +266,7 @@ type handlerRegistrar interface {
 
 // setupRoutes configures all application routes
 func setupRoutes(
-	adminHandler *AdminHandler,
+	adminHandler *AdminOptimizedHandler,
 	adminVMsHandler *AdminVMsHandler,
 	authHandler *AuthHandler,
 	diskHandler *DiskHandler,
