@@ -61,6 +61,29 @@
   
   {{if .VMBRs}}
   <div class="box admin-box">
+    <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+      <div>
+        <h2 class="title is-5 mb-2">
+          <span class="icon"><i class="fas fa-network-wired"></i></span>
+          <span>{{T "Admin.VMBR.Title"}}</span>
+        </h2>
+        {{if .Nodes}}
+        <div class="field is-grouped">
+          <label class="label">{{T "Admin.VMBR.FilterByNode"}}:</label>
+          <div class="control">
+            <div class="select is-small">
+              <select onchange="filterVMBRsByNode(this.value)">
+                <option value="">{{T "Admin.VMBR.AllNodes"}}</option>
+                {{range .Nodes}}
+                <option value="{{.}}">{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
     <div class="table-container">
       <table class="table modern is-fullwidth is-hoverable">
         <thead>
@@ -81,9 +104,16 @@
           {{$name := index . "name"}}
           {{$node := index . "node"}}
           {{$uniqueID := index . "unique_id"}}
-          <tr>
+          {{$isFromCache := eq (index . "isFromCache") "true"}}
+          <tr{{if $isFromCache}} class="has-background-grey-lighter"{{end}}>
             <td>
               <span class="has-text-weight-semibold">{{$name}}</span>
+              {{if $isFromCache}}
+                <span class="tag is-warning is-light ml-2" title="{{T "Admin.VMBR.FromCache"}}">
+                  <span class="icon is-small"><i class="fas fa-clock"></i></span>
+                  <span>{{T "Admin.VMBR.Cached"}}</span>
+                </span>
+              {{end}}
             </td>
             <td>
               <span class="tag is-light">
@@ -105,9 +135,10 @@
                 <input type="hidden" name="vmbr" value="{{$name}}">
                 <input type="hidden" name="node" value="{{$node}}">
                 <input type="hidden" name="action" value="{{if $isEnabled}}disable{{else}}enable{{end}}">
-                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}"
+                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}{{if $isFromCache}} is-disabled{{end}}"
                   aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}} on {{$node}}"
-                  title="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}} on {{$node}}">
+                  title="{{if $isFromCache}}{{T "Admin.VMBR.NodeOffline"}}{{else}}{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$name}} on {{$node}}{{end}}"
+                  {{if $isFromCache}}disabled{{end}}>
                   <span class="icon is-small">
                     {{if $isEnabled}}
                       <i class="fas fa-toggle-on"></i>
@@ -137,5 +168,23 @@
   {{end}}
   {{end}}
   </div>
+
+<script>
+function filterVMBRsByNode(node) {
+  const rows = document.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    if (node === '') {
+      row.style.display = '';
+    } else {
+      const nodeCell = row.querySelector('td:nth-child(2) span');
+      if (nodeCell && nodeCell.textContent.trim() === node) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    }
+  });
+}
+</script>
 {{end}}
 

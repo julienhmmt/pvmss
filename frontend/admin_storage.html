@@ -31,14 +31,27 @@
   {{if .Storages}}
   <div class="box admin-box">
     <div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
-      <h2 class="title is-5 mb-0">
-        <span class="icon"><i class="fas fa-hdd"></i></span>
-        <span>{{T "Admin.Storage.Title"}}</span>
-      </h2>
-      <a href="?refresh=1" class="button is-small is-outlined is-primary" title="{{T "Admin.Storage.RefreshData"}}">
-        <span class="icon"><i class="fas fa-sync-alt"></i></span>
-        <span>{{T "Common.Refresh"}}</span>
-      </a>
+      <div>
+        <h2 class="title is-5 mb-2">
+          <span class="icon"><i class="fas fa-hdd"></i></span>
+          <span>{{T "Admin.Storage.Title"}}</span>
+        </h2>
+        {{if .Nodes}}
+        <div class="field is-grouped">
+          <label class="label">{{T "Admin.Storage.FilterByNode"}}:</label>
+          <div class="control">
+            <div class="select is-small">
+              <select id="nodeFilter" onchange="filterStoragesByNode(this.value)">
+                <option value="">{{T "Admin.Storage.AllNodes"}}</option>
+                {{range .Nodes}}
+                <option value="{{.}}">{{.}}</option>
+                {{end}}
+              </select>
+            </div>
+          </div>
+        </div>
+        {{end}}
+      </div>
     </div>
     <div class="table-container">
       <table class="table modern is-fullwidth is-hoverable">
@@ -60,9 +73,23 @@
           {{$used := .Used}}
           {{$total := .Total}}
           {{$hasValidData := .HasValidData}}
-          <tr>
+          {{$isFromCache := .IsFromCache}}
+          {{$storageName := .Storage}}
+          {{$nodeName := .Node}}
+          {{$uniqueID := printf "%s:%s" $nodeName $storageName}}
+          {{$isEnabled := index $.EnabledMap $uniqueID}}
+          <tr data-node="{{$nodeName}}"{{if $isFromCache}} class="has-background-grey-lighter"{{end}}>
             <td>
-              <span class="has-text-weight-semibold">{{.Storage}}</span>
+              <span class="has-text-weight-semibold">{{$storageName}}</span>
+              {{if $isFromCache}}
+                <span class="tag is-warning is-light ml-2" title="{{T "Admin.Storage.FromCache"}}">
+                  <span class="icon is-small"><i class="fas fa-clock"></i></span>
+                  <span>{{T "Admin.Storage.Cached"}}</span>
+                </span>
+              {{end}}
+              {{if $nodeName}}
+                <br><small class="has-text-grey">{{T "Admin.Storage.Node"}}: {{$nodeName}}</small>
+              {{end}}
             </td>
             <td>
               {{if $hasValidData}}
@@ -98,19 +125,21 @@
             <td class="has-text-right">
               <form method="POST" action="/admin/storage/toggle" class="is-inline">
                 <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                <input type="hidden" name="storage" value="{{.Storage}}">
-                <input type="hidden" name="action" value="{{if index $.EnabledMap .Storage}}disable{{else}}enable{{end}}">
-                <button type="submit" class="button is-small {{if index $.EnabledMap .Storage}}is-success is-light{{else}}is-ghost{{end}}"
-                  aria-label="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}"
-                  title="{{if index $.EnabledMap .Storage}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{.Storage}}">
+                <input type="hidden" name="storage" value="{{$storageName}}">
+                <input type="hidden" name="node" value="{{$nodeName}}">
+                <input type="hidden" name="action" value="{{if $isEnabled}}disable{{else}}enable{{end}}">
+                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}{{if $isFromCache}} is-disabled{{end}}"
+                  aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storageName}}"
+                  title="{{if $isFromCache}}{{T "Admin.Storage.NodeOffline"}}{{else}}{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storageName}}{{end}}"
+                  {{if $isFromCache}}disabled{{end}}>
                   <span class="icon is-small">
-                    {{if index $.EnabledMap .Storage}}
+                    {{if $isEnabled}}
                       <i class="fas fa-toggle-on"></i>
                     {{else}}
                       <i class="fas fa-toggle-off"></i>
                     {{end}}
                   </span>
-                  <span>{{if index $.EnabledMap .Storage}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
+                  <span>{{if $isEnabled}}{{T "Common.Enabled"}}{{else}}{{T "Common.Disabled"}}{{end}}</span>
                 </button>
               </form>
             </td>
@@ -162,4 +191,22 @@
   {{end}}
   {{end}}
 </div>
+
+<script>
+function filterStoragesByNode(node) {
+  const rows = document.querySelectorAll('tbody tr[data-node]');
+  rows.forEach(row => {
+    if (node === '') {
+      row.style.display = '';
+    } else {
+      const rowNode = row.getAttribute('data-node');
+      if (rowNode === node) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    }
+  });
+}
+</script>
 {{end}}

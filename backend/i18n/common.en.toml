@@ -136,5 +136,7 @@ other = "to"
 other = "of"
 ["Common.VMs"]
 other = "VMs"
+["Common.ShowAll"]
+other = "Show all"
 ["Common.Page"]
 other = "Page"

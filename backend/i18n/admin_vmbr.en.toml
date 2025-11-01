@@ -31,3 +31,13 @@ other = "Enabled"
 other = "Bridge name"
 ["Admin.VMBR.Header.Node"]
 other = "Node"
+["Admin.VMBR.FromCache"]
+other = "Data from cache (node offline)"
+["Admin.VMBR.Cached"]
+other = "Cached"
+["Admin.VMBR.NodeOffline"]
+other = "Node is offline - actions disabled"
+["Admin.VMBR.FilterByNode"]
+other = "Filter by node"
+["Admin.VMBR.AllNodes"]
+other = "All nodes"
