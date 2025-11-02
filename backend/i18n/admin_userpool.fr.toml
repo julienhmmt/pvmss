@@ -71,3 +71,5 @@ other = "Échec de l'attribution des permissions sur le pool à l'utilisateur."
 other = "Utilisateur et pool créés avec succès."
 ["Admin.UserPool.Success.Deleted"]
 other = "Pool et utilisateur supprimés avec succès."
+["Admin.UserPool.DeleteWarningDetails"]
+other = "Toutes les VMs dans le pool, le pool et l'utilisateur seront supprimés. Cette action est irréversible."

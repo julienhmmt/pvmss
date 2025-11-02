@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -464,6 +465,14 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 			wg.Wait()
 
 			if len(rows) > 0 {
+				sort.Slice(rows, func(i, j int) bool {
+					left := strings.ToLower(rows[i].User)
+					right := strings.ToLower(rows[j].User)
+					if left == right {
+						return rows[i].Pool < rows[j].Pool
+					}
+					return left < right
+				})
 				data["UserPools"] = rows
 			}
 		}
