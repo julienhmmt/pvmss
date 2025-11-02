@@ -303,7 +303,7 @@ func (s *appState) handleConnectionFailure() {
 
 			// Switch to offline mode
 			s.offlineMode = true
-			s.updateProxmoxStatusInternal(false, "Automatic offline mode: Proxmox unreachable for 2 minutes")
+			s.updateProxmoxStatusInternal(false, translateProxmoxMessage(constants.MsgProxmoxAutoOfflineMode))
 		}
 	} else {
 		// Still within threshold, update error message
