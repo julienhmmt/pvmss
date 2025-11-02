@@ -13,3 +13,12 @@ other = "Storage"
 other = "ISO management"
 ["Admin.ISO.NoISOs"]
 other = "No ISO or IMG found"
+
+["Admin.ISO.ToggleEnabled"]
+other = "ISO {{.Name}} enabled"
+
+["Admin.ISO.ToggleDisabled"]
+other = "ISO {{.Name}} disabled"
+
+["Admin.ISO.ToggleUpdated"]
+other = "ISO settings updated"

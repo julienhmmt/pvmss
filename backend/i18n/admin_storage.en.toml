@@ -35,6 +35,14 @@ other = "Cached"
 other = "Node"
 ["Admin.Storage.NodeOffline"]
 other = "Node is offline - actions disabled"
+["Admin.Storage.Success.Default"]
+other = "Storage settings updated"
+["Admin.Storage.Success.Enable"]
+other = "Storage '%s' enabled"
+["Admin.Storage.Success.Disable"]
+other = "Storage '%s' disabled"
+["Admin.Storage.Success.DiskConfig"]
+other = "Disk configuration updated successfully"
 ["Admin.Storage.FilterByNode"]
 other = "Filter by node"
 ["Admin.Storage.AllNodes"]

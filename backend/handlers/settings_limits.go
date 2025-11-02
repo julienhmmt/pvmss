@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -9,6 +10,8 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+
+	"pvmss/i18n"
 	"pvmss/proxmox"
 )
 
@@ -17,8 +20,9 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	log := CreateHandlerLogger("LimitsPageHandler", r)
 
 	settings := h.stateManager.GetSettings()
+	localizer := i18n.GetLocalizerFromRequest(r)
 	if settings == nil {
-		http.Error(w, "Settings not available", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(localizer, "Error.SettingsUnavailable"), http.StatusInternalServerError)
 		return
 	}
 
@@ -30,20 +34,21 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		nodeParam := r.URL.Query().Get("node")
 		switch entity {
 		case "vm":
-			successMsg = "VM limits updated"
+			successMsg = i18n.Localize(localizer, "Admin.Limits.Success.VM")
 		case "nodes":
 			if nodeParam != "" {
-				successMsg = "Limits updated for node '" + nodeParam + "'"
+				tmpl := i18n.Localize(localizer, "Admin.Limits.Success.NodeWithName")
+				successMsg = fmt.Sprintf(tmpl, nodeParam)
 			} else {
-				successMsg = "Node limits updated"
+				successMsg = i18n.Localize(localizer, "Admin.Limits.Success.Nodes")
 			}
 		default:
-			successMsg = "Limits updated"
+			successMsg = i18n.Localize(localizer, "Admin.Limits.Success.Generic")
 		}
 	} else if r.URL.Query().Get("error") == "1" {
 		errorMsg = r.URL.Query().Get("errorMsg")
 		if errorMsg == "" {
-			errorMsg = "An error occurred while updating limits"
+			errorMsg = i18n.Localize(localizer, "Admin.Limits.Error.Generic")
 		}
 	}
 
@@ -122,13 +127,15 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("UpdateLimitsFormHandler", r)
 
+	localizer := i18n.GetLocalizerFromRequest(r)
+
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 
 	entity := r.FormValue("entityId") // "vm" or "node"
 	if entity == "" {
-		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape("Missing entity type")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.MissingEntity"))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
@@ -169,7 +176,7 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 	// Load settings
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
-		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape("Settings not available")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.SettingsUnavailable"))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
@@ -195,7 +202,7 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		// Per-node limits under limits.nodes[<nodeName>]
 		nodeName := strings.TrimSpace(r.FormValue("nodeName"))
 		if nodeName == "" {
-			redirect := "/admin/limits?error=1&entity=nodes&errorMsg=" + url.QueryEscape("Missing node name")
+			redirect := "/admin/limits?error=1&entity=nodes&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.MissingNodeName"))
 			http.Redirect(w, r, redirect, http.StatusSeeOther)
 			return
 		}
@@ -205,7 +212,7 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		if client != nil && coresMax > 0 && ramMax > 0 {
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 			defer cancel()
-			if err := ValidateNodeLimitsAgainstCapacity(ctx, client, nodeName, coresMax, ramMax); err != nil {
+			if err := ValidateNodeLimitsAgainstCapacity(ctx, client, nodeName, coresMax, ramMax, localizer); err != nil {
 				log.Warn().Err(err).Str("node", nodeName).Msg("Node limits validation failed")
 				// Redirect back with error message
 				redirect := "/admin/limits?error=1&entity=nodes&node=" + url.QueryEscape(nodeName) + "&errorMsg=" + url.QueryEscape(err.Error())
@@ -225,12 +232,13 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		nodeEntry["sockets"] = map[string]int{"min": 1, "max": socketsMax}
 		nodeEntry["cores"] = map[string]int{"min": 1, "max": coresMax}
 		nodeEntry["ram"] = map[string]int{"min": ramMin, "max": ramMax}
+		nodeEntry["disk"] = map[string]int{"min": diskMin, "max": diskMax}
 		nodesMap[nodeName] = nodeEntry
 		settings.Limits["nodes"] = nodesMap
 		entity = "nodes" // normalize for redirect
 
 	default:
-		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape("Unsupported entity type")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.UnsupportedEntity"))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
@@ -241,7 +249,8 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		if entity == "nodes" {
 			redirect += "&node=" + url.QueryEscape(strings.TrimSpace(r.FormValue("nodeName")))
 		}
-		redirect += "&errorMsg=" + url.QueryEscape("Failed to save settings: "+err.Error())
+		base := i18n.Localize(localizer, "Admin.Limits.Error.SaveFailed")
+		redirect += "&errorMsg=" + url.QueryEscape(fmt.Sprintf(base, err.Error()))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}

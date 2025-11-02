@@ -93,7 +93,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
 		log.Error().Msg("Settings not available")
-		http.Error(w, "Settings unavailable", http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.SettingsUnavailable"), http.StatusInternalServerError)
 		return
 	}
 
@@ -105,7 +106,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), client)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get node information")
-		http.Error(w, "Failed to get node information", http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.FailedToGetNodeInfo"), http.StatusInternalServerError)
 		return
 	}
 	log.Debug().Strs("nodes", nodes).Str("active_node", activeNode).Msg("Node information retrieved")
@@ -130,7 +132,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settings)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get resources")
-		http.Error(w, "Failed to get resources", http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.FailedToGetResources"), http.StatusInternalServerError)
 		return
 	}
 	log.Debug().Int("storages_count", len(storages)).Int("bridges_count", len(bridgeDetails)).Msg("Resources retrieved")
@@ -1012,7 +1015,8 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	params.Set("agent", "1")
 
 	// Validate against aggregate node limits before creating the VM
-	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB); err != nil {
+	localizer := i18n.GetLocalizerFromRequest(r)
+	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB, localizer); err != nil {
 		log.Warn().Err(err).Str("node", node).Msg("VM resources exceed aggregate node limits")
 		data["ValidationError"] = err.Error()
 		renderTemplateInternal(w, r, "create_vm", data)

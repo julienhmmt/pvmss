@@ -14,6 +14,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/state"
 	"pvmss/utils"
@@ -408,11 +409,12 @@ func (h *AdminOptimizedHandler) ProxmoxTicketTestFormHandler(w http.ResponseWrit
 	}
 
 	// For now, just redirect with a success message
+	localizer := i18n.GetLocalizerFromRequest(r)
 	builder := NewTemplateData("").
 		SetAdminActive("ticket-test").
 		SetAuth(r).
 		SetProxmoxStatus(h.stateManager).
-		SetSuccess("Proxmox authentication test completed successfully")
+		SetSuccess(i18n.Localize(localizer, "Admin.Auth.TestSuccess"))
 
 	data := builder.Build().ToMap()
 	renderTemplateInternal(w, r, "admin_ticket_test", data)

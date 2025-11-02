@@ -35,6 +35,14 @@ other = "En cache"
 other = "Nœud"
 ["Admin.Storage.NodeOffline"]
 other = "Le nœud est hors ligne - actions désactivées"
+["Admin.Storage.Success.Default"]
+other = "Paramètres de stockage mis à jour"
+["Admin.Storage.Success.Enable"]
+other = "Stockage '%s' activé"
+["Admin.Storage.Success.Disable"]
+other = "Stockage '%s' désactivé"
+["Admin.Storage.Success.DiskConfig"]
+other = "Configuration des disques mise à jour avec succès"
 ["Admin.Storage.FilterByNode"]
 other = "Filtrer par nœud"
 ["Admin.Storage.AllNodes"]

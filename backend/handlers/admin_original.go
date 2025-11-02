@@ -15,6 +15,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -190,11 +191,12 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	password := r.FormValue("password")
 
 	if username == "" {
+		localizer := i18n.GetLocalizerFromRequest(r)
 		builder := NewTemplateData("").
 			SetAdminActive("ticket-test").
 			SetAuth(r).
 			SetProxmoxStatus(h.stateManager).
-			SetError("Username is required").
+			SetError(i18n.Localize(localizer, "Admin.Auth.UsernameRequired")).
 			AddData("TitleKey", "Navbar.Admin").
 			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
 
@@ -208,11 +210,12 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	if mainClient != nil {
 		// If main client exists and is working with API tokens, we can't test username/password
 		// because API token auth doesn't support the login endpoint
+		localizer := i18n.GetLocalizerFromRequest(r)
 		builder := NewTemplateData("").
 			SetAdminActive("ticket-test").
 			SetAuth(r).
 			SetProxmoxStatus(h.stateManager).
-			SetError("Your Proxmox configuration uses API token authentication. Username/password testing is not available with API tokens.").
+			SetError(i18n.Localize(localizer, "Admin.Auth.APITokenNotSupported")).
 			AddData("TitleKey", "Navbar.Admin").
 			AddData("ProxmoxHost", r.FormValue("proxmox_host")).
 			AddData("AuthMethod", "API Token").
@@ -229,11 +232,12 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 
 	testClient, err := proxmox.NewClientCookieAuth("https://"+r.FormValue("proxmox_host")+":8006/api2/json", insecureSkipVerify)
 	if err != nil {
+		localizer := i18n.GetLocalizerFromRequest(r)
 		builder := NewTemplateData("").
 			SetAdminActive("ticket-test").
 			SetAuth(r).
 			SetProxmoxStatus(h.stateManager).
-			SetError("Failed to create test client: "+err.Error()).
+			SetError(i18n.Localize(localizer, "Admin.Auth.CreateClientFailed")+": "+err.Error()).
 			AddData("TitleKey", "Navbar.Admin").
 			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
 		data := builder.Build().ToMap()
@@ -249,11 +253,12 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	// Try to login with username and password
 	err = testClient.Login(ctx, username, password, "")
 	if err != nil {
+		localizer := i18n.GetLocalizerFromRequest(r)
 		builder := NewTemplateData("").
 			SetAdminActive("ticket-test").
 			SetAuth(r).
 			SetProxmoxStatus(h.stateManager).
-			SetError("Authentication failed: "+err.Error()).
+			SetError(i18n.Localize(localizer, "Admin.Auth.AuthenticationFailed")+": "+err.Error()).
 			AddData("TitleKey", "Navbar.Admin").
 			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
 		data := builder.Build().ToMap()
@@ -265,11 +270,12 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	var result map[string]interface{}
 	err = testClient.GetJSON(ctx, "/nodes", &result)
 	if err != nil {
+		localizer := i18n.GetLocalizerFromRequest(r)
 		builder := NewTemplateData("").
 			SetAdminActive("ticket-test").
 			SetAuth(r).
 			SetProxmoxStatus(h.stateManager).
-			SetError("Ticket validation failed: "+err.Error()).
+			SetError(i18n.Localize(localizer, "Admin.Auth.TicketValidationFailed")+": "+err.Error()).
 			AddData("TitleKey", "Navbar.Admin").
 			AddData("ProxmoxHost", r.FormValue("proxmox_host"))
 		data := builder.Build().ToMap()
@@ -278,11 +284,12 @@ func (h *AdminHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *ht
 	}
 
 	// Success - show the results
+	localizer := i18n.GetLocalizerFromRequest(r)
 	builder := NewTemplateData("").
 		SetAdminActive("ticket-test").
 		SetAuth(r).
 		SetProxmoxStatus(h.stateManager).
-		SetSuccess("Authentication successful! Ticket obtained and validated.").
+		SetSuccess(i18n.Localize(localizer, "Admin.Auth.AuthenticationSuccessful")).
 		AddData("TitleKey", "Navbar.Admin").
 		AddData("ProxmoxHost", r.FormValue("proxmox_host")).
 		AddData("Username", username)

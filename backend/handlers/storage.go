@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -23,16 +25,28 @@ func buildSuccessMessage(r *http.Request) string {
 
 	action := r.URL.Query().Get("action")
 	storage := r.URL.Query().Get("storage")
+	localizer := i18n.GetLocalizerFromRequest(r)
+
+	format := func(key, fallback string) string {
+		msg := i18n.Localize(localizer, key)
+		if msg == "" {
+			msg = fallback
+		}
+		if strings.Contains(msg, "%s") {
+			return fmt.Sprintf(msg, storage)
+		}
+		return msg
+	}
 
 	switch action {
 	case "enable":
-		return "Storage '" + storage + "' enabled"
+		return format("Admin.Storage.Success.Enable", "Storage '%s' enabled")
 	case "disable":
-		return "Storage '" + storage + "' disabled"
+		return format("Admin.Storage.Success.Disable", "Storage '%s' disabled")
 	case "update_disk_config":
-		return "Disk configuration updated successfully"
+		return format("Admin.Storage.Success.DiskConfig", "Disk configuration updated successfully")
 	default:
-		return "Storage settings updated"
+		return format("Admin.Storage.Success.Default", "Storage settings updated")
 	}
 }
 
@@ -50,43 +64,6 @@ func ensureStoragesInitialized(settings *state.AppSettings) {
 	if settings.EnabledStorages == nil {
 		settings.EnabledStorages = []string{}
 	}
-}
-
-// projectEnabledFlags adds Enabled field to storage items and sorts them
-func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[string]interface{} {
-	enabledMap := buildEnabledMap(enabled)
-	projected := make([]map[string]interface{}, 0, len(base))
-
-	for _, item := range base {
-		cpy := make(map[string]interface{}, len(item)+1)
-		for k, v := range item {
-			cpy[k] = v
-		}
-		name, _ := cpy["Storage"].(string)
-		node, _ := cpy["Node"].(string)
-
-		// Check if node:storage is enabled
-		uniqueID := node + ":" + name
-		cpy["Enabled"] = len(enabled) == 0 || enabledMap[uniqueID]
-		projected = append(projected, cpy)
-	}
-
-	// Sort by node (asc), then storage name (asc)
-	sort.Slice(projected, func(i, j int) bool {
-		nodeI, _ := projected[i]["Node"].(string)
-		nodeJ, _ := projected[j]["Node"].(string)
-		nodeI = strings.ToLower(nodeI)
-		nodeJ = strings.ToLower(nodeJ)
-		if nodeI != nodeJ {
-			return nodeI < nodeJ
-		}
-
-		si := strings.ToLower(projected[i]["Storage"].(string))
-		sj := strings.ToLower(projected[j]["Storage"].(string))
-		return si < sj
-	})
-
-	return projected
 }
 
 // projectEnabledFlagsWithCache adds Enabled field and handles cache flag for storage items
