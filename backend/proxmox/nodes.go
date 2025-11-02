@@ -196,6 +196,37 @@ func GetNodeNamesResty(ctx context.Context, client *RestyClient) ([]string, erro
 	return nodeNames, nil
 }
 
+// GetOnlineNodeNamesResty retrieves the list of online Proxmox nodes only using resty
+// This filters out offline/down nodes to prevent API errors during VM creation
+func GetOnlineNodeNamesResty(ctx context.Context, client *RestyClient) ([]string, error) {
+	var response ListResponse[NodeInfo]
+
+	if err := client.Get(ctx, "/nodes", &response); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to get node list from Proxmox API (resty)")
+		return nil, fmt.Errorf("failed to get node list: %w", err)
+	}
+
+	// Extract only online node names
+	onlineNodeNames := make([]string, 0, len(response.Data))
+	for _, node := range response.Data {
+		if node.Status == "online" {
+			onlineNodeNames = append(onlineNodeNames, node.Node)
+		} else {
+			logger.Get().Info().
+				Str("node", node.Node).
+				Str("status", node.Status).
+				Msg("Skipping offline node for VM operations")
+		}
+	}
+
+	logger.Get().Info().
+		Int("count", len(onlineNodeNames)).
+		Strs("nodes", onlineNodeNames).
+		Msg("Successfully fetched online node names (resty)")
+
+	return onlineNodeNames, nil
+}
+
 // GetNodeDetailsResty fetches detailed information about a specific node using resty
 func GetNodeDetailsResty(ctx context.Context, client *RestyClient, nodeName string) (*NodeDetails, error) {
 	// Get node status from Proxmox API

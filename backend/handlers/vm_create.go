@@ -135,6 +135,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	}
 	log.Debug().Int("storages_count", len(storages)).Int("bridges_count", len(bridgeDetails)).Msg("Resources retrieved")
 
+	localizer := i18n.GetLocalizerFromRequest(r)
+
 	// Prepare form data
 	formData := map[string]string{
 		"bridge_0":          "",
@@ -181,15 +183,29 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		"Limits":           settings.Limits,
 		"MaxDiskPerVM":     settings.MaxDiskPerVM,
 		"MaxNetworkCards":  settings.MaxNetworkCards,
+		"NetworkModels":    getNetworkModels(),
 		"NodeOptions":      nodeOptions,
 		"Nodes":            nodes,
-		"ProxmoxConnected": client != nil,
-		"StorageNodes":     storageNodes,
+		"NodesLimits":      getNodeLimits(settings),
+		"ProxmoxConnected": h.stateManager.GetProxmoxClient() != nil,
 		"Storages":         storages,
-		"Tags":             settings.Tags,
-		"TitleKey":         "VM.Create.Title",
+		"StorageNodes":     storageNodes,
+		"Success":          "",
+		"SuccessMessage":   "",
 		"Username":         username,
-		"ValidationError":  "",
+	}
+
+	// Check for offline nodes and create notification
+	offlineNodesCount := h.getOfflineNodesCount(r.Context(), client)
+	if offlineNodesCount > 0 {
+		title := i18n.Localize(localizer, "VM.Create.OfflineNodesTitle")
+		message := i18n.Localize(localizer, "VM.Create.OfflineNodesMessage", offlineNodesCount)
+		data["OfflineNodesNotification"] = map[string]interface{}{
+			"type":  "info",
+			"title": title,
+			"text":  message,
+		}
+		log.Info().Int("offline_nodes", offlineNodesCount).Msg("Some cluster nodes are offline")
 	}
 
 	// Extract bridges from BridgeDetails for template compatibility
@@ -351,7 +367,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	log.Debug().Msg("Template rendered successfully")
 }
 
-// getOptimizedNodeInfo retrieves node information with caching
+// getOptimizedNodeInfo retrieves node information with caching - only online nodes
 func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, client proxmox.ClientInterface) ([]string, map[string]bool, string, error) {
 	log := CreateHandlerLogger("getOptimizedNodeInfo", nil)
 
@@ -365,33 +381,33 @@ func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, cli
 		return nil, nil, "", fmt.Errorf("failed to create resty client: %w", err)
 	}
 
-	// Get node names with timeout
+	// Get online node names with timeout - skip offline/down nodes
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+	nodes, err := proxmox.GetOnlineNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("failed to get node names: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to get online node names: %w", err)
 	}
 
-	log.Info().Int("node_count", len(nodes)).Msg("Retrieved node names")
+	log.Info().Int("node_count", len(nodes)).Msg("Retrieved online node names for VM creation")
 
 	// Get settings to check node limits
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
-		log.Warn().Msg("Settings not available, using all nodes as enabled")
+		log.Warn().Msg("Settings not available, using all online nodes as enabled")
 		return nodes, make(map[string]bool), nodes[0], nil
 	}
 
-	// Check which nodes are disabled (saturated)
+	// Check which nodes are disabled (saturated) - only among online nodes
 	disabledNodes := make(map[string]bool)
 	for _, nodeName := range nodes {
 		// TODO: Implement actual resource checking logic here
-		// For now, assume nodes are enabled
+		// For now, assume online nodes are enabled
 		disabledNodes[nodeName] = false
 	}
 
-	// Select active node (first non-disabled)
+	// Select active node (first non-disabled online node)
 	activeNode := ""
 	for _, nodeName := range nodes {
 		if !disabledNodes[nodeName] {
@@ -400,15 +416,77 @@ func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, cli
 		}
 	}
 	if activeNode == "" && len(nodes) > 0 {
-		activeNode = nodes[0] // Fallback to first node
+		activeNode = nodes[0] // Fallback to first online node
 	}
 
 	log.Info().
 		Str("active_node", activeNode).
 		Int("disabled_nodes", countDisabledNodes(disabledNodes)).
-		Msg("Node information retrieved")
+		Msg("Online node information retrieved for VM creation")
 
 	return nodes, disabledNodes, activeNode, nil
+}
+
+// getOfflineNodesCount counts the number of offline/down nodes in the cluster
+func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, client proxmox.ClientInterface) int {
+	log := CreateHandlerLogger("getOfflineNodesCount", nil)
+
+	if client == nil {
+		return 0
+	}
+
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to create resty client for offline node check")
+		return 0
+	}
+
+	// Get ALL nodes (including offline) with timeout
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	allNodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to get all node names for offline check")
+		return 0
+	}
+
+	// Get online nodes only
+	onlineNodes, err := proxmox.GetOnlineNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to get online node names for offline check")
+		return len(allNodes) // Assume all are offline if we can't get online list
+	}
+
+	offlineCount := len(allNodes) - len(onlineNodes)
+	log.Debug().Int("total_nodes", len(allNodes)).Int("online_nodes", len(onlineNodes)).Int("offline_nodes", offlineCount).Msg("Offline node count calculated")
+
+	return offlineCount
+}
+
+// getNetworkModels returns the available network card models for VM creation
+func getNetworkModels() []map[string]string {
+	return []map[string]string{
+		{"value": "virtio", "label": "VirtIO"},
+		{"value": "e1000", "label": "E1000"},
+		{"value": "e1000e", "label": "E1000E"},
+		{"value": "rtl8139", "label": "RTL8139"},
+		{"value": "vmxnet3", "label": "VMXNet3"},
+	}
+}
+
+// getNodeLimits extracts node limits from settings for template compatibility
+func getNodeLimits(settings *state.AppSettings) map[string]interface{} {
+	if settings == nil || settings.Limits == nil {
+		return make(map[string]interface{})
+	}
+
+	if nodes, ok := settings.Limits["nodes"].(map[string]interface{}); ok {
+		return nodes
+	}
+
+	return make(map[string]interface{})
 }
 
 // getOptimizedResources retrieves storages and bridges concurrently with optimizations

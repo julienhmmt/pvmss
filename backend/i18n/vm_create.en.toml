@@ -159,6 +159,11 @@ other = "Resource pool"
 other = "Resource limits reached"
 ["VM.Create.ResourceLimitsMessage"]
 other = "All nodes have reached their resource limits. You cannot create new virtual machines until resources are freed or limits are increased."
+["VM.Create.OfflineNodesTitle"]
+other = "Cluster status"
+["VM.Create.OfflineNodesMessage"]
+one = "One node is offline and not available for VM creation. Only online nodes are shown."
+other = "{{.PluralCount}} nodes are offline and not available for VM creation. Only online nodes are shown."
 ["VM.Create.StorageHelp"]
 other = "Select a storage for your virtual machine"
 ["VM.Create.NodeLimitReached"]
