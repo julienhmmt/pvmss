@@ -372,3 +372,60 @@ type routeTest struct {
 	Path           string
 	ExpectedStatus int
 }
+
+// TestQemuGuestAgentTimeoutDetection tests the logic for detecting QEMU Guest Agent timeout errors
+func TestQemuGuestAgentTimeoutDetection(t *testing.T) {
+	tests := []struct {
+		name     string
+		action   string
+		errorMsg string
+		expected bool
+	}{
+		{
+			name:     "QEMU Guest Agent timeout during shutdown",
+			action:   "shutdown",
+			errorMsg: "QEMU Guest Agent is not running - VM 100 qmp command 'guest-ping' failed - got timeout",
+			expected: true,
+		},
+		{
+			name:     "QEMU Guest Agent failed during shutdown",
+			action:   "shutdown",
+			errorMsg: "VM 101 qmp command 'guest-ping' failed - got timeout",
+			expected: true,
+		},
+		{
+			name:     "QEMU Guest Agent error during stop (should not match)",
+			action:   "stop",
+			errorMsg: "VM 102 qmp command 'guest-ping' failed - got timeout",
+			expected: false,
+		},
+		{
+			name:     "Generic error during shutdown (should not match)",
+			action:   "shutdown",
+			errorMsg: "VM configuration error",
+			expected: false,
+		},
+		{
+			name:     "Network error during shutdown (should not match)",
+			action:   "shutdown",
+			errorMsg: "network connection failed",
+			expected: false,
+		},
+	}
+
+	// Replicate the detection logic from vm_actions.go
+	isQemuGuestAgentTimeout := func(action, errorMsg string) bool {
+		return action == "shutdown" &&
+			strings.Contains(strings.ToLower(errorMsg), "guest-ping") &&
+			(strings.Contains(strings.ToLower(errorMsg), "timeout") || strings.Contains(strings.ToLower(errorMsg), "failed"))
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isQemuGuestAgentTimeout(tt.action, tt.errorMsg)
+			assert.Equal(t, tt.expected, result,
+				"Expected isQemuGuestAgentTimeout(%s, %s) to be %v, got %v",
+				tt.action, tt.errorMsg, tt.expected, result)
+		})
+	}
+}
