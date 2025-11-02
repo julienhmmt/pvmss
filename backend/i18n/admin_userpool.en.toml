@@ -71,3 +71,5 @@ other = "Failed to grant pool permissions to the user."
 other = "User and pool created successfully."
 ["Admin.UserPool.Success.Deleted"]
 other = "Pool and user deleted successfully."
+["Admin.UserPool.DeleteWarningDetails"]
+other = "VMs in pool, pool and user will be deleted. This cannot be undone."
