@@ -15,6 +15,14 @@ other = "Désactiver"
 other = "Paramètres des ponts réseau enregistrés avec succès"
 ["Admin.VMBR.SaveError"]
 other = "Échec de l'enregistrement des paramètres des ponts réseau"
+["Admin.VMBR.Success.Enabled"]
+other = "Pont réseau activé"
+["Admin.VMBR.Success.Disabled"]
+other = "Pont réseau désactivé"
+["Admin.VMBR.Success.UpdateNetworkCards"]
+other = "Configuration des cartes réseau mise à jour avec succès"
+["Admin.VMBR.Success.Generic"]
+other = "Paramètres des ponts réseau mis à jour"
 ["Admin.VMBR.NetworkCardsConfig"]
 other = "Configuration des cartes réseau"
 ["Admin.VMBR.MaxNetworkCards"]

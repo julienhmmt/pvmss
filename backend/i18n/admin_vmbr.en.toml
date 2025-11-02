@@ -15,6 +15,14 @@ other = "Disable"
 other = "Network bridge settings saved successfully"
 ["Admin.VMBR.SaveError"]
 other = "Failed to save network bridge settings"
+["Admin.VMBR.Success.Enabled"]
+other = "Network bridge enabled"
+["Admin.VMBR.Success.Disabled"]
+other = "Network bridge disabled"
+["Admin.VMBR.Success.UpdateNetworkCards"]
+other = "Network cards configuration updated successfully"
+["Admin.VMBR.Success.Generic"]
+other = "Network bridge settings updated"
 ["Admin.VMBR.NetworkCardsConfig"]
 other = "Network cards configuration"
 ["Admin.VMBR.MaxNetworkCards"]
