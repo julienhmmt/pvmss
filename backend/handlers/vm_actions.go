@@ -169,6 +169,15 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	_, err = proxmox.VMActionResty(r.Context(), restyClient, node, vmid, action)
 	if err != nil {
 		log.Error().Err(err).Str("action", action).Int("vmid", vmidInt).Msg("VM action failed")
+
+		// Special handling for QEMU Guest Agent timeout during shutdown
+		if action == "shutdown" && strings.Contains(strings.ToLower(err.Error()), "guest-ping") &&
+			(strings.Contains(strings.ToLower(err.Error()), "timeout") || strings.Contains(strings.ToLower(err.Error()), "failed")) {
+			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentTimeout")
+			return
+		}
+
 		ctx := NewHandlerContext(w, r, "VMActionHandler")
 		ctx.RedirectWithError(buildVMDetailsURL(vmid), "Message.ActionFailed")
 		return
