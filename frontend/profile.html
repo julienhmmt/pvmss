@@ -28,7 +28,7 @@
                             <span class="icon"><i class="fas fa-search"></i></span>
                             <span>{{T "Profile.SearchVM"}}</span>
                         </a>
-                        <a href="/profile?refresh=1" class="button is-light">
+                        <a href="/profile?refresh=1" class="button is-light" data-profile-refresh id="profile-refresh-button">
                             <span class="icon"><i class="fas fa-sync-alt"></i></span>
                             <span>{{T "Common.Refresh"}}</span>
                         </a>
@@ -71,13 +71,12 @@
                 <hr class="my-3" style="background-color: rgb(0,0,0,6%);">
 
                 <!-- Stats Section: Horizontal inline stats with dividers -->
-                {{if .VMs}}
-                <div class="columns is-mobile is-variable is-1 has-text-centered">
+                <div class="columns is-mobile is-variable is-1 has-text-centered {{if not .HasVMs}}is-hidden{{end}}" id="profile-stats-columns">
                     <div class="column">
                         <div class="py-2">
                             <p class="heading is-size-7 mb-1 has-text-grey">{{T "Profile.TotalVMs"}}</p>
                             <p class="title is-4 mb-0 has-text-primary">
-                                <span>{{len .VMs}}</span>
+                                <span data-profile-total>{{.TotalVMs}}</span>
                             </p>
                         </div>
                     </div>
@@ -88,9 +87,7 @@
                         <div class="py-2">
                             <p class="heading is-size-7 mb-1 has-text-grey">{{T "Profile.RunningVMs"}}</p>
                             <p class="title is-4 mb-0 has-text-success">
-                                {{$running := 0}}
-                                {{range .VMs}}{{if eq .Status "running"}}{{$running = add $running 1}}{{end}}{{end}}
-                                <span>{{$running}}</span>
+                                <span data-profile-running>{{.RunningVMs}}</span>
                             </p>
                         </div>
                     </div>
@@ -101,21 +98,17 @@
                         <div class="py-2">
                             <p class="heading is-size-7 mb-1 has-text-grey">{{T "Profile.StoppedVMs"}}</p>
                             <p class="title is-4 mb-0 has-text-warning">
-                                {{$stopped := 0}}
-                                {{range .VMs}}{{if eq .Status "stopped"}}{{$stopped = add $stopped 1}}{{end}}{{end}}
-                                <span>{{$stopped}}</span>
+                                <span data-profile-stopped>{{.StoppedVMs}}</span>
                             </p>
                         </div>
                     </div>
                 </div>
-                {{else}}
-                <div class="has-text-centered py-3">
+                <div class="has-text-centered py-3 {{if .HasVMs}}is-hidden{{end}}" id="profile-stats-empty">
                     <span class="icon has-text-grey-lighter mb-2">
                         <i class="fas fa-server fa-lg"></i>
                     </span>
                     <p class="is-size-7 has-text-grey">{{T "Profile.NoVMs"}}</p>
                 </div>
-                {{end}}
             </div>
         </div>
 
@@ -129,7 +122,7 @@
                     </span>
                 </p>
             </header>
-            <div class="card-content">
+            <div class="card-content" id="profile-vms-card" data-has-error="{{if .ProxmoxError}}1{{else}}0{{end}}" data-refresh-interval="4000">
                 {{if .ProxmoxError}}
                 {{template "notification" (dict 
                   "Type" "warning" 
@@ -139,93 +132,108 @@
                   "Dismissible" false 
                   "Live" "polite"
                 )}}
-                {{else if .VMs}}
-                <div class="table-container">
-                    <table class="table is-fullwidth is-hoverable">
-                        <thead>
-                            <tr class="has-background-light">
-                                <th class="has-text-centered" width="100">
-                                    <span>{{T "Profile.VMID"}}</span>
-                                </th>
-                                <th>
-                                    <span>{{T "Profile.VMName"}}</span>
-                                </th>
-                                <th>
-                                    <span>{{T "Profile.Description"}}</span>
-                                </th>
-                                <th class="has-text-centered" width="150">
-                                    <span>{{T "Profile.Node"}}</span>
-                                </th>
-                                <th class="has-text-centered" width="150">
-                                    <span>
-                                        {{T "Profile.Status"}}
-                                    </span>
-                                </th>
-                                <th class="has-text-centered" width="280">
-                                    <span>{{T "Profile.Actions"}}</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .VMs}}
-                            <tr class="is-size-6">
-                                <td class="has-text-centered is-vcentered">
-                                    <span class="tag is-light is-medium has-text-weight-bold">{{.VMID}}</span>
-                                </td>
-                                <td class="is-vcentered">
-                                    <div class="is-flex is-align-items-center">
-                                        <span class="has-text-weight-semibold">{{if .Name}}{{.Name}}{{else}}<em class="has-text-grey-light">Sans nom</em>{{end}}</span>
-                                    </div>
-                                </td>
-                                <td class="is-vcentered">
-                                    <span class="is-size-7">{{if .Description}}{{.Description}}{{else}}<em class="has-text-grey-light">{{T "Profile.NoDescription"}}</em>{{end}}</span>
-                                </td>
-                                <td class="has-text-centered is-vcentered">
-                                    <span class="tag is-small">{{.Node}}</span>
-                                </td>
-                                <td class="has-text-centered is-vcentered">
-                                    {{template "status_badge" (dict "Status" .Status "WithIcon" true)}}
-                                </td>
-                                <td class="has-text-centered is-vcentered">
-                                    <div class="buttons is-centered mb-0">
-                                        <a href="{{printf "/vm/details/%d" .VMID}}" 
-                                           class="button is-small is-primary"
-                                           title="{{T "Profile.ViewDetails"}}">
-                                            <span class="icon">
-                                                <i class="fas fa-eye"></i>
-                                            </span>
-                                            <span>{{T "Profile.ViewDetails"}}</span>
-                                        </a>
-                                        <a href="{{printf "/vm/delete/%d" .VMID}}" 
-                                           class="button is-small is-danger has-text-white"
-                                           title="{{T "Profile.Delete"}}">
-                                            <span class="icon">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </span>
-                                            <span>{{T "Profile.Delete"}}</span>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
-                </div>
                 {{else}}
-                {{template "empty_state" (dict 
-                  "Icon" "fas fa-inbox fa-2x"
-                  "Title" (T "Profile.NoVMs")
-                  "Message" (T "Profile.NoVMsMessage")
-                  "Action" (dict 
-                    "Link" "/vm/create"
-                    "Text" (T "Profile.CreateFirstVM")
-                    "Icon" "fas fa-plus"
-                    "Type" "primary"
-                  )
-                )}}
+                <div id="profile-vms-wrapper">
+                    <div class="table-container {{if not .HasVMs}}is-hidden{{end}}" id="profile-vm-table-container">
+                        <table class="table is-fullwidth is-hoverable">
+                            <thead>
+                                <tr class="has-background-light">
+                                    <th class="has-text-centered" width="100">
+                                        <span>{{T "Profile.VMID"}}</span>
+                                    </th>
+                                    <th>
+                                        <span>{{T "Profile.VMName"}}</span>
+                                    </th>
+                                    <th>
+                                        <span>{{T "Profile.Description"}}</span>
+                                    </th>
+                                    <th class="has-text-centered" width="150">
+                                        <span>{{T "Profile.Node"}}</span>
+                                    </th>
+                                    <th class="has-text-centered" width="150">
+                                        <span>
+                                            {{T "Profile.Status"}}
+                                        </span>
+                                    </th>
+                                    <th class="has-text-centered" width="280">
+                                        <span>{{T "Profile.Actions"}}</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="profile-vm-table-body">
+                                {{range .VMs}}
+                                <tr class="is-size-6">
+                                    <td class="has-text-centered is-vcentered">
+                                        <span class="tag is-light is-medium has-text-weight-bold">{{.VMID}}</span>
+                                    </td>
+                                    <td class="is-vcentered">
+                                        <div class="is-flex is-align-items-center">
+                                            <span class="has-text-weight-semibold">{{if .Name}}{{.Name}}{{else}}<em class="has-text-grey-light">{{T "Profile.NoName"}}</em>{{end}}</span>
+                                        </div>
+                                    </td>
+                                    <td class="is-vcentered">
+                                        <span class="is-size-7">{{if .Description}}{{.Description}}{{else}}<em class="has-text-grey-light">{{T "Profile.NoDescription"}}</em>{{end}}</span>
+                                    </td>
+                                    <td class="has-text-centered is-vcentered">
+                                        <span class="tag is-small">{{.Node}}</span>
+                                    </td>
+                                    <td class="has-text-centered is-vcentered">
+                                        {{template "status_badge" (dict "Status" .Status "WithIcon" true)}}
+                                    </td>
+                                    <td class="has-text-centered is-vcentered">
+                                        <div class="buttons is-centered mb-0">
+                                            <a href="{{printf "/vm/details/%d" .VMID}}" 
+                                               class="button is-small is-primary"
+                                               title="{{T "Profile.ViewDetails"}}">
+                                                <span class="icon">
+                                                    <i class="fas fa-eye"></i>
+                                                </span>
+                                                <span>{{T "Profile.ViewDetails"}}</span>
+                                            </a>
+                                            <a href="{{printf "/vm/delete/%d" .VMID}}" 
+                                               class="button is-small is-danger has-text-white"
+                                               title="{{T "Profile.Delete"}}">
+                                                <span class="icon">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </span>
+                                                <span>{{T "Profile.Delete"}}</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="profile-vm-empty-state" class="{{if .HasVMs}}is-hidden{{end}}">
+                        {{template "empty_state" (dict 
+                          "Icon" "fas fa-inbox fa-2x"
+                          "Title" (T "Profile.NoVMs")
+                          "Message" (T "Profile.NoVMsMessage")
+                          "Action" (dict 
+                            "Link" "/vm/create"
+                            "Text" (T "Profile.CreateFirstVM")
+                            "Icon" "fas fa-plus"
+                            "Type" "primary"
+                          )
+                        )}}
+                    </div>
+                </div>
                 {{end}}
             </div>
         </div>
+
+        <div id="profile-translations"
+             data-status-running="{{T "Status.Running"}}"
+             data-status-stopped="{{T "Status.Stopped"}}"
+             data-status-paused="{{T "Status.Paused"}}"
+             data-status-unknown="{{T "Status.Unknown"}}"
+             data-view-details="{{T "Profile.ViewDetails"}}"
+             data-delete="{{T "Profile.Delete"}}"
+             data-no-description="{{T "Profile.NoDescription"}}"
+             data-no-name="{{T "Profile.NoName"}}"
+             class="is-hidden"
+             aria-hidden="true"></div>
 
         <!-- Security Section -->
         <div class="card">
@@ -357,4 +365,295 @@
         </div>
     </div>
 </section>
+<script>
+(function () {
+  const card = document.getElementById('profile-vms-card');
+  if (!card || card.dataset.hasError === '1') {
+    return;
+  }
+
+  const refreshBtn = document.querySelector('[data-profile-refresh]');
+  const translationsEl = document.getElementById('profile-translations');
+  const labels = translationsEl ? translationsEl.dataset : {};
+
+  const statusConfig = {
+    running: { className: 'is-success', icon: 'fa-circle-play', label: labels.statusRunning || 'Running' },
+    stopped: { className: 'is-danger', icon: 'fa-circle-stop', label: labels.statusStopped || 'Stopped' },
+    paused: { className: 'is-warning', icon: 'fa-circle-pause', label: labels.statusPaused || 'Paused' },
+    suspended: { className: 'is-warning', icon: 'fa-circle-pause', label: labels.statusPaused || 'Paused' },
+    unknown: { className: 'is-warning', icon: 'fa-circle-question', label: labels.statusUnknown || 'Unknown' }
+  };
+
+  const statsColumns = document.getElementById('profile-stats-columns');
+  const statsEmpty = document.getElementById('profile-stats-empty');
+  const statsElements = {
+    total: document.querySelector('[data-profile-total]'),
+    running: document.querySelector('[data-profile-running]'),
+    stopped: document.querySelector('[data-profile-stopped]')
+  };
+
+  const tableContainer = document.getElementById('profile-vm-table-container');
+  const tableBody = document.getElementById('profile-vm-table-body');
+  const emptyState = document.getElementById('profile-vm-empty-state');
+
+  if (!tableBody) {
+    return;
+  }
+
+  const parsedInterval = parseInt(card.dataset.refreshInterval || '45000', 10);
+  const AUTO_REFRESH_MS = Number.isFinite(parsedInterval) ? parsedInterval : 45000;
+
+  let refreshTimer = null;
+  let isFetching = false;
+
+  function toggleHidden(element, hide) {
+    if (!element) return;
+    element.classList.toggle('is-hidden', !!hide);
+  }
+
+  function setLoading(isLoading) {
+    if (!refreshBtn) return;
+    refreshBtn.classList.toggle('is-loading', isLoading);
+    refreshBtn.disabled = isLoading;
+  }
+
+  function createIcon(iconClass) {
+    const icon = document.createElement('i');
+    icon.className = `fas ${iconClass}`;
+    return icon;
+  }
+
+  function createStatusBadge(status) {
+    const normalized = (status || '').toLowerCase();
+    const config = statusConfig[normalized] || statusConfig.unknown;
+    const badge = document.createElement('span');
+    badge.className = `tag ${config.className}`;
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'icon';
+    iconSpan.appendChild(createIcon(config.icon));
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = config.label;
+
+    badge.append(iconSpan, textSpan);
+    return badge;
+  }
+
+  function createButton({ href, title, text, iconClass, className }) {
+    const anchor = document.createElement('a');
+    anchor.href = href;
+    anchor.className = className;
+    if (title) {
+      anchor.title = title;
+    }
+
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'icon';
+    iconSpan.appendChild(createIcon(iconClass));
+
+    const textSpan = document.createElement('span');
+    textSpan.textContent = text;
+
+    anchor.append(iconSpan, textSpan);
+    return anchor;
+  }
+
+  function createPlaceholder(text) {
+    const placeholder = document.createElement('em');
+    placeholder.className = 'has-text-grey-light';
+    placeholder.textContent = text;
+    return placeholder;
+  }
+
+  function createVMRow(vm) {
+    const tr = document.createElement('tr');
+    tr.className = 'is-size-6';
+
+    const vmidCell = document.createElement('td');
+    vmidCell.className = 'has-text-centered is-vcentered';
+    const vmidTag = document.createElement('span');
+    vmidTag.className = 'tag is-light is-medium has-text-weight-bold';
+    vmidTag.textContent = String(vm.vmid ?? '');
+    vmidCell.appendChild(vmidTag);
+    tr.appendChild(vmidCell);
+
+    const nameCell = document.createElement('td');
+    nameCell.className = 'is-vcentered';
+    const nameWrapper = document.createElement('div');
+    nameWrapper.className = 'is-flex is-align-items-center';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'has-text-weight-semibold';
+    const nameValue = typeof vm.name === 'string' ? vm.name.trim() : '';
+    if (nameValue) {
+      nameSpan.textContent = nameValue;
+    } else {
+      nameSpan.appendChild(createPlaceholder(labels.noName || '')); 
+    }
+    nameWrapper.appendChild(nameSpan);
+    nameCell.appendChild(nameWrapper);
+    tr.appendChild(nameCell);
+
+    const descCell = document.createElement('td');
+    descCell.className = 'is-vcentered';
+    const descSpan = document.createElement('span');
+    descSpan.className = 'is-size-7';
+    const descValue = typeof vm.description === 'string' ? vm.description.trim() : '';
+    if (descValue) {
+      descSpan.textContent = descValue;
+    } else {
+      descSpan.appendChild(createPlaceholder(labels.noDescription || ''));
+    }
+    descCell.appendChild(descSpan);
+    tr.appendChild(descCell);
+
+    const nodeCell = document.createElement('td');
+    nodeCell.className = 'has-text-centered is-vcentered';
+    const nodeTag = document.createElement('span');
+    nodeTag.className = 'tag is-small';
+    nodeTag.textContent = typeof vm.node === 'string' ? vm.node : '';
+    nodeCell.appendChild(nodeTag);
+    tr.appendChild(nodeCell);
+
+    const statusCell = document.createElement('td');
+    statusCell.className = 'has-text-centered is-vcentered';
+    statusCell.appendChild(createStatusBadge(vm.status));
+    tr.appendChild(statusCell);
+
+    const actionsCell = document.createElement('td');
+    actionsCell.className = 'has-text-centered is-vcentered';
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = 'buttons is-centered mb-0';
+
+    const viewDetailsText = labels.viewDetails || '';
+    const deleteText = labels.delete || '';
+
+    const detailsBtn = createButton({
+      href: `/vm/details/${vm.vmid}`,
+      title: viewDetailsText,
+      text: viewDetailsText,
+      iconClass: 'fa-eye',
+      className: 'button is-small is-primary'
+    });
+
+    const deleteBtn = createButton({
+      href: `/vm/delete/${vm.vmid}`,
+      title: deleteText,
+      text: deleteText,
+      iconClass: 'fa-trash-alt',
+      className: 'button is-small is-danger has-text-white'
+    });
+
+    buttonGroup.append(detailsBtn, deleteBtn);
+    actionsCell.appendChild(buttonGroup);
+    tr.appendChild(actionsCell);
+
+    return tr;
+  }
+
+  function updateStats(summary) {
+    if (statsElements.total) {
+      statsElements.total.textContent = String(summary.total ?? 0);
+    }
+    if (statsElements.running) {
+      statsElements.running.textContent = String(summary.running ?? 0);
+    }
+    if (statsElements.stopped) {
+      statsElements.stopped.textContent = String(summary.stopped ?? 0);
+    }
+  }
+
+  function updateTable(vms) {
+    tableBody.innerHTML = '';
+    vms.forEach((vm) => {
+      tableBody.appendChild(createVMRow(vm));
+    });
+  }
+
+  function updateUI(payload) {
+    const vms = Array.isArray(payload.vms) ? payload.vms : [];
+    const summary = payload.summary || {};
+    const hasVMs = vms.length > 0;
+
+    updateStats(summary);
+
+    toggleHidden(statsColumns, !hasVMs);
+    toggleHidden(statsEmpty, hasVMs);
+    toggleHidden(tableContainer, !hasVMs);
+    toggleHidden(emptyState, hasVMs);
+
+    if (hasVMs) {
+      updateTable(vms);
+    } else {
+      tableBody.innerHTML = '';
+    }
+  }
+
+  async function refreshVMs(options = {}) {
+    const { showLoading = false } = options;
+    if (isFetching) {
+      return;
+    }
+    isFetching = true;
+    if (showLoading) {
+      setLoading(true);
+    }
+    try {
+      const response = await fetch('/api/profile/vms', {
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      if (data && data.status === 'success') {
+        updateUI(data);
+      }
+    } catch (error) {
+      console.warn('Failed to refresh profile VM list', error);
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+      isFetching = false;
+    }
+  }
+
+  function stopAutoRefresh() {
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+  }
+
+  function startAutoRefresh() {
+    stopAutoRefresh();
+    refreshTimer = setInterval(() => {
+      if (document.hidden) {
+        return;
+      }
+      refreshVMs();
+    }, AUTO_REFRESH_MS);
+  }
+
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      refreshVMs({ showLoading: true });
+    });
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      refreshVMs();
+    }
+  });
+
+  window.addEventListener('beforeunload', stopAutoRefresh);
+
+  startAutoRefresh();
+})();
+</script>
 {{end}}
