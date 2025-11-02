@@ -15,6 +15,8 @@ other = "Nom de la VM"
 other = "Description"
 ["Profile.NoDescription"]
 other = "Sans description"
+["Profile.NoName"]
+other = "Sans nom"
 ["Profile.Node"]
 other = "Nœud"
 ["Profile.Status"]

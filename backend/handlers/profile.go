@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"sort"
@@ -29,15 +30,18 @@ func NewProfileHandler(sm state.StateManager) *ProfileHandler {
 func (h *ProfileHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/profile", RequireAuthHandle(h.ShowProfile))
 	router.POST("/profile/update-password", RequireAuthHandle(h.UpdatePassword))
+	router.GET("/api/profile/vms", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.GetProfileVMsAPI(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 }
 
 // VMInfo represents a VM in the user's pool
 type VMInfo struct {
-	VMID        int
-	Name        string
-	Description string
-	Node        string
-	Status      string
+	VMID        int    `json:"vmid"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Node        string `json:"node"`
+	Status      string `json:"status"`
 }
 
 // ShowProfile renders the user profile page
@@ -90,6 +94,7 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 
 	// Fetch VMs from the user's pool
 	vms := h.fetchUserVMs(r.Context(), client, poolName)
+	total, running, stopped, paused, unknown := computeVMStats(vms)
 
 	// Check for password update messages and form visibility
 	passwordSuccess := r.URL.Query().Get("password_success") == "1"
@@ -102,6 +107,12 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 		"Username":         username,
 		"PoolName":         poolName,
 		"VMs":              vms,
+		"HasVMs":           total > 0,
+		"TotalVMs":         total,
+		"RunningVMs":       running,
+		"StoppedVMs":       stopped,
+		"PausedVMs":        paused,
+		"UnknownVMs":       unknown,
 		"Lang":             i18n.GetLanguage(r),
 		"IsAuthenticated":  true,
 		"IsAdmin":          ctx.IsAdmin(),
@@ -111,6 +122,83 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	ctx.RenderTemplate("profile", data)
+}
+
+// GetProfileVMsAPI returns the user's VM list as JSON for asynchronous refreshes
+func (h *ProfileHandler) GetProfileVMsAPI(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ctx := NewHandlerContext(w, r, "ProfileHandler.GetProfileVMsAPI")
+
+	if ctx.IsAdmin() {
+		writeProfileAPIError(w, http.StatusForbidden, "Admin users do not have personal VM lists")
+		return
+	}
+
+	username := ctx.GetUsername()
+	if username == "" {
+		writeProfileAPIError(w, http.StatusUnauthorized, "Session expired")
+		return
+	}
+
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		writeProfileAPIError(w, http.StatusServiceUnavailable, "Proxmox connection unavailable")
+		return
+	}
+
+	poolName := "pvmss_" + username
+	vms := h.fetchUserVMs(r.Context(), client, poolName)
+	total, running, stopped, paused, unknown := computeVMStats(vms)
+
+	response := map[string]interface{}{
+		"status": "success",
+		"vms":    vms,
+		"summary": map[string]int{
+			"total":   total,
+			"running": running,
+			"stopped": stopped,
+			"paused":  paused,
+			"unknown": unknown,
+		},
+	}
+
+	if err := writeProfileAPISuccess(w, response); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to write profile VMs JSON response")
+	}
+}
+
+func computeVMStats(vms []VMInfo) (total, running, stopped, paused, unknown int) {
+	total = len(vms)
+	for _, vm := range vms {
+		switch strings.ToLower(vm.Status) {
+		case "running":
+			running++
+		case "stopped":
+			stopped++
+		case "paused", "suspended":
+			paused++
+		case "":
+			unknown++
+		default:
+			unknown++
+		}
+	}
+	return
+}
+
+func writeProfileAPISuccess(w http.ResponseWriter, payload interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	return json.NewEncoder(w).Encode(payload)
+}
+
+func writeProfileAPIError(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "error",
+		"message": message,
+	})
 }
 
 // fetchUserVMs retrieves all VMs in the user's pool with their status

@@ -623,7 +623,7 @@
                                                     </label>
                                                     <div class="control">
                                                         <div class="select is-fullwidth is-medium">
-                                                            <select id="isoImage" name="iso" required aria-required="true" aria-describedby="isoImage-help">
+                                                            <select id="isoImage" name="iso" aria-describedby="isoImage-help">
                                                                 <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
                                                                 {{range .ISOs}}<option value="{{.}}" {{if eq . $.FormData.iso}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
                                                             </select>
