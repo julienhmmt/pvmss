@@ -69,12 +69,13 @@ const (
 
 // Proxmox Connection Messages
 const (
-	MsgProxmoxConnected    = "Proxmox.Connected"
-	MsgProxmoxDisconnected = "Proxmox.Disconnected"
-	MsgProxmoxError        = "Proxmox.Error"
-	MsgProxmoxTimeout      = "Proxmox.Timeout"
-	MsgProxmoxOfflineMode  = "Proxmox.OfflineModeEnabled"
-	MsgProxmoxClientNil    = "Proxmox.ClientNotInitialized"
+	MsgProxmoxConnected       = "Proxmox.Connected"
+	MsgProxmoxDisconnected    = "Proxmox.Disconnected"
+	MsgProxmoxError           = "Proxmox.Error"
+	MsgProxmoxTimeout         = "Proxmox.Timeout"
+	MsgProxmoxOfflineMode     = "Proxmox.OfflineModeEnabled"
+	MsgProxmoxAutoOfflineMode = "Proxmox.AutomaticOfflineMode"
+	MsgProxmoxClientNil       = "Proxmox.ClientNotInitialized"
 )
 
 // Console Messages

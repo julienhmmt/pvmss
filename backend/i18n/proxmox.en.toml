@@ -19,5 +19,7 @@ other = "Please check the Proxmox host connection and try again."
 other = "Connection error"
 ["Proxmox.OfflineModeEnabled"]
 other = "Offline mode enabled (PVMSS_OFFLINE=true)"
+["Proxmox.AutomaticOfflineMode"]
+other = "Automatic offline mode: Proxmox unreachable for 2 minutes"
 ["Proxmox.ClientNotInitialized"]
 other = "Proxmox client not initialized"
