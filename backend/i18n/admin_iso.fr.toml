@@ -12,4 +12,13 @@ other = "Stockage"
 ["Admin.ISO.Title"]
 other = "Gestion des ISOs"
 ["Admin.ISO.NoISOs"]
-other = "Aucune image ISO ou IMG trouvée"
+other = "Aucune ISO ou IMG trouvée"
+
+["Admin.ISO.ToggleEnabled"]
+other = "ISO {{.Name}} activée"
+
+["Admin.ISO.ToggleDisabled"]
+other = "ISO {{.Name}} désactivée"
+
+["Admin.ISO.ToggleUpdated"]
+other = "Paramètres ISO mis à jour"

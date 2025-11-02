@@ -3,3 +3,19 @@
 other = "Page d'administration de PVMSS"
 ["Admin.SelectSectionPrompt"]
 other = "Sélectionnez une section d'administration dans le menu pour commencer."
+
+# Admin Authentication Test
+["Admin.Auth.TestSuccess"]
+other = "Test d'authentification Proxmox terminé avec succès"
+["Admin.Auth.UsernameRequired"]
+other = "Le nom d'utilisateur est requis"
+["Admin.Auth.APITokenNotSupported"]
+other = "Votre configuration Proxmox utilise l'authentification par jeton API. Le test nom d'utilisateur/mot de passe n'est pas disponible avec les jetons API."
+["Admin.Auth.CreateClientFailed"]
+other = "Échec de création du client de test"
+["Admin.Auth.AuthenticationFailed"]
+other = "Échec de l'authentification"
+["Admin.Auth.TicketValidationFailed"]
+other = "Échec de validation du ticket"
+["Admin.Auth.AuthenticationSuccessful"]
+other = "Authentification réussie ! Ticket obtenu et validé."

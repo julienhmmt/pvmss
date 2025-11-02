@@ -53,14 +53,14 @@ func (v *ValidationHelper) RequireProxmoxConnection(sm state.StateManager) (prox
 	connected, msg := sm.GetProxmoxStatus()
 	if !connected {
 		v.Log.Warn().Str("proxmox_status", msg).Msg("Proxmox not connected")
-		http.Error(v.Writer, fmt.Sprintf("Proxmox connection error: %s", msg), http.StatusServiceUnavailable)
+		http.Error(v.Writer, fmt.Sprintf("%s: %s", i18n.Localize(v.Localizer, "Error.ProxmoxConnectionError"), msg), http.StatusServiceUnavailable)
 		return nil, false
 	}
 
 	client := sm.GetProxmoxClient()
 	if client == nil {
 		v.Log.Error().Msg("Proxmox client is nil despite connection status")
-		http.Error(v.Writer, "Proxmox client unavailable", http.StatusServiceUnavailable)
+		http.Error(v.Writer, i18n.Localize(v.Localizer, "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
 		return nil, false
 	}
 
@@ -129,7 +129,7 @@ func (v *ValidationHelper) RequireAdmin() bool {
 		authenticated, _ := session.Get(v.Request.Context(), "authenticated").(bool)
 		if authenticated {
 			v.Log.Warn().Msg("Non-admin user attempted to access admin area")
-			http.Error(v.Writer, "Access Denied: Admin privileges required", http.StatusForbidden)
+			http.Error(v.Writer, i18n.Localize(v.Localizer, "Error.AccessDenied"), http.StatusForbidden)
 		} else {
 			v.Log.Info().Msg("Unauthenticated admin access attempt, redirecting")
 			returnURL := v.Request.URL.Path
@@ -159,7 +159,7 @@ func (v *ValidationHelper) RequireFormValues(fields ...string) (map[string]strin
 
 	if len(missing) > 0 {
 		v.Log.Warn().Strs("missing_fields", missing).Msg("Required form fields missing")
-		http.Error(v.Writer, fmt.Sprintf("Missing required fields: %v", missing), http.StatusBadRequest)
+		http.Error(v.Writer, fmt.Sprintf("%s: %v", i18n.Localize(v.Localizer, "Error.MissingRequiredFields"), missing), http.StatusBadRequest)
 		return nil, false
 	}
 

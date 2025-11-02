@@ -3,3 +3,19 @@
 other = "PVMSS admin page"
 ["Admin.SelectSectionPrompt"]
 other = "Select an admin section from the menu to get started."
+
+# Admin Authentication Test
+["Admin.Auth.TestSuccess"]
+other = "Proxmox authentication test completed successfully"
+["Admin.Auth.UsernameRequired"]
+other = "Username is required"
+["Admin.Auth.APITokenNotSupported"]
+other = "Your Proxmox configuration uses API token authentication. Username/password testing is not available with API tokens."
+["Admin.Auth.CreateClientFailed"]
+other = "Failed to create test client"
+["Admin.Auth.AuthenticationFailed"]
+other = "Authentication failed"
+["Admin.Auth.TicketValidationFailed"]
+other = "Ticket validation failed"
+["Admin.Auth.AuthenticationSuccessful"]
+other = "Authentication successful! Ticket obtained and validated."

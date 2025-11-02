@@ -5,6 +5,18 @@ other = "Cœurs par socket"
 other = "Configurez les ressources minimales et maximales pouvant être allouées aux machines virtuelles"
 ["Admin.Limits.Disk"]
 other = "Espace disque (Go)"
+["Admin.Limits.Error.Generic"]
+other = "Une erreur s'est produite lors de la mise à jour des limites"
+["Admin.Limits.Error.MissingEntity"]
+other = "Type d'entité manquant"
+["Admin.Limits.Error.MissingNodeName"]
+other = "Nom de nœud manquant"
+["Admin.Limits.Error.SettingsUnavailable"]
+other = "Paramètres non disponibles"
+["Admin.Limits.Error.SaveFailed"]
+other = "Échec de l'enregistrement des paramètres : %s"
+["Admin.Limits.Error.UnsupportedEntity"]
+other = "Type d'entité non pris en charge"
 ["Admin.Limits.Error"]
 other = "Erreur"
 ["Admin.Limits.GB"]
@@ -41,6 +53,14 @@ other = "Aucun nœud sélectionné"
 other = "Veuillez sélectionner un nœud pour configurer ses limites :"
 ["Admin.Limits.SelectNode"]
 other = "Sélectionnez un nœud..."
+["Admin.Limits.Success.Generic"]
+other = "Limites mises à jour"
+["Admin.Limits.Success.NodeWithName"]
+other = "Limites mises à jour pour le nœud '%s'"
+["Admin.Limits.Success.Nodes"]
+other = "Limites des nœuds mises à jour"
+["Admin.Limits.Success.VM"]
+other = "Limites des VMs mises à jour"
 ["Admin.Limits.VMSection"]
 other = "Limites de ressources par défaut des VMs"
 ["Admin.Limits.DefaultsRestored"]
@@ -81,3 +101,11 @@ other = "Capacité physique du nœud"
 other = "Les limites agrégées ne peuvent pas dépasser la capacité physique du nœud."
 ["Admin.Limits.MinAlways1"]
 other = "Le minimum est toujours 1"
+["Admin.Limits.NodeCapacity.CoresExceed"]
+other = "La limite agrégée de cœurs ({{.Limit}}) dépasse la capacité physique du nœud ({{.Capacity}} CPU)"
+["Admin.Limits.NodeCapacity.RamExceed"]
+other = "La limite agrégée de RAM ({{.Limit}} Go) dépasse la capacité physique du nœud ({{.Capacity}} Go)"
+["Admin.Limits.NodeCapacity.CoresVMExceed"]
+other = "Ajouter cette VM dépasserait la limite agrégée de cœurs du nœud '{{.Node}}' (actuel : {{.Current}}, demandé : {{.Requested}}, max : {{.Limit}})"
+["Admin.Limits.NodeCapacity.RamVMExceed"]
+other = "Ajouter cette VM dépasserait la limite agrégée de RAM du nœud '{{.Node}}' (actuel : {{.Current}} Go, demandé : {{.Requested}} Go, max : {{.Limit}} Go)"

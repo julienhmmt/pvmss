@@ -293,7 +293,8 @@ func (ctx *HandlerContext) RequireAdminAuth() bool {
 		ctx.Log.Info().Msg("Admin authentication required")
 		if ctx.IsAuthenticated() {
 			ctx.Log.Warn().Msg("Authenticated user attempted to access admin area without privileges")
-			http.Error(ctx.ResponseWriter, "Access Denied: Admin privileges required", http.StatusForbidden)
+			localizer := i18n.GetLocalizerFromRequest(ctx.Request)
+			http.Error(ctx.ResponseWriter, i18n.Localize(localizer, "Error.AccessDenied"), http.StatusForbidden)
 			return false
 		}
 

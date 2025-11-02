@@ -7,6 +7,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
 )
@@ -25,7 +26,8 @@ func WithFormValidation(handler httprouter.Handle) httprouter.Handle {
 				!strings.Contains(contentType, "application/x-www-form-urlencoded") &&
 				!strings.Contains(contentType, "multipart/form-data") {
 				logger.Get().Warn().Str("content_type", contentType).Msg("Invalid content type for form")
-				http.Error(w, "Invalid content type", http.StatusUnsupportedMediaType)
+				localizer := i18n.GetLocalizerFromRequest(r)
+				http.Error(w, i18n.Localize(localizer, "Error.InvalidContentType"), http.StatusUnsupportedMediaType)
 				return
 			}
 		}
@@ -33,7 +35,8 @@ func WithFormValidation(handler httprouter.Handle) httprouter.Handle {
 		// Parse form data
 		if err := r.ParseForm(); err != nil {
 			logger.Get().Error().Err(err).Msg("Failed to parse form data")
-			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			localizer := i18n.GetLocalizerFromRequest(r)
+			http.Error(w, i18n.Localize(localizer, "Error.InvalidFormData"), http.StatusBadRequest)
 			return
 		}
 
@@ -101,15 +104,17 @@ func WithCSRFValidation(handler httprouter.Handle) httprouter.Handle {
 					Str("username", u).
 					Bool("token_present", token != "").
 					Msg("CSRF validation failed")
-				http.Error(w, "Invalid or missing CSRF token", http.StatusForbidden)
+				localizer := i18n.GetLocalizerFromRequest(r)
+				http.Error(w, i18n.Localize(localizer, "Error.InvalidCSRFToken"), http.StatusForbidden)
 				return
 			}
 		} else {
-			logger.Get().Error().
+			logger.Get().Warn().
 				Str("ip", r.RemoteAddr).
 				Str("path", r.URL.Path).
 				Msg("Session not available for CSRF validation")
-			http.Error(w, "Session error", http.StatusInternalServerError)
+			localizer := i18n.GetLocalizerFromRequest(r)
+			http.Error(w, i18n.Localize(localizer, "Error.SessionError"), http.StatusInternalServerError)
 			return
 		}
 
@@ -140,7 +145,8 @@ func WithMethodCheck(allowedMethods ...string) func(httprouter.Handle) httproute
 		return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			if !methodMap[r.Method] {
 				w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				localizer := i18n.GetLocalizerFromRequest(r)
+				http.Error(w, i18n.Localize(localizer, "Error.MethodNotAllowed"), http.StatusMethodNotAllowed)
 				return
 			}
 			handler(w, r, ps)

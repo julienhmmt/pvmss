@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"pvmss/i18n"
 	"pvmss/logger"
 )
 
@@ -36,7 +37,8 @@ func (h *CSSHandler) ServeCSS(w http.ResponseWriter, r *http.Request) {
 	// Security: Prevent directory traversal attacks
 	if strings.Contains(cssPath, "..") || strings.HasPrefix(cssPath, "/") {
 		log.Warn().Str("css_path", cssPath).Msg("Directory traversal attempt blocked")
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.Forbidden"), http.StatusForbidden)
 		return
 	}
 

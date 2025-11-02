@@ -13,6 +13,8 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog"
+
+	"pvmss/i18n"
 )
 
 // forwardWebSocketMessages reads from source and writes to destination
@@ -52,14 +54,16 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 	// Validate authentication
 	if !IsAuthenticated(r) {
 		log.Warn().Msg("Unauthenticated WebSocket console access attempt")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.Unauthorized"), http.StatusUnauthorized)
 		return
 	}
 	// Get Proxmox ticket from session
 	pveTicket, _, _, ticketOk := GetProxmoxTicketFromSession(r)
 	if !ticketOk {
 		log.Warn().Msg("No Proxmox ticket found in session for WebSocket console")
-		http.Error(w, "Proxmox authentication required", http.StatusUnauthorized)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.ProxmoxAuthRequired"), http.StatusUnauthorized)
 		return
 	}
 
@@ -76,7 +80,8 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 			Str("port", portStr).
 			Bool("has_vncticket", len(vncticket) > 0).
 			Msg("Missing required parameters for VNC WebSocket")
-		http.Error(w, "Missing required parameters: vmid, node, port, vncticket", http.StatusBadRequest)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.MissingRequiredParameters")+": vmid, node, port, vncticket", http.StatusBadRequest)
 		return
 	}
 
@@ -87,7 +92,8 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 	port, err := strconv.Atoi(portStr)
 	if err != nil || port < 5900 || port > 5999 {
 		log.Warn().Str("port", portStr).Msg("Invalid VNC port number")
-		http.Error(w, "Invalid port number", http.StatusBadRequest)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.InvalidPortNumber"), http.StatusBadRequest)
 		return
 	}
 
@@ -103,7 +109,8 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 	proxmoxURL := os.Getenv("PROXMOX_URL")
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL not configured")
-		http.Error(w, "Server configuration error", http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.ServerConfigError"), http.StatusInternalServerError)
 		return
 	}
 
@@ -111,7 +118,8 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 	proxmoxWSURL, err := buildProxmoxWebSocketURL(proxmoxURL, node, vmid, port, vncticket)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to build Proxmox WebSocket URL")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		localizer := i18n.GetLocalizerFromRequest(r)
+		http.Error(w, i18n.Localize(localizer, "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 

@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -10,6 +12,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
+
+	appI18n "pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
@@ -111,18 +116,54 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Success banner via query params
-	success := r.URL.Query().Get("success") != ""
-	act := r.URL.Query().Get("action")
-	isoName := r.URL.Query().Get("iso")
+	query := r.URL.Query()
+	success := query.Get("success") != ""
+	act := query.Get("action")
+	isoName := query.Get("iso")
 	var successMsg string
 	if success {
+		localizer := appI18n.GetLocalizerFromRequest(r)
+		isoDisplay := isoName
+		if isoDisplay != "" {
+			isoDisplay = filepath.Base(isoDisplay)
+		}
+
+		var messageKey string
 		switch act {
 		case "enable":
-			successMsg = "ISO '" + isoName + "' enabled"
+			messageKey = "Admin.ISO.ToggleEnabled"
 		case "disable":
-			successMsg = "ISO '" + isoName + "' disabled"
-		default:
-			successMsg = "ISO settings updated"
+			messageKey = "Admin.ISO.ToggleDisabled"
+		}
+
+		if messageKey != "" {
+			localized, err := localizer.Localize(&goi18n.LocalizeConfig{
+				MessageID:      messageKey,
+				TemplateData:   map[string]string{"Name": isoDisplay},
+				PluralCount:    nil,
+				DefaultMessage: nil,
+			})
+			if err == nil {
+				successMsg = localized
+			}
+		}
+
+		if successMsg == "" {
+			localized, err := localizer.Localize(&goi18n.LocalizeConfig{MessageID: "Admin.ISO.ToggleUpdated"})
+			if err == nil {
+				successMsg = localized
+			}
+		}
+
+		if successMsg == "" {
+			switch act {
+			case "enable":
+				successMsg = fmt.Sprintf("ISO \"%s\" enabled", isoDisplay)
+			case "disable":
+				successMsg = fmt.Sprintf("ISO \"%s\" disabled", isoDisplay)
+			default:
+				successMsg = "ISO settings updated"
+			}
 		}
 	}
 
@@ -274,8 +315,19 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 
 	log.Info().Str("volid", volid).Bool("enabled", enabled).Msg("ISO toggle completed")
 
-	// Redirect back to ISOs page (route base is /admin/iso)
-	http.Redirect(w, r, "/admin/iso", http.StatusSeeOther)
+	params := url.Values{}
+	params.Set("success", "1")
+	params.Set("action", action)
+	if volid != "" {
+		params.Set("iso", filepath.Base(volid))
+	}
+
+	redirectURL := "/admin/iso"
+	if encoded := params.Encode(); encoded != "" {
+		redirectURL = redirectURL + "?" + encoded
+	}
+
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // RegisterISORoutes registers ISO-related routes

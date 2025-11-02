@@ -3,10 +3,13 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -285,7 +288,7 @@ func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeNa
 }
 
 // ValidateNodeLimitsAgainstCapacity validates that configured limits don't exceed node physical capacity
-func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string, maxCores, maxRamGB int) error {
+func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string, maxCores, maxRamGB int, localizer *goi18n.Localizer) error {
 	log := logger.Get().With().Str("function", "ValidateNodeLimitsAgainstCapacity").Logger()
 
 	capacity, err := GetNodeCapacity(ctx, client, nodeName)
@@ -296,12 +299,22 @@ func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.Clien
 
 	// Validate cores
 	if maxCores > capacity.CPUs {
-		return fmt.Errorf("aggregate cores limit (%d) exceeds node physical capacity (%d CPUs)", maxCores, capacity.CPUs)
+		if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresExceed", map[string]interface{}{
+			"Limit":    maxCores,
+			"Capacity": capacity.CPUs,
+		}, "aggregate cores limit (%d) exceeds node physical capacity (%d CPUs)", maxCores, capacity.CPUs); err != nil {
+			return err
+		}
 	}
 
 	// Validate RAM
 	if maxRamGB > capacity.MemoryGB {
-		return fmt.Errorf("aggregate RAM limit (%d GB) exceeds node physical capacity (%d GB)", maxRamGB, capacity.MemoryGB)
+		if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamExceed", map[string]interface{}{
+			"Limit":    maxRamGB,
+			"Capacity": capacity.MemoryGB,
+		}, "aggregate RAM limit (%d GB) exceeds node physical capacity (%d GB)", maxRamGB, capacity.MemoryGB); err != nil {
+			return err
+		}
 	}
 
 	log.Info().
@@ -316,7 +329,7 @@ func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.Clien
 }
 
 // ValidateVMResourcesAgainstNodeLimits validates that adding a new VM won't exceed node aggregate limits
-func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter, node string, sockets, cores int, memoryMB int) error {
+func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter, node string, sockets, cores int, memoryMB int, localizer *goi18n.Localizer) error {
 	log := logger.Get().With().Str("function", "ValidateVMResourcesAgainstNodeLimits").Logger()
 
 	// Calculate current usage
@@ -348,8 +361,15 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 		totalCores := sockets * cores
 		newTotal := nodeUsage.Cores + totalCores
 		if newTotal > nodeUsage.MaxCores {
-			return fmt.Errorf("adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
-				node, nodeUsage.Cores, totalCores, nodeUsage.MaxCores)
+			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresVMExceed", map[string]interface{}{
+				"Node":      node,
+				"Current":   nodeUsage.Cores,
+				"Requested": totalCores,
+				"Limit":     nodeUsage.MaxCores,
+			}, "adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
+				node, nodeUsage.Cores, totalCores, nodeUsage.MaxCores); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -357,8 +377,15 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 	if nodeUsage.MaxRamGB > 0 {
 		newTotal := nodeUsage.RamGB + memoryGB
 		if newTotal > nodeUsage.MaxRamGB {
-			return fmt.Errorf("adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
-				node, nodeUsage.RamGB, memoryGB, nodeUsage.MaxRamGB)
+			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamVMExceed", map[string]interface{}{
+				"Node":      node,
+				"Current":   nodeUsage.RamGB,
+				"Requested": memoryGB,
+				"Limit":     nodeUsage.MaxRamGB,
+			}, "adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
+				node, nodeUsage.RamGB, memoryGB, nodeUsage.MaxRamGB); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -369,4 +396,16 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 		Msg("VM creation validated against aggregate node limits")
 
 	return nil
+}
+
+// returnLocalizedError returns a localized error message or falls back to formatted message
+func returnLocalizedError(localizer *goi18n.Localizer, messageID string, templateData map[string]interface{}, fallbackFormat string, args ...interface{}) error {
+	localized, err := localizer.Localize(&goi18n.LocalizeConfig{
+		MessageID:    messageID,
+		TemplateData: templateData,
+	})
+	if err == nil && localized != "" {
+		return errors.New(localized)
+	}
+	return fmt.Errorf(fallbackFormat, args...)
 }

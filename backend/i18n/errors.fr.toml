@@ -13,3 +13,39 @@ other = "Ressource non trouvée"
 other = "Erreur"
 ["Error.Unauthorized"]
 other = "Non autorisé"
+
+# Server Errors
+["Error.SettingsUnavailable"]
+other = "Paramètres non disponibles"
+["Error.AccessDenied"]
+other = "Accès refusé : privilèges administrateur requis"
+["Error.InvalidContentType"]
+other = "Type de contenu invalide"
+["Error.InvalidFormData"]
+other = "Données de formulaire invalides"
+["Error.InvalidCSRFToken"]
+other = "Jeton CSRF invalide ou manquant"
+["Error.SessionError"]
+other = "Erreur de session"
+["Error.MethodNotAllowed"]
+other = "Méthode non autorisée"
+["Error.Forbidden"]
+other = "Interdit"
+["Error.ProxmoxAuthRequired"]
+other = "Authentification Proxmox requise"
+["Error.MissingRequiredParameters"]
+other = "Paramètres requis manquants"
+["Error.InvalidPortNumber"]
+other = "Numéro de port invalide"
+["Error.ServerConfigError"]
+other = "Erreur de configuration du serveur"
+["Error.ProxmoxConnectionError"]
+other = "Erreur de connexion Proxmox"
+["Error.ProxmoxClientUnavailable"]
+other = "Client Proxmox indisponible"
+["Error.MissingRequiredFields"]
+other = "Champs requis manquants"
+["Error.FailedToGetNodeInfo"]
+other = "Échec de récupération des informations de nœud"
+["Error.FailedToGetResources"]
+other = "Échec de récupération des ressources"
