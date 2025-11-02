@@ -8,6 +8,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -29,18 +30,25 @@ func buildVMBRSuccessMessage(r *http.Request) string {
 		return ""
 	}
 
+	localizer := i18n.GetLocalizerFromRequest(r)
 	action := r.URL.Query().Get("action")
 	name := r.URL.Query().Get("vmbr")
 
 	switch action {
 	case "enable":
-		return "VMBR '" + name + "' enabled"
+		if name == "" {
+			return i18n.Localize(localizer, "Admin.VMBR.Success.Generic")
+		}
+		return i18n.Localize(localizer, "Admin.VMBR.Success.Enabled")
 	case "disable":
-		return "VMBR '" + name + "' disabled"
+		if name == "" {
+			return i18n.Localize(localizer, "Admin.VMBR.Success.Generic")
+		}
+		return i18n.Localize(localizer, "Admin.VMBR.Success.Disabled")
 	case "update_network_cards":
-		return "Network cards configuration updated successfully"
+		return i18n.Localize(localizer, "Admin.VMBR.Success.UpdateNetworkCards")
 	default:
-		return "VMBR settings updated"
+		return i18n.Localize(localizer, "Admin.VMBR.Success.Generic")
 	}
 }
 
