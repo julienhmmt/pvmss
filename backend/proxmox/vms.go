@@ -362,16 +362,16 @@ func DeleteVMWithContext(ctx context.Context, client ClientInterface, node strin
 }
 
 // GetVMsResty retrieves a comprehensive list of all VMs across all available Proxmox nodes using resty.
-// It first fetches the list of nodes and then iterates through them, calling GetVMsForNodeResty for each.
+// It first fetches the list of online nodes only and then iterates through them, calling GetVMsForNodeResty for each.
 func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
-	// Get all nodes first
-	nodes, err := GetNodeNamesResty(ctx, restyClient)
+	// Get online nodes only to avoid errors with down nodes
+	nodes, err := GetOnlineNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to get node list while fetching VMs (resty)")
-		return nil, fmt.Errorf("failed to get node list: %w", err)
+		logger.Get().Error().Err(err).Msg("Failed to get online node list while fetching VMs (resty)")
+		return nil, fmt.Errorf("failed to get online node list: %w", err)
 	}
 
-	// Collect VMs from all nodes
+	// Collect VMs from all online nodes
 	allVMs := make([]VM, 0)
 
 	for _, node := range nodes {
@@ -383,7 +383,7 @@ func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
 		allVMs = append(allVMs, nodeVMs...)
 	}
 
-	logger.Get().Info().Int("total_vms", len(allVMs)).Msg("Successfully fetched all VMs (resty)")
+	logger.Get().Info().Int("total_vms", len(allVMs)).Msg("Successfully fetched all VMs from online nodes (resty)")
 	return allVMs, nil
 }
 
@@ -517,11 +517,11 @@ func DeleteVMResty(ctx context.Context, restyClient *RestyClient, node string, v
 }
 
 // GetNextVMIDResty determines the next available unique ID for a new VM using resty.
-// It fetches all existing VMs, finds the highest current VMID, and returns that value incremented by one.
+// It fetches all existing VMs from online nodes only, finds the highest current VMID, and returns that value incremented by one.
 func GetNextVMIDResty(ctx context.Context, restyClient *RestyClient) (int, error) {
 	vms, err := GetVMsResty(ctx, restyClient)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get VMs to calculate next VMID: %w", err)
+		return 0, fmt.Errorf("failed to get VMs from online nodes to calculate next VMID: %w", err)
 	}
 
 	highestVMID := 0
@@ -532,6 +532,6 @@ func GetNextVMIDResty(ctx context.Context, restyClient *RestyClient) (int, error
 	}
 
 	nextVMID := highestVMID + 1
-	logger.Get().Info().Int("next_vmid", nextVMID).Msg("Calculated next VMID (resty)")
+	logger.Get().Info().Int("next_vmid", nextVMID).Msg("Calculated next VMID from online nodes (resty)")
 	return nextVMID, nil
 }

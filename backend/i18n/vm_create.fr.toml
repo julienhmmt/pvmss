@@ -159,6 +159,11 @@ other = "Pool de ressources"
 other = "Limites de ressources atteintes"
 ["VM.Create.ResourceLimitsMessage"]
 other = "Tous les nœuds ont atteint leurs limites de ressources. Vous ne pouvez pas créer de nouvelles machines virtuelles avant que des ressources ne soient libérées ou que les limites soient augmentées."
+["VM.Create.OfflineNodesTitle"]
+other = "État du cluster"
+["VM.Create.OfflineNodesMessage"]
+one = "Un nœud est hors ligne et indisponible pour la création de VM. Seuls les nœuds en ligne sont affichés."
+other = "{{.PluralCount}} nœuds sont hors ligne et indisponibles pour la création de VM. Seuls les nœuds en ligne sont affichés."
 ["VM.Create.StorageHelp"]
 other = "Sélectionnez un stockage pour votre machine virtuelle"
 ["VM.Create.NodeLimitReached"]

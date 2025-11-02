@@ -70,6 +70,18 @@
                 )}}
                 {{end}}
                 
+                {{if .OfflineNodesNotification}}
+                {{template "notification" (dict
+                    "Type" (.OfflineNodesNotification.type)
+                    "Title" (.OfflineNodesNotification.title)
+                    "Message" (.OfflineNodesNotification.text)
+                    "Icon" "fas fa-info-circle"
+                    "Dismissible" true
+                    "Live" "polite"
+                    "ExtraClasses" "mb-4"
+                )}}
+                {{end}}
+                
                 {{if .ValidationError}}
                 {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
                 {{end}}
