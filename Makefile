@@ -161,4 +161,14 @@ env-example: ## Copie env.example vers .env
 	fi
 
 # =============================================================================
+# Astro
+
+astro-build: # build astro pour le distribuer
+	@echo "$(BLUE)Build du code astro...$(NC)"
+	@docker compose -f docker-compose.website.yml build --no-cache pvmss-website
+	@echo "$(GREEN)Build réussi$(NC)"
+	echo "$(BLUE)Démarrage du conteneur d'exposition sur le port :50001/tcp$(NC)"
+	@docker compose -f docker-compose.website.yml up -d
+
+# =============================================================================
 .DEFAULT_GOAL := help

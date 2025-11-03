@@ -1,0 +1,17 @@
+---
+services:
+  pvmss-website:
+    build:
+      context: ./website
+      dockerfile: ../website.Dockerfile
+    restart: unless-stopped
+    container_name: pvmss-website
+    ports:
+      - "50001:80/tcp"
+    environment:
+      - NODE_ENV=production
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M

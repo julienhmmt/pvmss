@@ -4,6 +4,7 @@
 # Allow files and directories
 !backend/
 !frontend/
+!website/
 !go.mod
 !go.sum
 
