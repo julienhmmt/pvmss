@@ -22,9 +22,9 @@ other = "Description"
 ["VM.Create.DescriptionPlaceholder"]
 other = "Entrez une description (markdown supporté)"
 ["VM.Create.DiskSize"]
-other = "Taille du disque (Go)"
+other = "Taille du disque"
 ["VM.Create.DiskSizeHelp"]
-other = "Taille du disque en gigaoctets (8 Go minimum)"
+other = "Taille du disque virtuel. Choisissez entre les unités Mo et Go."
 ["VM.Create.DiskBusType"]
 other = "Type de bus de disque"
 ["VM.Create.DiskBusMax"]
@@ -52,9 +52,9 @@ other = "Sélectionnez une image ISO pour installer le système d'exploitation"
 ["VM.Create.MediaNetwork"]
 other = "Image ISO & Réseau"
 ["VM.Create.Memory"]
-other = "Mémoire (Mo)"
+other = "Mémoire"
 ["VM.Create.MemoryHelp"]
-other = "Quantité de mémoire en mégaoctets (512 Mo minimum)"
+other = "Quantité de mémoire pour la machine virtuelle. Choisissez entre les unités Mo et Go."
 ["VM.Create.Network"]
 other = "Configuration réseau"
 ["VM.Create.NetworkBridge"]

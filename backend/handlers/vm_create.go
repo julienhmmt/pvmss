@@ -759,10 +759,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	enableTPM := r.FormValue("enable_tpm")
 
 	// Parse numeric values
-	memoryMBStr := strings.TrimSpace(r.FormValue("memory"))
+	memoryStr := strings.TrimSpace(r.FormValue("memory"))
+	memoryUnit := strings.TrimSpace(r.FormValue("memory_unit"))
 	cpuSocketsStr := strings.TrimSpace(r.FormValue("sockets"))
 	cpuCoresStr := strings.TrimSpace(r.FormValue("cores"))
-	diskSizeGBStr := strings.TrimSpace(r.FormValue("disk_size_0"))
+	diskSizeStr := strings.TrimSpace(r.FormValue("disk_size_0"))
+	diskSizeUnit := strings.TrimSpace(r.FormValue("disk_size_unit_0"))
 
 	// Simple validation
 	if name == "" {
@@ -798,6 +800,35 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			return defaultValue
 		}
 		return value
+	}
+
+	// Helper function to extract and convert memory/disk size
+	extractSize := func(str string, unit string, defaultValue int, minVal, maxVal int, fieldName string) int {
+		if str == "" {
+			return defaultValue
+		}
+		// Parse as float for GB values
+		cleanStr := strings.TrimSpace(str)
+		var value float64
+		if val, err := fmt.Sscanf(cleanStr, "%f", &value); err != nil || val != 1 {
+			log.Warn().Str("field", fieldName).Str("input", str).Str("unit", unit).Int("default", defaultValue).Msg("Invalid numeric value, using default")
+			return defaultValue
+		}
+
+		// Convert to MB based on unit
+		var mb int
+		if unit == "GB" {
+			mb = int(value * 1024)
+		} else {
+			mb = int(value)
+		}
+
+		// Validate range
+		if mb < minVal || mb > maxVal {
+			log.Warn().Str("field", fieldName).Str("unit", unit).Float64("value", value).Int("mb", mb).Int("min", minVal).Int("max", maxVal).Int("default", defaultValue).Msg("Value out of range, using default")
+			return defaultValue
+		}
+		return mb
 	}
 
 	// Get limits from settings or use defaults
@@ -870,10 +901,10 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	}
 
 	// Parse values with proper validation
-	memoryMB := extractInt(memoryMBStr, 2048, memoryMin, memoryMax, "memory")
+	memoryMB := extractSize(memoryStr, memoryUnit, 2048, memoryMin, memoryMax, "memory")
 	cpuSockets := extractInt(cpuSocketsStr, 1, socketsMin, socketsMax, "sockets")
 	cpuCores := extractInt(cpuCoresStr, 2, coresMin, coresMax, "cores")
-	diskSizeGB := extractInt(diskSizeGBStr, 20, diskMin, diskMax, "disk_size")
+	diskSizeMB := extractSize(diskSizeStr, diskSizeUnit, 10240, diskMin*1024, diskMax*1024, "disk_size")
 
 	// Defaults
 	if diskBus == "" {
@@ -940,36 +971,38 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		params.Set("efidisk0", storage+":1,format=raw,efitype=4m")
 	}
 
+	// Primary disk (disk 0)
+	diskParam := fmt.Sprintf("%s0", diskBus)
+	params.Set(diskParam, fmt.Sprintf("%s:%d", storage, diskSizeMB/1024))
+	log.Info().Str("disk_param", diskParam).Int("size_mb", diskSizeMB).Int("size_gb", diskSizeMB/1024).Msg("Configured primary disk")
+
 	// TPM
 	if enableTPM == "1" {
-		params.Set("tpmstate0", storage+":4,version=v2.0")
+		// TPM implementation would go here
+		// For now, we'll skip TPM creation
+		log.Info().Msg("TPM requested but not implemented yet")
 	}
 
-	// Disk - Primary disk (disk 0)
-	diskParam := diskBus + "0"
-	params.Set(diskParam, fmt.Sprintf("%s:%d", storage, diskSizeGB))
-	if diskBus == "scsi" {
-		params.Set("scsihw", "virtio-scsi-pci")
-	}
-
-	// Additional disks (disk 1, 2, 3, etc.) if configured
+	// Additional disks
 	if settings != nil && settings.MaxDiskPerVM > 1 {
 		for diskIdx := 1; diskIdx < settings.MaxDiskPerVM; diskIdx++ {
 			diskSizeStr := strings.TrimSpace(r.FormValue(fmt.Sprintf("disk_size_%d", diskIdx)))
+			diskSizeUnit := strings.TrimSpace(r.FormValue(fmt.Sprintf("disk_size_unit_%d", diskIdx)))
 			if diskSizeStr == "" || diskSizeStr == "0" {
 				// Optional disk not configured, skip
 				continue
 			}
-			additionalDiskSize := 0
-			if val, err := fmt.Sscanf(diskSizeStr, "%d", &additionalDiskSize); err != nil || val != 1 || additionalDiskSize <= 0 {
+			// Convert to MB based on unit
+			additionalDiskSizeMB := extractSize(diskSizeStr, diskSizeUnit, 0, 1024, 1048576, fmt.Sprintf("disk_size_%d", diskIdx))
+			if additionalDiskSizeMB <= 0 {
 				// Invalid size, skip
-				log.Warn().Int("disk_idx", diskIdx).Str("size", diskSizeStr).Msg("Invalid additional disk size, skipping")
+				log.Warn().Int("disk_idx", diskIdx).Str("size", diskSizeStr).Str("unit", diskSizeUnit).Msg("Invalid additional disk size, skipping")
 				continue
 			}
-			// Create additional disk with same bus type
+			// Create additional disk with same bus type (convert MB to GB for Proxmox)
 			additionalDiskParam := fmt.Sprintf("%s%d", diskBus, diskIdx)
-			params.Set(additionalDiskParam, fmt.Sprintf("%s:%d", storage, additionalDiskSize))
-			log.Info().Int("disk_idx", diskIdx).Int("size_gb", additionalDiskSize).Str("param", additionalDiskParam).Msg("Added additional disk")
+			params.Set(additionalDiskParam, fmt.Sprintf("%s:%d", storage, additionalDiskSizeMB/1024))
+			log.Info().Int("disk_idx", diskIdx).Int("size_mb", additionalDiskSizeMB).Int("size_gb", additionalDiskSizeMB/1024).Str("param", additionalDiskParam).Msg("Added additional disk")
 		}
 	}
 

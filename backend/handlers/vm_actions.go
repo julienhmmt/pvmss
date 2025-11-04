@@ -203,6 +203,7 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 	coresStr := strings.TrimSpace(r.FormValue("cores"))
 	memoryStr := strings.TrimSpace(r.FormValue("memory"))
+	memoryUnit := strings.TrimSpace(r.FormValue("memory_unit"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	socketsStr := strings.TrimSpace(r.FormValue("sockets"))
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
@@ -237,6 +238,14 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Convert memory to MB based on unit
+	var memoryMB int64
+	if memoryUnit == "GB" {
+		memoryMB = memory * 1024
+	} else {
+		memoryMB = memory
+	}
+
 	stateManager := getStateManager(r)
 	if stateManager == nil {
 		ctx.HandleError(nil, "State manager not available", http.StatusInternalServerError)
@@ -244,6 +253,39 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	settings := stateManager.GetSettings()
+
+	// Get memory limits from settings (optional). Stored in GB in settings; convert to MB.
+	var vmRamMinMB, vmRamMaxMB int64 = 0, 0
+	if settings != nil && settings.Limits != nil {
+		if vmLimits, ok := settings.Limits["vm"]; ok {
+			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
+				if ram, ok := vmLimitsMap["ram"]; ok {
+					if ramMap, ok := ram.(map[string]interface{}); ok {
+						if min, ok := ramMap["min"].(float64); ok && min > 0 {
+							vmRamMinMB = int64(min * 1024)
+						}
+						if max, ok := ramMap["max"].(float64); ok && max > 0 {
+							vmRamMaxMB = int64(max * 1024)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Validate memory limits only if configured in settings
+	if (vmRamMinMB > 0 && memoryMB < vmRamMinMB) || (vmRamMaxMB > 0 && memoryMB > vmRamMaxMB) {
+		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+		return
+	}
+
+	ctx.Log.Info().
+		Str("memory_input", memoryStr).
+		Str("memory_unit", memoryUnit).
+		Int64("memory_mb", memoryMB).
+		Int64("min_mb", vmRamMinMB).
+		Int64("max_mb", vmRamMaxMB).
+		Msg("Memory parsed for VM update")
 	maxNetworkCards := 1
 	if settings != nil && settings.MaxNetworkCards > 0 {
 		maxNetworkCards = settings.MaxNetworkCards
@@ -266,7 +308,7 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 	values := url.Values{}
 	values.Set("sockets", socketsStr)
 	values.Set("cores", coresStr)
-	values.Set("memory", memoryStr)
+	values.Set("memory", fmt.Sprintf("%d", memoryMB))
 
 	// Handle CD-ROM ISO update
 	cdromISO := strings.TrimSpace(r.FormValue("cdrom_iso"))
