@@ -618,7 +618,7 @@
                             <!-- Disks List -->
                             <div style="margin-top: 1.5rem;">
                                 {{range $i, $d := .Disks}}
-                                <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                <div class="" style="/* eslint-disable */background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;/* eslint-enable */" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -1158,10 +1158,23 @@
                         </label>
                         <div class="field has-addons">
                             <div class="control is-expanded">
-                                <input id="memory" class="input is-medium" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="128" value="{{.CurrentMemory}}" required inputmode="numeric" {{if $isRunning}}disabled{{end}}>
+                                <input id="memory" class="input is-medium" type="number" name="memory" min="{{.VMRamMinMB}}" max="{{.VMRamMaxMB}}" value="{{.CurrentMemory}}" required inputmode="numeric" {{if $isRunning}}disabled{{end}}>
                             </div>
-                            <div class="control"><span class="button is-static is-medium">MB</span></div>
+                            <div class="control">
+                                <div class="select is-medium">
+                                    <select id="memory-unit" name="memory_unit" {{if $isRunning}}disabled{{end}}>
+                                        <option value="MB">MB</option>
+                                        <option value="GB">GB</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
+                        <p class="help has-text-grey is-size-7 mt-2">
+                            <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
+                            <span id="memory-display">{{T "Common.Selected"}}: {{printf "%.1f" (div (float64 .CurrentMemory) 1024)}} GB ({{.CurrentMemory}} MB)</span>
+                            <span class="ml-2">• {{T "Common.Min"}}: {{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB ({{.VMRamMinMB}} MB)</span>
+                            <span class="ml-2">• {{T "Common.Max"}}: {{printf "%.0f" (div (float64 .VMRamMaxMB) 1024)}} GB ({{.VMRamMaxMB}} MB)</span>
+                        </p>
                     </div>
 
                     <!-- Network Configuration -->
@@ -1187,7 +1200,9 @@
                                       title="{{if $card.LinkDown}}{{T "Common.Enable"}}{{else}}{{T "Common.Disable"}}{{end}} {{T "VM.Create.Network"}} #{{addInt $idx 1}}">
                                       <input type="checkbox" 
                                         {{if not $card.LinkDown}}checked{{end}}
-                                        onchange="toggleNetworkCard({{$idx}}, this.checked, '{{$.CSRFToken}}', '{{$.VM.VMID}}', '{{$.VM.Node}}')">
+                                      /* eslint-disable */
+                                        onchange="toggleNetworkCard({{$idx}}, this.checked, '{{$.CSRFToken}}', '{{$.VM.VMID}}', '{{$.VM.Node}}')"
+                                      /* eslint-enable */>
                                       <span class="network-toggle-slider"></span>
                                       <span class="network-toggle-label">
                                         {{if $card.LinkDown}}
@@ -1348,6 +1363,81 @@
         </div>
     </div>
 </section>
+
+<!-- Memory Unit Conversion JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const memoryInput = document.getElementById('memory');
+        const memoryUnit = document.getElementById('memory-unit');
+        const memoryDisplay = document.getElementById('memory-display');
+        
+        if (!memoryInput || !memoryUnit || !memoryDisplay) return;
+        
+        const selectedLabel = '{{T "Common.Selected"}}';
+        
+        // Get limits from template variables (quote to keep valid JS before templating)
+        const vmRamMinMB = parseInt('{{.VMRamMinMB}}', 10);
+        const vmRamMaxMB = parseInt('{{.VMRamMaxMB}}', 10);
+        
+        // Initialize with MB as default unit
+        memoryUnit.value = 'MB';
+        memoryInput.dataset.lastUnit = 'MB';
+        // Derive step dynamically from current input attribute (MB)
+        const defaultStepMB = parseInt(memoryInput.getAttribute('step') || '1', 10);
+        const derivedStepGB = defaultStepMB / 1024; // e.g., 128MB -> 0.125GB
+        
+        function updateMemoryDisplay() {
+            const value = parseFloat(memoryInput.value.replace(',', '.')) || 0;
+            const unit = memoryUnit.value;
+            let mb, gb;
+            
+            if (unit === 'GB') {
+                mb = Math.round(value * 1024);
+                gb = value;
+            } else {
+                mb = Math.round(value);
+                gb = (value / 1024).toFixed(1);
+            }
+            
+            memoryDisplay.textContent = selectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
+            
+            // Update input min/max/step based on unit and template variables
+            if (unit === 'GB') {
+                memoryInput.min = (vmRamMinMB / 1024).toFixed(1);
+                memoryInput.max = (vmRamMaxMB / 1024).toFixed(0);
+                // Use derived GB step from MB step (avoid hardcoded values)
+                // Keep a reasonable precision (up to 3 decimals)
+                const stepGB = Math.max(derivedStepGB, 0.001);
+                memoryInput.step = stepGB.toString();
+            } else {
+                memoryInput.min = vmRamMinMB.toString();
+                memoryInput.max = vmRamMaxMB.toString();
+                memoryInput.step = defaultStepMB.toString();
+            }
+        }
+        
+        // Event listeners
+        memoryInput.addEventListener('input', updateMemoryDisplay);
+        memoryInput.addEventListener('change', updateMemoryDisplay);
+        memoryUnit.addEventListener('change', function() {
+            // Convert current value when unit changes
+            const currentValue = parseFloat(memoryInput.value.replace(',', '.')) || 0;
+            if (this.value === 'GB' && memoryInput.dataset.lastUnit === 'MB') {
+                // Convert MB to GB, use decimal point
+                const gbValue = currentValue / 1024;
+                memoryInput.value = gbValue.toFixed(1);
+            } else if (this.value === 'MB' && memoryInput.dataset.lastUnit === 'GB') {
+                // Convert GB to MB, round to integer
+                memoryInput.value = Math.round(currentValue * 1024);
+            }
+            memoryInput.dataset.lastUnit = this.value;
+            updateMemoryDisplay();
+        });
+        
+        // Initialize display
+        updateMemoryDisplay();
+    });
+</script>
 
 <!-- Console JavaScript -->
 <script type="module">

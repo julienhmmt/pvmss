@@ -296,31 +296,78 @@
                                                     </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{$vmRamMinMB}}" max="{{$vmRamMaxMB}}" step="256" value="{{$vmRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., 2048 (2 GB)">
+                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="512" max="32768" step="256" value="2048" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., 2048">
                                                         </div>
-                                                        <div class="control"><span class="button is-static is-medium">MB</span></div>
+                                                        <div class="control">
+                                                            <div class="select is-medium">
+                                                                <select id="memory-unit" name="memory_unit">
+                                                                    <option value="MB">MB</option>
+                                                                    <option value="GB">GB</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     <p class="help has-text-grey is-size-7 mt-2">
                                                         <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
-                                                        <span id="memory-display">{{T "Common.Selected"}}: {{$vmRamMinGB}} GB ({{$vmRamMinMB}} MB)</span>
-                                                        <span class="ml-2">• {{T "Common.Min"}}: {{$vmRamMinGB}} GB ({{$vmRamMinMB}} MB)</span>
-                                                        <span class="ml-2">• {{T "Common.Max"}}: {{$vmRamMaxGB}} GB ({{$vmRamMaxMB}} MB)</span>
+                                                        <span id="memory-display">{{T "Common.Selected"}}: 2 GB (2048 MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Min"}}: 512 MB (0.5 GB)</span>
+                                                        <span class="ml-2">• {{T "Common.Max"}}: 32768 MB (32 GB)</span>
                                                     </p>
                                                 </div>
                                                 <script>
                                                     // Real-time memory display conversion
                                                     const memoryInput = document.getElementById('memory');
+                                                    const memoryUnit = document.getElementById('memory-unit');
                                                     const memoryDisplay = document.getElementById('memory-display');
                                                     const memorySelectedLabel = '{{T "Common.Selected"}}';
                                                     
                                                     function updateMemoryDisplay() {
-                                                        const mb = parseInt(memoryInput.value) || 0;
-                                                        const gb = (mb / 1024).toFixed(1);
+                                                        const value = parseFloat(memoryInput.value.replace(',', '.')) || 0;
+                                                        const unit = memoryUnit.value;
+                                                        let mb, gb;
+                                                        
+                                                        if (unit === 'GB') {
+                                                            mb = Math.round(value * 1024);
+                                                            gb = value;
+                                                        } else {
+                                                            mb = Math.round(value);
+                                                            gb = (value / 1024).toFixed(1);
+                                                        }
+                                                        
                                                         memoryDisplay.textContent = memorySelectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
+                                                        
+                                                        // Update input min/max based on unit
+                                                        if (unit === 'GB') {
+                                                            memoryInput.min = '0.5';
+                                                            memoryInput.max = '32';
+                                                            memoryInput.step = '0.5';
+                                                        } else {
+                                                            memoryInput.min = '512';
+                                                            memoryInput.max = '32768';
+                                                            memoryInput.step = '256';
+                                                        }
                                                     }
                                                     
                                                     memoryInput.addEventListener('input', updateMemoryDisplay);
                                                     memoryInput.addEventListener('change', updateMemoryDisplay);
+                                                    memoryUnit.addEventListener('change', function() {
+                                                        // Convert current value when unit changes
+                                                        const currentValue = parseFloat(memoryInput.value.replace(',', '.')) || 0;
+                                                        if (this.value === 'GB' && memoryInput.dataset.lastUnit === 'MB') {
+                                                            // Convert MB to GB, use decimal point
+                                                            const gbValue = currentValue / 1024;
+                                                            memoryInput.value = gbValue.toFixed(1);
+                                                        } else if (this.value === 'MB' && memoryInput.dataset.lastUnit === 'GB') {
+                                                            // Convert GB to MB, round to integer
+                                                            memoryInput.value = Math.round(currentValue * 1024);
+                                                        }
+                                                        memoryInput.dataset.lastUnit = this.value;
+                                                        updateMemoryDisplay();
+                                                    });
+                                                    
+                                                    // Initialize
+                                                    memoryInput.dataset.lastUnit = 'MB';
+                                                    updateMemoryDisplay();
                                                 </script>
                                                 <!-- Disk Bus Type Selection -->
                                                 <div class="field">
@@ -389,22 +436,99 @@
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
                                                             <input id="diskSize_{{$diskIdx}}" class="input is-medium" type="number" name="disk_size_{{$diskIdx}}" 
-                                                                   min="{{if eq $diskIdx 0}}{{$vmDiskMin}}{{else}}0{{end}}" 
-                                                                   max="{{$vmDiskMax}}" 
-                                                                   step="1" 
-                                                                   value="{{if eq $diskIdx 0}}{{$vmDiskMin}}{{else}}{{end}}" 
+                                                                   min="{{if eq $diskIdx 0}}1{{else}}0{{end}}" 
+                                                                   max="1024" 
+                                                                   step="{{if eq $diskIdx 0}}1{{else}}0.1{{end}}" 
+                                                                   value="{{if eq $diskIdx 0}}10{{else}}{{end}}" 
                                                                    {{if eq $diskIdx 0}}required{{end}} 
                                                                    placeholder="{{if gt $diskIdx 0}}{{T "VM.Create.DiskOptionalPlaceholder"}}{{end}}"
                                                                    aria-describedby="diskSize-help" 
                                                                    inputmode="numeric">
                                                         </div>
-                                                        <div class="control"><span class="button is-static is-medium">GB</span></div>
+                                                        <div class="control">
+                                                            <div class="select is-medium">
+                                                                <select id="diskSize-unit-{{$diskIdx}}" name="disk_size_unit_{{$diskIdx}}">
+                                                                    <option value="GB">GB</option>
+                                                                    <option value="MB">MB</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     {{if eq $diskIdx 0}}
                                                     <p class="help has-text-grey is-size-7 mt-2">
                                                         <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
-                                                        <span>{{T "Common.Min"}}: {{$vmDiskMin}} GB — {{T "Common.Max"}}: {{$vmDiskMax}} GB</span>
+                                                        <span id="diskSize-display-{{$diskIdx}}">{{T "Common.Selected"}}: 10 GB (10240 MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Min"}}: 1 GB (1024 MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Max"}}: 1024 GB (1 TB)</span>
                                                     </p>
+                                                    <script>
+                                                        // Disk size conversion - use class-based approach to avoid template syntax in JS
+                                                        /* eslint-disable */
+                                                        document.addEventListener('DOMContentLoaded', function() {
+                                                            // Initialize all disk size converters
+                                                            const diskInputs = document.querySelectorAll('[id^="diskSize_"]');
+                                                            
+                                                            diskInputs.forEach(function(input) {
+                                                                const diskIdx = input.id.replace('diskSize_', '');
+                                                                const unitSelect = document.getElementById('diskSize-unit-' + diskIdx);
+                                                                const display = document.getElementById('diskSize-display-' + diskIdx);
+                                                                
+                                                                if (!unitSelect || !display) return;
+                                                                
+                                                                const selectedLabel = '{{T "Common.Selected"}}';
+                                                                
+                                                                function updateDisplay() {
+                                                                    const value = parseFloat(input.value.replace(',', '.')) || 0;
+                                                                    const unit = unitSelect.value;
+                                                                    let mb, gb;
+                                                                    
+                                                                    if (unit === 'GB') {
+                                                                        mb = Math.round(value * 1024);
+                                                                        gb = value;
+                                                                    } else {
+                                                                        mb = Math.round(value);
+                                                                        gb = (value / 1024).toFixed(1);
+                                                                    }
+                                                                    
+                                                                    display.textContent = selectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
+                                                                    
+                                                                    // Update input min/max/step based on unit
+                                                                    if (unit === 'GB') {
+                                                                        input.min = '1';
+                                                                        input.max = '1024';
+                                                                        input.step = '1';
+                                                                    } else {
+                                                                        input.min = '1024';
+                                                                        input.max = '1048576';
+                                                                        input.step = '1024';
+                                                                    }
+                                                                }
+                                                                
+                                                                // Event listeners
+                                                                input.addEventListener('input', updateDisplay);
+                                                                input.addEventListener('change', updateDisplay);
+                                                                unitSelect.addEventListener('change', function() {
+                                                                    // Convert current value when unit changes
+                                                                    const currentValue = parseFloat(input.value.replace(',', '.')) || 0;
+                                                                    if (this.value === 'GB' && input.dataset.lastUnit === 'MB') {
+                                                                        // Convert MB to GB, use decimal with 1 place
+                                                                        const gbValue = currentValue / 1024;
+                                                                        input.value = gbValue.toFixed(1);
+                                                                    } else if (this.value === 'MB' && input.dataset.lastUnit === 'GB') {
+                                                                        // Convert GB to MB, round to integer
+                                                                        input.value = Math.round(currentValue * 1024);
+                                                                    }
+                                                                    input.dataset.lastUnit = this.value;
+                                                                    updateDisplay();
+                                                                });
+                                                                
+                                                                // Initialize
+                                                                input.dataset.lastUnit = 'GB';
+                                                                updateDisplay();
+                                                            });
+                                                        });
+                                                        /* eslint-enable */
+                                                    </script>
                                                     {{end}}
                                                 </div>
                                                 {{if lt (toInt (add $diskIdx 1)) $maxDisks}}<hr class="my-4">{{end}}

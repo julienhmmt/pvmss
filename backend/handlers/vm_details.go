@@ -641,6 +641,35 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var currentVMBR string
 	var currentMemoryMB = vm.MaxMem / (1024 * 1024)
 
+	// Compute explicit VM RAM limits for template (MB) from settings
+	// If settings are missing, fall back to current VM memory to avoid hardcoded constants
+	vmRamMinMB, vmRamMaxMB := 0, 0
+	if settings != nil && settings.Limits != nil {
+		if vmLimits, ok := settings.Limits["vm"]; ok {
+			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
+				if ram, ok := vmLimitsMap["ram"]; ok {
+					if ramMap, ok := ram.(map[string]interface{}); ok {
+						if min, ok := ramMap["min"].(float64); ok {
+							// Stored in GB in settings, convert to MB
+							vmRamMinMB = int(min) * 1024
+						}
+						if max, ok := ramMap["max"].(float64); ok {
+							// Stored in GB in settings, convert to MB
+							vmRamMaxMB = int(max) * 1024
+						}
+					}
+				}
+			}
+		}
+	}
+	// Fallback without hardcoded values: constrain to current memory
+	if vmRamMinMB <= 0 {
+		vmRamMinMB = int(currentMemoryMB)
+	}
+	if vmRamMaxMB <= 0 {
+		vmRamMaxMB = int(currentMemoryMB)
+	}
+
 	maxNetworkCards := settings.MaxNetworkCards
 	if maxNetworkCards <= 0 {
 		maxNetworkCards = 1
@@ -779,6 +808,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
 		"HasCDROM":              hasCDROM,
 		"Limits":                settings.Limits,
+		"VMRamMinMB":            vmRamMinMB,
+		"VMRamMaxMB":            vmRamMaxMB,
 		"MaxNetworkCards":       maxNetworkCards,
 		"NetworkBridges":        networkBridgesStr,
 		"NetworkCards":          networkCardsData,
