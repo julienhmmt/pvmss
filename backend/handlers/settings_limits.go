@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -91,6 +92,10 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	// Always provide NodeNames (empty array if no nodes available)
 	if nodeNames == nil {
 		nodeNames = []string{}
+	}
+	// Ensure alphabetical order of nodes in the dropdown
+	if len(nodeNames) > 1 {
+		sort.Strings(nodeNames)
 	}
 	builder.AddData("NodeNames", nodeNames)
 
