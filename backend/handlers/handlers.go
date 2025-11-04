@@ -146,7 +146,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	healthHandler := NewHealthHandler(stateManager)
 	languageHandler := NewLanguageHandler()
 	profileHandler := NewProfileHandler(stateManager)
-	searchHandler := NewSearchHandler(stateManager)
+	searchHandler := NewSearchOptimizedHandler(stateManager)
 	settingsHandler := NewSettingsHandler(stateManager)
 	storageHandler := NewStorageHandler(stateManager)
 	tagsHandler := NewTagsHandler(stateManager)
@@ -275,7 +275,7 @@ func setupRoutes(
 	languageHandler *LanguageHandler,
 	profileHandler *ProfileHandler,
 	router *httprouter.Router,
-	searchHandler *SearchHandler,
+	searchHandler *SearchOptimizedHandler,
 	settingsHandler *SettingsHandler,
 	storageHandler *StorageHandler,
 	tagsHandler *TagsHandler,

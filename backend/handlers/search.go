@@ -95,10 +95,24 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 
 		vmidQuery := strings.TrimSpace(r.FormValue("vmid"))
 		nameQuery := strings.TrimSpace(r.FormValue("name"))
+		tagQuery := strings.TrimSpace(r.FormValue("tag"))
+
+		// Parse tag query for multiple tags (space-separated)
+		var tagQueries []string
+		if tagQuery != "" {
+			// Split by spaces and filter out empty strings
+			tagParts := strings.Fields(strings.TrimSpace(tagQuery))
+			for _, tag := range tagParts {
+				if tag := strings.TrimSpace(tag); tag != "" {
+					tagQueries = append(tagQueries, strings.ToLower(tag))
+				}
+			}
+		}
 
 		log.Info().
 			Str("vmid_query", vmidQuery).
 			Str("name_query", nameQuery).
+			Strs("tag_queries", tagQueries).
 			Msg("Processing optimized search query")
 
 		// Build query display string
@@ -109,6 +123,10 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 		if nameQuery != "" {
 			queryParts = append(queryParts, "Name: "+nameQuery)
 		}
+		if len(tagQueries) > 0 {
+			tagDisplay := strings.Join(tagQueries, ", ")
+			queryParts = append(queryParts, "Tags: "+tagDisplay)
+		}
 		queryDisplay := strings.Join(queryParts, ", ")
 		if queryDisplay == "" {
 			queryDisplay = "All VMs"
@@ -118,6 +136,7 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 		data["FormData"] = map[string]string{
 			"vmid": vmidQuery,
 			"name": nameQuery,
+			"tag":  tagQuery,
 		}
 
 		// Get Proxmox client
@@ -134,7 +153,7 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 		defer cancel()
 
 		// Perform optimized search
-		results, err := h.searchVMsOptimized(ctx, client, vmidQuery, nameQuery, username, isAdmin)
+		results, err := h.searchVMsOptimized(ctx, client, vmidQuery, nameQuery, tagQueries, username, isAdmin)
 		if err != nil {
 			log.Error().Err(err).Msg("Optimized search failed")
 			data["Error"] = fmt.Sprintf("Search failed: %v", err)
@@ -157,11 +176,12 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 }
 
 // searchVMsOptimized performs VM search with batch API calls and concurrent processing
-func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery, username string, isAdmin bool) ([]map[string]interface{}, error) {
+func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery string, tagQueries []string, username string, isAdmin bool) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("function", "searchVMsOptimized").
 		Str("vmid_query", vmidQuery).
 		Str("name_query", nameQuery).
+		Strs("tag_queries", tagQueries).
 		Str("username", username).
 		Bool("is_admin", isAdmin).
 		Logger()
@@ -221,15 +241,62 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 		}
 
 		// Check 2: Match search criteria (if provided) - do this BEFORE getting config
-		if vmidQuery != "" || nameQuery != "" {
+		if vmidQuery != "" || nameQuery != "" || len(tagQueries) > 0 {
 			vmidStr := strconv.Itoa(vm.VMID)
 			vmName := strings.ToLower(vm.Name)
 
 			matchesVMID := lowerVMIDQuery != "" && strings.Contains(vmidStr, lowerVMIDQuery)
 			matchesName := lowerNameQuery != "" && strings.Contains(vmName, lowerNameQuery)
 
-			// If both queries provided, match either
-			// If only one query provided, must match that one
+			// For tag matching, we need to get the config first
+			matchesTags := false
+			if len(tagQueries) > 0 {
+				// Get config to check tags
+				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+				if err != nil {
+					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for tag filtering, skipping")
+					continue
+				}
+
+				// Must have 'pvmss' tag AND all searched tags
+				hasPVMSS := h.hasTag(cfg, "pvmss")
+				if !hasPVMSS {
+					continue // Skip if no pvmss tag
+				}
+
+				// Check if VM has ALL the searched tags
+				hasAllSearchedTags := true
+				for _, searchedTag := range tagQueries {
+					if !h.hasTag(cfg, searchedTag) {
+						hasAllSearchedTags = false
+						break
+					}
+				}
+				matchesTags = hasAllSearchedTags
+
+				// If tag matching fails, skip this VM
+				if !matchesTags {
+					continue
+				}
+			} else {
+				// If no tag query, still require 'pvmss' tag
+				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+				if err != nil {
+					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for pvmss tag check, skipping")
+					continue
+				}
+
+				if !h.hasTag(cfg, "pvmss") {
+					log.Debug().
+						Int("vmid", vm.VMID).
+						Str("name", vm.Name).
+						Msg("VM does not have pvmss tag, skipping")
+					continue
+				}
+			}
+
+			// If both queries provided, match either VMID or name (in addition to tag requirements)
+			// If only one query provided, must match that one (in addition to tag requirements)
 			if lowerVMIDQuery != "" && lowerNameQuery != "" {
 				if !matchesVMID && !matchesName {
 					continue // Doesn't match either
@@ -243,6 +310,21 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 					continue
 				}
 			}
+		} else {
+			// No search criteria provided, still require 'pvmss' tag
+			cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+			if err != nil {
+				log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for pvmss tag check, skipping")
+				continue
+			}
+
+			if !h.hasTag(cfg, "pvmss") {
+				log.Debug().
+					Int("vmid", vm.VMID).
+					Str("name", vm.Name).
+					Msg("VM does not have pvmss tag, skipping")
+				continue
+			}
 		}
 
 		// VM passed initial filters, add to filtered list
@@ -254,7 +336,8 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 		Int("original_vms", len(allVMs)).
 		Msg("VMs filtered before config check")
 
-	// BATCH: Get configs only for filtered VMs using concurrent goroutines
+	// BATCH: Get configs only for filtered VMs that haven't been checked yet
+	// (we already checked tags for VMs with tag queries, but need configs for others)
 	vmConfigs := make(map[int]map[string]interface{})
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -276,18 +359,20 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 				log.Debug().Err(err).Str("vmid", vmInfo.VMID).Msg("Invalid VMID, skipping")
 				return
 			}
+
+			// Get config (we may already have it from tag filtering, but get it again for consistency)
 			cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vmInfo.Node, vmidInt)
 			if err != nil {
 				log.Debug().Err(err).Int("vmid", vmidInt).Msg("Failed to get VM config, skipping")
 				return
 			}
 
-			// Check for pvmss tag
+			// Double-check for pvmss tag (safety check)
 			if !h.hasTag(cfg, "pvmss") {
 				log.Debug().
 					Int("vmid", vmidInt).
 					Str("name", vmInfo.Name).
-					Msg("VM does not have pvmss tag, skipping")
+					Msg("VM does not have pvmss tag in final check, skipping")
 				return
 			}
 
@@ -322,6 +407,24 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 			description = desc
 		}
 
+		// Extract tags from config
+		tags := []string{}
+		if tagsStr, ok := cfg["tags"].(string); ok && tagsStr != "" {
+			// Proxmox can use either semicolon or comma as delimiter
+			var tagList []string
+			if strings.Contains(tagsStr, ";") {
+				tagList = strings.Split(tagsStr, ";")
+			} else {
+				tagList = strings.Split(tagsStr, ",")
+			}
+			for _, tag := range tagList {
+				tag = strings.TrimSpace(tag)
+				if tag != "" {
+					tags = append(tags, tag)
+				}
+			}
+		}
+
 		status := vm.Status
 		if status == "" {
 			status = "unknown"
@@ -332,6 +435,7 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 			"name":        vm.Name,
 			"description": description,
 			"node":        vm.Node,
+			"tags":        tags,
 			"status":      strings.ToLower(status),
 		})
 	}

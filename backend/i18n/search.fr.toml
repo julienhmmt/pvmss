@@ -31,6 +31,8 @@ other = "Essayez d'ajuster vos critères de recherche ou vérifiez si la VM exis
 other = "Sans nom"
 ["Search.NoDescription"]
 other = "Sans description"
+["Search.NoTags"]
+other = "Aucun tag"
 ["Search.Placeholder"]
 other = "Rechercher par ID ou Nom..."
 ["Search.PlaceholderName"]
@@ -72,6 +74,16 @@ other = "ID de la VM"
 ["Search.YouSearchedFor"]
 other = "Vous avez recherché"
 ["Search.Validation.MissingCriteria"]
-other = "Veuillez fournir au moins un critère de recherche (ID ou nom)."
+other = "Veuillez fournir au moins un critère de recherche (ID, nom ou tag)."
+["Search.Tag"]
+other = "Tag"
+["Search.PlaceholderTag"]
+other = "ex. prod, db"
+["Search.TitleTag"]
+other = "Rechercher des VMs avec des tags spécifiques."
+["Search.TagHelp"]
+other = "Les VMs doivent avoir à la fois le tag 'pvmss' et le tag que vous spécifiez. Saisissez uniquement le nom du tag, pas le tag 'pvmss'."
+["Search.MultiTagHelp"]
+other = "Pour plusieurs tags, séparez-les par des espaces (ex: 'prod db' trouve les VMs avec les deux tags)."
 ["Search.Criterias"]
 other = "Critères de recherche"
