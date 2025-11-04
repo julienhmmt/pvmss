@@ -21,12 +21,6 @@
     border: 1px solid rgb(0 0 0 / 6%);
     box-shadow: 0 1px 3px rgb(0 0 0 / 4%);
     padding: 2rem;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.admin-box:hover {
-    box-shadow: 0 4px 12px rgb(0 0 0 / 6%);
-    border-color: rgb(0 0 0 / 8%);
 }
 
 .node-card {
@@ -36,12 +30,6 @@
     box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
-}
-
-.node-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 24px rgb(0 0 0 / 1%);
-    border-color: rgb(0 0 0 / 1%);
 }
 
 .node-card .card-header {
@@ -111,7 +99,6 @@
 .admin-menu .menu-list a:hover {
     background-color: rgb(0 0 0 / 4%);
     color: var(--text);
-    transform: translateX(4px);
 }
 
 .admin-menu .menu-list a:focus {
@@ -202,11 +189,6 @@
     font-weight: 500;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
-}
-
-.admin-box .button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .admin-box .button.is-primary {

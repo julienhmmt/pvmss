@@ -507,7 +507,7 @@
                 <div class="columns is-mobile is-multiline is-variable is-2">
                     <!-- CPU Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -549,7 +549,7 @@
 
                     <!-- RAM Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -618,7 +618,7 @@
                             <!-- Disks List -->
                             <div style="margin-top: 1.5rem;">
                                 {{range $i, $d := .Disks}}
-                                <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -684,7 +684,7 @@
                             
                             <!-- CD-ROM Status -->
                             <div style="margin-top: 1.5rem;">
-                                <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -711,7 +711,7 @@
                     {{if .NetworkInterfaces}}
                     {{$ifaceCount := len .NetworkInterfaces}}
                     <div class="column {{if eq $ifaceCount 1}}is-one-third-tablet is-half-mobile{{else}}is-full-tablet{{end}}">
-                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -731,7 +731,7 @@
                             <!-- Network Interfaces List -->
                             <div style="margin-top: 1.5rem;">
                                 {{range $i, $iface := .NetworkInterfaces}}
-                                <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq $ifaceCount (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq $ifaceCount (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -774,7 +774,7 @@
 
                     <!-- Firmware & Security (EFI / TPM) -->
                     <div class="column is-full-tablet is-full-mobile">
-                        <div class="is-hoverable" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -792,7 +792,7 @@
                             <div style="margin-top: 1.5rem;">
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
                                     {{if .EFIEnabled}}
-                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
                                             {{T "VMDetails.Security.EFIBoot"}}
@@ -807,7 +807,7 @@
                                         {{end}}
                                     </div>
                                     {{else}}
-                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
                                             {{T "VMDetails.Security.EFIBoot"}}
@@ -819,7 +819,7 @@
                                     {{end}}
 
                                     {{if .TPMEnabled}}
-                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
                                             {{T "VMDetails.Security.TPM"}}
@@ -829,7 +829,7 @@
                                         </div>
                                     </div>
                                     {{else}}
-                                    <div class="is-hoverable" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
                                             {{T "VMDetails.Security.TPM"}}

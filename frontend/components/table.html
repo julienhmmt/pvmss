@@ -4,7 +4,7 @@
   Usage: {{template "table" (dict "Class" "custom-class" "Fullwidth" true "Striped" true "Hoverable" true "Narrow" false "Content" ...)}}
 */}}
 <div class="table-container">
-  <table class="table {{if ne .Fullwidth false}}is-fullwidth{{end}} {{if .Striped}}is-striped{{end}} {{if .Hoverable}}is-hoverable{{end}} {{if .Narrow}}is-narrow{{end}} {{.Class}}">
+  <table class="table {{if ne .Fullwidth false}}is-fullwidth{{end}} {{if .Striped}}is-striped{{end}} {{if .Hoverable}}{{end}} {{if .Narrow}}is-narrow{{end}} {{.Class}}">
     {{.Content}}
   </table>
 </div>
@@ -16,7 +16,7 @@
   Usage: {{template "table_standard" .TableContent}}
 */}}
 <div class="table-container">
-  <table class="table is-fullwidth is-striped is-hoverable">
+  <table class="table is-fullwidth is-striped">
     {{.}}
   </table>
 </div>
