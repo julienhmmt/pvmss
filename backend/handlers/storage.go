@@ -316,7 +316,7 @@ func canHoldVMDisks(s proxmox.Storage) bool {
 	if strings.EqualFold(s.Type, "pbs") {
 		return false
 	}
-	// Explicit content includes images
+	// Explicit content includes images (check if "images" is in the content string)
 	if s.Content != "" && strings.Contains(s.Content, "images") {
 		return true
 	}
@@ -530,6 +530,7 @@ func fetchStoragesFromNode(node string, enabled []string) ([]map[string]interfac
 			}
 		}
 		base = append(base, item)
+		log.Debug().Str("storage", st.Storage).Str("type", st.Type).Msg("Added storage to admin list")
 	}
 
 	// Update cache
@@ -543,6 +544,8 @@ func fetchStoragesFromNode(node string, enabled []string) ([]map[string]interfac
 
 // fetchRawStoragesFromNode fetches raw storage data without enabled flags (for deduplication)
 func fetchRawStoragesFromNode(node string) ([]map[string]interface{}, error) {
+	log := logger.Get().With().Str("component", "storage_utils").Logger()
+
 	// Try cache first
 	storCacheMu.Lock()
 	if cached, found := storCache[node]; found && time.Now().Before(cached.expiresAt) {
@@ -564,7 +567,14 @@ func fetchRawStoragesFromNode(node string) ([]map[string]interface{}, error) {
 
 	base := make([]map[string]interface{}, 0, len(storages))
 	for _, st := range storages {
-		if st.Shared == 1 || st.Enabled == 0 {
+		if st.Enabled == 0 {
+			log.Debug().Str("storage", st.Storage).Str("type", st.Type).Msg("Skipping disabled storage")
+			continue
+		}
+
+		// Only include storages that can hold VM disks
+		if !canHoldVMDisks(st) {
+			log.Debug().Str("storage", st.Storage).Str("type", st.Type).Str("content", st.Content).Msg("Skipping storage that cannot hold VM disks")
 			continue
 		}
 
