@@ -30,6 +30,8 @@ other = "No results found"
 other = "No name"
 ["Search.NoDescription"]
 other = "No description"
+["Search.NoTags"]
+other = "No tags"
 ["Search.NoResultsMessage"]
 other = "Try adjusting your search criteria or check if the VM exists."
 ["Search.Placeholder"]
@@ -73,6 +75,16 @@ other = "VM ID"
 ["Search.YouSearchedFor"]
 other = "You searched for"
 ["Search.Validation.MissingCriteria"]
-other = "Please provide at least one search criterion (ID or name)."
+other = "Please provide at least one search criterion (ID, name, or tag)."
+["Search.Tag"]
+other = "Tag"
+["Search.PlaceholderTag"]
+other = "e.g. prod, db"
+["Search.TitleTag"]
+other = "Search for VMs with specific tags."
+["Search.TagHelp"]
+other = "VMs must have both 'pvmss' tag and the tag you specify. Type only the tag name, no 'pvmss' tag needed."
+["Search.MultiTagHelp"]
+other = "For multiple tags, separate with spaces (e.g., 'prod db' finds VMs with both tags)."
 ["Search.Criterias"]
 other = "Search criterias"
