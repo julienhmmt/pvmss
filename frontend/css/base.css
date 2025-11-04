@@ -220,10 +220,6 @@ body.app-body main {
   overflow: hidden;
 }
 
-.table.is-hoverable tbody tr:hover {
-  background-color: var(--surface-2);
-}
-
 .table.is-striped tbody tr:nth-child(even) {
   background-color: #f9fafb;
 }
