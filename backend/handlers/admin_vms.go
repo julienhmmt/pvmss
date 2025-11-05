@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -70,8 +71,8 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 		defer cancel()
 
 		// Get all VMs with pvmss tag first to get total count
-		allVMs, errMsg := h.getVMsWithPVMSSTag(ctx)
-		if errMsg == "" {
+		allVMs, retrievalErrKey := h.getVMsWithPVMSSTag(ctx)
+		if retrievalErrKey == "" {
 			totalVMs = len(allVMs)
 
 			// Apply pagination
@@ -85,13 +86,17 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 				vms = allVMs[start:end]
 			}
 		} else {
-			log.Warn().Str("error", errMsg).Msg("Failed to retrieve VMs")
+			// errMsg here is an i18n key; localize it for display
+			localized := i18n.Localize(i18n.GetLocalizerFromRequest(r), retrievalErrKey)
+			log.Warn().Str("error", localized).Msg("Failed to retrieve VMs")
+			errMsg = localized
 		}
 	} else {
 		if offlineMode {
 			log.Info().Msg("Offline mode enabled; skipping Proxmox VM retrieval")
 		} else {
-			errMsg = "Proxmox connection not available"
+			// Localize generic connection unavailable if no specific proxmox message
+			errMsg = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Admin.VMs.Error.ConnectionUnavailable")
 			if proxmoxMsg != "" {
 				errMsg = proxmoxMsg
 			}
@@ -102,7 +107,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	// Build success message from query params
 	successMsg := ""
 	if r.URL.Query().Get("success") == "1" {
-		successMsg = "Operation completed successfully"
+		successMsg = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Admin.VMs.Success.OperationCompleted")
 	}
 
 	// Calculate pagination info
@@ -171,14 +176,14 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		return nil, "Failed to create API client"
+		return nil, "Admin.VMs.Error.CreateAPIClient"
 	}
 
 	// Get all VMs from Proxmox using resty
 	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get VMs (resty)")
-		return nil, "Failed to retrieve VMs from Proxmox"
+		return nil, "Admin.VMs.Error.RetrieveVMsFromProxmox"
 	}
 
 	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")

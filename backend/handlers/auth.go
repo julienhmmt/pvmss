@@ -227,9 +227,10 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	}
 
 	if err := validateCSRF(r); err != nil {
-		errMsg := "Invalid request. Please try again."
+		loc := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(loc, "Login.Error.InvalidRequest")
 		if err.Error() == "session expired" {
-			errMsg = "Session expired. Please try again."
+			errMsg = i18n.Localize(loc, "Login.Error.SessionExpired")
 		}
 		h.renderAdminLoginForm(w, r, errMsg)
 		return
@@ -239,7 +240,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	adminHash := os.Getenv("ADMIN_PASSWORD_HASH")
 	if adminHash == "" {
 		ctx.Log.Error().Msg("ADMIN_PASSWORD_HASH is not set in environment variables")
-		http.Error(w, "Server configuration error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusInternalServerError)
 		return
 	}
 
@@ -247,28 +248,28 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	password := r.FormValue("password")
 	if password == "" {
 		ctx.Log.Debug().Msg("Admin login attempt with empty password")
-		h.renderAdminLoginForm(w, r, "Password cannot be empty.")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.EmptyPassword"))
 		return
 	}
 
 	// Basic input validation
 	if len(password) > 200 {
 		ctx.Log.Warn().Int("password_length", len(password)).Msg("Admin login attempt with too long password")
-		h.renderAdminLoginForm(w, r, "Invalid credentials.")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(adminHash), []byte(password)); err != nil {
 		ctx.Log.Info().Err(err).Msg("Admin login failed - incorrect password")
-		h.renderAdminLoginForm(w, r, "Invalid credentials.")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
 		return
 	}
 
 	ctx.Log.Debug().Msg("Admin authentication successful, creating session")
 
 	if err := establishSession(w, r, true, ""); err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -291,14 +292,15 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
 		log.Error().Msg("Session manager not available")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"), http.StatusInternalServerError)
 		return
 	}
 
 	if err := validateCSRF(r); err != nil {
-		errMsg := "Invalid request. Please try again."
+		loc := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(loc, "Login.Error.InvalidRequest")
 		if err.Error() == "session expired" {
-			errMsg = "Session expired. Please try again."
+			errMsg = i18n.Localize(loc, "Login.Error.SessionExpired")
 		}
 		h.renderLoginForm(w, r, errMsg)
 		return
@@ -322,7 +324,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 			Int("username_length", len(username)).
 			Int("password_length", len(password)).
 			Msg("User login attempt with too long credentials")
-		h.renderLoginForm(w, r, "Invalid credentials.")
+		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
 		return
 	}
 
@@ -332,7 +334,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL is not configured")
-		h.renderLoginForm(w, r, "Authentication service unavailable. Please try again later.")
+		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
 		return
 	}
 
@@ -340,7 +342,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	pxClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client for user authentication")
-		h.renderLoginForm(w, r, "Authentication service unavailable. Please try again later.")
+		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
 		return
 	}
 
@@ -357,7 +359,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 			Str("ip", r.RemoteAddr).
 			Str("username", username).
 			Msg("User login failed - Proxmox authentication failed")
-		h.renderLoginForm(w, r, "Invalid credentials.")
+		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
 		return
 	}
 
@@ -370,7 +372,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 
 	// Establish session and store Proxmox ticket for later use (console access, API calls)
 	if err := establishSessionWithTicket(w, r, false, username, ticketResp); err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 

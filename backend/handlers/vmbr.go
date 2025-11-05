@@ -67,14 +67,14 @@ func (h *VMBRHandler) UpdateNetworkCardsHandler(w http.ResponseWriter, r *http.R
 
 	maxNetworkCardsStr := r.FormValue("max_network_cards")
 	if maxNetworkCardsStr == "" {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
 		return
 	}
 
 	maxNetworkCards := 1
 	if _, err := fmt.Sscanf(maxNetworkCardsStr, "%d", &maxNetworkCards); err != nil {
 		log.Error().Err(err).Str("value", maxNetworkCardsStr).Msg("Failed to parse max_network_cards")
-		http.Error(w, "Invalid number", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
 
@@ -93,7 +93,7 @@ func (h *VMBRHandler) UpdateNetworkCardsHandler(w http.ResponseWriter, r *http.R
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to update settings")
-		http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	node := r.FormValue("node")
 	action := r.FormValue("action") // enable|disable
 	if name == "" || node == "" || (action != "enable" && action != "disable") {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	if changed {
 		if err := h.stateManager.SetSettings(settings); err != nil {
 			log.Error().Err(err).Msg("Failed to update settings")
-			http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
 	}

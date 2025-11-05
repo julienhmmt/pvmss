@@ -189,7 +189,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	tmpl := stateManager.GetTemplates()
 	if tmpl == nil {
 		log.Error().Msg("Templates not initialized")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -198,7 +198,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	instance, err := tmpl.Clone()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to clone template set")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -224,7 +224,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	var buf bytes.Buffer
 	if err := instance.ExecuteTemplate(&buf, name, data); err != nil {
 		log.Error().Err(err).Str("template", name).Msg("Error executing content template")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -234,7 +234,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	// Execute the layout template with the combined data.
 	if err := instance.ExecuteTemplate(w, "layout", data); err != nil {
 		log.Error().Err(err).Msg("Error executing layout template")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 	}
 
 	log.Info().Msg("Page rendered successfully")
@@ -448,14 +448,14 @@ func RequireAuthHandleWS(h httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		stateManager := getStateManager(r)
 		if stateManager == nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
 		sessionManager := stateManager.GetSessionManager()
 		if sessionManager == nil || !sessionManager.GetBool(r.Context(), "authenticated") {
 			log := CreateHandlerLogger("RequireAuthHandleWS", r)
 			log.Warn().Msg("WebSocket connection rejected: not authenticated")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Unauthorized"), http.StatusUnauthorized)
 			return
 		}
 		h(w, r, ps)

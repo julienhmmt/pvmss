@@ -186,7 +186,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 
 	// Return early if Proxmox not connected
 	if !data["ProxmoxConnected"].(bool) {
-		data["Warning"] = "Proxmox connection unavailable. Displaying cached ISO data."
+		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError")
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
@@ -198,7 +198,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	isos, err := h.fetchAllISOs(ctx, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
-		data["Warning"] = "Failed to fetch ISOs from Proxmox."
+		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources")
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
@@ -252,13 +252,13 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 
 	if volid == "" {
 		log.Error().Msg("Missing volid parameter")
-		http.Error(w, "Missing volid parameter", http.StatusBadRequest)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
 		return
 	}
 
 	if action == "" {
 		log.Error().Msg("Missing action parameter")
-		http.Error(w, "Missing action parameter", http.StatusBadRequest)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
 		return
 	}
 
@@ -271,7 +271,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 		enabled = false
 	default:
 		log.Error().Str("action", action).Msg("Invalid action parameter")
-		http.Error(w, "Invalid action parameter", http.StatusBadRequest)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
 
@@ -281,7 +281,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
 		log.Error().Msg("Settings not available")
-		http.Error(w, "Settings not available", http.StatusInternalServerError)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.SettingsUnavailable"), http.StatusInternalServerError)
 		return
 	}
 
@@ -309,7 +309,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	settings.ISOs = newISOs
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
-		http.Error(w, "Failed to save settings", http.StatusInternalServerError)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 

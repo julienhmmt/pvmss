@@ -14,6 +14,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -434,14 +435,14 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	vmid := ps.ByName("vmid")
 	if vmid == "" {
 		log.Error().Msg("VM ID is required")
-		http.Error(w, "VM ID is required", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredFields"), http.StatusBadRequest)
 		return
 	}
 
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
 		log.Error().Err(err).Str("vmid", vmid).Msg("Invalid VM ID")
-		http.Error(w, "Invalid VM ID", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Generic"), http.StatusBadRequest)
 		return
 	}
 
@@ -449,7 +450,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	client := stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
-		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
 		return
 	}
 
@@ -467,14 +468,14 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		http.Error(w, "Failed to create API client", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusInternalServerError)
 		return
 	}
 
 	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
 	if err != nil {
 		log.Error().Err(err).Int("vmid", vmidInt).Msg("Failed to get VMs (resty)")
-		http.Error(w, "Failed to get VMs", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources"), http.StatusInternalServerError)
 		return
 	}
 
@@ -508,7 +509,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 		if vm == nil {
 			log.Error().Int("vmid", vmidInt).Msg("VM not found")
-			http.Error(w, "VM not found", http.StatusNotFound)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.NotFound"), http.StatusNotFound)
 			return
 		}
 	}
@@ -622,7 +623,12 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	showTagsEditor := r.URL.Query().Get("edit") == "tags"
 
 	settings := stateManager.GetSettings()
-	allTags := settings.Tags
+	var allTags []string
+	if settings != nil && settings.Tags != nil {
+		allTags = settings.Tags
+	} else {
+		allTags = []string{}
+	}
 
 	networkBridgesStr := ""
 	if len(networkBridges) > 0 {
@@ -670,9 +676,12 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		vmRamMaxMB = int(currentMemoryMB)
 	}
 
-	maxNetworkCards := settings.MaxNetworkCards
+	maxNetworkCards := state.MinNetworkCards
+	if settings != nil {
+		maxNetworkCards = settings.MaxNetworkCards
+	}
 	if maxNetworkCards <= 0 {
-		maxNetworkCards = 1
+		maxNetworkCards = state.MinNetworkCards
 	}
 	networkCardsData := buildNetworkCardsData(cfg, maxNetworkCards)
 
@@ -705,7 +714,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	// Get available ISOs for CD-ROM editor - Use admin-approved ISOs from settings
 	var availableISOs []string
 	if showResourcesEditor {
-		settings := stateManager.GetSettings()
 		if settings != nil {
 			// Use only ISOs approved by administrators from settings.json
 			availableISOs = settings.ISOs
@@ -774,7 +782,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	// Ensure vm is non-nil before dereferencing in the template data
 	if vm == nil {
-		http.Error(w, "VM not found", http.StatusNotFound)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.NotFound"), http.StatusNotFound)
 		return
 	}
 
@@ -857,14 +865,14 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 	vmid := ps.ByName("vmid")
 	if vmid == "" {
 		log.Error().Msg("VM ID is required")
-		http.Error(w, "VM ID is required", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredFields"), http.StatusBadRequest)
 		return
 	}
 
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
 		log.Error().Err(err).Str("vmid", vmid).Msg("Invalid VM ID")
-		http.Error(w, "Invalid VM ID", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Generic"), http.StatusBadRequest)
 		return
 	}
 
@@ -872,7 +880,7 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
-		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
 		return
 	}
 
@@ -880,7 +888,7 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		http.Error(w, "Failed to create API client", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusInternalServerError)
 		return
 	}
 
@@ -888,7 +896,7 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 	vmCurrent, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, "", vmidInt)
 	if err != nil {
 		log.Error().Err(err).Int("vmid", vmidInt).Msg("Failed to get VM metrics")
-		http.Error(w, "Failed to get VM metrics", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources"), http.StatusInternalServerError)
 		return
 	}
 
@@ -908,7 +916,7 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	if err := json.NewEncoder(w).Encode(metrics); err != nil {
 		log.Error().Err(err).Msg("Failed to encode metrics response")
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 

@@ -25,6 +25,14 @@ other = "Please log in to update the VM description."
 # Errors
 ["Login.Error.MissingCredentials"]
 other = "Username and password are required."
+["Login.Error.InvalidRequest"]
+other = "Invalid request. Please try again."
+["Login.Error.SessionExpired"]
+other = "Session expired. Please try again."
+["Login.Error.InvalidCredentials"]
+other = "Invalid credentials."
+["Login.Error.ServiceUnavailable"]
+other = "Authentication service unavailable. Please try again later."
 
 # Admin Login
 ["AdminLogin.Button"]
@@ -35,3 +43,15 @@ other = "Administrator password"
 other = "Administrator login"
 ["AdminLogin.UserLoginLink"]
 other = "Regular user login"
+
+# Admin Errors
+["AdminLogin.Error.EmptyPassword"]
+other = "Password cannot be empty."
+["AdminLogin.Error.InvalidCredentials"]
+other = "Invalid credentials."
+["AdminLogin.Error.InvalidRequest"]
+other = "Invalid request. Please try again."
+["AdminLogin.Error.SessionExpired"]
+other = "Session expired. Please try again."
+["AdminLogin.Error.ServiceUnavailable"]
+other = "Authentication service unavailable. Please try again later."

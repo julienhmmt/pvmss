@@ -129,19 +129,19 @@ func (h *ProfileHandler) GetProfileVMsAPI(w http.ResponseWriter, r *http.Request
 	ctx := NewHandlerContext(w, r, "ProfileHandler.GetProfileVMsAPI")
 
 	if ctx.IsAdmin() {
-		writeProfileAPIError(w, http.StatusForbidden, "Admin users do not have personal VM lists")
+		writeProfileAPIError(w, http.StatusForbidden, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.Error.AdminNoPersonalVMs"))
 		return
 	}
 
 	username := ctx.GetUsername()
 	if username == "" {
-		writeProfileAPIError(w, http.StatusUnauthorized, "Session expired")
+		writeProfileAPIError(w, http.StatusUnauthorized, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SessionError"))
 		return
 	}
 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		writeProfileAPIError(w, http.StatusServiceUnavailable, "Proxmox connection unavailable")
+		writeProfileAPIError(w, http.StatusServiceUnavailable, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError"))
 		return
 	}
 
@@ -334,7 +334,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	sessionManager := h.stateManager.GetSessionManager()
 	if sessionManager == nil {
 		log.Error().Msg("Session manager not available")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -342,7 +342,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	username := sessionManager.GetString(r.Context(), "username")
 	if username == "" {
 		log.Error().Msg("No username in session")
-		http.Redirect(w, r, "/profile?error=session_expired", http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SessionError")), http.StatusSeeOther)
 		return
 	}
 
@@ -354,19 +354,19 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	// Validate inputs
 	if currentPassword == "" || newPassword == "" || confirmPassword == "" {
 		log.Debug().Msg("Missing password fields")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("All password fields are required"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.MissingFields")), http.StatusSeeOther)
 		return
 	}
 
 	if newPassword != confirmPassword {
 		log.Debug().Msg("New passwords do not match")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("New passwords do not match"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.Mismatch")), http.StatusSeeOther)
 		return
 	}
 
 	if len(newPassword) < 5 {
 		log.Debug().Msg("New password too short")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Password must be at least 5 characters"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.TooShort")), http.StatusSeeOther)
 		return
 	}
 
@@ -374,7 +374,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Service unavailable"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")), http.StatusSeeOther)
 		return
 	}
 
@@ -389,7 +389,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	cookieClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkipVerify)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create cookie-based client")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Internal error"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer")), http.StatusSeeOther)
 		return
 	}
 
@@ -399,7 +399,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	})
 	if err != nil {
 		log.Info().Err(err).Str("username", username).Msg("Current password verification failed")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Current password is incorrect"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.IncorrectCurrent")), http.StatusSeeOther)
 		return
 	}
 
@@ -410,7 +410,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	// Update password - Proxmox requires current password as confirmation
 	if err := proxmox.UpdateUserPassword(ctx, cookieClient, username, newPassword, currentPassword, "pve"); err != nil {
 		log.Error().Err(err).Str("username", username).Msg("Failed to update password")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Failed to update password: "+err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.UpdateFailed")), http.StatusSeeOther)
 		return
 	}
 

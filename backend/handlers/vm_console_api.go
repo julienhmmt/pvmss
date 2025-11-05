@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/i18n"
 )
 
 // sendVNCJSONResponse sends a JSON response for VNC API calls
@@ -28,7 +29,7 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 	// Validate authentication
 	if !IsAuthenticated(r) {
 		log.Warn().Msg("Unauthenticated VNC ticket request")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Unauthorized"), http.StatusUnauthorized)
 		return
 	}
 
@@ -36,7 +37,7 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 	if !IsProxmoxTicketValid(r) {
 		log.Warn().Msg("Proxmox ticket expired or invalid")
 		sendVNCJSONResponse(w, http.StatusUnauthorized, false, map[string]interface{}{
-			"error": "Proxmox authentication expired. Please log in again.",
+			"error": i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxAuthRequired"),
 		})
 		return
 	}
@@ -48,7 +49,7 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 	if vmid == "" || node == "" {
 		log.Warn().Str("vmid", vmid).Str("node", node).Msg("Missing required parameters")
 		sendVNCJSONResponse(w, http.StatusBadRequest, false, map[string]interface{}{
-			"error": "Missing vmid or node parameter",
+			"error": i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"),
 		})
 		return
 	}
@@ -61,7 +62,7 @@ func (h *VMHandler) GetVNCTicketHandler(w http.ResponseWriter, r *http.Request, 
 		log.Error().Err(err).Str("vmid", vmid).Str("node", node).Msg("Failed to get VNC proxy ticket")
 		LogVNCConsoleAccess(r, vmid, node, false)
 		sendVNCJSONResponse(w, http.StatusInternalServerError, false, map[string]interface{}{
-			"error": "Failed to create console session. Please ensure you have permission to access this VM.",
+			"error": i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"),
 		})
 		return
 	}

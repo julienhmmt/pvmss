@@ -87,3 +87,19 @@ other = "Stopped VMs"
 other = "Paused VMs"
 ["Profile.PasswordChangeDescription"]
 other = "Click the button below to change your Proxmox password. You will need to provide your current password for verification."
+
+# Password error messages
+["Profile.PasswordError.MissingFields"]
+other = "All password fields are required"
+["Profile.PasswordError.Mismatch"]
+other = "New passwords do not match"
+["Profile.PasswordError.TooShort"]
+other = "Password must be at least 5 characters"
+["Profile.PasswordError.IncorrectCurrent"]
+other = "Current password is incorrect"
+["Profile.PasswordError.UpdateFailed"]
+other = "Failed to update password"
+
+# API errors
+["Profile.Error.AdminNoPersonalVMs"]
+other = "Admin users do not have personal VM lists"
