@@ -732,6 +732,38 @@ func (h *VMCreateOptimizedHandler) getOptimizedBridges(ctx context.Context, rest
 	return bridgeDetails, nil
 }
 
+// getTPMDiskFormat returns the appropriate disk format for TPM based on storage type
+// TPM always requires raw format, but we check storage compatibility
+// Returns (format, isCompatible)
+func getTPMDiskFormat(storageType string) (string, bool) {
+	// TPM disk format is always raw (4 MiB fixed size)
+	// Check if storage type supports raw format
+	
+	// Block-based storages that support raw format
+	blockStorages := map[string]bool{
+		"lvmthin": true,
+		"lvm":     true,
+		"zfs":     true,
+		"ceph":    true,
+		"iscsi":   true,
+	}
+	
+	// File-based storages that support raw format
+	fileStorages := map[string]bool{
+		"dir":  true,
+		"nfs":  true,
+		"cifs": true,
+	}
+	
+	// Check if storage type is compatible
+	if blockStorages[storageType] || fileStorages[storageType] {
+		return "raw", true
+	}
+	
+	// Unknown or incompatible storage type
+	return "raw", false
+}
+
 // handleVMCreation processes the VM creation form submission
 func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *http.Request, client proxmox.ClientInterface, data map[string]interface{}) {
 	log := CreateHandlerLogger("handleVMCreation", r)
@@ -976,11 +1008,51 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	params.Set(diskParam, fmt.Sprintf("%s:%d", storage, diskSizeMB/1024))
 	log.Info().Str("disk_param", diskParam).Int("size_mb", diskSizeMB).Int("size_gb", diskSizeMB/1024).Msg("Configured primary disk")
 
-	// TPM
+	// TPM (Trusted Platform Module)
 	if enableTPM == "1" {
-		// TPM implementation would go here
-		// For now, we'll skip TPM creation
-		log.Info().Msg("TPM requested but not implemented yet")
+		log.Info().Msg("TPM requested, checking storage compatibility")
+		
+		// Get storage info to determine format
+		restyClient, err := getDefaultRestyClient()
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to create resty client for TPM storage check, skipping TPM")
+		} else {
+			storageInfo, err := proxmox.GetStoragesResty(r.Context(), restyClient)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to retrieve storage info for TPM, skipping TPM")
+			} else {
+				// Find the selected storage
+				var selectedStorage *proxmox.Storage
+				for i := range storageInfo {
+					if storageInfo[i].Storage == storage {
+						selectedStorage = &storageInfo[i]
+						break
+					}
+				}
+				
+				if selectedStorage != nil {
+					// Check if storage is compatible with raw format (required for TPM)
+					format, compatible := getTPMDiskFormat(selectedStorage.Type)
+					if compatible {
+						// Create TPM disk: tpmstate0=<storage>:4,version=v2.0
+						// TPM disk is always 4 MiB and uses raw format
+						params.Set("tpmstate0", fmt.Sprintf("%s:4,version=v2.0", storage))
+						log.Info().
+							Str("storage", storage).
+							Str("storage_type", selectedStorage.Type).
+							Str("format", format).
+							Msg("TPM disk configured successfully")
+					} else {
+						log.Warn().
+							Str("storage", storage).
+							Str("storage_type", selectedStorage.Type).
+							Msg("Storage type not compatible with TPM (requires raw format support), skipping TPM")
+					}
+				} else {
+					log.Warn().Str("storage", storage).Msg("Selected storage not found in storage list, skipping TPM")
+				}
+			}
+		}
 	}
 
 	// Additional disks
