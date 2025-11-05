@@ -310,7 +310,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 
 	if username == "" || password == "" {
 		log.Debug().Str("ip", r.RemoteAddr).Msg("User login attempt with empty username or password")
-		h.renderLoginForm(w, r, "Username and password are required.")
+		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
 		return
 	}
 

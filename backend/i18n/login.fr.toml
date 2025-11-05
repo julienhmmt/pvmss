@@ -22,6 +22,10 @@ other = "Veuillez vous connecter pour continuer."
 ["Login.Warning.UpdateDescription"]
 other = "Veuillez vous connecter pour mettre à jour la description de la VM."
 
+# Erreurs
+["Login.Error.MissingCredentials"]
+other = "Le nom d'utilisateur et le mot de passe sont requis."
+
 # Admin Login
 ["AdminLogin.Button"]
 other = "Connexion administrateur"
