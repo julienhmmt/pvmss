@@ -121,7 +121,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 			"disabled": disabledNodes[nodeName],
 		}
 		if disabledNodes[nodeName] {
-			option["reason"] = "This node has reached its PVMSS resource limits"
+			option["reason"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.NodeLimitReached")
 		}
 		nodeOptions = append(nodeOptions, option)
 	}
@@ -335,8 +335,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	if allNodesSaturated {
 		data["Notification"] = map[string]interface{}{
 			"type":  "warning",
-			"title": "Resource Limits Reached",
-			"text":  "All nodes have reached their PVMSS resource limits. Cannot create new VMs.",
+			"title": i18n.Localize(localizer, "VM.Create.ResourceLimitsTitle"),
+			"text":  i18n.Localize(localizer, "VM.Create.ResourceLimitsMessage"),
 		}
 	}
 
@@ -356,7 +356,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		// Parse form
 		if err := r.ParseForm(); err != nil {
 			log.Error().Err(err).Msg("Failed to parse VM creation form")
-			data["ValidationError"] = "Invalid form data"
+			data["ValidationError"] = i18n.Localize(localizer, "Error.InvalidFormData")
 			renderTemplateInternal(w, r, "create_vm", data)
 			return
 		}
@@ -738,7 +738,7 @@ func (h *VMCreateOptimizedHandler) getOptimizedBridges(ctx context.Context, rest
 func getTPMDiskFormat(storageType string) (string, bool) {
 	// TPM disk format is always raw (4 MiB fixed size)
 	// Check if storage type supports raw format
-	
+
 	// Block-based storages that support raw format
 	blockStorages := map[string]bool{
 		"lvmthin": true,
@@ -747,19 +747,19 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 		"ceph":    true,
 		"iscsi":   true,
 	}
-	
+
 	// File-based storages that support raw format
 	fileStorages := map[string]bool{
 		"dir":  true,
 		"nfs":  true,
 		"cifs": true,
 	}
-	
+
 	// Check if storage type is compatible
 	if blockStorages[storageType] || fileStorages[storageType] {
 		return "raw", true
 	}
-	
+
 	// Unknown or incompatible storage type
 	return "raw", false
 }
@@ -770,7 +770,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	ctx := r.Context()
 
 	if client == nil {
-		data["ValidationError"] = "Proxmox client not available"
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")
 		renderTemplateInternal(w, r, "create_vm", data)
 		return
 	}
@@ -800,13 +800,13 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	// Simple validation
 	if name == "" {
-		data["ValidationError"] = "VM name is required"
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.VMNameRequired")
 		renderTemplateInternal(w, r, "create_vm", data)
 		return
 	}
 
 	if storage == "" {
-		data["ValidationError"] = "Storage is required"
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.StorageRequired")
 		renderTemplateInternal(w, r, "create_vm", data)
 		return
 	}
@@ -956,14 +956,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if vmid == 0 {
 		restyClient, err := getDefaultRestyClient()
 		if err != nil {
-			data["ValidationError"] = "Failed to get next VMID"
+			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Error.FailedToGetNextVMID")
 			renderTemplateInternal(w, r, "create_vm", data)
 			return
 		}
 		nextID, err := proxmox.GetNextVMIDResty(ctx, restyClient)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get next VMID")
-			data["ValidationError"] = "Failed to get next VMID"
+			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Error.FailedToGetNextVMID")
 			renderTemplateInternal(w, r, "create_vm", data)
 			return
 		}
@@ -1011,7 +1011,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	// TPM (Trusted Platform Module)
 	if enableTPM == "1" {
 		log.Info().Msg("TPM requested, checking storage compatibility")
-		
+
 		// Get storage info to determine format
 		restyClient, err := getDefaultRestyClient()
 		if err != nil {
@@ -1029,7 +1029,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 						break
 					}
 				}
-				
+
 				if selectedStorage != nil {
 					// Check if storage is compatible with raw format (required for TPM)
 					format, compatible := getTPMDiskFormat(selectedStorage.Type)

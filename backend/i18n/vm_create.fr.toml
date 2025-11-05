@@ -169,6 +169,14 @@ other = "Sélectionnez un stockage pour votre machine virtuelle"
 ["VM.Create.NodeLimitReached"]
 other = "Ce nœud a atteint ses limites de ressources PVMSS. Veuillez choisir un autre nœud ou contactez l'administrateur."
 
+# Validation et erreurs
+["VM.Create.Validation.VMNameRequired"]
+other = "Le nom de la VM est requis"
+["VM.Create.Validation.StorageRequired"]
+other = "Le stockage est requis"
+["VM.Create.Error.FailedToGetNextVMID"]
+other = "Échec de l'obtention du prochain ID de VM"
+
 # VM Creation - Tooltips
 ["VM.Create.Tooltip.Name"]
 other = "Nom de votre machine virtuelle. Utilisez un nom descriptif pour faciliter la gestion ou en cohérence avec les normes de votre organisation (ex : web-server, jh-pvmss-01-fr)."

@@ -54,7 +54,7 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	// Check if the documentation directory is available
 	if h.docsDir == "" {
 		log.Error().Msg("Documentation directory not configured")
-		http.Error(w, "Documentation not available", http.StatusServiceUnavailable)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusServiceUnavailable)
 		return
 	}
 
@@ -104,7 +104,7 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	docFile, finalLang := h.findDocFile(docType, lang)
 	if docFile == "" {
 		log.Warn().Str("type", docType).Str("lang", lang).Msg("Documentation not found")
-		http.NotFound(w, r)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.NotFound"), http.StatusNotFound)
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	absDocFile, err := filepath.Abs(docFile)
 	if err != nil {
 		log.Error().Err(err).Str("file", docFile).Msg("Invalid documentation file path")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -121,21 +121,21 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	absDocsDir, err := filepath.Abs(h.docsDir)
 	if err != nil {
 		log.Error().Err(err).Str("docs_dir", h.docsDir).Msg("Invalid docs directory path")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 	cleanedFile := filepath.Clean(absDocFile)
 	cleanedDir := filepath.Clean(absDocsDir)
 	if cleanedFile != cleanedDir && !strings.HasPrefix(cleanedFile+string(os.PathSeparator), cleanedDir+string(os.PathSeparator)) {
 		log.Warn().Str("file", cleanedFile).Str("docs_dir", cleanedDir).Msg("Attempt to access file outside docs directory")
-		http.Error(w, "Not found", http.StatusNotFound)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.NotFound"), http.StatusNotFound)
 		return
 	}
 
 	content, err := os.ReadFile(absDocFile) // #nosec G304 - absDocFile validated and confined under docs directory
 	if err != nil {
 		log.Error().Err(err).Str("file", absDocFile).Msg("Failed to read documentation")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 

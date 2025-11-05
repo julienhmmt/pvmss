@@ -33,14 +33,14 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 	vmid := ps.ByName("vmid")
 	if vmid == "" {
 		log.Error().Msg("VM ID is required")
-		http.Error(w, "VM ID is required", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredFields"), http.StatusBadRequest)
 		return
 	}
 
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
 		log.Error().Err(err).Str("vmid", vmid).Msg("Invalid VM ID")
-		http.Error(w, "Invalid VM ID", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Generic"), http.StatusBadRequest)
 		return
 	}
 
@@ -48,7 +48,7 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 	client := stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
-		http.Error(w, "Proxmox client not available", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
 		return
 	}
 
@@ -56,14 +56,14 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		http.Error(w, "Failed to create API client", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusInternalServerError)
 		return
 	}
 
 	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
 	if err != nil {
 		log.Error().Err(err).Int("vmid", vmidInt).Msg("Failed to get VMs (resty)")
-		http.Error(w, "Failed to get VMs", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources"), http.StatusInternalServerError)
 		return
 	}
 
@@ -71,7 +71,7 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 	vm := findVMByID(vms, vmidInt)
 	if vm == nil {
 		log.Error().Int("vmid", vmidInt).Msg("VM not found")
-		http.Error(w, "VM not found", http.StatusNotFound)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.NotFound"), http.StatusNotFound)
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		http.Error(w, "Failed to create API client", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusInternalServerError)
 		return
 	}
 

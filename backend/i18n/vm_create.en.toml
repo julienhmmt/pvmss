@@ -169,6 +169,14 @@ other = "Select a storage for your virtual machine"
 ["VM.Create.NodeLimitReached"]
 other = "This node has reached its PVMSS resource limits. Please select another Proxmox node or contact an administrator."
 
+# Validation and Errors
+["VM.Create.Validation.VMNameRequired"]
+other = "VM name is required"
+["VM.Create.Validation.StorageRequired"]
+other = "Storage is required"
+["VM.Create.Error.FailedToGetNextVMID"]
+other = "Failed to get next VM ID"
+
 # VM Creation - Tooltips
 ["VM.Create.Tooltip.Name"]
 other = "Identification name for your virtual machine. Use a descriptive name for easier management (e.g., web-server, dev-env)."

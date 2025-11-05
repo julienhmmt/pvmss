@@ -116,7 +116,7 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 	node := r.FormValue("node")
 	action := r.FormValue("action") // "enable" or "disable"
 	if storageName == "" || node == "" || (action != "enable" && action != "disable") {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 	if changed {
 		if err := h.stateManager.SetSettings(settings); err != nil {
 			log.Error().Err(err).Msg("Error saving settings")
-			http.Error(w, "Error saving settings", http.StatusInternalServerError)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
 	}
