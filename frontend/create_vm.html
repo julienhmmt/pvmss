@@ -296,7 +296,7 @@
                                                     </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="512" max="32768" step="256" value="2048" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., 2048">
+                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{.VMRamMinMB}}" max="{{.VMRamMaxMB}}" step="256" value="{{.VMRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., {{.VMRamMinMB}}">
                                                         </div>
                                                         <div class="control">
                                                             <div class="select is-medium">
@@ -309,9 +309,9 @@
                                                     </div>
                                                     <p class="help has-text-grey is-size-7 mt-2">
                                                         <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
-                                                        <span id="memory-display">{{T "Common.Selected"}}: 2 GB (2048 MB)</span>
-                                                        <span class="ml-2">• {{T "Common.Min"}}: 512 MB (0.5 GB)</span>
-                                                        <span class="ml-2">• {{T "Common.Max"}}: 32768 MB (32 GB)</span>
+                                                        <span id="memory-display">{{T "Common.Selected"}}: {{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB ({{.VMRamMinMB}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Min"}}: {{.VMRamMinMB}} MB ({{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB)</span>
+                                                        <span class="ml-2">• {{T "Common.Max"}}: {{.VMRamMaxMB}} MB ({{printf "%.0f" (div (float64 .VMRamMaxMB) 1024)}} GB)</span>
                                                     </p>
                                                 </div>
                                                 <script>
@@ -337,13 +337,15 @@
                                                         memoryDisplay.textContent = memorySelectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
                                                         
                                                         // Update input min/max based on unit
+                                                        const minMB = {{.VMRamMinMB}};
+                                                        const maxMB = {{.VMRamMaxMB}};
                                                         if (unit === 'GB') {
-                                                            memoryInput.min = '0.5';
-                                                            memoryInput.max = '32';
+                                                            memoryInput.min = (minMB / 1024).toFixed(1);
+                                                            memoryInput.max = (maxMB / 1024).toFixed(0);
                                                             memoryInput.step = '0.5';
                                                         } else {
-                                                            memoryInput.min = '512';
-                                                            memoryInput.max = '32768';
+                                                            memoryInput.min = String(minMB);
+                                                            memoryInput.max = String(maxMB);
                                                             memoryInput.step = '256';
                                                         }
                                                     }
@@ -436,10 +438,10 @@
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
                                                             <input id="diskSize_{{$diskIdx}}" class="input is-medium" type="number" name="disk_size_{{$diskIdx}}" 
-                                                                   min="{{if eq $diskIdx 0}}1{{else}}0{{end}}" 
-                                                                   max="1024" 
+                                                                   min="{{if eq $diskIdx 0}}{{$.VMDiskMin}}{{else}}0{{end}}" 
+                                                                   max="{{$.VMDiskMax}}" 
                                                                    step="{{if eq $diskIdx 0}}1{{else}}0.1{{end}}" 
-                                                                   value="{{if eq $diskIdx 0}}10{{else}}{{end}}" 
+                                                                   value="{{if eq $diskIdx 0}}{{$.VMDiskMin}}{{else}}{{end}}" 
                                                                    {{if eq $diskIdx 0}}required{{end}} 
                                                                    placeholder="{{if gt $diskIdx 0}}{{T "VM.Create.DiskOptionalPlaceholder"}}{{end}}"
                                                                    aria-describedby="diskSize-help" 
@@ -457,9 +459,9 @@
                                                     {{if eq $diskIdx 0}}
                                                     <p class="help has-text-grey is-size-7 mt-2">
                                                         <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
-                                                        <span id="diskSize-display-{{$diskIdx}}">{{T "Common.Selected"}}: 10 GB (10240 MB)</span>
-                                                        <span class="ml-2">• {{T "Common.Min"}}: 1 GB (1024 MB)</span>
-                                                        <span class="ml-2">• {{T "Common.Max"}}: 1024 GB (1 TB)</span>
+                                                        <span id="diskSize-display-{{$diskIdx}}">{{T "Common.Selected"}}: {{$.VMDiskMin}} GB ({{mul $.VMDiskMin 1024}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Min"}}: {{$.VMDiskMin}} GB ({{mul $.VMDiskMin 1024}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Max"}}: {{$.VMDiskMax}} GB ({{if gt $.VMDiskMax 999}}{{div $.VMDiskMax 1024}} TB{{else}}{{mul $.VMDiskMax 1024}} MB{{end}})</span>
                                                     </p>
                                                     <script>
                                                         // Disk size conversion - use class-based approach to avoid template syntax in JS
@@ -493,13 +495,15 @@
                                                                     display.textContent = selectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
                                                                     
                                                                     // Update input min/max/step based on unit
+                                                                    const diskMinGB = {{$.VMDiskMin}};
+                                                                    const diskMaxGB = {{$.VMDiskMax}};
                                                                     if (unit === 'GB') {
-                                                                        input.min = '1';
-                                                                        input.max = '1024';
+                                                                        input.min = String(diskMinGB);
+                                                                        input.max = String(diskMaxGB);
                                                                         input.step = '1';
                                                                     } else {
-                                                                        input.min = '1024';
-                                                                        input.max = '1048576';
+                                                                        input.min = String(diskMinGB * 1024);
+                                                                        input.max = String(diskMaxGB * 1024);
                                                                         input.step = '1024';
                                                                     }
                                                                 }
