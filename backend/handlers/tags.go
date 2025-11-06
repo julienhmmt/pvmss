@@ -94,8 +94,8 @@ func (h *TagsHandler) validateTagDeletion(tagName string, checkExists bool) (str
 
 	if checkExists {
 		settings := h.stateManager.GetSettings()
-		if !tagExists(settings.Tags, tagName) {
-			log.Warn().Str("tag", tagName).Msg("Tag not found")
+		if settings == nil || settings.Tags == nil || !tagExists(settings.Tags, tagName) {
+			log.Warn().Str("tag", tagName).Msg("Tag not found or settings unavailable")
 			return "", false
 		}
 	}
@@ -129,6 +129,11 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	settings := h.stateManager.GetSettings()
+	if settings == nil || settings.Tags == nil {
+		log.Error().Msg("Settings or Tags unavailable")
+		RespondWithError(w, r, ErrInternalServer)
+		return
+	}
 
 	if tagExists(settings.Tags, tagName) {
 		log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
@@ -144,6 +149,9 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
+	if settings.Tags == nil {
+		settings.Tags = []string{}
+	}
 	settings.Tags = append(settings.Tags, tagName)
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
@@ -179,6 +187,11 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	settings := h.stateManager.GetSettings()
+	if settings == nil || settings.Tags == nil {
+		log.Error().Msg("Settings or Tags unavailable")
+		RespondWithError(w, r, ErrInternalServer)
+		return
+	}
 
 	// Remove the tag from settings
 	settings.Tags = removeTag(settings.Tags, tagName)
@@ -285,8 +298,13 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	log.Info().Interface("tag_counts", tagCounts).Msg("Tag counts calculated")
 
 	// Filter and sort tags by name for display
-	tags := make([]string, 0, len(settings.Tags))
-	tags = append(tags, settings.Tags...)
+	var tags []string
+	if settings != nil && settings.Tags != nil {
+		tags = make([]string, 0, len(settings.Tags))
+		tags = append(tags, settings.Tags...)
+	} else {
+		tags = []string{}
+	}
 
 	// Sort based on requested order
 	if sortOrder == "desc" {
@@ -352,6 +370,11 @@ func EnsureDefaultTag(sm state.StateManager) error {
 	settings := sm.GetSettings()
 	if settings == nil {
 		return nil // Settings not yet loaded
+	}
+
+	// Initialize Tags if nil
+	if settings.Tags == nil {
+		settings.Tags = []string{}
 	}
 
 	defaultTag := "pvmss"

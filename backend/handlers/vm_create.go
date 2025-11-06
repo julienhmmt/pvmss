@@ -175,17 +175,34 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		}
 	}
 
-	// Prepare template data
+	// Prepare template data with safe defaults for nil settings
+	isos := []string{}
+	if settings != nil && settings.ISOs != nil {
+		isos = settings.ISOs
+	}
+	limits := make(map[string]interface{})
+	if settings != nil && settings.Limits != nil {
+		limits = settings.Limits
+	}
+	maxDiskPerVM := 1
+	if settings != nil {
+		maxDiskPerVM = settings.MaxDiskPerVM
+	}
+	maxNetworkCards := 1
+	if settings != nil {
+		maxNetworkCards = settings.MaxNetworkCards
+	}
+
 	data := map[string]interface{}{
 		"BridgeDetails":    bridgeDetails,
 		"FormData":         formData,
-		"ISOs":             settings.ISOs,
+		"ISOs":             isos,
 		"IsAdmin":          isAdmin,
 		"IsAuthenticated":  true,
 		"Lang":             i18n.GetLanguage(r),
-		"Limits":           settings.Limits,
-		"MaxDiskPerVM":     settings.MaxDiskPerVM,
-		"MaxNetworkCards":  settings.MaxNetworkCards,
+		"Limits":           limits,
+		"MaxDiskPerVM":     maxDiskPerVM,
+		"MaxNetworkCards":  maxNetworkCards,
 		"NetworkModels":    getNetworkModels(),
 		"NodeOptions":      nodeOptions,
 		"Nodes":            nodes,
@@ -235,7 +252,11 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Add default pool and available tags for template compatibility
 	data["DefaultPool"] = fmt.Sprintf("pvmss_%s", username)
-	data["AvailableTags"] = settings.Tags
+	if settings != nil && settings.Tags != nil {
+		data["AvailableTags"] = settings.Tags
+	} else {
+		data["AvailableTags"] = []string{}
+	}
 
 	// Add CSRF token from request context
 	if csrfToken, ok := r.Context().Value("csrf_token").(string); ok {

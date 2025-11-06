@@ -25,12 +25,21 @@ func sendSettingsJSONResponse(w http.ResponseWriter, settings *state.AppSettings
 		return
 	}
 
-	// Do not return the admin password
+	// Provide safe defaults for nil pointers
+	tags := settings.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+	limits := settings.Limits
+	if limits == nil {
+		limits = make(map[string]interface{})
+	}
+
 	settingsResponse := map[string]interface{}{
-		"tags":   settings.Tags,
+		"tags":   tags,
 		"isos":   settings.ISOs,
 		"vmbrs":  settings.VMBRs,
-		"limits": settings.Limits,
+		"limits": limits,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
