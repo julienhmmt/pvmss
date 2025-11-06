@@ -264,12 +264,14 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	}
 
 	// Compute explicit VM limits for template (avoids nil map indexing in templates)
-	// RAM: keep MB for inputs, derive GB for display (ceil)
-	vmRamMinMB, vmRamMaxMB := 512, 32768 // defaults in MB (512MB to 32GB)
-	socketsMin, socketsMax := 1, 8
-	coresMin, coresMax := 1, 32
-	diskMin, diskMax := 1, 1024 // in GB to match POST defaults
-	if settings.Limits != nil {
+	// IMPORTANT: Limits MUST come from settings.json (NO hardcoded defaults)
+	// In settings.json: ram and disk are in GB, sockets and cores are integers
+	var vmRamMinMB, vmRamMaxMB int
+	var socketsMin, socketsMax int
+	var coresMin, coresMax int
+	var diskMin, diskMax int
+
+	if settings != nil && settings.Limits != nil {
 		if vmLimits, ok := settings.Limits["vm"]; ok {
 			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
 				if ram, ok := vmLimitsMap["ram"]; ok {
@@ -330,7 +332,22 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 				}
 			}
 		}
+	} else {
+		// Settings not available - this should not happen in production
+		log.Error().Msg("Settings or limits not available for VM creation")
+		data["ValidationError"] = "Configuration system unavailable. Please contact administrator."
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
 	}
+
+	// Verify we got all required limits from settings
+	if vmRamMinMB == 0 || vmRamMaxMB == 0 || coresMin == 0 || coresMax == 0 || socketsMin == 0 || socketsMax == 0 || diskMin == 0 || diskMax == 0 {
+		log.Error().Msg("Incomplete VM limits in settings.json")
+		data["ValidationError"] = "Incomplete system configuration. Please contact administrator."
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
+	}
+
 	// derive GB for display as ceiling of MB/1024
 	vmRamMinGB := (vmRamMinMB + 1023) / 1024
 	vmRamMaxGB := (vmRamMaxMB + 1023) / 1024
@@ -884,11 +901,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		return mb
 	}
 
-	// Get limits from settings or use defaults
-	var memoryMin, memoryMax = 512, 32768 // 512MB to 32GB
-	var socketsMin, socketsMax = 1, 8
-	var coresMin, coresMax = 1, 32
-	var diskMin, diskMax = 1, 1024 // 1GB to 1TB
+	// Get limits from settings.json (NO hardcoded defaults)
+	// In settings.json: ram and disk are in GB, sockets and cores are integers
+	var memoryMin, memoryMax int // Will be in MB after conversion
+	var socketsMin, socketsMax int
+	var coresMin, coresMax int
+	var diskMin, diskMax int // Will be in GB from settings
 
 	if settings != nil && settings.Limits != nil {
 		if vmLimits, ok := settings.Limits["vm"]; ok {
@@ -951,13 +969,29 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 				}
 			}
 		}
+	} else {
+		// Settings not available - cannot create VM
+		log.Error().Msg("Settings or limits not available for VM creation POST")
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SystemUnavailable")
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
+	}
+
+	// Verify we got all required limits
+	if memoryMin == 0 || memoryMax == 0 || coresMin == 0 || coresMax == 0 || socketsMin == 0 || socketsMax == 0 || diskMin == 0 || diskMax == 0 {
+		log.Error().Msg("Incomplete VM limits in settings.json for POST")
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SystemUnavailable")
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
 	}
 
 	// Parse values with proper validation
-	memoryMB := extractSize(memoryStr, memoryUnit, 2048, memoryMin, memoryMax, "memory")
-	cpuSockets := extractInt(cpuSocketsStr, 1, socketsMin, socketsMax, "sockets")
-	cpuCores := extractInt(cpuCoresStr, 2, coresMin, coresMax, "cores")
-	diskSizeMB := extractSize(diskSizeStr, diskSizeUnit, 10240, diskMin*1024, diskMax*1024, "disk_size")
+	// For memory: use min from settings as default
+	// For disk: use min from settings as default (convert GB to MB)
+	memoryMB := extractSize(memoryStr, memoryUnit, memoryMin, memoryMin, memoryMax, "memory")
+	cpuSockets := extractInt(cpuSocketsStr, socketsMin, socketsMin, socketsMax, "sockets")
+	cpuCores := extractInt(cpuCoresStr, coresMin, coresMin, coresMax, "cores")
+	diskSizeMB := extractSize(diskSizeStr, diskSizeUnit, diskMin*1024, diskMin*1024, diskMax*1024, "disk_size")
 
 	// Defaults
 	if diskBus == "" {
