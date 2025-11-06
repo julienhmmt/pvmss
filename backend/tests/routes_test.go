@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -135,6 +136,17 @@ func TestRouteAccessibility(t *testing.T) {
 		t.Skipf("PVMSS server not reachable at %s", cfg.BaseURL)
 	}
 
+	skipProxmoxTests := false
+	skipReason := "Proxmox authentication unavailable"
+
+	if strings.EqualFold(os.Getenv("PVMSS_OFFLINE"), "true") {
+		skipProxmoxTests = true
+		skipReason = "Skipping authenticated route tests: offline mode enabled"
+	} else if !isProxmoxConnected(cfg) {
+		skipProxmoxTests = true
+		skipReason = "Skipping authenticated route tests: Proxmox API unavailable"
+	}
+
 	t.Run("Public routes", func(t *testing.T) {
 		runRouteGroup(t, cfg, []routeTest{
 			{Name: "Health check", Method: http.MethodGet, Path: "/health", ExpectedStatus: http.StatusOK},
@@ -163,6 +175,10 @@ func TestRouteAccessibility(t *testing.T) {
 	})
 
 	t.Run("Authenticated user routes", func(t *testing.T) {
+		if skipProxmoxTests {
+			t.Skip(skipReason)
+		}
+
 		client := createHTTPClient()
 		authenticate(t, cfg, client, cfg.UserUsername, cfg.UserPassword, "/login")
 
@@ -179,6 +195,10 @@ func TestRouteAccessibility(t *testing.T) {
 	})
 
 	t.Run("Admin routes", func(t *testing.T) {
+		if skipProxmoxTests {
+			t.Skip(skipReason)
+		}
+
 		client := createHTTPClient()
 		authenticate(t, cfg, client, cfg.AdminUsername, cfg.AdminPassword, "/admin/login")
 
@@ -249,18 +269,22 @@ func runRouteTest(t *testing.T, cfg routeConfig, test routeTest, client *http.Cl
 func authenticate(t *testing.T, cfg routeConfig, client *http.Client, username, password, loginPath string) {
 	t.Helper()
 
-	resp, err := client.Get(cfg.BaseURL + loginPath)
+	getResp, err := client.Get(cfg.BaseURL + loginPath)
 	if err != nil {
 		t.Fatalf("failed to GET login page %s: %v", loginPath, err)
 	}
-
-	body, err := io.ReadAll(resp.Body)
 	defer func() {
-		_ = resp.Body.Close()
+		if getResp != nil {
+			_ = getResp.Body.Close()
+		}
 	}()
+
+	body, err := io.ReadAll(getResp.Body)
 	if err != nil {
 		t.Fatalf("failed to read login page %s: %v", loginPath, err)
 	}
+	_ = getResp.Body.Close()
+	getResp = nil
 
 	csrfToken := extractCSRFToken(string(body))
 	form := url.Values{}
@@ -282,17 +306,19 @@ func authenticate(t *testing.T, cfg routeConfig, client *http.Client, username, 
 	}
 	defer func() { client.CheckRedirect = originalRedirect }()
 
-	resp, err = client.Do(req)
+	postResp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("failed to POST login %s: %v", loginPath, err)
 	}
 	defer func() {
-		_ = resp.Body.Close()
+		if postResp != nil {
+			_ = postResp.Body.Close()
+		}
 	}()
 
-	if resp.StatusCode != http.StatusSeeOther && resp.StatusCode != http.StatusFound {
-		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		t.Fatalf("authentication failed for %s: expected redirect, got %d. Body: %s", loginPath, resp.StatusCode, strings.TrimSpace(string(snippet)))
+	if postResp.StatusCode != http.StatusSeeOther && postResp.StatusCode != http.StatusFound {
+		snippet, _ := io.ReadAll(io.LimitReader(postResp.Body, 512))
+		t.Fatalf("authentication failed for %s: expected redirect, got %d. Body: %s", loginPath, postResp.StatusCode, strings.TrimSpace(string(snippet)))
 	}
 }
 
@@ -323,6 +349,27 @@ func loadRouteConfig() routeConfig {
 		UserUsername:  getEnvOrDefault("USER_USERNAME", "jhmt@pve"),
 		UserPassword:  getEnvOrDefault("USER_PASSWORD", "pouetpouet"),
 	}
+}
+
+func isProxmoxConnected(cfg routeConfig) bool {
+	client := createHTTPClient()
+	url := cfg.BaseURL + "/api/health/proxmox"
+	resp, err := client.Get(url)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	var payload proxmoxHealthResponse
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return false
+	}
+
+	return payload.Connected
 }
 
 func waitForServer(baseURL string, timeout time.Duration) bool {
@@ -371,6 +418,11 @@ type routeTest struct {
 	Method         string
 	Path           string
 	ExpectedStatus int
+}
+
+type proxmoxHealthResponse struct {
+	Connected bool   `json:"connected"`
+	Error     string `json:"error"`
 }
 
 // TestQemuGuestAgentTimeoutDetection tests the logic for detecting QEMU Guest Agent timeout errors

@@ -99,3 +99,7 @@ other = "Le mot de passe doit contenir au moins 5 caractères"
 other = "Le mot de passe actuel est incorrect"
 ["Profile.PasswordError.UpdateFailed"]
 other = "Échec de la mise à jour du mot de passe"
+
+# Erreurs API
+["Profile.Error.AdminNoPersonalVMs"]
+other = "Les utilisateurs administrateurs n'ont pas de listes de VMs personnelles"
