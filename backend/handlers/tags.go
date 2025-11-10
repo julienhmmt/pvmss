@@ -214,15 +214,14 @@ func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	builder := NewTemplateData("").
-		SetAdminActive("tags_delete").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.Tags.Title").
-		AddData("Tag", tagName)
-
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("",
+		WithAdminActive("tags_delete"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.Tags.Title"),
+		WithData("Tag", tagName),
+	).ToMap()
 	renderTemplateInternal(w, r, "admin_tags_delete", data)
 }
 
@@ -313,26 +312,27 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		sort.Strings(tags)
 	}
 
-	builder := NewTemplateData("").
-		SetAdminActive("tags").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.Tags.Title").
-		AddData("Tags", tags).
-		AddData("SortOrder", sortOrder).
-		AddData("TotalTags", len(settings.Tags)).
-		AddData("FilteredTags", len(tags)).
-		AddData("TagCounts", tagCounts)
+	opts := []TemplateOption{
+		WithAdminActive("tags"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.Tags.Title"),
+		WithData("Tags", tags),
+		WithData("SortOrder", sortOrder),
+		WithData("TotalTags", len(settings.Tags)),
+		WithData("FilteredTags", len(tags)),
+		WithData("TagCounts", tagCounts),
+	}
 
 	if successMsg != "" {
-		builder.SetSuccess(successMsg)
+		opts = append(opts, WithSuccess(successMsg))
 	}
 	if errorMsg != "" {
-		builder.SetError(errorMsg)
+		opts = append(opts, WithError(errorMsg))
 	}
 
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_tags", data)
 }
 

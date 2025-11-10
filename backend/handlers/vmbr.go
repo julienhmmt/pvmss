@@ -234,25 +234,26 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		})
 	}
 
-	builder := NewTemplateData("").
-		SetAdminActive("vmbr").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.VMBR.Title").
-		AddData("EnabledVMBRs", enabledVMBRs).
-		AddData("Nodes", allNodes).
-		AddData("MaxNetworkCards", settings.MaxNetworkCards).
-		AddData("VMBRs", vmbrsForTemplate)
+	opts := []TemplateOption{
+		WithAdminActive("vmbr"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.VMBR.Title"),
+		WithData("EnabledVMBRs", enabledVMBRs),
+		WithData("Nodes", allNodes),
+		WithData("MaxNetworkCards", settings.MaxNetworkCards),
+		WithData("VMBRs", vmbrsForTemplate),
+	}
 
 	if successMsg != "" {
-		builder.SetSuccess(successMsg)
+		opts = append(opts, WithSuccess(successMsg))
 	}
 	if err != nil {
-		builder.AddData("Error", err.Error())
+		opts = append(opts, WithData("Error", err.Error()))
 	}
 
-	templateData := builder.Build().ToMap()
+	templateData := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 

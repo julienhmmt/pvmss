@@ -252,14 +252,13 @@ func (h *AdminOptimizedHandler) AdminPageHandler(w http.ResponseWriter, r *http.
 	log := CreateHandlerLogger("AdminPageHandler", r)
 	log.Debug().Msg("Rendering admin dashboard")
 
-	builder := NewTemplateData("").
-		SetAdminActive("dashboard").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Navbar.Admin")
-
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("",
+		WithAdminActive("dashboard"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Navbar.Admin"),
+	).ToMap()
 	renderTemplateInternal(w, r, "admin_base", data)
 }
 
@@ -347,15 +346,14 @@ func (h *AdminOptimizedHandler) AppInfoPageHandler(w http.ResponseWriter, r *htt
 
 	buildInfo["clusterInfo"] = clusterInfo
 
-	builder := NewTemplateData("").
-		SetAdminActive("appinfo").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.AppInfo.Title").
-		AddData("BuildInfo", buildInfo)
-
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("",
+		WithAdminActive("appinfo"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.AppInfo.Title"),
+		WithData("BuildInfo", buildInfo),
+	).ToMap()
 	log.Info().Msg("Rendering Application Info page")
 	renderTemplateInternal(w, r, "admin_appinfo", data)
 }
@@ -389,16 +387,15 @@ func (h *AdminOptimizedHandler) ProxmoxTicketTestPageHandler(w http.ResponseWrit
 		}
 	}
 
-	builder := NewTemplateData("").
-		SetAdminActive("ticket-test").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Navbar.Admin").
-		AddData("ProxmoxHost", proxmoxHost).
-		AddData("AuthMethod", authMethod)
-
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("",
+		WithAdminActive("ticket-test"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Navbar.Admin"),
+		WithData("ProxmoxHost", proxmoxHost),
+		WithData("AuthMethod", authMethod),
+	).ToMap()
 	renderTemplateInternal(w, r, "admin_ticket_test", data)
 }
 
@@ -410,12 +407,12 @@ func (h *AdminOptimizedHandler) ProxmoxTicketTestFormHandler(w http.ResponseWrit
 
 	// For now, just redirect with a success message
 	localizer := i18n.GetLocalizerFromRequest(r)
-	builder := NewTemplateData("").
-		SetAdminActive("ticket-test").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		SetSuccess(i18n.Localize(localizer, "Admin.Auth.TestSuccess"))
 
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("",
+		WithAdminActive("ticket-test"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithSuccess(i18n.Localize(localizer, "Admin.TicketTest.Success")),
+	).ToMap()
 	renderTemplateInternal(w, r, "admin_ticket_test", data)
 }
