@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 
 	"pvmss/i18n"
 	"pvmss/proxmox"
@@ -621,7 +622,7 @@ func getNodeLimits(settings *state.AppSettings) map[string]interface{} {
 	return result
 }
 
-// getOptimizedResources retrieves storages and bridges concurrently with optimizations
+// getOptimizedResources retrieves storages and bridges concurrently using errgroup pattern
 func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, client proxmox.ClientInterface, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings) ([]string, map[string]string, []map[string]string, error) {
 	log := CreateHandlerLogger("getOptimizedResources", nil)
 
@@ -639,39 +640,44 @@ func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, cl
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	var wg sync.WaitGroup
+	// Use errgroup for better concurrency control
+	g, ctx := errgroup.WithContext(ctx)
+
 	var storages []string
 	var storageNodes map[string]string
 	var bridgeDetails []map[string]string
-	var storagesErr, bridgesErr error
 
-	// Get storages concurrently
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		storages, storageNodes, storagesErr = h.getOptimizedStorages(ctx, restyClient, nodes, disabledNodes, settings)
-	}()
+	// Fetch storages concurrently
+	g.Go(func() error {
+		var err error
+		storages, storageNodes, err = h.getOptimizedStorages(ctx, restyClient, nodes, disabledNodes, settings)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to retrieve storages")
+			return fmt.Errorf("failed to get storages: %w", err)
+		}
+		return nil
+	})
 
-	// Get bridges concurrently
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		bridgeDetails, bridgesErr = h.getOptimizedBridges(ctx, restyClient, nodes, disabledNodes, settings)
-	}()
+	// Fetch bridges concurrently
+	g.Go(func() error {
+		var err error
+		bridgeDetails, err = h.getOptimizedBridges(ctx, restyClient, nodes, disabledNodes, settings)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to retrieve bridges")
+			return fmt.Errorf("failed to get bridges: %w", err)
+		}
+		return nil
+	})
 
-	wg.Wait()
-
-	if storagesErr != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get storages: %w", storagesErr)
-	}
-	if bridgesErr != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get bridges: %w", bridgesErr)
+	// Wait for all goroutines to complete
+	if err := g.Wait(); err != nil {
+		return nil, nil, nil, err
 	}
 
 	log.Info().
 		Int("storages_count", len(storages)).
 		Int("bridges_count", len(bridgeDetails)).
-		Msg("Resources retrieved concurrently")
+		Msg("Resources retrieved concurrently with errgroup")
 
 	return storages, storageNodes, bridgeDetails, nil
 }
@@ -942,6 +948,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	// Parse integers with robust extraction
 	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		log.Error().Msg("Settings not available for VM creation")
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SettingsUnavailable")
+		renderTemplateInternal(w, r, "create_vm", data)
+		return
+	}
 
 	// Helper function to extract integer from string with validation
 	extractInt := func(str string, defaultValue int, minVal, maxVal int, fieldName string) int {
@@ -1151,7 +1163,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	}
 
 	// Additional disks
-	if settings != nil && settings.MaxDiskPerVM > 1 {
+	if settings.MaxDiskPerVM > 1 {
 		for diskIdx := 1; diskIdx < settings.MaxDiskPerVM; diskIdx++ {
 			diskSizeStr := strings.TrimSpace(r.FormValue(fmt.Sprintf("disk_size_%d", diskIdx)))
 			diskSizeUnit := strings.TrimSpace(r.FormValue(fmt.Sprintf("disk_size_unit_%d", diskIdx)))
@@ -1185,7 +1197,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	}
 
 	// Additional network cards (net1, net2, etc.) if configured
-	if settings != nil && settings.MaxNetworkCards > 1 {
+	if settings.MaxNetworkCards > 1 {
 		for netIdx := 1; netIdx < settings.MaxNetworkCards; netIdx++ {
 			additionalBridge := strings.TrimSpace(r.FormValue(fmt.Sprintf("bridge_%d", netIdx)))
 			if additionalBridge == "" {

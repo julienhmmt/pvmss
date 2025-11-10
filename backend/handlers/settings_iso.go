@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
@@ -35,7 +36,7 @@ type NodeISOGroup struct {
 	ISOs []ISOEntry `json:"isos"`
 }
 
-// fetchAllISOs retrieves all ISOs from all nodes and storages using resty
+// fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls
 func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, error) {
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
@@ -43,13 +44,34 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 		return nil, err
 	}
 
-	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
-	if err != nil {
-		return nil, err
-	}
+	// Use errgroup for concurrent API calls
+	g, ctx := errgroup.WithContext(ctx)
 
-	storages, err := proxmox.GetStoragesResty(ctx, restyClient)
-	if err != nil {
+	var nodes []string
+	var storages []proxmox.Storage
+
+	// Fetch nodes concurrently
+	g.Go(func() error {
+		var err error
+		nodes, err = proxmox.GetNodeNamesResty(ctx, restyClient)
+		if err != nil {
+			return fmt.Errorf("failed to get nodes: %w", err)
+		}
+		return nil
+	})
+
+	// Fetch storages concurrently
+	g.Go(func() error {
+		var err error
+		storages, err = proxmox.GetStoragesResty(ctx, restyClient)
+		if err != nil {
+			return fmt.Errorf("failed to get storages: %w", err)
+		}
+		return nil
+	})
+
+	// Wait for all goroutines to complete
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
