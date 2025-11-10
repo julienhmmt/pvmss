@@ -145,7 +145,7 @@ func LoadSettings() (*AppSettings, bool, error) {
 
 	settingsFile, err := getSettingsFilePath()
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to get settings file path: %w", err)
 	}
 
 	// Check if settings file exists
@@ -227,7 +227,7 @@ func WriteSettings(settings *AppSettings) error {
 
 	settingsFile, err := getSettingsFilePath()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get settings file path for save: %w", err)
 	}
 
 	// Ensure empty optional fields are omitted

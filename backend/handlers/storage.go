@@ -424,7 +424,8 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, fmt.Errorf("failed to create resty client for node %s: %w", node, err)
 	}
 
 	// Use errgroup for concurrent API calls
@@ -457,7 +458,8 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 
 	// Wait for all goroutines to complete
 	if err := g.Wait(); err != nil {
-		return nil, err
+		log.Error().Err(err).Str("node", node).Msg("Failed to fetch storages concurrently")
+		return nil, fmt.Errorf("failed to fetch storages for node %s: %w", node, err)
 	}
 
 	log.Debug().
@@ -585,12 +587,14 @@ func fetchRawStoragesFromNode(ctx context.Context, node string) ([]map[string]in
 	// Fetch fresh data
 	client, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, fmt.Errorf("failed to create resty client for node %s: %w", node, err)
 	}
 
 	storages, err := proxmox.GetNodeStoragesResty(ctx, client, node)
 	if err != nil {
-		return nil, err
+		log.Error().Err(err).Str("node", node).Msg("Failed to fetch node storages")
+		return nil, fmt.Errorf("failed to fetch storages for node %s: %w", node, err)
 	}
 
 	base := make([]map[string]interface{}, 0, len(storages))

@@ -48,7 +48,7 @@ type CreateTicketOptions struct {
 // The CSRFPreventionToken must be included in the header for any state-changing operations (POST, PUT, DELETE).
 func CreateTicket(ctx context.Context, client ClientInterface, username, password string, opts *CreateTicketOptions) (*TicketResponse, error) {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate ticket creation params for user %s: %w", username, err)
 	}
 
 	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
@@ -111,7 +111,7 @@ func CreateTicket(ctx context.Context, client ClientInterface, username, passwor
 // EnsureUser creates a Proxmox user if it does not already exist. This function is idempotent.
 func EnsureUser(ctx context.Context, client ClientInterface, username, password, email, comment, realm string, enable bool) error {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
-		return err
+		return fmt.Errorf("failed to validate params for EnsureUser %s: %w", username, err)
 	}
 
 	if realm == "" {
@@ -169,7 +169,7 @@ func EnsureUser(ctx context.Context, client ClientInterface, username, password,
 // Note: This requires cookie-based authentication (PVEAuthCookie), not API tokens.
 func UpdateUserPassword(ctx context.Context, client ClientInterface, username, password, confirmPassword, realm string) error {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
-		return err
+		return fmt.Errorf("failed to validate params for UpdateUserPassword %s: %w", username, err)
 	}
 
 	if realm == "" {
@@ -202,7 +202,7 @@ func UpdateUserPassword(ctx context.Context, client ClientInterface, username, p
 // EnsurePool creates a Proxmox pool if it is missing. This function is idempotent.
 func EnsurePool(ctx context.Context, client ClientInterface, poolID, comment string) error {
 	if err := validateClientAndParams(client, param{"poolID", poolID}); err != nil {
-		return err
+		return fmt.Errorf("failed to validate params for EnsurePool %s: %w", poolID, err)
 	}
 
 	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
@@ -237,7 +237,7 @@ func EnsurePool(ctx context.Context, client ClientInterface, poolID, comment str
 // EnsurePoolACL grants a role to a user for a pool. This operation is idempotent on the Proxmox API side.
 func EnsurePoolACL(ctx context.Context, client ClientInterface, userID, poolID, role string, propagate bool) error {
 	if err := validateClientAndParams(client, param{"userID", userID}, param{"poolID", poolID}, param{"role", role}); err != nil {
-		return err
+		return fmt.Errorf("failed to validate params for EnsurePoolACL user=%s pool=%s role=%s: %w", userID, poolID, role, err)
 	}
 
 	ctx, cancel := withDefaultTimeout(ctx, client.GetTimeout())
@@ -262,7 +262,7 @@ func EnsurePoolACL(ctx context.Context, client ClientInterface, userID, poolID, 
 // EnsureRole creates a custom Proxmox role if it does not already exist. This function is idempotent.
 func EnsureRole(ctx context.Context, client ClientInterface, roleID string, privileges []string) error {
 	if err := validateClientAndParams(client, param{"roleID", roleID}); err != nil {
-		return err
+		return fmt.Errorf("failed to validate params for EnsureRole %s: %w", roleID, err)
 	}
 	if len(privileges) == 0 {
 		return fmt.Errorf("at least one privilege is required for role %s", roleID)

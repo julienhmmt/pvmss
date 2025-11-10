@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -133,7 +134,7 @@ func getVMBRsFromNode(ctx context.Context, node string, restyClient *proxmox.Res
 
 	vmbrs, err := proxmox.GetVMBRsResty(ctx, restyClient, node)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get VMBRs for node %s: %w", node, err)
 	}
 
 	// Process VMBRs

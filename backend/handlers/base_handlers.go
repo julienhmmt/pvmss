@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -119,7 +120,7 @@ func (b *BaseAPIHandler) WriteJSONResponse(w http.ResponseWriter, data interface
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		logger.Get().Error().Err(err).Msg("failed to write JSON response")
-		return err
+		return fmt.Errorf("failed to write JSON response: %w", err)
 	}
 	return nil
 }

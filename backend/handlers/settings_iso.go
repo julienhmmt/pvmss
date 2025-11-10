@@ -41,7 +41,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create resty client for ISO retrieval: %w", err)
 	}
 
 	// Use errgroup for concurrent API calls
@@ -72,7 +72,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 
 	// Wait for all goroutines to complete
 	if err := g.Wait(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch nodes/storages for ISO retrieval: %w", err)
 	}
 
 	enabledSet := make(map[string]struct{})

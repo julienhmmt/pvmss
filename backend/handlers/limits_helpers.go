@@ -36,14 +36,14 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		return nil, err
+		return nil, fmt.Errorf("failed to create resty client for resource usage: %w", err)
 	}
 
 	// Get all nodes
 	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get nodes")
-		return nil, err
+		return nil, fmt.Errorf("failed to get node names for resource usage: %w", err)
 	}
 
 	usage := make(map[string]*NodeResourceUsage)
@@ -255,13 +255,13 @@ func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeNa
 	restyClient, err := proxmox.NewRestyClientFromEnv(10 * time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		return nil, err
+		return nil, fmt.Errorf("failed to create resty client for node %s: %w", nodeName, err)
 	}
 
 	nodeDetails, err := proxmox.GetNodeDetailsResty(ctx, restyClient, nodeName)
 	if err != nil {
 		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
-		return nil, err
+		return nil, fmt.Errorf("failed to get details for node %s: %w", nodeName, err)
 	}
 
 	memoryMB := int64(nodeDetails.MaxMemory)

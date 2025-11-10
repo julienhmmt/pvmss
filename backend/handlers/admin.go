@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -144,7 +145,7 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 	// First, get node names (fast operation)
 	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get Proxmox node names: %w", err)
 	}
 
 	log.Info().Int("node_count", len(nodes)).Msg("Retrieved node names")

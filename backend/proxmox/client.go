@@ -44,7 +44,7 @@ func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify boo
 
 	client, err := newBaseClient(apiURL, insecureSkipVerify, opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create base client for %s: %w", apiURL, err)
 	}
 
 	client.SetAPIToken(apiTokenID, apiTokenSecret)
@@ -133,7 +133,7 @@ func (c *Client) Get(path string) (map[string]interface{}, error) {
 func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	if err := c.GetJSON(ctx, path, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get JSON for path %s: %w", path, err)
 	}
 	return result, nil
 }
@@ -201,7 +201,7 @@ func (c *Client) PostFormAndGetJSON(ctx context.Context, path string, data url.V
 func (c *Client) doFormRequest(ctx context.Context, method, path string, data url.Values) (map[string]interface{}, error) {
 	var result map[string]interface{}
 	if err := c.doJSONRequest(ctx, method, path, data, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to execute %s request for path %s: %w", method, path, err)
 	}
 	return result, nil
 }

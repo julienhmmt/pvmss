@@ -211,7 +211,7 @@ func GetGuestAgentNetworkInterfaces(ctx context.Context, client ClientInterface,
 
 	if err := client.GetJSON(ctx, path, &resp); err != nil {
 		// Guest agent not available is expected for VMs without it or when VM is stopped
-		return nil, err
+		return nil, fmt.Errorf("failed to get guest agent network for node %s, vmid %d: %w", node, vmid, err)
 	}
 
 	return resp.Data.Result, nil
