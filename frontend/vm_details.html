@@ -367,32 +367,7 @@
     }
   }
 
-  // Enhanced metric update with skeleton states
-  function updateVMMetrics(data) {
-    // Show loading state briefly
-    const statCards = ['cpu-stat-card', 'ram-stat-card', 'disk-stat-card'];
-    statCards.forEach(cardId => showSkeleton(cardId));
-    
-    setTimeout(() => {
-      // Update CPU usage
-      const cpuElement = document.querySelector('[data-metric="cpu"]');
-      if (cpuElement && data.cpu !== undefined) {
-        const cpuPercent = Math.round(data.cpu * 100);
-        cpuElement.textContent = cpuPercent + '%';
-        
-        // Update progress bar
-        const cpuBar = document.querySelector('[data-progress="cpu"]');
-        if (cpuBar) {
-          cpuBar.value = cpuPercent;
-        }
       }
-
-      // Update RAM usage
-      const ramElement = document.querySelector('[data-metric="ram"]');
-      if (ramElement && data.mem !== undefined && data.maxmem !== undefined) {
-        const ramPercent = Math.round((data.mem / data.maxmem) * 100);
-        ramElement.textContent = formatBytes(data.mem) + ' / ' + formatBytes(data.maxmem);
-        
         // Update progress bar
         const ramBar = document.querySelector('[data-progress="ram"]');
         if (ramBar) {
@@ -775,7 +750,7 @@
                                     </div>
                                     <div class="tags has-addons mb-0">
                                         <span class="tag is-light"><i class="fas fa-clock"></i></span>
-                                        <span class="tag is-warning" data-metric="uptime">{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
+                                        <span class="tag is-warning" data-metric="uptime" data-uptime>{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
                                     </div>
                                 </div>
                             </div>
@@ -783,7 +758,7 @@
                     </div>
                     <div class="level-right">
                         <div class="level-item">
-                            <span id="vm-status-badge">{{template "status_badge" (dict "Status" .VM.Status "WithIcon" true)}}</span>
+                            <span id="vm-status-badge" data-status-badge>{{template "status_badge" (dict "Status" .VM.Status "WithIcon" true)}}</span>
                         </div>
                     </div>
                 </div>
@@ -1145,7 +1120,7 @@
                     "CSRFToken" .CSRFToken 
                     "ProxmoxConnected" .ProxmoxConnected 
                     "Lang" .Lang
-                    "ExtraClasses" "is-flex-wrap-wrap is-justify-content-center"
+                    "ExtraClasses" "is-flex-wrap-wrap is-justify-content-center enhanced-loading"
                 )}}
                 {{if .ProxmoxConnected}}
                 <div class="has-text-centered mt-4 pt-3" style="border-top: 1px solid rgb(0,0,0,6%);">
@@ -1737,6 +1712,201 @@
         csrfToken: '{{.CSRFToken}}',
         vmName: '{{.VM.Name}}'
     });
+</script>
+
+<!-- VM Metrics Auto-Refresh -->
+<script>
+(function() {
+    'use strict';
+
+    // Configuration from template
+    const VMID = {{.VM.VMID}};
+    const VM_STATUS = '{{.VM.Status}}';
+    const METRICS_REFRESH_MS = 15000; // 15 seconds
+    const STATUS_CHECK_MS = 30000; // 30 seconds for status changes
+    const API_ENDPOINT = `/api/vm/${VMID}/metrics`;
+
+    // Translations from template
+    const translations = {
+        running: '{{T "Status.Running"}}',
+        stopped: '{{T "Status.Stopped"}}',
+        paused: '{{T "Status.Paused"}}',
+        unknown: '{{T "Status.Unknown"}}'
+    };
+    let metricsTimer = null;
+    let statusTimer = null;
+    let isFetching = false;
+
+    // Utility functions
+    function formatUptime(seconds) {
+        if (!seconds || seconds <= 0) return '--';
+        
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        
+        if (days > 0) {
+            return `${days}d ${hours}h ${minutes}m`;
+        } else if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else {
+            return `${minutes}m`;
+        }
+    }
+
+    function updateStatusBadge(status) {
+        if (!statusBadge) return;
+        
+        // Remove all status classes
+        statusBadge.classList.remove('is-success', 'is-danger', 'is-warning');
+        
+        // Add appropriate class and text
+        const normalizedStatus = (status || '').toLowerCase();
+        switch (normalizedStatus) {
+            case 'running':
+                statusBadge.classList.add('is-success');
+                statusBadge.innerHTML = `<span class="icon"><i class="fas fa-circle-play"></i></span><span>${translations.running}</span>`;
+                break;
+            case 'stopped':
+                statusBadge.classList.add('is-danger');
+                statusBadge.innerHTML = `<span class="icon"><i class="fas fa-circle-stop"></i></span><span>${translations.stopped}</span>`;
+                break;
+            case 'paused':
+            case 'suspended':
+                statusBadge.classList.add('is-warning');
+                statusBadge.innerHTML = `<span class="icon"><i class="fas fa-circle-pause"></i></span><span>${translations.paused}</span>`;
+                break;
+            default:
+                statusBadge.classList.add('is-warning');
+                statusBadge.innerHTML = `<span class="icon"><i class="fas fa-question-circle"></i></span><span>${translations.unknown}</span>`;
+                break;
+        }
+    }
+
+    function updateMetrics(data) {
+        const status = data.status;
+        const cpuPercent = data.cpu ? Math.round(data.cpu * 100) : 0;
+        const memUsed = data.mem || 0;
+        const memTotal = data.maxmem || 1;
+        const memPercent = Math.round((memUsed / memTotal) * 100);
+
+        // Update status if changed
+        if (status !== lastStatus) {
+            updateStatusBadge(status);
+            lastStatus = status;
+            
+            // Hide/show progress bars based on running status
+            const isRunning = status === 'running';
+            if (cpuProgress) cpuProgress.style.display = isRunning ? '' : 'none';
+            if (ramProgress) ramProgress.style.display = isRunning ? '' : 'none';
+            
+            // Update CPU/RAM displays
+            if (cpuMetric) {
+                cpuMetric.textContent = isRunning ? `${cpuPercent}%` : '--';
+            }
+            if (ramMetric) {
+                ramMetric.textContent = isRunning ? '{{FormatMemoryGB .VM.Mem true}}' : '--';
+            }
+        }
+
+        // Update metrics only if VM is running
+        if (status === 'running') {
+            // Update CPU
+            if (cpuMetric) cpuMetric.textContent = `${cpuPercent}%`;
+            if (cpuProgress) cpuProgress.value = cpuPercent;
+
+            // Update RAM
+            if (ramMetric) ramMetric.textContent = '{{FormatMemoryGB .VM.Mem true}}';
+            if (ramProgress) ramProgress.value = memUsed;
+            ramProgress.max = memTotal;
+        }
+
+        // Update uptime (if available in data)
+        if (data.uptime !== undefined && uptimeDisplay) {
+            uptimeDisplay.textContent = formatUptime(data.uptime);
+        }
+    }
+
+    async function refreshMetrics() {
+        if (isFetching) return;
+        isFetching = true;
+
+        try {
+            const response = await fetch(API_ENDPOINT, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data && data.status) {
+                updateMetrics(data);
+            }
+        } catch (error) {
+            console.warn('Failed to refresh VM metrics:', error);
+        } finally {
+            isFetching = false;
+        }
+    }
+
+    function startAutoRefresh() {
+        // Stop any existing timers
+        stopAutoRefresh();
+
+        // Start metrics refresh (more frequent)
+        metricsTimer = setInterval(() => {
+            if (!document.hidden) {
+                refreshMetrics();
+            }
+        }, METRICS_REFRESH_MS);
+
+        // Start status check (less frequent, for status changes)
+        statusTimer = setInterval(() => {
+            if (!document.hidden) {
+                refreshMetrics();
+            }
+        }, STATUS_CHECK_MS);
+    }
+
+    function stopAutoRefresh() {
+        if (metricsTimer) {
+            clearInterval(metricsTimer);
+            metricsTimer = null;
+        }
+        if (statusTimer) {
+            clearInterval(statusTimer);
+            statusTimer = null;
+        }
+    }
+
+    // Event listeners
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else {
+            // Refresh immediately when tab becomes visible
+            refreshMetrics();
+            startAutoRefresh();
+        }
+    });
+
+    // Initialize
+    if (statusBadge && (cpuMetric || ramMetric)) {
+        // Initial setup
+        updateStatusBadge(lastStatus);
+        
+        // Start auto-refresh
+        startAutoRefresh();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    }
+})();
 </script>
 
 {{end}}

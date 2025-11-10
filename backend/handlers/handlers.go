@@ -312,6 +312,9 @@ func setupRoutes(
 	settingsHandler.RegisterISORoutes(router)
 	settingsHandler.RegisterLimitsRoutes(router)
 
+	// Register AJAX routes for search handler
+	searchHandler.RegisterAJAXRoutes(router)
+
 	// Home route
 	router.GET("/", IndexRouterHandler)
 }
