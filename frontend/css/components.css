@@ -467,6 +467,13 @@ fieldset[disabled]::after {
   transform: rotate(180deg);
 }
 
+.vm-action-button.is-loading .icon:first-child,
+.vm-console-button.is-loading .icon:first-child,
+.vm-refresh-button.is-loading .icon:first-child,
+.vm-delete-button.is-loading .icon:first-child {
+  opacity: 0.5;
+}
+
 /* Desktop dropdown visibility when checked */
 .navbar-user-menu .user-menu-toggle:checked ~ .navbar-user-dropdown {
   opacity: 1;
@@ -1405,6 +1412,15 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   animation-duration: var(--notification-duration, 6000ms);
 }
 
+.global-notification .notification-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, currentcolor 0%, transparent 100%);
+  animation: progress-bar linear infinite;
+}
+
 .notification.is-light .notification-progress {
   background-color: rgb(55 65 81 / 35%);
 }
@@ -1553,6 +1569,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
     opacity: 0;
     transform: translateY(-4px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1611,6 +1628,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -1663,13 +1681,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   opacity: 0.7;
 }
 
-.vm-action-button.is-loading .icon:first-child,
-.vm-console-button.is-loading .icon:first-child,
-.vm-refresh-button.is-loading .icon:first-child,
-.vm-delete-button.is-loading .icon:first-child {
-  opacity: 0.5;
-}
-
 /* Enhanced button group styling for loading states */
 .buttons.enhanced-loading .button:not(:last-child) {
   margin-right: 0.5rem;
@@ -1719,15 +1730,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   animation: slide-out-right 0.3s ease-in forwards;
 }
 
-.global-notification .notification-progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 3px;
-  background: linear-gradient(90deg, currentcolor 0%, transparent 100%);
-  animation: progress-bar linear infinite;
-}
-
 .global-notification .level {
   margin-bottom: 0;
 }
@@ -1738,6 +1740,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
     transform: translateX(100%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;
@@ -1749,6 +1752,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
     transform: translateX(0);
     opacity: 1;
   }
+
   to {
     transform: translateX(100%);
     opacity: 0;
@@ -1759,6 +1763,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   0% {
     width: 100%;
   }
+
   100% {
     width: 0%;
   }
