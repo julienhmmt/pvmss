@@ -131,24 +131,50 @@
                                                 </p>
                                             </header>
                                             <div class="card-content form-vertical">
-                                                <!-- VM Name, Description, VM ID fields... -->
+                                                <!-- VM Basic Info -->
+                                                <div class="field">
+                                                    <label for="vmid" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-hashtag"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.VMID"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.VMID"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="vmid-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.VMID"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="vmid" class="input is-medium" type="number" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{T "VM.Create.PlaceholderVMID"}}" min="1" max="999999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}aria-describedby="vmid-help" data-field-validation>
+                                                        <div class="field-validation-message is-hidden" data-validation-for="vmid"></div>
+                                                    </div>
+                                                    <p id="vmid-static-help" class="help has-text-grey">
+                                                        <small>{{T "VM.Create.TitleVMID"}}</small>
+                                                    </p>
+                                                </div>
+
+                                                <!-- VM Name -->
                                                 <div class="field">
                                                     <label for="vmName" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-tag"></i></span>
                                                         </span>
-                                                        <span class="form-label-text">{{T "Common.Name"}}</span>
+                                                        <span class="form-label-text">{{T "VM.Create.VMName"}}</span>
                                                         <span class="form-tooltip">
-                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Name"}}">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.VMName"}}">
                                                                 <i class="fas fa-info"></i>
                                                             </button>
                                                             <div id="vmName-help" class="form-tooltip-content" role="tooltip">
-                                                                {{T "VM.Create.Tooltip.Name"}}
+                                                                {{T "VM.Create.Tooltip.VMName"}}
                                                             </div>
                                                         </span>
                                                     </label>
                                                     <div class="control">
-                                                        <input id="vmName" class="input is-medium" type="text" name="name" value="{{if .FormData.name}}{{.FormData.name}}{{end}}" placeholder='{{T "VM.Create.VMNamePlaceholder"}}' required aria-required="true" aria-describedby="vmName-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" />
+                                                        <input id="vmName" class="input is-medium" type="text" name="name" autocomplete="off" placeholder="{{T "VM.Create.PlaceholderVMName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}aria-describedby="vmName-help" data-field-validation>
+                                                        <div class="field-validation-message is-hidden" data-validation-for="vmName"></div>
                                                     </div>
                                                 </div>
                                                 <div class="field">
@@ -934,4 +960,200 @@
                 </div>
     </div>
 </section>
+
+<!-- Real-time Form Validation -->
+<script>
+(function() {
+    'use strict';
+
+    // Configuration
+    const VALIDATION_DELAY_MS = 500; // Delay before validating
+    const API_BASE_URL = '/api/vm/validate';
+
+    // DOM elements
+    const validationFields = document.querySelectorAll('[data-field-validation]');
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+
+    // State tracking
+    let validationTimeouts = new Map();
+    let currentValidations = new Map();
+
+    // Utility functions
+    function showFieldValidation(field, message, isValid = false) {
+        const fieldContainer = field.closest('.field');
+        const validationMessage = fieldContainer?.querySelector('.field-validation-message');
+
+        if (!validationMessage) return;
+
+        // Remove existing validation classes
+        field.classList.remove('is-success', 'is-danger');
+        fieldContainer.classList.remove('has-validation-success', 'has-validation-error');
+
+        if (message) {
+            // Show validation message
+            validationMessage.textContent = message;
+            validationMessage.classList.remove('is-hidden');
+
+            if (isValid) {
+                field.classList.add('is-success');
+                fieldContainer.classList.add('has-validation-success');
+            } else {
+                field.classList.add('is-danger');
+                fieldContainer.classList.add('has-validation-error');
+            }
+        } else {
+            // Hide validation message
+            validationMessage.classList.add('is-hidden');
+            validationMessage.textContent = '';
+        }
+    }
+
+    function hideFieldValidation(field) {
+        showFieldValidation(field, '');
+    }
+
+    function setFieldLoading(field, isLoading) {
+        field.classList.toggle('is-loading', isLoading);
+        field.disabled = isLoading;
+    }
+
+    async function validateField(field) {
+        const fieldName = field.name;
+        const fieldValue = field.value.trim();
+
+        // Skip validation if field is empty (let required attribute handle that)
+        if (!fieldValue) {
+            hideFieldValidation(field);
+            return;
+        }
+
+        // Cancel any existing validation for this field
+        const existingTimeout = validationTimeouts.get(fieldName);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+        }
+
+        // Mark as currently validating
+        currentValidations.set(fieldName, true);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/${fieldName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    value: fieldValue,
+                    node: document.getElementById('node')?.value,
+                    pool: document.getElementById('pool')?.value
+                })
+            });
+
+            // Check if this validation is still relevant
+            if (!currentValidations.get(fieldName)) {
+                return; // Another validation started
+            }
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.valid) {
+                    showFieldValidation(field, result.message || '✓ Valid', true);
+                } else {
+                    showFieldValidation(field, result.message || '✗ Invalid', false);
+                }
+            } else {
+                // Server error - don't show validation error to user
+                hideFieldValidation(field);
+            }
+        } catch (error) {
+            console.warn('Field validation failed:', error);
+            hideFieldValidation(field);
+        } finally {
+            currentValidations.set(fieldName, false);
+            setFieldLoading(field, false);
+        }
+    }
+
+    function scheduleFieldValidation(field) {
+        const fieldName = field.name;
+
+        // Cancel existing timeout
+        const existingTimeout = validationTimeouts.get(fieldName);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+        }
+
+        // Set loading state
+        setFieldLoading(field, true);
+
+        // Schedule new validation
+        const timeout = setTimeout(() => {
+            validateField(field);
+            validationTimeouts.delete(fieldName);
+        }, VALIDATION_DELAY_MS);
+
+        validationTimeouts.set(fieldName, timeout);
+    }
+
+    // Event handlers
+    function handleFieldInput(event) {
+        const field = event.target;
+        scheduleFieldValidation(field);
+    }
+
+    function handleFieldBlur(event) {
+        const field = event.target;
+        // Immediate validation on blur if field has value
+        if (field.value.trim()) {
+            // Cancel scheduled validation and validate immediately
+            const fieldName = field.name;
+            const existingTimeout = validationTimeouts.get(fieldName);
+            if (existingTimeout) {
+                clearTimeout(existingTimeout);
+                validationTimeouts.delete(fieldName);
+            }
+            validateField(field);
+        }
+    }
+
+    function handleFieldFocus(event) {
+        const field = event.target;
+        // Hide validation on focus to avoid distraction while typing
+        hideFieldValidation(field);
+    }
+
+    // Initialize validation
+    function initializeValidation() {
+        validationFields.forEach(field => {
+            field.addEventListener('input', handleFieldInput);
+            field.addEventListener('blur', handleFieldBlur);
+            field.addEventListener('focus', handleFieldFocus);
+        });
+
+        // Re-validate on node/pool changes that might affect validation
+        const nodeSelect = document.getElementById('node');
+        const poolInput = document.getElementById('pool');
+
+        if (nodeSelect) {
+            nodeSelect.addEventListener('change', () => {
+                // Re-validate all fields that might be affected by node change
+                validationFields.forEach(field => {
+                    if (field.value.trim()) {
+                        validateField(field);
+                    }
+                });
+            });
+        }
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeValidation);
+    } else {
+        initializeValidation();
+    }
+})();
+</script>
+
 {{end}}

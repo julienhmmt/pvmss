@@ -12,6 +12,17 @@ import (
 	"pvmss/i18n"
 )
 
+// stringsPkg provides namespace-style access to string functions in templates
+type stringsPkg struct{}
+
+func (sp *stringsPkg) Contains(s1, s2 string) bool        { return strings.Contains(s1, s2) }
+func (sp *stringsPkg) HasPrefix(s1, s2 string) bool       { return strings.HasPrefix(s1, s2) }
+func (sp *stringsPkg) HasSuffix(s1, s2 string) bool       { return strings.HasSuffix(s1, s2) }
+func (sp *stringsPkg) Trim(s1, cutset string) string      { return strings.Trim(s1, cutset) }
+func (sp *stringsPkg) TrimSpace(s string) string          { return strings.TrimSpace(s) }
+func (sp *stringsPkg) Split(s, sep string) []string       { return strings.Split(s, sep) }
+func (sp *stringsPkg) Join(a []string, sep string) string { return strings.Join(a, sep) }
+
 // normalizePath ensures a path has a consistent format, removing trailing slashes
 // except for the root path, which is always "/".
 func normalizePath(s string) string {
@@ -37,13 +48,33 @@ func GetBaseFuncMap() template.FuncMap {
 		"formatBytes":   formatBytes,
 		"formatBytesSI": formatBytesSI,
 		"formatGiB":     formatGiB,
+		"FormatMemoryGB": func(value int64, isBytes bool) string {
+			// Import the function from handlers/helpers.go
+			var memoryMB int64
+			if isBytes {
+				memoryMB = value / (1024 * 1024)
+			} else {
+				memoryMB = value
+			}
+			memoryGB := float64(memoryMB) / 1024.0
+			if memoryGB >= 1 {
+				if memoryGB == float64(int64(memoryGB)) {
+					return fmt.Sprintf("%d GB", int64(memoryGB))
+				}
+				return fmt.Sprintf("%.1f GB", memoryGB)
+			}
+			if memoryMB == int64(memoryMB) {
+				return fmt.Sprintf("%d MB", memoryMB)
+			}
+			return fmt.Sprintf("%.0f MB", float64(memoryMB))
+		},
 
 		// Collection functions
 		"sort": func(slice interface{}) (interface{}, error) {
 			return sortSlice(slice)
 		},
 		"reverse":     reverseSlice,
-		"contains":    containsValue,
+		"hasValue":    containsValue,
 		"length":      getLength,
 		"sortStrings": sortStrings,
 		"sortInts":    sortInts,
@@ -55,6 +86,12 @@ func GetBaseFuncMap() template.FuncMap {
 		"truncate":   truncateString,
 		"join":       join,
 		"split":      strings.Split,
+		"contains":   strings.Contains,
+		"hasPrefix":  strings.HasPrefix,
+		"hasSuffix":  strings.HasSuffix,
+		"trim":       strings.Trim,
+		"trimSpace":  strings.TrimSpace,
+		"strings":    func() *stringsPkg { return &stringsPkg{} },
 		"humanBytes": formatBytes,
 
 		// Math functions

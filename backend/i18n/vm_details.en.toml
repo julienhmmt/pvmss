@@ -163,3 +163,23 @@ other = "Add information about this VM to help organize and document your infras
 other = "Add Description"
 ["VMDetails.AddTags"]
 other = "Add Tags"
+
+# Loading states for enhanced UI
+["VMDetails.Action.Starting"]
+other = "Starting..."
+["VMDetails.Action.Stopping"]
+other = "Stopping..."
+["VMDetails.Action.Rebooting"]
+other = "Rebooting..."
+["VMDetails.Action.ShuttingDown"]
+other = "Shutting down..."
+["VMDetails.Action.Resetting"]
+other = "Resetting..."
+["VMDetails.Action.OpeningConsole"]
+other = "Opening console..."
+["VMDetails.Action.Refreshing"]
+other = "Refreshing..."
+["VMDetails.Action.Deleting"]
+other = "Deleting..."
+["VMDetails.Action.ConfirmDelete"]
+other = "Are you sure you want to delete this VM? This action cannot be undone."

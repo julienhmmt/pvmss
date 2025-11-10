@@ -75,6 +75,9 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	// API routes for dynamic updates
 	router.GET("/api/vm/:vmid/metrics", RequireAuthHandle(h.VMMetricsHandler))
 
+	router.POST("/api/vm/validate/vmid", RequireAuthHandle(h.ValidateVMIDHandler))
+	router.POST("/api/vm/validate/name", RequireAuthHandle(h.ValidateVMNameHandler))
+
 	router.POST("/vm/update/description", SecureFormHandler("UpdateVMDescription",
 		RequireAuthHandle(h.UpdateVMDescriptionHandler),
 	))
@@ -923,4 +926,139 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 	}
 
 	log.Debug().Int("vmid", vmidInt).Str("status", vmCurrent.Status).Float64("cpu", vmCurrent.CPU).Int64("mem", vmCurrent.Mem).Msg("VM metrics served")
+}
+
+// ValidationRequest represents a validation request payload
+type ValidationRequest struct {
+	Value string `json:"value"`
+	Node  string `json:"node"`
+	Pool  string `json:"pool"`
+}
+
+// ValidationResponse represents a validation response
+type ValidationResponse struct {
+	Valid   bool   `json:"valid"`
+	Message string `json:"message"`
+}
+
+// ValidateVMIDHandler validates VM ID uniqueness
+func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("ValidateVMIDHandler", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	var req ValidationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Error().Err(err).Msg("Failed to decode validation request")
+		w.WriteHeader(http.StatusBadRequest)
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Invalid request"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	vmidStr := strings.TrimSpace(req.Value)
+	if vmidStr == "" {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM ID is required"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Validate format
+	vmidInt, err := strconv.Atoi(vmidStr)
+	if err != nil || vmidInt <= 0 || vmidInt > 999999999 {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM ID must be a number between 1 and 999999999"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Get Proxmox client
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Proxmox server unavailable"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Check if VM ID already exists
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Server error"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Try to get VM config - if it exists, VM ID is taken
+	_, err = proxmox.GetVMConfigResty(ctx, restyClient, req.Node, vmidInt)
+	if err == nil {
+		// VM exists
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM ID already exists"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// VM ID is available
+	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: "VM ID is available"}); encodeErr != nil {
+		log.Error().Err(encodeErr).Msg("Failed to encode error response")
+	}
+}
+
+// ValidateVMNameHandler validates VM name
+func (h *VMHandler) ValidateVMNameHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("ValidateVMNameHandler", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	var req ValidationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Error().Err(err).Msg("Failed to decode validation request")
+		w.WriteHeader(http.StatusBadRequest)
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Invalid request"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	name := strings.TrimSpace(req.Value)
+	if name == "" {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM name is required"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Validate length
+	if len(name) < 1 || len(name) > 100 {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM name must be between 1 and 100 characters"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Validate format (basic - no special characters that could cause issues)
+	if strings.ContainsAny(name, "<>\"'&") {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM name contains invalid characters"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// For now, just validate format - uniqueness check would require scanning all VMs
+	// which could be expensive. We can add that later if needed.
+	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: "VM name is valid"}); encodeErr != nil {
+		log.Error().Err(encodeErr).Msg("Failed to encode error response")
+	}
 }

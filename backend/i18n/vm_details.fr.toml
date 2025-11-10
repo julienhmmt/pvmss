@@ -163,3 +163,23 @@ other = "Ajoutez des informations sur cette VM pour aider à organiser et docume
 other = "Ajouter une description"
 ["VMDetails.AddTags"]
 other = "Ajouter des étiquettes"
+
+# États de chargement pour l'interface améliorée
+["VMDetails.Action.Starting"]
+other = "Démarrage..."
+["VMDetails.Action.Stopping"]
+other = "Arrêt..."
+["VMDetails.Action.Rebooting"]
+other = "Redémarrage..."
+["VMDetails.Action.ShuttingDown"]
+other = "Arrêt en cours..."
+["VMDetails.Action.Resetting"]
+other = "Réinitialisation..."
+["VMDetails.Action.OpeningConsole"]
+other = "Ouverture de la console..."
+["VMDetails.Action.Refreshing"]
+other = "Actualisation..."
+["VMDetails.Action.Deleting"]
+other = "Suppression..."
+["VMDetails.Action.ConfirmDelete"]
+other = "Êtes-vous sûr de vouloir supprimer cette VM ? Cette action est irréversible."
