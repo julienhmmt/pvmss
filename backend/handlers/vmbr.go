@@ -187,6 +187,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	var allNodes []string
 	if client != nil {
 		allNodes, _ = proxmox.GetNodeNames(client)
+		sort.Strings(allNodes)
 	}
 
 	// Get current settings to check which VMBRs are enabled
