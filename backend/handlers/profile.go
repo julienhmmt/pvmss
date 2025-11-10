@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
@@ -331,7 +332,7 @@ func (h *ProfileHandler) getNodeNames(ctx context.Context, client interface {
 	}
 
 	if err := client.GetJSON(ctx, "/nodes", &nodeResp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get node list from Proxmox: %w", err)
 	}
 
 	nodes := make([]string, 0, len(nodeResp.Data))

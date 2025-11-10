@@ -52,7 +52,7 @@ type VNCProxyOptions struct {
 //	fmt.Printf("VNC Port: %d, Ticket: %s\n", vncProxy.Port, vncProxy.Ticket)
 func GetVNCProxy(ctx context.Context, client ClientInterface, node string, vmid int, opts *VNCProxyOptions) (*VNCProxyResponse, error) {
 	if err := validateClientAndParams(client, param{"node", node}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to validate VNC proxy params for node %s, vmid %d: %w", node, vmid, err)
 	}
 	if vmid <= 0 {
 		return nil, fmt.Errorf("invalid vmid: %d", vmid)
