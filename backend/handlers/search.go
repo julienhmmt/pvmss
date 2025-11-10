@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
@@ -51,6 +52,27 @@ func (h *SearchOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
 	log.Info().
 		Strs("routes", []string{"GET /search", "POST /search"}).
 		Msg("Optimized search routes registered successfully")
+}
+
+// RegisterAJAXRoutes registers AJAX search routes
+func (h *SearchOptimizedHandler) RegisterAJAXRoutes(router *httprouter.Router) {
+	log := logger.Get().With().
+		Str("component", "SearchOptimizedHandler").
+		Str("function", "RegisterAJAXRoutes").
+		Logger()
+
+	if router == nil {
+		log.Error().Msg("Router is nil, cannot register AJAX search routes")
+		return
+	}
+
+	log.Debug().Msg("Registering AJAX search routes")
+
+	router.GET("/api/search/vms", RequireAuthHandle(h.SearchAPIHandler))
+
+	log.Info().
+		Strs("routes", []string{"GET /api/search/vms"}).
+		Msg("AJAX search routes registered successfully")
 }
 
 // SearchPageHandler handles both GET and POST requests for search page with optimizations
@@ -523,4 +545,270 @@ func (h *SearchOptimizedHandler) hasTag(cfg map[string]interface{}, targetTag st
 	}
 
 	return false
+}
+
+// SearchAPIHandler handles AJAX search requests returning JSON
+func (h *SearchOptimizedHandler) SearchAPIHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("SearchAPIHandler", r)
+
+	// Set JSON content type
+	w.Header().Set("Content-Type", "application/json")
+
+	// Get user info from session
+	username := ""
+	isAdmin := false
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
+		}
+	}
+
+	// Parse query parameters
+	vmidQuery := strings.TrimSpace(r.URL.Query().Get("vmid"))
+	nameQuery := strings.TrimSpace(r.URL.Query().Get("name"))
+	tagsQuery := strings.TrimSpace(r.URL.Query().Get("tags"))
+	limitStr := strings.TrimSpace(r.URL.Query().Get("limit"))
+
+	// Parse limit (default 50, max 200)
+	limit := 50
+	if limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 200 {
+			limit = parsedLimit
+		}
+	}
+
+	log.Info().
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Str("vmid_query", vmidQuery).
+		Str("name_query", nameQuery).
+		Str("tags_query", tagsQuery).
+		Int("limit", limit).
+		Msg("AJAX search request")
+
+	// Get Proxmox client
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		log.Error().Msg("Proxmox client not available")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Proxmox connection not available",
+		}); err != nil {
+			log.Error().Err(err).Msg("Failed to encode Proxmox unavailable response")
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	// Parse tags (split by spaces and clean)
+	var tagsFilter []string
+	if tagsQuery != "" {
+		rawTags := strings.Fields(tagsQuery)
+		for _, tag := range rawTags {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				tagsFilter = append(tagsFilter, tag)
+			}
+		}
+	}
+
+	// Perform search
+	results, err := h.searchVMsAJAX(ctx, client, vmidQuery, nameQuery, tagsFilter, username, isAdmin, limit)
+	if err != nil {
+		log.Error().Err(err).Msg("AJAX search failed")
+		w.WriteHeader(http.StatusInternalServerError)
+		if encodeErr := json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   fmt.Sprintf("Search failed: %v", err),
+		}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode search error response")
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	log.Info().
+		Int("results_count", len(results)).
+		Msg("AJAX search completed successfully")
+
+	// Return JSON response
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"results": results,
+		"count":   len(results),
+	}); err != nil {
+		log.Error().Err(err).Msg("Failed to encode search success response")
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+// searchVMsAJAX performs VM search for AJAX API with advanced filtering
+func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery string, tagsFilter []string, username string, isAdmin bool, limit int) ([]map[string]interface{}, error) {
+	log := logger.Get().With().
+		Str("function", "searchVMsAJAX").
+		Str("vmid_query", vmidQuery).
+		Str("name_query", nameQuery).
+		Strs("tags_filter", tagsFilter).
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Int("limit", limit).
+		Logger()
+
+	// Get all VMs from Proxmox using optimized approach
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resty client: %w", err)
+	}
+
+	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get VMs: %w", err)
+	}
+
+	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs for AJAX search")
+
+	// For non-admin users, get their pool VMs
+	var userPoolVMIDs map[int]bool
+	if !isAdmin && username != "" {
+		poolName := "pvmss_" + username
+		userPoolVMIDs = h.getPoolVMIDs(ctx, client, poolName)
+		log.Info().
+			Str("pool", poolName).
+			Int("pool_vm_count", len(userPoolVMIDs)).
+			Msg("Retrieved user pool VMs for AJAX search")
+	}
+
+	// Filter VMs
+	results := []map[string]interface{}{}
+	lowerVMIDQuery := strings.ToLower(vmidQuery)
+	lowerNameQuery := strings.ToLower(nameQuery)
+	lowerTagsFilter := make([]string, len(tagsFilter))
+	for i, tag := range tagsFilter {
+		lowerTagsFilter[i] = strings.ToLower(tag)
+	}
+
+	for _, vm := range allVMs {
+		// Check 1: Pool membership for non-admin users
+		if !isAdmin && userPoolVMIDs != nil {
+			if !userPoolVMIDs[vm.VMID] {
+				continue // VM not in user's pool
+			}
+		}
+
+		// Check 2: Get VM config and check for "pvmss" tag
+		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+		if err != nil {
+			log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for AJAX search, skipping")
+			continue
+		}
+
+		// Check for pvmss tag
+		if !h.hasTag(cfg, "pvmss") {
+			continue
+		}
+
+		// Check 3: VMID or Name search (if provided)
+		if vmidQuery != "" || nameQuery != "" || len(tagsFilter) > 0 {
+			vmidStr := strconv.Itoa(vm.VMID)
+			vmName := strings.ToLower(vm.Name)
+
+			matchesVMID := lowerVMIDQuery != "" && strings.Contains(vmidStr, lowerVMIDQuery)
+			matchesName := lowerNameQuery != "" && strings.Contains(vmName, lowerNameQuery)
+
+			// For tags: VM must have ALL searched tags
+			matchesTags := false
+			if len(tagsFilter) > 0 {
+				// Get config to check tags
+				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+				if err != nil {
+					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for tag filtering, skipping")
+					continue
+				}
+
+				// Must have 'pvmss' tag AND all searched tags
+				hasPVMSS := h.hasTag(cfg, "pvmss")
+				if !hasPVMSS {
+					continue // Skip if no pvmss tag
+				}
+
+				// Check if VM has ALL the searched tags
+				hasAllSearchedTags := true
+				for _, searchedTag := range tagsFilter {
+					if !h.hasTag(cfg, searchedTag) {
+						hasAllSearchedTags = false
+						break
+					}
+				}
+				matchesTags = hasAllSearchedTags
+
+				// If tag matching fails, skip this VM
+				if !matchesTags {
+					continue
+				}
+			}
+
+			// If both queries provided, match either
+			// If only one query provided, must match that one
+			if lowerVMIDQuery != "" && lowerNameQuery != "" {
+				if !matchesVMID && !matchesName {
+					continue // Doesn't match either
+				}
+			} else if lowerVMIDQuery != "" {
+				if !matchesVMID {
+					continue
+				}
+			} else if lowerNameQuery != "" {
+				if !matchesName {
+					continue
+				}
+			}
+		}
+
+		// VM passed all filters, add to results
+		description := ""
+		if desc, ok := cfg["description"].(string); ok {
+			description = desc
+		}
+
+		// Extract additional metadata for AJAX response
+		tags := ""
+		if tagsStr, ok := cfg["tags"].(string); ok {
+			tags = tagsStr
+		}
+
+		// Get status
+		vmStatus := strings.ToLower(vm.Status)
+		if vmStatus == "" {
+			vmStatus = "unknown"
+		}
+
+		results = append(results, map[string]interface{}{
+			"vmid":        vm.VMID,
+			"name":        vm.Name,
+			"description": description,
+			"node":        vm.Node,
+			"status":      vmStatus,
+			"tags":        tags,
+		})
+
+		// Limit results
+		if len(results) >= limit {
+			break
+		}
+	}
+
+	log.Info().
+		Int("results_count", len(results)).
+		Int("vms_checked", len(allVMs)).
+		Msg("AJAX search filtering completed")
+
+	return results, nil
 }

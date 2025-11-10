@@ -87,3 +87,15 @@ other = "Les VMs doivent avoir à la fois le tag 'pvmss' et le tag que vous spé
 other = "Pour plusieurs tags, séparez-les par des espaces (ex: 'prod db' trouve les VMs avec les deux tags)."
 ["Search.Criterias"]
 other = "Critères de recherche"
+["Search.Limit"]
+other = "Limite de résultats"
+["Search.TagsHelp"]
+other = "Les VMs doivent avoir à la fois le tag 'pvmss' et le tag que vous spécifiez. Saisissez uniquement le nom du tag, pas le tag 'pvmss'."
+["Search.Search"]
+other = "Rechercher"
+["Search.Searching"]
+other = "Recherche en cours..."
+["Search.Error"]
+other = "Erreur de recherche"
+["Search.LoadError"]
+other = "Échec du chargement des résultats"

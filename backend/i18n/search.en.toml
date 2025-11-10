@@ -63,7 +63,7 @@ other = "Table view"
 ["Search.Tags"]
 other = "Tags"
 ["Search.Title"]
-other = "Virtual Machine Search"
+other = "Virtual machine search"
 ["Search.TitleName"]
 other = "Please enter a VM name between 1 and 100 characters."
 ["Search.TitleVMID"]
@@ -88,3 +88,15 @@ other = "VMs must have both 'pvmss' tag and the tag you specify. Type only the t
 other = "For multiple tags, separate with spaces (e.g., 'prod db' finds VMs with both tags)."
 ["Search.Criterias"]
 other = "Search criterias"
+["Search.Limit"]
+other = "Results limit"
+["Search.TagsHelp"]
+other = "VMs must have both 'pvmss' tag and the tag you specify. Type only the tag name, no 'pvmss' tag needed."
+["Search.Search"]
+other = "Search"
+["Search.Searching"]
+other = "Searching..."
+["Search.Error"]
+other = "Search error"
+["Search.LoadError"]
+other = "Failed to load search results"
