@@ -167,22 +167,23 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	builder := NewTemplateData("").
-		SetAdminActive("iso").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.ISO.Title").
-		AddData("ISOsList", []ISOInfo{}).
-		AddData("EnabledISOs", enabledMap).
-		AddData("AllISOs", []ISOEntry{}).
-		AddData("ISOGroupByNode", []NodeISOGroup{})
-
-	if successMsg != "" {
-		builder.SetSuccess(successMsg)
+	opts := []TemplateOption{
+		WithAdminActive("iso"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.ISO.Title"),
+		WithData("ISOsList", []ISOInfo{}),
+		WithData("EnabledISOs", enabledMap),
+		WithData("AllISOs", []ISOEntry{}),
+		WithData("ISOGroupByNode", []NodeISOGroup{}),
 	}
 
-	data := builder.Build().ToMap()
+	if successMsg != "" {
+		opts = append(opts, WithSuccess(successMsg))
+	}
+
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 
 	// Return early if Proxmox not connected
 	if !data["ProxmoxConnected"].(bool) {

@@ -53,21 +53,22 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// Use standard admin page helper
-	builder := NewTemplateData("").
-		SetAdminActive("limits").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.Limits.Title").
-		AddData("Limits", settings.Limits).
-		AddData("Node", r.URL.Query().Get("node"))
+	// Build template data with functional options
+	opts := []TemplateOption{
+		WithAdminActive("limits"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.Limits.Title"),
+		WithData("Limits", settings.Limits),
+		WithData("Node", r.URL.Query().Get("node")),
+	}
 
 	if successMsg != "" {
-		builder.SetSuccess(successMsg)
+		opts = append(opts, WithSuccess(successMsg))
 	}
 	if errorMsg != "" {
-		builder.SetError(errorMsg)
+		opts = append(opts, WithError(errorMsg))
 	}
 
 	// Get node names for dropdown
@@ -97,7 +98,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	if len(nodeNames) > 1 {
 		sort.Strings(nodeNames)
 	}
-	builder.AddData("NodeNames", nodeNames)
+	opts = append(opts, WithData("NodeNames", nodeNames))
 
 	// Get resource usage for all nodes
 	var nodeUsage map[string]*NodeResourceUsage
@@ -121,10 +122,10 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
-	builder.AddData("NodeUsage", nodeUsage).
-		AddData("NodeCapacities", nodeCapacities)
+	opts = append(opts, WithData("NodeUsage", nodeUsage))
+	opts = append(opts, WithData("NodeCapacities", nodeCapacities))
 
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_limits", data)
 }
 

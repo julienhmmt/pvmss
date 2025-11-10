@@ -269,16 +269,15 @@ func (h *UserPoolHandler) DeleteUserPoolConfirmHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	builder := NewTemplateData("").
-		SetAdminActive("userpool_delete").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.UserPool.Title").
-		AddData("Pool", poolID).
-		AddData("User", strings.TrimPrefix(poolID, "pvmss_"))
-
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("",
+		WithAdminActive("userpool_delete"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.UserPool.Title"),
+		WithData("Pool", poolID),
+		WithData("User", strings.TrimPrefix(poolID, "pvmss_")),
+	).ToMap()
 	renderTemplateInternal(w, r, "admin_userpool_delete", data)
 }
 
@@ -361,21 +360,22 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 	w.Header().Set("Expires", "0")
 
 	// Build base template data
-	builder := NewTemplateData("").
-		SetAdminActive("userpool").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.UserPool.Title")
+	opts := []TemplateOption{
+		WithAdminActive("userpool"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.UserPool.Title"),
+	}
 
 	if successMsg != "" {
-		builder.SetSuccess(successMsg)
+		opts = append(opts, WithSuccess(successMsg))
 	}
 	if errorMsg != "" {
-		builder.SetError(errorMsg)
+		opts = append(opts, WithError(errorMsg))
 	}
 
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 
 	// Fetch pools that match pattern pvmss_*
 	client := h.stateManager.GetProxmoxClient()

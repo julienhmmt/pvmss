@@ -16,73 +16,64 @@ func NewTemplateHelpers() *TemplateHelpers {
 
 // RenderAdminPage renders an admin page with standardized data structure
 func (th *TemplateHelpers) RenderAdminPage(w http.ResponseWriter, r *http.Request, templateName string, title string, adminSection string, sm state.StateManager, customData map[string]interface{}) {
-	builder := NewTemplateData(title).
-		SetAdminActive(adminSection).
-		SetAuth(r).
-		SetProxmoxStatus(sm).
-		ParseMessages(r)
+	opts := []TemplateOption{
+		WithAdminActive(adminSection),
+		WithAuth(r),
+		WithProxmoxStatus(sm),
+		WithMessages(r),
+	}
 
 	// Add custom data
 	for key, value := range customData {
-		builder.AddData(key, value)
+		opts = append(opts, WithData(key, value))
 	}
 
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions(title, opts...).ToMap()
 	renderTemplateInternal(w, r, templateName, data)
 }
 
 // RenderUserPage renders a user page with standardized data structure
 func (th *TemplateHelpers) RenderUserPage(w http.ResponseWriter, r *http.Request, templateName string, title string, sm state.StateManager, customData map[string]interface{}) {
-	builder := NewTemplateData(title).
-		SetPageType("user").
-		SetAuth(r).
-		SetProxmoxStatus(sm).
-		ParseMessages(r)
+	opts := []TemplateOption{
+		WithPageType("user"),
+		WithAuth(r),
+		WithProxmoxStatus(sm),
+		WithMessages(r),
+	}
 
 	// Add custom data
 	for key, value := range customData {
-		builder.AddData(key, value)
+		opts = append(opts, WithData(key, value))
 	}
 
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions(title, opts...).ToMap()
 	renderTemplateInternal(w, r, templateName, data)
 }
 
 // RenderPublicPage renders a public page with standardized data structure
 func (th *TemplateHelpers) RenderPublicPage(w http.ResponseWriter, r *http.Request, templateName string, title string, customData map[string]interface{}) {
-	builder := NewTemplateData(title).
-		SetPageType("public").
-		ParseMessages(r)
+	opts := []TemplateOption{
+		WithPageType("public"),
+		WithMessages(r),
+	}
 
 	// Add custom data
 	for key, value := range customData {
-		builder.AddData(key, value)
+		opts = append(opts, WithData(key, value))
 	}
 
-	data := builder.Build().ToMap()
+	data := NewTemplateDataWithOptions(title, opts...).ToMap()
 	renderTemplateInternal(w, r, templateName, data)
-}
-
-// StandardAdminPageData creates standardized admin page data (legacy compatibility)
-func StandardAdminPageData(title string, r *http.Request, sm state.StateManager, adminSection string) map[string]interface{} {
-	builder := NewTemplateData(title).
-		SetAdminActive(adminSection).
-		SetAuth(r).
-		SetProxmoxStatus(sm).
-		ParseMessages(r)
-
-	return builder.Build().ToMap()
 }
 
 // StandardUserPageData creates standardized user page data (legacy compatibility)
 func StandardUserPageData(title string, r *http.Request, sm state.StateManager) map[string]interface{} {
-	builder := NewTemplateData(title).
-		SetPageType("user").
-		SetAuth(r).
-		SetProxmoxStatus(sm).
-		ParseMessages(r)
-
-	return builder.Build().ToMap()
+	return NewTemplateDataWithOptions(title,
+		WithPageType("user"),
+		WithAuth(r),
+		WithProxmoxStatus(sm),
+		WithMessages(r),
+	).ToMap()
 }
 
 // MessageHandlers provides standardized message handling
@@ -235,9 +226,4 @@ func (cmh *ContextualMessageHelper) GenerateNodeMessages(action string, nodeName
 	default:
 		return "Node operation completed successfully"
 	}
-}
-
-// AdminPageDataWithSection provides backward compatibility with admin section
-func AdminPageDataWithSection(title string, r *http.Request, sm state.StateManager, section string) map[string]interface{} {
-	return StandardAdminPageData(title, r, sm, section)
 }

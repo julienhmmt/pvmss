@@ -133,36 +133,38 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	from := offset + 1
 	to := offset + len(vms)
 
-	builder := NewTemplateData("").
-		SetAdminActive("vms").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.VMs.Title").
-		AddData("VMs", vms).
-		AddData("TotalVMs", totalVMs).
-		AddData("CurrentPage", page).
-		AddData("Limit", limit).
-		AddData("TotalPages", totalPages).
-		AddData("HasNextPage", hasNextPage).
-		AddData("HasPrevPage", hasPrevPage).
-		AddData("NextPage", page+1).
-		AddData("PrevPage", page-1).
-		AddData("PaginationPages", paginationPages).
-		AddData("PaginationInfo", map[string]int{
+	opts := []TemplateOption{
+		WithAdminActive("vms"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.VMs.Title"),
+		WithData("VMs", vms),
+		WithData("TotalVMs", totalVMs),
+		WithData("CurrentPage", page),
+		WithData("Limit", limit),
+		WithData("TotalPages", totalPages),
+		WithData("HasNextPage", hasNextPage),
+		WithData("HasPrevPage", hasPrevPage),
+		WithData("NextPage", page+1),
+		WithData("PrevPage", page-1),
+		WithData("PaginationPages", paginationPages),
+		WithData("PaginationInfo", map[string]int{
 			"From": from,
 			"To":   to,
-		}).
-		AddData("OfflineMode", offlineMode)
+		}),
+		WithData("OfflineMode", offlineMode),
+	}
 
 	if successMsg != "" {
-		builder.SetSuccess(successMsg)
-	}
-	if errMsg != "" {
-		builder.SetError(errMsg)
+		opts = append(opts, WithSuccess(successMsg))
 	}
 
-	data := builder.Build().ToMap()
+	if errMsg != "" {
+		opts = append(opts, WithError(errMsg))
+	}
+
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_vms", data)
 }
 

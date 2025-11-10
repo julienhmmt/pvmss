@@ -255,23 +255,24 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 	successMsg := buildSuccessMessage(r)
 
-	builder := NewTemplateData("").
-		SetAdminActive("storage").
-		SetAuth(r).
-		SetProxmoxStatus(h.stateManager).
-		ParseMessages(r).
-		AddData("TitleKey", "Admin.Storage.Title").
-		AddData("Node", node).
-		AddData("Nodes", allNodes).
-		AddData("Storages", allStorages).
-		AddData("EnabledMap", enabledMap).
-		AddData("MaxDiskPerVM", settings.MaxDiskPerVM)
-
-	if successMsg != "" {
-		builder.SetSuccess(successMsg)
+	opts := []TemplateOption{
+		WithAdminActive("storage"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.Storage.Title"),
+		WithData("Node", node),
+		WithData("Nodes", allNodes),
+		WithData("Storages", allStorages),
+		WithData("EnabledMap", enabledMap),
+		WithData("MaxDiskPerVM", settings.MaxDiskPerVM),
 	}
 
-	data := builder.Build().ToMap()
+	if successMsg != "" {
+		opts = append(opts, WithSuccess(successMsg))
+	}
+
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_storage", data)
 }
 
@@ -285,8 +286,6 @@ func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
 		"toggle": h.ToggleStorageHandler,
 	})
 }
-
-// Storage utility functions (moved from storage_utils.go)
 
 // simple cache for filtered storages per node (without Enabled flag)
 var (
