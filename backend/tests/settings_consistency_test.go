@@ -40,7 +40,7 @@ func TestNoHardcodedDefaults(t *testing.T) {
 			"vm_create.go should NOT contain hardcoded defaults: %s", forbidden.description)
 	}
 
-	// These patterns MUST exist (reading from settings)
+	// These patterns MUST exist (reading from settings via typed structs)
 	requiredPatterns := []struct {
 		pattern     string
 		description string
@@ -49,8 +49,9 @@ func TestNoHardcodedDefaults(t *testing.T) {
 		{"var socketsMin, socketsMax int", "Sockets variables without initialization"},
 		{"var coresMin, coresMax int", "Cores variables without initialization"},
 		{"var diskMin, diskMax int", "Disk variables without initialization"},
-		{"if settings != nil && settings.Limits != nil", "Settings check"},
-		{"int(minVal) * 1024", "GB to MB conversion for RAM"},
+		{"if settings != nil && settings.Limits.VM.Sockets.Min > 0", "Typed settings check"},
+		{"memoryMin = settings.Limits.VM.RAM.Min * 1024", "RAM Min conversion from settings"},
+		{"vmRamMinMB = settings.Limits.VM.RAM.Min * 1024", "Typed RAM conversion to MB"},
 	}
 
 	for _, required := range requiredPatterns {

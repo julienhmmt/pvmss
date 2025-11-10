@@ -176,7 +176,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		log.Warn().Bool("connected", proxmoxConnected).Msg("Proxmox not available; rendering page with empty VMBR list")
 		allVMBRs = []map[string]string{}
 	} else {
-		allVMBRs, err = collectAllVMBRs(h.stateManager)
+		allVMBRs, err = collectAllVMBRs(r.Context(), h.stateManager)
 		if err != nil {
 			log.Warn().Err(err).Msg("collectAllVMBRs returned an error; continuing")
 		}

@@ -210,7 +210,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 			// Collect raw storages from all nodes for deduplication
 			for _, nodeName := range nodeNames {
-				rawStorages, err := fetchRawStoragesFromNode(nodeName)
+				rawStorages, err := fetchRawStoragesFromNode(r.Context(), nodeName)
 				if err != nil {
 					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to get raw storages from node")
 					continue
@@ -333,7 +333,7 @@ func canHoldVMDisks(s proxmox.Storage) bool {
 // - If refresh is true, bypass the short-lived cache.
 // - Falls back to cached data if all nodes are offline
 // Returns: storages (with Enabled already set from enabled list), enabledMap, chosenNode
-func FetchRenderableStorages(client proxmox.ClientInterface, node string, enabled []string, refresh bool) ([]map[string]interface{}, map[string]bool, string, error) {
+func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface, node string, enabled []string, refresh bool) ([]map[string]interface{}, map[string]bool, string, error) {
 	log := logger.Get().With().Str("component", "storage_utils").Logger()
 
 	// Get all available nodes
@@ -389,7 +389,7 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 		}
 
 		// Try to fetch fresh data from this node
-		storages, err := fetchStoragesFromNode(chosenNode, enabled)
+		storages, err := fetchStoragesFromNode(ctx, chosenNode, enabled)
 		if err != nil {
 			log.Warn().Err(err).Str("node", chosenNode).Msg("Failed to fetch storages from node")
 			lastError = err
@@ -416,7 +416,7 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 }
 
 // fetchStoragesFromNode fetches storages from a specific node and caches the result
-func fetchStoragesFromNode(node string, enabled []string) ([]map[string]interface{}, error) {
+func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) ([]map[string]interface{}, error) {
 	log := logger.Get().With().Str("component", "storage_utils").Logger()
 
 	// Create resty client
@@ -426,7 +426,7 @@ func fetchStoragesFromNode(node string, enabled []string) ([]map[string]interfac
 	}
 
 	// fetch global config and node storages using resty
-	globalStorages, err := proxmox.GetStoragesResty(context.Background(), restyClient)
+	globalStorages, err := proxmox.GetStoragesResty(ctx, restyClient)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func fetchStoragesFromNode(node string, enabled []string) ([]map[string]interfac
 			Msg("Global storage config")
 	}
 
-	nodeStorages, err := proxmox.GetNodeStoragesResty(context.Background(), restyClient, node)
+	nodeStorages, err := proxmox.GetNodeStoragesResty(ctx, restyClient, node)
 	if err != nil {
 		return nil, err
 	}
@@ -542,7 +542,7 @@ func fetchStoragesFromNode(node string, enabled []string) ([]map[string]interfac
 }
 
 // fetchRawStoragesFromNode fetches raw storage data without enabled flags (for deduplication)
-func fetchRawStoragesFromNode(node string) ([]map[string]interface{}, error) {
+func fetchRawStoragesFromNode(ctx context.Context, node string) ([]map[string]interface{}, error) {
 	log := logger.Get().With().Str("component", "storage_utils").Logger()
 
 	// Try cache first
@@ -559,7 +559,7 @@ func fetchRawStoragesFromNode(node string) ([]map[string]interface{}, error) {
 		return nil, err
 	}
 
-	storages, err := proxmox.GetNodeStoragesResty(context.Background(), client, node)
+	storages, err := proxmox.GetNodeStoragesResty(ctx, client, node)
 	if err != nil {
 		return nil, err
 	}

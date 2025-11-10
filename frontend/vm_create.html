@@ -131,31 +131,6 @@
                                                 </p>
                                             </header>
                                             <div class="card-content form-vertical">
-                                                <!-- VM Basic Info -->
-                                                <div class="field">
-                                                    <label for="vmid" class="form-label">
-                                                        <span class="form-label-icon">
-                                                            <span class="icon"><i class="fas fa-hashtag"></i></span>
-                                                        </span>
-                                                        <span class="form-label-text">{{T "VM.Create.VMID"}}</span>
-                                                        <span class="form-tooltip">
-                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.VMID"}}">
-                                                                <i class="fas fa-info"></i>
-                                                            </button>
-                                                            <div id="vmid-help" class="form-tooltip-content" role="tooltip">
-                                                                {{T "VM.Create.Tooltip.VMID"}}
-                                                            </div>
-                                                        </span>
-                                                    </label>
-                                                    <div class="control">
-                                                        <input id="vmid" class="input is-medium" type="number" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{T "VM.Create.PlaceholderVMID"}}" min="1" max="999999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}aria-describedby="vmid-help" data-field-validation>
-                                                        <div class="field-validation-message is-hidden" data-validation-for="vmid"></div>
-                                                    </div>
-                                                    <p id="vmid-static-help" class="help has-text-grey">
-                                                        <small>{{T "VM.Create.TitleVMID"}}</small>
-                                                    </p>
-                                                </div>
-
                                                 <!-- VM Name -->
                                                 <div class="field">
                                                     <label for="vmName" class="form-label">

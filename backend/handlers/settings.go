@@ -30,9 +30,28 @@ func sendSettingsJSONResponse(w http.ResponseWriter, settings *state.AppSettings
 	if tags == nil {
 		tags = []string{}
 	}
-	limits := settings.Limits
-	if limits == nil {
-		limits = make(map[string]interface{})
+
+	// Convert LimitsConfig to map[string]interface{} for JSON response compatibility
+	limits := make(map[string]interface{})
+	vmLimits := make(map[string]interface{})
+	vmLimits["sockets"] = map[string]int{"min": settings.Limits.VM.Sockets.Min, "max": settings.Limits.VM.Sockets.Max}
+	vmLimits["cores"] = map[string]int{"min": settings.Limits.VM.Cores.Min, "max": settings.Limits.VM.Cores.Max}
+	vmLimits["ram"] = map[string]int{"min": settings.Limits.VM.RAM.Min, "max": settings.Limits.VM.RAM.Max}
+	vmLimits["disk"] = map[string]int{"min": settings.Limits.VM.Disk.Min, "max": settings.Limits.VM.Disk.Max}
+	limits["vm"] = vmLimits
+
+	if len(settings.Limits.Nodes) > 0 {
+		nodesLimits := make(map[string]interface{})
+		for nodeName, nodeLimits := range settings.Limits.Nodes {
+			nodeMap := map[string]interface{}{
+				"sockets": map[string]int{"min": nodeLimits.Sockets.Min, "max": nodeLimits.Sockets.Max},
+				"cores":   map[string]int{"min": nodeLimits.Cores.Min, "max": nodeLimits.Cores.Max},
+				"ram":     map[string]int{"min": nodeLimits.RAM.Min, "max": nodeLimits.RAM.Max},
+				"disk":    map[string]int{"min": nodeLimits.Disk.Min, "max": nodeLimits.Disk.Max},
+			}
+			nodesLimits[nodeName] = nodeMap
+		}
+		limits["nodes"] = nodesLimits
 	}
 
 	settingsResponse := map[string]interface{}{
@@ -67,7 +86,7 @@ func (h *SettingsHandler) GetSettingsHandler(w http.ResponseWriter, r *http.Requ
 // GetAllVMBRsHandler retrieves all available network bridges
 func (h *SettingsHandler) GetAllVMBRsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	// Use shared helper to collect VMBRs
-	vmbrs, err := collectAllVMBRs(h.stateManager)
+	vmbrs, err := collectAllVMBRs(r.Context(), h.stateManager)
 	if err != nil {
 		logger.Get().Warn().Err(err).Msg("collectAllVMBRs returned an error")
 	}

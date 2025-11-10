@@ -11,6 +11,34 @@ import (
 	"pvmss/logger"
 )
 
+// ResourceRange defines min/max values for a resource
+type ResourceRange struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
+// VMResourceLimits defines resource limits for VMs
+type VMResourceLimits struct {
+	Sockets ResourceRange `json:"sockets"`
+	Cores   ResourceRange `json:"cores"`
+	RAM     ResourceRange `json:"ram"`
+	Disk    ResourceRange `json:"disk"`
+}
+
+// NodeResourceLimits defines resource limits for a specific node
+type NodeResourceLimits struct {
+	Sockets ResourceRange `json:"sockets"`
+	Cores   ResourceRange `json:"cores"`
+	RAM     ResourceRange `json:"ram"`
+	Disk    ResourceRange `json:"disk"`
+}
+
+// LimitsConfig defines the structure for all resource limits
+type LimitsConfig struct {
+	VM    VMResourceLimits              `json:"vm"`
+	Nodes map[string]NodeResourceLimits `json:"nodes,omitempty"`
+}
+
 // Disk bus types and their maximum device counts
 const (
 	// IDE bus: 4 disks maximum (ide0-ide3)
@@ -45,7 +73,15 @@ func defaultSettings() *AppSettings {
 	return &AppSettings{
 		EnabledStorages: []string{},
 		ISOs:            []string{},
-		Limits:          make(map[string]interface{}),
+		Limits: LimitsConfig{
+			VM: VMResourceLimits{
+				Sockets: ResourceRange{Min: 1, Max: 1},
+				Cores:   ResourceRange{Min: 1, Max: 2},
+				RAM:     ResourceRange{Min: 1, Max: 4},
+				Disk:    ResourceRange{Min: 1, Max: 10},
+			},
+			Nodes: make(map[string]NodeResourceLimits),
+		},
 		MaxNetworkCards: MinNetworkCards,
 		MaxDiskPerVM:    MinDiskPerVM,
 		Tags:            []string{"pvmss"},
@@ -56,13 +92,13 @@ func defaultSettings() *AppSettings {
 var settingsMutex = &sync.Mutex{}
 
 type AppSettings struct {
-	EnabledStorages []string               `json:"enabled_storages"`
-	ISOs            []string               `json:"isos"`
-	Limits          map[string]interface{} `json:"limits"`
-	MaxNetworkCards int                    `json:"max_network_cards,omitempty"`
-	MaxDiskPerVM    int                    `json:"max_disk_per_vm,omitempty"`
-	Tags            []string               `json:"tags"`
-	VMBRs           []string               `json:"vmbrs"`
+	EnabledStorages []string     `json:"enabled_storages"`
+	ISOs            []string     `json:"isos"`
+	Limits          LimitsConfig `json:"limits"`
+	MaxNetworkCards int          `json:"max_network_cards,omitempty"`
+	MaxDiskPerVM    int          `json:"max_disk_per_vm,omitempty"`
+	Tags            []string     `json:"tags"`
+	VMBRs           []string     `json:"vmbrs"`
 }
 
 // getSettingsFilePath returns the absolute path to the settings file.
@@ -147,17 +183,19 @@ func LoadSettings() (*AppSettings, bool, error) {
 		modified = true
 		settings.EnabledStorages = []string{}
 	}
-	if settings.Limits == nil {
+
+	// Ensure VM limits exist with defaults (for new installations or corrupted data)
+	if settings.Limits.VM.Sockets.Min == 0 && settings.Limits.VM.Sockets.Max == 0 {
 		modified = true
-		settings.Limits = make(map[string]interface{})
-	}
-	if _, exists := settings.Limits["vm"]; !exists {
-		modified = true
-		settings.Limits["vm"] = map[string]interface{}{
-			"sockets": map[string]int{"min": 1, "max": 1},
-			"cores":   map[string]int{"min": 1, "max": 2},
-			"ram":     map[string]int{"min": 1, "max": 4},
-			"disk":    map[string]int{"min": 1, "max": 10},
+		settings.Limits.VM = VMResourceLimits{
+			Sockets: ResourceRange{Min: 1, Max: 1},
+			Cores:   ResourceRange{Min: 1, Max: 2},
+			RAM:     ResourceRange{Min: 1, Max: 4},
+			Disk:    ResourceRange{Min: 1, Max: 10},
+		}
+		// Initialize empty nodes map if nil
+		if settings.Limits.Nodes == nil {
+			settings.Limits.Nodes = make(map[string]NodeResourceLimits)
 		}
 	}
 	// Ensure MaxNetworkCards has a valid default value

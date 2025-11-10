@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
+	// "encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	// "strconv"
 	"strings"
 	"time"
 
@@ -126,19 +126,13 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 
 	// Get limits from settings to populate max values
 	settings := sm.GetSettings()
-	if settings != nil && settings.Limits != nil {
-		if nodesLimits, ok := settings.Limits["nodes"].(map[string]interface{}); ok {
-			for nodeName, nodeUsage := range usage {
-				if nodeLimitRaw, ok := nodesLimits[nodeName].(map[string]interface{}); ok {
-					// Extract max cores
-					if _, max, ok := readMinMax(nodeLimitRaw, "cores"); ok {
-						nodeUsage.MaxCores = max
-					}
-					// Extract max RAM
-					if _, max, ok := readMinMax(nodeLimitRaw, "ram"); ok {
-						nodeUsage.MaxRamGB = max
-					}
-				}
+	if settings != nil {
+		for nodeName, nodeUsage := range usage {
+			if nodeLimits, ok := settings.Limits.Nodes[nodeName]; ok {
+				// Extract max cores
+				nodeUsage.MaxCores = nodeLimits.Cores.Max
+				// Extract max RAM
+				nodeUsage.MaxRamGB = nodeLimits.RAM.Max
 			}
 		}
 	}
@@ -166,79 +160,79 @@ func parseTags(tagsStr string) []string {
 
 // readMinMax extracts integer min/max values for a given key from a generic map
 // representation typically loaded from JSON settings.
-func readMinMax(entry map[string]interface{}, key string) (int, int, bool) {
-	raw, exists := entry[key]
-	if !exists {
-		return 0, 0, false
-	}
+// func readMinMax(entry map[string]interface{}, key string) (int, int, bool) {
+// 	raw, exists := entry[key]
+// 	if !exists {
+// 		return 0, 0, false
+// 	}
 
-	limitMap, ok := raw.(map[string]interface{})
-	if !ok {
-		return 0, 0, false
-	}
+// 	limitMap, ok := raw.(map[string]interface{})
+// 	if !ok {
+// 		return 0, 0, false
+// 	}
 
-	var minVal int
-	if minRaw, exists := limitMap["min"]; exists {
-		parsedMin, ok := parseNumericValue(minRaw)
-		if !ok {
-			return 0, 0, false
-		}
-		minVal = parsedMin
-	}
+// 	var minVal int
+// 	if minRaw, exists := limitMap["min"]; exists {
+// 		parsedMin, ok := parseNumericValue(minRaw)
+// 		if !ok {
+// 			return 0, 0, false
+// 		}
+// 		minVal = parsedMin
+// 	}
 
-	maxRaw, exists := limitMap["max"]
-	if !exists {
-		return 0, 0, false
-	}
+// 	maxRaw, exists := limitMap["max"]
+// 	if !exists {
+// 		return 0, 0, false
+// 	}
 
-	parsedMax, ok := parseNumericValue(maxRaw)
-	if !ok {
-		return 0, 0, false
-	}
+// 	parsedMax, ok := parseNumericValue(maxRaw)
+// 	if !ok {
+// 		return 0, 0, false
+// 	}
 
-	return minVal, parsedMax, true
-}
+// 	return minVal, parsedMax, true
+// }
 
 // parseNumericValue converts different numeric representations (float64, int, string)
 // into an int, returning false when parsing is not possible.
-func parseNumericValue(value interface{}) (int, bool) {
-	switch v := value.(type) {
-	case float64:
-		return int(v), true
-	case float32:
-		return int(v), true
-	case int:
-		return v, true
-	case int32:
-		return int(v), true
-	case int64:
-		return int(v), true
-	case uint:
-		return int(v), true
-	case uint32:
-		return int(v), true
-	case uint64:
-		return int(v), true
-	case json.Number:
-		i64, err := v.Int64()
-		if err != nil {
-			return 0, false
-		}
-		return int(i64), true
-	case string:
-		s := strings.TrimSpace(v)
-		if s == "" {
-			return 0, false
-		}
-		i, err := strconv.Atoi(s)
-		if err != nil {
-			return 0, false
-		}
-		return i, true
-	default:
-		return 0, false
-	}
-}
+// func parseNumericValue(value interface{}) (int, bool) {
+// 	switch v := value.(type) {
+// 	case float64:
+// 		return int(v), true
+// 	case float32:
+// 		return int(v), true
+// 	case int:
+// 		return v, true
+// 	case int32:
+// 		return int(v), true
+// 	case int64:
+// 		return int(v), true
+// 	case uint:
+// 		return int(v), true
+// 	case uint32:
+// 		return int(v), true
+// 	case uint64:
+// 		return int(v), true
+// 	case json.Number:
+// 		i64, err := v.Int64()
+// 		if err != nil {
+// 			return 0, false
+// 		}
+// 		return int(i64), true
+// 	case string:
+// 		s := strings.TrimSpace(v)
+// 		if s == "" {
+// 			return 0, false
+// 		}
+// 		i, err := strconv.Atoi(s)
+// 		if err != nil {
+// 			return 0, false
+// 		}
+// 		return i, true
+// 	default:
+// 		return 0, false
+// 	}
+// }
 
 // LimitsGetter defines the minimal interface needed to get settings
 type LimitsGetter interface {

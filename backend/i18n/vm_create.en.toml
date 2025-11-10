@@ -139,12 +139,18 @@ other = "VM name"
 other = "A unique name for your virtual machine"
 ["VM.Create.VMNamePlaceholder"]
 other = "e.g. my-vm-01"
+["VM.Create.PlaceholderVMName"]
+other = "e.g. my-vm-01"
 ["VM.Create.VMID"]
 other = "VM ID (Optional)"
 ["VM.Create.VMID.Help"]
 other = "If you leave this field empty, the next available VM ID will be automatically assigned."
 ["VM.Create.VMIDPlaceholder"]
 other = "Auto-assigned if empty"
+["VM.Create.PlaceholderVMID"]
+other = "Auto-assigned if empty"
+["VM.Create.TitleVMID"]
+other = "VM ID (Optional)"
 ["VM.Create.SelectStorage"]
 other = "Select a storage"
 ["VM.Create.NoStoragesAvailable"]
@@ -168,6 +174,8 @@ other = "{{.PluralCount}} nodes are offline and not available for VM creation. O
 other = "Select a storage for your virtual machine"
 ["VM.Create.NodeLimitReached"]
 other = "This node has reached its PVMSS resource limits. Please select another Proxmox node or contact an administrator."
+["VM.Create.ProxmoxNotConnected"]
+other = "Proxmox connection is unavailable in offline mode. You can review configuration but provisioning is disabled until the cluster comes back online."
 
 # Validation and Errors
 ["VM.Create.Validation.VMNameRequired"]
@@ -184,6 +192,8 @@ other = "Identification name for your virtual machine. Use a descriptive name fo
 other = "Detailed description of this VM's purpose. Add information about the project, environment, or hosted services."
 ["VM.Create.Tooltip.VMID"]
 other = "Unique VM identifier in Proxmox (100-999999999). This ID helps locate and organize your virtual machines. Leave empty for automatic generation."
+["VM.Create.Tooltip.VMName"]
+other = "A unique name for your virtual machine"
 ["VM.Create.Tooltip.CPU"]
 other = "Processor configuration: Sockets = number of physical CPUs, Cores = number of cores per socket. More cores improve multi-tasking performance."
 ["VM.Create.Tooltip.Memory"]

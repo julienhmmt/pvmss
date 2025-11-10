@@ -222,3 +222,12 @@ other = "Activer ou désactiver la carte réseau. Lorsque désactivée, l'interf
 other = "Aucun nœud disponible"
 ["VM.Create.NoNodesAvailableMessage"]
 other = "Aucun nœud Proxmox n'est actuellement disponible. Ceci peut être dû à des problèmes de connectivité réseau ou des nœuds hors ligne. Veuillez contacter votre administrateur."
+
+["VM.Create.PlaceholderVMID"]
+other = "Auto-attribué si vide"
+["VM.Create.TitleVMID"]
+other = "ID VM (Optionnel)"
+["VM.Create.Tooltip.VMName"]
+other = "Un nom unique pour votre machine virtuelle"
+["VM.Create.PlaceholderVMName"]
+other = "ex. ma-vm-01"
