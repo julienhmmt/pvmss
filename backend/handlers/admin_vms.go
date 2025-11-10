@@ -6,6 +6,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"pvmss/constants"
 	"pvmss/i18n"
@@ -190,45 +193,67 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo
 
 	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")
 
-	// Filter VMs with pvmss tag
-	results := []AdminVMInfo{}
-	for _, vm := range allVMs {
-		// Get VM config to check for pvmss tag
-		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
-		if err != nil {
-			log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config, skipping")
-			continue
-		}
+	// Filter VMs with pvmss tag using concurrent config fetch
+	results := make([]AdminVMInfo, 0, len(allVMs))
+	var mu sync.Mutex
+	// Limit parallelism to avoid overwhelming API
+	sem := make(chan struct{}, 8)
+	g, gctx := errgroup.WithContext(ctx)
 
-		// Check for pvmss tag
-		if !h.hasTag(cfg, "pvmss") {
-			continue
-		}
+	for i := range allVMs {
+		vm := allVMs[i] // capture
+		g.Go(func() error {
+			// Acquire semaphore slot
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-gctx.Done():
+				return gctx.Err()
+			}
 
-		status := vm.Status
-		if status == "" {
-			status = "unknown"
-		}
+			cfg, err := proxmox.GetVMConfigResty(gctx, restyClient, vm.Node, vm.VMID)
+			if err != nil {
+				log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config, skipping")
+				return nil
+			}
 
-		// Extract tags for display
-		tags := ""
-		if tagsValue, ok := cfg["tags"].(string); ok {
-			tags = tagsValue
-		}
+			if !h.hasTag(cfg, "pvmss") {
+				return nil
+			}
 
-		results = append(results, AdminVMInfo{
-			VMID:   vm.VMID,
-			Name:   vm.Name,
-			Node:   vm.Node,
-			Status: strings.ToLower(status),
-			Tags:   tags,
+			status := vm.Status
+			if status == "" {
+				status = "unknown"
+			}
+
+			tags := ""
+			if tagsValue, ok := cfg["tags"].(string); ok {
+				tags = tagsValue
+			}
+
+			info := AdminVMInfo{
+				VMID:   vm.VMID,
+				Name:   vm.Name,
+				Node:   vm.Node,
+				Status: strings.ToLower(status),
+				Tags:   tags,
+			}
+
+			mu.Lock()
+			results = append(results, info)
+			mu.Unlock()
+
+			log.Debug().
+				Int("vmid", vm.VMID).
+				Str("name", vm.Name).
+				Str("node", vm.Node).
+				Msg("VM with pvmss tag found")
+			return nil
 		})
+	}
 
-		log.Debug().
-			Int("vmid", vm.VMID).
-			Str("name", vm.Name).
-			Str("node", vm.Node).
-			Msg("VM with pvmss tag found")
+	if err := g.Wait(); err != nil {
+		log.Warn().Err(err).Msg("Concurrent VM config fetch encountered errors")
 	}
 
 	// Sort by VMID
@@ -239,7 +264,7 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo
 	log.Info().
 		Int("total_found", len(results)).
 		Int("total_checked", len(allVMs)).
-		Msg("Completed filtering VMs with pvmss tag")
+		Msg("Completed filtering VMs with pvmss tag (concurrent)")
 
 	return results, ""
 }

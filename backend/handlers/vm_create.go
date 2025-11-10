@@ -1011,7 +1011,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	var coresMin, coresMax int
 	var diskMin, diskMax int // Will be in GB from settings
 
-	if settings != nil && settings.Limits.VM.Sockets.Min > 0 {
+	if settings.Limits.VM.Sockets.Min > 0 {
 		// Extract limits from typed structs
 		memoryMin = settings.Limits.VM.RAM.Min * 1024
 		memoryMax = settings.Limits.VM.RAM.Max * 1024

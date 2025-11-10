@@ -7,9 +7,11 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 
 	"pvmss/i18n"
 	"pvmss/proxmox"
@@ -254,13 +256,27 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 		return []VMInfo{}
 	}
 
-	// Filter VMs to only include those in the user's pool
-	vms := make([]VMInfo, 0)
-	for _, vm := range allVMs {
-		if poolVMIDs[vm.VMID] {
+	// Filter VMs to only include those in the user's pool and fetch config concurrently
+	vms := make([]VMInfo, 0, len(allVMs))
+	var mu sync.Mutex
+	sem := make(chan struct{}, 8)
+	g, gctx := errgroup.WithContext(fetchCtx)
+	for i := range allVMs {
+		vm := allVMs[i]
+		if !poolVMIDs[vm.VMID] {
+			continue
+		}
+		g.Go(func() error {
+			// throttle parallel requests
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-gctx.Done():
+				return gctx.Err()
+			}
+
 			status := vm.Status
 			if status == "" {
-				// Fallback: if status is empty and uptime is 0, assume stopped
 				if vm.Uptime == 0 {
 					status = "stopped"
 				} else {
@@ -268,9 +284,9 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 				}
 			}
 
-			// Get VM description from config
-			var description string
-			if vmConfig, err := proxmox.GetVMConfigWithContext(fetchCtx, client, vm.Node, vm.VMID); err == nil {
+			// Fetch VM config via resty to get description
+			description := ""
+			if vmConfig, err := proxmox.GetVMConfigResty(gctx, restyClient, vm.Node, vm.VMID); err == nil {
 				if desc, exists := vmConfig["description"]; exists {
 					if descStr, ok := desc.(string); ok {
 						description = descStr
@@ -278,15 +294,20 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 				}
 			}
 
-			vms = append(vms, VMInfo{
+			info := VMInfo{
 				VMID:        vm.VMID,
 				Name:        vm.Name,
 				Description: description,
 				Node:        vm.Node,
 				Status:      strings.ToLower(status),
-			})
-		}
+			}
+			mu.Lock()
+			vms = append(vms, info)
+			mu.Unlock()
+			return nil
+		})
 	}
+	_ = g.Wait()
 
 	// Sort by VMID ascending for consistent display order
 	sort.Slice(vms, func(i, j int) bool { return vms[i].VMID < vms[j].VMID })
