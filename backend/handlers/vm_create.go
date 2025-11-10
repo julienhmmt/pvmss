@@ -1205,7 +1205,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		Msg("VM created successfully")
 
 	// Redirect to VM details
-	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?refresh=1", vmid), http.StatusSeeOther)
+	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?created=1", vmid), http.StatusSeeOther)
 }
 
 // Helper functions
