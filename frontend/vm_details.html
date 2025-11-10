@@ -20,6 +20,117 @@
     }
   })();
   
+  // Add celebration banner animations
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInBounce {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      50% {
+        opacity: 0.8;
+        transform: translateY(5px) scale(1.02);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    @keyframes slideOut {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+      }
+    }
+    
+    #vm-celebration-banner {
+      box-shadow: 0 8px 25px rgba(72, 199, 116, 0.2);
+      border-radius: 12px;
+    }
+    
+    #vm-celebration-banner .button {
+      transition: all 0.2s ease;
+    }
+    
+    #vm-celebration-banner .button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* Skeleton loading states */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 4px;
+    }
+    
+    .skeleton-text {
+      height: 1em;
+      margin: 0.5em 0;
+    }
+    
+    .skeleton-title {
+      height: 1.5em;
+      width: 60%;
+      margin-bottom: 1rem;
+    }
+    
+    .skeleton-button {
+      height: 2.5em;
+      width: 120px;
+      border-radius: 6px;
+    }
+    
+    .skeleton-circle {
+      border-radius: 50%;
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+    
+    @keyframes loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+    
+    /* Card hover effects */
+    .stat-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
+    
+    .network-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
+    
+    .security-feature-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
+    
+    .network-interface-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
+    
+    .disk-item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
+    
+    .cdrom-item:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
+  `;
+  document.head.appendChild(style);
+
+  
   // Network card toggle function - Enhanced for instant feedback
   function toggleNetworkCard(cardIndex, enabled, csrfToken, vmid, node) {
     const toggleContainer = document.querySelector(`#network-toggle-${cardIndex}`);
@@ -138,17 +249,44 @@
     console.log('Network data refreshed');
   }
 
-  // Auto-refresh VM metrics
+  // Auto-refresh VM metrics with visibility optimization
   let autoRefreshInterval;
   let isAutoRefreshEnabled = true;
+  let isPageVisible = true;
   const vmid = '{{.VM.VMID}}';
   const node = '{{.VM.Node}}';
+
+  // Visibility API to pause auto-refresh when page is not visible
+  function handleVisibilityChange() {
+    isPageVisible = !document.hidden;
+    if (isPageVisible) {
+      console.log('Page became visible, resuming auto-refresh');
+      startAutoRefresh();
+    } else {
+      console.log('Page became hidden, pausing auto-refresh');
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+    }
+  }
+
+  // Add visibility change listener
+  if (typeof document.hidden !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
 
   function startAutoRefresh() {
     if (autoRefreshInterval) clearInterval(autoRefreshInterval);
     
+    // Only start if page is visible and auto-refresh is enabled
+    if (!isPageVisible || !isAutoRefreshEnabled) {
+      console.log('Auto-refresh not started: page not visible or disabled');
+      return;
+    }
+    
     autoRefreshInterval = setInterval(() => {
-      if (!isAutoRefreshEnabled) return;
+      if (!isAutoRefreshEnabled || !isPageVisible) return;
       
       fetch(`/api/vm/${vmid}/metrics`)
         .then(response => {
@@ -160,49 +298,123 @@
         })
         .catch(error => {
           console.log('Auto-refresh paused:', error.message);
-          // Don't show error to user, just pause refresh
+          // Don't show error to user, just pause refresh temporarily
+          setTimeout(() => {
+            if (isPageVisible && isAutoRefreshEnabled) {
+              startAutoRefresh(); // Try to restart
+            }
+          }, 10000); // Retry in 10 seconds
         });
     }, 30000); // Refresh every 30 seconds
   }
 
+  // Skeleton loading management
+  function showSkeleton(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    
+    const content = card.querySelector('.card-content');
+    if (!content) return;
+    
+    // Add skeleton class and hide real content
+    card.classList.add('is-loading');
+    const realContent = content.innerHTML;
+    content.setAttribute('data-original-content', realContent);
+    
+    // Create skeleton content
+    content.innerHTML = `
+      <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
+        <div class="is-flex is-align-items-center">
+          <span class="icon skeleton skeleton-circle mr-3"></span>
+          <div>
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text" style="width: 80%;"></div>
+          </div>
+        </div>
+        <div class="has-text-right">
+          <div class="skeleton skeleton-title" style="width: 50px;"></div>
+          <div class="skeleton skeleton-text" style="width: 60px;"></div>
+        </div>
+      </div>
+      <div style="margin-top: 1.5rem;">
+        <div class="skeleton skeleton-text" style="width: 90%;"></div>
+        <div class="skeleton skeleton-text" style="width: 70%; margin-top: 0.5rem;"></div>
+        <div style="margin-top: 0.75rem;">
+          <div class="skeleton" style="height: 6px; border-radius: 3px;"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function hideSkeleton(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    
+    const content = card.querySelector('.card-content');
+    if (!content) return;
+    
+    // Restore original content with fade-in
+    const originalContent = content.getAttribute('data-original-content');
+    if (originalContent) {
+      content.innerHTML = originalContent;
+      card.classList.remove('is-loading');
+      card.classList.add('fade-in');
+      
+      // Remove fade-in class after animation
+      setTimeout(() => {
+        card.classList.remove('fade-in');
+      }, 300);
+    }
+  }
+
+  // Enhanced metric update with skeleton states
   function updateVMMetrics(data) {
-    // Update CPU usage
-    const cpuElement = document.querySelector('[data-metric="cpu"]');
-    if (cpuElement && data.cpu !== undefined) {
-      const cpuPercent = Math.round(data.cpu * 100);
-      cpuElement.textContent = cpuPercent + '%';
-      
-      // Update progress bar
-      const cpuBar = document.querySelector('[data-progress="cpu"]');
-      if (cpuBar) {
-        cpuBar.value = cpuPercent;
+    // Show loading state briefly
+    const statCards = ['cpu-stat-card', 'ram-stat-card', 'disk-stat-card'];
+    statCards.forEach(cardId => showSkeleton(cardId));
+    
+    setTimeout(() => {
+      // Update CPU usage
+      const cpuElement = document.querySelector('[data-metric="cpu"]');
+      if (cpuElement && data.cpu !== undefined) {
+        const cpuPercent = Math.round(data.cpu * 100);
+        cpuElement.textContent = cpuPercent + '%';
+        
+        // Update progress bar
+        const cpuBar = document.querySelector('[data-progress="cpu"]');
+        if (cpuBar) {
+          cpuBar.value = cpuPercent;
+        }
       }
-    }
 
-    // Update RAM usage
-    const ramElement = document.querySelector('[data-metric="ram"]');
-    if (ramElement && data.mem !== undefined && data.maxmem !== undefined) {
-      const ramPercent = Math.round((data.mem / data.maxmem) * 100);
-      ramElement.textContent = formatBytes(data.mem) + ' / ' + formatBytes(data.maxmem);
-      
-      // Update progress bar
-      const ramBar = document.querySelector('[data-progress="ram"]');
-      if (ramBar) {
-        ramBar.value = data.mem;
-        ramBar.max = data.maxmem;
+      // Update RAM usage
+      const ramElement = document.querySelector('[data-metric="ram"]');
+      if (ramElement && data.mem !== undefined && data.maxmem !== undefined) {
+        const ramPercent = Math.round((data.mem / data.maxmem) * 100);
+        ramElement.textContent = formatBytes(data.mem) + ' / ' + formatBytes(data.maxmem);
+        
+        // Update progress bar
+        const ramBar = document.querySelector('[data-progress="ram"]');
+        if (ramBar) {
+          ramBar.value = data.mem;
+          ramBar.max = data.maxmem;
+        }
       }
-    }
 
-    // Update status if changed
-    const statusBadge = document.getElementById('vm-status-badge');
-    if (statusBadge && data.status) {
-      const currentStatus = statusBadge.textContent.trim();
-      if (currentStatus !== data.status) {
-        // Status changed, show notification and reload
-        showNotification('VM status changed to ' + data.status, 'info');
-        setTimeout(() => window.location.reload(), 2000);
+      // Update status if changed
+      const statusBadge = document.getElementById('vm-status-badge');
+      if (statusBadge && data.status) {
+        const currentStatus = statusBadge.textContent.trim();
+        if (currentStatus !== data.status) {
+          // Status changed, show notification and reload
+          showNotification('VM status changed to ' + data.status, 'info');
+          setTimeout(() => window.location.reload(), 2000);
+        }
       }
-    }
+      
+      // Hide skeleton states
+      statCards.forEach(cardId => hideSkeleton(cardId));
+    }, 500); // Brief loading delay for better UX
   }
 
   function formatBytes(bytes) {
@@ -319,6 +531,44 @@
   window.showError = (message) => showNotification(message, 'danger');
   window.showWarning = (message) => showNotification(message, 'warning');
   window.showInfo = (message) => showNotification(message, 'info');
+
+  // Celebration banner functions
+  function dismissCelebration() {
+    const banner = document.getElementById('vm-celebration-banner');
+    if (banner) {
+      banner.style.animation = 'slideOut 0.3s ease-in forwards';
+      setTimeout(() => {
+        banner.remove();
+      }, 300);
+    }
+  }
+
+  function startVM() {
+    const startBtn = document.querySelector('form[action="/vm/action"] input[value="start"]');
+    if (startBtn) {
+      startBtn.closest('form').submit();
+    } else {
+      showError('Bouton de démarrage non trouvé');
+    }
+  }
+
+  function openConsole() {
+    const consoleBtn = document.querySelector('a[href*="console"]');
+    if (consoleBtn) {
+      window.open(consoleBtn.href, '_blank');
+    } else {
+      showError('Lien console non trouvé');
+    }
+  }
+
+  function editResources() {
+    const editBtn = document.querySelector('a[href*="edit=resources"]');
+    if (editBtn) {
+      window.location.href = editBtn.href;
+    } else {
+      showError('Lien modification ressources non trouvé');
+    }
+  }
 
   // Pause auto-refresh when user is interacting
   function pauseAutoRefresh() {
@@ -463,6 +713,43 @@
             </div>
         </div>
 
+        <!-- New VM Celebration Banner -->
+        {{if .IsNewlyCreated}}
+        <div id="vm-celebration-banner" class="notification is-success is-light mb-4" style="border: 2px solid #48c774; background: linear-gradient(135deg, rgba(72,199,116,0.1) 0%, rgba(72,199,116,0.05) 100%); animation: slideInBounce 0.8s ease-out;">
+            <button class="delete" onclick="dismissCelebration()"></button>
+            <div class="media">
+                <div class="media-left">
+                    <span class="icon has-text-success" style="font-size: 1.5rem;">
+                        <i class="fas fa-check-circle"></i>
+                    </span>
+                </div>
+                <div class="media-content">
+                    <p class="has-text-weight-semibold mb-2" style="color: #2d5a3d;">
+                        <i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>
+                        VM créée avec succès !
+                    </p>
+                    <p style="color: #2d5a3d; margin-bottom: 0.5rem;">
+                        Votre nouvelle machine virtuelle <strong>{{.VM.Name}}</strong> (ID: {{.VM.VMID}}) est maintenant prête à être utilisée.
+                    </p>
+                    <div class="buttons" style="margin-top: 0.75rem;">
+                        <button class="button is-small is-success" onclick="startVM()">
+                            <span class="icon is-small"><i class="fas fa-play"></i></span>
+                            <span>Démarrer maintenant</span>
+                        </button>
+                        <button class="button is-small is-info" onclick="openConsole()">
+                            <span class="icon is-small"><i class="fas fa-terminal"></i></span>
+                            <span>Ouvrir la console</span>
+                        </button>
+                        <button class="button is-small is-primary" onclick="editResources()">
+                            <span class="icon is-small"><i class="fas fa-sliders"></i></span>
+                            <span>Modifier les ressources</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
         <!-- VM Overview - Header + Stats + Actions -->
         <div class="card mb-4">
             <!-- VM Header -->
@@ -507,7 +794,7 @@
                 <div class="columns is-mobile is-multiline is-variable is-2">
                     <!-- CPU Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div id="cpu-stat-card" class="stat-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -549,7 +836,7 @@
 
                     <!-- RAM Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div id="ram-stat-card" class="stat-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -593,7 +880,7 @@
 
                     <!-- Disk Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%;">
+                        <div id="disk-stat-card" class="stat-card disk-stat-card">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -618,7 +905,7 @@
                             <!-- Disks List -->
                             <div style="margin-top: 1.5rem;">
                                 {{range $i, $d := .Disks}}
-                                <div class="" style="/* eslint-disable */background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;/* eslint-enable */" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                <div class="disk-item" style="/* eslint-disable */background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;/* eslint-enable */">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -684,7 +971,7 @@
                             
                             <!-- CD-ROM Status -->
                             <div style="margin-top: 1.5rem;">
-                                <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                <div class="cdrom-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; transition: all 0.15s ease;">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -711,7 +998,7 @@
                     {{if .NetworkInterfaces}}
                     {{$ifaceCount := len .NetworkInterfaces}}
                     <div class="column {{if eq $ifaceCount 1}}is-one-third-tablet is-half-mobile{{else}}is-full-tablet{{end}}">
-                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div class="network-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -731,7 +1018,7 @@
                             <!-- Network Interfaces List -->
                             <div style="margin-top: 1.5rem;">
                                 {{range $i, $iface := .NetworkInterfaces}}
-                                <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq $ifaceCount (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                <div class="network-interface-card" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq $ifaceCount (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -774,7 +1061,7 @@
 
                     <!-- Firmware & Security (EFI / TPM) -->
                     <div class="column is-full-tablet is-full-mobile">
-                        <div class="" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)'">
+                        <div class="security-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">
@@ -792,7 +1079,7 @@
                             <div style="margin-top: 1.5rem;">
                                 <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
                                     {{if .EFIEnabled}}
-                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="security-feature-card" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
                                             {{T "VMDetails.Security.EFIBoot"}}
@@ -807,7 +1094,7 @@
                                         {{end}}
                                     </div>
                                     {{else}}
-                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="security-feature-card" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-microchip" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
                                             {{T "VMDetails.Security.EFIBoot"}}
@@ -819,7 +1106,7 @@
                                     {{end}}
 
                                     {{if .TPMEnabled}}
-                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="security-feature-card" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px; color: #16a34a;"></i>
                                             {{T "VMDetails.Security.TPM"}}
@@ -829,7 +1116,7 @@
                                         </div>
                                     </div>
                                     {{else}}
-                                    <div class="" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;" onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+                                    <div class="security-feature-card" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;">
                                         <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
                                             <i class="fas fa-shield-alt" style="font-size: 0.85rem; opacity: 0.6; margin-right: 6px;"></i>
                                             {{T "VMDetails.Security.TPM"}}
@@ -943,16 +1230,16 @@
                 <span class="icon has-text-grey-lighter mb-3" style="font-size: 3rem;">
                     <i class="fas fa-info-circle"></i>
                 </span>
-                <p class="title is-5 has-text-grey mb-3">No description or tags yet</p>
-                <p class="has-text-grey-light is-size-6 mb-4">Add information about this VM to help organize and document your infrastructure</p>
+                <p class="title is-5 has-text-grey mb-3">{{T "VMDetails.NoDescriptionOrTagsTitle"}}</p>
+                <p class="has-text-grey-light is-size-6 mb-4">{{T "VMDetails.NoDescriptionOrTagsHelp"}}</p>
                 <div class="buttons is-centered">
-                    <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-primary is-light">
+                    <a href="{{printf "/vm/details/%d?edit=description" .VM.VMID}}" class="button is-primary">
                         <span class="icon"><i class="fas fa-edit"></i></span>
-                        <span>Add Description</span>
+                        <span>{{T "VMDetails.AddDescription"}}</span>
                     </a>
                     <a href="{{printf "/vm/details/%d?edit=tags" .VM.VMID}}" class="button is-link is-light">
                         <span class="icon"><i class="fas fa-tags"></i></span>
-                        <span>Add Tags</span>
+                        <span>{{T "VMDetails.AddTags"}}</span>
                     </a>
                 </div>
             </div>

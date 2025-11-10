@@ -621,6 +621,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	showDescriptionEditor := r.URL.Query().Get("edit") == "description"
 	showResourcesEditor := r.URL.Query().Get("edit") == "resources"
 	showTagsEditor := r.URL.Query().Get("edit") == "tags"
+	isNewlyCreated := r.URL.Query().Get("created") == "1"
 
 	settings := stateManager.GetSettings()
 	var allTags []string
@@ -815,6 +816,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"FormattedMemGB":        FormatMemoryGB(vm.Mem, true),
 		"FormattedUptime":       FormatUptime(vm.Uptime, r),
 		"HasCDROM":              hasCDROM,
+		"IsNewlyCreated":        isNewlyCreated,
 		"Limits":                settings.Limits,
 		"VMRamMinMB":            vmRamMinMB,
 		"VMRamMaxMB":            vmRamMaxMB,

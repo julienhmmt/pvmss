@@ -155,3 +155,11 @@ other = "ISO du CD-ROM mise à jour avec succès"
 other = "ISO du CD-ROM éjectée avec succès"
 ["VMDetails.CDROM.RuntimeHelp"]
 other = "L'ISO du CD-ROM peut être modifiée même lorsque la VM est en cours d'exécution"
+["VMDetails.NoDescriptionOrTagsTitle"]
+other = "Aucune description ou étiquette pour le moment"
+["VMDetails.NoDescriptionOrTagsHelp"]
+other = "Ajoutez des informations sur cette VM pour aider à organiser et documenter votre infrastructure"
+["VMDetails.AddDescription"]
+other = "Ajouter une description"
+["VMDetails.AddTags"]
+other = "Ajouter des étiquettes"
