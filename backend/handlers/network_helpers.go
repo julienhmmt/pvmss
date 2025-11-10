@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -81,27 +83,41 @@ func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]s
 	allVMBRs := make([]map[string]string, 0)
 	successCount := 0
 	fallbackCount := 0
+	var mu sync.Mutex
+	sem := make(chan struct{}, 6)
+	g, gctx := errgroup.WithContext(ctx)
 
 	for _, node := range nodeNames {
-		// Try to get fresh VMBRs from this node
-		vmbrs, err := getVMBRsFromNode(ctx, node, restyClient)
-		if err != nil {
-			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs from node; trying cache")
-
-			// Try cache fallback for this node
-			cachedVMBRs := getCachedVMBRsForNode(node)
-			if len(cachedVMBRs) > 0 {
-				allVMBRs = append(allVMBRs, cachedVMBRs...)
-				fallbackCount++
-				log.Info().Str("node", node).Int("cached_count", len(cachedVMBRs)).Msg("Using cached VMBRs for offline node")
+		nodeName := node
+		g.Go(func() error {
+			// throttle
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-gctx.Done():
+				return gctx.Err()
 			}
-			continue
-		}
 
-		allVMBRs = append(allVMBRs, vmbrs...)
-		successCount++
-		log.Info().Str("node", node).Int("vmbr_count", len(vmbrs)).Msg("Fetched fresh VMBRs for node")
+			vmbrs, err := getVMBRsFromNode(gctx, nodeName, restyClient)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				log.Warn().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs from node; trying cache")
+				cachedVMBRs := getCachedVMBRsForNode(nodeName)
+				if len(cachedVMBRs) > 0 {
+					allVMBRs = append(allVMBRs, cachedVMBRs...)
+					fallbackCount++
+					log.Info().Str("node", nodeName).Int("cached_count", len(cachedVMBRs)).Msg("Using cached VMBRs for offline node")
+				}
+				return nil
+			}
+			allVMBRs = append(allVMBRs, vmbrs...)
+			successCount++
+			log.Info().Str("node", nodeName).Int("vmbr_count", len(vmbrs)).Msg("Fetched fresh VMBRs for node")
+			return nil
+		})
 	}
+	_ = g.Wait()
 
 	log.Info().Int("online_nodes", successCount).Int("fallback_nodes", fallbackCount).Int("total_vmbrs", len(allVMBRs)).Msg("VMBR collection completed")
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/gomarkdown/markdown"
 	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 
 	"pvmss/constants"
 	"pvmss/i18n"
@@ -492,20 +493,32 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	if vm == nil {
 		if nodes, err := proxmox.GetNodeNamesResty(r.Context(), restyClient); err == nil {
+			g, ctx := errgroup.WithContext(r.Context())
+			var mu sync.Mutex
 			for _, n := range nodes {
-				if cur, err2 := proxmox.GetVMCurrentResty(r.Context(), restyClient, n, vmidInt); err2 == nil && cur != nil {
-					vm = &proxmox.VM{
-						VMID:   vmidInt,
-						Node:   n,
-						Name:   cur.Name,
-						Status: cur.Status,
-						CPUs:   cur.CPUs,
-						MaxMem: cur.MaxMem,
-						Mem:    cur.Mem,
+				node := n
+				g.Go(func() error {
+					cur, err2 := proxmox.GetVMCurrentResty(ctx, restyClient, node, vmidInt)
+					if err2 != nil || cur == nil {
+						return nil
 					}
-					break
-				}
+					mu.Lock()
+					if vm == nil {
+						vm = &proxmox.VM{
+							VMID:   vmidInt,
+							Node:   node,
+							Name:   cur.Name,
+							Status: cur.Status,
+							CPUs:   cur.CPUs,
+							MaxMem: cur.MaxMem,
+							Mem:    cur.Mem,
+						}
+					}
+					mu.Unlock()
+					return nil
+				})
 			}
+			_ = g.Wait()
 		} else {
 			log.Warn().Err(err).Msg("Unable to get nodes for VM fallback lookup")
 		}
@@ -530,14 +543,26 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	if cfgErr != nil {
 		log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Primary VM config fetch failed, attempting node discovery fallback")
 		if nodes, nErr := proxmox.GetNodeNamesResty(r.Context(), restyClient); nErr == nil {
+			g, ctx := errgroup.WithContext(r.Context())
+			var mu2 sync.Mutex
 			for _, n := range nodes {
-				if altCfg, altErr := proxmox.GetVMConfigResty(r.Context(), restyClient, n, vm.VMID); altErr == nil {
-					cfg = altCfg
-					vm.Node = n
-					cfgErr = nil
-					log.Info().Str("resolved_node", n).Int("vmid", vm.VMID).Msg("Resolved VM node via fallback and fetched config")
-					break
-				}
+				node := n
+				g.Go(func() error {
+					if altCfg, altErr := proxmox.GetVMConfigResty(ctx, restyClient, node, vm.VMID); altErr == nil && altCfg != nil {
+						mu2.Lock()
+						if cfgErr != nil { // still unresolved
+							cfg = altCfg
+							vm.Node = node
+							cfgErr = nil
+						}
+						mu2.Unlock()
+					}
+					return nil
+				})
+			}
+			_ = g.Wait()
+			if cfgErr == nil {
+				log.Info().Str("resolved_node", vm.Node).Int("vmid", vm.VMID).Msg("Resolved VM node via fallback and fetched config")
 			}
 		} else {
 			log.Warn().Err(nErr).Msg("Unable to list nodes during VM config fallback")
