@@ -367,29 +367,48 @@
     }
   }
 
-      }
-        // Update progress bar
-        const ramBar = document.querySelector('[data-progress="ram"]');
-        if (ramBar) {
-          ramBar.value = data.mem;
-          ramBar.max = data.maxmem;
-        }
-      }
+  function updateMetrics(data) {
+    const status = data.status;
+    const cpuPercent = data.cpu ? Math.round(data.cpu * 100) : 0;
+    const memUsed = data.mem || 0;
+    const memTotal = data.maxmem || 1;
+    const memPercent = Math.round((memUsed / memTotal) * 100);
 
-      // Update status if changed
-      const statusBadge = document.getElementById('vm-status-badge');
-      if (statusBadge && data.status) {
-        const currentStatus = statusBadge.textContent.trim();
-        if (currentStatus !== data.status) {
-          // Status changed, show notification and reload
-          showNotification('VM status changed to ' + data.status, 'info');
-          setTimeout(() => window.location.reload(), 2000);
-        }
-      }
+    // Update status if changed
+    if (status !== lastStatus) {
+      updateStatusBadge(status);
+      lastStatus = status;
       
-      // Hide skeleton states
-      statCards.forEach(cardId => hideSkeleton(cardId));
-    }, 500); // Brief loading delay for better UX
+      // Hide/show progress bars based on running status
+      const isRunning = status === 'running';
+      if (cpuProgress) cpuProgress.style.display = isRunning ? '' : 'none';
+      if (ramProgress) ramProgress.style.display = isRunning ? '' : 'none';
+      
+      // Update CPU/RAM displays
+      if (cpuMetric) {
+        cpuMetric.textContent = isRunning ? `${cpuPercent}%` : '--';
+      }
+      if (ramMetric) {
+        ramMetric.textContent = isRunning ? '{{FormatMemoryGB .VM.Mem true}}' : '--';
+      }
+    }
+
+    // Update metrics only if VM is running
+    if (status === 'running') {
+      // Update CPU
+      if (cpuMetric) cpuMetric.textContent = `${cpuPercent}%`;
+      if (cpuProgress) cpuProgress.value = cpuPercent;
+
+      // Update RAM
+      if (ramMetric) ramMetric.textContent = '{{FormatMemoryGB .VM.Mem true}}';
+      if (ramProgress) ramProgress.value = memUsed;
+      ramProgress.max = memTotal;
+    }
+
+    // Update uptime (if available in data)
+    if (data.uptime !== undefined && uptimeDisplay) {
+      uptimeDisplay.textContent = formatUptime(data.uptime);
+    }
   }
 
   function formatBytes(bytes) {
@@ -880,7 +899,7 @@
                             <!-- Disks List -->
                             <div style="margin-top: 1.5rem;">
                                 {{range $i, $d := .Disks}}
-                                <div class="disk-item" style="/* eslint-disable */background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;/* eslint-enable */">
+                                <div class="disk-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq (len $.Disks) (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
                                         <div class="is-flex" style="gap: 0.75rem; flex: 1; min-width: 0;">
                                             <span class="has-text-primary" style="font-size: 1.1rem; font-weight: 600; line-height: 1;">
@@ -889,7 +908,7 @@
                                             </span>
                                             <div class="is-flex" style="gap: 0.5rem; flex-wrap: wrap;">
                                                 {{if $d.Bus}}
-                                                <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4; display: inline-flex; align-items: center; gap: 4px;">
+                                                <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     <span style="width: 6px; height: 6px; border-radius: 50%; background: {{$d.Color}}; display: inline-block;"></span>
                                                     {{$d.Bus}}
                                                 </span>
@@ -1301,7 +1320,7 @@
                                         </label>
                                     {{else}}
                                         <label class="checkbox mr-3">
-                                            <input type="checkbox" name="tags" value="{{$tag}}" {{if contains $.CurrentTags $tag}}checked{{end}} {{if not $.ProxmoxConnected}}disabled{{end}} />
+                                            <input type="checkbox" name="tags" value="{{$tag}}" {{if sliceContains $.CurrentTags $tag}}checked{{end}} {{if not $.ProxmoxConnected}}disabled{{end}} />
                                             <span class="tag is-light">{{$tag}}</span>
                                         </label>
                                     {{end}}
@@ -1462,9 +1481,8 @@
                                       title="{{if $card.LinkDown}}{{T "Common.Enable"}}{{else}}{{T "Common.Disable"}}{{end}} {{T "VM.Create.Network"}} #{{addInt $idx 1}}">
                                       <input type="checkbox" 
                                         {{if not $card.LinkDown}}checked{{end}}
-                                      /* eslint-disable */
                                         onchange="toggleNetworkCard({{$idx}}, this.checked, '{{$.CSRFToken}}', '{{$.VM.VMID}}', '{{$.VM.Node}}')"
-                                      /* eslint-enable */>
+                                      />
                                       <span class="network-toggle-slider"></span>
                                       <span class="network-toggle-label">
                                         {{if $card.LinkDown}}
@@ -1721,7 +1739,6 @@
 
     // Configuration from template
     const VMID = {{.VM.VMID}};
-    const VM_STATUS = '{{.VM.Status}}';
     const METRICS_REFRESH_MS = 15000; // 15 seconds
     const STATUS_CHECK_MS = 30000; // 30 seconds for status changes
     const API_ENDPOINT = `/api/vm/${VMID}/metrics`;
@@ -1736,6 +1753,15 @@
     let metricsTimer = null;
     let statusTimer = null;
     let isFetching = false;
+    let lastStatus = '{{.VM.Status}}';
+    
+    // DOM elements for metrics
+    const statusBadge = document.getElementById('vm-status-badge');
+    const cpuProgress = document.querySelector('#cpu-stat-card [data-progress="cpu"]');
+    const ramProgress = document.querySelector('#ram-stat-card [data-progress="ram"]');
+    const cpuMetric = document.querySelector('#cpu-stat-card [data-metric="cpu"]');
+    const ramMetric = document.querySelector('#ram-stat-card [data-metric="ram"]');
+    const uptimeDisplay = document.querySelector('[data-metric="uptime"]');
 
     // Utility functions
     function formatUptime(seconds) {

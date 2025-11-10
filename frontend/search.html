@@ -45,362 +45,417 @@
             </header>
             <div class="card-content">
                 <p class="mb-4 has-text-grey">{{T "Search.Subtitle"}}</p>
-                <form action="/search" method="POST">
-                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                    <div class="columns is-variable is-6">
-                        <div class="column is-4">
+
+                <!-- Search Controls -->
+                <div class="search-controls mb-4">
+                    <div class="columns is-variable is-4">
+                        <div class="column">
                             <div class="field">
-                                <label class="label has-text-weight-semibold" for="vmid">
-                                    <span>{{T "Search.VMID"}}</span>
-                                </label>
+                                <label class="label">{{T "Search.VMID"}}</label>
                                 <div class="control has-icons-left">
-                                    <input class="input is-medium" type="number" id="vmid" name="vmid" inputmode="numeric" autocomplete="off" placeholder="{{T "Search.PlaceholderVMID"}}" min="1" max="999999999" {{if .FormData.vmid}}value="{{.FormData.vmid}}" {{end}}>
+                                    <input class="input" type="text" id="vmid-search" placeholder="{{T "Search.PlaceholderVMID"}}">
                                     <span class="icon is-small is-left">
                                         <i class="fas fa-hashtag"></i>
                                     </span>
                                 </div>
-                                <p id="vmid-help" class="help has-text-grey">
-                                    <small>{{T "Search.TitleVMID"}}</small>
-                                </p>
                             </div>
                         </div>
-                        <div class="column is-4">
+                        <div class="column">
                             <div class="field">
-                                <label class="label has-text-weight-semibold" for="name">
-                                    <span>{{T "Search.Name"}}</span>
-                                </label>
+                                <label class="label">{{T "Search.Name"}}</label>
                                 <div class="control has-icons-left">
-                                    <input class="input is-medium" type="text" id="name" name="name" autocomplete="off" placeholder="{{T "Search.PlaceholderName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}>
+                                    <input class="input" type="text" id="name-search" placeholder="{{T "Search.PlaceholderName"}}">
                                     <span class="icon is-small is-left">
-                                        <i class="fas fa-tag"></i>
+                                        <i class="fas fa-server"></i>
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <div class="column is-4">
+                        <div class="column">
                             <div class="field">
-                                <label class="label has-text-weight-semibold" for="tag">
-                                    <span>{{T "Search.Tag"}}</span>
-                                    <span class="icon has-text-info ml-2" title="{{T "Search.TagHelp"}}">
-                                        <i class="fas fa-circle-info"></i>
-                                    </span>
-                                </label>
+                                <label class="label">{{T "Search.Tags"}}</label>
                                 <div class="control has-icons-left">
-                                    <input class="input is-medium" type="text" id="tag" name="tag" autocomplete="off" placeholder="{{T "Search.PlaceholderTag"}}" maxlength="50" {{if .FormData.tag}}value="{{.FormData.tag}}" {{end}}>
+                                    <input class="input" type="text" id="tags-filter" placeholder="{{T "Search.PlaceholderTag"}}">
                                     <span class="icon is-small is-left">
                                         <i class="fas fa-tags"></i>
                                     </span>
                                 </div>
-                                <p id="tag-help" class="help has-text-grey">
-                                    <small>{{T "Search.TitleTag"}}</small>
-                                    <br>
-                                    <small>{{T "Search.MultiTagHelp"}}</small>
-                                </p>
+                                <p class="help is-size-7">{{T "Search.TagsHelp"}}</p>
                             </div>
                         </div>
                     </div>
-                    
-                    <hr class="my-4">
-                    
-                    <div class="field is-grouped is-grouped-right">
-                        <div class="control">
-                            <a href="/search" class="button is-light is-medium">
-                                <span class="icon"><i class="fas fa-eraser"></i></span>
-                                <span>{{T "Search.Clear"}}</span>
-                            </a>
+
+                    <!-- Action Buttons -->
+                    <div class="level">
+                        <div class="level-left">
+                            <div class="level-item">
+                                <button class="button is-primary" id="search-btn">
+                                    <span class="icon"><i class="fas fa-search"></i></span>
+                                    <span>{{T "Search.Search"}}</span>
+                                </button>
+                                <button class="button is-light" id="clear-btn">
+                                    <span class="icon"><i class="fas fa-times"></i></span>
+                                    <span>{{T "Search.Clear"}}</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="control">
-                            <button type="submit" class="button is-primary is-medium">
-                                <span class="icon"><i class="fas fa-search"></i></span>
-                                <span>{{T "Search.Submit"}}</span>
-                            </button>
+                        <div class="level-right">
+                            <div class="level-item">
+                                <div class="field">
+                                    <label class="label is-small">{{T "Search.Limit"}}</label>
+                                    <div class="control">
+                                        <div class="select is-small">
+                                            <select id="limit-select">
+                                                <option value="25">25</option>
+                                                <option value="50" selected>50</option>
+                                                <option value="100">100</option>
+                                                <option value="200">200</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </form>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="search-loading" class="has-text-centered is-hidden mb-4">
+                    <div class="icon is-large has-text-primary">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    </div>
+                    <p class="has-text-grey">{{T "Search.Searching"}}</p>
+                </div>
+
+                <!-- Error Message -->
+                <div id="search-error" class="notification is-danger is-hidden">
+                    <button class="delete" id="error-close"></button>
+                    <span id="error-message"></span>
+                </div>
+
+                <!-- Results Summary -->
+                <div id="results-summary" class="is-hidden mb-3">
+                    <div class="level">
+                        <div class="level-left">
+                            <div class="level-item">
+                                <span class="has-text-weight-semibold" id="results-text"></span>
+                            </div>
+                        </div>
+                        <div class="level-right">
+                            <div class="level-item">
+                                <span class="has-text-grey is-size-7" id="search-time"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Search Results -->
-        {{if .Query}}
-        <div class="card">
-            <header class="card-header brand-header">
-                <p class="card-header-title">
-                    <span class="icon-text">
-                        <span class="icon"><i class="fas fa-list"></i></span>
-                        <span>{{T "Search.ResultsFor"}} "{{.Query}}"</span>
-                    </span>
-                </p>
-            </header>
-            <div class="card-content">
-                {{if .Results}}
-                <div class="table-container">
-                    <table class="table is-fullwidth">
-                        <thead>
-                            <tr class="has-background-light">
-                                <th class="has-text-centered" width="100">
-                                    <span>{{T "Search.VMID"}}</span>
-                                </th>
-                                <th>
-                                    <span>{{T "Search.Name"}}</span>
-                                </th>
-                                <th>
-                                    <span>{{T "Search.Description"}}</span>
-                                </th>
-                                <th class="has-text-centered" width="150">
-                                    <span>{{T "Search.Node"}}</span>
-                                </th>
-                                <th class="has-text-centered" width="120">
-                                    <span>{{T "Search.Tags"}}</span>
-                                </th>
-                                <th class="has-text-centered" width="150">
-                                    <span>{{T "Search.Status"}}</span>
-                                </th>
-                                <th class="has-text-centered" width="150">
-                                    <span>{{T "Search.Actions"}}</span>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .Results}}
-                            <tr class="is-vcentered">
-                                <td class="has-text-centered">
-                                    <span class="tag is-light is-medium has-text-weight-bold">{{.vmid}}</span>
-                                </td>
-                                <td>
-                                    <div class="is-flex is-align-items-center">
-                                        <span class="has-text-weight-semibold">{{if .name}}{{.name}}{{else}}<em class="has-text-grey-light">{{T "Search.NoName"}}</em>{{end}}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span>{{if .description}}{{.description}}{{else}}<em class="has-text-grey-light">{{T "Search.NoDescription"}}</em>{{end}}</span>
-                                </td>
-                                <td class="has-text-centered">
-                                    <span class="tag is-medium">
-                                        <span>{{.node}}</span>
-                                    </span>
-                                </td>
-                                <td class="has-text-centered">
-                                    {{if .tags}}
-                                        <div class="tags is-centered">
-                                            {{range .tags}}
-                                            <span class="tag is-small is-info is-light">{{.}}</span>
-                                            {{end}}
-                                        </div>
-                                    {{else}}
-                                        <em class="has-text-grey-light is-size-7">{{T "Search.NoTags"}}</em>
-                                    {{end}}
-                                </td>
-                                <td class="has-text-centered">
-                                    {{template "status_badge" (dict "Status" .status "WithIcon" true "Size" "medium")}}
-                                </td>
-                                <td class="has-text-centered">
-                                    <a href="{{printf "/vm/details/%d" .vmid}}" class="button is-small is-primary">
-                                        <span class="icon"><i class="fas fa-eye"></i></span>
-                                        <span>{{T "Search.Details"}}</span>
-                                    </a>
-                                </td>
-                            </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
+        <div id="search-results" class="is-hidden">
+            <div class="card">
+                <header class="card-header brand-header">
+                    <p class="card-header-title">
+                        <span class="icon-text">
+                            <span class="icon"><i class="fas fa-list"></i></span>
+                            <span>{{T "Search.Results"}}</span>
+                        </span>
+                    </p>
+                </header>
+                <div class="card-content">
+                    <div id="results-container">
+                        <!-- Results will be loaded here via AJAX -->
+                    </div>
                 </div>
-                {{else if .NoResults}}
-                {{template "notification" (dict 
-                  "Type" "warning" 
-                  "Title" (T "Search.NoResults") 
-                  "Message" (T "Search.NoResultsMessage") 
-                  "Icon" "fas fa-circle-info" 
-                  "Dismissible" false 
-                  "Live" "polite"
-                )}}
-                {{end}}
             </div>
         </div>
-        {{end}}
-
-        <!-- Error Messages -->
-        {{if .Error}}
-        <div class="card">
-            <div class="card-content">
-                {{template "notification" (dict 
-                  "Type" "danger" 
-                  "Message" .Error 
-                  "Icon" "fas fa-exclamation-triangle" 
-                  "Dismissible" true 
-                  "Live" "assertive"
-                )}}
-            </div>
-        </div>
-        {{end}}
     </div>
 </section>
 
 <script>
-// Live search functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const vmidInput = document.getElementById('vmid');
-    const nameInput = document.getElementById('name');
-    const tagInput = document.getElementById('tag');
-    const tableRows = document.querySelectorAll('table tbody tr');
-    
-    if (!vmidInput || !nameInput || !tagInput || tableRows.length === 0) {
-        return; // Exit if we're not on search results page
+// AJAX-powered search functionality
+(function() {
+    'use strict';
+
+    // DOM elements
+    const vmidSearch = document.getElementById('vmid-search');
+    const nameSearch = document.getElementById('name-search');
+    const tagsFilter = document.getElementById('tags-filter');
+    const limitSelect = document.getElementById('limit-select');
+    const searchBtn = document.getElementById('search-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const searchLoading = document.getElementById('search-loading');
+    const searchError = document.getElementById('search-error');
+    const errorMessage = document.getElementById('error-message');
+    const errorClose = document.getElementById('error-close');
+    const resultsSummary = document.getElementById('results-summary');
+    const resultsText = document.getElementById('results-text');
+    const searchTime = document.getElementById('search-time');
+    const searchResults = document.getElementById('search-results');
+    const resultsContainer = document.getElementById('results-container');
+
+    // Translations (injected from backend)
+    const translations = {
+        actions: '{{T "Search.Actions"}}',
+        description: '{{T "Search.Description"}}',
+        details: '{{T "Search.Details"}}',
+        loadError: '{{T "Search.LoadError"}}',
+        name: '{{T "Search.Name"}}',
+        noDescription: '{{T "Search.NoDescription"}}',
+        noName: '{{T "Search.NoName"}}',
+        noResults: '{{T "Search.NoResults"}}',
+        noResultsMessage: '{{T "Search.NoResultsMessage"}}',
+        noTags: '{{T "Search.NoTags"}}',
+        node: '{{T "Search.Node"}}',
+        resultFound: '{{T "Search.ResultFound"}}',
+        resultsFound: '{{T "Search.ResultsFound"}}',
+        searchError: '{{T "Search.Error"}}',
+        searching: '{{T "Search.Searching"}}',
+        status: '{{T "Search.Status"}}',
+        tags: '{{T "Search.Tags"}}',
+        vmid: '{{T "Search.VMID"}}',
+    };
+
+    let searchTimeout = null;
+    let lastSearchTime = 0;
+
+    // Utility functions
+    function showLoading() {
+        searchLoading.classList.remove('is-hidden');
+        searchBtn.disabled = true;
+        searchBtn.innerHTML = '<span class="icon"><i class="fas fa-spinner fa-spin"></i></span><span>' + translations.searching + '</span>';
     }
 
-    function filterTable() {
-        const vmidValue = vmidInput.value.trim();
-        const nameValue = nameInput.value.trim().toLowerCase();
-        const tagValue = tagInput.value.trim().toLowerCase();
-        
-        // Parse multiple tags (space-separated)
-        const searchTags = tagValue ? tagValue.split(/\s+/).filter(tag => tag.length > 0) : [];
-        
-        tableRows.forEach(row => {
-            const vmidCell = row.querySelector('td:nth-child(1)'); // VMID column
-            const nameCell = row.querySelector('td:nth-child(2)');  // Name column
-            const tagsCell = row.querySelector('td:nth-child(5)');  // Tags column
-            
-            if (!vmidCell || !nameCell || !tagsCell) return;
-            
-            const vmidText = vmidCell.textContent.trim();
-            const nameText = nameCell.textContent.trim().toLowerCase();
-            
-            // Get all tags from the tags cell
-            const tagElements = tagsCell.querySelectorAll('.tag');
-            const vmTags = Array.from(tagElements).map(tag => tag.textContent.trim().toLowerCase());
-            
-            // Check if row matches all filters
-            const vmidMatch = vmidValue === '' || vmidText.includes(vmidValue);
-            const nameMatch = nameValue === '' || nameText.includes(nameValue);
-            
-            // For tags: VM must have ALL searched tags (AND logic)
-            let tagMatch = true;
-            if (searchTags.length > 0) {
-                // VM must have 'pvmss' tag AND all searched tags
-                const hasPVMSS = vmTags.includes('pvmss');
-                if (!hasPVMSS) {
-                    tagMatch = false;
-                } else {
-                    // Check if VM has ALL the searched tags
-                    for (const searchTag of searchTags) {
-                        if (!vmTags.some(vmTag => vmTag.includes(searchTag))) {
-                            tagMatch = false;
-                            break;
-                        }
-                    }
+    function hideLoading() {
+        searchLoading.classList.add('is-hidden');
+        searchBtn.disabled = false;
+        searchBtn.innerHTML = '<span class="icon"><i class="fas fa-search"></i></span><span>{{T "Search.Search"}}</span>';
+    }
+
+    function showError(message) {
+        errorMessage.textContent = message;
+        searchError.classList.remove('is-hidden');
+    }
+
+    function hideError() {
+        searchError.classList.add('is-hidden');
+    }
+
+    function showResults() {
+        searchResults.classList.remove('is-hidden');
+    }
+
+    function hideResults() {
+        searchResults.classList.add('is-hidden');
+    }
+
+    function updateResultsSummary(count, searchTimeMs) {
+        if (count === 0) {
+            resultsText.textContent = translations.noResults;
+        } else if (count === 1) {
+            resultsText.textContent = translations.resultFound.replace('{count}', count);
+        } else {
+            resultsText.textContent = translations.resultsFound.replace('{count}', count);
+        }
+        searchTime.textContent = searchTimeMs + 'ms';
+        resultsSummary.classList.remove('is-hidden');
+    }
+
+    function hideResultsSummary() {
+        resultsSummary.classList.add('is-hidden');
+    }
+
+    function getStatusBadgeClass(status) {
+        switch (status) {
+            case 'running': return 'is-success';
+            case 'stopped': return 'is-danger';
+            case 'paused':
+            case 'suspended': return 'is-warning';
+            default: return 'is-light';
+        }
+    }
+
+    function getStatusIcon(status) {
+        switch (status) {
+            case 'running': return 'fa-circle-play';
+            case 'stopped': return 'fa-circle-stop';
+            case 'paused':
+            case 'suspended': return 'fa-circle-pause';
+            default: return 'fa-question-circle';
+        }
+    }
+
+    function renderResults(results) {
+        if (!results || results.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="notification is-warning">
+                    <div class="level">
+                        <div class="level-left">
+                            <div class="level-item">
+                                <div>
+                                    <strong>${translations.noResults}</strong>
+                                    <p class="mb-0">${translations.noResultsMessage}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="table-container">
+                <table class="table is-fullwidth is-hoverable">
+                    <thead>
+                        <tr class="has-background-light">
+                            <th class="has-text-centered" width="80">${translations.vmid}</th>
+                            <th>${translations.name}</th>
+                            <th>${translations.description}</th>
+                            <th class="has-text-centered" width="100">${translations.node}</th>
+                            <th class="has-text-centered" width="80">${translations.status}</th>
+                            <th class="has-text-centered" width="120">${translations.tags}</th>
+                            <th class="has-text-centered" width="120">${translations.actions}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        results.forEach(vm => {
+            const statusClass = getStatusBadgeClass(vm.status);
+            const statusIcon = getStatusIcon(vm.status);
+
+            html += `
+                <tr class="is-vcentered">
+                    <td class="has-text-centered">
+                        <span class="tag is-light is-medium has-text-weight-bold">${vm.vmid}</span>
+                    </td>
+                    <td>
+                        <div class="is-flex is-align-items-center">
+                            <span class="has-text-weight-semibold">${vm.name || `<em class="has-text-grey-light">${translations.noName}</em>`}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span>${vm.description || `<em class="has-text-grey-light">${translations.noDescription}</em>`}</span>
+                    </td>
+                    <td class="has-text-centered">
+                        <span class="tag is-medium">${vm.node}</span>
+                    </td>
+                    <td class="has-text-centered">
+                        <span class="tag ${statusClass} is-medium">
+                            <span class="icon is-small"><i class="fas ${statusIcon}"></i></span>
+                            <span>${vm.status}</span>
+                        </span>
+                    </td>
+                    <td class="has-text-centered">
+                        ${vm.tags ? vm.tags.split(/[,;]/).map(tag => tag.trim()).filter(tag => tag && tag !== 'pvmss').map(tag => `<span class="tag is-small is-info is-light">${tag}</span>`).join(' ') : `<em class="has-text-grey-light is-size-7">${translations.noTags}</em>`}
+                    </td>
+                    <td class="has-text-centered">
+                        <a href="/vm/details/${vm.vmid}" class="button is-small is-primary">
+                            <span class="icon"><i class="fas fa-eye"></i></span>
+                            <span>${translations.details}</span>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        resultsContainer.innerHTML = html;
+    }
+
+    async function performSearch() {
+        const params = new URLSearchParams({
+            vmid: vmidSearch.value.trim(),
+            name: nameSearch.value.trim(),
+            tags: tagsFilter.value.trim(),
+            limit: limitSelect.value
+        });
+
+        const startTime = Date.now();
+        showLoading();
+        hideError();
+        hideResultsSummary();
+
+        try {
+            const response = await fetch(`/api/search/vms?${params}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
                 }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
-            if (vmidMatch && nameMatch && tagMatch) {
-                row.style.display = '';
-                // Add highlight class for matching cells
-                if (vmidValue && vmidText.includes(vmidValue)) {
-                    vmidCell.style.backgroundColor = 'rgba(255, 136, 0, 0.1)';
-                } else {
-                    vmidCell.style.backgroundColor = '';
-                }
-                
-                if (nameValue && nameText.includes(nameValue)) {
-                    nameCell.style.backgroundColor = 'rgba(255, 136, 0, 0.1)';
-                } else {
-                    nameCell.style.backgroundColor = '';
-                }
-                
-                if (searchTags.length > 0) {
-                    tagElements.forEach(tagElement => {
-                        const tagText = tagElement.textContent.trim().toLowerCase();
-                        // Highlight if it's pvmss or matches any searched tag
-                        if (tagText === 'pvmss' || searchTags.some(searchTag => tagText.includes(searchTag))) {
-                            tagElement.style.backgroundColor = 'rgba(255, 136, 0, 0.2)';
-                        } else {
-                            tagElement.style.backgroundColor = '';
-                        }
-                    });
-                } else {
-                    tagElements.forEach(tagElement => {
-                        tagElement.style.backgroundColor = '';
-                    });
-                }
+
+            const data = await response.json();
+            const searchTimeMs = Date.now() - startTime;
+
+            if (data.success) {
+                renderResults(data.results);
+                updateResultsSummary(data.count, searchTimeMs);
+                showResults();
             } else {
-                row.style.display = 'none';
-                vmidCell.style.backgroundColor = '';
-                nameCell.style.backgroundColor = '';
-                tagElements.forEach(tagElement => {
-                    tagElement.style.backgroundColor = '';
-                });
+                showError(data.error || translations.searchError);
+                hideResults();
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+            showError(translations.loadError);
+            hideResults();
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function debouncedSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 500);
+    }
+
+    function clearSearch() {
+        vmidSearch.value = '';
+        nameSearch.value = '';
+        tagsFilter.value = '';
+        limitSelect.value = '50';
+        hideResults();
+        hideResultsSummary();
+        hideError();
+    }
+
+    // Event listeners
+    searchBtn.addEventListener('click', performSearch);
+    clearBtn.addEventListener('click', clearSearch);
+    errorClose.addEventListener('click', hideError);
+
+    // Auto-search on input changes (debounced)
+    [vmidSearch, nameSearch, tagsFilter].forEach(input => {
+        input.addEventListener('input', debouncedSearch);
+    });
+
+    limitSelect.addEventListener('change', debouncedSearch);
+
+    // Search on Enter key
+    [vmidSearch, nameSearch, tagsFilter].forEach(input => {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performSearch();
             }
         });
-        
-        // Update results count
-        const visibleRows = Array.from(tableRows).filter(row => row.style.display !== 'none');
-        updateResultsCount(visibleRows.length);
-    }
-
-    function updateResultsCount(count) {
-        let countElement = document.getElementById('live-results-count');
-        if (!countElement) {
-            // Create count element if it doesn't exist
-            const resultsHeader = document.querySelector('.card-header-title');
-            if (resultsHeader) {
-                countElement = document.createElement('span');
-                countElement.id = 'live-results-count';
-                countElement.className = 'tag is-info is-light';
-                countElement.style.marginLeft = '0.5rem';
-                resultsHeader.appendChild(countElement);
-            }
-        }
-        
-        if (countElement) {
-            countElement.textContent = count + ' filtered';
-        }
-    }
-
-    // Add event listeners with debouncing
-    let debounceTimer;
-    function debouncedFilter() {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(filterTable, 300);
-    }
-
-    vmidInput.addEventListener('input', debouncedFilter);
-    nameInput.addEventListener('input', debouncedFilter);
-    tagInput.addEventListener('input', debouncedFilter);
-    
-    // Clear highlights when inputs are cleared
-    vmidInput.addEventListener('change', function() {
-        if (this.value.trim() === '') {
-            tableRows.forEach(row => {
-                const vmidCell = row.querySelector('td:nth-child(1)');
-                if (vmidCell) vmidCell.style.backgroundColor = '';
-            });
-        }
     });
-    
-    nameInput.addEventListener('change', function() {
-        if (this.value.trim() === '') {
-            tableRows.forEach(row => {
-                const nameCell = row.querySelector('td:nth-child(2)');
-                if (nameCell) nameCell.style.backgroundColor = '';
-            });
-        }
-    });
-    
-    tagInput.addEventListener('change', function() {
-        if (this.value.trim() === '') {
-            tableRows.forEach(row => {
-                const tagsCell = row.querySelector('td:nth-child(5)');
-                if (tagsCell) {
-                    const tagElements = tagsCell.querySelectorAll('.tag');
-                    tagElements.forEach(tagElement => {
-                        tagElement.style.backgroundColor = '';
-                    });
-                }
-            });
-        }
-    });
-    
-    // Initial filter
-    filterTable();
-});
+
+    // Initial search if we have any filters set
+    if (vmidSearch.value || nameSearch.value || tagsFilter.value) {
+        performSearch();
+    }
+})();
 </script>
 {{end}}

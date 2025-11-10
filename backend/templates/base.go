@@ -73,8 +73,16 @@ func GetBaseFuncMap() template.FuncMap {
 		"sort": func(slice interface{}) (interface{}, error) {
 			return sortSlice(slice)
 		},
-		"reverse":     reverseSlice,
-		"hasValue":    containsValue,
+		"reverse":  reverseSlice,
+		"hasValue": containsValue,
+		"sliceContains": func(slice []string, item string) bool {
+			for _, s := range slice {
+				if s == item {
+					return true
+				}
+			}
+			return false
+		},
 		"length":      getLength,
 		"sortStrings": sortStrings,
 		"sortInts":    sortInts,
