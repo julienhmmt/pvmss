@@ -14,6 +14,7 @@ import (
 
 	"pvmss/i18n"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // LimitsPageHandler renders the Resource Limits page (server-rendered)
@@ -54,13 +55,14 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Build template data with functional options
+	limitsData := h.stateManager.GetLimits()
 	opts := []TemplateOption{
 		WithAdminActive("limits"),
 		WithAuth(r),
 		WithProxmoxStatus(h.stateManager),
 		WithMessages(r),
 		WithData("TitleKey", "Admin.Limits.Title"),
-		WithData("Limits", settings.Limits),
+		WithData("Limits", limitsData),
 		WithData("Node", r.URL.Query().Get("node")),
 	}
 
@@ -74,7 +76,8 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	// Get node names for dropdown
 	var nodeNames []string
 	client := h.stateManager.GetProxmoxClient()
-	proxmoxConnected := client != nil
+	offlineMode := h.stateManager.IsOfflineMode()
+	proxmoxConnected := client != nil && !offlineMode
 
 	if proxmoxConnected {
 		pc, ok := client.(*proxmox.Client)
@@ -88,6 +91,9 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 				nodeNames = nodes
 			}
 		}
+	} else {
+		settingsNodes, _, _ := deriveNodesFromSettings(settings)
+		nodeNames = settingsNodes
 	}
 
 	// Always provide NodeNames (empty array if no nodes available)
@@ -121,6 +127,12 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 				}
 			}
 		}
+	}
+	if nodeUsage == nil {
+		nodeUsage = make(map[string]*NodeResourceUsage)
+	}
+	if nodeCapacities == nil {
+		nodeCapacities = make(map[string]*NodeCapacity)
 	}
 	opts = append(opts, WithData("NodeUsage", nodeUsage))
 	opts = append(opts, WithData("NodeCapacities", nodeCapacities))
@@ -186,23 +198,26 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
-	if settings.Limits == nil {
-		settings.Limits = make(map[string]interface{})
+	if settings.Limits.VM.Sockets.Min == 0 {
+		settings.Limits = state.LimitsConfig{
+			VM: state.VMResourceLimits{
+				Sockets: state.ResourceRange{Min: 1, Max: 1},
+				Cores:   state.ResourceRange{Min: 1, Max: 2},
+				RAM:     state.ResourceRange{Min: 1, Max: 4},
+				Disk:    state.ResourceRange{Min: 1, Max: 10},
+			},
+			Nodes: make(map[string]state.NodeResourceLimits),
+		}
 	}
 
 	// Persist limits
 	switch entity {
 	case "vm":
 		// Flat VM limits
-		entityMap, _ := settings.Limits["vm"].(map[string]interface{})
-		if entityMap == nil {
-			entityMap = make(map[string]interface{})
-		}
-		entityMap["sockets"] = map[string]int{"min": 1, "max": socketsMax}
-		entityMap["cores"] = map[string]int{"min": 1, "max": coresMax}
-		entityMap["ram"] = map[string]int{"min": ramMin, "max": ramMax}
-		entityMap["disk"] = map[string]int{"min": diskMin, "max": diskMax}
-		settings.Limits["vm"] = entityMap
+		settings.Limits.VM.Sockets = state.ResourceRange{Min: 1, Max: socketsMax}
+		settings.Limits.VM.Cores = state.ResourceRange{Min: 1, Max: coresMax}
+		settings.Limits.VM.RAM = state.ResourceRange{Min: ramMin, Max: ramMax}
+		settings.Limits.VM.Disk = state.ResourceRange{Min: diskMin, Max: diskMax}
 
 	case "node", "nodes":
 		// Per-node limits under limits.nodes[<nodeName>]
@@ -227,20 +242,16 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 			}
 		}
 
-		nodesMap, _ := settings.Limits["nodes"].(map[string]interface{})
-		if nodesMap == nil {
-			nodesMap = make(map[string]interface{})
+		if settings.Limits.Nodes == nil {
+			settings.Limits.Nodes = make(map[string]state.NodeResourceLimits)
 		}
-		nodeEntry, _ := nodesMap[nodeName].(map[string]interface{})
-		if nodeEntry == nil {
-			nodeEntry = make(map[string]interface{})
+
+		settings.Limits.Nodes[nodeName] = state.NodeResourceLimits{
+			Sockets: state.ResourceRange{Min: 1, Max: socketsMax},
+			Cores:   state.ResourceRange{Min: 1, Max: coresMax},
+			RAM:     state.ResourceRange{Min: ramMin, Max: ramMax},
+			Disk:    state.ResourceRange{Min: diskMin, Max: diskMax},
 		}
-		nodeEntry["sockets"] = map[string]int{"min": 1, "max": socketsMax}
-		nodeEntry["cores"] = map[string]int{"min": 1, "max": coresMax}
-		nodeEntry["ram"] = map[string]int{"min": ramMin, "max": ramMax}
-		nodeEntry["disk"] = map[string]int{"min": diskMin, "max": diskMax}
-		nodesMap[nodeName] = nodeEntry
-		settings.Limits["nodes"] = nodesMap
 		entity = "nodes" // normalize for redirect
 
 	default:

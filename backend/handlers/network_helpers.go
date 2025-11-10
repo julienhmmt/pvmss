@@ -40,7 +40,7 @@ type cachedVMBRs struct {
 // It returns a slice of maps to minimize churn in existing templates/callers.
 // Each map contains: node, iface, type, method, address, netmask, gateway, description("").
 // Uses caching and fallback logic for offline nodes.
-func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
+func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]string, error) {
 	log := logger.Get().With().Str("component", "network_helpers").Logger()
 
 	if sm == nil {
@@ -68,7 +68,7 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 	}
 
 	// Get nodes using resty
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	nodeNames, err := proxmox.GetNodeNamesResty(ctx, restyClient)
@@ -84,7 +84,7 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 
 	for _, node := range nodeNames {
 		// Try to get fresh VMBRs from this node
-		vmbrs, err := getVMBRsFromNode(node, restyClient)
+		vmbrs, err := getVMBRsFromNode(ctx, node, restyClient)
 		if err != nil {
 			log.Warn().Err(err).Str("node", node).Msg("Failed to get VMBRs from node; trying cache")
 
@@ -109,10 +109,10 @@ func collectAllVMBRs(sm state.StateManager) ([]map[string]string, error) {
 }
 
 // getVMBRsFromNode fetches VMBRs from a specific node and caches them
-func getVMBRsFromNode(node string, restyClient *proxmox.RestyClient) ([]map[string]string, error) {
+func getVMBRsFromNode(ctx context.Context, node string, restyClient *proxmox.RestyClient) ([]map[string]string, error) {
 	log := logger.Get().With().Str("component", "network_helpers").Logger()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 
 	vmbrs, err := proxmox.GetVMBRsResty(ctx, restyClient, node)

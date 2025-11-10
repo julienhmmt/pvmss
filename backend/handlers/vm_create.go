@@ -90,25 +90,25 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		Msg("Optimized VM create request started")
 
 	// Get settings
-	settings := h.stateManager.GetSettings()
-	if settings == nil {
+	settingsPtr := h.stateManager.GetSettings()
+	if settingsPtr == nil {
 		log.Error().Msg("Settings not available")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.SettingsUnavailable"), http.StatusInternalServerError)
 		return
 	}
+	settings := *settingsPtr
 
-	// Get Proxmox client
+	// Get Proxmox client and connection status
 	client := h.stateManager.GetProxmoxClient()
+	proxmoxConnected := client != nil && !h.stateManager.IsOfflineMode()
 
 	// Get node information
 	log.Debug().Msg("Getting node information")
 	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), client)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get node information")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.FailedToGetNodeInfo"), http.StatusInternalServerError)
-		return
+		log.Warn().Err(err).Msg("Proxmox node information unavailable, falling back to settings")
+		nodes, disabledNodes, activeNode = deriveNodesFromSettings(settingsPtr)
 	}
 	log.Debug().Strs("nodes", nodes).Str("active_node", activeNode).Msg("Node information retrieved")
 
@@ -129,12 +129,19 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Get storages and bridges concurrently
 	log.Debug().Msg("Getting resources (storages and bridges)")
-	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settings)
+	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settingsPtr)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get resources")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.FailedToGetResources"), http.StatusInternalServerError)
-		return
+		log.Warn().Err(err).Msg("Proxmox resources unavailable, using settings fallback")
+		storages, storageNodes, bridgeDetails = buildResourcesFromSettings(settingsPtr)
+	}
+	if storages == nil {
+		storages = []string{}
+	}
+	if storageNodes == nil {
+		storageNodes = make(map[string]string)
+	}
+	if bridgeDetails == nil {
+		bridgeDetails = []map[string]string{}
 	}
 	log.Debug().Int("storages_count", len(storages)).Int("bridges_count", len(bridgeDetails)).Msg("Resources retrieved")
 
@@ -175,22 +182,40 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		}
 	}
 
-	// Prepare template data with safe defaults for nil settings
-	isos := []string{}
-	if settings != nil && settings.ISOs != nil {
-		isos = settings.ISOs
+	// Prepare template data with safe defaults
+	isos := settings.ISOs
+	if isos == nil {
+		isos = []string{}
 	}
 	limits := make(map[string]interface{})
-	if settings != nil && settings.Limits != nil {
-		limits = settings.Limits
+	// Convert LimitsConfig to map[string]interface{} for template compatibility
+	limits["vm"] = map[string]interface{}{
+		"sockets": map[string]int{"min": settings.Limits.VM.Sockets.Min, "max": settings.Limits.VM.Sockets.Max},
+		"cores":   map[string]int{"min": settings.Limits.VM.Cores.Min, "max": settings.Limits.VM.Cores.Max},
+		"ram":     map[string]int{"min": settings.Limits.VM.RAM.Min, "max": settings.Limits.VM.RAM.Max},
+		"disk":    map[string]int{"min": settings.Limits.VM.Disk.Min, "max": settings.Limits.VM.Disk.Max},
 	}
-	maxDiskPerVM := 1
-	if settings != nil {
-		maxDiskPerVM = settings.MaxDiskPerVM
+	if len(settings.Limits.Nodes) > 0 {
+		nodesLimits := make(map[string]interface{}, len(settings.Limits.Nodes))
+		for nodeName, nodeLimits := range settings.Limits.Nodes {
+			nodesLimits[nodeName] = map[string]interface{}{
+				"sockets": map[string]int{"min": nodeLimits.Sockets.Min, "max": nodeLimits.Sockets.Max},
+				"cores":   map[string]int{"min": nodeLimits.Cores.Min, "max": nodeLimits.Cores.Max},
+				"ram":     map[string]int{"min": nodeLimits.RAM.Min, "max": nodeLimits.RAM.Max},
+				"disk":    map[string]int{"min": nodeLimits.Disk.Min, "max": nodeLimits.Disk.Max},
+			}
+		}
+		limits["nodes"] = nodesLimits
+	} else {
+		limits["nodes"] = map[string]interface{}{}
 	}
-	maxNetworkCards := 1
-	if settings != nil {
-		maxNetworkCards = settings.MaxNetworkCards
+	maxDiskPerVM := settings.MaxDiskPerVM
+	if maxDiskPerVM == 0 {
+		maxDiskPerVM = 1
+	}
+	maxNetworkCards := settings.MaxNetworkCards
+	if maxNetworkCards == 0 {
+		maxNetworkCards = 1
 	}
 
 	data := map[string]interface{}{
@@ -206,8 +231,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		"NetworkModels":    getNetworkModels(),
 		"NodeOptions":      nodeOptions,
 		"Nodes":            nodes,
-		"NodesLimits":      getNodeLimits(settings),
-		"ProxmoxConnected": h.stateManager.GetProxmoxClient() != nil,
+		"NodesLimits":      getNodeLimits(settingsPtr),
+		"ProxmoxConnected": proxmoxConnected,
 		"Storages":         storages,
 		"StorageNodes":     storageNodes,
 		"Success":          "",
@@ -252,11 +277,11 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Add default pool and available tags for template compatibility
 	data["DefaultPool"] = fmt.Sprintf("pvmss_%s", username)
-	if settings != nil && settings.Tags != nil {
-		data["AvailableTags"] = settings.Tags
-	} else {
-		data["AvailableTags"] = []string{}
+	availableTags := settings.Tags
+	if availableTags == nil {
+		availableTags = []string{}
 	}
+	data["AvailableTags"] = availableTags
 
 	// Add CSRF token from request context
 	if csrfToken, ok := r.Context().Value("csrf_token").(string); ok {
@@ -271,73 +296,16 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	var coresMin, coresMax int
 	var diskMin, diskMax int
 
-	if settings != nil && settings.Limits != nil {
-		if vmLimits, ok := settings.Limits["vm"]; ok {
-			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
-				if ram, ok := vmLimitsMap["ram"]; ok {
-					if ramMap, ok := ram.(map[string]interface{}); ok {
-						if min, ok := ramMap["min"]; ok {
-							if minVal, ok := min.(float64); ok {
-								vmRamMinMB = int(minVal) * 1024
-							}
-						}
-						if max, ok := ramMap["max"]; ok {
-							if maxVal, ok := max.(float64); ok {
-								vmRamMaxMB = int(maxVal) * 1024
-							}
-						}
-					}
-				}
-				if sockets, ok := vmLimitsMap["sockets"]; ok {
-					if socketsMap, ok := sockets.(map[string]interface{}); ok {
-						if min, ok := socketsMap["min"]; ok {
-							if v, ok := min.(float64); ok {
-								socketsMin = int(v)
-							}
-						}
-						if max, ok := socketsMap["max"]; ok {
-							if v, ok := max.(float64); ok {
-								socketsMax = int(v)
-							}
-						}
-					}
-				}
-				if cores, ok := vmLimitsMap["cores"]; ok {
-					if coresMap, ok := cores.(map[string]interface{}); ok {
-						if min, ok := coresMap["min"]; ok {
-							if v, ok := min.(float64); ok {
-								coresMin = int(v)
-							}
-						}
-						if max, ok := coresMap["max"]; ok {
-							if v, ok := max.(float64); ok {
-								coresMax = int(v)
-							}
-						}
-					}
-				}
-				if disk, ok := vmLimitsMap["disk"]; ok {
-					if diskMap, ok := disk.(map[string]interface{}); ok {
-						if min, ok := diskMap["min"]; ok {
-							if v, ok := min.(float64); ok {
-								diskMin = int(v)
-							}
-						}
-						if max, ok := diskMap["max"]; ok {
-							if v, ok := max.(float64); ok {
-								diskMax = int(v)
-							}
-						}
-					}
-				}
-			}
-		}
-	} else {
-		// Settings not available - this should not happen in production
-		log.Error().Msg("Settings or limits not available for VM creation")
-		data["ValidationError"] = "Configuration system unavailable. Please contact administrator."
-		renderTemplateInternal(w, r, "create_vm", data)
-		return
+	if settings.Limits.VM.Sockets.Min > 0 {
+		// Extract limits from typed structs
+		vmRamMinMB = settings.Limits.VM.RAM.Min * 1024
+		vmRamMaxMB = settings.Limits.VM.RAM.Max * 1024
+		socketsMin = settings.Limits.VM.Sockets.Min
+		socketsMax = settings.Limits.VM.Sockets.Max
+		coresMin = settings.Limits.VM.Cores.Min
+		coresMax = settings.Limits.VM.Cores.Max
+		diskMin = settings.Limits.VM.Disk.Min
+		diskMax = settings.Limits.VM.Disk.Max
 	}
 
 	// Verify we got all required limits from settings
@@ -430,6 +398,9 @@ func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, cli
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("failed to get online node names: %w", err)
 	}
+	if len(nodes) == 0 {
+		return nil, nil, "", fmt.Errorf("no online nodes available")
+	}
 
 	log.Info().Int("node_count", len(nodes)).Msg("Retrieved online node names for VM creation")
 
@@ -437,7 +408,11 @@ func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, cli
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
 		log.Warn().Msg("Settings not available, using all online nodes as enabled")
-		return nodes, make(map[string]bool), nodes[0], nil
+		disabledNodes := make(map[string]bool, len(nodes))
+		for _, nodeName := range nodes {
+			disabledNodes[nodeName] = false
+		}
+		return nodes, disabledNodes, nodes[0], nil
 	}
 
 	// Check which nodes are disabled (saturated) - only among online nodes
@@ -466,6 +441,114 @@ func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, cli
 		Msg("Online node information retrieved for VM creation")
 
 	return nodes, disabledNodes, activeNode, nil
+}
+
+func deriveNodesFromSettings(settings *state.AppSettings) ([]string, map[string]bool, string) {
+	if settings == nil {
+		return []string{}, make(map[string]bool), ""
+	}
+
+	nodeSet := make(map[string]struct{})
+	for nodeName := range settings.Limits.Nodes {
+		if nodeName != "" {
+			nodeSet[nodeName] = struct{}{}
+		}
+	}
+	for _, vmbr := range settings.VMBRs {
+		if nodeName := extractPrefix(vmbr); nodeName != "" {
+			nodeSet[nodeName] = struct{}{}
+		}
+	}
+	for _, storage := range settings.EnabledStorages {
+		if nodeName := extractPrefix(storage); nodeName != "" {
+			nodeSet[nodeName] = struct{}{}
+		}
+	}
+
+	nodes := make([]string, 0, len(nodeSet))
+	for nodeName := range nodeSet {
+		nodes = append(nodes, nodeName)
+	}
+	sort.Strings(nodes)
+
+	disabled := make(map[string]bool, len(nodes))
+	for _, node := range nodes {
+		disabled[node] = false
+	}
+
+	active := ""
+	if len(nodes) > 0 {
+		active = nodes[0]
+	}
+
+	return nodes, disabled, active
+}
+
+func buildResourcesFromSettings(settings *state.AppSettings) ([]string, map[string]string, []map[string]string) {
+	if settings == nil {
+		return []string{}, map[string]string{}, []map[string]string{}
+	}
+
+	storageSet := make(map[string]struct{})
+	storageNodes := make(map[string]string)
+	for _, entry := range settings.EnabledStorages {
+		storageName := entry
+		nodeName := ""
+		if idx := strings.Index(entry, ":"); idx > -1 {
+			nodeName = entry[:idx]
+			storageName = entry[idx+1:]
+		}
+		if storageName == "" {
+			continue
+		}
+		if nodeName != "" {
+			storageNodes[storageName] = nodeName
+		}
+		storageSet[storageName] = struct{}{}
+	}
+
+	storages := make([]string, 0, len(storageSet))
+	for storageName := range storageSet {
+		storages = append(storages, storageName)
+	}
+	sort.Strings(storages)
+
+	bridgeDetails := make([]map[string]string, 0, len(settings.VMBRs))
+	for _, identifier := range settings.VMBRs {
+		nodeName := ""
+		bridgeName := identifier
+		if idx := strings.Index(identifier, ":"); idx > -1 {
+			nodeName = identifier[:idx]
+			bridgeName = identifier[idx+1:]
+		}
+		if bridgeName == "" {
+			continue
+		}
+		bridgeDetails = append(bridgeDetails, map[string]string{
+			"name":        bridgeName,
+			"node":        nodeName,
+			"description": "",
+		})
+	}
+
+	sort.Slice(bridgeDetails, func(i, j int) bool {
+		if bridgeDetails[i]["name"] == bridgeDetails[j]["name"] {
+			return bridgeDetails[i]["node"] < bridgeDetails[j]["node"]
+		}
+		return bridgeDetails[i]["name"] < bridgeDetails[j]["name"]
+	})
+
+	return storages, storageNodes, bridgeDetails
+}
+
+func extractPrefix(identifier string) string {
+	if identifier == "" {
+		return ""
+	}
+	if idx := strings.Index(identifier, ":"); idx > -1 {
+		return identifier[:idx]
+	}
+	return ""
 }
 
 // getOfflineNodesCount counts the number of offline/down nodes in the cluster
@@ -519,15 +602,23 @@ func getNetworkModels() []map[string]string {
 
 // getNodeLimits extracts node limits from settings for template compatibility
 func getNodeLimits(settings *state.AppSettings) map[string]interface{} {
-	if settings == nil || settings.Limits == nil {
+	if settings == nil || len(settings.Limits.Nodes) == 0 {
 		return make(map[string]interface{})
 	}
 
-	if nodes, ok := settings.Limits["nodes"].(map[string]interface{}); ok {
-		return nodes
+	// Convert typed structs to map[string]interface{} for template compatibility
+	result := make(map[string]interface{})
+	for nodeName, nodeLimits := range settings.Limits.Nodes {
+		nodeMap := map[string]interface{}{
+			"sockets": map[string]int{"min": nodeLimits.Sockets.Min, "max": nodeLimits.Sockets.Max},
+			"cores":   map[string]int{"min": nodeLimits.Cores.Min, "max": nodeLimits.Cores.Max},
+			"ram":     map[string]int{"min": nodeLimits.RAM.Min, "max": nodeLimits.RAM.Max},
+			"disk":    map[string]int{"min": nodeLimits.Disk.Min, "max": nodeLimits.Disk.Max},
+		}
+		result[nodeName] = nodeMap
 	}
 
-	return make(map[string]interface{})
+	return result
 }
 
 // getOptimizedResources retrieves storages and bridges concurrently with optimizations
@@ -908,67 +999,16 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	var coresMin, coresMax int
 	var diskMin, diskMax int // Will be in GB from settings
 
-	if settings != nil && settings.Limits != nil {
-		if vmLimits, ok := settings.Limits["vm"]; ok {
-			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
-				if ram, ok := vmLimitsMap["ram"]; ok {
-					if ramMap, ok := ram.(map[string]interface{}); ok {
-						if min, ok := ramMap["min"]; ok {
-							if minVal, ok := min.(float64); ok {
-								memoryMin = int(minVal) * 1024 // Convert GB to MB
-							}
-						}
-						if max, ok := ramMap["max"]; ok {
-							if maxVal, ok := max.(float64); ok {
-								memoryMax = int(maxVal) * 1024 // Convert GB to MB
-							}
-						}
-					}
-				}
-				if sockets, ok := vmLimitsMap["sockets"]; ok {
-					if socketsMap, ok := sockets.(map[string]interface{}); ok {
-						if min, ok := socketsMap["min"]; ok {
-							if minVal, ok := min.(float64); ok {
-								socketsMin = int(minVal)
-							}
-						}
-						if max, ok := socketsMap["max"]; ok {
-							if maxVal, ok := max.(float64); ok {
-								socketsMax = int(maxVal)
-							}
-						}
-					}
-				}
-				if cores, ok := vmLimitsMap["cores"]; ok {
-					if coresMap, ok := cores.(map[string]interface{}); ok {
-						if min, ok := coresMap["min"]; ok {
-							if minVal, ok := min.(float64); ok {
-								coresMin = int(minVal)
-							}
-						}
-						if max, ok := coresMap["max"]; ok {
-							if maxVal, ok := max.(float64); ok {
-								coresMax = int(maxVal)
-							}
-						}
-					}
-				}
-				if disk, ok := vmLimitsMap["disk"]; ok {
-					if diskMap, ok := disk.(map[string]interface{}); ok {
-						if min, ok := diskMap["min"]; ok {
-							if minVal, ok := min.(float64); ok {
-								diskMin = int(minVal)
-							}
-						}
-						if max, ok := diskMap["max"]; ok {
-							if maxVal, ok := max.(float64); ok {
-								diskMax = int(maxVal)
-							}
-						}
-					}
-				}
-			}
-		}
+	if settings != nil && settings.Limits.VM.Sockets.Min > 0 {
+		// Extract limits from typed structs
+		memoryMin = settings.Limits.VM.RAM.Min * 1024
+		memoryMax = settings.Limits.VM.RAM.Max * 1024
+		socketsMin = settings.Limits.VM.Sockets.Min
+		socketsMax = settings.Limits.VM.Sockets.Max
+		coresMin = settings.Limits.VM.Cores.Min
+		coresMax = settings.Limits.VM.Cores.Max
+		diskMin = settings.Limits.VM.Disk.Min
+		diskMax = settings.Limits.VM.Disk.Max
 	} else {
 		// Settings not available - cannot create VM
 		log.Error().Msg("Settings or limits not available for VM creation POST")

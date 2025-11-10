@@ -438,14 +438,41 @@ func (s *appState) GetVMBRs() []string {
 	return s.settings.VMBRs
 }
 
-// GetLimits returns the resource limits
+// GetLimits returns the resource limits as a map for backward compatibility
 func (s *appState) GetLimits() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.settings == nil || s.settings.Limits == nil {
+	if s.settings == nil {
 		return make(map[string]interface{})
 	}
-	return s.settings.Limits
+
+	// Convert LimitsConfig to map[string]interface{} for backward compatibility
+	limits := make(map[string]interface{})
+
+	// Convert VM limits
+	vmLimits := make(map[string]interface{})
+	vmLimits["sockets"] = map[string]int{"min": s.settings.Limits.VM.Sockets.Min, "max": s.settings.Limits.VM.Sockets.Max}
+	vmLimits["cores"] = map[string]int{"min": s.settings.Limits.VM.Cores.Min, "max": s.settings.Limits.VM.Cores.Max}
+	vmLimits["ram"] = map[string]int{"min": s.settings.Limits.VM.RAM.Min, "max": s.settings.Limits.VM.RAM.Max}
+	vmLimits["disk"] = map[string]int{"min": s.settings.Limits.VM.Disk.Min, "max": s.settings.Limits.VM.Disk.Max}
+	limits["vm"] = vmLimits
+
+	// Convert node limits
+	if len(s.settings.Limits.Nodes) > 0 {
+		nodesLimits := make(map[string]interface{})
+		for nodeName, nodeLimits := range s.settings.Limits.Nodes {
+			nodeMap := map[string]interface{}{
+				"sockets": map[string]int{"min": nodeLimits.Sockets.Min, "max": nodeLimits.Sockets.Max},
+				"cores":   map[string]int{"min": nodeLimits.Cores.Min, "max": nodeLimits.Cores.Max},
+				"ram":     map[string]int{"min": nodeLimits.RAM.Min, "max": nodeLimits.RAM.Max},
+				"disk":    map[string]int{"min": nodeLimits.Disk.Min, "max": nodeLimits.Disk.Max},
+			}
+			nodesLimits[nodeName] = nodeMap
+		}
+		limits["nodes"] = nodesLimits
+	}
+
+	return limits
 }
 
 // GetStorages returns the list of available storages

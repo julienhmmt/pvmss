@@ -256,21 +256,9 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 	// Get memory limits from settings (optional). Stored in GB in settings; convert to MB.
 	var vmRamMinMB, vmRamMaxMB int64 = 0, 0
-	if settings != nil && settings.Limits != nil {
-		if vmLimits, ok := settings.Limits["vm"]; ok {
-			if vmLimitsMap, ok := vmLimits.(map[string]interface{}); ok {
-				if ram, ok := vmLimitsMap["ram"]; ok {
-					if ramMap, ok := ram.(map[string]interface{}); ok {
-						if min, ok := ramMap["min"].(float64); ok && min > 0 {
-							vmRamMinMB = int64(min * 1024)
-						}
-						if max, ok := ramMap["max"].(float64); ok && max > 0 {
-							vmRamMaxMB = int64(max * 1024)
-						}
-					}
-				}
-			}
-		}
+	if settings != nil {
+		vmRamMinMB = int64(settings.Limits.VM.RAM.Min * 1024)
+		vmRamMaxMB = int64(settings.Limits.VM.RAM.Max * 1024)
 	}
 
 	// Validate memory limits only if configured in settings
