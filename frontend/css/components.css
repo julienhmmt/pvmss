@@ -1688,14 +1688,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   transition: opacity 0.2s ease, background-color 0.2s ease;
 }
 
-.vm-action-button .button-loading,
-.vm-console-button .button-loading,
-.vm-refresh-button .button-loading,
-.vm-delete-button .button-loading {
-  transition: opacity 0.2s ease;
-}
-
-/* Loading spinner animation */
 .vm-action-button .button-loading i,
 .vm-console-button .button-loading i,
 .vm-refresh-button .button-loading i,
@@ -1716,15 +1708,15 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 .global-notification {
   pointer-events: auto;
   margin-bottom: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   border-radius: 6px;
-  animation: slideInRight 0.3s ease-out;
+  animation: slide-in-right 0.3s ease-out;
   position: relative;
   overflow: hidden;
 }
 
 .global-notification.is-hiding {
-  animation: slideOutRight 0.3s ease-in forwards;
+  animation: slide-out-right 0.3s ease-in forwards;
 }
 
 .global-notification .notification-progress {
@@ -1732,8 +1724,8 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   bottom: 0;
   left: 0;
   height: 3px;
-  background: linear-gradient(90deg, currentColor 0%, transparent 100%);
-  animation: progressBar linear infinite;
+  background: linear-gradient(90deg, currentcolor 0%, transparent 100%);
+  animation: progress-bar linear infinite;
 }
 
 .global-notification .level {
@@ -1741,7 +1733,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 /* Notification animations */
-@keyframes slideInRight {
+@keyframes slide-in-right {
   from {
     transform: translateX(100%);
     opacity: 0;
@@ -1752,7 +1744,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   }
 }
 
-@keyframes slideOutRight {
+@keyframes slide-out-right {
   from {
     transform: translateX(0);
     opacity: 1;
@@ -1763,7 +1755,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   }
 }
 
-@keyframes progressBar {
+@keyframes progress-bar {
   0% {
     width: 100%;
   }
@@ -1790,8 +1782,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 /* Mobile responsive adjustments */
-/* Mobile responsive adjustments */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .global-notifications {
     left: 10px;
     right: 10px;
@@ -1819,14 +1810,14 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   margin-bottom: 1rem;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
   border: 1px solid #e1e5e9;
-  animation: slideInRight 0.3s ease-out;
+  animation: slide-in-right 0.3s ease-out;
   overflow: hidden;
 }
 
 .progress-notification.is-hiding {
-  animation: slideOutRight 0.3s ease-in forwards;
+  animation: slide-out-right 0.3s ease-in forwards;
 }
 
 .progress-notification .progress-content {
@@ -1856,7 +1847,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 .progress-notification .progress-text p {
-  margin: 0.25rem 0 0 0;
+  margin: 0.25rem 0 0;
   font-size: 0.875rem;
   color: #7a7a7a;
 }
@@ -1914,7 +1905,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .global-progress {
     left: 10px;
     right: 10px;
