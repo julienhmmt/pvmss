@@ -463,15 +463,15 @@ fieldset[disabled]::after {
   transition: transform 0.3s ease;
 }
 
-.navbar-user-menu.is-active .navbar-user-toggle .icon:last-child {
-  transform: rotate(180deg);
-}
-
 .vm-action-button.is-loading .icon:first-child,
 .vm-console-button.is-loading .icon:first-child,
 .vm-refresh-button.is-loading .icon:first-child,
 .vm-delete-button.is-loading .icon:first-child {
   opacity: 0.5;
+}
+
+.navbar-user-menu.is-active .navbar-user-toggle .icon:last-child {
+  transform: rotate(180deg);
 }
 
 /* Desktop dropdown visibility when checked */
