@@ -10,11 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
+
+	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 )
 
 // buildSuccessMessage creates success message from query parameters
@@ -415,7 +417,7 @@ func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface
 	return nil, map[string]bool{}, chosenNode, lastError
 }
 
-// fetchStoragesFromNode fetches storages from a specific node and caches the result
+// fetchStoragesFromNode fetches storages from a specific node and caches the result using errgroup for concurrent API calls
 func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) ([]map[string]interface{}, error) {
 	log := logger.Get().With().Str("component", "storage_utils").Logger()
 
@@ -425,11 +427,44 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 		return nil, err
 	}
 
-	// fetch global config and node storages using resty
-	globalStorages, err := proxmox.GetStoragesResty(ctx, restyClient)
-	if err != nil {
+	// Use errgroup for concurrent API calls
+	g, ctx := errgroup.WithContext(ctx)
+
+	var globalStorages []proxmox.Storage
+	var nodeStorages []proxmox.Storage
+
+	// Fetch global storages concurrently
+	g.Go(func() error {
+		var err error
+		globalStorages, err = proxmox.GetStoragesResty(ctx, restyClient)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to fetch global storages")
+			return fmt.Errorf("failed to get global storages: %w", err)
+		}
+		return nil
+	})
+
+	// Fetch node storages concurrently
+	g.Go(func() error {
+		var err error
+		nodeStorages, err = proxmox.GetNodeStoragesResty(ctx, restyClient, node)
+		if err != nil {
+			log.Warn().Err(err).Str("node", node).Msg("Failed to fetch node storages")
+			return fmt.Errorf("failed to get node storages: %w", err)
+		}
+		return nil
+	})
+
+	// Wait for all goroutines to complete
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+
+	log.Debug().
+		Str("node", node).
+		Int("global_count", len(globalStorages)).
+		Int("node_count", len(nodeStorages)).
+		Msg("Fetched storages concurrently with errgroup")
 
 	cfgByName := make(map[string]proxmox.Storage)
 	for _, s := range globalStorages {
@@ -442,12 +477,6 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 			Str("content", s.Content).
 			Msg("Global storage config")
 	}
-
-	nodeStorages, err := proxmox.GetNodeStoragesResty(ctx, restyClient, node)
-	if err != nil {
-		return nil, err
-	}
-	log.Debug().Str("node", node).Int("global_count", len(globalStorages)).Int("node_count", len(nodeStorages)).Msg("fetched storages from Proxmox")
 
 	// build base items (without Enabled)
 	base := make([]map[string]interface{}, 0, len(nodeStorages))
