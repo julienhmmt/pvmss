@@ -2,7 +2,7 @@
 .env
 .idea/
 .vscode/
-Makefile
+.windsurf/
 docker-compose.dev.yml
 settings.dev.json
-tests/
+coverage.out

@@ -1,0 +1,21 @@
+# Validation
+["Validation.Required"]
+other = "Ce champ est obligatoire"
+["Validation.InvalidFormat"]
+other = "Format invalide"
+["Validation.MinLength"]
+other = "Doit contenir au moins {{.Limit}} caractères"
+["Validation.MaxLength"]
+other = "Ne doit pas dépasser {{.Limit}} caractères"
+["Validation.Email"]
+other = "Doit être une adresse email valide"
+["Validation.URL"]
+other = "Doit être une URL valide"
+["Validation.Numeric"]
+other = "Doit être un nombre"
+["Validation.IP"]
+other = "Doit être une adresse IP valide"
+["Validation.Positive"]
+other = "Doit être un nombre positif"
+["Validation.Negative"]
+other = "Doit être un nombre négatif"

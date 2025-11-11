@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+	"pvmss/i18n"
 	"pvmss/state"
 )
 
@@ -85,7 +86,7 @@ func (h *HealthHandler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.R
 			"message": "The requested method is not allowed for this resource",
 		})
 	} else {
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MethodNotAllowed"), http.StatusMethodNotAllowed)
 	}
 }
 

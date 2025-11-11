@@ -5,7 +5,7 @@ package constants
 // Authentication & Authorization Messages
 const (
 	MsgAuthRequired       = "Auth.Required"
-	MsgAuthInvalidCreds   = "Auth.InvalidCredentials"
+	MsgAuthInvalidCreds   = "Auth.InvalidCredentials" // #nosec G101 - Message key identifier, not a credential
 	MsgAuthLoginSuccess   = "Auth.LoginSuccess"
 	MsgAuthLogoutSuccess  = "Auth.LogoutSuccess"
 	MsgAuthSessionExpired = "Auth.SessionExpired"
@@ -69,12 +69,13 @@ const (
 
 // Proxmox Connection Messages
 const (
-	MsgProxmoxConnected    = "Proxmox.Connected"
-	MsgProxmoxDisconnected = "Proxmox.Disconnected"
-	MsgProxmoxError        = "Proxmox.Error"
-	MsgProxmoxTimeout      = "Proxmox.Timeout"
-	MsgProxmoxOfflineMode  = "Proxmox.OfflineModeEnabled"
-	MsgProxmoxClientNil    = "Proxmox.ClientNotInitialized"
+	MsgProxmoxConnected       = "Proxmox.Connected"
+	MsgProxmoxDisconnected    = "Proxmox.Disconnected"
+	MsgProxmoxError           = "Proxmox.Error"
+	MsgProxmoxTimeout         = "Proxmox.Timeout"
+	MsgProxmoxOfflineMode     = "Proxmox.OfflineModeEnabled"
+	MsgProxmoxAutoOfflineMode = "Proxmox.AutomaticOfflineMode"
+	MsgProxmoxClientNil       = "Proxmox.ClientNotInitialized"
 )
 
 // Console Messages

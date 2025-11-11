@@ -2,12 +2,17 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 
 	"pvmss/i18n"
 	"pvmss/proxmox"
@@ -28,15 +33,18 @@ func NewProfileHandler(sm state.StateManager) *ProfileHandler {
 func (h *ProfileHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/profile", RequireAuthHandle(h.ShowProfile))
 	router.POST("/profile/update-password", RequireAuthHandle(h.UpdatePassword))
+	router.GET("/api/profile/vms", HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.GetProfileVMsAPI(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 }
 
 // VMInfo represents a VM in the user's pool
 type VMInfo struct {
-	VMID        int
-	Name        string
-	Description string
-	Node        string
-	Status      string
+	VMID        int    `json:"vmid"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Node        string `json:"node"`
+	Status      string `json:"status"`
 }
 
 // ShowProfile renders the user profile page
@@ -59,7 +67,7 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	username := ctx.GetUsername()
 	if username == "" {
 		ctx.Log.Error().Msg("No username in session")
-		http.Error(w, "Session error", http.StatusInternalServerError)
+		RespondWithError(w, r, ErrSessionExpired)
 		return
 	}
 
@@ -70,18 +78,7 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		ctx.Log.Error().Msg("Proxmox client not available")
-		// Render page without VMs
-		data := map[string]interface{}{
-			"Title":           ctx.Translate("Profile.Title"),
-			"Username":        username,
-			"PoolName":        poolName,
-			"VMs":             []VMInfo{},
-			"ProxmoxError":    true,
-			"Lang":            i18n.GetLanguage(r),
-			"IsAuthenticated": true,
-			"IsAdmin":         ctx.IsAdmin(),
-		}
-		ctx.RenderTemplate("profile", data)
+		RespondWithError(w, r, ErrProxmoxConnection)
 		return
 	}
 
@@ -100,6 +97,7 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 
 	// Fetch VMs from the user's pool
 	vms := h.fetchUserVMs(r.Context(), client, poolName)
+	total, running, stopped, paused, unknown := computeVMStats(vms)
 
 	// Check for password update messages and form visibility
 	passwordSuccess := r.URL.Query().Get("password_success") == "1"
@@ -112,6 +110,12 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 		"Username":         username,
 		"PoolName":         poolName,
 		"VMs":              vms,
+		"HasVMs":           total > 0,
+		"TotalVMs":         total,
+		"RunningVMs":       running,
+		"StoppedVMs":       stopped,
+		"PausedVMs":        paused,
+		"UnknownVMs":       unknown,
 		"Lang":             i18n.GetLanguage(r),
 		"IsAuthenticated":  true,
 		"IsAdmin":          ctx.IsAdmin(),
@@ -121,6 +125,83 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	}
 
 	ctx.RenderTemplate("profile", data)
+}
+
+// GetProfileVMsAPI returns the user's VM list as JSON for asynchronous refreshes
+func (h *ProfileHandler) GetProfileVMsAPI(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	ctx := NewHandlerContext(w, r, "ProfileHandler.GetProfileVMsAPI")
+
+	if ctx.IsAdmin() {
+		writeProfileAPIError(w, http.StatusForbidden, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.Error.AdminNoPersonalVMs"))
+		return
+	}
+
+	username := ctx.GetUsername()
+	if username == "" {
+		writeProfileAPIError(w, http.StatusUnauthorized, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SessionError"))
+		return
+	}
+
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		writeProfileAPIError(w, http.StatusServiceUnavailable, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError"))
+		return
+	}
+
+	poolName := "pvmss_" + username
+	vms := h.fetchUserVMs(r.Context(), client, poolName)
+	total, running, stopped, paused, unknown := computeVMStats(vms)
+
+	response := map[string]interface{}{
+		"status": "success",
+		"vms":    vms,
+		"summary": map[string]int{
+			"total":   total,
+			"running": running,
+			"stopped": stopped,
+			"paused":  paused,
+			"unknown": unknown,
+		},
+	}
+
+	if err := writeProfileAPISuccess(w, response); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to write profile VMs JSON response")
+	}
+}
+
+func computeVMStats(vms []VMInfo) (total, running, stopped, paused, unknown int) {
+	total = len(vms)
+	for _, vm := range vms {
+		switch strings.ToLower(vm.Status) {
+		case "running":
+			running++
+		case "stopped":
+			stopped++
+		case "paused", "suspended":
+			paused++
+		case "":
+			unknown++
+		default:
+			unknown++
+		}
+	}
+	return
+}
+
+func writeProfileAPISuccess(w http.ResponseWriter, payload interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	return json.NewEncoder(w).Encode(payload)
+}
+
+func writeProfileAPIError(w http.ResponseWriter, statusCode int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "error",
+		"message": message,
+	})
 }
 
 // fetchUserVMs retrieves all VMs in the user's pool with their status
@@ -163,20 +244,40 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 		return []VMInfo{}
 	}
 
-	// Get all VMs with their status (already populated by GetVMsWithContext)
-	allVMs, err := proxmox.GetVMsWithContext(fetchCtx, client)
+	// Get all VMs with their status using resty
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get all VMs")
+		log.Error().Err(err).Msg("Failed to create resty client")
 		return []VMInfo{}
 	}
 
-	// Filter VMs to only include those in the user's pool
-	vms := make([]VMInfo, 0)
-	for _, vm := range allVMs {
-		if poolVMIDs[vm.VMID] {
+	allVMs, err := proxmox.GetVMsResty(fetchCtx, restyClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get all VMs (resty)")
+		return []VMInfo{}
+	}
+
+	// Filter VMs to only include those in the user's pool and fetch config concurrently
+	vms := make([]VMInfo, 0, len(allVMs))
+	var mu sync.Mutex
+	sem := make(chan struct{}, 8)
+	g, gctx := errgroup.WithContext(fetchCtx)
+	for i := range allVMs {
+		vm := allVMs[i]
+		if !poolVMIDs[vm.VMID] {
+			continue
+		}
+		g.Go(func() error {
+			// throttle parallel requests
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-gctx.Done():
+				return gctx.Err()
+			}
+
 			status := vm.Status
 			if status == "" {
-				// Fallback: if status is empty and uptime is 0, assume stopped
 				if vm.Uptime == 0 {
 					status = "stopped"
 				} else {
@@ -184,9 +285,9 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 				}
 			}
 
-			// Get VM description from config
-			var description string
-			if vmConfig, err := proxmox.GetVMConfigWithContext(fetchCtx, client, vm.Node, vm.VMID); err == nil {
+			// Fetch VM config via resty to get description
+			description := ""
+			if vmConfig, err := proxmox.GetVMConfigResty(gctx, restyClient, vm.Node, vm.VMID); err == nil {
 				if desc, exists := vmConfig["description"]; exists {
 					if descStr, ok := desc.(string); ok {
 						description = descStr
@@ -194,15 +295,23 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 				}
 			}
 
-			vms = append(vms, VMInfo{
+			info := VMInfo{
 				VMID:        vm.VMID,
 				Name:        vm.Name,
 				Description: description,
 				Node:        vm.Node,
 				Status:      strings.ToLower(status),
-			})
-		}
+			}
+			mu.Lock()
+			vms = append(vms, info)
+			mu.Unlock()
+			return nil
+		})
 	}
+	_ = g.Wait()
+
+	// Sort by VMID ascending for consistent display order
+	sort.Slice(vms, func(i, j int) bool { return vms[i].VMID < vms[j].VMID })
 
 	log.Info().
 		Str("pool", poolName).
@@ -223,7 +332,7 @@ func (h *ProfileHandler) getNodeNames(ctx context.Context, client interface {
 	}
 
 	if err := client.GetJSON(ctx, "/nodes", &nodeResp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get node list from Proxmox: %w", err)
 	}
 
 	nodes := make([]string, 0, len(nodeResp.Data))
@@ -247,7 +356,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	sessionManager := h.stateManager.GetSessionManager()
 	if sessionManager == nil {
 		log.Error().Msg("Session manager not available")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -255,7 +364,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	username := sessionManager.GetString(r.Context(), "username")
 	if username == "" {
 		log.Error().Msg("No username in session")
-		http.Redirect(w, r, "/profile?error=session_expired", http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SessionError")), http.StatusSeeOther)
 		return
 	}
 
@@ -267,19 +376,19 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	// Validate inputs
 	if currentPassword == "" || newPassword == "" || confirmPassword == "" {
 		log.Debug().Msg("Missing password fields")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("All password fields are required"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.MissingFields")), http.StatusSeeOther)
 		return
 	}
 
 	if newPassword != confirmPassword {
 		log.Debug().Msg("New passwords do not match")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("New passwords do not match"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.Mismatch")), http.StatusSeeOther)
 		return
 	}
 
 	if len(newPassword) < 5 {
 		log.Debug().Msg("New password too short")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Password must be at least 5 characters"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.TooShort")), http.StatusSeeOther)
 		return
 	}
 
@@ -287,7 +396,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Service unavailable"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")), http.StatusSeeOther)
 		return
 	}
 
@@ -302,7 +411,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	cookieClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkipVerify)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create cookie-based client")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Internal error"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer")), http.StatusSeeOther)
 		return
 	}
 
@@ -312,7 +421,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	})
 	if err != nil {
 		log.Info().Err(err).Str("username", username).Msg("Current password verification failed")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Current password is incorrect"), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.IncorrectCurrent")), http.StatusSeeOther)
 		return
 	}
 
@@ -323,7 +432,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	// Update password - Proxmox requires current password as confirmation
 	if err := proxmox.UpdateUserPassword(ctx, cookieClient, username, newPassword, currentPassword, "pve"); err != nil {
 		log.Error().Err(err).Str("username", username).Msg("Failed to update password")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape("Failed to update password: "+err.Error()), http.StatusSeeOther)
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.UpdateFailed")), http.StatusSeeOther)
 		return
 	}
 

@@ -1,0 +1,51 @@
+# Errors
+["Error.Unexpected"]
+other = "An unexpected error occurred."
+["Error.PreviousPage"]
+other = "Previous page"
+["Error.Generic"]
+other = "An unexpected error has occurred. Please try again or contact the administrator."
+["Error.InternalServer"]
+other = "Internal server error"
+["Error.NotFound"]
+other = "Resource not found"
+["Error.Title"]
+other = "Error"
+["Error.Unauthorized"]
+other = "Unauthorized access"
+
+# Server Errors
+["Error.SettingsUnavailable"]
+other = "Settings not available"
+["Error.AccessDenied"]
+other = "Access Denied: Admin privileges required"
+["Error.InvalidContentType"]
+other = "Invalid content type"
+["Error.InvalidFormData"]
+other = "Invalid form data"
+["Error.InvalidCSRFToken"]
+other = "Invalid or missing CSRF token"
+["Error.SessionError"]
+other = "Session error"
+["Error.MethodNotAllowed"]
+other = "Method not allowed"
+["Error.Forbidden"]
+other = "Forbidden"
+["Error.ProxmoxAuthRequired"]
+other = "Proxmox authentication required"
+["Error.MissingRequiredParameters"]
+other = "Missing required parameters"
+["Error.InvalidPortNumber"]
+other = "Invalid port number"
+["Error.ServerConfigError"]
+other = "Server configuration error"
+["Error.ProxmoxConnectionError"]
+other = "Proxmox connection error"
+["Error.ProxmoxClientUnavailable"]
+other = "Proxmox client unavailable"
+["Error.MissingRequiredFields"]
+other = "Missing required fields"
+["Error.FailedToGetNodeInfo"]
+other = "Failed to get node information"
+["Error.FailedToGetResources"]
+other = "Failed to get resources"

@@ -224,6 +224,7 @@ export function initConsoleManager(config) {
         
         // Close modal
         consoleModal.classList.remove('is-active');
+        document.body.classList.remove('modal-is-active');
     }
     
     /**
@@ -286,6 +287,7 @@ export function initConsoleManager(config) {
     if (consoleButton) {
         consoleButton.addEventListener('click', function() {
             consoleModal.classList.add('is-active');
+            document.body.classList.add('modal-is-active');
             // Small delay to ensure modal is visible before connecting
             setTimeout(openConsole, 100);
         });

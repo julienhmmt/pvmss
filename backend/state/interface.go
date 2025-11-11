@@ -3,7 +3,7 @@
 //
 // Usage:
 //   - Use StateManager interface with dependency injection (RECOMMENDED)
-//   - Avoid global helper functions like GetGlobalState() (DEPRECATED - see global.go)
+
 package state
 
 import (
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+
 	"pvmss/proxmox"
 )
 
@@ -53,4 +54,19 @@ type StateManager interface {
 
 	// Cleanup callbacks
 	SetGuestAgentCleanupFunc(cleanupFunc func())
+}
+
+// SettingsProvider exposes read access to application settings.
+type SettingsProvider interface {
+	GetSettings() *AppSettings
+}
+
+// ProxmoxClientProvider exposes access to the Proxmox API client.
+type ProxmoxClientProvider interface {
+	GetProxmoxClient() proxmox.ClientInterface
+}
+
+// ProxmoxStatusProvider exposes the Proxmox connection status.
+type ProxmoxStatusProvider interface {
+	GetProxmoxStatus() (bool, string)
 }

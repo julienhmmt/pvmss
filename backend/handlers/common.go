@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"html"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -188,7 +189,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	tmpl := stateManager.GetTemplates()
 	if tmpl == nil {
 		log.Error().Msg("Templates not initialized")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -197,7 +198,7 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	instance, err := tmpl.Clone()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to clone template set")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -208,9 +209,11 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 			// Use pvmss/i18n.Localize wrapper instead of direct bundle call
 			localized := i18n.Localize(localizer, messageID)
 			if localized == "" {
-				return template.HTML(messageID)
+				// messageID is a translation key (safe), not user input
+				return template.HTML(html.EscapeString(messageID)) // #nosec G203 - Escaped translation key wrapped as HTML for template usage
 			}
-			return template.HTML(localized)
+			// localized comes from i18n bundle (safe), not user input
+			return template.HTML(html.EscapeString(localized)) // #nosec G203 - Escaped i18n string wrapped as HTML for template usage
 		},
 	})
 
@@ -221,17 +224,17 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	var buf bytes.Buffer
 	if err := instance.ExecuteTemplate(&buf, name, data); err != nil {
 		log.Error().Err(err).Str("template", name).Msg("Error executing content template")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
 	// Inject the rendered content into the main data map for the layout.
-	data["Content"] = template.HTML(buf.String())
+	data["Content"] = template.HTML(buf.String()) // #nosec G203 - Content is produced by Go templates (already sanitized by template engine)
 
 	// Execute the layout template with the combined data.
 	if err := instance.ExecuteTemplate(w, "layout", data); err != nil {
 		log.Error().Err(err).Msg("Error executing layout template")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 	}
 
 	log.Info().Msg("Page rendered successfully")
@@ -445,14 +448,14 @@ func RequireAuthHandleWS(h httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		stateManager := getStateManager(r)
 		if stateManager == nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
 		sessionManager := stateManager.GetSessionManager()
 		if sessionManager == nil || !sessionManager.GetBool(r.Context(), "authenticated") {
 			log := CreateHandlerLogger("RequireAuthHandleWS", r)
 			log.Warn().Msg("WebSocket connection rejected: not authenticated")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Unauthorized"), http.StatusUnauthorized)
 			return
 		}
 		h(w, r, ps)
@@ -485,10 +488,9 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prepare data for the template
 	data := map[string]interface{}{
-		"Title": "PVMSS",
-		"Lang":  i18n.GetLanguage(r),
+		"TitleKey": "Navbar.Home",
+		"Lang":     i18n.GetLanguage(r),
 	}
 
 	ctx.RenderTemplate("index", data)

@@ -1,36 +1,156 @@
 {{define "notification"}}
 {{/*
-  Reusable notification component
-  Usage: {{template "notification" (dict "Type" "success" "Message" "Operation completed successfully" "Icon" "fas fa-check" "Dismissible" true)}}
+  Enhanced notification component for global banners and alerts
+  Usage: {{template "notification" (dict "Type" "success" "Title" "All good" "Message" "Operation completed" "Dismissible" true "AutoDismiss" true "AutoDismissDelay" 5000)}}
 */}}
-<div class="notification is-{{or .Type "info"}} {{if ne .Light false}}is-light{{end}} {{.ExtraClasses}}" role="alert"
-     {{if .Live}}aria-live="{{.Live}}"{{else}}aria-live="polite"{{end}}>
-  <div class="level is-mobile">
-    <div class="level-left">
-      {{if .Icon}}
-      <div class="level-item">
-        <span class="icon has-text-{{if ne .Light false}}{{or .Type "info"}}{{else}}white{{end}}">
-          <i class="{{.Icon}}"></i>
+{{$type := lower (or .Type "info")}}
+{{$tone := lower (or .Tone $type)}}
+{{$lightValue := printf "%v" .Light}}
+{{$light := not (or (eq $lightValue "false") (eq $lightValue "0"))}}
+{{$dismissibleValue := printf "%v" .Dismissible}}
+{{$dismissible := not (or (eq $dismissibleValue "false") (eq $dismissibleValue "0"))}}
+{{$showIconValue := printf "%v" .ShowIcon}}
+{{$showIcon := not (or (eq $showIconValue "false") (eq $showIconValue "0"))}}
+{{$plainValue := printf "%v" .Plain}}
+{{$isPlain := or (eq $plainValue "true") (eq $plainValue "1")}}
+{{$icon := .Icon}}
+{{if not $icon}}
+  {{if eq $type "success"}}
+    {{$icon = "fas fa-check-circle"}}
+  {{else if or (eq $type "danger") (eq $type "error")}}
+    {{$icon = "fas fa-exclamation-circle"}}
+  {{else if eq $type "warning"}}
+    {{$icon = "fas fa-exclamation-triangle"}}
+  {{else if eq $type "info"}}
+    {{$icon = "fas fa-info-circle"}}
+  {{else}}
+    {{$icon = ""}}
+  {{end}}
+{{end}}
+{{$live := .Live}}
+{{if not $live}}
+  {{if or (eq $type "danger") (eq $type "error") (eq $type "warning")}}
+    {{$live = "assertive"}}
+  {{else}}
+    {{$live = "polite"}}
+  {{end}}
+{{end}}
+{{$role := or .Role "alert"}}
+{{$autoDismissValue := printf "%v" .AutoDismiss}}
+{{$autoDismiss := or (eq $autoDismissValue "true") (eq $autoDismissValue "1")}}
+{{$autoDelay := or .AutoDismissDelay 6000}}
+{{$hasActions := or .Actions .Action}}
+{{$style := ""}}
+{{if .Style}}
+  {{$style = .Style}}
+{{end}}
+{{if $autoDismiss}}
+  {{if $style}}
+    {{$style = printf "%s %s" $style (printf "--notification-duration: %dms;" $autoDelay)}}
+  {{else}}
+    {{$style = printf "--notification-duration: %dms;" $autoDelay}}
+  {{end}}
+{{end}}
+<div class="notification is-{{$type}} {{if $light}}is-light{{end}} {{if .Compact}}is-compact{{end}} {{if $isPlain}}is-plain{{end}} {{.ExtraClasses}}"
+     {{if .ID}}id="{{.ID}}"{{end}}
+     role="{{$role}}"
+     aria-live="{{$live}}"
+     data-notification="true"
+     data-notification-type="{{$type}}"
+     data-tone="{{$tone}}"
+     {{if $isPlain}}data-plain="true"{{end}}
+     data-dismiss-announcement="{{T "Common.NotificationDismissed"}}"
+     {{if $dismissible}}data-dismissible="true"{{end}}
+     {{if .PersistKey}}data-notification-key="{{.PersistKey}}"{{end}}
+     {{if $autoDismiss}}data-auto-dismiss="true" data-auto-dismiss-delay="{{$autoDelay}}"{{end}}
+     {{if $style}}style="{{$style}}"{{end}}>
+  {{if not $isPlain}}
+  <span class="notification-accent" aria-hidden="true"></span>
+  {{end}}
+  {{if $autoDismiss}}
+  <span class="notification-progress" aria-hidden="true"></span>
+  {{end}}
+  <div class="notification-content">
+    <div class="notification-body">
+      {{if and $showIcon $icon}}
+      <div class="notification-icon">
+        <span class="icon notification-icon-badge">
+          <i class="{{$icon}}" aria-hidden="true"></i>
         </span>
       </div>
       {{end}}
-      <div class="level-item">
-        {{if .Title}}
-        <div>
-          <strong>{{.Title}}</strong>
-          {{if .Message}}<p>{{.Message}}</p>{{end}}
+      <div class="notification-text">
+        {{if .Eyebrow}}
+        <p class="notification-eyebrow">{{.Eyebrow}}</p>
+        {{end}}
+        {{if or .Title .Heading .Tag}}
+        <div class="notification-heading">
+          {{if or .Title .Heading}}
+          <strong>{{or .Title .Heading}}</strong>
+          {{end}}
+          {{if .Tag}}
+          <span class="notification-tag">{{.Tag}}</span>
+          {{end}}
         </div>
-        {{else}}
-        {{.Message}}
+        {{end}}
+        {{if .Subheading}}
+        <p class="notification-subheading">{{.Subheading}}</p>
+        {{end}}
+        {{if .MessageHTML}}
+        <div class="notification-message">{{safeHTML .MessageHTML}}</div>
+        {{else if .Message}}
+        <p class="notification-message">{{.Message}}</p>
+        {{end}}
+        {{if .HTML}}
+        <div class="notification-html">{{safeHTML .HTML}}</div>
+        {{end}}
+        {{if .List}}
+        <ul class="notification-list">
+          {{range .List}}
+          <li>{{.}}</li>
+          {{end}}
+        </ul>
+        {{end}}
+        {{if .Meta}}
+        <p class="notification-meta">{{.Meta}}</p>
         {{end}}
       </div>
     </div>
-    <div class="level-right">
-      {{if .Action}}
-      <div class="level-item">
+    {{if or $hasActions $dismissible}}
+    <div class="notification-actions">
+      {{if .Actions}}
+        {{range .Actions}}
+        <div class="notification-action">
+          {{if .Link}}
+          <a href="{{.Link}}"
+             class="button is-{{or .Type "primary"}} is-small{{if .Class}} {{.Class}}{{end}}"
+             {{if .Target}}target="{{.Target}}"{{end}}
+             {{if .Rel}}rel="{{.Rel}}"{{end}}>
+            {{if .Icon}}<span class="icon"><i class="{{.Icon}}" aria-hidden="true"></i></span>{{end}}
+            <span>{{.Text}}</span>
+          </a>
+          {{else if .Form}}
+          <form method="{{or .Form.Method "POST"}}" action="{{.Form.Action}}" class="is-inline">
+            {{range .Form.Fields}}
+            <input type="hidden" name="{{.Name}}" value="{{.Value}}">
+            {{end}}
+            <button type="submit"
+                    class="button is-{{or .Type "primary"}} is-small{{if .Class}} {{.Class}}{{end}}">
+              {{if .Icon}}<span class="icon"><i class="{{.Icon}}" aria-hidden="true"></i></span>{{end}}
+              <span>{{.Text}}</span>
+            </button>
+          </form>
+          {{end}}
+        </div>
+        {{end}}
+      {{else if .Action}}
+      <div class="notification-action">
         {{if .Action.Link}}
-        <a href="{{.Action.Link}}" class="button is-{{or .Action.Type "primary"}} is-small">
-          {{if .Action.Icon}}<span class="icon"><i class="{{.Action.Icon}}"></i></span>{{end}}
+        <a href="{{.Action.Link}}"
+           class="button is-{{or .Action.Type "primary"}} is-small{{if .Action.Class}} {{.Action.Class}}{{end}}"
+           {{if .Action.Target}}target="{{.Action.Target}}"{{end}}
+           {{if .Action.Rel}}rel="{{.Action.Rel}}"{{end}}>
+          {{if .Action.Icon}}<span class="icon"><i class="{{.Action.Icon}}" aria-hidden="true"></i></span>{{end}}
           <span>{{.Action.Text}}</span>
         </a>
         {{else if .Action.Form}}
@@ -38,26 +158,32 @@
           {{range .Action.Form.Fields}}
           <input type="hidden" name="{{.Name}}" value="{{.Value}}">
           {{end}}
-          <button type="submit" class="button is-{{or $.Action.Type "primary"}} is-small">
-            {{if $.Action.Icon}}<span class="icon"><i class="{{$.Action.Icon}}"></i></span>{{end}}
-            <span>{{$.Action.Text}}</span>
+          <button type="submit"
+                  class="button is-{{or .Action.Type "primary"}} is-small{{if .Action.Class}} {{.Action.Class}}{{end}}">
+            {{if .Action.Icon}}<span class="icon"><i class="{{.Action.Icon}}" aria-hidden="true"></i></span>{{end}}
+            <span>{{.Action.Text}}</span>
           </button>
         </form>
         {{end}}
       </div>
       {{end}}
-      {{if .Dismissible}}
-      <div class="level-item">
-        <button class="delete" 
-                aria-label="Dismiss notification" 
-                data-action="dismiss" 
-                data-target="notification"
-                type="button">
-          <span class="visually-hidden">Dismiss notification</span>
+      {{if $dismissible}}
+      <div class="notification-dismiss">
+        <button class="delete notification-dismiss-button"
+                type="button"
+                aria-label="{{or .DismissLabel (T "Common.DismissNotification")}}"
+                data-action="dismiss"
+                {{if or .DismissTarget .ID}}data-target="{{or .DismissTarget .ID}}"{{end}}>
         </button>
       </div>
       {{end}}
     </div>
+    {{end}}
+    {{if .FootnoteHTML}}
+    <div class="notification-footnote">{{safeHTML .FootnoteHTML}}</div>
+    {{else if .Footnote}}
+    <p class="notification-footnote">{{.Footnote}}</p>
+    {{end}}
   </div>
 </div>
 {{end}}

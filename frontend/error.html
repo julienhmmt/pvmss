@@ -1,4 +1,12 @@
 {{define "error"}}
+<script>
+  (function(){
+    var base = '{{T "Title"}}';
+    if (document.title === base) {
+      document.title = '{{T "Error.Title"}} - ' + base;
+    }
+  })();
+</script>
 <section class="section">
   <div class="container">
     <div class="columns is-centered">

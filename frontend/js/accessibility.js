@@ -31,6 +31,188 @@
         }
     };
 
+    const notifications = {
+        storagePrefix: 'pvmss.notification.',
+        timers: new WeakMap(),
+
+        init() {
+            const elements = document.querySelectorAll('[data-notification="true"]');
+            elements.forEach((element) => this.enhance(element));
+
+            if (!window.PVMSSNotifications) {
+                window.PVMSSNotifications = {
+                    enhance: (el) => this.enhance(el),
+                    dismiss: (el, options) => this.dismiss(el, options || {}),
+                };
+            }
+        },
+
+        enhance(element) {
+            if (!element || element.dataset.notificationEnhanced === 'true') {
+                return;
+            }
+
+            const persistKey = element.dataset.notificationKey;
+            if (persistKey && this.isPersisted(persistKey)) {
+                element.remove();
+                return;
+            }
+
+            element.dataset.notificationEnhanced = 'true';
+
+            if (persistKey) {
+                const onDismissPersist = () => {
+                    this.persistDismiss(persistKey);
+                };
+                element.addEventListener('notification:dismiss', onDismissPersist, { once: true });
+            }
+
+            if (element.dataset.autoDismiss === 'true') {
+                this.setupAutoDismiss(element);
+            }
+        },
+
+        getStorage() {
+            try {
+                return window.localStorage;
+            } catch (error) {
+                return null;
+            }
+        },
+
+        isPersisted(key) {
+            const storage = this.getStorage();
+            if (!storage) {
+                return false;
+            }
+            return storage.getItem(this.storagePrefix + key) === 'dismissed';
+        },
+
+        persistDismiss(key) {
+            const storage = this.getStorage();
+            if (!storage) {
+                return;
+            }
+            storage.setItem(this.storagePrefix + key, 'dismissed');
+        },
+
+        dismiss(element, options = {}) {
+            if (!element || element.classList.contains('is-dismissed')) {
+                return;
+            }
+
+            const { announce = true, announcement } = options;
+
+            const timer = this.timers.get(element);
+            if (timer && typeof timer.cleanup === 'function') {
+                timer.cleanup();
+            }
+
+            element.classList.add('is-dismissed');
+            element.setAttribute('data-auto-dismiss-state', 'dismissed');
+
+            element.dispatchEvent(new CustomEvent('notification:dismiss'));
+
+            if (announce) {
+                const message = announcement || element.dataset.dismissAnnouncement || 'Notification dismissed';
+                this.announce(message);
+            }
+
+            const finalize = () => {
+                element.style.display = 'none';
+                element.setAttribute('aria-hidden', 'true');
+            };
+
+            const transitionHandler = (event) => {
+                if (event.target === element && event.propertyName === 'opacity') {
+                    element.removeEventListener('transitionend', transitionHandler);
+                    finalize();
+                }
+            };
+
+            element.addEventListener('transitionend', transitionHandler);
+            window.setTimeout(() => {
+                element.removeEventListener('transitionend', transitionHandler);
+                finalize();
+            }, 250);
+        },
+
+        announce(message) {
+            if (!message) {
+                return;
+            }
+            const announcement = document.createElement('div');
+            announcement.className = 'visually-hidden';
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.textContent = message;
+            document.body.appendChild(announcement);
+            window.setTimeout(() => announcement.remove(), 1000);
+        },
+
+        setupAutoDismiss(element) {
+            const initialDelay = parseInt(element.dataset.autoDismissDelay, 10) || 6000;
+            const state = {
+                remaining: initialDelay,
+                timerId: null,
+                lastStart: null,
+            };
+
+            const tick = () => {
+                state.timerId = null;
+                this.dismiss(element, { announce: false });
+            };
+
+            const start = () => {
+                if (state.timerId || element.classList.contains('is-dismissed')) {
+                    return;
+                }
+                state.lastStart = Date.now();
+                state.timerId = window.setTimeout(tick, state.remaining);
+                element.setAttribute('data-auto-dismiss-state', 'running');
+            };
+
+            const pause = () => {
+                if (state.timerId) {
+                    window.clearTimeout(state.timerId);
+                    state.timerId = null;
+                    state.remaining -= Date.now() - (state.lastStart || Date.now());
+                    if (state.remaining < 0) {
+                        state.remaining = 0;
+                    }
+                }
+                element.setAttribute('data-auto-dismiss-state', 'paused');
+            };
+
+            const resume = () => {
+                if (state.timerId || element.classList.contains('is-dismissed')) {
+                    return;
+                }
+                if (state.remaining <= 0) {
+                    tick();
+                } else {
+                    start();
+                }
+            };
+
+            const cleanup = () => {
+                pause();
+                element.removeEventListener('mouseenter', pause);
+                element.removeEventListener('mouseleave', resume);
+                element.removeEventListener('focusin', pause);
+                element.removeEventListener('focusout', resume);
+            };
+
+            element.addEventListener('mouseenter', pause);
+            element.addEventListener('mouseleave', resume);
+            element.addEventListener('focusin', pause);
+            element.addEventListener('focusout', resume);
+            element.addEventListener('notification:dismiss', cleanup, { once: true });
+
+            this.timers.set(element, { pause, resume, cleanup });
+            start();
+        }
+    };
+
     // Form validation enhancements
     const formValidation = {
         init() {
@@ -114,16 +296,25 @@
             utils.on('click', '[data-action="dismiss"]', function(e) {
                 e.preventDefault();
                 const target = this.dataset.target;
-                const element = target ? document.getElementById(target) : this.closest('.notification');
-                if (element) {
+                let element = null;
+
+                if (target) {
+                    if (target.startsWith('#')) {
+                        element = document.querySelector(target);
+                    } else {
+                        element = document.getElementById(target);
+                    }
+                }
+
+                if (!element) {
+                    element = this.closest('[data-notification="true"]') || this.closest('.notification');
+                }
+
+                if (element && element.dataset && element.dataset.notification === 'true') {
+                    notifications.dismiss(element);
+                } else if (element) {
                     utils.toggleVisibility(element, false);
-                    // Announce to screen readers
-                    const announcement = document.createElement('div');
-                    announcement.className = 'visually-hidden';
-                    announcement.setAttribute('aria-live', 'polite');
-                    announcement.textContent = 'Notification dismissed';
-                    document.body.appendChild(announcement);
-                    setTimeout(() => announcement.remove(), 1000);
+                    notifications.announce('Notification dismissed');
                 }
             });
 
@@ -255,12 +446,12 @@
         eventHandlers.init();
         progressiveEnhancement.init();
         errorHandler.init();
-        
+        notifications.init();
+
         // Add class to indicate JS is available
         document.documentElement.classList.add('js');
     }
 
-    // Start the application
     init();
-
 })();
+

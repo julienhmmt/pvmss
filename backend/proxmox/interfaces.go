@@ -11,6 +11,7 @@ type ClientInterface interface {
 	DeleteWithContext(ctx context.Context, path string, data url.Values) (map[string]interface{}, error)
 	Get(path string) (map[string]interface{}, error)
 	GetApiUrl() string
+	GetClusterName() string
 	GetCSRFPreventionToken() string
 	GetJSON(ctx context.Context, path string, target interface{}) error
 	GetPVEAuthCookie() string

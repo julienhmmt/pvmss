@@ -1,0 +1,19 @@
+# Uptime formatting
+["Uptime.NotRunning"]
+other = "Not running"
+["Uptime.Day"]
+other = "day"
+["Uptime.Days"]
+other = "days"
+["Uptime.Hour"]
+other = "hour"
+["Uptime.Hours"]
+other = "hours"
+["Uptime.Minute"]
+other = "minute"
+["Uptime.Minutes"]
+other = "minutes"
+["Uptime.Second"]
+other = "second"
+["Uptime.Seconds"]
+other = "seconds"

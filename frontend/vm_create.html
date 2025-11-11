@@ -1,0 +1,1134 @@
+{{define "vm_create"}}
+{{$lang := .Lang}}
+
+<section class="section" aria-labelledby="main-title" role="main">
+    <div class="container">
+        <!-- Page Header -->
+        <div class="level mb-5">
+            <div class="level-left">
+                <div class="level-item">
+                    <h1 class="title is-3">
+                        <span class="icon-text">
+                            <span class="icon has-text-primary">
+                                <i class="fas fa-plus-square"></i>
+                            </span>
+                            <span>{{T "VM.Create.Title"}}</span>
+                        </span>
+                    </h1>
+                </div>
+            </div>
+            <div class="level-right">
+                <div class="level-item">
+                    <div class="buttons">
+                        <a href="/profile" class="button is-primary is-light has-text-dark">
+                            <span class="icon"><i class="fas fa-user"></i></span>
+                            <span>{{T "Profile.Title"}}</span>
+                        </a>
+                        <a href="/search" class="button is-primary is-light has-text-dark">
+                            <span class="icon"><i class="fas fa-search"></i></span>
+                            <span>{{T "Search.Title"}}</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Form Container -->
+        <div class="card">
+            <header class="card-header brand-header">
+                <p class="card-header-title">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-sliders"></i></span>
+                        <span>{{T "VM.Create.Configuration"}}</span>
+                    </span>
+                </p>
+            </header>
+            <div class="card-content">
+                <p class="mb-5 has-text-grey">{{T "UI.CreateVMDescription"}}</p>
+                
+                {{if .AllNodesSaturated}}
+                {{template "notification" (dict
+                    "Type" "warning"
+                    "Title" (T "VM.Create.ResourceLimitsTitle")
+                    "Message" (T "VM.Create.ResourceLimitsMessage")
+                    "Icon" "fas fa-exclamation-triangle"
+                    "Dismissible" false
+                    "Live" "assertive"
+                    "ExtraClasses" "mb-4"
+                )}}
+                {{end}}
+                
+                {{if .NoNodesAvailable}}
+                {{template "notification" (dict
+                    "Type" "danger"
+                    "Title" (T "VM.Create.NoNodesAvailableTitle")
+                    "Message" (T "VM.Create.NoNodesAvailableMessage")
+                    "Icon" "fas fa-server"
+                    "Dismissible" false
+                    "Live" "assertive"
+                    "ExtraClasses" "mb-4"
+                )}}
+                {{end}}
+                
+                {{if .OfflineNodesNotification}}
+                {{template "notification" (dict
+                    "Type" (.OfflineNodesNotification.type)
+                    "Title" (.OfflineNodesNotification.title)
+                    "Message" (.OfflineNodesNotification.text)
+                    "Icon" "fas fa-info-circle"
+                    "Dismissible" true
+                    "Live" "polite"
+                    "ExtraClasses" "mb-4"
+                )}}
+                {{end}}
+                
+                {{if .ValidationError}}
+                {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
+                {{end}}
+                        {{if not .ProxmoxConnected}}
+                        {{template "notification" (dict 
+                            "Type" "warning" 
+                            "Title" (T "Proxmox.ConnectionRequired") 
+                            "Message" (T "VM.Create.ProxmoxNotConnected") 
+                            "Icon" "fas fa-exclamation-triangle" 
+                            "Dismissible" false 
+                            "Live" "polite" 
+                            "ExtraClasses" "mb-4"
+                        )}}
+                        {{end}}
+
+                        <form method="POST" action="/vm/create" id="vmCreateForm"
+                            aria-label="Create new virtual machine" {{if or (not .ProxmoxConnected) .AllNodesSaturated .NoNodesAvailable}}onsubmit="return false;" disabled{{end}}>
+                            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+                            <fieldset {{if or (not .ProxmoxConnected) .AllNodesSaturated .NoNodesAvailable}}disabled{{end}}
+                                aria-disabled="{{if or (not .ProxmoxConnected) .AllNodesSaturated .NoNodesAvailable}}true{{else}}false{{end}}">
+
+                                <!-- Variable Preparation -->
+                                {{/* Use explicit VM limit values passed by handler to avoid nil map indexing */}}
+                                {{$vmSockMin := .VMSocketsMin}}
+                                {{$vmSockMax := .VMSocketsMax}}
+                                {{$vmCoreMin := .VMCoresMin}}
+                                {{$vmCoreMax := .VMCoresMax}}
+                                {{$vmRamMinGB := .VMRamMinGB}}
+                                {{$vmRamMaxGB := .VMRamMaxGB}}
+                                {{$vmDiskMin := .VMDiskMin}}
+                                {{$vmDiskMax := .VMDiskMax}}
+                                {{$vmRamMinMB := .VMRamMinMB}}
+                                {{$vmRamMaxMB := .VMRamMaxMB}}
+                                {{/* Node limits map for per-node caps (optional, used in cluster mode) */}}
+                                {{$nodesLimits := index .Limits "nodes"}}
+
+                                <!-- Configuration Sections -->
+                                <div class="columns is-multiline">
+
+                                    <!-- Basic Configuration -->
+                                    <div class="column is-12-tablet is-6-desktop">
+                                        <div class="card no-hover mb-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-info-circle"></i></span>&nbsp;{{T "VM.Create.BasicInfo"}}
+                                                </p>
+                                            </header>
+                                            <div class="card-content form-vertical">
+                                                <!-- VM Name -->
+                                                <div class="field">
+                                                    <label for="vmName" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-tag"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.VMName"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.VMName"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="vmName-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.VMName"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="vmName" class="input is-medium" type="text" name="name" autocomplete="off" placeholder="{{T "VM.Create.PlaceholderVMName"}}" maxlength="100" {{if .FormData.name}}value="{{.FormData.name}}" {{end}}aria-describedby="vmName-help" data-field-validation>
+                                                        <div class="field-validation-message is-hidden" data-validation-for="vmName"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="vmDescription" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-align-left"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.Description"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Description"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="vmDescription-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Description"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <textarea id="vmDescription" class="textarea" name="description" placeholder='{{T "VM.Create.DescriptionPlaceholder"}}' rows="3" aria-describedby="vmDescription-help" maxlength="500">{{if .FormData.description}}{{.FormData.description}}{{end}}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="vmId" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-hashtag"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.VMID"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.VMID"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="vmId-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.VMID"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="vmId" class="input is-medium" type="number" name="vmid" value="{{if .FormData.vmid}}{{.FormData.vmid}}{{end}}" min="100" max="999999999" placeholder='{{T "VM.Create.VMIDPlaceholder"}}' aria-describedby="vmId-help" inputmode="numeric" pattern="[0-9]*">
+                                                    </div>
+                                                </div>
+
+                                                <!-- TPM Option -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="enable_tpm" value="1" {{if eq .FormData.enable_tpm "1"}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.EnableTPM"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.TPM"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.TPM"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.TPMHelp"}}</p>
+                                                </div>
+
+                                                <!-- Start VM Option -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="start_vm" value="1" {{if or (eq .FormData.start_vm "1") (not .FormData.start_vm)}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.StartVM"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.StartVM"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.StartVM"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.StartVMHelp"}}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Resources Configuration -->
+                                    <div class="column is-12-tablet is-6-desktop">
+                                        <div class="card no-hover mb-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-server"></i></span>&nbsp;{{T "VM.Create.Resources"}}
+                                                </p>
+                                            </header>
+                                            <div class="card-content form-vertical">
+                                                <!-- CPU, Memory, Disk, Storage fields... -->
+                                                <div class="field">
+                                                    <label class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-microchip"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.CPUCores"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.CPU"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="cpu-tooltip" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.CPU"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="columns is-mobile form-inline-fields is-variable is-2">
+                                                        <div class="column">
+                                                            <span class="form-sublabel">{{T "VM.Create.CPUSockets"}}</span>
+                                                            <div class="control">
+                                                                <div class="select is-fullwidth is-medium">
+                                                                    <select id="cpuSockets" name="sockets" required aria-required="true" aria-describedby="cpu-tooltip">
+                                                                        {{range $i := seq $vmSockMin (int (add $vmSockMax 1))}}
+                                                                        <option value="{{$i}}" {{if eq $i $vmSockMin}}selected{{end}}>{{$i}}</option>
+                                                                        {{end}}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="column">
+                                                            <span class="form-sublabel">{{T "VM.Create.CPUCores"}}</span>
+                                                            <div class="control">
+                                                                <div class="select is-fullwidth is-medium">
+                                                                    <select id="cpuCores" name="cores" required aria-required="true" aria-describedby="cpu-tooltip">
+                                                                        {{range $i := seq $vmCoreMin (int (add $vmCoreMax 1))}}
+                                                                        <option value="{{$i}}" {{if eq $i $vmCoreMin}}selected{{end}}>{{$i}}</option>
+                                                                        {{end}}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="memory" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-memory"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "Common.Memory"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Memory"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="memory-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Memory"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="field has-addons">
+                                                        <div class="control is-expanded">
+                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{.VMRamMinMB}}" max="{{.VMRamMaxMB}}" step="256" value="{{.VMRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., {{.VMRamMinMB}}">
+                                                        </div>
+                                                        <div class="control">
+                                                            <div class="select is-medium">
+                                                                <select id="memory-unit" name="memory_unit">
+                                                                    <option value="MB">MB</option>
+                                                                    <option value="GB">GB</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <p class="help has-text-grey is-size-7 mt-2">
+                                                        <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
+                                                        <span id="memory-display">{{T "Common.Selected"}}: {{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB ({{.VMRamMinMB}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Min"}}: {{.VMRamMinMB}} MB ({{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB)</span>
+                                                        <span class="ml-2">• {{T "Common.Max"}}: {{.VMRamMaxMB}} MB ({{printf "%.0f" (div (float64 .VMRamMaxMB) 1024)}} GB)</span>
+                                                    </p>
+                                                </div>
+                                                <script>
+                                                    // Real-time memory display conversion
+                                                    const memoryInput = document.getElementById('memory');
+                                                    const memoryUnit = document.getElementById('memory-unit');
+                                                    const memoryDisplay = document.getElementById('memory-display');
+                                                    const memorySelectedLabel = '{{T "Common.Selected"}}';
+                                                    
+                                                    function updateMemoryDisplay() {
+                                                        const value = parseFloat(memoryInput.value.replace(',', '.')) || 0;
+                                                        const unit = memoryUnit.value;
+                                                        let mb, gb;
+                                                        
+                                                        if (unit === 'GB') {
+                                                            mb = Math.round(value * 1024);
+                                                            gb = value;
+                                                        } else {
+                                                            mb = Math.round(value);
+                                                            gb = (value / 1024).toFixed(1);
+                                                        }
+                                                        
+                                                        memoryDisplay.textContent = memorySelectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
+                                                        
+                                                        // Update input min/max based on unit
+                                                        const minMB = {{.VMRamMinMB}};
+                                                        const maxMB = {{.VMRamMaxMB}};
+                                                        if (unit === 'GB') {
+                                                            memoryInput.min = (minMB / 1024).toFixed(1);
+                                                            memoryInput.max = (maxMB / 1024).toFixed(0);
+                                                            memoryInput.step = '0.5';
+                                                        } else {
+                                                            memoryInput.min = String(minMB);
+                                                            memoryInput.max = String(maxMB);
+                                                            memoryInput.step = '256';
+                                                        }
+                                                    }
+                                                    
+                                                    memoryInput.addEventListener('input', updateMemoryDisplay);
+                                                    memoryInput.addEventListener('change', updateMemoryDisplay);
+                                                    memoryUnit.addEventListener('change', function() {
+                                                        // Convert current value when unit changes
+                                                        const currentValue = parseFloat(memoryInput.value.replace(',', '.')) || 0;
+                                                        if (this.value === 'GB' && memoryInput.dataset.lastUnit === 'MB') {
+                                                            // Convert MB to GB, use decimal point
+                                                            const gbValue = currentValue / 1024;
+                                                            memoryInput.value = gbValue.toFixed(1);
+                                                        } else if (this.value === 'MB' && memoryInput.dataset.lastUnit === 'GB') {
+                                                            // Convert GB to MB, round to integer
+                                                            memoryInput.value = Math.round(currentValue * 1024);
+                                                        }
+                                                        memoryInput.dataset.lastUnit = this.value;
+                                                        updateMemoryDisplay();
+                                                    });
+                                                    
+                                                    // Initialize
+                                                    memoryInput.dataset.lastUnit = 'MB';
+                                                    updateMemoryDisplay();
+                                                </script>
+                                                <!-- Disk Bus Type Selection -->
+                                                <div class="field">
+                                                    <label for="diskBusType" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-microchip"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.DiskBusType"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.DiskBusType"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="diskBusType-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.DiskBusType"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="diskBusType" name="disk_bus_type" required aria-describedby="diskBusType-help">
+                                                                <option value="virtio" {{if or (not .FormData.disk_bus_type) (eq .FormData.disk_bus_type "virtio")}}selected{{end}}>VirtIO Block</option>
+                                                                <option value="scsi" {{if eq .FormData.disk_bus_type "scsi"}}selected{{end}}>SCSI</option>
+                                                                <option value="sata" {{if eq .FormData.disk_bus_type "sata"}}selected{{end}}>SATA</option>
+                                                                <option value="ide" {{if eq .FormData.disk_bus_type "ide"}}selected{{end}}>IDE</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p class="mb-1">{{T "VM.Create.DiskBusTypeHelp"}}</p>
+                                                        <ul class="ml-4">
+                                                            <li><strong>VirtIO</strong> — {{T "VM.Create.DiskBusDesc.VirtIO"}}</li>
+                                                            <li><strong>SCSI</strong> — {{T "VM.Create.DiskBusDesc.SCSI"}}</li>
+                                                            <li><strong>SATA</strong> — {{T "VM.Create.DiskBusDesc.SATA"}}</li>
+                                                            <li><strong>IDE</strong> — {{T "VM.Create.DiskBusDesc.IDE"}}</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Multiple Disks -->
+                                                {{$maxDisks := .MaxDiskPerVM}}
+                                                {{if not $maxDisks}}{{$maxDisks = 1}}{{end}}
+                                                {{range $diskIdx := iterate $maxDisks}}
+                                                <div class="field">
+                                                    <label for="diskSize_{{$diskIdx}}" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-hdd"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $diskIdx 0}}
+                                                                {{T "VM.Create.DiskSize"}}{{if gt $maxDisks 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.DiskSize"}} #{{add $diskIdx 1}} ({{T "VM.Create.DiskOptional"}})
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $diskIdx 0}}
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.DiskSize"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="diskSize-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.DiskSize"}}
+                                                            </div>
+                                                        </span>
+                                                        {{end}}
+                                                    </label>
+                                                    <div class="field has-addons">
+                                                        <div class="control is-expanded">
+                                                            <input id="diskSize_{{$diskIdx}}" class="input is-medium" type="number" name="disk_size_{{$diskIdx}}" 
+                                                                   min="{{if eq $diskIdx 0}}{{$.VMDiskMin}}{{else}}0{{end}}" 
+                                                                   max="{{$.VMDiskMax}}" 
+                                                                   step="{{if eq $diskIdx 0}}1{{else}}0.1{{end}}" 
+                                                                   value="{{if eq $diskIdx 0}}{{$.VMDiskMin}}{{else}}{{end}}" 
+                                                                   {{if eq $diskIdx 0}}required{{end}} 
+                                                                   placeholder="{{if gt $diskIdx 0}}{{T "VM.Create.DiskOptionalPlaceholder"}}{{end}}"
+                                                                   aria-describedby="diskSize-help" 
+                                                                   inputmode="numeric">
+                                                        </div>
+                                                        <div class="control">
+                                                            <div class="select is-medium">
+                                                                <select id="diskSize-unit-{{$diskIdx}}" name="disk_size_unit_{{$diskIdx}}">
+                                                                    <option value="GB">GB</option>
+                                                                    <option value="MB">MB</option>
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {{if eq $diskIdx 0}}
+                                                    <p class="help has-text-grey is-size-7 mt-2">
+                                                        <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
+                                                        <span id="diskSize-display-{{$diskIdx}}">{{T "Common.Selected"}}: {{$.VMDiskMin}} GB ({{mul $.VMDiskMin 1024}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Min"}}: {{$.VMDiskMin}} GB ({{mul $.VMDiskMin 1024}} MB)</span>
+                                                        <span class="ml-2">• {{T "Common.Max"}}: {{$.VMDiskMax}} GB ({{if gt $.VMDiskMax 999}}{{div $.VMDiskMax 1024}} TB{{else}}{{mul $.VMDiskMax 1024}} MB{{end}})</span>
+                                                    </p>
+                                                    <script>
+                                                        // Disk size conversion - use class-based approach to avoid template syntax in JS
+                                                        /* eslint-disable */
+                                                        document.addEventListener('DOMContentLoaded', function() {
+                                                            // Initialize all disk size converters
+                                                            const diskInputs = document.querySelectorAll('[id^="diskSize_"]');
+                                                            
+                                                            diskInputs.forEach(function(input) {
+                                                                const diskIdx = input.id.replace('diskSize_', '');
+                                                                const unitSelect = document.getElementById('diskSize-unit-' + diskIdx);
+                                                                const display = document.getElementById('diskSize-display-' + diskIdx);
+                                                                
+                                                                if (!unitSelect || !display) return;
+                                                                
+                                                                const selectedLabel = '{{T "Common.Selected"}}';
+                                                                
+                                                                function updateDisplay() {
+                                                                    const value = parseFloat(input.value.replace(',', '.')) || 0;
+                                                                    const unit = unitSelect.value;
+                                                                    let mb, gb;
+                                                                    
+                                                                    if (unit === 'GB') {
+                                                                        mb = Math.round(value * 1024);
+                                                                        gb = value;
+                                                                    } else {
+                                                                        mb = Math.round(value);
+                                                                        gb = (value / 1024).toFixed(1);
+                                                                    }
+                                                                    
+                                                                    display.textContent = selectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
+                                                                    
+                                                                    // Update input min/max/step based on unit
+                                                                    const diskMinGB = {{$.VMDiskMin}};
+                                                                    const diskMaxGB = {{$.VMDiskMax}};
+                                                                    if (unit === 'GB') {
+                                                                        input.min = String(diskMinGB);
+                                                                        input.max = String(diskMaxGB);
+                                                                        input.step = '1';
+                                                                    } else {
+                                                                        input.min = String(diskMinGB * 1024);
+                                                                        input.max = String(diskMaxGB * 1024);
+                                                                        input.step = '1024';
+                                                                    }
+                                                                }
+                                                                
+                                                                // Event listeners
+                                                                input.addEventListener('input', updateDisplay);
+                                                                input.addEventListener('change', updateDisplay);
+                                                                unitSelect.addEventListener('change', function() {
+                                                                    // Convert current value when unit changes
+                                                                    const currentValue = parseFloat(input.value.replace(',', '.')) || 0;
+                                                                    if (this.value === 'GB' && input.dataset.lastUnit === 'MB') {
+                                                                        // Convert MB to GB, use decimal with 1 place
+                                                                        const gbValue = currentValue / 1024;
+                                                                        input.value = gbValue.toFixed(1);
+                                                                    } else if (this.value === 'MB' && input.dataset.lastUnit === 'GB') {
+                                                                        // Convert GB to MB, round to integer
+                                                                        input.value = Math.round(currentValue * 1024);
+                                                                    }
+                                                                    input.dataset.lastUnit = this.value;
+                                                                    updateDisplay();
+                                                                });
+                                                                
+                                                                // Initialize
+                                                                input.dataset.lastUnit = 'GB';
+                                                                updateDisplay();
+                                                            });
+                                                        });
+                                                        /* eslint-enable */
+                                                    </script>
+                                                    {{end}}
+                                                </div>
+                                                {{if lt (toInt (add $diskIdx 1)) $maxDisks}}<hr class="my-4">{{end}}
+                                                {{end}}
+                                                <div class="field">
+                                                    <label for="storage" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-database"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.Storage"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Storage"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="storage-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Storage"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="storage" name="storage" required aria-required="true" aria-describedby="storage-help">
+                                                                <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
+                                                                {{range .Storages}}
+                                                                {{$storageNode := index $.StorageNodes .}}
+                                                                <option value="{{.}}" {{if eq . $.FormData.storage}}selected{{end}}>{{.}}{{if $storageNode}} ({{$storageNode}}){{end}}</option>
+                                                                {{else}}
+                                                                <option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>
+                                                                {{end}}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- EFI Boot Option -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="enable_efi" value="1" {{if or (eq .FormData.enable_efi "1") (not .FormData.enable_efi)}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.EnableEFI"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.EFI"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.EFI"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.EFIHelp"}}</p>
+                                                </div>
+
+                                                <script>
+                                                    const vmRamGlobalMaxMB = {{.VMRamMaxMB}};
+                                                    const vmRamGlobalMinMB = {{.VMRamMinMB}};
+                                                    const vmCoresGlobalMax = {{.VMCoresMax}};
+                                                    const vmSocketsGlobalMax = {{.VMSocketsMax}};
+
+                                                    const nodeSelectEl = document.getElementById('node');
+                                                    const memoryField = document.getElementById('memory');
+                                                    const cpuSocketsEl = document.getElementById('cpuSockets');
+                                                    const cpuCoresEl = document.getElementById('cpuCores');
+
+                                                    function toInt(v) { return parseInt(v, 10) || 0; }
+
+                                                    function updateSelectMax(selectEl, newMax) {
+                                                        const maxAllowed = Math.max(1, newMax);
+                                                        for (const opt of selectEl.options) {
+                                                            const val = toInt(opt.value);
+                                                            opt.disabled = val > maxAllowed;
+                                                        }
+                                                        if (toInt(selectEl.value) > maxAllowed) {
+                                                            selectEl.value = String(maxAllowed);
+                                                        }
+                                                    }
+
+                                                    function applyNodeLimits() {
+                                                        const opt = nodeSelectEl && nodeSelectEl.selectedIndex >= 0 ? nodeSelectEl.options[nodeSelectEl.selectedIndex] : null;
+                                                        const coresMax = opt && opt.dataset.coresMax ? toInt(opt.dataset.coresMax) : 0;
+                                                        const ramMaxGB = opt && opt.dataset.ramMaxGb ? toInt(opt.dataset.ramMaxGb) : 0;
+                                                        let ramMaxMB = vmRamGlobalMaxMB;
+                                                        if (ramMaxGB && ramMaxGB > 0) {
+                                                            ramMaxMB = Math.min(vmRamGlobalMaxMB, ramMaxGB * 1024);
+                                                        }
+                                                        memoryField.max = String(ramMaxMB);
+                                                        memoryField.min = String(vmRamGlobalMinMB);
+                                                        if (toInt(memoryField.value) > toInt(memoryField.max)) {
+                                                            memoryField.value = memoryField.max;
+                                                        }
+                                                        if (typeof updateMemoryDisplay === 'function') { updateMemoryDisplay(); }
+
+                                                        let coresGlobalMax = vmCoresGlobalMax;
+                                                        let socketsGlobalMax = vmSocketsGlobalMax;
+                                                        if (coresMax && coresMax > 0) {
+                                                            coresGlobalMax = Math.min(vmCoresGlobalMax, coresMax);
+                                                            socketsGlobalMax = Math.min(vmSocketsGlobalMax, coresMax);
+                                                        }
+                                                        updateSelectMax(cpuCoresEl, coresGlobalMax);
+                                                        updateSelectMax(cpuSocketsEl, socketsGlobalMax);
+
+                                                        const sockets = toInt(cpuSocketsEl.value);
+                                                        const cores = toInt(cpuCoresEl.value);
+                                                        const maxCoresTotal = coresMax && coresMax > 0 ? coresMax : (vmCoresGlobalMax * vmSocketsGlobalMax);
+                                                        if (sockets * cores > maxCoresTotal) {
+                                                            let newCores = Math.min(cores, Math.floor(maxCoresTotal / Math.max(1, sockets)));
+                                                            if (newCores < 1) {
+                                                                newCores = 1;
+                                                                const newSockets = Math.max(1, Math.floor(maxCoresTotal / newCores));
+                                                                cpuSocketsEl.value = String(Math.min(newSockets, toInt(cpuSocketsEl.value)));
+                                                            }
+                                                            cpuCoresEl.value = String(Math.max(1, newCores));
+                                                        }
+                                                    }
+
+                                                    if (nodeSelectEl) {
+                                                        nodeSelectEl.addEventListener('change', applyNodeLimits);
+                                                    }
+                                                    if (cpuSocketsEl) {
+                                                        cpuSocketsEl.addEventListener('change', applyNodeLimits);
+                                                    }
+                                                    if (cpuCoresEl) {
+                                                        cpuCoresEl.addEventListener('change', applyNodeLimits);
+                                                    }
+                                                    document.addEventListener('DOMContentLoaded', applyNodeLimits);
+                                                    window.addEventListener('load', applyNodeLimits);
+                                                </script>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Media & Network Configuration -->
+                                    <div class="column is-12-tablet is-6-desktop">
+                                        <div class="card no-hover mb-5 mt-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-network-wired"></i></span>&nbsp;{{T "VM.Create.MediaNetwork"}}
+                                                </p>
+                                            </header>
+                                            <div class="card-content form-vertical">
+                                                <!-- Node, Pool, ISO, Bridge fields... -->
+                                                <div class="field">
+                                                    <label for="node" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-server"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ProxmoxNode"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Node"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="node-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Node"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
+                                                                {{if .NodeOptions}}
+                                                                {{range .NodeOptions}}
+                                                                {{/* Lookup per-node limits for this option */}}
+                                                                {{$optNode := .value}}
+                                                                {{$nodeLimit := index $nodesLimits $optNode}}
+                                                                <option value="{{.value}}"
+                                                                        data-cores-max="{{with $nodeLimit}}{{with index . "cores"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
+                                                                        data-ram-max-gb="{{with $nodeLimit}}{{with index . "ram"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
+                                                                        {{if $.FormData.node}}{{if eq .value $.FormData.node}}selected{{end}}{{else if eq .value $.ActiveNode}}selected{{end}} {{if .disabled}}disabled title="{{.reason}}" class="has-text-grey-light"{{end}}>
+                                                                    {{.text}}{{if .disabled}} — {{.reason}}{{end}}
+                                                                </option>
+                                                                {{end}}
+                                                                {{else}}
+                                                                {{range .Nodes}}
+                                                                <option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>
+                                                                {{end}}
+                                                                {{end}}
+                                                                {{if not .Nodes}}
+                                                                <option disabled>{{T "VM.Create.NoNodesAvailable"}}</option>
+                                                                {{end}}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <p class="help is-size-7 has-text-grey-light mt-2">{{T "VM.Create.ProxmoxNodeHelp"}}</p>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="pool" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-layer-group"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ResourcePool"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Pool"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="pool-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Pool"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="pool" class="input is-medium" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
+                                                    </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="isoImage" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-compact-disc"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ISOImage"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.ISO"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="isoImage-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.ISO"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="isoImage" name="iso" aria-describedby="isoImage-help">
+                                                                <option value="">-- {{T "VM.Create.SelectISO"}} --</option>
+                                                                {{range .ISOs}}<option value="{{.}}" {{if eq . $.FormData.iso}}selected{{end}}>{{.}}</option>{{else}}<option disabled>{{T "VM.Create.NoISOsAvailable"}}</option>{{end}}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <!-- Multiple Network Cards -->
+                                                {{$maxNetCards := toFloat .MaxNetworkCards}}
+                                                {{if not $maxNetCards}}{{$maxNetCards = 1}}{{end}}
+                                                {{range $cardIdx := iterate $maxNetCards}}
+                                                <div class="field">
+                                                    <label for="networkBridge_{{$cardIdx}}" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-ethernet"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.Network"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.Network"}} #{{add $cardIdx 1}} ({{T "VM.Create.NetworkOptional"}})
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Network"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkBridge-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Network"}}
+                                                            </div>
+                                                        </span>
+                                                        {{end}}
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="networkBridge_{{$cardIdx}}" name="bridge_{{$cardIdx}}" aria-describedby="networkBridge-help">
+                                                                <option value="">-- {{T "VM.Create.NoNetwork"}} --</option>
+                                                                {{range $bridge := $.Bridges}}
+                                                                {{$rawDesc := index $.BridgeDescriptions $bridge}}
+                                                                {{$nodeName := index $.BridgeNodes $bridge}}
+                                                                {{$desc := $rawDesc}}
+                                                                {{if not $desc}}
+                                                                    {{$desc = ""}}
+                                                                {{end}}
+                                                                <option value="{{$bridge}}" {{if eq $cardIdx 0}}{{if $.FormData.bridge_0}}{{if eq $bridge $.FormData.bridge_0}}selected{{end}}{{end}}{{else}}{{if index $.FormData (printf "bridge_%d" $cardIdx)}}{{if eq $bridge (index $.FormData (printf "bridge_%d" $cardIdx))}}selected{{end}}{{end}}{{end}}>
+                                                                    {{$bridge}}{{if $nodeName}} ({{$nodeName}}){{end}}{{if $desc}} &ndash; {{$desc}}{{end}}
+                                                                </option>
+                                                                {{end}}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="field">
+                                                    <label for="networkModel_{{$cardIdx}}" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-network-wired"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.NetworkModel"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.NetworkModel"}} #{{add $cardIdx 1}}
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkModel"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkModel-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.NetworkModel"}}
+                                                            </div>
+                                                        </span>
+                                                        {{end}}
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="networkModel_{{$cardIdx}}" name="network_model_{{$cardIdx}}" {{if eq $cardIdx 0}}required{{end}} aria-describedby="networkModel-help">
+                                                                <option value="virtio" {{if eq $cardIdx 0}}{{if $.FormData.network_model}}{{if eq $.FormData.network_model "virtio"}}selected{{end}}{{else}}selected{{end}}{{else}}selected{{end}}>VirtIO</option>
+                                                                <option value="e1000">E1000</option>
+                                                                <option value="e1000e">E1000E</option>
+                                                                <option value="rtl8139">RTL8139</option>
+                                                                <option value="vmxnet3">VMXNet3</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    {{if eq $cardIdx 0}}
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p class="mb-1">{{T "VM.Create.NetworkModelHelp"}}</p>
+                                                        <ul class="ml-4">
+                                                            <li><strong>VirtIO</strong> — {{T "VM.Create.NetworkModelDesc.Virtio"}}</li>
+                                                            <li><strong>E1000</strong> — {{T "VM.Create.NetworkModelDesc.E1000"}}</li>
+                                                            <li><strong>E1000E</strong> — {{T "VM.Create.NetworkModelDesc.E1000E"}}</li>
+                                                            <li><strong>RTL8139</strong> — {{T "VM.Create.NetworkModelDesc.RTL8139"}}</li>
+                                                            <li><strong>VMXNet3</strong> — {{T "VM.Create.NetworkModelDesc.VMXNet3"}}</li>
+                                                        </ul>
+                                                    </div>
+                                                    {{end}}
+                                                </div>
+                                                <!-- Network Enable/Disable Toggle -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="network_enabled_{{$cardIdx}}" value="1" {{if or (eq $cardIdx 0) (eq (index $.FormData (printf "network_enabled_%d" $cardIdx)) "1")}}checked{{end}}>
+                                                        <span class="form-label-text ml-2">{{T "VM.Create.NetworkEnabled"}}</span>
+                                                        <span class="form-tooltip ml-2">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkEnabled"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.NetworkEnabled"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.NetworkEnabledHelp"}}</p>
+                                                </div>
+                                                {{if lt (addInt $cardIdx 1) (toInt $maxNetCards)}}<hr class="my-4">{{end}}
+                                                {{end}}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Tags Section -->
+                                    <div class="column is-12-tablet is-6-desktop">
+                                        <div class="card no-hover mb-5 mt-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-tags"></i></span>&nbsp;{{T "VM.Create.Tags"}}
+                                                </p>
+                                            </header>
+                                            <div class="card-content form-vertical">
+                                                <div class="field">
+                                                    <label class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-tag"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.AvailableTags"}}</span>
+                                                    </label>
+                                                    <div class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Tags"}}
+                                                            </div>
+                                                    <div class="tags are-medium">
+                                                        {{if .AvailableTags}}
+                                                        <span class="tag is-primary is-medium">pvmss</span>
+                                                        <input type="hidden" name="tags" value="pvmss">
+                                                        {{range .AvailableTags}}
+                                                        {{if ne . "pvmss"}}
+                                                        <label>
+                                                            <input type="checkbox" name="tags" value="{{.}}" class="is-hidden">
+                                                            <span class="tag is-light is-medium">{{.}}</span>
+                                                        </label>
+                                                        {{end}}
+                                                        {{end}}
+                                                        {{else}}
+                                                        <span class="tag is-light is-medium">{{T "VM.Create.NoTagsAvailable"}}</span>
+                                                        {{end}}
+                                                    </div>
+                                                    <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.TagsHelp"}}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </fieldset>
+
+                            <!-- Action Buttons -->
+                            <footer class="form-footer">
+                                <div class="form-footer-actions">
+                                    <button type="reset" form="vmCreateForm" class="button is-light is-medium">
+                                        <span class="icon"><i class="fas fa-undo"></i></span>
+                                        <span>{{T "Common.Reset"}}</span>
+                                    </button>
+                                    <button type="submit" form="vmCreateForm" class="button is-primary is-medium">
+                                        <span class="icon"><i class="fas fa-save"></i></span>
+                                        <span>{{T "Common.Create"}}</span>
+                                    </button>
+                                </div>
+                            </footer>
+                        </form>
+                    </div>
+                </div>
+    </div>
+</section>
+
+<!-- Real-time Form Validation -->
+<script>
+(function() {
+    'use strict';
+
+    // Configuration
+    const VALIDATION_DELAY_MS = 500; // Delay before validating
+    const API_BASE_URL = '/api/vm/validate';
+
+    // DOM elements
+    const validationFields = document.querySelectorAll('[data-field-validation]');
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+
+    // State tracking
+    let validationTimeouts = new Map();
+    let currentValidations = new Map();
+
+    // Utility functions
+    function showFieldValidation(field, message, isValid = false) {
+        const fieldContainer = field.closest('.field');
+        const validationMessage = fieldContainer?.querySelector('.field-validation-message');
+
+        if (!validationMessage) return;
+
+        // Remove existing validation classes
+        field.classList.remove('is-success', 'is-danger');
+        fieldContainer.classList.remove('has-validation-success', 'has-validation-error');
+
+        if (message) {
+            // Show validation message
+            validationMessage.textContent = message;
+            validationMessage.classList.remove('is-hidden');
+
+            if (isValid) {
+                field.classList.add('is-success');
+                fieldContainer.classList.add('has-validation-success');
+            } else {
+                field.classList.add('is-danger');
+                fieldContainer.classList.add('has-validation-error');
+            }
+        } else {
+            // Hide validation message
+            validationMessage.classList.add('is-hidden');
+            validationMessage.textContent = '';
+        }
+    }
+
+    function hideFieldValidation(field) {
+        showFieldValidation(field, '');
+    }
+
+    function setFieldLoading(field, isLoading) {
+        field.classList.toggle('is-loading', isLoading);
+        field.disabled = isLoading;
+    }
+
+    async function validateField(field) {
+        const fieldName = field.name;
+        const fieldValue = field.value.trim();
+
+        // Skip validation if field is empty (let required attribute handle that)
+        if (!fieldValue) {
+            hideFieldValidation(field);
+            return;
+        }
+
+        // Cancel any existing validation for this field
+        const existingTimeout = validationTimeouts.get(fieldName);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+        }
+
+        // Mark as currently validating
+        currentValidations.set(fieldName, true);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/${fieldName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({
+                    value: fieldValue,
+                    node: document.getElementById('node')?.value,
+                    pool: document.getElementById('pool')?.value
+                })
+            });
+
+            // Check if this validation is still relevant
+            if (!currentValidations.get(fieldName)) {
+                return; // Another validation started
+            }
+
+            if (response.ok) {
+                const result = await response.json();
+                if (result.valid) {
+                    showFieldValidation(field, result.message || '✓ Valid', true);
+                } else {
+                    showFieldValidation(field, result.message || '✗ Invalid', false);
+                }
+            } else {
+                // Server error - don't show validation error to user
+                hideFieldValidation(field);
+            }
+        } catch (error) {
+            console.warn('Field validation failed:', error);
+            hideFieldValidation(field);
+        } finally {
+            currentValidations.set(fieldName, false);
+            setFieldLoading(field, false);
+        }
+    }
+
+    function scheduleFieldValidation(field) {
+        const fieldName = field.name;
+
+        // Cancel existing timeout
+        const existingTimeout = validationTimeouts.get(fieldName);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+        }
+
+        // Set loading state
+        setFieldLoading(field, true);
+
+        // Schedule new validation
+        const timeout = setTimeout(() => {
+            validateField(field);
+            validationTimeouts.delete(fieldName);
+        }, VALIDATION_DELAY_MS);
+
+        validationTimeouts.set(fieldName, timeout);
+    }
+
+    // Event handlers
+    function handleFieldInput(event) {
+        const field = event.target;
+        scheduleFieldValidation(field);
+    }
+
+    function handleFieldBlur(event) {
+        const field = event.target;
+        // Immediate validation on blur if field has value
+        if (field.value.trim()) {
+            // Cancel scheduled validation and validate immediately
+            const fieldName = field.name;
+            const existingTimeout = validationTimeouts.get(fieldName);
+            if (existingTimeout) {
+                clearTimeout(existingTimeout);
+                validationTimeouts.delete(fieldName);
+            }
+            validateField(field);
+        }
+    }
+
+    function handleFieldFocus(event) {
+        const field = event.target;
+        // Hide validation on focus to avoid distraction while typing
+        hideFieldValidation(field);
+    }
+
+    // Initialize validation
+    function initializeValidation() {
+        validationFields.forEach(field => {
+            field.addEventListener('input', handleFieldInput);
+            field.addEventListener('blur', handleFieldBlur);
+            field.addEventListener('focus', handleFieldFocus);
+        });
+
+        // Re-validate on node/pool changes that might affect validation
+        const nodeSelect = document.getElementById('node');
+        const poolInput = document.getElementById('pool');
+
+        if (nodeSelect) {
+            nodeSelect.addEventListener('change', () => {
+                // Re-validate all fields that might be affected by node change
+                validationFields.forEach(field => {
+                    if (field.value.trim()) {
+                        validateField(field);
+                    }
+                });
+            });
+        }
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeValidation);
+    } else {
+        initializeValidation();
+    }
+})();
+</script>
+
+{{end}}

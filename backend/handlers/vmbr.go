@@ -1,11 +1,15 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
 
 	"github.com/julienschmidt/httprouter"
+
+	"pvmss/i18n"
+	"pvmss/proxmox"
 	"pvmss/state"
 )
 
@@ -26,22 +30,76 @@ func buildVMBRSuccessMessage(r *http.Request) string {
 		return ""
 	}
 
+	localizer := i18n.GetLocalizerFromRequest(r)
 	action := r.URL.Query().Get("action")
 	name := r.URL.Query().Get("vmbr")
 
 	switch action {
 	case "enable":
-		return "VMBR '" + name + "' enabled"
+		if name == "" {
+			return i18n.Localize(localizer, "Admin.VMBR.Success.Generic")
+		}
+		return i18n.Localize(localizer, "Admin.VMBR.Success.Enabled")
 	case "disable":
-		return "VMBR '" + name + "' disabled"
+		if name == "" {
+			return i18n.Localize(localizer, "Admin.VMBR.Success.Generic")
+		}
+		return i18n.Localize(localizer, "Admin.VMBR.Success.Disabled")
+	case "update_network_cards":
+		return i18n.Localize(localizer, "Admin.VMBR.Success.UpdateNetworkCards")
 	default:
-		return "VMBR settings updated"
+		return i18n.Localize(localizer, "Admin.VMBR.Success.Generic")
 	}
 }
 
 // VMBRHandler handles VMBR-related operations.
 type VMBRHandler struct {
 	stateManager state.StateManager
+}
+
+// UpdateNetworkCardsHandler updates the maximum number of network cards per VM
+func (h *VMBRHandler) UpdateNetworkCardsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("UpdateNetworkCardsHandler", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	maxNetworkCardsStr := r.FormValue("max_network_cards")
+	if maxNetworkCardsStr == "" {
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
+		return
+	}
+
+	maxNetworkCards := 1
+	if _, err := fmt.Sscanf(maxNetworkCardsStr, "%d", &maxNetworkCards); err != nil {
+		log.Error().Err(err).Str("value", maxNetworkCardsStr).Msg("Failed to parse max_network_cards")
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
+		return
+	}
+
+	// Validate range (1-10)
+	if maxNetworkCards < 1 || maxNetworkCards > 10 {
+		log.Warn().Int("value", maxNetworkCards).Msg("Max network cards out of range, clamping")
+		if maxNetworkCards < 1 {
+			maxNetworkCards = 1
+		} else {
+			maxNetworkCards = 10
+		}
+	}
+
+	settings := h.stateManager.GetSettings()
+	settings.MaxNetworkCards = maxNetworkCards
+
+	if err := h.stateManager.SetSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Failed to update settings")
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
+		return
+	}
+
+	log.Info().Int("max_network_cards", maxNetworkCards).Msg("Updated max network cards setting")
+	redirectURL := "/admin/vmbr?success=1&action=update_network_cards"
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // ToggleVMBRHandler toggles a single VMBR enable state (auto-save without JS)
@@ -53,11 +111,15 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	}
 
 	name := r.FormValue("vmbr")
+	node := r.FormValue("node")
 	action := r.FormValue("action") // enable|disable
-	if name == "" || (action != "enable" && action != "disable") {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+	if name == "" || node == "" || (action != "enable" && action != "disable") {
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
+
+	// Create unique identifier combining node and vmbr name
+	uniqueID := node + ":" + name
 
 	settings := h.stateManager.GetSettings()
 	if settings.VMBRs == nil {
@@ -71,13 +133,13 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 
 	changed := false
 	if action == "enable" {
-		if !enabled[name] {
-			settings.VMBRs = append(settings.VMBRs, name)
+		if !enabled[uniqueID] {
+			settings.VMBRs = append(settings.VMBRs, uniqueID)
 			changed = true
 		}
 	} else { // disable
-		if enabled[name] {
-			settings.VMBRs = removeFromList(settings.VMBRs, name)
+		if enabled[uniqueID] {
+			settings.VMBRs = removeFromList(settings.VMBRs, uniqueID)
 			changed = true
 		}
 	}
@@ -85,7 +147,7 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	if changed {
 		if err := h.stateManager.SetSettings(settings); err != nil {
 			log.Error().Err(err).Msg("Failed to update settings")
-			http.Error(w, "Failed to update settings", http.StatusInternalServerError)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
 	}
@@ -104,7 +166,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	log := CreateHandlerLogger("VMBRPageHandler", r)
 
 	client := h.stateManager.GetProxmoxClient()
-	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 
 	// Collect all VMBRs using common helper when online; otherwise short-circuit
 	var allVMBRs []map[string]string
@@ -114,11 +176,18 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		log.Warn().Bool("connected", proxmoxConnected).Msg("Proxmox not available; rendering page with empty VMBR list")
 		allVMBRs = []map[string]string{}
 	} else {
-		allVMBRs, err = collectAllVMBRs(h.stateManager)
+		allVMBRs, err = collectAllVMBRs(r.Context(), h.stateManager)
 		if err != nil {
 			log.Warn().Err(err).Msg("collectAllVMBRs returned an error; continuing")
 		}
 		log.Info().Int("vmbr_total", len(allVMBRs)).Msg("Total VMBRs prepared for template")
+	}
+
+	// Get all nodes for the selector
+	var allNodes []string
+	if client != nil {
+		allNodes, _ = proxmox.GetNodeNames(client)
+		sort.Strings(allNodes)
 	}
 
 	// Get current settings to check which VMBRs are enabled
@@ -134,10 +203,13 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Map to template shape used previously: name field instead of iface
 	vmbrsForTemplate := make([]map[string]string, 0, len(allVMBRs))
 	for _, v := range allVMBRs {
+		// Create unique identifier combining node and vmbr name
+		uniqueID := v["node"] + ":" + v["iface"]
 		vmbrsForTemplate = append(vmbrsForTemplate, map[string]string{
 			"node":        v["node"],
 			"name":        v["iface"],
 			"description": v["description"],
+			"unique_id":   uniqueID,
 		})
 	}
 
@@ -162,18 +234,26 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		})
 	}
 
-	templateData := AdminPageDataWithMessage("VMBR Management", "vmbr", successMsg, "")
-	templateData["VMBRs"] = vmbrsForTemplate
-	templateData["EnabledVMBRs"] = enabledVMBRs
-	if err != nil {
-		templateData["Error"] = err.Error()
-	}
-	// Pass Proxmox status flags for consistent UI behavior
-	templateData["ProxmoxConnected"] = proxmoxConnected
-	if !proxmoxConnected && proxmoxMsg != "" {
-		templateData["ProxmoxError"] = proxmoxMsg
+	opts := []TemplateOption{
+		WithAdminActive("vmbr"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.VMBR.Title"),
+		WithData("EnabledVMBRs", enabledVMBRs),
+		WithData("Nodes", allNodes),
+		WithData("MaxNetworkCards", settings.MaxNetworkCards),
+		WithData("VMBRs", vmbrsForTemplate),
 	}
 
+	if successMsg != "" {
+		opts = append(opts, WithSuccess(successMsg))
+	}
+	if err != nil {
+		opts = append(opts, WithData("Error", err.Error()))
+	}
+
+	templateData := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_vmbr", templateData)
 }
 
@@ -186,4 +266,7 @@ func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
 		"page":   h.VMBRPageHandler,
 		"toggle": h.ToggleVMBRHandler,
 	})
+
+	// Register custom route for network cards configuration
+	routeHelpers.helpers.RegisterAdminRoute(router, "POST", "/admin/vmbr/update-network-cards", h.UpdateNetworkCardsHandler)
 }
