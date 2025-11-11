@@ -32,6 +32,8 @@ data:
         ],
         "isos": [],
         "vmbrs": [],
+        "max_network_cards": 1,
+        "max_disk_per_vm": 1,
         "enabled_storages": [],
         "limits": {
             "nodes": {},
@@ -76,7 +78,7 @@ metadata:
 labels:
   app.kubernetes.io/name: pvmss
   app.kubernetes.io/instance: pvmss
-  app.kubernetes.io/version: 0.1
+  app.kubernetes.io/version: 0.2.0
 spec:
   replicas: 1
   strategy:
@@ -100,7 +102,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: pvmss
-          image: jhmmt/pvmss:0.1
+          image: jhmmt/pvmss:0.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: backend
@@ -130,10 +132,14 @@ spec:
                 secretKeyRef:
                   name: pvmss-secrets
                   key: session-secret
+            - name: PVMSS_ENV
+              value: "production" # Can be 'dev', 'developpement', 'prod'
             - name: PVMSS_OFFLINE
               value: "false" # Set to true to disable Proxmox connection
             - name: PVMSS_SETTINGS_PATH
               value: "/data/settings.json"
+            - name: CSRF_TOKEN_TTL
+              value: "2h" # duration (e.g.: 10m, 4d)
             - name: TZ
               value: "Europe/Paris"
           volumeMounts:
@@ -169,7 +175,7 @@ spec:
   selector:
     app.kubernetes.io/name: pvmss
     app.kubernetes.io/instance: pvmss
-    app.kubernetes.io/version: 0.1
+    app.kubernetes.io/version: 0.2.0
   ports:
     - name: backend
       protocol: TCP

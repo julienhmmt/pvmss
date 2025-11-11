@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -51,6 +52,19 @@ func (l *Limiter) AddRule(method, path string, rule Rule) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	key := method + " " + path
+
+	if rule.Capacity <= 0 {
+		logger.Get().Warn().Str("method", method).Str("path", path).
+			Msg("Rate limit capacity must be positive; defaulting to 1")
+		rule.Capacity = 1
+	}
+
+	if rule.Refill <= 0 {
+		logger.Get().Warn().Str("method", method).Str("path", path).
+			Msg("Rate limit refill duration must be positive; defaulting to 1s")
+		rule.Refill = time.Second
+	}
+
 	l.rules[key] = rule
 	logger.Get().Debug().Str("method", method).Str("path", path).
 		Int("capacity", rule.Capacity).Dur("refill", rule.Refill).
@@ -78,21 +92,37 @@ func (l *Limiter) Allow(method, path, ip string) bool {
 	bucketKey := key + "|" + ip
 	bk, exists := l.buckets[bucketKey]
 	if !exists {
+		ratePerSec := 1.0 / rule.Refill.Seconds()
 		bk = &bucket{
 			capacity:   rule.Capacity,
 			tokens:     float64(rule.Capacity),
-			ratePerSec: 1.0 / rule.Refill.Seconds(),
+			ratePerSec: ratePerSec,
 			rejects:    0,
 		}
+		bk.lastAccess = time.Now()
 		l.buckets[bucketKey] = bk
 	}
 
+	if bk.capacity != rule.Capacity {
+		bk.capacity = rule.Capacity
+		if bk.tokens > float64(bk.capacity) {
+			bk.tokens = float64(bk.capacity)
+		}
+	}
+
+	ratePerSec := 1.0 / rule.Refill.Seconds()
+	bk.ratePerSec = ratePerSec
+
 	// Refill the bucket with new tokens based on the elapsed time.
 	now := time.Now()
-	elapsed := now.Sub(bk.lastAccess).Seconds()
-	bk.tokens += elapsed * bk.ratePerSec
-	if bk.tokens > float64(bk.capacity) {
-		bk.tokens = float64(bk.capacity)
+	if !bk.lastAccess.IsZero() {
+		elapsed := now.Sub(bk.lastAccess).Seconds()
+		if elapsed > 0 && bk.ratePerSec > 0 {
+			bk.tokens += elapsed * bk.ratePerSec
+			if bk.tokens > float64(bk.capacity) {
+				bk.tokens = float64(bk.capacity)
+			}
+		}
 	}
 	bk.lastAccess = now
 
@@ -105,6 +135,15 @@ func (l *Limiter) Allow(method, path, ip string) bool {
 	// Track rejection for monitoring
 	bk.rejects++
 	return false
+}
+
+// Rule returns the configured rate limiting rule for a given method and path, if any.
+func (l *Limiter) Rule(method, path string) (Rule, bool) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	rule, ok := l.rules[method+" "+path]
+	return rule, ok
 }
 
 // cleanupStaleBuckets periodically removes buckets that haven't been accessed
@@ -150,7 +189,13 @@ func (l *Limiter) GetStats() map[string]interface{} {
 func RateLimitMiddleware(limiter *Limiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			rule, hasRule := limiter.Rule(r.Method, r.URL.Path)
 			ip := clientIP(r)
+
+			if hasRule && rule.Capacity > 0 {
+				w.Header().Set("X-RateLimit-Limit", strconv.Itoa(rule.Capacity))
+			}
+
 			if !limiter.Allow(r.Method, r.URL.Path, ip) {
 				logger.Get().Warn().
 					Str("ip", ip).
@@ -158,8 +203,13 @@ func RateLimitMiddleware(limiter *Limiter) func(http.Handler) http.Handler {
 					Str("path", r.URL.Path).
 					Str("user_agent", r.UserAgent()).
 					Msg("Rate limit exceeded")
-				w.Header().Set("Retry-After", "10") // Inform the client to wait.
-				w.Header().Set("X-RateLimit-Limit", "5")
+				retryAfter := 1
+				if hasRule {
+					if seconds := int(rule.Refill / time.Second); seconds > 0 {
+						retryAfter = seconds
+					}
+				}
+				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return
 			}

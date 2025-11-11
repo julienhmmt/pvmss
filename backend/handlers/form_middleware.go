@@ -7,6 +7,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
 )
@@ -25,7 +26,8 @@ func WithFormValidation(handler httprouter.Handle) httprouter.Handle {
 				!strings.Contains(contentType, "application/x-www-form-urlencoded") &&
 				!strings.Contains(contentType, "multipart/form-data") {
 				logger.Get().Warn().Str("content_type", contentType).Msg("Invalid content type for form")
-				http.Error(w, "Invalid content type", http.StatusUnsupportedMediaType)
+				localizer := i18n.GetLocalizerFromRequest(r)
+				http.Error(w, i18n.Localize(localizer, "Error.InvalidContentType"), http.StatusUnsupportedMediaType)
 				return
 			}
 		}
@@ -33,8 +35,40 @@ func WithFormValidation(handler httprouter.Handle) httprouter.Handle {
 		// Parse form data
 		if err := r.ParseForm(); err != nil {
 			logger.Get().Error().Err(err).Msg("Failed to parse form data")
-			http.Error(w, "Invalid form data", http.StatusBadRequest)
+			localizer := i18n.GetLocalizerFromRequest(r)
+			http.Error(w, i18n.Localize(localizer, "Error.InvalidFormData"), http.StatusBadRequest)
 			return
+		}
+
+		// Security audit: detect suspicious input patterns
+		if len(r.Form) > 0 {
+			patterns := []string{"<script", "script>", "union ", "select ", "drop ", "insert ", "update ", "delete "}
+			matches := make([]string, 0)
+			for key, vals := range r.Form {
+				for _, v := range vals {
+					lv := strings.ToLower(v)
+					for _, p := range patterns {
+						if strings.Contains(lv, p) {
+							matches = append(matches, key)
+							break
+						}
+					}
+				}
+			}
+			if len(matches) > 0 {
+				u := ""
+				if s := security.GetSession(r); s != nil {
+					if name, ok := s.Get(r.Context(), "username").(string); ok {
+						u = name
+					}
+				}
+				logger.Get().Warn().
+					Str("ip", r.RemoteAddr).
+					Str("path", r.URL.Path).
+					Str("username", u).
+					Strs("form_keys", matches).
+					Msg("Suspicious input patterns detected")
+			}
 		}
 
 		handler(w, r, ps)
@@ -60,13 +94,27 @@ func WithCSRFValidation(handler httprouter.Handle) httprouter.Handle {
 		if session := security.GetSession(r); session != nil {
 			expectedToken, ok := session.Get(r.Context(), "csrf_token").(string)
 			if !ok || expectedToken == "" || token != expectedToken {
-				logger.Get().Warn().Str("path", r.URL.Path).Bool("token_present", token != "").Msg("CSRF validation failed")
-				http.Error(w, "Invalid or missing CSRF token", http.StatusForbidden)
+				u := ""
+				if name, ok := session.Get(r.Context(), "username").(string); ok {
+					u = name
+				}
+				logger.Get().Warn().
+					Str("ip", r.RemoteAddr).
+					Str("path", r.URL.Path).
+					Str("username", u).
+					Bool("token_present", token != "").
+					Msg("CSRF validation failed")
+				localizer := i18n.GetLocalizerFromRequest(r)
+				http.Error(w, i18n.Localize(localizer, "Error.InvalidCSRFToken"), http.StatusForbidden)
 				return
 			}
 		} else {
-			logger.Get().Error().Msg("Session not available for CSRF validation")
-			http.Error(w, "Session error", http.StatusInternalServerError)
+			logger.Get().Warn().
+				Str("ip", r.RemoteAddr).
+				Str("path", r.URL.Path).
+				Msg("Session not available for CSRF validation")
+			localizer := i18n.GetLocalizerFromRequest(r)
+			http.Error(w, i18n.Localize(localizer, "Error.SessionError"), http.StatusInternalServerError)
 			return
 		}
 
@@ -97,7 +145,8 @@ func WithMethodCheck(allowedMethods ...string) func(httprouter.Handle) httproute
 		return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			if !methodMap[r.Method] {
 				w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+				localizer := i18n.GetLocalizerFromRequest(r)
+				http.Error(w, i18n.Localize(localizer, "Error.MethodNotAllowed"), http.StatusMethodNotAllowed)
 				return
 			}
 			handler(w, r, ps)

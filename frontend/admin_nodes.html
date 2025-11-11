@@ -1,5 +1,11 @@
 {{define "admin_nodes"}}
   {{template "admin_base" .}}
+  <script>
+    // Auto-refresh page every 30 seconds to check for node status changes
+    setInterval(function() {
+      window.location.reload();
+    }, 30000);
+  </script>
 {{end}}
 
 {{define "admin_nodes_section"}}
@@ -45,21 +51,41 @@
               <span>{{.Node}}</span>
             </p>
             <div class="card-header-icon">
-              {{if $.ProxmoxConnected}}
+              {{if eq .Status "online"}}
               <span class="tag is-success">
                 <span class="icon is-small"><i class="fas fa-circle"></i></span>
                 <span class="ml-1">{{T "Nodes.Status.Online"}}</span>
               </span>
-              {{else}}
+              {{else if eq .Status "offline"}}
               <span class="tag is-danger">
                 <span class="icon is-small"><i class="fas fa-circle"></i></span>
                 <span class="ml-1">{{T "Nodes.Status.Offline"}}</span>
+              </span>
+              {{else}}
+              <span class="tag is-warning">
+                <span class="icon is-small"><i class="fas fa-question-circle"></i></span>
+                <span class="ml-1">{{.Status}}</span>
               </span>
               {{end}}
             </div>
           </header>
           
           <div class="card-content">
+            {{if eq .Status "offline"}}
+            <!-- Offline node message -->
+            <div class="notification is-warning is-light">
+              <span class="icon">
+                <i class="fas fa-exclamation-triangle"></i>
+              </span>
+              <span>{{T "Nodes.OfflineMessage"}}</span>
+            </div>
+            
+            <!-- Additional offline info -->
+            <div class="has-text-centered is-size-7 has-text-grey">
+              <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+              <span>{{T "Nodes.OfflineInfo"}}</span>
+            </div>
+            {{else}}
             <!-- CPU Usage -->
             <div class="field mb-4">
               <label class="label is-small has-text-grey">
@@ -125,6 +151,7 @@
                 <span class="has-text-weight-bold">{{printf "%.0f%%" $disk_percent}}</span>
               </div>
             </div>
+            {{end}} <!-- End of offline check -->
           </div>
         </div>
       </div>

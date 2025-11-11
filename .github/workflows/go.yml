@@ -31,8 +31,8 @@ jobs:
       working-directory: backend
 
     - name: Test
-      run: go test -v ./...
-      working-directory: backend
+      run: make test-offline
+      working-directory: .
       env:
         ADMIN_PASSWORD_HASH: $2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e
         GO_TEST_ENVIRONMENT: 1

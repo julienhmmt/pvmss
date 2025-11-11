@@ -44,31 +44,6 @@ func CreateHandlerLogger(handlerName string, r *http.Request) zerolog.Logger {
 	return logContext.Logger()
 }
 
-// AdminPageData creates common data structure for admin pages
-func AdminPageData(title, activeSection string) map[string]interface{} {
-	return map[string]interface{}{
-		"Title":       title,
-		"AdminActive": activeSection,
-	}
-}
-
-// AdminPageDataWithMessage creates admin page data with success/error messages
-func AdminPageDataWithMessage(title, activeSection, successMsg, errorMsg string) map[string]interface{} {
-	data := AdminPageData(title, activeSection)
-
-	if successMsg != "" {
-		data["Success"] = true
-		data["SuccessMessage"] = successMsg
-	}
-
-	if errorMsg != "" {
-		data["Error"] = true
-		data["ErrorMessage"] = errorMsg
-	}
-
-	return data
-}
-
 // PostOnlyHandler wraps a handler to only accept POST requests
 func PostOnlyHandler(handler httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -97,15 +72,43 @@ func PostFormHandler(handler httprouter.Handle) httprouter.Handle {
 }
 
 // RedirectWithSuccess redirects with success message in query params
-func RedirectWithSuccess(w http.ResponseWriter, r *http.Request, url, message string) {
-	redirectURL := fmt.Sprintf("%s?success=1&message=%s", url, message)
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+func RedirectWithSuccess(w http.ResponseWriter, r *http.Request, targetURL, message string) {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		http.Redirect(w, r, targetURL, http.StatusSeeOther)
+		return
+	}
+
+	q := u.Query()
+	q.Set("success", "1")
+	if message != "" {
+		q.Set("message", message)
+	} else {
+		q.Del("message")
+	}
+	u.RawQuery = q.Encode()
+
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 // RedirectWithError redirects with error message in query params
-func RedirectWithError(w http.ResponseWriter, r *http.Request, url, message string) {
-	redirectURL := fmt.Sprintf("%s?error=1&message=%s", url, message)
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+func RedirectWithError(w http.ResponseWriter, r *http.Request, targetURL, message string) {
+	u, err := url.Parse(targetURL)
+	if err != nil {
+		http.Redirect(w, r, targetURL, http.StatusSeeOther)
+		return
+	}
+
+	q := u.Query()
+	q.Set("error", "1")
+	if message != "" {
+		q.Set("message", message)
+	} else {
+		q.Del("message")
+	}
+	u.RawQuery = q.Encode()
+
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
 // RenderErrorPage renders a friendly error page with status code and message.
@@ -136,11 +139,14 @@ func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message
 
 // HandlerContext provides common context for handlers
 type HandlerContext struct {
-	Log            zerolog.Logger
-	StateManager   state.StateManager
-	SessionManager *scs.SessionManager
-	Request        *http.Request
-	ResponseWriter http.ResponseWriter
+	Log             zerolog.Logger
+	StateManager    state.StateManager
+	SessionManager  *scs.SessionManager
+	Request         *http.Request
+	ResponseWriter  http.ResponseWriter
+	isAuthenticated bool // cached on creation
+	isAdmin         bool // cached on creation
+	authCached      bool // flag to indicate if auth state has been cached
 }
 
 // Translate looks up a translation key using the request's locale, falling back to the key.
@@ -162,34 +168,55 @@ func NewHandlerContext(w http.ResponseWriter, r *http.Request, handlerName strin
 		sessionManager = stateManager.GetSessionManager()
 	}
 
-	return &HandlerContext{
+	ctx := &HandlerContext{
 		Log:            log,
 		StateManager:   stateManager,
 		SessionManager: sessionManager,
 		Request:        r,
 		ResponseWriter: w,
 	}
+
+	// Cache authentication state once on creation
+	if ctx.SessionManager != nil {
+		authenticated, ok := ctx.SessionManager.Get(ctx.Request.Context(), "authenticated").(bool)
+		ctx.isAuthenticated = ok && authenticated
+
+		isAdmin, ok := ctx.SessionManager.Get(ctx.Request.Context(), "is_admin").(bool)
+		ctx.isAdmin = ok && isAdmin
+
+		ctx.authCached = true
+	}
+
+	return ctx
 }
 
 // IsAuthenticated checks if the current request is authenticated
+// Returns cached value set during context creation (O(1) instead of map lookup)
 func (ctx *HandlerContext) IsAuthenticated() bool {
-	if ctx.SessionManager == nil {
-		ctx.Log.Error().Msg("Session manager not available")
-		return false
+	if !ctx.authCached {
+		// Fallback if auth state wasn't cached (shouldn't happen in normal operation)
+		if ctx.SessionManager == nil {
+			ctx.Log.Error().Msg("Session manager not available")
+			return false
+		}
+		authenticated, ok := ctx.SessionManager.Get(ctx.Request.Context(), "authenticated").(bool)
+		return ok && authenticated
 	}
-
-	authenticated, ok := ctx.SessionManager.Get(ctx.Request.Context(), "authenticated").(bool)
-	return ok && authenticated
+	return ctx.isAuthenticated
 }
 
 // IsAdmin checks if the current user is an admin
+// Returns cached value set during context creation (O(1) instead of map lookup)
 func (ctx *HandlerContext) IsAdmin() bool {
-	if ctx.SessionManager == nil {
-		return false
+	if !ctx.authCached {
+		// Fallback if auth state wasn't cached (shouldn't happen in normal operation)
+		if ctx.SessionManager == nil {
+			return false
+		}
+		isAdmin, ok := ctx.SessionManager.Get(ctx.Request.Context(), "is_admin").(bool)
+		return ok && isAdmin
 	}
-
-	isAdmin, ok := ctx.SessionManager.Get(ctx.Request.Context(), "is_admin").(bool)
-	return ok && isAdmin
+	return ctx.isAdmin
 }
 
 // GetUsername returns the current username if authenticated
@@ -266,7 +293,8 @@ func (ctx *HandlerContext) RequireAdminAuth() bool {
 		ctx.Log.Info().Msg("Admin authentication required")
 		if ctx.IsAuthenticated() {
 			ctx.Log.Warn().Msg("Authenticated user attempted to access admin area without privileges")
-			http.Error(ctx.ResponseWriter, "Access Denied: Admin privileges required", http.StatusForbidden)
+			localizer := i18n.GetLocalizerFromRequest(ctx.Request)
+			http.Error(ctx.ResponseWriter, i18n.Localize(localizer, "Error.AccessDenied"), http.StatusForbidden)
 			return false
 		}
 
@@ -406,6 +434,51 @@ func FormatBytes(bytes int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
+// FormatMemoryGB converts memory from bytes or MB to GB with clean formatting
+// Accepts bytes (from Proxmox API) or MB (from form input)
+// Returns formatted string like "2 GB", "512 MB", "0.5 GB"
+func FormatMemoryGB(value int64, isBytes bool) string {
+	var memoryMB int64
+
+	if isBytes {
+		// Convert bytes to MB (Proxmox API returns bytes)
+		memoryMB = value / (1024 * 1024)
+	} else {
+		// Already in MB (from form input)
+		memoryMB = value
+	}
+
+	// Convert MB to GB
+	memoryGB := float64(memoryMB) / 1024.0
+
+	// Format based on size
+	if memoryGB >= 1 {
+		// For 1 GB or more, show as GB
+		if memoryGB == float64(int64(memoryGB)) {
+			// Whole number
+			return fmt.Sprintf("%d GB", int64(memoryGB))
+		}
+		// Decimal
+		return fmt.Sprintf("%.1f GB", memoryGB)
+	}
+
+	// Less than 1 GB, show as MB
+	if memoryMB == int64(memoryMB) {
+		return fmt.Sprintf("%d MB", memoryMB)
+	}
+	return fmt.Sprintf("%.0f MB", float64(memoryMB))
+}
+
+// BytesToGB converts bytes to GB as integer (for calculations)
+func BytesToGB(bytes int64) int64 {
+	return bytes / (1024 * 1024 * 1024)
+}
+
+// MBToGB converts MB to GB as integer (for calculations)
+func MBToGB(mb int64) int64 {
+	return mb / 1024
+}
+
 // FormatUptime formats uptime in seconds to human-readable format (days, hours, minutes, seconds)
 // with i18n support
 func FormatUptime(seconds int64, r *http.Request) string {
@@ -463,4 +536,149 @@ func FormatUptime(seconds int64, r *http.Request) string {
 		}
 	}
 	return result
+}
+
+// CreateNotificationScript generates JavaScript to show a notification
+func CreateNotificationScript(notificationType, title, message string, options map[string]interface{}) string {
+	script := fmt.Sprintf(`
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				window.showNotification({
+					type: '%s',
+					title: '%s',
+					message: '%s'`,
+		notificationType, strings.ReplaceAll(title, "'", "\\'"), strings.ReplaceAll(message, "'", "\\'"))
+
+	if options != nil {
+		if icon, ok := options["icon"].(string); ok && icon != "" {
+			script += fmt.Sprintf(",\n\t\t\t\t\ticon: '%s'", icon)
+		}
+		if duration, ok := options["duration"].(int); ok && duration > 0 {
+			script += fmt.Sprintf(",\n\t\t\t\t\tduration: %d", duration)
+		}
+		if dismissible, ok := options["dismissible"].(bool); ok {
+			script += fmt.Sprintf(",\n\t\t\t\t\tdismissible: %t", dismissible)
+		}
+		if urgent, ok := options["urgent"].(bool); ok {
+			script += fmt.Sprintf(",\n\t\t\t\t\turgent: %t", urgent)
+		}
+	}
+
+	script += `
+				});
+			});
+		</script>`
+
+	return script
+}
+
+// ShowSuccessNotification creates a success notification script
+func ShowSuccessNotification(title, message string, options map[string]interface{}) string {
+	if options == nil {
+		options = make(map[string]interface{})
+	}
+	if _, ok := options["icon"]; !ok {
+		options["icon"] = "fas fa-check-circle"
+	}
+	return CreateNotificationScript("success", title, message, options)
+}
+
+// ShowErrorNotification creates an error notification script
+func ShowErrorNotification(title, message string, options map[string]interface{}) string {
+	if options == nil {
+		options = make(map[string]interface{})
+	}
+	if _, ok := options["icon"]; !ok {
+		options["icon"] = "fas fa-exclamation-circle"
+	}
+	if _, ok := options["urgent"]; !ok {
+		options["urgent"] = true
+	}
+	return CreateNotificationScript("danger", title, message, options)
+}
+
+// ShowWarningNotification creates a warning notification script
+func ShowWarningNotification(title, message string, options map[string]interface{}) string {
+	if options == nil {
+		options = make(map[string]interface{})
+	}
+	if _, ok := options["icon"]; !ok {
+		options["icon"] = "fas fa-exclamation-triangle"
+	}
+	return CreateNotificationScript("warning", title, message, options)
+}
+
+// ShowInfoNotification creates an info notification script
+func ShowInfoNotification(title, message string, options map[string]interface{}) string {
+	if options == nil {
+		options = make(map[string]interface{})
+	}
+	if _, ok := options["icon"]; !ok {
+		options["icon"] = "fas fa-info-circle"
+	}
+	return CreateNotificationScript("info", title, message, options)
+}
+
+// CreateProgressScript generates JavaScript to show a progress bar
+func CreateProgressScript(title, message string, options map[string]interface{}) string {
+	script := fmt.Sprintf(`
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				window.showProgress({
+					title: '%s',
+					message: '%s'`,
+		strings.ReplaceAll(title, "'", "\\'"), strings.ReplaceAll(message, "'",
+			"\\'"))
+
+	if options != nil {
+		if progressType, ok := options["type"].(string); ok && progressType != "" {
+			script += fmt.Sprintf(",\n\t\t\t\t\ttype: '%s'", progressType)
+		}
+		if icon, ok := options["icon"].(string); ok && icon != "" {
+			script += fmt.Sprintf(",\n\t\t\t\t\ticon: '%s'", icon)
+		}
+		if showClose, ok := options["showClose"].(bool); ok {
+			script += fmt.Sprintf(",\n\t\t\t\t\tshowClose: %t", showClose)
+		}
+		if showDetails, ok := options["showDetails"].(bool); ok {
+			script += fmt.Sprintf(",\n\t\t\t\t\tshowDetails: %t", showDetails)
+		}
+		if onCancel, ok := options["onCancel"].(string); ok && onCancel != "" {
+			script += fmt.Sprintf(",\n\t\t\t\t\tonCancel: function() { %s }", onCancel)
+		}
+	}
+
+	script += `
+				});
+			});
+		</script>`
+
+	return script
+}
+
+// UpdateProgressScript generates JavaScript to update a progress bar
+func UpdateProgressScript(progressId string, progress int, message string) string {
+	return fmt.Sprintf(`
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				window.updateProgress('%s', {
+					progress: %d,
+					message: '%s'
+				});
+			});
+		</script>`,
+		strings.ReplaceAll(progressId, "'", "\\'"),
+		progress,
+		strings.ReplaceAll(message, "'", "\\'"))
+}
+
+// HideProgressScript generates JavaScript to hide a progress bar
+func HideProgressScript(progressId string) string {
+	return fmt.Sprintf(`
+		<script>
+			document.addEventListener('DOMContentLoaded', function() {
+				window.hideProgress('%s');
+			});
+		</script>`,
+		strings.ReplaceAll(progressId, "'", "\\'"))
 }

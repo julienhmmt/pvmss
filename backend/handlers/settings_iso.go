@@ -2,14 +2,20 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 
+	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
+
+	appI18n "pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
@@ -30,16 +36,43 @@ type NodeISOGroup struct {
 	ISOs []ISOEntry `json:"isos"`
 }
 
-// fetchAllISOs retrieves all ISOs from all nodes and storages
-func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.ClientInterface, checkEnabled bool) ([]ISOEntry, error) {
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+// fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls
+func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, error) {
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create resty client for ISO retrieval: %w", err)
 	}
 
-	storages, err := proxmox.GetStoragesWithContext(ctx, client)
-	if err != nil {
-		return nil, err
+	// Use errgroup for concurrent API calls
+	g, ctx := errgroup.WithContext(ctx)
+
+	var nodes []string
+	var storages []proxmox.Storage
+
+	// Fetch nodes concurrently
+	g.Go(func() error {
+		var err error
+		nodes, err = proxmox.GetNodeNamesResty(ctx, restyClient)
+		if err != nil {
+			return fmt.Errorf("failed to get nodes: %w", err)
+		}
+		return nil
+	})
+
+	// Fetch storages concurrently
+	g.Go(func() error {
+		var err error
+		storages, err = proxmox.GetStoragesResty(ctx, restyClient)
+		if err != nil {
+			return fmt.Errorf("failed to get storages: %w", err)
+		}
+		return nil
+	})
+
+	// Wait for all goroutines to complete
+	if err := g.Wait(); err != nil {
+		return nil, fmt.Errorf("failed to fetch nodes/storages for ISO retrieval: %w", err)
 	}
 
 	enabledSet := make(map[string]struct{})
@@ -62,7 +95,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, client proxmox.Clien
 				continue
 			}
 
-			isoList, err := proxmox.GetISOListWithContext(ctx, client, nodeName, storage.Storage)
+			isoList, err := proxmox.GetISOListResty(ctx, restyClient, nodeName, storage.Storage)
 			if err != nil {
 				logger.Get().Debug().Err(err).
 					Str("node", nodeName).
@@ -105,53 +138,90 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Success banner via query params
-	success := r.URL.Query().Get("success") != ""
-	act := r.URL.Query().Get("action")
-	isoName := r.URL.Query().Get("iso")
+	query := r.URL.Query()
+	success := query.Get("success") != ""
+	act := query.Get("action")
+	isoName := query.Get("iso")
 	var successMsg string
 	if success {
+		localizer := appI18n.GetLocalizerFromRequest(r)
+		isoDisplay := isoName
+		if isoDisplay != "" {
+			isoDisplay = filepath.Base(isoDisplay)
+		}
+
+		var messageKey string
 		switch act {
 		case "enable":
-			successMsg = "ISO '" + isoName + "' enabled"
+			messageKey = "Admin.ISO.ToggleEnabled"
 		case "disable":
-			successMsg = "ISO '" + isoName + "' disabled"
-		default:
-			successMsg = "ISO settings updated"
+			messageKey = "Admin.ISO.ToggleDisabled"
+		}
+
+		if messageKey != "" {
+			localized, err := localizer.Localize(&goi18n.LocalizeConfig{
+				MessageID:      messageKey,
+				TemplateData:   map[string]string{"Name": isoDisplay},
+				PluralCount:    nil,
+				DefaultMessage: nil,
+			})
+			if err == nil {
+				successMsg = localized
+			}
+		}
+
+		if successMsg == "" {
+			localized, err := localizer.Localize(&goi18n.LocalizeConfig{MessageID: "Admin.ISO.ToggleUpdated"})
+			if err == nil {
+				successMsg = localized
+			}
+		}
+
+		if successMsg == "" {
+			switch act {
+			case "enable":
+				successMsg = fmt.Sprintf("ISO \"%s\" enabled", isoDisplay)
+			case "disable":
+				successMsg = fmt.Sprintf("ISO \"%s\" disabled", isoDisplay)
+			default:
+				successMsg = "ISO settings updated"
+			}
 		}
 	}
 
-	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	opts := []TemplateOption{
+		WithAdminActive("iso"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.ISO.Title"),
+		WithData("ISOsList", []ISOInfo{}),
+		WithData("EnabledISOs", enabledMap),
+		WithData("AllISOs", []ISOEntry{}),
+		WithData("ISOGroupByNode", []NodeISOGroup{}),
+	}
 
-	data := AdminPageDataWithMessage("ISO Management", "iso", successMsg, "")
-	data["ISOsList"] = []ISOInfo{}
-	data["EnabledISOs"] = enabledMap
-	data["ProxmoxConnected"] = proxmoxConnected
-	data["AllISOs"] = []ISOEntry{}
-	data["ISOGroupByNode"] = []NodeISOGroup{}
+	if successMsg != "" {
+		opts = append(opts, WithSuccess(successMsg))
+	}
+
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 
 	// Return early if Proxmox not connected
-	if !proxmoxConnected {
-		data["Warning"] = "Proxmox connection unavailable. Displaying cached ISO data."
+	if !data["ProxmoxConnected"].(bool) {
+		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError")
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client is nil despite connection status being true")
-		data["Warning"] = "Proxmox client unavailable."
-		renderTemplateInternal(w, r, "admin_iso", data)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
 	// Fetch all ISOs with enabled check
-	isos, err := h.fetchAllISOs(ctx, client, true)
+	isos, err := h.fetchAllISOs(ctx, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
-		data["Warning"] = "Failed to fetch ISOs from Proxmox."
+		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources")
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
@@ -205,13 +275,13 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 
 	if volid == "" {
 		log.Error().Msg("Missing volid parameter")
-		http.Error(w, "Missing volid parameter", http.StatusBadRequest)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
 		return
 	}
 
 	if action == "" {
 		log.Error().Msg("Missing action parameter")
-		http.Error(w, "Missing action parameter", http.StatusBadRequest)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
 		return
 	}
 
@@ -224,7 +294,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 		enabled = false
 	default:
 		log.Error().Str("action", action).Msg("Invalid action parameter")
-		http.Error(w, "Invalid action parameter", http.StatusBadRequest)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
 
@@ -234,7 +304,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
 		log.Error().Msg("Settings not available")
-		http.Error(w, "Settings not available", http.StatusInternalServerError)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.SettingsUnavailable"), http.StatusInternalServerError)
 		return
 	}
 
@@ -262,14 +332,25 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	settings.ISOs = newISOs
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
-		http.Error(w, "Failed to save settings", http.StatusInternalServerError)
+		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
 	log.Info().Str("volid", volid).Bool("enabled", enabled).Msg("ISO toggle completed")
 
-	// Redirect back to ISOs page (route base is /admin/iso)
-	http.Redirect(w, r, "/admin/iso", http.StatusSeeOther)
+	params := url.Values{}
+	params.Set("success", "1")
+	params.Set("action", action)
+	if volid != "" {
+		params.Set("iso", filepath.Base(volid))
+	}
+
+	redirectURL := "/admin/iso"
+	if encoded := params.Encode(); encoded != "" {
+		redirectURL = redirectURL + "?" + encoded
+	}
+
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // RegisterISORoutes registers ISO-related routes

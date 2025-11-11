@@ -6,8 +6,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"pvmss/constants"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -59,6 +63,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	// Proxmox connection status
 	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
+	offlineMode := h.stateManager.IsOfflineMode()
 
 	var vms []AdminVMInfo
 	var totalVMs int
@@ -69,8 +74,8 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 		defer cancel()
 
 		// Get all VMs with pvmss tag first to get total count
-		allVMs, errMsg := h.getVMsWithPVMSSTag(ctx, client)
-		if errMsg == "" {
+		allVMs, retrievalErrKey := h.getVMsWithPVMSSTag(ctx)
+		if retrievalErrKey == "" {
 			totalVMs = len(allVMs)
 
 			// Apply pagination
@@ -84,20 +89,28 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 				vms = allVMs[start:end]
 			}
 		} else {
-			log.Warn().Str("error", errMsg).Msg("Failed to retrieve VMs")
+			// errMsg here is an i18n key; localize it for display
+			localized := i18n.Localize(i18n.GetLocalizerFromRequest(r), retrievalErrKey)
+			log.Warn().Str("error", localized).Msg("Failed to retrieve VMs")
+			errMsg = localized
 		}
 	} else {
-		errMsg = "Proxmox connection not available"
-		if proxmoxMsg != "" {
-			errMsg = proxmoxMsg
+		if offlineMode {
+			log.Info().Msg("Offline mode enabled; skipping Proxmox VM retrieval")
+		} else {
+			// Localize generic connection unavailable if no specific proxmox message
+			errMsg = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Admin.VMs.Error.ConnectionUnavailable")
+			if proxmoxMsg != "" {
+				errMsg = proxmoxMsg
+			}
+			log.Warn().Msg("Proxmox client is not initialized")
 		}
-		log.Warn().Msg("Proxmox client is not initialized")
 	}
 
 	// Build success message from query params
 	successMsg := ""
 	if r.URL.Query().Get("success") == "1" {
-		successMsg = "Operation completed successfully"
+		successMsg = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Admin.VMs.Success.OperationCompleted")
 	}
 
 	// Calculate pagination info
@@ -123,80 +136,124 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	from := offset + 1
 	to := offset + len(vms)
 
-	data := AdminPageDataWithMessage("PVMSS Virtual Machines", "vms", successMsg, errMsg)
-	data["ProxmoxConnected"] = proxmoxConnected
-	data["VMs"] = vms
-	data["TotalVMs"] = totalVMs
-	data["CurrentPage"] = page
-	data["Limit"] = limit
-	data["TotalPages"] = totalPages
-	data["HasNextPage"] = hasNextPage
-	data["HasPrevPage"] = hasPrevPage
-	data["NextPage"] = page + 1
-	data["PrevPage"] = page - 1
-	data["PaginationPages"] = paginationPages
-	data["PaginationInfo"] = map[string]int{
-		"From": from,
-		"To":   to,
+	opts := []TemplateOption{
+		WithAdminActive("vms"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.VMs.Title"),
+		WithData("VMs", vms),
+		WithData("TotalVMs", totalVMs),
+		WithData("CurrentPage", page),
+		WithData("Limit", limit),
+		WithData("TotalPages", totalPages),
+		WithData("HasNextPage", hasNextPage),
+		WithData("HasPrevPage", hasPrevPage),
+		WithData("NextPage", page+1),
+		WithData("PrevPage", page-1),
+		WithData("PaginationPages", paginationPages),
+		WithData("PaginationInfo", map[string]int{
+			"From": from,
+			"To":   to,
+		}),
+		WithData("OfflineMode", offlineMode),
 	}
 
+	if successMsg != "" {
+		opts = append(opts, WithSuccess(successMsg))
+	}
+
+	if errMsg != "" {
+		opts = append(opts, WithError(errMsg))
+	}
+
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_vms", data)
 }
 
-// getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag
-func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context, client proxmox.ClientInterface) ([]AdminVMInfo, string) {
+// getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag using resty
+func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo, string) {
 	log := logger.Get().With().
 		Str("function", "getVMsWithPVMSSTag").
 		Logger()
 
-	// Get all VMs from Proxmox
-	allVMs, err := proxmox.GetVMsWithContext(ctx, client)
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get VMs")
-		return nil, "Failed to retrieve VMs from Proxmox"
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, "Admin.VMs.Error.CreateAPIClient"
 	}
 
-	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs")
+	// Get all VMs from Proxmox using resty
+	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get VMs (resty)")
+		return nil, "Admin.VMs.Error.RetrieveVMsFromProxmox"
+	}
 
-	// Filter VMs with pvmss tag
-	results := []AdminVMInfo{}
-	for _, vm := range allVMs {
-		// Get VM config to check for pvmss tag
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
-		if err != nil {
-			log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config, skipping")
-			continue
-		}
+	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")
 
-		// Check for pvmss tag
-		if !h.hasTag(cfg, "pvmss") {
-			continue
-		}
+	// Filter VMs with pvmss tag using concurrent config fetch
+	results := make([]AdminVMInfo, 0, len(allVMs))
+	var mu sync.Mutex
+	// Limit parallelism to avoid overwhelming API
+	sem := make(chan struct{}, 8)
+	g, gctx := errgroup.WithContext(ctx)
 
-		status := vm.Status
-		if status == "" {
-			status = "unknown"
-		}
+	for i := range allVMs {
+		vm := allVMs[i] // capture
+		g.Go(func() error {
+			// Acquire semaphore slot
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-gctx.Done():
+				return gctx.Err()
+			}
 
-		// Extract tags for display
-		tags := ""
-		if tagsValue, ok := cfg["tags"].(string); ok {
-			tags = tagsValue
-		}
+			cfg, err := proxmox.GetVMConfigResty(gctx, restyClient, vm.Node, vm.VMID)
+			if err != nil {
+				log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config, skipping")
+				return nil
+			}
 
-		results = append(results, AdminVMInfo{
-			VMID:   vm.VMID,
-			Name:   vm.Name,
-			Node:   vm.Node,
-			Status: strings.ToLower(status),
-			Tags:   tags,
+			if !h.hasTag(cfg, "pvmss") {
+				return nil
+			}
+
+			status := vm.Status
+			if status == "" {
+				status = "unknown"
+			}
+
+			tags := ""
+			if tagsValue, ok := cfg["tags"].(string); ok {
+				tags = tagsValue
+			}
+
+			info := AdminVMInfo{
+				VMID:   vm.VMID,
+				Name:   vm.Name,
+				Node:   vm.Node,
+				Status: strings.ToLower(status),
+				Tags:   tags,
+			}
+
+			mu.Lock()
+			results = append(results, info)
+			mu.Unlock()
+
+			log.Debug().
+				Int("vmid", vm.VMID).
+				Str("name", vm.Name).
+				Str("node", vm.Node).
+				Msg("VM with pvmss tag found")
+			return nil
 		})
+	}
 
-		log.Debug().
-			Int("vmid", vm.VMID).
-			Str("name", vm.Name).
-			Str("node", vm.Node).
-			Msg("VM with pvmss tag found")
+	if err := g.Wait(); err != nil {
+		log.Warn().Err(err).Msg("Concurrent VM config fetch encountered errors")
 	}
 
 	// Sort by VMID
@@ -207,7 +264,7 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context, client proxmox
 	log.Info().
 		Int("total_found", len(results)).
 		Int("total_checked", len(allVMs)).
-		Msg("Completed filtering VMs with pvmss tag")
+		Msg("Completed filtering VMs with pvmss tag (concurrent)")
 
 	return results, ""
 }

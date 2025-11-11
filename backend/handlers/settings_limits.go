@@ -2,14 +2,19 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+
+	"pvmss/i18n"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // LimitsPageHandler renders the Resource Limits page (server-rendered)
@@ -17,8 +22,9 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	log := CreateHandlerLogger("LimitsPageHandler", r)
 
 	settings := h.stateManager.GetSettings()
+	localizer := i18n.GetLocalizerFromRequest(r)
 	if settings == nil {
-		http.Error(w, "Settings not available", http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(localizer, "Error.SettingsUnavailable"), http.StatusInternalServerError)
 		return
 	}
 
@@ -30,39 +36,50 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		nodeParam := r.URL.Query().Get("node")
 		switch entity {
 		case "vm":
-			successMsg = "VM limits updated"
+			successMsg = i18n.Localize(localizer, "Admin.Limits.Success.VM")
 		case "nodes":
 			if nodeParam != "" {
-				successMsg = "Limits updated for node '" + nodeParam + "'"
+				tmpl := i18n.Localize(localizer, "Admin.Limits.Success.NodeWithName")
+				successMsg = fmt.Sprintf(tmpl, nodeParam)
 			} else {
-				successMsg = "Node limits updated"
+				successMsg = i18n.Localize(localizer, "Admin.Limits.Success.Nodes")
 			}
 		default:
-			successMsg = "Limits updated"
+			successMsg = i18n.Localize(localizer, "Admin.Limits.Success.Generic")
 		}
 	} else if r.URL.Query().Get("error") == "1" {
 		errorMsg = r.URL.Query().Get("errorMsg")
 		if errorMsg == "" {
-			errorMsg = "An error occurred while updating limits"
+			errorMsg = i18n.Localize(localizer, "Admin.Limits.Error.Generic")
 		}
 	}
 
-	// Use standard admin page helper
-	data := AdminPageDataWithMessage("Resource Limits", "limits", successMsg, errorMsg)
+	// Build template data with functional options
+	limitsData := h.stateManager.GetLimits()
+	opts := []TemplateOption{
+		WithAdminActive("limits"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.Limits.Title"),
+		WithData("Limits", limitsData),
+		WithData("Node", r.URL.Query().Get("node")),
+	}
 
-	// Add limits data
-	data["Limits"] = settings.Limits
-
-	// Add selected node from query params
-	nodeParam := r.URL.Query().Get("node")
-	data["Node"] = nodeParam
+	if successMsg != "" {
+		opts = append(opts, WithSuccess(successMsg))
+	}
+	if errorMsg != "" {
+		opts = append(opts, WithError(errorMsg))
+	}
 
 	// Get node names for dropdown
 	var nodeNames []string
-	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	client := h.stateManager.GetProxmoxClient()
+	offlineMode := h.stateManager.IsOfflineMode()
+	proxmoxConnected := client != nil && !offlineMode
 
-	if proxmoxConnected && client != nil {
+	if proxmoxConnected {
 		pc, ok := client.(*proxmox.Client)
 		if ok {
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
@@ -74,18 +91,25 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 				nodeNames = nodes
 			}
 		}
+	} else {
+		settingsNodes, _, _ := deriveNodesFromSettings(settings)
+		nodeNames = settingsNodes
 	}
 
 	// Always provide NodeNames (empty array if no nodes available)
 	if nodeNames == nil {
 		nodeNames = []string{}
 	}
-	data["NodeNames"] = nodeNames
+	// Ensure alphabetical order of nodes in the dropdown
+	if len(nodeNames) > 1 {
+		sort.Strings(nodeNames)
+	}
+	opts = append(opts, WithData("NodeNames", nodeNames))
 
 	// Get resource usage for all nodes
 	var nodeUsage map[string]*NodeResourceUsage
 	var nodeCapacities map[string]*NodeCapacity
-	if proxmoxConnected && client != nil {
+	if proxmoxConnected {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		if usage, err := CalculateNodeResourceUsage(ctx, client, h.stateManager); err != nil {
@@ -104,9 +128,16 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
-	data["NodeUsage"] = nodeUsage
-	data["NodeCapacities"] = nodeCapacities
+	if nodeUsage == nil {
+		nodeUsage = make(map[string]*NodeResourceUsage)
+	}
+	if nodeCapacities == nil {
+		nodeCapacities = make(map[string]*NodeCapacity)
+	}
+	opts = append(opts, WithData("NodeUsage", nodeUsage))
+	opts = append(opts, WithData("NodeCapacities", nodeCapacities))
 
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_limits", data)
 }
 
@@ -114,13 +145,15 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("UpdateLimitsFormHandler", r)
 
+	localizer := i18n.GetLocalizerFromRequest(r)
+
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
 
 	entity := r.FormValue("entityId") // "vm" or "node"
 	if entity == "" {
-		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape("Missing entity type")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.MissingEntity"))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
@@ -161,33 +194,36 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 	// Load settings
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
-		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape("Settings not available")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.SettingsUnavailable"))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
-	if settings.Limits == nil {
-		settings.Limits = make(map[string]interface{})
+	if settings.Limits.VM.Sockets.Min == 0 {
+		settings.Limits = state.LimitsConfig{
+			VM: state.VMResourceLimits{
+				Sockets: state.ResourceRange{Min: 1, Max: 1},
+				Cores:   state.ResourceRange{Min: 1, Max: 2},
+				RAM:     state.ResourceRange{Min: 1, Max: 4},
+				Disk:    state.ResourceRange{Min: 1, Max: 10},
+			},
+			Nodes: make(map[string]state.NodeResourceLimits),
+		}
 	}
 
 	// Persist limits
 	switch entity {
 	case "vm":
 		// Flat VM limits
-		entityMap, _ := settings.Limits["vm"].(map[string]interface{})
-		if entityMap == nil {
-			entityMap = make(map[string]interface{})
-		}
-		entityMap["sockets"] = map[string]int{"min": 1, "max": socketsMax}
-		entityMap["cores"] = map[string]int{"min": 1, "max": coresMax}
-		entityMap["ram"] = map[string]int{"min": ramMin, "max": ramMax}
-		entityMap["disk"] = map[string]int{"min": diskMin, "max": diskMax}
-		settings.Limits["vm"] = entityMap
+		settings.Limits.VM.Sockets = state.ResourceRange{Min: 1, Max: socketsMax}
+		settings.Limits.VM.Cores = state.ResourceRange{Min: 1, Max: coresMax}
+		settings.Limits.VM.RAM = state.ResourceRange{Min: ramMin, Max: ramMax}
+		settings.Limits.VM.Disk = state.ResourceRange{Min: diskMin, Max: diskMax}
 
 	case "node", "nodes":
 		// Per-node limits under limits.nodes[<nodeName>]
 		nodeName := strings.TrimSpace(r.FormValue("nodeName"))
 		if nodeName == "" {
-			redirect := "/admin/limits?error=1&entity=nodes&errorMsg=" + url.QueryEscape("Missing node name")
+			redirect := "/admin/limits?error=1&entity=nodes&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.MissingNodeName"))
 			http.Redirect(w, r, redirect, http.StatusSeeOther)
 			return
 		}
@@ -197,7 +233,7 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		if client != nil && coresMax > 0 && ramMax > 0 {
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 			defer cancel()
-			if err := ValidateNodeLimitsAgainstCapacity(ctx, client, nodeName, coresMax, ramMax); err != nil {
+			if err := ValidateNodeLimitsAgainstCapacity(ctx, client, nodeName, coresMax, ramMax, localizer); err != nil {
 				log.Warn().Err(err).Str("node", nodeName).Msg("Node limits validation failed")
 				// Redirect back with error message
 				redirect := "/admin/limits?error=1&entity=nodes&node=" + url.QueryEscape(nodeName) + "&errorMsg=" + url.QueryEscape(err.Error())
@@ -206,23 +242,20 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 			}
 		}
 
-		nodesMap, _ := settings.Limits["nodes"].(map[string]interface{})
-		if nodesMap == nil {
-			nodesMap = make(map[string]interface{})
+		if settings.Limits.Nodes == nil {
+			settings.Limits.Nodes = make(map[string]state.NodeResourceLimits)
 		}
-		nodeEntry, _ := nodesMap[nodeName].(map[string]interface{})
-		if nodeEntry == nil {
-			nodeEntry = make(map[string]interface{})
+
+		settings.Limits.Nodes[nodeName] = state.NodeResourceLimits{
+			Sockets: state.ResourceRange{Min: 1, Max: socketsMax},
+			Cores:   state.ResourceRange{Min: 1, Max: coresMax},
+			RAM:     state.ResourceRange{Min: ramMin, Max: ramMax},
+			Disk:    state.ResourceRange{Min: diskMin, Max: diskMax},
 		}
-		nodeEntry["sockets"] = map[string]int{"min": 1, "max": socketsMax}
-		nodeEntry["cores"] = map[string]int{"min": 1, "max": coresMax}
-		nodeEntry["ram"] = map[string]int{"min": ramMin, "max": ramMax}
-		nodesMap[nodeName] = nodeEntry
-		settings.Limits["nodes"] = nodesMap
 		entity = "nodes" // normalize for redirect
 
 	default:
-		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape("Unsupported entity type")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.UnsupportedEntity"))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}
@@ -233,7 +266,8 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		if entity == "nodes" {
 			redirect += "&node=" + url.QueryEscape(strings.TrimSpace(r.FormValue("nodeName")))
 		}
-		redirect += "&errorMsg=" + url.QueryEscape("Failed to save settings: "+err.Error())
+		base := i18n.Localize(localizer, "Admin.Limits.Error.SaveFailed")
+		redirect += "&errorMsg=" + url.QueryEscape(fmt.Sprintf(base, err.Error()))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
 	}

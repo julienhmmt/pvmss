@@ -2,9 +2,14 @@ package handlers
 
 import (
 	"context"
+	// "encoding/json"
+	"errors"
 	"fmt"
+	// "strconv"
 	"strings"
 	"time"
+
+	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -23,15 +28,22 @@ type NodeResourceUsage struct {
 }
 
 // CalculateNodeResourceUsage calculates the aggregated resources used by VMs with the "pvmss" tag
-// for each node in the Proxmox cluster
+// for each node in the Proxmox cluster using resty
 func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
 	log := logger.Get().With().Str("function", "CalculateNodeResourceUsage").Logger()
 
+	// Create resty client
+	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, fmt.Errorf("failed to create resty client for resource usage: %w", err)
+	}
+
 	// Get all nodes
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get nodes")
-		return nil, err
+		return nil, fmt.Errorf("failed to get node names for resource usage: %w", err)
 	}
 
 	usage := make(map[string]*NodeResourceUsage)
@@ -44,7 +56,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	}
 
 	// Get all VMs
-	vms, err := proxmox.GetVMsWithContext(ctx, client)
+	vms, err := proxmox.GetVMsResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get VMs")
 		return usage, nil // Return empty usage instead of error
@@ -53,7 +65,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	// Iterate through VMs and accumulate resources for pvmss-tagged VMs
 	for _, vm := range vms {
 		// Get VM config to check tags
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
 			log.Warn().Err(err).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Failed to get VM config")
 			continue
@@ -109,24 +121,18 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 
 	// Convert RAM from MB to GB for display
 	for _, nodeUsage := range usage {
-		nodeUsage.RamGB = int(nodeUsage.RamMB / 1024)
+		nodeUsage.RamGB = int(MBToGB(nodeUsage.RamMB))
 	}
 
 	// Get limits from settings to populate max values
 	settings := sm.GetSettings()
-	if settings != nil && settings.Limits != nil {
-		if nodesLimits, ok := settings.Limits["nodes"].(map[string]interface{}); ok {
-			for nodeName, nodeUsage := range usage {
-				if nodeLimitRaw, ok := nodesLimits[nodeName].(map[string]interface{}); ok {
-					// Extract max cores
-					if _, max, ok := readMinMax(nodeLimitRaw, "cores"); ok {
-						nodeUsage.MaxCores = max
-					}
-					// Extract max RAM
-					if _, max, ok := readMinMax(nodeLimitRaw, "ram"); ok {
-						nodeUsage.MaxRamGB = max
-					}
-				}
+	if settings != nil {
+		for nodeName, nodeUsage := range usage {
+			if nodeLimits, ok := settings.Limits.Nodes[nodeName]; ok {
+				// Extract max cores
+				nodeUsage.MaxCores = nodeLimits.Cores.Max
+				// Extract max RAM
+				nodeUsage.MaxRamGB = nodeLimits.RAM.Max
 			}
 		}
 	}
@@ -152,6 +158,82 @@ func parseTags(tagsStr string) []string {
 	return tags
 }
 
+// readMinMax extracts integer min/max values for a given key from a generic map
+// representation typically loaded from JSON settings.
+// func readMinMax(entry map[string]interface{}, key string) (int, int, bool) {
+// 	raw, exists := entry[key]
+// 	if !exists {
+// 		return 0, 0, false
+// 	}
+
+// 	limitMap, ok := raw.(map[string]interface{})
+// 	if !ok {
+// 		return 0, 0, false
+// 	}
+
+// 	var minVal int
+// 	if minRaw, exists := limitMap["min"]; exists {
+// 		parsedMin, ok := parseNumericValue(minRaw)
+// 		if !ok {
+// 			return 0, 0, false
+// 		}
+// 		minVal = parsedMin
+// 	}
+
+// 	maxRaw, exists := limitMap["max"]
+// 	if !exists {
+// 		return 0, 0, false
+// 	}
+
+// 	parsedMax, ok := parseNumericValue(maxRaw)
+// 	if !ok {
+// 		return 0, 0, false
+// 	}
+
+// 	return minVal, parsedMax, true
+// }
+
+// parseNumericValue converts different numeric representations (float64, int, string)
+// into an int, returning false when parsing is not possible.
+// func parseNumericValue(value interface{}) (int, bool) {
+// 	switch v := value.(type) {
+// 	case float64:
+// 		return int(v), true
+// 	case float32:
+// 		return int(v), true
+// 	case int:
+// 		return v, true
+// 	case int32:
+// 		return int(v), true
+// 	case int64:
+// 		return int(v), true
+// 	case uint:
+// 		return int(v), true
+// 	case uint32:
+// 		return int(v), true
+// 	case uint64:
+// 		return int(v), true
+// 	case json.Number:
+// 		i64, err := v.Int64()
+// 		if err != nil {
+// 			return 0, false
+// 		}
+// 		return int(i64), true
+// 	case string:
+// 		s := strings.TrimSpace(v)
+// 		if s == "" {
+// 			return 0, false
+// 		}
+// 		i, err := strconv.Atoi(s)
+// 		if err != nil {
+// 			return 0, false
+// 		}
+// 		return i, true
+// 	default:
+// 		return 0, false
+// 	}
+// }
+
 // LimitsGetter defines the minimal interface needed to get settings
 type LimitsGetter interface {
 	GetSettings() *state.AppSettings
@@ -165,14 +247,21 @@ type NodeCapacity struct {
 	MemoryMB int64 // Total RAM in MB
 }
 
-// GetNodeCapacity retrieves the physical hardware capacity of a node
+// GetNodeCapacity retrieves the physical hardware capacity of a node using resty
 func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string) (*NodeCapacity, error) {
 	log := logger.Get().With().Str("function", "GetNodeCapacity").Logger()
 
-	nodeDetails, err := proxmox.GetNodeDetailsWithContext(ctx, client, nodeName)
+	// Create resty client
+	restyClient, err := proxmox.NewRestyClientFromEnv(10 * time.Second)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, fmt.Errorf("failed to create resty client for node %s: %w", nodeName, err)
+	}
+
+	nodeDetails, err := proxmox.GetNodeDetailsResty(ctx, restyClient, nodeName)
 	if err != nil {
 		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
-		return nil, err
+		return nil, fmt.Errorf("failed to get details for node %s: %w", nodeName, err)
 	}
 
 	memoryMB := int64(nodeDetails.MaxMemory)
@@ -193,7 +282,7 @@ func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeNa
 }
 
 // ValidateNodeLimitsAgainstCapacity validates that configured limits don't exceed node physical capacity
-func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string, maxCores, maxRamGB int) error {
+func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string, maxCores, maxRamGB int, localizer *goi18n.Localizer) error {
 	log := logger.Get().With().Str("function", "ValidateNodeLimitsAgainstCapacity").Logger()
 
 	capacity, err := GetNodeCapacity(ctx, client, nodeName)
@@ -204,12 +293,22 @@ func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.Clien
 
 	// Validate cores
 	if maxCores > capacity.CPUs {
-		return fmt.Errorf("aggregate cores limit (%d) exceeds node physical capacity (%d CPUs)", maxCores, capacity.CPUs)
+		if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresExceed", map[string]interface{}{
+			"Limit":    maxCores,
+			"Capacity": capacity.CPUs,
+		}, "aggregate cores limit (%d) exceeds node physical capacity (%d CPUs)", maxCores, capacity.CPUs); err != nil {
+			return err
+		}
 	}
 
 	// Validate RAM
 	if maxRamGB > capacity.MemoryGB {
-		return fmt.Errorf("aggregate RAM limit (%d GB) exceeds node physical capacity (%d GB)", maxRamGB, capacity.MemoryGB)
+		if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamExceed", map[string]interface{}{
+			"Limit":    maxRamGB,
+			"Capacity": capacity.MemoryGB,
+		}, "aggregate RAM limit (%d GB) exceeds node physical capacity (%d GB)", maxRamGB, capacity.MemoryGB); err != nil {
+			return err
+		}
 	}
 
 	log.Info().
@@ -224,7 +323,7 @@ func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.Clien
 }
 
 // ValidateVMResourcesAgainstNodeLimits validates that adding a new VM won't exceed node aggregate limits
-func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter, node string, sockets, cores int, memoryMB int) error {
+func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter, node string, sockets, cores int, memoryMB int, localizer *goi18n.Localizer) error {
 	log := logger.Get().With().Str("function", "ValidateVMResourcesAgainstNodeLimits").Logger()
 
 	// Calculate current usage
@@ -249,15 +348,22 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 		return nil
 	}
 
-	memoryGB := memoryMB / 1024
+	memoryGB := int(MBToGB(int64(memoryMB)))
 
 	// Validate cores
 	if nodeUsage.MaxCores > 0 {
 		totalCores := sockets * cores
 		newTotal := nodeUsage.Cores + totalCores
 		if newTotal > nodeUsage.MaxCores {
-			return fmt.Errorf("adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
-				node, nodeUsage.Cores, totalCores, nodeUsage.MaxCores)
+			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresVMExceed", map[string]interface{}{
+				"Node":      node,
+				"Current":   nodeUsage.Cores,
+				"Requested": totalCores,
+				"Limit":     nodeUsage.MaxCores,
+			}, "adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
+				node, nodeUsage.Cores, totalCores, nodeUsage.MaxCores); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -265,8 +371,15 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 	if nodeUsage.MaxRamGB > 0 {
 		newTotal := nodeUsage.RamGB + memoryGB
 		if newTotal > nodeUsage.MaxRamGB {
-			return fmt.Errorf("adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
-				node, nodeUsage.RamGB, memoryGB, nodeUsage.MaxRamGB)
+			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamVMExceed", map[string]interface{}{
+				"Node":      node,
+				"Current":   nodeUsage.RamGB,
+				"Requested": memoryGB,
+				"Limit":     nodeUsage.MaxRamGB,
+			}, "adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
+				node, nodeUsage.RamGB, memoryGB, nodeUsage.MaxRamGB); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -277,4 +390,16 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 		Msg("VM creation validated against aggregate node limits")
 
 	return nil
+}
+
+// returnLocalizedError returns a localized error message or falls back to formatted message
+func returnLocalizedError(localizer *goi18n.Localizer, messageID string, templateData map[string]interface{}, fallbackFormat string, args ...interface{}) error {
+	localized, err := localizer.Localize(&goi18n.LocalizeConfig{
+		MessageID:    messageID,
+		TemplateData: templateData,
+	})
+	if err == nil && localized != "" {
+		return errors.New(localized)
+	}
+	return fmt.Errorf(fallbackFormat, args...)
 }

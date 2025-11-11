@@ -1,0 +1,21 @@
+# Navigation
+["Navbar.Admin"]
+other = "Administration"
+["Navbar.AdminDocs"]
+other = "Documentation administrateur"
+["Navbar.CreateVM"]
+other = "Créer une VM"
+["Navbar.Documentation"]
+other = "Documentation"
+["Navbar.Home"]
+other = "Accueil"
+["Navbar.Login"]
+other = "Connexion"
+["Navbar.Logout"]
+other = "Déconnexion"
+["Navbar.SearchVM"]
+other = "Rechercher une VM"
+["Navbar.UserDocs"]
+other = "Docs utilisateur"
+["Navbar.Profile"]
+other = "Profil"

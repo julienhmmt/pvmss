@@ -1,0 +1,39 @@
+# Admin - Informations de l'application
+["Admin.AppInfo.Title"]
+other = "Informations de l'application"
+["Admin.AppInfo.Description"]
+other = "Détails de build, environnement et informations système"
+["Admin.AppInfo.BuildInfo"]
+other = "Informations de Build"
+["Admin.AppInfo.Version"]
+other = "Version"
+["Admin.AppInfo.Environment"]
+other = "Environnement"
+["Admin.AppInfo.GoVersion"]
+other = "Version Go"
+["Admin.AppInfo.Platform"]
+other = "Plateforme"
+["Admin.AppInfo.EnvironmentVariables"]
+other = "Variables d'environnement"
+["Admin.AppInfo.EnvironmentVariablesDescription"]
+other = "Variables de configuration sûres (les secrets ne sont pas affichés)"
+["Admin.AppInfo.NoVariables"]
+other = "Aucune variable d'environnement configurée."
+["Admin.AppInfo.SecurityNote"]
+other = "Note de sécurité :"
+["Admin.AppInfo.SecurityMessage"]
+other = "Cette page affiche uniquement des informations de configuration sûres et non sensibles. Les jetons API, mots de passe et autres secrets ne sont jamais affichés."
+["Admin.AppInfo.ProxmoxInfo"]
+other = "Informations Proxmox"
+["Admin.AppInfo.ClusterStatus"]
+other = "État du cluster"
+["Admin.AppInfo.ClusterDetected"]
+other = "Mode cluster"
+["Admin.AppInfo.StandaloneMode"]
+other = "Mode autonome"
+["Admin.AppInfo.ClusterName"]
+other = "Nom du cluster"
+["Admin.AppInfo.NodeCount"]
+other = "Nombre de nœuds"
+["Admin.AppInfo.Nodes"]
+other = "nœuds"

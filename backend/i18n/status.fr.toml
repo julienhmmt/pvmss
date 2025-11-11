@@ -1,0 +1,35 @@
+# Statut
+["Status.Active"]
+other = "Actif"
+["Status.Connected"]
+other = "Connecté"
+["Status.Disabled"]
+other = "Désactivé"
+["Status.Disconnected"]
+other = "Déconnecté"
+["Status.Down"]
+other = "Arrêté"
+["Status.Error"]
+other = "Erreur"
+["Status.Failed"]
+other = "Échec"
+["Status.Offline"]
+other = "Hors ligne"
+["Status.Online"]
+other = "En ligne"
+["Status.Paused"]
+other = "En pause"
+["Status.Pending"]
+other = "En attente"
+["Status.Running"]
+other = "En cours d'exécution"
+["Status.Stopped"]
+other = "Arrêté"
+["Status.Success"]
+other = "Succès"
+["Status.Unknown"]
+other = "Inconnu"
+["Status.Updating"]
+other = "Mise à jour en cours"
+["Status.Warning"]
+other = "Avertissement"

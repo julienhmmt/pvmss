@@ -27,7 +27,7 @@ func csrfToken(r *http.Request) template.HTML {
 		return ""
 	}
 	// Use template.HTMLEscapeString for proper escaping
-	return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, template.HTMLEscapeString(token)))
+	return template.HTML(fmt.Sprintf(`<input type="hidden" name="csrf_token" value="%s">`, template.HTMLEscapeString(token))) // #nosec G203 - Value is explicitly HTML-escaped, only markup wrapper is added
 }
 
 // csrfMeta generates a CSRF meta tag for JavaScript.
@@ -38,7 +38,7 @@ func csrfMeta(r *http.Request) template.HTML {
 		return ""
 	}
 	// Use template.HTMLEscapeString for proper escaping
-	return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, template.HTMLEscapeString(token)))
+	return template.HTML(fmt.Sprintf(`<meta name="csrf-token" content="%s">`, template.HTMLEscapeString(token))) // #nosec G203 - Value is explicitly HTML-escaped, only markup wrapper is added
 }
 
 // isHTTPS checks if the request is using HTTPS

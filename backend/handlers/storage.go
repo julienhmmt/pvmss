@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"sort"
@@ -8,10 +10,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
+
+	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 )
 
 // buildSuccessMessage creates success message from query parameters
@@ -22,14 +27,28 @@ func buildSuccessMessage(r *http.Request) string {
 
 	action := r.URL.Query().Get("action")
 	storage := r.URL.Query().Get("storage")
+	localizer := i18n.GetLocalizerFromRequest(r)
+
+	format := func(key, fallback string) string {
+		msg := i18n.Localize(localizer, key)
+		if msg == "" {
+			msg = fallback
+		}
+		if strings.Contains(msg, "%s") {
+			return fmt.Sprintf(msg, storage)
+		}
+		return msg
+	}
 
 	switch action {
 	case "enable":
-		return "Storage '" + storage + "' enabled"
+		return format("Admin.Storage.Success.Enable", "Storage '%s' enabled")
 	case "disable":
-		return "Storage '" + storage + "' disabled"
+		return format("Admin.Storage.Success.Disable", "Storage '%s' disabled")
+	case "update_disk_config":
+		return format("Admin.Storage.Success.DiskConfig", "Disk configuration updated successfully")
 	default:
-		return "Storage settings updated"
+		return format("Admin.Storage.Success.Default", "Storage settings updated")
 	}
 }
 
@@ -49,8 +68,8 @@ func ensureStoragesInitialized(settings *state.AppSettings) {
 	}
 }
 
-// projectEnabledFlags adds Enabled field to storage items and sorts them
-func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[string]interface{} {
+// projectEnabledFlagsWithCache adds Enabled field and handles cache flag for storage items
+func projectEnabledFlagsWithCache(base []map[string]interface{}, enabled []string, isFromCache bool) []map[string]interface{} {
 	enabledMap := buildEnabledMap(enabled)
 	projected := make([]map[string]interface{}, 0, len(base))
 
@@ -60,7 +79,17 @@ func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[
 			cpy[k] = v
 		}
 		name, _ := cpy["Storage"].(string)
-		cpy["Enabled"] = len(enabled) == 0 || enabledMap[name]
+		node, _ := cpy["Node"].(string)
+
+		// Check if node:storage is enabled
+		uniqueID := node + ":" + name
+		cpy["Enabled"] = len(enabled) == 0 || enabledMap[uniqueID]
+
+		// Mark as from cache if needed
+		if isFromCache {
+			cpy["IsFromCache"] = true
+		}
+
 		projected = append(projected, cpy)
 	}
 
@@ -86,34 +115,38 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	storageName := r.FormValue("storage")
+	node := r.FormValue("node")
 	action := r.FormValue("action") // "enable" or "disable"
-	if storageName == "" || (action != "enable" && action != "disable") {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if storageName == "" || node == "" || (action != "enable" && action != "disable") {
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
+
+	// Create unique identifier combining node and storage name
+	uniqueID := node + ":" + storageName
 
 	settings := h.stateManager.GetSettings()
 	if settings.EnabledStorages == nil {
 		settings.EnabledStorages = []string{}
 	}
 
-	enabledMap := make(map[string]bool, len(settings.EnabledStorages))
+	enabled := make(map[string]bool, len(settings.EnabledStorages))
 	for _, s := range settings.EnabledStorages {
-		enabledMap[s] = true
+		enabled[s] = true
 	}
 
 	changed := false
 	if action == "enable" {
-		if !enabledMap[storageName] {
-			settings.EnabledStorages = append(settings.EnabledStorages, storageName)
+		if !enabled[uniqueID] {
+			settings.EnabledStorages = append(settings.EnabledStorages, uniqueID)
 			changed = true
 		}
 	} else { // disable
-		if enabledMap[storageName] {
+		if enabled[uniqueID] {
 			// remove
 			filtered := make([]string, 0, len(settings.EnabledStorages))
 			for _, s := range settings.EnabledStorages {
-				if s != storageName {
+				if s != uniqueID {
 					filtered = append(filtered, s)
 				}
 			}
@@ -125,13 +158,16 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 	if changed {
 		if err := h.stateManager.SetSettings(settings); err != nil {
 			log.Error().Err(err).Msg("Error saving settings")
-			http.Error(w, "Error saving settings", http.StatusInternalServerError)
+			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
 	}
 
 	// Redirect back to storage page with context for success banner
 	redirectURL := "/admin/storage?success=1&action=" + action + "&storage=" + url.QueryEscape(storageName)
+	if node != "" {
+		redirectURL += "&node=" + url.QueryEscape(node)
+	}
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -151,50 +187,94 @@ func NewStorageHandler(stateManager state.StateManager) *StorageHandler {
 func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("StorageHandler", r)
 
-	// Get the Proxmox client
 	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		// Offline-friendly: render page with empty storages and existing settings
-		log.Warn().Msg("Proxmox client not available; rendering Storage page in offline/read-only mode")
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 
-		// Get settings
-		settings := h.stateManager.GetSettings()
-		ensureStoragesInitialized(settings)
-		enabledMap := buildEnabledMap(settings.EnabledStorages)
-		successMsg := buildSuccessMessage(r)
-
-		// Prepare data for the template (empty Storages)
-		data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
-		data["Storages"] = []map[string]interface{}{}
-		data["EnabledStorages"] = enabledMap
-
-		// Add translations and render
-		renderTemplateInternal(w, r, "admin_storage", data)
-		return
-	}
-
+	// Get node filter from query parameter (optional, for frontend filtering)
 	node := r.URL.Query().Get("node")
-	refresh := r.URL.Query().Get("refresh") == "1"
 
-	// Get settings
 	settings := h.stateManager.GetSettings()
 	ensureStoragesInitialized(settings)
 
-	// Use the shared utility to retrieve renderable storages
-	storages, enabledMap, chosenNode, err := FetchRenderableStorages(client, node, settings.EnabledStorages, refresh)
-	if err != nil {
-		log.Error().Err(err).Msg("Error retrieving storages")
-		http.Error(w, "Error retrieving storages: "+err.Error(), http.StatusInternalServerError)
-		return
+	allStorages := make([]map[string]interface{}, 0)
+	allNodes := make([]string, 0)
+
+	if client == nil || !proxmoxConnected {
+		log.Warn().Bool("connected", proxmoxConnected).Msg("Proxmox not available; rendering page with empty storage list")
+	} else {
+		nodeNames, err := proxmox.GetNodeNames(client)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting node names")
+		} else {
+			sort.Strings(nodeNames)
+			allNodes = nodeNames
+			storagesByID := make(map[string]map[string]interface{}, len(nodeNames)*4)
+
+			// Collect raw storages from all nodes for deduplication
+			for _, nodeName := range nodeNames {
+				rawStorages, err := fetchRawStoragesFromNode(r.Context(), nodeName)
+				if err != nil {
+					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to get raw storages from node")
+					continue
+				}
+				for _, storage := range rawStorages {
+					storageNode, _ := storage["Node"].(string)
+					storageName, _ := storage["Storage"].(string)
+					if storageNode == "" || storageName == "" {
+						continue
+					}
+					uniqueID := storageNode + ":" + storageName
+					storagesByID[uniqueID] = storage
+				}
+			}
+
+			// Convert map to slice and sort
+			allStorages = make([]map[string]interface{}, 0, len(storagesByID))
+			for _, storage := range storagesByID {
+				allStorages = append(allStorages, storage)
+			}
+			sort.Slice(allStorages, func(i, j int) bool {
+				nodeI, _ := allStorages[i]["Node"].(string)
+				nodeJ, _ := allStorages[j]["Node"].(string)
+				if nodeI == nodeJ {
+					nameI, _ := allStorages[i]["Storage"].(string)
+					nameJ, _ := allStorages[j]["Storage"].(string)
+					return nameI < nameJ
+				}
+				return nodeI < nodeJ
+			})
+
+			// Apply enabled flags after deduplication
+			allStorages = projectEnabledFlagsWithCache(allStorages, settings.EnabledStorages, false)
+		}
+		log.Info().Int("storage_total", len(allStorages)).Msg("Total storages prepared for template")
+	}
+
+	enabledMap := make(map[string]bool, len(settings.EnabledStorages))
+	for _, storageID := range settings.EnabledStorages {
+		enabledMap[storageID] = true
 	}
 
 	successMsg := buildSuccessMessage(r)
 
-	data := AdminPageDataWithMessage("Storage Management", "storage", successMsg, "")
-	data["Node"] = chosenNode
-	data["Storages"] = storages
-	data["EnabledMap"] = enabledMap
+	opts := []TemplateOption{
+		WithAdminActive("storage"),
+		WithAuth(r),
+		WithProxmoxStatus(h.stateManager),
+		WithMessages(r),
+		WithData("TitleKey", "Admin.Storage.Title"),
+		WithData("Node", node),
+		WithData("Nodes", allNodes),
+		WithData("Storages", allStorages),
+		WithData("EnabledMap", enabledMap),
+		WithData("MaxDiskPerVM", settings.MaxDiskPerVM),
+	}
 
+	if successMsg != "" {
+		opts = append(opts, WithSuccess(successMsg))
+	}
+
+	data := NewTemplateDataWithOptions("", opts...).ToMap()
 	renderTemplateInternal(w, r, "admin_storage", data)
 }
 
@@ -208,8 +288,6 @@ func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
 		"toggle": h.ToggleStorageHandler,
 	})
 }
-
-// Storage utility functions (moved from storage_utils.go)
 
 // simple cache for filtered storages per node (without Enabled flag)
 var (
@@ -239,7 +317,7 @@ func canHoldVMDisks(s proxmox.Storage) bool {
 	if strings.EqualFold(s.Type, "pbs") {
 		return false
 	}
-	// Explicit content includes images
+	// Explicit content includes images (check if "images" is in the content string)
 	if s.Content != "" && strings.Contains(s.Content, "images") {
 		return true
 	}
@@ -253,48 +331,154 @@ func canHoldVMDisks(s proxmox.Storage) bool {
 }
 
 // FetchRenderableStorages fetches, merges, filters and prepares storages for rendering.
-// - If node is empty, the first available node is used.
+// - If node is empty, tries all available nodes to find one that's online
 // - If refresh is true, bypass the short-lived cache.
+// - Falls back to cached data if all nodes are offline
 // Returns: storages (with Enabled already set from enabled list), enabledMap, chosenNode
-func FetchRenderableStorages(client proxmox.ClientInterface, node string, enabled []string, refresh bool) ([]map[string]interface{}, map[string]bool, string, error) {
+func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface, node string, enabled []string, refresh bool) ([]map[string]interface{}, map[string]bool, string, error) {
 	log := logger.Get().With().Str("component", "storage_utils").Logger()
 
-	// detect node if empty
-	chosen := node
-	if chosen == "" {
-		if names, err := proxmox.GetNodeNames(client); err == nil && len(names) > 0 {
-			chosen = names[0]
-		}
+	// Get all available nodes
+	allNodes, err := proxmox.GetNodeNames(client)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to get node names")
+		return nil, map[string]bool{}, "", err
 	}
 
-	if chosen == "" {
+	if len(allNodes) == 0 {
 		return nil, map[string]bool{}, "", nil
 	}
 
-	// Check cache
-	storCacheMu.Lock()
-	cached, ok := storCache[chosen]
-	storCacheMu.Unlock()
-	if ok && time.Now().Before(cached.expiresAt) && !refresh {
-		log.Debug().Str("node", chosen).Time("expiresAt", cached.expiresAt).Msg("storage cache hit")
-		return projectEnabledFlags(cached.items, enabled), buildEnabledMap(enabled), chosen, nil
+	// Determine which nodes to try
+	nodesToTry := []string{}
+	if node != "" {
+		// Try the specified node first
+		nodesToTry = append(nodesToTry, node)
+		// Add other nodes as fallbacks
+		for _, n := range allNodes {
+			if n != node {
+				nodesToTry = append(nodesToTry, n)
+			}
+		}
+	} else {
+		// Use all nodes in order
+		nodesToTry = allNodes
 	}
 
-	// fetch global config and node storages
-	globalStorages, err := proxmox.GetStorages(client)
-	if err != nil {
-		return nil, nil, chosen, err
+	log.Debug().Strs("available_nodes", allNodes).Str("requested_node", node).Msg("Available nodes for storage")
+
+	var lastError error
+	var chosenNode string
+
+	// Try each node until we find one that works
+	for _, tryNode := range nodesToTry {
+		if tryNode == "" {
+			continue
+		}
+
+		chosenNode = tryNode
+		log.Debug().Str("trying_node", chosenNode).Msg("Attempting to fetch storages from node")
+
+		// Check cache first (unless refresh is forced)
+		if !refresh {
+			storCacheMu.Lock()
+			cached, ok := storCache[chosenNode]
+			storCacheMu.Unlock()
+			if ok && time.Now().Before(cached.expiresAt) {
+				log.Debug().Str("node", chosenNode).Time("expiresAt", cached.expiresAt).Msg("storage cache hit")
+				return projectEnabledFlagsWithCache(cached.items, enabled, true), buildEnabledMap(enabled), chosenNode, nil
+			}
+		}
+
+		// Try to fetch fresh data from this node
+		storages, err := fetchStoragesFromNode(ctx, chosenNode, enabled)
+		if err != nil {
+			log.Warn().Err(err).Str("node", chosenNode).Msg("Failed to fetch storages from node")
+			lastError = err
+
+			// Try to use cached data as fallback for this node
+			storCacheMu.Lock()
+			cached, ok := storCache[chosenNode]
+			storCacheMu.Unlock()
+			if ok {
+				log.Info().Str("node", chosenNode).Msg("Using cached storages as fallback for offline node")
+				return projectEnabledFlagsWithCache(cached.items, enabled, true), buildEnabledMap(enabled), chosenNode, nil
+			}
+
+			continue // Try next node
+		}
+
+		// Success! Return the storages from this node
+		return storages, buildEnabledMap(enabled), chosenNode, nil
 	}
-	cfgByName := make(map[string]proxmox.Storage, len(globalStorages))
+
+	// All nodes failed, return the last error
+	log.Error().Err(lastError).Msg("All nodes failed to provide storages")
+	return nil, map[string]bool{}, chosenNode, lastError
+}
+
+// fetchStoragesFromNode fetches storages from a specific node and caches the result using errgroup for concurrent API calls
+func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) ([]map[string]interface{}, error) {
+	log := logger.Get().With().Str("component", "storage_utils").Logger()
+
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, fmt.Errorf("failed to create resty client for node %s: %w", node, err)
+	}
+
+	// Use errgroup for concurrent API calls
+	g, ctx := errgroup.WithContext(ctx)
+
+	var globalStorages []proxmox.Storage
+	var nodeStorages []proxmox.Storage
+
+	// Fetch global storages concurrently
+	g.Go(func() error {
+		var err error
+		globalStorages, err = proxmox.GetStoragesResty(ctx, restyClient)
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to fetch global storages")
+			return fmt.Errorf("failed to get global storages: %w", err)
+		}
+		return nil
+	})
+
+	// Fetch node storages concurrently
+	g.Go(func() error {
+		var err error
+		nodeStorages, err = proxmox.GetNodeStoragesResty(ctx, restyClient, node)
+		if err != nil {
+			log.Warn().Err(err).Str("node", node).Msg("Failed to fetch node storages")
+			return fmt.Errorf("failed to get node storages: %w", err)
+		}
+		return nil
+	})
+
+	// Wait for all goroutines to complete
+	if err := g.Wait(); err != nil {
+		log.Error().Err(err).Str("node", node).Msg("Failed to fetch storages concurrently")
+		return nil, fmt.Errorf("failed to fetch storages for node %s: %w", node, err)
+	}
+
+	log.Debug().
+		Str("node", node).
+		Int("global_count", len(globalStorages)).
+		Int("node_count", len(nodeStorages)).
+		Msg("Fetched storages concurrently with errgroup")
+
+	cfgByName := make(map[string]proxmox.Storage)
 	for _, s := range globalStorages {
 		cfgByName[s.Storage] = s
+		log.Debug().
+			Str("storage", s.Storage).
+			Str("type", s.Type).
+			Str("used", s.Used.String()).
+			Str("total", s.Total.String()).
+			Str("content", s.Content).
+			Msg("Global storage config")
 	}
-
-	nodeStorages, err := proxmox.GetNodeStorages(client, chosen)
-	if err != nil {
-		return nil, nil, chosen, err
-	}
-	log.Debug().Str("node", chosen).Int("global_count", len(globalStorages)).Int("node_count", len(nodeStorages)).Msg("fetched storages from Proxmox")
 
 	// build base items (without Enabled)
 	base := make([]map[string]interface{}, 0, len(nodeStorages))
@@ -315,26 +499,147 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 			continue
 		}
 
-		used, _ := st.Used.Int64()
-		total, _ := st.Total.Int64()
+		// Extract used/total values with detailed logging
+		usedRaw := st.Used.String()
+		totalRaw := st.Total.String()
+		used, usedErr := st.Used.Int64()
+		total, totalErr := st.Total.Int64()
+
+		log.Debug().
+			Str("storage", st.Storage).
+			Str("type", st.Type).
+			Str("used_raw", usedRaw).
+			Str("total_raw", totalRaw).
+			Int64("used", used).
+			Int64("total", total).
+			Bool("used_err", usedErr != nil).
+			Bool("total_err", totalErr != nil).
+			Msg("Storage usage data")
+
 		percent := 0
-		if total > 0 {
-			percent = int((used * 100) / total)
-			if percent < 0 {
+		hasValidData := totalErr == nil && usedErr == nil && total >= 0
+
+		if hasValidData {
+			if total > 0 {
+				percent = int((used * 100) / total)
+				if percent < 0 {
+					percent = 0
+				} else if percent > 100 {
+					percent = 100
+				}
+			} else {
+				// Storage with total = 0 is valid but empty
 				percent = 0
-			} else if percent > 100 {
-				percent = 100
+			}
+		} else {
+			// Log warning when storage data is invalid
+			if totalRaw != "" || usedRaw != "" {
+				log.Warn().
+					Str("storage", st.Storage).
+					Str("used_raw", usedRaw).
+					Str("total_raw", totalRaw).
+					Msg("Invalid or missing storage usage data")
 			}
 		}
 
 		item := map[string]interface{}{
-			"Storage":     st.Storage,
-			"Type":        st.Type,
-			"Used":        used,
-			"Total":       total,
-			"Description": st.Description,
-			"Content":     st.Content,
-			"UsedPercent": percent,
+			"Storage":      st.Storage,
+			"Type":         st.Type,
+			"Used":         used,
+			"Total":        total,
+			"Description":  st.Description,
+			"Content":      st.Content,
+			"UsedPercent":  percent,
+			"HasValidData": hasValidData,
+			"IsFromCache":  false, // Fresh data from online node
+			"Node":         node,
+		}
+		if st.Avail.String() != "" {
+			if avail, err := st.Avail.Int64(); err == nil {
+				item["Available"] = avail
+			}
+		}
+		base = append(base, item)
+		log.Debug().Str("storage", st.Storage).Str("type", st.Type).Msg("Added storage to admin list")
+	}
+
+	// Update cache
+	storCacheMu.Lock()
+	storCache[node] = cachedStorages{items: base, expiresAt: time.Now().Add(cacheTTL)}
+	storCacheMu.Unlock()
+	log.Debug().Str("node", node).Int("items", len(base)).Dur("ttl", cacheTTL).Msg("storage cache updated")
+
+	return projectEnabledFlagsWithCache(base, enabled, false), nil
+}
+
+// fetchRawStoragesFromNode fetches raw storage data without enabled flags (for deduplication)
+func fetchRawStoragesFromNode(ctx context.Context, node string) ([]map[string]interface{}, error) {
+	log := logger.Get().With().Str("component", "storage_utils").Logger()
+
+	// Try cache first
+	storCacheMu.Lock()
+	if cached, found := storCache[node]; found && time.Now().Before(cached.expiresAt) {
+		storCacheMu.Unlock()
+		return cached.items, nil
+	}
+	storCacheMu.Unlock()
+
+	// Fetch fresh data
+	client, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return nil, fmt.Errorf("failed to create resty client for node %s: %w", node, err)
+	}
+
+	storages, err := proxmox.GetNodeStoragesResty(ctx, client, node)
+	if err != nil {
+		log.Error().Err(err).Str("node", node).Msg("Failed to fetch node storages")
+		return nil, fmt.Errorf("failed to fetch storages for node %s: %w", node, err)
+	}
+
+	base := make([]map[string]interface{}, 0, len(storages))
+	for _, st := range storages {
+		if st.Enabled == 0 {
+			log.Debug().Str("storage", st.Storage).Str("type", st.Type).Msg("Skipping disabled storage")
+			continue
+		}
+
+		// Only include storages that can hold VM disks
+		if !canHoldVMDisks(st) {
+			log.Debug().Str("storage", st.Storage).Str("type", st.Type).Str("content", st.Content).Msg("Skipping storage that cannot hold VM disks")
+			continue
+		}
+
+		used, usedErr := st.Used.Int64()
+		total, totalErr := st.Total.Int64()
+
+		percent := 0
+		hasValidData := totalErr == nil && usedErr == nil && total >= 0
+
+		if hasValidData {
+			if total > 0 {
+				percent = int((used * 100) / total)
+				if percent < 0 {
+					percent = 0
+				} else if percent > 100 {
+					percent = 100
+				}
+			} else {
+				percent = 0
+			}
+		}
+
+		item := map[string]interface{}{
+			"Storage":      st.Storage,
+			"Type":         st.Type,
+			"Used":         used,
+			"Total":        total,
+			"Description":  st.Description,
+			"Content":      st.Content,
+			"UsedPercent":  percent,
+			"HasValidData": hasValidData,
+			"IsFromCache":  false, // Fresh data
+			"Node":         node,
 		}
 		if st.Avail.String() != "" {
 			if avail, err := st.Avail.Int64(); err == nil {
@@ -346,9 +651,8 @@ func FetchRenderableStorages(client proxmox.ClientInterface, node string, enable
 
 	// Update cache
 	storCacheMu.Lock()
-	storCache[chosen] = cachedStorages{items: base, expiresAt: time.Now().Add(cacheTTL)}
+	storCache[node] = cachedStorages{items: base, expiresAt: time.Now().Add(cacheTTL)}
 	storCacheMu.Unlock()
-	log.Debug().Str("node", chosen).Int("items", len(base)).Dur("ttl", cacheTTL).Msg("storage cache updated")
 
-	return projectEnabledFlags(base, enabled), buildEnabledMap(enabled), chosen, nil
+	return base, nil
 }

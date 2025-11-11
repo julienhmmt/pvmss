@@ -1,0 +1,27 @@
+# UI Elements
+["Title"]
+other = "PVMSS"
+["UI.AccessAdmin"]
+other = "Admin access"
+["UI.AdminDescription"]
+other = "Access administration settings and system configuration."
+["UI.Body"]
+other = "With PVMSS, you can create virtual machines on a Proxmox server."
+["UI.Button.Search"]
+other = "Search"
+["UI.Button.ColorMode"]
+other = "Light/Dark"
+["UI.CreateVMDescription"]
+other = "Create and deploy new virtual machines in just a few clicks."
+["UI.DocsDescription"]
+other = "Find guides and detailed documentation to get the most out of PVMSS."
+["UI.Footer"]
+other = 'PVMSS - Julien HOMMET. Made with ❤️ in 🇫🇷 🇪🇺.'
+["UI.GetStarted"]
+other = "Get started"
+["UI.Header"]
+other = "Proxmox VM Self-Service"
+["UI.Subtitle"]
+other = "A simple and self-service portal for Proxmox VE."
+["UI.ViewDocumentation"]
+other = "View documentation"
