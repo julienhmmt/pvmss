@@ -71,27 +71,49 @@ coverage: ## Génère un rapport de couverture de code
 	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./...
 	@echo "$(GREEN)✓ Rapport généré: backend/coverage.out$(NC)"
 
-test-unit: ## Lance les tests unitaires Go
+test-unit: ## Lance les tests unitaires Go (offline-compatible)
 	@echo "$(BLUE)Lancement des tests unitaires Go...$(NC)"
 	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -coverprofile=coverage.out ./...
 	@echo "$(GREEN)✓ Tests unitaires terminés$(NC)"
 
-test-integration: ## Lance les tests d'intégration (requiert docker-compose.test.yml)
+test-integration: ## Lance les tests d'intégration (offline-compatible)
 	@echo "$(BLUE)Lancement des tests d'intégration...$(NC)"
 	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -tags=integration -timeout=5m ./tests/...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests d'intégration terminés$(NC)"
 
-test-routes: ## Lance les tests de routes (requiert l'app en cours d'exécution)
+test-routes: ## Lance les tests de routes (offline-compatible)
 	@echo "$(BLUE)Lancement des tests de routes...$(NC)"
 	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -run TestRouteAccessibility ./tests
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestRouteAccessibility ./tests
 	@echo "$(GREEN)✓ Tests de routes terminés$(NC)"
 
-test: test-unit test-integration test-routes ## Lance tous les tests Go
+test-offline: ## Lance tous les tests en mode offline (pour GitHub Actions)
+	@echo "$(BLUE)Lancement de tous les tests en mode offline...$(NC)"
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -coverprofile=coverage.out ./...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -tags=integration -timeout=5m ./tests/...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestRouteAccessibility ./tests
+	@echo "$(GREEN)✓ Tests offline terminés$(NC)"
+
+test-online: ## Lance tous les tests en mode online (requiert Proxmox)
+	@echo "$(BLUE)Lancement de tous les tests en mode online...$(NC)"
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -coverprofile=coverage.out ./...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -tags=integration -timeout=5m ./tests/...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -run TestRouteAccessibility ./tests
+	@echo "$(GREEN)✓ Tests online terminés$(NC)"
+
+test-all: test-offline ## Lance tous les tests (mode offline par défaut)
 	@echo "$(BLUE)Lancement de tous les tests Go...$(NC)"
 	@echo "$(GREEN)✓ Tests terminés$(NC)"
+
+quick-test: ## Lance les tests rapides en mode offline
+	@echo "$(BLUE)Lancement des tests rapides...$(NC)"
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -short ./...
+	@echo "$(GREEN)✓ Tests rapides terminés$(NC)"
 
 # =============================================================================
 # Commandes Go
@@ -107,15 +129,15 @@ go-fmt: ## Formate le code Go
 # =============================================================================
 # Commandes de développement rapide
 
-qualif: ## Lance tous les contrôles qualité (format, lint, tests)
+qualif: ## Lance tous les contrôles qualité (format, lint, tests offline)
 	@echo "$(BLUE)[1/3] Formatage du code Go...$(NC)"
 	@$(MAKE) go-fmt || { echo "$(RED)❌ Formatage échoué$(NC)"; exit 1; }
 	@echo ""
 	@echo "$(BLUE)[2/3] Linting du code Go...$(NC)"
 	@$(MAKE) go-lint || { echo "$(RED)❌ Linting échoué$(NC)"; exit 1; }
 	@echo ""
-	@echo "$(BLUE)[3/3] Tests Go...$(NC)"
-	@$(MAKE) test || { echo "$(RED)❌ Tests échoués$(NC)"; exit 1; }
+	@echo "$(BLUE)[3/3] Tests Go (offline mode)...$(NC)"
+	@$(MAKE) test-offline || { echo "$(RED)❌ Tests échoués$(NC)"; exit 1; }
 	@echo ""
 	@echo "$(GREEN)✓ Contrôles et tests réussis!$(NC)"
 	@echo ""

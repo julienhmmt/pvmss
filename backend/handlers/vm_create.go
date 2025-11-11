@@ -313,7 +313,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	if vmRamMinMB == 0 || vmRamMaxMB == 0 || coresMin == 0 || coresMax == 0 || socketsMin == 0 || socketsMax == 0 || diskMin == 0 || diskMax == 0 {
 		log.Error().Msg("Incomplete VM limits in settings.json")
 		data["ValidationError"] = "Incomplete system configuration. Please contact administrator."
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
@@ -354,7 +354,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	log.Debug().
 		Int("data_keys", len(data)).
 		Bool("all_nodes_saturated", allNodesSaturated).
-		Msg("About to render create_vm template")
+		Msg("About to render vm_create template")
 
 	// Handle POST requests for VM creation
 	if r.Method == "POST" {
@@ -364,7 +364,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		if err := r.ParseForm(); err != nil {
 			log.Error().Err(err).Msg("Failed to parse VM creation form")
 			data["ValidationError"] = i18n.Localize(localizer, "Error.InvalidFormData")
-			renderTemplateInternal(w, r, "create_vm", data)
+			renderTemplateInternal(w, r, "vm_create", data)
 			return
 		}
 
@@ -373,7 +373,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	renderTemplateInternal(w, r, "create_vm", data)
+	renderTemplateInternal(w, r, "vm_create", data)
 	log.Debug().Msg("Template rendered successfully")
 }
 
@@ -906,7 +906,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	if client == nil {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
@@ -936,13 +936,13 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	// Simple validation
 	if name == "" {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.VMNameRequired")
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
 	if storage == "" {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.StorageRequired")
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
@@ -951,7 +951,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if settings == nil {
 		log.Error().Msg("Settings not available for VM creation")
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SettingsUnavailable")
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
@@ -1025,7 +1025,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		// Settings not available - cannot create VM
 		log.Error().Msg("Settings or limits not available for VM creation POST")
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SystemUnavailable")
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
@@ -1033,7 +1033,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if memoryMin == 0 || memoryMax == 0 || coresMin == 0 || coresMax == 0 || socketsMin == 0 || socketsMax == 0 || diskMin == 0 || diskMax == 0 {
 		log.Error().Msg("Incomplete VM limits in settings.json for POST")
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SystemUnavailable")
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
@@ -1064,14 +1064,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		restyClient, err := getDefaultRestyClient()
 		if err != nil {
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Error.FailedToGetNextVMID")
-			renderTemplateInternal(w, r, "create_vm", data)
+			renderTemplateInternal(w, r, "vm_create", data)
 			return
 		}
 		nextID, err := proxmox.GetNextVMIDResty(ctx, restyClient)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get next VMID")
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Error.FailedToGetNextVMID")
-			renderTemplateInternal(w, r, "create_vm", data)
+			renderTemplateInternal(w, r, "vm_create", data)
 			return
 		}
 		vmid = nextID
@@ -1231,7 +1231,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB, localizer); err != nil {
 		log.Warn().Err(err).Str("node", node).Msg("VM resources exceed aggregate node limits")
 		data["ValidationError"] = err.Error()
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 
@@ -1240,7 +1240,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
 		log.Error().Err(err).Str("node", node).Msg("VM create API call failed")
 		data["ValidationError"] = fmt.Sprintf("Failed to create VM: %v", err)
-		renderTemplateInternal(w, r, "create_vm", data)
+		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
 

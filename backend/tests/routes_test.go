@@ -130,22 +130,15 @@ func TestTrailingSlashRedirect(t *testing.T) {
 }
 
 // TestRouteAccessibility performs end-to-end checks against a running PVMSS instance.
+// This test works in both online and offline mode.
 func TestRouteAccessibility(t *testing.T) {
 	cfg := loadRouteConfig()
 	if !waitForServer(cfg.BaseURL, 30*time.Second) {
 		t.Skipf("PVMSS server not reachable at %s", cfg.BaseURL)
 	}
 
-	skipProxmoxTests := false
-	skipReason := "Proxmox authentication unavailable"
-
-	if strings.EqualFold(os.Getenv("PVMSS_OFFLINE"), "true") {
-		skipProxmoxTests = true
-		skipReason = "Skipping authenticated route tests: offline mode enabled"
-	} else if !isProxmoxConnected(cfg) {
-		skipProxmoxTests = true
-		skipReason = "Skipping authenticated route tests: Proxmox API unavailable"
-	}
+	// Check if we're in offline mode or CI environment
+	isOfflineMode := strings.EqualFold(os.Getenv("PVMSS_OFFLINE"), "true") || os.Getenv("CI") != ""
 
 	t.Run("Public routes", func(t *testing.T) {
 		runRouteGroup(t, cfg, []routeTest{
@@ -174,46 +167,48 @@ func TestRouteAccessibility(t *testing.T) {
 		}, nil)
 	})
 
-	t.Run("Authenticated user routes", func(t *testing.T) {
-		if skipProxmoxTests {
-			t.Skip(skipReason)
-		}
-
-		client := createHTTPClient()
-		authenticate(t, cfg, client, cfg.UserUsername, cfg.UserPassword, "/login")
-
+	t.Run("API endpoints", func(t *testing.T) {
 		runRouteGroup(t, cfg, []routeTest{
-			{Name: "Home", Method: http.MethodGet, Path: "/", ExpectedStatus: http.StatusOK},
-			{Name: "Search", Method: http.MethodGet, Path: "/search", ExpectedStatus: http.StatusOK},
-			{Name: "Profile", Method: http.MethodGet, Path: "/profile", ExpectedStatus: http.StatusOK},
-			{Name: "VM create", Method: http.MethodGet, Path: "/vm/create", ExpectedStatus: http.StatusOK},
 			{Name: "API settings", Method: http.MethodGet, Path: "/api/settings", ExpectedStatus: http.StatusOK},
 			{Name: "API all settings", Method: http.MethodGet, Path: "/api/settings/all", ExpectedStatus: http.StatusOK},
 			{Name: "API VMBR", Method: http.MethodGet, Path: "/api/vmbr/all", ExpectedStatus: http.StatusOK},
-			{Name: "Logout redirect", Method: http.MethodGet, Path: "/logout", ExpectedStatus: http.StatusSeeOther},
-		}, client)
+		}, nil)
 	})
 
-	t.Run("Admin routes", func(t *testing.T) {
-		if skipProxmoxTests {
-			t.Skip(skipReason)
-		}
+	// Only run authenticated tests if not in offline mode and Proxmox is available
+	if !isOfflineMode && isProxmoxConnected(cfg) {
+		t.Run("Authenticated user routes", func(t *testing.T) {
+			client := createHTTPClient()
+			authenticate(t, cfg, client, cfg.UserUsername, cfg.UserPassword, "/login")
 
-		client := createHTTPClient()
-		authenticate(t, cfg, client, cfg.AdminUsername, cfg.AdminPassword, "/admin/login")
+			runRouteGroup(t, cfg, []routeTest{
+				{Name: "Home", Method: http.MethodGet, Path: "/", ExpectedStatus: http.StatusOK},
+				{Name: "Search", Method: http.MethodGet, Path: "/search", ExpectedStatus: http.StatusOK},
+				{Name: "Profile", Method: http.MethodGet, Path: "/profile", ExpectedStatus: http.StatusOK},
+				{Name: "VM create", Method: http.MethodGet, Path: "/vm/create", ExpectedStatus: http.StatusOK},
+				{Name: "Logout redirect", Method: http.MethodGet, Path: "/logout", ExpectedStatus: http.StatusSeeOther},
+			}, client)
+		})
 
-		runRouteGroup(t, cfg, []routeTest{
-			{Name: "Admin dashboard", Method: http.MethodGet, Path: "/admin", ExpectedStatus: http.StatusOK},
-			{Name: "Admin nodes", Method: http.MethodGet, Path: "/admin/nodes", ExpectedStatus: http.StatusOK},
-			{Name: "Admin tags", Method: http.MethodGet, Path: "/admin/tags", ExpectedStatus: http.StatusOK},
-			{Name: "Admin storage", Method: http.MethodGet, Path: "/admin/storage", ExpectedStatus: http.StatusOK},
-			{Name: "Admin ISO", Method: http.MethodGet, Path: "/admin/iso", ExpectedStatus: http.StatusOK},
-			{Name: "Admin VMBR", Method: http.MethodGet, Path: "/admin/vmbr", ExpectedStatus: http.StatusOK},
-			{Name: "Admin limits", Method: http.MethodGet, Path: "/admin/limits", ExpectedStatus: http.StatusOK},
-			{Name: "Admin user pool", Method: http.MethodGet, Path: "/admin/userpool", ExpectedStatus: http.StatusOK},
-			{Name: "Admin app info", Method: http.MethodGet, Path: "/admin/appinfo", ExpectedStatus: http.StatusOK},
-		}, client)
-	})
+		t.Run("Admin routes", func(t *testing.T) {
+			client := createHTTPClient()
+			authenticate(t, cfg, client, cfg.AdminUsername, cfg.AdminPassword, "/admin/login")
+
+			runRouteGroup(t, cfg, []routeTest{
+				{Name: "Admin dashboard", Method: http.MethodGet, Path: "/admin", ExpectedStatus: http.StatusOK},
+				{Name: "Admin nodes", Method: http.MethodGet, Path: "/admin/nodes", ExpectedStatus: http.StatusOK},
+				{Name: "Admin tags", Method: http.MethodGet, Path: "/admin/tags", ExpectedStatus: http.StatusOK},
+				{Name: "Admin storage", Method: http.MethodGet, Path: "/admin/storage", ExpectedStatus: http.StatusOK},
+				{Name: "Admin ISO", Method: http.MethodGet, Path: "/admin/iso", ExpectedStatus: http.StatusOK},
+				{Name: "Admin VMBR", Method: http.MethodGet, Path: "/admin/vmbr", ExpectedStatus: http.StatusOK},
+				{Name: "Admin limits", Method: http.MethodGet, Path: "/admin/limits", ExpectedStatus: http.StatusOK},
+				{Name: "Admin user pool", Method: http.MethodGet, Path: "/admin/userpool", ExpectedStatus: http.StatusOK},
+				{Name: "Admin app info", Method: http.MethodGet, Path: "/admin/appinfo", ExpectedStatus: http.StatusOK},
+			}, client)
+		})
+	} else {
+		t.Skip("Skipping authenticated route tests: offline mode or Proxmox unavailable")
+	}
 
 	t.Run("404 routes", func(t *testing.T) {
 		runRouteGroup(t, cfg, []routeTest{
