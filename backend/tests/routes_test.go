@@ -168,10 +168,16 @@ func TestRouteAccessibility(t *testing.T) {
 	})
 
 	t.Run("API endpoints", func(t *testing.T) {
+		// In offline mode, API endpoints redirect to login
+		expectedStatus := http.StatusOK
+		if isOfflineMode {
+			expectedStatus = http.StatusSeeOther
+		}
+
 		runRouteGroup(t, cfg, []routeTest{
-			{Name: "API settings", Method: http.MethodGet, Path: "/api/settings", ExpectedStatus: http.StatusOK},
-			{Name: "API all settings", Method: http.MethodGet, Path: "/api/settings/all", ExpectedStatus: http.StatusOK},
-			{Name: "API VMBR", Method: http.MethodGet, Path: "/api/vmbr/all", ExpectedStatus: http.StatusOK},
+			{Name: "API settings", Method: http.MethodGet, Path: "/api/settings", ExpectedStatus: expectedStatus},
+			{Name: "API all settings", Method: http.MethodGet, Path: "/api/settings/all", ExpectedStatus: expectedStatus},
+			{Name: "API VMBR", Method: http.MethodGet, Path: "/api/vmbr/all", ExpectedStatus: expectedStatus},
 		}, nil)
 	})
 

@@ -34,7 +34,7 @@ build: ## Construit le binaire Go et le container docker
 	@echo "Binary built successfully"
 	@echo "Building and running docker container"
 	docker compose -f docker-compose.dev.yml down
-	docker compose -f docker-compose.dev.yml build --no-cache
+	docker compose -f docker-compose.dev.yml build
 	docker compose -f docker-compose.dev.yml up -d
 	@echo ""
 
