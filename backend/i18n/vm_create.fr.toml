@@ -168,6 +168,8 @@ other = "{{.PluralCount}} nœuds sont hors ligne et indisponibles pour la créat
 other = "Sélectionnez un stockage pour votre machine virtuelle"
 ["VM.Create.NodeLimitReached"]
 other = "Ce nœud a atteint ses limites de ressources PVMSS. Veuillez choisir un autre nœud ou contactez l'administrateur."
+["VM.Create.ProxmoxNotConnected"]
+other = "La connexion Proxmox n'est pas disponible en mode hors ligne. Vous pouvez consulter la configuration mais le provisionnement est désactivé jusqu'à ce que le cluster soit de nouveau en ligne."
 
 # Validation et erreurs
 ["VM.Create.Validation.VMNameRequired"]
