@@ -12,14 +12,14 @@ type TestHandlerCollection struct{}
 func (hc *TestHandlerCollection) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 }
 
 // APIHealthHandler returns API health status
 func (hc *TestHandlerCollection) APIHealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"api": "healthy"})
+	_ = json.NewEncoder(w).Encode(map[string]string{"api": "healthy"})
 }
 
 // ProxmoxHealthHandler returns Proxmox connection status
@@ -29,7 +29,7 @@ func (hc *TestHandlerCollection) ProxmoxHealthHandler(w http.ResponseWriter, r *
 	// Check if offline mode is enabled
 	if r.Header.Get("X-Offline-Mode") == "true" || r.URL.Query().Get("offline") == "true" {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"connected": false,
 			"error":     "Offline mode enabled",
 		})
@@ -37,7 +37,7 @@ func (hc *TestHandlerCollection) ProxmoxHealthHandler(w http.ResponseWriter, r *
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"connected": true,
 		"error":     "",
 	})
@@ -47,7 +47,7 @@ func (hc *TestHandlerCollection) ProxmoxHealthHandler(w http.ResponseWriter, r *
 func (hc *TestHandlerCollection) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><body>Login Page</body></html>"))
+		_, _ = w.Write([]byte("<html><body>Login Page</body></html>"))
 		return
 	}
 	// POST login logic would go here
@@ -59,7 +59,7 @@ func (hc *TestHandlerCollection) LoginHandler(w http.ResponseWriter, r *http.Req
 func (hc *TestHandlerCollection) AdminLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("<html><body>Admin Login Page</body></html>"))
+		_, _ = w.Write([]byte("<html><body>Admin Login Page</body></html>"))
 		return
 	}
 	// POST login logic would go here
@@ -148,7 +148,7 @@ func (hc *TestHandlerCollection) AppInfoPageHandler(w http.ResponseWriter, r *ht
 func (hc *TestHandlerCollection) SettingsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"tags":   []string{"test"},
 		"isos":   []string{"test.iso"},
 		"vmbrs":  []string{"vmbr0"},
@@ -160,7 +160,7 @@ func (hc *TestHandlerCollection) SettingsHandler(w http.ResponseWriter, r *http.
 func (hc *TestHandlerCollection) AllSettingsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"tags":   []string{"test"},
 		"isos":   []string{"test.iso"},
 		"vmbrs":  []string{"vmbr0"},
@@ -172,25 +172,25 @@ func (hc *TestHandlerCollection) AllSettingsHandler(w http.ResponseWriter, r *ht
 func (hc *TestHandlerCollection) AllVMBRHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode([]string{"vmbr0"})
+	_ = json.NewEncoder(w).Encode([]string{"vmbr0"})
 }
 
 // DocsHandler handles documentation
 func (hc *TestHandlerCollection) DocsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("<html><body>Documentation</body></html>"))
+	_, _ = w.Write([]byte("<html><body>Documentation</body></html>"))
 }
 
 // UserDocsHandler handles user documentation
 func (hc *TestHandlerCollection) UserDocsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("<html><body>User Documentation</body></html>"))
+	_, _ = w.Write([]byte("<html><body>User Documentation</body></html>"))
 }
 
 // AdminDocsHandler handles admin documentation
 func (hc *TestHandlerCollection) AdminDocsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("<html><body>Admin Documentation</body></html>"))
+	_, _ = w.Write([]byte("<html><body>Admin Documentation</body></html>"))
 }
 
 // FaviconHandler handles favicon requests
