@@ -255,3 +255,221 @@ color: #7f1d1d;
 .section.admin-section .button.is-danger.is-light .icon {
 color: #ef4444;
 }
+
+/* ============================================
+   ADMIN LOGIN PAGE STYLES
+   ============================================ */
+
+/* Admin login toggle buttons (radio button group) */
+.admin-login-toggle {
+  display: inline-flex;
+  background: var(--glass-white);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+.admin-login-toggle::before { display: none; }
+
+.admin-login-toggle input[type="radio"] {
+  display: none;
+}
+
+.admin-login-toggle label {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  transition: all var(--transition-fast);
+  position: relative;
+  z-index: 2;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  padding: 0.875rem 1.5rem !important;
+  min-width: 140px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.admin-login-toggle input[type="radio"]:checked + .admin-toggle-button {
+  z-index: 3;
+}
+
+.admin-login-toggle input[type="radio"]:not(:checked) + .admin-toggle-button {
+  color: var(--text) !important;
+  opacity: 0.8;
+}
+
+.admin-login-toggle input[type="radio"]:not(:checked) + .admin-toggle-button:hover {
+  opacity: 1;
+  z-index: 3;
+}
+
+/* Admin login inputs refinement */
+.admin-login-card .field .input,
+.admin-login-card .field .select select {
+  border-radius: 10px;
+}
+
+.admin-login-card .control.has-icons-left .icon.is-left {
+  color: var(--muted);
+}
+
+.admin-login-card .field + .field {
+  margin-top: 1rem;
+}
+
+/* Segmented toggle improvements */
+.admin-login-toggle { gap: 0; }
+.admin-login-toggle label { flex: 1 1 0; font-size: 0.95rem; padding: 0.875rem 1.25rem !important; border-right: 1px solid var(--glass-border) !important; }
+.admin-login-toggle label:last-of-type { border-right: none !important; }
+
+/* Distinct active states per variant */
+.admin-login-toggle input[type="radio"]:checked + label.admin-toggle-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%) !important;
+  color: #fff !important;
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-login-toggle input[type="radio"]:checked + label.admin-toggle-danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%) !important;
+  color: #fff !important;
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-login-toggle input[type="radio"]:not(:checked) + .admin-toggle-button { background: transparent !important; }
+.admin-login-toggle input[type="radio"]:not(:checked) + .admin-toggle-button:hover { background: rgb(0 0 0 / 3%) !important; }
+
+/* Login sections styling */
+.login-section {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  animation: adminFadeIn var(--transition-base);
+  backdrop-filter: blur(8px);
+  padding: 1.25rem;
+}
+
+@keyframes adminFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Divider with text styling */
+.divider-with-text {
+  position: relative;
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.divider-with-text hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--border) 20%, var(--border) 80%, transparent 100%);
+  position: relative;
+  z-index: 1;
+}
+
+.divider-with-text span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--card-bg);
+  padding: 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-sm);
+}
+
+/* Admin login buttons with premium effects */
+.admin-button {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%) !important;
+  border: none !important;
+  box-shadow: var(--shadow-lg) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.025em !important;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 20%) !important;
+  transition: all var(--transition-fast) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Danger variant when paired with .is-danger */
+.admin-button.is-danger {
+  background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%) !important;
+}
+
+.admin-button:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: var(--shadow-xl) !important;
+}
+
+.admin-button:active {
+  transform: translateY(0) scale(0.98) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* Alternative login button (glass effect) */
+.login-alt-button {
+  background: var(--glass-white) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--primary) !important;
+  box-shadow: var(--shadow) !important;
+  backdrop-filter: blur(8px) !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.login-alt-button:hover {
+  background: var(--glass-white-hover) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-md) !important;
+  color: var(--primary-hover) !important;
+}
+
+/* Responsive adjustments for admin login */
+@media (width <= 768px) {
+  .admin-login-toggle label {
+    padding: 0.75rem 1rem !important;
+    min-width: 120px;
+    font-size: 0.9rem;
+  }
+
+  .admin-login-toggle {
+    flex-direction: column;
+    border-radius: var(--radius-md);
+  }
+
+  .admin-login-toggle label {
+    border-radius: 0 !important;
+  }
+
+  .admin-login-toggle label:first-child {
+    border-top-left-radius: var(--radius-md) !important;
+    border-top-right-radius: var(--radius-md) !important;
+  }
+
+  .admin-login-toggle label:last-child {
+    border-bottom-left-radius: var(--radius-md) !important;
+    border-bottom-right-radius: var(--radius-md) !important;
+  }
+}
