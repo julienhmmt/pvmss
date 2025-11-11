@@ -27,7 +27,7 @@ func TestOfflineMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get health endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -38,7 +38,7 @@ func TestOfflineMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get Proxmox health endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -62,7 +62,7 @@ func TestOnlineMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get health endpoint: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -104,7 +104,7 @@ func TestPublicRoutes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to get %s: %v", route.path, err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// All public routes should return 200 or 404 (for missing static files)
 			if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
@@ -157,7 +157,7 @@ func TestProtectedRoutes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to get %s: %v", route.path, err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// Protected routes should redirect to login
 			if resp.StatusCode != http.StatusSeeOther && resp.StatusCode != http.StatusFound {
@@ -204,7 +204,7 @@ func TestAPIEndpoints(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to get %s: %v", endpoint.path, err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			// API endpoints should return 200 (even in offline mode with empty data)
 			if resp.StatusCode != http.StatusOK {
