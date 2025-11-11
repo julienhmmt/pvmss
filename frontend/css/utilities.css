@@ -25,7 +25,12 @@
 
 /* Layout & Display */
 .min-h-180 { min-height: 180px; }
-.flex-column { display: flex; flex-direction: column; }
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
 .shadow-lg { box-shadow: 0 20px 60px rgb(0 0 0 / 12%); }
 .shadow-md { box-shadow: 0 4px 14px rgb(255 136 0 / 25%); }
 
@@ -48,6 +53,7 @@
   background-color: var(--primary);
   color: white;
 }
+
 .btn-console:hover {
   background-color: var(--primary-hover);
   color: white;
@@ -57,6 +63,7 @@
 .card-no-hover {
   transition: none;
 }
+
 .card-no-hover:hover {
   box-shadow: 0 0.5em 1em -0.125em rgb(10 10 10 / 10%),
     0 0 0 1px rgb(10 10 10 / 2%);
@@ -68,6 +75,7 @@
   padding: 1.5rem;
   border-radius: 6px;
 }
+
 .stat-card-icon {
   opacity: 0.2;
   font-size: 3rem;
@@ -84,6 +92,7 @@
 .gradient-primary {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
 }
+
 .gradient-header {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   border: none;
@@ -104,6 +113,7 @@
   text-align: center;
   border: 2px dashed #dbdbdb;
 }
+
 .empty-state-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
@@ -179,6 +189,7 @@
     height: min(85vh, 900px);
     border-radius: 14px;
   }
+
   .console-container { padding: 1rem; }
 }
 
@@ -188,13 +199,16 @@
     height: 100vh;
     border-radius: 0;
   }
+
   .console-status-bar {
     padding: 0.75rem;
     flex-wrap: wrap;
   }
+
   .console-footer {
     gap: 0.75rem;
     justify-content: center;
   }
+
   .console-controls { justify-content: center; }
 }

@@ -6,3 +6,5 @@
 docker-compose.dev.yml
 settings.dev.json
 coverage.out
+node_modules/
+package-lock.json
