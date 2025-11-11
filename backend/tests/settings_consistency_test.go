@@ -49,7 +49,7 @@ func TestNoHardcodedDefaults(t *testing.T) {
 		{"var socketsMin, socketsMax int", "Sockets variables without initialization"},
 		{"var coresMin, coresMax int", "Cores variables without initialization"},
 		{"var diskMin, diskMax int", "Disk variables without initialization"},
-		{"if settings != nil && settings.Limits.VM.Sockets.Min > 0", "Typed settings check"},
+		{"if settings.Limits.VM.Sockets.Min > 0", "Typed settings check"},
 		{"memoryMin = settings.Limits.VM.RAM.Min * 1024", "RAM Min conversion from settings"},
 		{"vmRamMinMB = settings.Limits.VM.RAM.Min * 1024", "Typed RAM conversion to MB"},
 	}

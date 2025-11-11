@@ -44,18 +44,29 @@ func TestTemplateFilesExist(t *testing.T) {
 	}
 
 	expectedTemplates := []string{
-		"layout.html",
-		"navbar.html",
-		"index.html",
-		"login.html",
-		"admin_login.html",
+		"admin_appinfo.html",
 		"admin_base.html",
-		"create_vm.html",
-		"vm_details.html",
+		"admin_iso.html",
+		"admin_limits.html",
+		"admin_login.html",
+		"admin_nodes.html",
+		"admin_storage.html",
+		"admin_tags.html",
+		"admin_userpool_delete.html",
+		"admin_userpool.html",
+		"admin_vmbr.html",
+		"admin_vms.html",
+		"docs.html",
+		"error.html",
+		"index.html",
+		"layout.html",
+		"login.html",
+		"navbar.html",
 		"profile.html",
 		"search.html",
-		"error.html",
-		"docs.html",
+		"vm_create.html",
+		"vm_delete_confirm.html",
+		"vm_details.html",
 	}
 
 	for _, filename := range expectedTemplates {
