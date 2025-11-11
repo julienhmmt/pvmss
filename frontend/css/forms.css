@@ -85,10 +85,6 @@
     padding: 0;
 }
 
-.form-tooltip-trigger i {
-    pointer-events: none;
-}
-
 .form-tooltip-trigger:focus-visible {
     outline: 2px solid rgb(245 124 0 / 50%);
     outline-offset: 2px;
@@ -115,7 +111,6 @@
     line-height: 1.5;
     opacity: 0;
     visibility: hidden;
-    pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
     z-index: 1500;
 }
@@ -190,13 +185,6 @@
 }
 
 /* Input Enhancements */
-.input:focus,
-.textarea:focus,
-.select select:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgb(245 124 0 / 10%);
-}
-
 .input-lg {
     border-radius: 10px;
     border: 2px solid #e5e7eb;
@@ -311,7 +299,6 @@ fieldset[disabled]::after {
     inset: 0;
     background: rgb(255 255 255 / 50%);
     z-index: 10;
-    pointer-events: none;
     border-radius: 6px;
 }
 
