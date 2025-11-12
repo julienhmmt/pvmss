@@ -43,6 +43,20 @@ other = "Mot de passe administrateur"
 other = "Connexion administrateur"
 ["AdminLogin.UserLoginLink"]
 other = "Connexion utilisateur"
+["AdminLogin.LocalAdminTab"]
+other = "Admin local"
+["AdminLogin.ProxmoxAdminTab"]
+other = "Admin Proxmox"
+["AdminLogin.LocalAdminDescription"]
+other = "Se connecter avec le mot de passe administrateur intégré"
+["AdminLogin.ProxmoxAdminDescription"]
+other = "Se connecter avec un compte utilisateur Proxmox ayant le rôle PVEAdmin"
+["AdminLogin.ProxmoxUsernameLabel"]
+other = "Nom d'utilisateur Proxmox"
+["AdminLogin.ProxmoxPasswordLabel"]
+other = "Mot de passe Proxmox"
+["AdminLogin.ProxmoxUsernameHelp"]
+other = "Le realm @pve sera ajouté automatiquement si non spécifié"
 
 # Erreurs administrateur
 ["AdminLogin.Error.EmptyPassword"]

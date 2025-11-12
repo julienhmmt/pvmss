@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
 	"pvmss/proxmox"
+	"pvmss/security"
 	"pvmss/state"
 )
 
@@ -89,6 +91,7 @@ func (h *VMBRHandler) UpdateNetworkCardsHandler(w http.ResponseWriter, r *http.R
 	}
 
 	settings := h.stateManager.GetSettings()
+	oldLimit := settings.MaxNetworkCards
 	settings.MaxNetworkCards = maxNetworkCards
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
@@ -98,6 +101,32 @@ func (h *VMBRHandler) UpdateNetworkCardsHandler(w http.ResponseWriter, r *http.R
 	}
 
 	log.Info().Int("max_network_cards", maxNetworkCards).Msg("Updated max network cards setting")
+
+	// Audit log for admin network cards limit update
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			log.Info().
+				Str("action", "network_cards_limit_update").
+				Str("admin_username", username).
+				Str("proxmox_username", proxmoxUsername).
+				Int("new_limit", maxNetworkCards).
+				Int("old_limit", oldLimit).
+				Str("client_ip", r.RemoteAddr).
+				Time("update_time", time.Now()).
+				Msg("ADMIN ACTION AUDIT - Network cards limit updated by admin")
+		}
+	}
+
 	redirectURL := "/admin/vmbr?success=1&action=update_network_cards"
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
@@ -149,6 +178,34 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 			log.Error().Err(err).Msg("Failed to update settings")
 			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
+		}
+	}
+
+	// Audit log for admin VMBR toggle
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			log.Info().
+				Str("action", "vmbr_toggle").
+				Str("admin_username", username).
+				Str("proxmox_username", proxmoxUsername).
+				Str("vmbr_name", name).
+				Str("vmbr_node", node).
+				Str("vmbr_unique_id", uniqueID).
+				Str("toggle_action", action).
+				Bool("changed", changed).
+				Str("client_ip", r.RemoteAddr).
+				Time("toggle_time", time.Now()).
+				Msg("ADMIN ACTION AUDIT - VMBR toggled by admin")
 		}
 	}
 

@@ -1256,6 +1256,38 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		Str("node", node).
 		Msg("VM created successfully")
 
+	// Audit log for admin VM creation
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			log.Info().
+				Str("action", "vm_create").
+				Str("admin_username", username).
+				Str("proxmox_username", proxmoxUsername).
+				Int("vmid", vmid).
+				Str("vm_name", name).
+				Str("node", node).
+				Int("cpu_cores", cpuCores).
+				Int("cpu_sockets", cpuSockets).
+				Int("memory_mb", memoryMB).
+				Int("disk_size_gb", diskSizeMB/1024).
+				Str("storage", storage).
+				Str("network_model", networkModel).
+				Str("client_ip", r.RemoteAddr).
+				Time("create_time", time.Now()).
+				Msg("ADMIN ACTION AUDIT - VM created by admin")
+		}
+	}
+
 	// Redirect to VM details
 	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?created=1", vmid), http.StatusSeeOther)
 }

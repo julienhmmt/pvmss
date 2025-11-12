@@ -208,6 +208,38 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	log.Info().Int("vmid", vmidInt).Msg("VM deleted successfully")
 
+	// Get VM name for audit log (try to get it before deletion)
+	vmName := "unknown"
+	if vmDetails, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt); err == nil && vmDetails != nil {
+		vmName = vmDetails.Name
+	}
+
+	// Audit log for admin VM deletion
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			log.Info().
+				Str("action", "vm_delete").
+				Str("admin_username", username).
+				Str("proxmox_username", proxmoxUsername).
+				Int("vmid", vmidInt).
+				Str("vm_name", vmName).
+				Str("node", node).
+				Str("client_ip", r.RemoteAddr).
+				Time("delete_time", time.Now()).
+				Msg("ADMIN ACTION AUDIT - VM deleted by admin")
+		}
+	}
+
 	// Invalidate caches to ensure UI shows fresh data
 	// 1) User pool cache (profile page)
 	if sessionManager := security.GetSession(r); sessionManager != nil {
