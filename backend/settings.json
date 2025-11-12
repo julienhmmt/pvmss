@@ -6,6 +6,7 @@
     "vmbrs": [],
     "max_network_cards": 1,
     "max_disk_per_vm": 1,
+    "max_vm_per_user": 5,
     "enabled_storages": [],
     "limits": {
         "nodes": {},

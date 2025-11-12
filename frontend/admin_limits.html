@@ -213,7 +213,7 @@
 
       <div class="field is-grouped is-grouped-right mt-6">
         <div class="control">
-          <button type="reset" class="button is-light is-outlined is-medium"{{if not .Node}} disabled{{end}}>
+          <button type="reset" class="button is-medium"{{if not .Node}} disabled{{end}}>
             <span>{{T "Common.Reset"}}</span>
           </button>
         </div>
@@ -237,6 +237,50 @@
     )}}
   </div>
   {{end}}
+
+  <!-- User Limits Section (Max VMs per User) -->
+  <div class="box admin-box mt-5">
+    <form action="/admin/limits/update-user" method="POST">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      
+      <div class="mb-5">
+        <h2 class="title is-5 mb-2">
+          <span class="icon"><i class="fas fa-users"></i></span>
+          <span>{{T "Admin.Limits.UserLimits"}}</span>
+        </h2>
+        <p class="subtitle is-6 has-text-grey">{{T "Admin.Limits.UserLimitsDescription"}}</p>
+      </div>
+
+      <!-- Max VMs per User -->
+      <div class="field mb-5">
+        <label class="label" id="label-max-vm-per-user">
+          <span class="icon"><i class="fas fa-server"></i></span>
+          <span>{{T "Admin.Limits.MaxVMPerUser"}}</span>
+        </label>
+        <div class="control">
+          <input id="max-vm-per-user" class="input is-medium" type="number" name="max_vm_per_user" 
+                 aria-describedby="max-vm-per-user-help" aria-labelledby="label-max-vm-per-user"
+                 value="{{if .Settings}}{{.Settings.MaxVMPerUser}}{{else}}5{{end}}"
+                 min="0" max="100" step="1" placeholder="{{T "Admin.Limits.MaxVMPerUserPlaceholder"}}" required>
+        </div>
+        <p id="max-vm-per-user-help" class="help">{{T "Admin.Limits.MaxVMPerUserHelp"}}</p>
+      </div>
+
+      <div class="field is-grouped is-grouped-right mt-6">
+        <div class="control">
+          <button type="reset" class="button is-medium">
+            <span>{{T "Common.Reset"}}</span>
+          </button>
+        </div>
+        <div class="control">
+          <button type="submit" class="button is-primary is-medium">
+            <span class="icon"><i class="fas fa-save"></i></span>
+            <span>{{T "Common.Save"}}</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
 
   <!-- VM Limits Section (Individual VM Configuration) -->
   <div class="box admin-box mt-5">
@@ -334,7 +378,7 @@
 
       <div class="field is-grouped is-grouped-right mt-6">
         <div class="control">
-          <button type="reset" class="button is-light is-outlined is-medium">
+          <button type="reset" class="button is-medium">
             <span>{{T "Common.Reset"}}</span>
           </button>
         </div>

@@ -109,3 +109,19 @@ other = "Aggregate RAM limit ({{.Limit}} GB) exceeds node physical capacity ({{.
 other = "Adding this VM would exceed node '{{.Node}}' aggregate cores limit (current: {{.Current}}, requested: {{.Requested}}, max: {{.Limit}})"
 ["Admin.Limits.NodeCapacity.RamVMExceed"]
 other = "Adding this VM would exceed node '{{.Node}}' aggregate RAM limit (current: {{.Current}} GB, requested: {{.Requested}} GB, max: {{.Limit}} GB)"
+["Admin.Limits.UserLimits"]
+other = "User limits"
+["Admin.Limits.UserLimitsDescription"]
+other = "Configure the maximum number of VMs each user can create"
+["Admin.Limits.MaxVMPerUser"]
+other = "Maximum VMs per user"
+["Admin.Limits.MaxVMPerUserPlaceholder"]
+other = "e.g., 5"
+["Admin.Limits.MaxVMPerUserHelp"]
+other = "Maximum number of VMs a user can create in their pool (0 = no VMs allowed, 100 = maximum)"
+["Admin.Limits.Success.User"]
+other = "User limits updated successfully"
+["Admin.Limits.Error.MissingMaxVMPerUser"]
+other = "Missing max VMs per user value"
+["Admin.Limits.Error.InvalidMaxVMPerUser"]
+other = "Invalid max VMs per user value (must be between 0 and 100)"
