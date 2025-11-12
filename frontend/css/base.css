@@ -195,7 +195,6 @@ body.app-body main {
   background-color: #f3f4f6;
 }
 
-/* Ensure primary buttons have readable text color globally */
 .button.is-primary {
   color: #fff;
 }

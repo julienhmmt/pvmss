@@ -1,0 +1,1 @@
+docker run -it --rm -v $(pwd)/frontend/css:/workdir -w /workdir node:22.21-alpine sh -c "echo '{\"extends\": \"stylelint-config-standard\", \"ignoreFiles\": [\"**/*.min.css\", \"**/fontawesome*\"]}' > .stylelintrc.json && npm install -D stylelint stylelint-config-standard && npx stylelint '**/*.css'"

@@ -537,3 +537,56 @@ func detectNeedsBrandIcons(_ string, _ map[string]interface{}) bool {
 	// For now, return false to optimize CSS loading
 	return false
 }
+
+// AdminAuditMiddleware logs all admin actions for audit trail
+func AdminAuditMiddleware(next httprouter.Handle) httprouter.Handle {
+	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		// Only audit if user is admin
+		if !IsAdmin(r) {
+			next(w, r, ps)
+			return
+		}
+
+		// Get user context
+		username := "unknown"
+		proxmoxUsername := "unknown"
+		isAdmin := false
+
+		if sessionManager := security.GetSession(r); sessionManager != nil {
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+				isAdmin = admin
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+		}
+
+		// Determine auth method
+		authMethod := "builtin"
+		if proxmoxUsername != "unknown" {
+			authMethod = "pve"
+		}
+
+		// Create audit log
+		log := CreateHandlerLogger("AdminAudit", r).With().
+			Str("action", "admin_access").
+			Str("admin_username", username).
+			Str("proxmox_username", proxmoxUsername).
+			Str("auth_method", authMethod).
+			Bool("is_admin", isAdmin).
+			Str("client_ip", r.RemoteAddr).
+			Str("user_agent", r.Header.Get("User-Agent")).
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Time("access_time", time.Now()).
+			Logger()
+
+		log.Info().Msg("ADMIN ACTION AUDIT - Admin accessed admin endpoint")
+
+		// Continue with the request
+		next(w, r, ps)
+	}
+}

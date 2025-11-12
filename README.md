@@ -66,7 +66,7 @@ With Docker running, execute the following command from the project root:
 ---
 services:
   pvmss:
-    image: jhmmt/pvmss:0.2.0
+    image: jhmmt/pvmss:0.2.1
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -120,7 +120,7 @@ docker run -d \
   -e PVMSS_SETTINGS_PATH="/app/settings.json" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.2.0
+  jhmmt/pvmss:0.2.1
 ```
 
 The application will be available at [http://localhost:50000](http://localhost:50000).

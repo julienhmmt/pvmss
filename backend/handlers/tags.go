@@ -6,10 +6,12 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/security"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -160,8 +162,33 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag added successfully")
-	// Redirect with localized success message
+
+	// Audit log for admin tag creation
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			log.Info().
+				Str("action", "tag_create").
+				Str("admin_username", username).
+				Str("proxmox_username", proxmoxUsername).
+				Str("tag_name", tagName).
+				Str("client_ip", r.RemoteAddr).
+				Time("create_time", time.Now()).
+				Msg("ADMIN ACTION AUDIT - Tag created by admin")
+		}
+	}
+
 	localizer := i18n.GetLocalizerFromRequest(r)
+
 	// If you have a parameterized translation, keep it simple for now
 	successMsg := i18n.Localize(localizer, "Admin.Tags.Success.Created")
 	u, _ := url.Parse("/admin/tags")
@@ -203,6 +230,31 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 	}
 
 	log.Info().Str("tag", tagName).Msg("Tag deleted successfully")
+
+	// Audit log for admin tag deletion
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			log.Info().
+				Str("action", "tag_delete").
+				Str("admin_username", username).
+				Str("proxmox_username", proxmoxUsername).
+				Str("tag_name", tagName).
+				Str("client_ip", r.RemoteAddr).
+				Time("delete_time", time.Now()).
+				Msg("ADMIN ACTION AUDIT - Tag deleted by admin")
+		}
+	}
+
 	http.Redirect(w, r, "/admin/tags?success=1&action=delete&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
 }
 

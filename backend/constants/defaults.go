@@ -16,7 +16,7 @@ const (
 	DefaultLoginRealm = "pve"
 
 	// AppVersion is the current application version
-	AppVersion = "0.2.0"
+	AppVersion = "0.2.1"
 )
 
 // Validation Limits

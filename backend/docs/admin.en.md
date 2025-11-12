@@ -79,6 +79,33 @@ So that each user can have their VMs in a single unique folder, a Proxmox pool i
 
 For example, for the user `essai`, the pool will be `pvmss_essai` and their account will be `essai@pve`. It is not possible to modify the user account, but it is possible to delete it. This deletion will also delete the Proxmox pool and all associated VMs.
 
+### Administrator Accounts
+
+In addition to the built-in administrator account (configured with `ADMIN_PASSWORD_HASH`), PVMSS supports administrator accounts created directly in Proxmox VE. This allows multiple administrators to access the PVMSS admin interface using their Proxmox credentials.
+
+#### Creating an Administrator Account
+
+To create an administrator account, use the Proxmox command line:
+
+```bash
+# Create the user in the 'pve' realm (required)
+pveum user add admin-user@pve
+
+# Set the password
+pveum passwd admin-user@pve
+
+# Grant PVEAdmin role at the root level (required for full admin access)
+pveum aclmod / -user admin-user@pve -role PVEAdmin
+```
+
+**Important Notes:**
+
+- **Realm**: Must be `@pve`, not `@pam`. The `pve` realm is required for proper integration with PVMSS authentication.
+- **Role**: Must be `PVEAdmin` only. This role provides full administrative access to Proxmox and grants admin access in PVMSS.
+- **No pool creation**: Unlike regular users, administrators do not get a dedicated pool.
+
+After creation, the user can log in to PVMSS using `admin-user@pve` credentials and will automatically have access to the admin interface.
+
 ## Known Limitations
 
 - The PVMSS application is designed to work on Proxmox VE 8.0 servers and higher

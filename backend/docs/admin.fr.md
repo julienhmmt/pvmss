@@ -79,6 +79,33 @@ Pour que chaque utilisateur puisse avoir ses VM dans un seul et unique dossier, 
 
 Par exemple, pour l'utilisateur `essai`, le pool sera `pvmss_essai` et son compte sera `essai@pve`. Il n'est pas possible de modifier le compte utilisateur, mais il est possible de le supprimer. Cette suppression supprimera également le pool Proxmox et toutes les VM associées.
 
+### Comptes administrateur
+
+En plus du compte administrateur intégré (configuré avec `ADMIN_PASSWORD_HASH`), PVMSS supporte les comptes administrateur créés directement dans Proxmox VE. Cela permet à plusieurs administrateurs d'accéder à l'interface admin de PVMSS en utilisant leurs identifiants Proxmox.
+
+#### Création d'un compte administrateur
+
+Pour créer un compte administrateur, utilisez la ligne de commande Proxmox :
+
+```bash
+# Créer l'utilisateur dans le royaume 'pve' (obligatoire)
+pveum user add admin-user@pve
+
+# Définir le mot de passe
+pveum passwd admin-user@pve
+
+# Accorder le rôle PVEAdmin au niveau racine (obligatoire pour l'accès admin complet)
+pveum aclmod / -user admin-user@pve -role PVEAdmin
+```
+
+**Notes importantes :**
+
+- **Royaume** : Doit être `@pve`, pas `@pam`. Le royaume `pve` est requis pour une intégration correcte avec l'authentification PVMSS.
+- **Rôle** : Doit être `PVEAdmin` uniquement. Ce rôle fournit un accès administratif complet à Proxmox et accorde l'accès admin dans PVMSS.
+- **Pas de pool** : Contrairement aux utilisateurs normaux, les administrateurs n'ont pas de pool dédié.
+
+Après création, l'utilisateur peut se connecter à PVMSS avec les identifiants `admin-user@pve` et aura automatiquement accès à l'interface d'administration.
+
 ## Limites connues
 
 - L'application PVMSS est conçue pour fonctionner sur des serveurs Proxmox VE 8.0 et supérieurs
