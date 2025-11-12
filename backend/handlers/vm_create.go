@@ -876,11 +876,12 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 
 	// Block-based storages that support raw format
 	blockStorages := map[string]bool{
-		"lvmthin": true,
-		"lvm":     true,
-		"zfs":     true,
 		"ceph":    true,
 		"iscsi":   true,
+		"lvm":     true,
+		"lvmthin": true,
+		"rbd":     true,
+		"zfs":     true,
 	}
 
 	// File-based storages that support raw format
