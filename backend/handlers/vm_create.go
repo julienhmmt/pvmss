@@ -22,14 +22,14 @@ import (
 // vmDiskCompatibleStorageTypes defines storage types that support VM disk images
 // These storage types can store VM disks even if their content string doesn't explicitly list "images"
 var vmDiskCompatibleStorageTypes = map[string]bool{
-	"lvmthin": true,
-	"lvm":     true,
-	"zfs":     true,
-	"ceph":    true,
-	"iscsi":   true,
-	"dir":     true,
-	"nfs":     true,
 	"cifs":    true,
+	"dir":     true,
+	"iscsi":   true,
+	"lvm":     true,
+	"lvmthin": true,
+	"nfs":     true,
+	"rbd":     true,
+	"zfs":     true,
 }
 
 // VMCreateOptimizedHandler handles VM creation with optimized cluster performance
@@ -867,6 +867,37 @@ func (h *VMCreateOptimizedHandler) getOptimizedBridges(ctx context.Context, rest
 	return bridgeDetails, nil
 }
 
+// getEFIDiskFormat returns the appropriate disk format for EFI based on storage type
+// Block-based storages use raw format, file-based storages use qcow2 format
+// Returns (format, isCompatible)
+func getEFIDiskFormat(storageType string) (string, bool) {
+	// Block-based storages that use raw format for EFI disks
+	blockStorages := map[string]bool{
+		"iscsi":   true,
+		"lvm":     true,
+		"lvmthin": true,
+		"rbd":     true,
+		"zfs":     true,
+	}
+
+	// File-based storages that use qcow2 format for EFI disks
+	fileStorages := map[string]bool{
+		"cifs": true,
+		"dir":  true,
+		"nfs":  true,
+	}
+
+	// Determine format based on storage type
+	if blockStorages[storageType] {
+		return "raw", true
+	} else if fileStorages[storageType] {
+		return "qcow2", true
+	}
+
+	// Unknown storage type - default to raw format
+	return "raw", false
+}
+
 // getTPMDiskFormat returns the appropriate disk format for TPM based on storage type
 // TPM always requires raw format, but we check storage compatibility
 // Returns (format, isCompatible)
@@ -876,18 +907,18 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 
 	// Block-based storages that support raw format
 	blockStorages := map[string]bool{
-		"lvmthin": true,
-		"lvm":     true,
-		"zfs":     true,
-		"ceph":    true,
 		"iscsi":   true,
+		"lvm":     true,
+		"lvmthin": true,
+		"rbd":     true,
+		"zfs":     true,
 	}
 
 	// File-based storages that support raw format
 	fileStorages := map[string]bool{
+		"cifs": true,
 		"dir":  true,
 		"nfs":  true,
-		"cifs": true,
 	}
 
 	// Check if storage type is compatible
@@ -1106,8 +1137,57 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	// EFI
 	if enableEFI == "1" {
-		params.Set("bios", "ovmf")
-		params.Set("efidisk0", storage+":1,format=raw,efitype=4m")
+		log.Info().Msg("EFI requested, checking storage compatibility")
+
+		// Get storage info to determine format
+		restyClient, err := getDefaultRestyClient()
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to create resty client for EFI storage check, using default raw format")
+			params.Set("bios", "ovmf")
+			params.Set("efidisk0", storage+":1,format=raw,efitype=4m")
+		} else {
+			storageInfo, err := proxmox.GetStoragesResty(r.Context(), restyClient)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to retrieve storage info for EFI, using default raw format")
+				params.Set("bios", "ovmf")
+				params.Set("efidisk0", storage+":1,format=raw,efitype=4m")
+			} else {
+				// Find the selected storage
+				var selectedStorage *proxmox.Storage
+				for i := range storageInfo {
+					if storageInfo[i].Storage == storage {
+						selectedStorage = &storageInfo[i]
+						break
+					}
+				}
+
+				if selectedStorage != nil {
+					// Determine correct format based on storage type
+					format, compatible := getEFIDiskFormat(selectedStorage.Type)
+					if compatible {
+						// Create EFI disk with appropriate format
+						params.Set("bios", "ovmf")
+						params.Set("efidisk0", fmt.Sprintf("%s:1,format=%s,efitype=4m", storage, format))
+						log.Info().
+							Str("storage", storage).
+							Str("storage_type", selectedStorage.Type).
+							Str("format", format).
+							Msg("EFI disk configured successfully")
+					} else {
+						log.Warn().
+							Str("storage", storage).
+							Str("storage_type", selectedStorage.Type).
+							Msg("Storage type compatibility unknown for EFI, using default raw format")
+						params.Set("bios", "ovmf")
+						params.Set("efidisk0", storage+":1,format=raw,efitype=4m")
+					}
+				} else {
+					log.Warn().Str("storage", storage).Msg("Selected storage not found in storage list for EFI, using default raw format")
+					params.Set("bios", "ovmf")
+					params.Set("efidisk0", storage+":1,format=raw,efitype=4m")
+				}
+			}
+		}
 	}
 
 	// Primary disk (disk 0)
