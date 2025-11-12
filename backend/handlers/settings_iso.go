@@ -38,6 +38,8 @@ type NodeISOGroup struct {
 
 // fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls
 func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, error) {
+	logger.Get().Debug().Msg("Starting ISO fetch from all nodes and storages")
+
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
@@ -57,6 +59,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 		if err != nil {
 			return fmt.Errorf("failed to get nodes: %w", err)
 		}
+		logger.Get().Debug().Ints("node_count", []int{len(nodes)}).Msg("Retrieved node list")
 		return nil
 	})
 
@@ -67,6 +70,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 		if err != nil {
 			return fmt.Errorf("failed to get storages: %w", err)
 		}
+		logger.Get().Debug().Ints("storage_count", []int{len(storages)}).Msg("Retrieved storage list")
 		return nil
 	})
 
@@ -82,9 +86,11 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 				enabledSet[enabledISO] = struct{}{}
 			}
 		}
+		logger.Get().Debug().Ints("enabled_iso_count", []int{len(enabledSet)}).Msg("Loaded enabled ISO settings")
 	}
 
 	allISOs := make([]ISOEntry, 0)
+	isoCount := 0
 
 	// For each node, get ISOs from each compatible storage
 	for _, nodeName := range nodes {
@@ -95,16 +101,36 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 				continue
 			}
 
-			isoList, err := proxmox.GetISOListResty(ctx, restyClient, nodeName, storage.Storage)
+			// Create a new context for this API call
+			isoCtx, isoCancel := context.WithTimeout(ctx, 30*time.Second)
+
+			isoList, err := proxmox.GetISOListResty(isoCtx, restyClient, nodeName, storage.Storage)
 			if err != nil {
-				logger.Get().Debug().Err(err).
+				logger.Get().Warn().Err(err).
 					Str("node", nodeName).
 					Str("storage", storage.Storage).
-					Msg("Failed to get ISO list for storage")
+					Str("storage_type", storage.Type).
+					Msg("Failed to get ISO list for storage - continuing with other storages")
+				isoCancel() // Cancel immediately on error
 				continue
 			}
+			isoCancel() // Cancel immediately after successful API call
+
+			logger.Get().Debug().
+				Str("node", nodeName).
+				Str("storage", storage.Storage).
+				Str("storage_type", storage.Type).
+				Int("iso_count", len(isoList)).
+				Msg("Successfully retrieved ISO list from storage")
 
 			for _, iso := range isoList {
+				// Debug log for size field types (helpful for troubleshooting storage-specific issues)
+				logger.Get().Debug().
+					Str("volid", iso.VolID).
+					Interface("size", iso.Size).
+					Str("size_type", fmt.Sprintf("%T", iso.Size)).
+					Msg("Processing ISO entry")
+
 				entry := ISOEntry{
 					Node:    nodeName,
 					Storage: storage.Storage,
@@ -118,9 +144,16 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 				}
 
 				allISOs = append(allISOs, entry)
+				isoCount++
 			}
 		}
 	}
+
+	logger.Get().Info().
+		Int("total_iso_count", isoCount).
+		Int("node_count", len(nodes)).
+		Int("storage_count", len(storages)).
+		Msg("Completed ISO fetch from all storages")
 
 	return allISOs, nil
 }

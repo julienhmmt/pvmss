@@ -12,11 +12,11 @@ import (
 // We only map the fields that are relevant to the application.
 // VolID: The unique volume identifier for the ISO (e.g., "storage-name:iso/filename.iso").
 // Format: The file format, which is expected to be "iso".
-// Size: The size of the ISO file in bytes.
+// Size: The size of the ISO file in bytes (can be int64, string, or other types depending on storage).
 type ISO struct {
-	VolID  string `json:"volid"`
-	Format string `json:"format"`
-	Size   int64  `json:"size"`
+	VolID  string      `json:"volid"`
+	Format string      `json:"format"`
+	Size   interface{} `json:"size"`
 }
 
 // GetISOListResty retrieves the list of ISO images from a specific storage on a given Proxmox node
