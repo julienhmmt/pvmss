@@ -102,10 +102,18 @@ other = "Aggregate limits cannot exceed the node's physical capacity."
 ["Admin.Limits.MinAlways1"]
 other = "Minimum is always 1"
 ["Admin.Limits.NodeCapacity.CoresExceed"]
-other = "Aggregate cores limit ({{.Limit}}) exceeds node physical capacity ({{.Capacity}} CPUs)"
+other = "Aggregate cores limit ({{.Limit}}) exceeds node physical capacity ({{.Capacity}} CPU)"
 ["Admin.Limits.NodeCapacity.RamExceed"]
 other = "Aggregate RAM limit ({{.Limit}} GB) exceeds node physical capacity ({{.Capacity}} GB)"
 ["Admin.Limits.NodeCapacity.CoresVMExceed"]
 other = "Adding this VM would exceed node '{{.Node}}' aggregate cores limit (current: {{.Current}}, requested: {{.Requested}}, max: {{.Limit}})"
 ["Admin.Limits.NodeCapacity.RamVMExceed"]
 other = "Adding this VM would exceed node '{{.Node}}' aggregate RAM limit (current: {{.Current}} GB, requested: {{.Requested}} GB, max: {{.Limit}} GB)"
+["Admin.Limits.NodeLimits"]
+other = "Node limits"
+["Admin.Limits.NodeLimitsDesc"]
+other = "Configure aggregate resource limits for all PVMSS VMs on this node"
+["Admin.Limits.CurrentUsage"]
+other = "Current resource usage"
+["Common.Used"]
+other = "used"
