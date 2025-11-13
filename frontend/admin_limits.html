@@ -227,13 +227,6 @@
       </form>
   </div>
 
-<<<<<<< HEAD
-      <div class="field is-grouped is-grouped-right mt-6">
-        <div class="control">
-          <button type="reset" class="button is-medium"{{if not .Node}} disabled{{end}}>
-            <span>{{T "Common.Reset"}}</span>
-          </button>
-=======
   <hr class="has-background-grey-lighter">
 
   <!-- VM Limits Section -->
@@ -270,7 +263,6 @@
               </div>
             </div>
           </div>
->>>>>>> 9508cf7 (feat: redesign node limits UI with improved resource visualization (#18))
         </div>
 
         <!-- CPU Cores -->
@@ -394,18 +386,8 @@
       </div>
     </form>
   </div>
-  {{else}}
-  <div class="notification is-warning">
-    {{template "notification" (dict
-      "Type" "warning"
-      "Title" (T "Proxmox.ConnectionRequired")
-      "Message" (T "Proxmox.NotConnected")
-      "Icon" "fas fa-exclamation-triangle"
-      "Dismissible" false
-    )}}
-  </div>
-  {{end}}
-<<<<<<< HEAD
+
+  <hr class="has-background-grey-lighter">
 
   <!-- User Limits Section (Max VMs per User) -->
   <div class="box admin-box mt-5">
@@ -414,7 +396,7 @@
       
       <div class="mb-5">
         <h2 class="title is-5 mb-2">
-          <span class="icon"><i class="fas fa-users"></i></span>
+          <span class="icon has-text-info"><i class="fas fa-users"></i></span>
           <span>{{T "Admin.Limits.UserLimits"}}</span>
         </h2>
         <p class="subtitle is-6 has-text-grey">{{T "Admin.Limits.UserLimitsDescription"}}</p>
@@ -438,6 +420,7 @@
       <div class="field is-grouped is-grouped-right mt-6">
         <div class="control">
           <button type="reset" class="button is-medium">
+            <span class="icon"><i class="fas fa-undo"></i></span>
             <span>{{T "Common.Reset"}}</span>
           </button>
         </div>
@@ -450,118 +433,17 @@
       </div>
     </form>
   </div>
-
-  <!-- VM Limits Section (Individual VM Configuration) -->
-  <div class="box admin-box mt-5">
-    <form action="/admin/limits/update" method="POST">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="entityId" value="vm">
-      
-      <div class="mb-5">
-        <h2 class="title is-5 mb-2">
-          <span class="icon"><i class="fas fa-desktop"></i></span>
-          <span>{{T "Admin.Limits.VM"}}</span>
-        </h2>
-        <p class="subtitle is-6 has-text-grey">{{T "Admin.Limits.ScopeVM"}}</p>
-      </div>
-
-      <!-- Sockets -->
-      <div class="field mb-5">
-        <label class="label" id="label-vm-sockets">
-          <span class="icon"><i class="fas fa-microchip"></i></span>
-          <span>{{T "Admin.Limits.Sockets"}}</span>
-        </label>
-        <div class="control">
-          <input id="vm-sockets-max" class="input is-medium" type="number" name="sockets-max" aria-describedby="vm-sockets-help" aria-labelledby="label-vm-sockets"
-                 value="{{if .Limits}}{{if index .Limits "vm"}}{{if index (index .Limits "vm") "sockets"}}{{index (index (index .Limits "vm") "sockets") "max"}}{{else}}2{{end}}{{else}}2{{end}}{{else}}2{{end}}"
-                 min="1" step="1" placeholder="{{T "Common.Max"}}">
-        </div>
-        <p id="vm-sockets-help" class="help">{{T "Admin.Limits.MinAlways1"}}</p>
-      </div>
-
-      <!-- Cores -->
-      <div class="field mb-5">
-        <label class="label" id="label-vm-cores">
-          <span class="icon"><i class="fas fa-microchip"></i></span>
-          <span>{{T "Admin.Limits.Cores"}}</span>
-        </label>
-        <div class="control">
-          <input id="vm-cores-max" class="input is-medium" type="number" name="cores-max" aria-describedby="vm-cores-help" aria-labelledby="label-vm-cores"
-                 value="{{if .Limits}}{{if index .Limits "vm"}}{{if index (index .Limits "vm") "cores"}}{{index (index (index .Limits "vm") "cores") "max"}}{{else}}32{{end}}{{else}}32{{end}}{{else}}32{{end}}"
-                 min="1" step="1" placeholder="{{T "Common.Max"}}">
-        </div>
-        <p id="vm-cores-help" class="help">{{T "Admin.Limits.MinAlways1"}}</p>
-      </div>
-
-      <!-- RAM -->
-      <div class="field mb-5">
-        <label class="label" id="label-vm-ram">
-          <span class="icon"><i class="fas fa-memory"></i></span>
-          <span>{{T "Admin.Limits.Memory"}}</span>
-        </label>
-        <div class="field has-addons">
-          <div class="control is-expanded">
-            <input id="vm-ram-min" class="input is-medium" type="number" name="ram-min" aria-labelledby="label-vm-ram"
-                   value="{{if .Limits}}{{if index .Limits "vm"}}{{if index (index .Limits "vm") "ram"}}{{index (index (index .Limits "vm") "ram") "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}"
-                   min="1" step="1" placeholder="{{T "Common.Min"}}">
-          </div>
-          <div class="control">
-            <span class="button is-static is-medium" aria-hidden="true"><span class="icon is-small"><i class="fas fa-minus" aria-hidden="true"></i></span></span>
-          </div>
-          <div class="control is-expanded">
-            <input id="vm-ram-max" class="input is-medium" type="number" name="ram-max" aria-labelledby="label-vm-ram"
-                   value="{{if .Limits}}{{if index .Limits "vm"}}{{if index (index .Limits "vm") "ram"}}{{index (index (index .Limits "vm") "ram") "max"}}{{else}}64{{end}}{{else}}64{{end}}{{else}}64{{end}}"
-                   min="1" step="1" placeholder="{{T "Common.Max"}}">
-          </div>
-          <div class="control">
-            <span class="button is-static is-medium">{{T "Admin.Limits.GB"}}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Disk -->
-      <div class="field mb-5">
-        <label class="label" id="label-vm-disk">
-          <span class="icon"><i class="fas fa-hdd"></i></span>
-          <span>{{T "Admin.Limits.Disk"}}</span>
-        </label>
-        <div class="field has-addons">
-          <div class="control is-expanded">
-            <input id="vm-disk-min" class="input is-medium" type="number" name="disk-min" aria-labelledby="label-vm-disk"
-                   value="{{if .Limits}}{{if index .Limits "vm"}}{{if index (index .Limits "vm") "disk"}}{{index (index (index .Limits "vm") "disk") "min"}}{{else}}10{{end}}{{else}}10{{end}}{{else}}10{{end}}"
-                   min="1" step="1" placeholder="{{T "Common.Min"}}">
-          </div>
-          <div class="control">
-            <span class="button is-static is-medium" aria-hidden="true"><span class="icon is-small"><i class="fas fa-minus" aria-hidden="true"></i></span></span>
-          </div>
-          <div class="control is-expanded">
-            <input id="vm-disk-max" class="input is-medium" type="number" name="disk-max" aria-labelledby="label-vm-disk"
-                   value="{{if .Limits}}{{if index .Limits "vm"}}{{if index (index .Limits "vm") "disk"}}{{index (index (index .Limits "vm") "disk") "max"}}{{else}}500{{end}}{{else}}500{{end}}{{else}}500{{end}}"
-                   min="1" step="1" placeholder="{{T "Common.Max"}}">
-          </div>
-          <div class="control">
-            <span class="button is-static is-medium">{{T "Admin.Limits.GB"}}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="field is-grouped is-grouped-right mt-6">
-        <div class="control">
-          <button type="reset" class="button is-medium">
-            <span>{{T "Common.Reset"}}</span>
-          </button>
-        </div>
-        <div class="control">
-          <button type="submit" class="button is-primary is-medium">
-            <span class="icon"><i class="fas fa-save"></i></span>
-            <span>{{T "Common.Save"}}</span>
-          </button>
-        </div>
-      </div>
-    </form>
+  {{else}}
+  <div class="notification is-warning">
+    {{template "notification" (dict
+      "Type" "warning"
+      "Title" (T "Proxmox.ConnectionRequired")
+      "Message" (T "Proxmox.NotConnected")
+      "Icon" "fas fa-exclamation-triangle"
+      "Dismissible" false
+    )}}
   </div>
-=======
->>>>>>> 9508cf7 (feat: redesign node limits UI with improved resource visualization (#18))
+  {{end}}
 </div>
 
 <script>

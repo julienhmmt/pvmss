@@ -109,7 +109,6 @@ other = "Aggregate RAM limit ({{.Limit}} GB) exceeds node physical capacity ({{.
 other = "Adding this VM would exceed node '{{.Node}}' aggregate cores limit (current: {{.Current}}, requested: {{.Requested}}, max: {{.Limit}})"
 ["Admin.Limits.NodeCapacity.RamVMExceed"]
 other = "Adding this VM would exceed node '{{.Node}}' aggregate RAM limit (current: {{.Current}} GB, requested: {{.Requested}} GB, max: {{.Limit}} GB)"
-<<<<<<< HEAD
 ["Admin.Limits.UserLimits"]
 other = "User limits"
 ["Admin.Limits.UserLimitsDescription"]
@@ -126,7 +125,6 @@ other = "User limits updated successfully"
 other = "Missing max VMs per user value"
 ["Admin.Limits.Error.InvalidMaxVMPerUser"]
 other = "Invalid max VMs per user value (must be between 0 and 100)"
-=======
 ["Admin.Limits.NodeLimits"]
 other = "Node limits"
 ["Admin.Limits.NodeLimitsDesc"]
@@ -135,4 +133,3 @@ other = "Configure aggregate resource limits for all PVMSS VMs on this node"
 other = "Current resource usage"
 ["Common.Used"]
 other = "used"
->>>>>>> 9508cf7 (feat: redesign node limits UI with improved resource visualization (#18))
