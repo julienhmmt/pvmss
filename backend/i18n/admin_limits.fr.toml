@@ -109,3 +109,11 @@ other = "La limite agrégée de RAM ({{.Limit}} Go) dépasse la capacité physiq
 other = "Ajouter cette VM dépasserait la limite agrégée de cœurs du nœud '{{.Node}}' (actuel : {{.Current}}, demandé : {{.Requested}}, max : {{.Limit}})"
 ["Admin.Limits.NodeCapacity.RamVMExceed"]
 other = "Ajouter cette VM dépasserait la limite agrégée de RAM du nœud '{{.Node}}' (actuel : {{.Current}} Go, demandé : {{.Requested}} Go, max : {{.Limit}} Go)"
+["Admin.Limits.NodeLimits"]
+other = "Limites des nœuds"
+["Admin.Limits.NodeLimitsDesc"]
+other = "Configurez les limites de ressources agrégées pour toutes les VMs PVMSS sur ce nœud"
+["Admin.Limits.CurrentUsage"]
+other = "Utilisation actuelle des ressources"
+["Common.Used"]
+other = "utilisé"

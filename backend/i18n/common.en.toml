@@ -140,3 +140,5 @@ other = "VMs"
 other = "Show all"
 ["Common.Page"]
 other = "Page"
+["Common.Range"]
+other = "Min - Max"
