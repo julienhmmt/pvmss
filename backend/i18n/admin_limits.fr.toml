@@ -109,22 +109,6 @@ other = "La limite agrégée de RAM ({{.Limit}} Go) dépasse la capacité physiq
 other = "Ajouter cette VM dépasserait la limite agrégée de cœurs du nœud '{{.Node}}' (actuel : {{.Current}}, demandé : {{.Requested}}, max : {{.Limit}})"
 ["Admin.Limits.NodeCapacity.RamVMExceed"]
 other = "Ajouter cette VM dépasserait la limite agrégée de RAM du nœud '{{.Node}}' (actuel : {{.Current}} Go, demandé : {{.Requested}} Go, max : {{.Limit}} Go)"
-["Admin.Limits.UserLimits"]
-other = "Limites utilisateur"
-["Admin.Limits.UserLimitsDescription"]
-other = "Configurez le nombre maximum de VMs que chaque utilisateur peut créer"
-["Admin.Limits.MaxVMPerUser"]
-other = "Maximum de VMs par utilisateur"
-["Admin.Limits.MaxVMPerUserPlaceholder"]
-other = "ex., 5"
-["Admin.Limits.MaxVMPerUserHelp"]
-other = "Nombre maximum de VMs qu'un utilisateur peut créer dans son pool (0 = aucune VM autorisée, 100 = maximum)"
-["Admin.Limits.Success.User"]
-other = "Limites utilisateur mises à jour avec succès"
-["Admin.Limits.Error.MissingMaxVMPerUser"]
-other = "Valeur du maximum de VMs par utilisateur manquante"
-["Admin.Limits.Error.InvalidMaxVMPerUser"]
-other = "Valeur du maximum de VMs par utilisateur invalide (doit être entre 0 et 100)"
 ["Admin.Limits.NodeLimits"]
 other = "Limites des nœuds"
 ["Admin.Limits.NodeLimitsDesc"]

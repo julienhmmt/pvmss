@@ -14,6 +14,7 @@ import (
 
 	"pvmss/i18n"
 	"pvmss/proxmox"
+	"pvmss/security"
 	"pvmss/state"
 )
 
@@ -273,6 +274,57 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		redirect += "&errorMsg=" + url.QueryEscape(fmt.Sprintf(base, err.Error()))
 		http.Redirect(w, r, redirect, http.StatusSeeOther)
 		return
+	}
+
+	// Audit log for admin limits update
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			// Log different details based on entity type
+			switch entity {
+			case "vm":
+				log.Info().
+					Str("action", "limits_update").
+					Str("admin_username", username).
+					Str("proxmox_username", proxmoxUsername).
+					Str("entity_type", "vm").
+					Int("sockets_max", socketsMax).
+					Int("cores_max", coresMax).
+					Int("ram_min", ramMin).
+					Int("ram_max", ramMax).
+					Int("disk_min", diskMin).
+					Int("disk_max", diskMax).
+					Str("client_ip", r.RemoteAddr).
+					Time("update_time", time.Now()).
+					Msg("ADMIN ACTION AUDIT - VM limits updated by admin")
+			case "nodes":
+				nodeName := strings.TrimSpace(r.FormValue("nodeName"))
+				log.Info().
+					Str("action", "limits_update").
+					Str("admin_username", username).
+					Str("proxmox_username", proxmoxUsername).
+					Str("entity_type", "node").
+					Str("node_name", nodeName).
+					Int("sockets_max", socketsMax).
+					Int("cores_max", coresMax).
+					Int("ram_min", ramMin).
+					Int("ram_max", ramMax).
+					Int("disk_min", diskMin).
+					Int("disk_max", diskMax).
+					Str("client_ip", r.RemoteAddr).
+					Time("update_time", time.Now()).
+					Msg("ADMIN ACTION AUDIT - Node limits updated by admin")
+			}
+		}
 	}
 
 	// Redirect back to limits page with success banner and context

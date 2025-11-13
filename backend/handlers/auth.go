@@ -110,6 +110,7 @@ func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 	// Admin login routes
 	router.GET("/admin/login", h.ShowAdminLoginForm)
 	router.POST("/admin/login", h.handleAdminLogin)
+	router.POST("/admin/proxmox-login", h.handleProxmoxAdminLogin)
 
 	// Logout routes
 	router.GET("/logout", h.LogoutGet)
@@ -273,6 +274,17 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
+	// Log admin authentication success for audit trail
+	ctx.Log.Info().
+		Str("action", "admin_login").
+		Str("username", "admin").
+		Str("realm", "builtin").
+		Str("auth_method", "password_hash").
+		Str("client_ip", r.RemoteAddr).
+		Str("user_agent", r.Header.Get("User-Agent")).
+		Time("login_time", time.Now()).
+		Msg("ADMIN LOGIN SUCCESS - Built-in admin authenticated with password hash")
+
 	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/admin/nodes")
 	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
@@ -370,14 +382,172 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 		Bool("has_csrf_token", ticketResp.CSRFPreventionToken != "").
 		Msg("User authentication successful via Proxmox, creating session")
 
+	// Check if user has PVEAdmin role to determine admin access
+	isAdmin := proxmox.HasRole(ticketResp.Cap, "PVEAdmin")
+	if isAdmin {
+		log.Info().
+			Str("action", "admin_login").
+			Str("username", username).
+			Str("proxmox_username", ticketResp.Username).
+			Str("realm", "pve").
+			Str("client_ip", r.RemoteAddr).
+			Str("user_agent", r.Header.Get("User-Agent")).
+			Bool("has_pveadmin_role", true).
+			Time("login_time", time.Now()).
+			Msg("ADMIN LOGIN SUCCESS - User with PVEAdmin role authenticated")
+	} else {
+		log.Info().
+			Str("action", "user_login").
+			Str("username", username).
+			Str("proxmox_username", ticketResp.Username).
+			Str("realm", "pve").
+			Str("client_ip", r.RemoteAddr).
+			Str("user_agent", r.Header.Get("User-Agent")).
+			Bool("has_pveadmin_role", false).
+			Time("login_time", time.Now()).
+			Msg("USER LOGIN SUCCESS - Standard user authenticated")
+	}
+
 	// Establish session and store Proxmox ticket for later use (console access, API calls)
-	if err := establishSessionWithTicket(w, r, false, username, ticketResp); err != nil {
+	if err := establishSessionWithTicket(w, r, isAdmin, username, ticketResp); err != nil {
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
 	// Persist language selection in cookie and append to redirect
-	redirectURL := getRedirectURL(r, "/vm/create")
+	var defaultURL string
+	if isAdmin {
+		defaultURL = "/admin/nodes"
+	} else {
+		defaultURL = "/vm/create"
+	}
+	redirectURL := getRedirectURL(r, defaultURL)
+	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+// handleProxmoxAdminLogin handles admin login form submission via Proxmox (username + password with PVEAdmin role required)
+func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := logger.Get().
+		With().
+		Str("handler", "AuthHandler").
+		Str("method", r.Method).
+		Str("remote_addr", r.RemoteAddr).
+		Logger()
+
+	// Get session manager
+	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		log.Error().Msg("Session manager not available")
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"), http.StatusInternalServerError)
+		return
+	}
+
+	if err := validateCSRF(r); err != nil {
+		loc := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(loc, "Login.Error.InvalidRequest")
+		if err.Error() == "session expired" {
+			errMsg = i18n.Localize(loc, "Login.Error.SessionExpired")
+		}
+		h.renderAdminLoginForm(w, r, errMsg)
+		return
+	}
+
+	// Get username and password from form
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
+	if username == "" || password == "" {
+		log.Debug().Str("ip", r.RemoteAddr).Msg("Admin login attempt with empty username or password")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
+		return
+	}
+
+	// Basic input validation
+	if len(username) > 100 || len(password) > 200 {
+		log.Warn().
+			Str("ip", r.RemoteAddr).
+			Str("username_preview", username).
+			Int("username_length", len(username)).
+			Int("password_length", len(password)).
+			Msg("Admin login attempt with too long credentials")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		return
+	}
+
+	// Create a new Proxmox client for admin authentication
+	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
+	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
+
+	if proxmoxURL == "" {
+		log.Error().Msg("PROXMOX_URL is not configured")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
+		return
+	}
+
+	// We create a new cookie-based client for admin/pass login
+	pxClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create Proxmox client for admin authentication")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
+		return
+	}
+
+	// Attempt to authenticate admin via Proxmox with "@pve" realm
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	// Use CreateTicket to get the authentication ticket with full response
+	ticketResp, err := proxmox.CreateTicket(ctx, pxClient, username, password, &proxmox.CreateTicketOptions{
+		Realm: "pve",
+	})
+	if err != nil {
+		log.Info().Err(err).
+			Str("ip", r.RemoteAddr).
+			Str("username", username).
+			Msg("Admin login failed - Proxmox authentication failed")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		return
+	}
+
+	log.Debug().
+		Str("ip", r.RemoteAddr).
+		Str("username", username).
+		Str("proxmox_username", ticketResp.Username).
+		Bool("has_csrf_token", ticketResp.CSRFPreventionToken != "").
+		Msg("Admin authentication successful via Proxmox, checking PVEAdmin role")
+
+	// Check if user has PVEAdmin role - REQUIRED for admin login
+	isAdmin := proxmox.HasRole(ticketResp.Cap, "PVEAdmin")
+	if !isAdmin {
+		log.Info().
+			Str("ip", r.RemoteAddr).
+			Str("username", username).
+			Str("proxmox_username", ticketResp.Username).
+			Msg("Admin login denied - User does not have PVEAdmin role")
+		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		return
+	}
+
+	log.Info().
+		Str("action", "admin_login").
+		Str("username", username).
+		Str("proxmox_username", ticketResp.Username).
+		Str("realm", "pve").
+		Str("client_ip", r.RemoteAddr).
+		Str("user_agent", r.Header.Get("User-Agent")).
+		Bool("has_pveadmin_role", true).
+		Time("login_time", time.Now()).
+		Msg("ADMIN LOGIN SUCCESS - Proxmox admin authenticated with PVEAdmin role")
+
+	// Establish session and store Proxmox ticket for later use (console access, API calls)
+	if err := establishSessionWithTicket(w, r, true, username, ticketResp); err != nil {
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
+		return
+	}
+
+	// Persist language selection in cookie and append to redirect
+	redirectURL := getRedirectURL(r, "/admin/nodes")
 	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }

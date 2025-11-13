@@ -1,63 +1,164 @@
 {{define "admin_login"}}
 {{$lang := .Lang}}
-<section class="section min-h-100vh flex-center" style="padding: 2rem 1rem;">
+<section class="section min-h-100vh flex-center">
   <div class="container">
     <div class="columns is-centered">
-      <div class="column is-10-mobile is-8-tablet is-6-desktop is-5-widescreen">
-        <div class="card admin-card admin-danger-card">
-          <header class="card-header brand-header brand-header-danger is-align-items-center">
-            <p class="card-header-title has-text-centered">{{T "AdminLogin.Title"}}</p>
+      <div class="column is-11-mobile is-9-tablet is-7-desktop is-6-widescreen">
+        <div class="card admin-card admin-login-card">
+          <header class="card-header brand-header brand-header-primary is-align-items-center">
+            <p class="card-header-title has-text-centered has-text-white">
+              <span class="icon is-medium mr-2">
+                <i class="fas fa-shield-alt"></i>
+              </span>
+              {{T "AdminLogin.Title"}}
+            </p>
           </header>
+
           <div class="card-content p-6">
             {{if .Error}}
-            {{template "notification" (dict 
-              "Type" "danger" 
-              "Title" (T "Common.Error") 
-              "Message" .Error 
-              "Icon" "fas fa-exclamation-triangle" 
-              "Dismissible" true 
-              "Light" false 
-              "ExtraClasses" "mb-4" 
+            {{template "notification" (dict
+              "Type" "danger"
+              "Title" (T "Common.Error")
+              "Message" .Error
+              "Icon" "fas fa-exclamation-triangle"
+              "Dismissible" true
+              "Light" false
+              "ExtraClasses" "mb-5"
               "Live" "assertive"
             )}}
             {{end}}
 
-            <form method="post" action="/admin/login" novalidate>
-              <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
-              {{/* Preserve intended redirect target across POST */}}
-              {{if .ReturnURL}}
-              <input type="hidden" name="return" value="{{.ReturnURL}}" />
-              {{end}}
-              {{if .RedirectURL}}
-              <input type="hidden" name="redirect" value="{{.RedirectURL}}" />
-              {{end}}
-
-              <!-- Admin Password Field -->
-              <div class="field">
-                <label class="label" for="password">
-                  {{T "AdminLogin.PasswordLabel"}}
-                </label>
-                <div class="control">
-                  <input class="input is-large" type="password" id="password" name="password" required autofocus autocomplete="current-password" aria-required="true" placeholder="{{T "AdminLogin.PasswordLabel"}}" />
-                </div>
-              </div>
-
-              <div class="field mt-5">
-                <div class="control">
-                  <button class="button is-danger is-fullwidth is-large has-text-white admin-button" type="submit" aria-label="{{T "AdminLogin.Button"}}">
-                    <span class="icon is-medium" aria-hidden="true">
-                      <i class="fas fa-sign-in-alt"></i>
+            <!-- Login Type Selection -->
+            <div class="field mb-5">
+              <div class="control has-text-centered">
+                <div class="admin-login-toggle">
+                  <input type="radio" id="login-type-local" name="login_type" value="local" checked onchange="switchLoginType('local')" />
+                  <label for="login-type-local" class="admin-toggle-button admin-toggle-danger">
+                    <span class="icon">
+                      <i class="fas fa-lock"></i>
                     </span>
-                    <span>{{T "AdminLogin.Button"}}</span>
-                  </button>
+                    <span>{{T "AdminLogin.LocalAdminTab"}}</span>
+                  </label>
+
+                  <input type="radio" id="login-type-proxmox" name="login_type" value="proxmox" onchange="switchLoginType('proxmox')" />
+                  <label for="login-type-proxmox" class="admin-toggle-button admin-toggle-primary">
+                    <span class="icon">
+                      <i class="fas fa-server"></i>
+                    </span>
+                    <span>{{T "AdminLogin.ProxmoxAdminTab"}}</span>
+                  </label>
                 </div>
               </div>
-            </form>
+            </div>
+
+            <!-- Local Admin Form -->
+            <div id="local-admin-section" class="login-section">
+              <div class="notification is-danger is-light mb-4">
+                <div class="content">
+                  <p class="has-text-weight-semibold mb-2">
+                    <span class="icon-text">
+                      <span class="icon">
+                        <i class="fas fa-info-circle"></i>
+                      </span>
+                      <span>{{T "AdminLogin.LocalAdminTab"}}</span>
+                    </span>
+                  </p>
+                  <p class="is-size-7">{{T "AdminLogin.LocalAdminDescription"}}</p>
+                </div>
+              </div>
+
+              <form method="post" action="/admin/login" novalidate>
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                {{if .ReturnURL}}
+                <input type="hidden" name="return" value="{{.ReturnURL}}" />
+                {{end}}
+                {{if .RedirectURL}}
+                <input type="hidden" name="redirect" value="{{.RedirectURL}}" />
+                {{end}}
+
+                <div class="field">
+                  <div class="control has-icons-left">
+                    <input class="input is-medium" type="password" id="password" name="password" required autofocus autocomplete="current-password" aria-required="true" placeholder="{{T "AdminLogin.PasswordLabel"}}" />
+                    <span class="icon is-small is-left">
+                      <i class="fas fa-key"></i>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="field mt-5">
+                  <div class="control">
+                    <button class="button is-danger is-fullwidth is-medium has-text-white admin-button" type="submit">
+                      <span class="icon is-medium">
+                        <i class="fas fa-sign-in-alt"></i>
+                      </span>
+                      <span>{{T "AdminLogin.Button"}}</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- Proxmox Admin Form -->
+            <div id="proxmox-admin-section" class="login-section" style="display: none;">
+              <div class="notification is-primary is-light mb-4">
+                <div class="content">
+                  <p class="has-text-weight-semibold mb-2">
+                    <span class="icon-text">
+                      <span class="icon">
+                        <i class="fas fa-server"></i>
+                      </span>
+                      <span>{{T "AdminLogin.ProxmoxAdminTab"}}</span>
+                    </span>
+                  </p>
+                  <p class="is-size-7">{{T "AdminLogin.ProxmoxAdminDescription"}}</p>
+                </div>
+              </div>
+
+              <form method="post" action="/admin/proxmox-login" novalidate>
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
+                {{if .ReturnURL}}
+                <input type="hidden" name="return" value="{{.ReturnURL}}" />
+                {{end}}
+                {{if .RedirectURL}}
+                <input type="hidden" name="redirect" value="{{.RedirectURL}}" />
+                {{end}}
+
+                <div class="field">
+                  <div class="control has-icons-left">
+                    <input class="input is-medium" type="text" id="px-username" name="username" required autocomplete="username" aria-required="true" placeholder="admin" onblur="ensureRealm()" />
+                    <span class="icon is-small is-left">
+                      <i class="fas fa-user"></i>
+                    </span>
+                  </div>
+                  <p class="help has-text-grey">{{T "AdminLogin.ProxmoxUsernameHelp"}}</p>
+                </div>
+
+                <div class="field">
+                  <div class="control has-icons-left">
+                    <input class="input is-medium" type="password" id="px-password" name="password" required autocomplete="current-password" aria-required="true" placeholder="{{T "AdminLogin.ProxmoxPasswordLabel"}}" />
+                    <span class="icon is-small is-left">
+                      <i class="fas fa-key"></i>
+                    </span>
+                  </div>
+                </div>
+
+                <div class="field mt-5">
+                  <div class="control">
+                    <button class="button is-primary is-fullwidth is-medium has-text-white admin-button" type="submit" onclick="return prepareProxmoxLogin()">
+                      <span class="icon is-medium">
+                        <i class="fas fa-server"></i>
+                      </span>
+                      <span>{{T "AdminLogin.ProxmoxAdminTab"}}</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
 
             <!-- Divider -->
-            <div class="divider-with-text">
+            <div class="divider-with-text mt-6 mb-5">
               <hr />
-              <span></span>
+              <span class="has-text-grey">ou</span>
             </div>
 
             <!-- User Login Button -->
@@ -75,4 +176,59 @@
     </div>
   </div>
 </section>
+
+<script>
+function switchLoginType(loginType) {
+  const toggle = document.querySelector('.admin-login-toggle');
+  const localSection = document.getElementById('local-admin-section');
+  const proxmoxSection = document.getElementById('proxmox-admin-section');
+
+  // Add selection class for background effect
+  toggle.classList.add('has-selection');
+
+  if (loginType === 'local') {
+    localSection.style.display = 'block';
+    proxmoxSection.style.display = 'none';
+    document.getElementById('password').focus();
+  } else {
+    localSection.style.display = 'none';
+    proxmoxSection.style.display = 'block';
+    document.getElementById('px-username').focus();
+  }
+}
+
+function ensureRealm() {
+  const usernameInput = document.getElementById('px-username');
+  let username = usernameInput.value.trim();
+
+  // If username doesn't contain @, add @pve
+  if (username && !username.includes('@')) {
+    usernameInput.value = username + '@pve';
+  }
+}
+
+function prepareProxmoxLogin() {
+  // Ensure realm is set before submitting
+  ensureRealm();
+
+  const username = document.getElementById('px-username').value.trim();
+  if (!username) {
+    alert('Veuillez saisir un nom d\'utilisateur');
+    return false;
+  }
+
+  const password = document.getElementById('px-password').value;
+  if (!password) {
+    alert('Veuillez saisir un mot de passe');
+    return false;
+  }
+
+  return true;
+}
+
+// Initialize focus on first input
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('password').focus();
+});
+</script>
 {{end}}

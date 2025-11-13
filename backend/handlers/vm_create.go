@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"pvmss/i18n"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
@@ -725,12 +726,20 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 	if err != nil {
 		log.Warn().Err(err).Msg("Failed to fetch global storage list")
 		// Continue without global metadata
+	} else {
+		log.Debug().Int("global_storages_count", len(globalList)).Msg("Retrieved global storage list")
 	}
 
 	// Create global storage info map for quick lookup
 	globalStorageInfo := make(map[string]proxmox.Storage)
 	for _, item := range globalList {
 		globalStorageInfo[item.Storage] = item
+		log.Debug().
+			Str("storage_name", item.Storage).
+			Str("storage_type", item.Type).
+			Str("storage_content", item.Content).
+			Int("storage_enabled", item.Enabled).
+			Msg("Processing global storage info")
 	}
 
 	// Create enabled storage map for quick lookup
@@ -795,13 +804,38 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 					}
 				}
 
+				log.Debug().
+					Str("node", nodeName).
+					Str("storage", storage.Storage).
+					Str("storage_type", storageType).
+					Str("storage_content", storageContent).
+					Bool("is_enabled_storage", isEnabledStorage).
+					Int("storage_enabled", storage.Enabled).
+					Bool("supports_vm_disk", supportsVMDisk).
+					Msg("Evaluating storage for inclusion")
+
 				if isEnabledStorage && storage.Enabled == 1 && supportsVMDisk {
 					mu.Lock()
 					// Only add if not already present (avoid duplicates across nodes)
 					if _, exists := storageMap[storage.Storage]; !exists {
 						storageMap[storage.Storage] = nodeName
+						log.Debug().
+							Str("storage", storage.Storage).
+							Str("node", nodeName).
+							Msg("Storage accepted and added to available list")
+					} else {
+						log.Debug().
+							Str("storage", storage.Storage).
+							Str("existing_node", storageMap[storage.Storage]).
+							Str("current_node", nodeName).
+							Msg("Storage already exists from another node, skipping duplicate")
 					}
 					mu.Unlock()
+				} else {
+					log.Debug().
+						Str("node", nodeName).
+						Str("storage", storage.Storage).
+						Msg("Storage rejected - does not meet criteria")
 				}
 			}
 		}(nodeName)
@@ -910,11 +944,12 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 
 	// Block-based storages that support raw format
 	blockStorages := map[string]bool{
-		"lvmthin": true,
-		"lvm":     true,
-		"zfs":     true,
 		"ceph":    true,
 		"iscsi":   true,
+		"lvm":     true,
+		"lvmthin": true,
+		"rbd":     true,
+		"zfs":     true,
 	}
 
 	// File-based storages that support raw format
@@ -926,10 +961,18 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 
 	// Check if storage type is compatible
 	if blockStorages[storageType] || fileStorages[storageType] {
+		logger.Get().Debug().
+			Str("storage_type", storageType).
+			Bool("is_block_storage", blockStorages[storageType]).
+			Bool("is_file_storage", fileStorages[storageType]).
+			Msg("Storage type compatible with TPM raw format")
 		return "raw", true
 	}
 
 	// Unknown or incompatible storage type
+	logger.Get().Debug().
+		Str("storage_type", storageType).
+		Msg("Storage type NOT compatible with TPM raw format")
 	return "raw", false
 }
 
@@ -979,6 +1022,11 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
+
+	// Log selected storage for debugging
+	log.Debug().
+		Str("selected_storage", storage).
+		Msg("Validating selected storage")
 
 	// Parse integers with robust extraction
 	settings := h.stateManager.GetSettings()
@@ -1178,9 +1226,20 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	diskParam := fmt.Sprintf("%s0", diskBus)
 	params.Set(diskParam, fmt.Sprintf("%s:%d", storage, diskSizeMB/1024))
 	log.Info().Str("disk_param", diskParam).Int("size_mb", diskSizeMB).Int("size_gb", diskSizeMB/1024).Msg("Configured primary disk")
+	log.Debug().
+		Str("storage", storage).
+		Str("disk_bus", diskBus).
+		Int("disk_size_mb", diskSizeMB).
+		Int("disk_size_gb", diskSizeMB/1024).
+		Str("disk_param", diskParam).
+		Msg("Primary disk configuration details")
 
 	// TPM (Trusted Platform Module)
 	if enableTPM == "1" {
+		log.Debug().
+			Str("storage", storage).
+			Bool("enable_tpm", true).
+			Msg("TPM requested for VM creation")
 		log.Info().Msg("TPM requested, checking storage compatibility")
 
 		// Get storage info to determine format
@@ -1203,16 +1262,26 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 				if selectedStorage != nil {
 					// Check if storage is compatible with raw format (required for TPM)
+					log.Debug().
+						Str("storage", storage).
+						Str("storage_type", selectedStorage.Type).
+						Msg("Checking TPM storage compatibility")
 					format, compatible := getTPMDiskFormat(selectedStorage.Type)
 					if compatible {
 						// Create TPM disk: tpmstate0=<storage>:4,version=v2.0
 						// TPM disk is always 4 MiB and uses raw format
-						params.Set("tpmstate0", fmt.Sprintf("%s:4,version=v2.0", storage))
+						tpmParam := fmt.Sprintf("%s:4,version=v2.0", storage)
+						params.Set("tpmstate0", tpmParam)
 						log.Info().
 							Str("storage", storage).
 							Str("storage_type", selectedStorage.Type).
 							Str("format", format).
 							Msg("TPM disk configured successfully")
+						log.Debug().
+							Str("storage", storage).
+							Str("tpm_param", tpmParam).
+							Str("tpmstate0", fmt.Sprintf("%s:4,version=v2.0", storage)).
+							Msg("TPM disk parameter details")
 					} else {
 						log.Warn().
 							Str("storage", storage).
@@ -1319,6 +1388,38 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		Str("name", name).
 		Str("node", node).
 		Msg("VM created successfully")
+
+	// Audit log for admin VM creation
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
+			username := "unknown"
+			proxmoxUsername := "unknown"
+
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+				username = user
+			}
+			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
+				proxmoxUsername = pxUser
+			}
+
+			log.Info().
+				Str("action", "vm_create").
+				Str("admin_username", username).
+				Str("proxmox_username", proxmoxUsername).
+				Int("vmid", vmid).
+				Str("vm_name", name).
+				Str("node", node).
+				Int("cpu_cores", cpuCores).
+				Int("cpu_sockets", cpuSockets).
+				Int("memory_mb", memoryMB).
+				Int("disk_size_gb", diskSizeMB/1024).
+				Str("storage", storage).
+				Str("network_model", networkModel).
+				Str("client_ip", r.RemoteAddr).
+				Time("create_time", time.Now()).
+				Msg("ADMIN ACTION AUDIT - VM created by admin")
+		}
+	}
 
 	// Redirect to VM details
 	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?created=1", vmid), http.StatusSeeOther)

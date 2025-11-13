@@ -296,6 +296,108 @@ func EnsureRole(ctx context.Context, client ClientInterface, roleID string, priv
 	return nil
 }
 
+// HasRole checks if the user has a specific role in their capabilities.
+// This function parses the Cap field from TicketResponse to determine user roles.
+//
+// The Cap field can have different structures depending on Proxmox version:
+//
+//  1. Legacy format (array of role names):
+//     {
+//     "/": ["PVEAdmin", "PVEDatastoreUser", ...],
+//     "/pool/pool1": ["PVEPoolUser"],
+//     ...
+//     }
+//
+//  2. New format (permissions map):
+//     {
+//     "/": {"PVEAdmin": 1, "PVEDatastoreUser": 1, ...},
+//     "nodes": {"Sys.Audit":1, "Sys.Console":1, ...},
+//     "storage": {"Datastore.Allocate":1, ...},
+//     ...
+//     }
+//
+// Parameters:
+//   - cap: The capabilities object from TicketResponse.Cap
+//   - role: The role to check for (e.g., "PVEAdmin")
+//
+// Returns:
+//   - true if the user has the role or equivalent admin permissions, false otherwise
+func HasRole(cap any, role string) bool {
+	if cap == nil {
+		return false
+	}
+
+	// The cap field is a map[string]any where keys are paths and values are role data
+	capMap, ok := cap.(map[string]any)
+	if !ok {
+		logger.Get().Warn().Interface("cap", cap).Msg("Capabilities field is not a map")
+		return false
+	}
+
+	// Check for explicit role in legacy format (arrays)
+	for path, roles := range capMap {
+		// Try legacy format first (array of strings)
+		if rolesSlice, ok := roles.([]any); ok {
+			for _, r := range rolesSlice {
+				if roleStr, ok := r.(string); ok && roleStr == role {
+					logger.Get().Debug().
+						Str("role", role).
+						Str("path", path).
+						Interface("all_roles", capMap).
+						Msg("User has required role (legacy format)")
+					return true
+				}
+			}
+		}
+
+		// Try new format (map of permissions)
+		if rolesMap, ok := roles.(map[string]any); ok {
+			// Check for explicit role name
+			if _, exists := rolesMap[role]; exists {
+				logger.Get().Debug().
+					Str("role", role).
+					Str("path", path).
+					Interface("all_roles", capMap).
+					Msg("User has required role (new format)")
+				return true
+			}
+
+			// For PVEAdmin role, also check for admin-level permissions
+			if role == "PVEAdmin" {
+				// Check if user has broad admin permissions across multiple domains
+				adminDomains := []string{"nodes", "storage", "vms", "dc"}
+				adminPermissionCount := 0
+
+				for _, domain := range adminDomains {
+					if domainPerms, exists := capMap[domain]; exists {
+						if domainPermsMap, ok := domainPerms.(map[string]any); ok && len(domainPermsMap) > 0 {
+							adminPermissionCount++
+						}
+					}
+				}
+
+				// If user has permissions in most admin domains, consider them admin
+				if adminPermissionCount >= 3 { // nodes, storage, vms minimum
+					logger.Get().Debug().
+						Str("role", role).
+						Int("admin_domains", adminPermissionCount).
+						Interface("capabilities", capMap).
+						Msg("User has admin-level permissions (inferred PVEAdmin)")
+					return true
+				}
+			}
+		} else {
+			logger.Get().Warn().Str("path", path).Interface("roles", roles).Msg("Roles field is not an array or map")
+		}
+	}
+
+	logger.Get().Debug().
+		Str("role", role).
+		Interface("capabilities", capMap).
+		Msg("User does not have required role")
+	return false
+}
+
 // --- Helpers ---
 
 // normalizeUserID ensures the username has a realm suffix.
