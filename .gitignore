@@ -5,4 +5,14 @@
 .windsurf/
 docker-compose.dev.yml
 settings.dev.json
+<<<<<<< HEAD
 coverage.out
+=======
+coverage.out
+node_modules/
+package-lock.json
+
+# binaries
+pvmss
+backend/pvmss
+>>>>>>> 68a8301 (chore: remove compiled binaries and update gitignore)
