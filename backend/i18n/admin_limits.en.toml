@@ -101,6 +101,10 @@ other = "Node physical capacity"
 other = "Aggregate limits cannot exceed the node's physical capacity."
 ["Admin.Limits.MinAlways1"]
 other = "Minimum is always 1"
+["Admin.Limits.NodeCapacity.CoresExceed"]
+other = "Aggregate cores limit ({{.Limit}}) exceeds node physical capacity ({{.Capacity}} CPU)"
+["Admin.Limits.NodeCapacity.RamExceed"]
+other = "Aggregate RAM limit ({{.Limit}} GB) exceeds node physical capacity ({{.Capacity}} GB)"
 ["Admin.Limits.NodeCapacity.CoresVMExceed"]
 other = "Adding this VM would exceed node '{{.Node}}' aggregate cores limit (current: {{.Current}}, requested: {{.Requested}}, max: {{.Limit}})"
 ["Admin.Limits.NodeCapacity.RamVMExceed"]
