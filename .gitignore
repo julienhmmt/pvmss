@@ -8,3 +8,7 @@ settings.dev.json
 coverage.out
 node_modules/
 package-lock.json
+
+# binaries
+pvmss
+backend/pvmss
