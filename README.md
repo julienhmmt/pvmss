@@ -40,11 +40,54 @@ Follow these instructions to get PVMSS running locally using Docker.
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
+### Create the settings.json file
+
+Before starting the container, you have to create a file, which is the needed configuration for PVMSS to work. An example of the `settings.json` file is in the folder *backend*. Create the file, set its rights and copy/paste the content.
+
+```bash
+touch settings.json
+# use your prefered editor to past this content in the file settings.json:
+
+{
+    "tags": [
+        "pvmss"
+    ],
+    "isos": [],
+    "vmbrs": [],
+    "max_network_cards": 1,
+    "max_disk_per_vm": 1,
+    "enabled_storages": [],
+    "limits": {
+        "nodes": {},
+        "vm": {
+            "cores": {
+                "max": 2,
+                "min": 1
+            },
+            "disk": {
+                "max": 12,
+                "min": 6
+            },
+            "ram": {
+                "max": 4,
+                "min": 1
+            },
+            "sockets": {
+                "max": 1,
+                "min": 1
+            }
+        }
+    }
+}
+```
+
+Save the file, and do the `chmod 600 settings.json`.
+
 ### Configure environment variables
 
-You can use the provided example file `env.example` to create your own `.env` file. Or, you can modify the example file directly.
+You can use the provided example file `env.example` to create your own `.env` file. Or, you can modify the example file directly. You cannot use both, only one option (.env file or env variables in docker-compose.yml file).
 
-**Settings:**
+**Mandatory settings**
 
 - `ADMIN_PASSWORD_HASH`: A bcrypt hash of the password for the admin panel. You can generate one using an online tool or a simple script.
 - `LOG_LEVEL`: Set the application log level: `INFO` or `DEBUG` (default: `INFO`).
@@ -66,7 +109,7 @@ With Docker running, execute the following command from the project root:
 ---
 services:
   pvmss:
-    image: jhmmt/pvmss:0.2.1
+    image: jhmmt/pvmss:0.2.0
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -96,8 +139,11 @@ services:
         limits:
           cpus: '1'
           memory: 64M
+```
 
-# Start the container in detached mode
+Save the file, and start the container in detached mode with docker compose:
+
+```bash
 docker compose up -d
 ```
 
@@ -120,7 +166,7 @@ docker run -d \
   -e PVMSS_SETTINGS_PATH="/app/settings.json" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.2.1
+  jhmmt/pvmss:0.2.0
 ```
 
 The application will be available at [http://localhost:50000](http://localhost:50000).
