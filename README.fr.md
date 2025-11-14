@@ -40,6 +40,49 @@ Suivez ces instructions pour lancer PVMSS localement avec Docker.
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
+### Création du fichier de configuration
+
+Avant de démarrer le conteneur, vous devez créer un fichier, qui est la configuration nécessaire pour que PVMSS fonctionne. Un exemple du fichier `settings.json` est dans le dossier *backend*. Créez le fichier, définissez ses droits et copiez-collez le contenu.
+
+```bash
+touch settings.json
+# use your prefered editor to past this content in the file settings.json:
+
+{
+    "tags": [
+        "pvmss"
+    ],
+    "isos": [],
+    "vmbrs": [],
+    "max_network_cards": 1,
+    "max_disk_per_vm": 1,
+    "enabled_storages": [],
+    "limits": {
+        "nodes": {},
+        "vm": {
+            "cores": {
+                "max": 2,
+                "min": 1
+            },
+            "disk": {
+                "max": 12,
+                "min": 6
+            },
+            "ram": {
+                "max": 4,
+                "min": 1
+            },
+            "sockets": {
+                "max": 1,
+                "min": 1
+            }
+        }
+    }
+}
+```
+
+Enregistrez le fichier, et faites `chmod 600 settings.json`.
+
 ### Configuration des variables d'environnement
 
 Vous pouvez utiliser le fichier d'exemple fourni `env.example` pour créer votre propre fichier `.env`. Ou vous pouvez modifier le fichier d'exemple directement.
