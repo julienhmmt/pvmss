@@ -180,6 +180,28 @@ other = "Proxmox connection is unavailable in offline mode. You can review confi
 # Validation and Errors
 ["VM.Create.Validation.VMNameRequired"]
 other = "VM name is required"
+["VM.Create.Validation.VMNameLength"]
+other = "VM name must be between 1 and 100 characters"
+["VM.Create.Validation.VMNameInvalidChars"]
+other = "VM name contains invalid characters"
+["VM.Create.Validation.VMNameValid"]
+other = "VM name is valid"
+["VM.Create.Validation.InvalidRequest"]
+other = "Invalid request"
+["VM.Create.Validation.VMIDRequired"]
+other = "VM ID is required"
+["VM.Create.Validation.VMIDRange"]
+other = "VM ID must be between 1 and 999999999"
+["VM.Create.Validation.VMIDExists"]
+other = "VM ID already exists"
+["VM.Create.Validation.VMIDAvailable"]
+other = "VM ID is available"
+["VM.Create.Validation.GenericSuccess"]
+other = "Looks good"
+["VM.Create.Validation.GenericInvalid"]
+other = "Please review this value"
+["VM.Create.Validation.GenericError"]
+other = "Validation is temporarily unavailable. Please try again."
 ["VM.Create.Validation.StorageRequired"]
 other = "Storage is required"
 ["VM.Create.Error.FailedToGetNextVMID"]

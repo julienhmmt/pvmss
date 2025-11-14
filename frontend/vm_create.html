@@ -942,7 +942,7 @@
     'use strict';
 
     // Configuration
-    const VALIDATION_DELAY_MS = 500; // Delay before validating
+    const VALIDATION_DELAY_MS = 1000; // Delay before validating
     const API_BASE_URL = '/api/vm/validate';
 
     // DOM elements
@@ -988,8 +988,18 @@
     }
 
     function setFieldLoading(field, isLoading) {
-        field.classList.toggle('is-loading', isLoading);
-        field.disabled = isLoading;
+        const control = field.closest('.control');
+        if (control) {
+            control.classList.toggle('is-loading', isLoading);
+        } else {
+            field.classList.toggle('is-loading', isLoading);
+        }
+
+        if (isLoading) {
+            field.setAttribute('aria-busy', 'true');
+        } else {
+            field.removeAttribute('aria-busy');
+        }
     }
 
     async function validateField(field) {
