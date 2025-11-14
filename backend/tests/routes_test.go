@@ -167,17 +167,12 @@ func TestRouteAccessibility(t *testing.T) {
 		}, nil)
 	})
 
-	t.Run("API endpoints", func(t *testing.T) {
-		// In offline mode, API endpoints redirect to login
-		expectedStatus := http.StatusOK
-		if isOfflineMode {
-			expectedStatus = http.StatusSeeOther
-		}
-
+	t.Run("API endpoints without auth", func(t *testing.T) {
+		// API endpoints should redirect to login without authentication
 		runRouteGroup(t, cfg, []routeTest{
-			{Name: "API settings", Method: http.MethodGet, Path: "/api/settings", ExpectedStatus: expectedStatus},
-			{Name: "API all settings", Method: http.MethodGet, Path: "/api/settings/all", ExpectedStatus: expectedStatus},
-			{Name: "API VMBR", Method: http.MethodGet, Path: "/api/vmbr/all", ExpectedStatus: expectedStatus},
+			{Name: "API settings without auth", Method: http.MethodGet, Path: "/api/settings", ExpectedStatus: http.StatusSeeOther},
+			{Name: "API all settings without auth", Method: http.MethodGet, Path: "/api/settings/all", ExpectedStatus: http.StatusSeeOther},
+			{Name: "API VMBR without auth", Method: http.MethodGet, Path: "/api/vmbr/all", ExpectedStatus: http.StatusSeeOther},
 		}, nil)
 	})
 
@@ -193,6 +188,17 @@ func TestRouteAccessibility(t *testing.T) {
 				{Name: "Profile", Method: http.MethodGet, Path: "/profile", ExpectedStatus: http.StatusOK},
 				{Name: "VM create", Method: http.MethodGet, Path: "/vm/create", ExpectedStatus: http.StatusOK},
 				{Name: "Logout redirect", Method: http.MethodGet, Path: "/logout", ExpectedStatus: http.StatusSeeOther},
+			}, client)
+		})
+
+		t.Run("Authenticated API endpoints", func(t *testing.T) {
+			client := createHTTPClient()
+			authenticate(t, cfg, client, cfg.UserUsername, cfg.UserPassword, "/login")
+
+			runRouteGroup(t, cfg, []routeTest{
+				{Name: "API settings with auth", Method: http.MethodGet, Path: "/api/settings", ExpectedStatus: http.StatusOK},
+				{Name: "API all settings with auth", Method: http.MethodGet, Path: "/api/settings/all", ExpectedStatus: http.StatusOK},
+				{Name: "API VMBR with auth", Method: http.MethodGet, Path: "/api/vmbr/all", ExpectedStatus: http.StatusOK},
 			}, client)
 		})
 

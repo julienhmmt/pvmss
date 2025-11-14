@@ -31,6 +31,8 @@ other = "Session error"
 other = "Method not allowed"
 ["Error.Forbidden"]
 other = "Forbidden"
+["Error.BadRequest"]
+other = "Bad request"
 ["Error.ProxmoxAuthRequired"]
 other = "Proxmox authentication required"
 ["Error.MissingRequiredParameters"]
