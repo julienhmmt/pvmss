@@ -956,6 +956,7 @@ type ValidationResponse struct {
 // ValidateVMIDHandler validates VM ID uniqueness
 func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("ValidateVMIDHandler", r)
+	localizer := i18n.GetLocalizerFromRequest(r)
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
@@ -965,7 +966,7 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Error().Err(err).Msg("Failed to decode validation request")
 		w.WriteHeader(http.StatusBadRequest)
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Invalid request"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.InvalidRequest")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -973,7 +974,7 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 
 	vmidStr := strings.TrimSpace(req.Value)
 	if vmidStr == "" {
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM ID is required"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VMIDRequired")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -982,7 +983,7 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 	// Validate format
 	vmidInt, err := strconv.Atoi(vmidStr)
 	if err != nil || vmidInt <= 0 || vmidInt > 999999999 {
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM ID must be a number between 1 and 999999999"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VMIDRange")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -991,7 +992,7 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 	// Get Proxmox client
 	client := h.stateManager.GetProxmoxClient()
 	if client == nil {
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Proxmox server unavailable"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "Proxmox.ConnectionError")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -1004,7 +1005,7 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Server error"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "Error.InternalServer")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -1014,14 +1015,14 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 	_, err = proxmox.GetVMConfigResty(ctx, restyClient, req.Node, vmidInt)
 	if err == nil {
 		// VM exists
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM ID already exists"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VMIDExists")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
 	}
 
 	// VM ID is available
-	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: "VM ID is available"}); encodeErr != nil {
+	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: i18n.Localize(localizer, "VM.Create.Validation.VMIDAvailable")}); encodeErr != nil {
 		log.Error().Err(encodeErr).Msg("Failed to encode error response")
 	}
 }
@@ -1029,6 +1030,7 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 // ValidateVMNameHandler validates VM name
 func (h *VMHandler) ValidateVMNameHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("ValidateVMNameHandler", r)
+	localizer := i18n.GetLocalizerFromRequest(r)
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
@@ -1046,7 +1048,7 @@ func (h *VMHandler) ValidateVMNameHandler(w http.ResponseWriter, r *http.Request
 
 	name := strings.TrimSpace(req.Value)
 	if name == "" {
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM name is required"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VMNameRequired")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -1054,7 +1056,7 @@ func (h *VMHandler) ValidateVMNameHandler(w http.ResponseWriter, r *http.Request
 
 	// Validate length
 	if len(name) < 1 || len(name) > 100 {
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM name must be between 1 and 100 characters"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VMNameLength")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -1062,7 +1064,7 @@ func (h *VMHandler) ValidateVMNameHandler(w http.ResponseWriter, r *http.Request
 
 	// Validate format (basic - no special characters that could cause issues)
 	if strings.ContainsAny(name, "<>\"'&") {
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "VM name contains invalid characters"}); encodeErr != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VMNameInvalidChars")}); encodeErr != nil {
 			log.Error().Err(encodeErr).Msg("Failed to encode error response")
 		}
 		return
@@ -1070,7 +1072,7 @@ func (h *VMHandler) ValidateVMNameHandler(w http.ResponseWriter, r *http.Request
 
 	// For now, just validate format - uniqueness check would require scanning all VMs
 	// which could be expensive. We can add that later if needed.
-	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: "VM name is valid"}); encodeErr != nil {
+	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: i18n.Localize(localizer, "VM.Create.Validation.VMNameValid")}); encodeErr != nil {
 		log.Error().Err(encodeErr).Msg("Failed to encode error response")
 	}
 }
