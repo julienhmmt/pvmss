@@ -117,3 +117,27 @@ other = "Configurez les limites de ressources agrégées pour toutes les VMs PVM
 other = "Utilisation actuelle des ressources"
 ["Common.Used"]
 other = "utilisé"
+["Admin.Limits.UserLimits"]
+other = "Limites utilisateur"
+["Admin.Limits.UserLimitsDescription"]
+other = "Configurez le nombre maximum de VMs par utilisateur"
+["Admin.Limits.MaxVMPerUser"]
+other = "Max VMs par utilisateur"
+["Admin.Limits.MaxVMPerUserPlaceholder"]
+other = "Entrez le nombre maximum de VMs par utilisateur"
+["Admin.Limits.MaxVMPerUserHelp"]
+other = "Entrez le nombre maximum de VMs par utilisateur"
+["Admin.Limits.MaxVMPerUserDefault"]
+other = "Par défaut : 5"
+["Admin.Limits.MaxVMPerUserMin"]
+other = "Minimum : 0"
+["Admin.Limits.MaxVMPerUserMax"]
+other = "Maximum : 100"
+["Admin.Limits.MaxVMPerUserStep"]
+other = "Étape : 1"
+["Admin.Limits.MaxVMPerUserRequired"]
+other = "Ce champ est obligatoire"
+["Admin.Limits.MaxVMPerUserPositive"]
+other = "La valeur doit être un nombre positif"
+["Admin.Limits.Success.User"]
+other = "Limites de création de VM par utilisateur mises à jour avec succès"

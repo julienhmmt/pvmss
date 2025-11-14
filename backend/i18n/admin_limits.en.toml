@@ -117,3 +117,27 @@ other = "Configure aggregate resource limits for all PVMSS VMs on this node"
 other = "Current resource usage"
 ["Common.Used"]
 other = "used"
+["Admin.Limits.UserLimits"]
+other = "User limits"
+["Admin.Limits.UserLimitsDescription"]
+other = "Configure maximum number of VMs per user"
+["Admin.Limits.MaxVMPerUser"]
+other = "Max VMs per user"
+["Admin.Limits.MaxVMPerUserPlaceholder"]
+other = "Enter the maximum number of VMs per user"
+["Admin.Limits.MaxVMPerUserHelp"]
+other = "Enter the maximum number of VMs per user"
+["Admin.Limits.MaxVMPerUserDefault"]
+other = "Default: 5"
+["Admin.Limits.MaxVMPerUserMin"]
+other = "Minimum: 0"
+["Admin.Limits.MaxVMPerUserMax"]
+other = "Maximum: 100"
+["Admin.Limits.MaxVMPerUserStep"]
+other = "Step: 1"
+["Admin.Limits.MaxVMPerUserRequired"]
+other = "This field is required"
+["Admin.Limits.MaxVMPerUserPositive"]
+other = "Value must be a positive number"
+["Admin.Limits.Success.User"]
+other = "User VM creation limits successfully updated"
