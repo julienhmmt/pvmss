@@ -61,6 +61,14 @@ other = "Network configuration"
 other = "Network bridge"
 ["VM.Create.NetworkBridgeHelp"]
 other = "Select a network bridge to connect the VM"
+["VM.Create.NetworkMACAddress"]
+other = "MAC address"
+["VM.Create.NetworkMACAddressHelp"]
+other = "MAC address for the network card (optional). Leave empty to auto-generate."
+["VM.Create.Random"]
+other = "Random"
+["VM.Create.GenerateRandomMAC"]
+other = "Generate a random MAC address"
 ["VM.Create.NetworkModel"]
 other = "Network card model"
 ["VM.Create.NetworkModelHelp"]
@@ -180,6 +188,8 @@ other = "Proxmox connection is unavailable in offline mode. You can review confi
 # Validation and Errors
 ["VM.Create.Validation.VMNameRequired"]
 other = "VM name is required"
+["VM.Create.Validation.InvalidMACAddress"]
+other = "Invalid MAC address format. Please use format: AA:BB:CC:DD:EE:FF (colons required)"
 ["VM.Create.Validation.VMNameLength"]
 other = "VM name must be between 1 and 100 characters"
 ["VM.Create.Validation.VMNameInvalidChars"]
