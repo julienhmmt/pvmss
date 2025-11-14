@@ -1,153 +1,126 @@
 # Proxmox VM Self-Service (PVMSS)
 
-[![Lint](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml)
+[![Lint](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/lint.yml) [![Go](https://github.com/julienhmmt/pvmss/actions/workflows/go.yml/badge.svg?branch=main&event=push)](https://github.com/julienhmmt/pvmss/actions/workflows/go.yml)
+
+> A lightweight, self-service portal for Proxmox VE that lets users create, operate, and troubleshoot virtual machines without exposing the Proxmox UI.
 
 French version: [README.fr.md](README.fr.md)
 
-PVMSS is a lightweight, self-service web portal for Proxmox Virtual Environment (PVE). It allows users to create and manage virtual machines (VMs) without needing direct access to the Proxmox web UI. The application is designed to be simple, fast, and easy to deploy as a container (Docker, Podman, Kubernetes).
+---
 
-⚠️ This application is currently in development and has limits, which are listed at the end of this document.
+## Table of contents
 
-## Features
+1. [Overview](#overview)
+2. [Feature highlights](#feature-highlights)
+3. [Architecture at a glance](#architecture-at-a-glance)
+4. [Configuration](#configuration)
+   - [settings.json](#settingsjson)
+   - [Environment variables](#environment-variables)
+5. [Deployment options](#deployment-options)
+6. [Quick start with Docker run](#quick-start-with-docker-run)
+7. [Start with Docker compose](#start-with-docker-compose)
+8. [Start with Kubernetes](#start-with-kubernetes)
+9. [Operations](#operations)
+10. [Limitations & roadmap](#limitations--roadmap)
+11. [License](#license)
 
-### For users
+---
 
-- **Create VM**: Create a new virtual machine with customizable resources (CPU, RAM, storage, ISO, network, tag).
-- **VM console access**: Direct noVNC console access to virtual machines through an integrated web-based VNC client.
-- **VM management**: Start, stop, restart, and delete virtual machines, update their resources.
-- **VM search**: Find virtual machines by VMID or name.
-- **VM details**: View comprehensive VM information including status, description, uptime, CPU, memory, disk usage, and network configuration.
-- **Profile management**: View and manage own VM, reset password.
-- **Multi-language**: The interface is available in French and English.
+## Overview
 
-### For administrators
+PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and relies on Proxmox APIs for every action. It is designed to be:
 
-- **Node management**: Configure and manage Proxmox nodes available for VM deployment.
-- **User pool management**: Add or remove users with automatic password generation.
-- **Tag management**: Create and manage tags for VM organization.
-- **ISO management**: Configure available ISO images for VM installation.
-- **Network configuration**: Manage available network bridges (VMBRs) for VM networking, and the number of network interfaces per VM.
-- **Storage management**: Configure storage locations for VM disks, and the number of disks per VM.
-- **Resource limits**: Set CPU, RAM, and disk limits per Proxmox nodes and VM creation.
-- **Documentation**: Admin documentation accessible from the admin panel.
+- **Secure by default**: per-user sessions.
+- **Operations-friendly**: ready-to-use container image, configurable resource limits, cluster-aware storage selection.
+- **User-centric**: clear and guided VM forms, built-in documentation.
 
-## Getting started with Docker
+> ⚠️ The project is still under active development. Review the [Limitations & roadmap](#limitations--roadmap) section before deploying to production.
 
-Follow these instructions to get PVMSS running locally using Docker.
+## Feature highlights
 
-### Prerequisites
+### End users
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+- Create VMs with custom CPU/RAM/disk/ISO/network/tag options (EFI, TPM, multi-NIC, disk bus selection, network card model, etc.).
+- Launch the Proxmox noVNC console straight from the portal (websocket proxy with session cookies).
+- Start, stop, reboot, delete, and resize existing VMs.
+- Search VMs by VMID or name and inspect live metrics (CPU, memory, disk, network, uptime).
+- Self-service profile: list personal VMs, reset password, view quotas.
+- Interface localized in **English** and **French**.
 
-### Create the settings.json file
+### Administrators
 
-Before starting the container, you have to create a file, which is the needed configuration for PVMSS to work. An example of the `settings.json` file is in the folder *backend*. Create the file, set its rights and copy/paste the content.
+- Approve Proxmox nodes, storages, VMBRs, and ISO repositories shown to users.
+- Manage tags and user pools.
+- Define global VM limits plus per-node caps (CPU, RAM, disk, number of NICs/disks).
+- Admin documentation and application insights page (runtime, environment, cluster status).
 
-```bash
-touch settings.json
-# use your prefered editor to past this content in the file settings.json:
+## Architecture at a glance
 
+- **Backend**: Go 1.25+, RESTy client for Proxmox APIs, CSRF-protected HTML templates.
+- **Frontend**: Bulma-based, with custom CSS.
+- **Authentication**: Proxmox API token for backend actions, user sessions for UI.
+
+## Configuration
+
+### settings.json
+
+`settings.json` file acts as the source of truth for every option available to users:
+
+```json
 {
-    "tags": [
-        "pvmss"
-    ],
-    "isos": [],
-    "vmbrs": [],
-    "max_network_cards": 1,
-    "max_disk_per_vm": 1,
-    "enabled_storages": [],
-    "limits": {
-        "nodes": {},
-        "vm": {
-            "cores": {
-                "max": 2,
-                "min": 1
-            },
-            "disk": {
-                "max": 12,
-                "min": 6
-            },
-            "ram": {
-                "max": 4,
-                "min": 1
-            },
-            "sockets": {
-                "max": 1,
-                "min": 1
-            }
-        }
+  "tags": ["pvmss"],
+  "isos": [],
+  "vmbrs": [],
+  "enabled_storages": [],
+  "max_network_cards": 1,
+  "max_disk_per_vm": 1,
+  "limits": {
+    "nodes": {},
+    "vm": {
+      "sockets": {"min": 1, "max": 1},
+      "cores":   {"min": 1, "max": 2},
+      "ram":     {"min": 1, "max": 4},
+      "disk":    {"min": 6, "max": 12}
     }
+  }
 }
 ```
 
-Save the file, and do the `chmod 600 settings.json`.
+All keys are mandatory. Next versions of PVMSS can add new keys to this file, so it is recommended to keep it up to date.
 
-### Configure environment variables
+#### Tags
 
-You can use the provided example file `env.example` to create your own `.env` file. Or, you can modify the example file directly. You cannot use both, only one option (.env file or env variables in docker-compose.yml file).
+The tag `pvmss` is used by default for VMs created via PVMSS, it cannot and should not be removed. Only PVMSS tags created by the admin from this app can be used.
 
-**Mandatory settings**
+### Environment variables
 
-- `ADMIN_PASSWORD_HASH`: A bcrypt hash of the password for the admin panel. You can generate one using an online tool or a simple script.
-- `LOG_LEVEL`: Set the application log level: `INFO` or `DEBUG` (default: `INFO`).
-- `PROXMOX_API_TOKEN_NAME`: The name of your Proxmox API token for backend operations (e.g., `user@pve!token`).
-- `PROXMOX_API_TOKEN_VALUE`: The secret value of your API token.
-- `PROXMOX_URL`: The full URL to your Proxmox API endpoint (e.g., `https://proxmox.example.com:8006/api2/json`).
-- `PROXMOX_VERIFY_SSL`: Set to `false` if you are using a self-signed certificate on Proxmox (default: `false`).
-- `PVMSS_ENV`: Set the application environment: `production`, `prod` (enables secure cookies and HSTS headers) or `development`, `dev`, `developpement` (default: `production`).
-- `PVMSS_OFFLINE`: Set to `true` to enable offline mode (disables all Proxmox API calls). Useful for development or when Proxmox is unavailable (default: `false`).
-- `PVMSS_SETTINGS_PATH`: Path to the settings file (default: `/app/settings.json`).
-- `SESSION_SECRET`: Secret key for session encryption (change to a unique random string, like `$ openssl rand -hex 32`).
+You can rely on `.env` + `env_file` or inline `environment:` entries, but **not both**. The needed variables are listed below:
 
-### Run the container
+| Variable | Description | Required | Default |
+| --- | --- | :---: | --- |
+| `ADMIN_PASSWORD_HASH` | Bcrypt hash for the admin UI login | ✅ | — |
+| `SESSION_SECRET` | 32+ byte secret to encrypt sessions/cookies | ✅ | — |
+| `PROXMOX_API_TOKEN_NAME` | Proxmox token name (`user@pve!token`) used by the backend | ✅ | — |
+| `PROXMOX_API_TOKEN_VALUE` | Token secret that matches the name above | ✅ | — |
+| `PROXMOX_URL` | Full API URL (`https://host:8006/api2/json`) | ✅ | — |
+| `PROXMOX_VERIFY_SSL` | `true` for trusted certs, `false` for self-signed labs | ❌ | `false` |
+| `PVMSS_ENV` | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` | ❌ | `production` |
+| `PVMSS_OFFLINE` | `true` disables all Proxmox calls (demo mode) | ❌ | `false` |
+| `PVMSS_SETTINGS_PATH` | Inside-container path to `settings.json` | ❌ | `/app/settings.json` |
+| `LOG_LEVEL` | `INFO` or `DEBUG` | ❌ | `INFO` |
+| `TZ` | Container timezone | ❌ | `UTC` |
 
-With Docker running, execute the following command from the project root:
+> Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
 
-```bash
-# Create the `docker-compose.yml` file and paste this content:
----
-services:
-  pvmss:
-    image: jhmmt/pvmss:0.2.0
-    container_name: pvmss
-    restart: unless-stopped
-    ports:
-      - "50000:50000/tcp"
-    # Use either the .env file for environment variables
-    # or the environment variables in the docker-compose.yml file.
-    # env_file:
-    #  - .env
-    environment:
-      # Proxmox VE settings
-      PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
-      PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
-      PROXMOX_URL: "https://ip-or-name:8006/api2/json"
-      PROXMOX_VERIFY_SSL: "false"
-      # PVMSS settings
-      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
-      LOG_LEVEL: "INFO"
-      SESSION_SECRET: "changeMeWithSomethingElseUnique"
-      PVMSS_ENV: "prod" # Environment: production/prod or development/dev/developpement
-      PVMSS_OFFLINE: "false"
-      PVMSS_SETTINGS_PATH: "/app/settings.json"
-      TZ: "Europe/Paris"
-    volumes:
-      - ./settings.json:/app/settings.json
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 64M
-```
+## Deployment options
 
-Save the file, and start the container in detached mode with docker compose:
+| Platform | Notes |
+| --- | --- |
+| **Docker / Podman** | Recommended for quick trials or single-node installs. Mount `settings.json` and expose port `50000`. |
+| **Docker Compose** | Best experience: one service, reproducible environment, easy env var management. |
+| **Kubernetes** | Use [`pvmss-deployment.yaml`](pvmss-deployment.yaml) for namespace + secret + configmap + PVC + Deployment + Service. Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute (see `pvmss-httproute.yml`). |
 
-```bash
-docker compose up -d
-```
-
-Or run the container with `docker run`:
+## Quick start with Docker run
 
 ```bash
 docker run -d \
@@ -169,44 +142,77 @@ docker run -d \
   jhmmt/pvmss:0.2.0
 ```
 
-The application will be available at [http://localhost:50000](http://localhost:50000).
+The application will be available at <http://localhost:50000>.
 
-### View logs
+## Start with Docker compose
 
-To see the application logs, run:
+1. **Create `settings.json`** (see [settings.json](#settingsjson)) and secure it:
 
-```bash
-docker logs -f pvmss
-```
+   ```bash
+   chmod 600 settings.json
+   ```
 
-## Deployment of the application in Kubernetes
+2. **Create `docker-compose.yml`:**
 
-A manifest containing all the necessary information is available at the root of this repository, named `pvmss-deployment.yaml`. This manifest contains :
+   ```yaml
+   services:
+     pvmss:
+       image: jhmmt/pvmss:0.2.0
+       container_name: pvmss
+       restart: unless-stopped
+       ports:
+         - "50000:50000/tcp"
+       environment:
+         PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
+         PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
+         PROXMOX_URL: "https://ip-or-name:8006/api2/json"
+         PROXMOX_VERIFY_SSL: "false"
+         ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+         LOG_LEVEL: "INFO"
+         SESSION_SECRET: "changeMeWithSomethingElseUnique"
+         PVMSS_ENV: "production"
+         PVMSS_OFFLINE: "false"
+         PVMSS_SETTINGS_PATH: "/app/settings.json"
+         TZ: "Europe/Paris"
+       volumes:
+         - ./settings.json:/app/settings.json
+       deploy:
+         resources:
+           limits:
+             cpus: '1'
+             memory: 64M
+   ```
 
-- A namespace
-- A service account
-- A secret
-- A configmap
-- A persistent volume claim (pvc)
-- A deployment
-- A service
+3. **Start the stack:**
 
-To deploy the application in Kubernetes, run the following command :
+   ```bash
+   docker compose up -d
+   ```
 
-```bash
-kubectl apply -f pvmss-deployment.yaml
-```
+4. Browse to **<http://localhost:50000>**.
+5. Login with the admin credentials configured earlier, on the page "Login", click on "Administrator login".
 
-The management of the ingress or gateway-api is up to you. An example of manifest http-route is available at the root of this repository, named `pvmss-httproute.yml`.
+## Start with Kubernetes
 
-## Limitations / To Do list
+Use the file [`pvmss-deployment.yaml`](pvmss-deployment.yaml) to create namespace + secret + configmap + PVC + Deployment + Service.
 
-- There are no security tests done, be careful using this app.
-- No Cloud-Init support (yet).
-- Only one node Proxmox is currently supported. Proxmox cluster are not yet correctly handled.
-- No OpenID Connect support (yet).
-- Need a better logging system, with the ability to log to a file and to be sent to a remote server (syslog like format).
+Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute, an example is provided in `pvmss-httproute.yml` (Gateway API).
+
+## Operations
+
+- **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces.
+- **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
+- **Upgrades**: pull the desired image tag, update the file `settings.json` if new fields appear, and restart the container.
+
+## Limitations & roadmap
+
+- Security hardening is ongoing; no formal penetration test yet.
+- Cloud-Init support is planned but not implemented.
+- OpenID Connect / SSO integration is planned but not implemented.
+- Advanced logging outputs (files, syslog shipping) are planned but not implemented.
+
+Feedback and contributions are welcome through issues or pull requests. Next versions and features will be documented here: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 
 ## License
 
-PVMSS by Julien HOMMET is licensed under Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International. To view a copy of this license, visit <https://creativecommons.org/licenses/by-nc-nd/4.0/>
+PVMSS by Julien HOMMET is licensed under **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International**. See <https://creativecommons.org/licenses/by-nc-nd/4.0/>.
