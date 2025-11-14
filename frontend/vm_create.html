@@ -806,6 +806,58 @@
                                                     </div>
                                                 </div>
                                                 <div class="field">
+                                                    <label for="networkMACAddress_{{$cardIdx}}" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-ethernet"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.NetworkMACAddress"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.NetworkMACAddress"}} #{{add $cardIdx 1}}
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.NetworkMACAddressHelp"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkMACAddress-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.NetworkMACAddressHelp"}}
+                                                            </div>
+                                                        </span>
+                                                        {{end}}
+                                                    </label>
+                                                    <div class="field is-grouped">
+                                                    <div class="control is-expanded">
+                                                        <input id="networkMACAddress_{{$cardIdx}}" 
+                                                               type="text" 
+                                                               name="mac_address_{{$cardIdx}}" 
+                                                               class="input is-medium" 
+                                                               placeholder="AA:BB:CC:DD:EE:FF"
+                                                               pattern="^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$"
+                                                               value="{{if eq $cardIdx 0}}{{$.FormData.mac_address}}{{else}}{{index $.FormData (printf "mac_address_%d" $cardIdx)}}{{end}}"
+                                                               aria-describedby="networkMACAddress-help">
+                                                    </div>
+                                                    <div class="control">
+                                                        <button type="button" 
+                                                                class="button is-medium is-info is-light" 
+                                                                onclick="generateRandomMAC('networkMACAddress_{{$cardIdx}}')"
+                                                                title="{{T "VM.Create.GenerateRandomMAC"}}">
+                                                            <span class="icon">
+                                                                <i class="fas fa-dice"></i>
+                                                            </span>
+                                                            <span>{{T "VM.Create.Random"}}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                    {{if eq $cardIdx 0}}
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p>{{T "VM.Create.NetworkMACAddressHelp"}}</p>
+                                                    </div>
+                                                    {{end}}
+                                                </div>
+                                                <div class="field">
                                                     <label for="networkModel_{{$cardIdx}}" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-network-wired"></i></span>
@@ -1139,6 +1191,29 @@
         initializeValidation();
     }
 })();
+
+// Generate random MAC address function
+function generateRandomMAC(inputId) {
+    // Generate a random locally-administered MAC address
+    // Use Proxmox-style prefix: BC:24:11 (locally administered, unicast)
+    const prefix = 'BC:24:11';
+    
+    // Generate 3 random bytes
+    const randomBytes = [];
+    for (let i = 0; i < 3; i++) {
+        randomBytes.push(Math.floor(Math.random() * 256).toString(16).padStart(2, '0').toUpperCase());
+    }
+    
+    const randomMAC = `${prefix}:${randomBytes.join(':')}`;
+    
+    // Set the input field value
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.value = randomMAC;
+        // Trigger input event to update any validation
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
 </script>
 
 {{end}}

@@ -61,6 +61,14 @@ other = "Configuration réseau"
 other = "Pont réseau"
 ["VM.Create.NetworkBridgeHelp"]
 other = "Sélectionnez un pont réseau pour connecter la VM"
+["VM.Create.NetworkMACAddress"]
+other = "Adresse MAC"
+["VM.Create.NetworkMACAddressHelp"]
+other = "Adresse MAC pour la carte réseau (optionnel). Laissez vide pour générer automatiquement."
+["VM.Create.Random"]
+other = "Aléatoire"
+["VM.Create.GenerateRandomMAC"]
+other = "Générer une adresse MAC aléatoire"
 ["VM.Create.NetworkModel"]
 other = "Modèle de carte réseau"
 ["VM.Create.NetworkModelHelp"]
@@ -174,6 +182,8 @@ other = "La connexion Proxmox n'est pas disponible en mode hors ligne. Vous pouv
 # Validation et erreurs
 ["VM.Create.Validation.VMNameRequired"]
 other = "Le nom de la VM est requis"
+["VM.Create.Validation.InvalidMACAddress"]
+other = "Format d'adresse MAC invalide. Veuillez utiliser le format : AA:BB:CC:DD:EE:FF (deux-points requis)"
 ["VM.Create.Validation.VMNameLength"]
 other = "Le nom de la VM doit contenir entre 1 et 100 caractères"
 ["VM.Create.Validation.VMNameInvalidChars"]

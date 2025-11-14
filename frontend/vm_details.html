@@ -989,7 +989,6 @@
                     </div>
 
                     <!-- Network Summary Card -->
-                    {{if .NetworkInterfaces}}
                     {{$ifaceCount := len .NetworkInterfaces}}
                     <div class="column {{if eq $ifaceCount 1}}is-one-third-tablet is-half-mobile{{else}}is-full-tablet{{end}}">
                         <div class="network-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;">
@@ -1011,6 +1010,7 @@
                             </div>
                             <!-- Network Interfaces List -->
                             <div style="margin-top: 1.5rem;">
+                                {{if .NetworkInterfaces}}
                                 {{range $i, $iface := .NetworkInterfaces}}
                                 <div class="network-interface-card" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: {{if eq $ifaceCount (int (add $i 1))}}0{{else}}0.75rem{{end}}; transition: all 0.15s ease;">
                                     <div class="is-flex is-align-items-start is-justify-content-between">
@@ -1028,6 +1028,11 @@
                                                 {{if $iface.ModelLabel}}
                                                 <span class="tag" style="background: rgb(255 136 0 / 12%); color: var(--primary-dark); border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     {{$iface.ModelLabel}}
+                                                </span>
+                                                {{end}}
+                                                {{if $iface.MACAddress}}
+                                                <span class="tag" style="background: rgb(59 130 246 / 12%); color: #2563eb; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    <i class="fas fa-ethernet" style="font-size: 0.7rem; margin-right: 3px;"></i>{{$iface.MACAddress}}
                                                 </span>
                                                 {{end}}
                                                 {{if $iface.LinkDown}}
@@ -1048,10 +1053,23 @@
                                     {{end}}
                                 </div>
                                 {{end}}
+                                {{else}}
+                                <!-- No network interfaces state -->
+                                <div class="has-text-centered" style="padding: 2rem 0;">
+                                    <div class="has-text-grey-light" style="font-size: 2.5rem; margin-bottom: 1rem;">
+                                        <i class="fas fa-network-wired"></i>
+                                    </div>
+                                    <div class="has-text-grey" style="font-size: 1rem; font-weight: 500;">
+                                        {{T "VMDetails.Network.NoInterfaces"}}
+                                    </div>
+                                    <div class="has-text-grey-light" style="font-size: 0.9rem; margin-top: 0.5rem;">
+                                        {{T "VMDetails.Network.NoInterfacesDescription"}}
+                                    </div>
+                                </div>
+                                {{end}}
                             </div>
-                                                    </div>
+                        </div>
                     </div>
-                    {{end}}
 
                     <!-- Firmware & Security (EFI / TPM) -->
                     <div class="column is-full-tablet is-full-mobile">
@@ -1377,13 +1395,13 @@
                     <input type="hidden" name="node" value="{{.VM.Node}}" />
 
                     {{/* Extract VM limits from settings */}}
-                    {{$vm := index .Limits "vm"}}
-                    {{$vmSockMin := int (index (index $vm "sockets") "min")}}
-                    {{$vmSockMax := int (index (index $vm "sockets") "max")}}
-                    {{$vmCoreMin := int (index (index $vm "cores") "min")}}
-                    {{$vmCoreMax := int (index (index $vm "cores") "max")}}
-                    {{$vmRamMinGB := int (index (index $vm "ram") "min")}}
-                    {{$vmRamMaxGB := int (index (index $vm "ram") "max")}}
+                    {{$vm := .Limits.VM}}
+                    {{$vmSockMin := int $vm.Sockets.Min}}
+                    {{$vmSockMax := int $vm.Sockets.Max}}
+                    {{$vmCoreMin := int $vm.Cores.Min}}
+                    {{$vmCoreMax := int $vm.Cores.Max}}
+                    {{$vmRamMinGB := int $vm.RAM.Min}}
+                    {{$vmRamMaxGB := int $vm.RAM.Max}}
                     {{$vmRamMinMB := int (mul $vmRamMinGB 1024)}}
                     {{$vmRamMaxMB := int (mul $vmRamMaxGB 1024)}}
 
@@ -1509,6 +1527,33 @@
                                                     </select>
                                                 </div>
                                             </div>
+                                        </div>
+                                        <div class="column">
+                                            <label class="label is-size-7 has-text-grey" for="networkMACAddress_{{$idx}}">{{T "VM.Create.NetworkMACAddress"}}</label>
+                                            <div class="field is-grouped">
+                                            <div class="control is-expanded">
+                                                <input id="networkMACAddress_{{$idx}}" 
+                                                       type="text" 
+                                                       name="mac_address_{{$idx}}" 
+                                                       class="input is-medium" 
+                                                       placeholder="AA:BB:CC:DD:EE:FF"
+                                                       pattern="^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$"
+                                                       value="{{$card.MAC}}"
+                                                       {{if $isRunning}}disabled{{end}}>
+                                            </div>
+                                            <div class="control">
+                                                <button type="button" 
+                                                        class="button is-medium is-info is-light" 
+                                                        onclick="generateRandomMAC('networkMACAddress_{{$idx}}')"
+                                                        title="{{T "VM.Create.GenerateRandomMAC"}}"
+                                                        {{if $isRunning}}disabled{{end}}>
+                                                    <span class="icon">
+                                                        <i class="fas fa-dice"></i>
+                                                    </span>
+                                                    <span>{{T "VM.Create.Random"}}</span>
+                                                </button>
+                                            </div>
+                                        </div>
                                         </div>
                                         <div class="column">
                                             <label class="label is-size-7 has-text-grey" for="networkModel_{{$idx}}">{{T "VM.Create.NetworkModel"}}</label>
@@ -1933,6 +1978,29 @@
         window.addEventListener('beforeunload', stopAutoRefresh);
     }
 })();
+
+// Generate random MAC address function
+function generateRandomMAC(inputId) {
+    // Generate a random locally-administered MAC address
+    // Use Proxmox-style prefix: BC:24:11 (locally administered, unicast)
+    const prefix = 'BC:24:11';
+    
+    // Generate 3 random bytes
+    const randomBytes = [];
+    for (let i = 0; i < 3; i++) {
+        randomBytes.push(Math.floor(Math.random() * 256).toString(16).padStart(2, '0').toUpperCase());
+    }
+    
+    const randomMAC = `${prefix}:${randomBytes.join(':')}`;
+    
+    // Set the input field value
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.value = randomMAC;
+        // Trigger input event to update any validation
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
 </script>
 
 {{end}}

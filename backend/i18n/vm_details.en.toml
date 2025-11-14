@@ -67,6 +67,10 @@ other = "Enabled"
 other = "Disabled"
 ["VMDetails.Label.Firewall"]
 other = "Firewall"
+["VMDetails.Network.NoInterfaces"]
+other = "No network interfaces"
+["VMDetails.Network.NoInterfacesDescription"]
+other = "This VM has no network cards configured. You can add network cards in the resources section."
 ["VMDetails.Label.Interface"]
 other = "Interface"
 ["VMDetails.Label.IPAddress"]

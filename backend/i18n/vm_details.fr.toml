@@ -67,6 +67,10 @@ other = "Activé"
 other = "Désactivé"
 ["VMDetails.Label.Firewall"]
 other = " Pare-feu"
+["VMDetails.Network.NoInterfaces"]
+other = "Aucune interface réseau"
+["VMDetails.Network.NoInterfacesDescription"]
+other = "Cette VM n'a aucune carte réseau configurée. Vous pouvez ajouter des cartes réseau dans la section des ressources."
 ["VMDetails.Label.Interface"]
 other = "Interface"
 ["VMDetails.Label.IPAddress"]
