@@ -184,23 +184,22 @@
                         <input id="node-ram-min" class="input" type="number" name="ram-min"
                                value="{{if .Node}}{{if .Limits}}{{if index .Limits "nodes"}}{{if index (index .Limits "nodes") .Node}}{{if index (index (index .Limits "nodes") .Node) "ram"}}{{index (index (index (index .Limits "nodes") .Node) "ram") "min"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}"
                                min="1" step="1" placeholder="Min"{{if not .Node}} disabled{{end}}>
-                      </div>
-                      <div class="control">
+                    </div>
+                    <div class="control">
                         <span class="button">-</span>
-                      </div>
-                      <div class="control is-expanded">
+                    </div>
+                    <div class="control is-expanded">
                         <input id="node-ram-max" class="input" type="number" name="ram-max"
                                value="{{if .Node}}{{if .Limits}}{{if index .Limits "nodes"}}{{if index (index .Limits "nodes") .Node}}{{if index (index (index .Limits "nodes") .Node) "ram"}}{{index (index (index (index .Limits "nodes") .Node) "ram") "max"}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}{{else}}1{{end}}"
                                min="1" step="1" placeholder="Max"{{if not .Node}} disabled{{end}}>
-                      </div>
-                      <div class="control">
+                    </div>
+                    <div class="control">
                         <div class="select">
                           <select id="node-ram-unit" name="ram_unit"{{if not .Node}} disabled{{end}}>
                             <option value="GB">{{T "Admin.Limits.GB"}}</option>
                             <option value="MB">MB</option>
                           </select>
                         </div>
-                      </div>
                     </div>
                   </div>
                   <p class="help has-text-grey"><span class="tag is-light is-small">Min: 1 {{T "Admin.Limits.GB"}}</span></p>
@@ -210,24 +209,22 @@
           </div>
         </div>
 
-        <div class="field is-grouped is-grouped-right mt-5">
-          <div class="control">
-            <button type="reset" class="button"{{if not .Node}} disabled{{end}}>
-              <span class="icon"><i class="fas fa-undo"></i></span>
-              <span>{{T "Admin.Limits.ResetToDefaults"}}</span>
-            </button>
-          </div>
-          <div class="control">
-            <button type="submit" class="button is-primary"{{if not .Node}} disabled{{end}}>
-              <span class="icon"><i class="fas fa-save"></i></span>
-              <span>{{T "Common.Save"}}</span>
-            </button>
+        <div class="card mt-4">
+          <div class="card-content">
+            <div class="buttons is-right">
+              <button type="reset" class="button is-medium"{{if not .Node}} disabled{{end}}>
+                <span class="icon"><i class="fas fa-undo"></i></span>
+                <span>{{T "Admin.Limits.ResetToDefaults"}}</span>
+              </button>
+              <button type="submit" class="button is-primary is-medium"{{if not .Node}} disabled{{end}}>
+                <span class="icon"><i class="fas fa-save"></i></span>
+                <span>{{T "Common.Save"}}</span>
+              </button>
+            </div>
           </div>
         </div>
       </form>
-  </div>
-
-  <hr class="has-background-grey-lighter">
+    </div>
 
   <!-- VM Limits Section -->
   <div class="box admin-box">
@@ -371,13 +368,59 @@
             </div>
           </div>
 
-          <div class="field is-grouped is-grouped-centered">
+      <div class="card mt-5">
+        <div class="card-content">
+          <div class="buttons is-right">
             <button type="reset" class="button is-medium">
               <span class="icon"><i class="fas fa-undo"></i></span>
               <span>{{T "Admin.Limits.ResetToDefaults"}}</span>
             </button>
+            <button type="submit" class="button is-primary is-medium">
+              <span class="icon"><i class="fas fa-save"></i></span>
+              <span>{{T "Common.Save"}}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      </form>
+  </div>
 
-            <button type="submit" class="button is-success is-medium">
+  <!-- User Limits Section (Max VMs per User) -->
+  <div class="box admin-box mt-5">
+    <form action="/admin/limits/update-user" method="POST">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      
+      <div class="mb-5">
+        <h2 class="title is-5 mb-2">
+          <span class="icon has-text-info"><i class="fas fa-users"></i></span>
+          <span>{{T "Admin.Limits.UserLimits"}}</span>
+        </h2>
+        <p class="subtitle is-6 has-text-grey">{{T "Admin.Limits.UserLimitsDescription"}}</p>
+      </div>
+
+      <!-- Max VMs per User -->
+      <div class="field mb-5">
+        <label class="label" id="label-max-vm-per-user">
+          <span class="icon"><i class="fas fa-server"></i></span>
+          <span>{{T "Admin.Limits.MaxVMPerUser"}}</span>
+        </label>
+        <div class="control">
+          <input id="max-vm-per-user" class="input is-medium" type="number" name="max_vm_per_user" 
+                aria-describedby="max-vm-per-user-help" aria-labelledby="label-max-vm-per-user"
+                value="{{if .Settings}}{{.Settings.MaxVMPerUser}}{{else}}5{{end}}"
+                min="0" max="100" step="1" placeholder="{{T "Admin.Limits.MaxVMPerUserPlaceholder"}}" required>
+        </div>
+        <p id="max-vm-per-user-help" class="help">{{T "Admin.Limits.MaxVMPerUserHelp"}}</p>
+      </div>
+
+      <div class="card mt-6">
+        <div class="card-content">
+          <div class="buttons is-right">
+            <button type="reset" class="button is-medium">
+              <span class="icon"><i class="fas fa-undo"></i></span>
+              <span>{{T "Admin.Limits.ResetToDefaults"}}</span>
+            </button>
+            <button type="submit" class="button is-primary is-medium">
               <span class="icon"><i class="fas fa-save"></i></span>
               <span>{{T "Common.Save"}}</span>
             </button>
@@ -386,6 +429,7 @@
       </div>
     </form>
   </div>
+
   {{else}}
   <div class="notification is-warning">
     {{template "notification" (dict
