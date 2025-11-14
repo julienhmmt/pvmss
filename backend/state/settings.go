@@ -62,10 +62,13 @@ const (
 // MaxDiskPerVM is set to the highest limit (VirtIO Block: 16 disks)
 // Individual bus limits are enforced per bus type
 const (
-	MinNetworkCards = 1
-	MaxNetworkCards = 32 // Maximum network cards (net0-net31)
-	MinDiskPerVM    = 1
-	MaxDiskPerVM    = MaxDisksVirtIO // Maximum disks overall (VirtIO Block limit)
+	MinNetworkCards  = 1
+	MaxNetworkCards  = 32 // Maximum network cards (net0-net31)
+	MinDiskPerVM     = 1
+	MaxDiskPerVM     = MaxDisksVirtIO // Maximum disks overall (VirtIO Block limit)
+	MinVMPerUser     = 0              // Minimum VMs per user (0 = no VMs allowed)
+	MaxVMPerUser     = 100            // Maximum VMs per user (reasonable upper limit)
+	DefaultVMPerUser = 5              // Default VMs per user
 )
 
 // defaultSettings returns the default application settings
@@ -84,6 +87,7 @@ func defaultSettings() *AppSettings {
 		},
 		MaxNetworkCards: MinNetworkCards,
 		MaxDiskPerVM:    MinDiskPerVM,
+		MaxVMPerUser:    DefaultVMPerUser,
 		Tags:            []string{"pvmss"},
 		VMBRs:           []string{},
 	}
@@ -97,6 +101,7 @@ type AppSettings struct {
 	Limits          LimitsConfig `json:"limits"`
 	MaxNetworkCards int          `json:"max_network_cards,omitempty"`
 	MaxDiskPerVM    int          `json:"max_disk_per_vm,omitempty"`
+	MaxVMPerUser    int          `json:"max_vm_per_user,omitempty"`
 	Tags            []string     `json:"tags"`
 	VMBRs           []string     `json:"vmbrs"`
 }
@@ -207,6 +212,11 @@ func LoadSettings() (*AppSettings, bool, error) {
 	if settings.MaxDiskPerVM < MinDiskPerVM || settings.MaxDiskPerVM > MaxDiskPerVM {
 		modified = true
 		settings.MaxDiskPerVM = MinDiskPerVM
+	}
+	// Ensure MaxVMPerUser has a valid default value
+	if settings.MaxVMPerUser < MinVMPerUser || settings.MaxVMPerUser > MaxVMPerUser {
+		modified = true
+		settings.MaxVMPerUser = DefaultVMPerUser
 	}
 
 	log.Info().

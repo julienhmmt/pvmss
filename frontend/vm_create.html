@@ -83,7 +83,7 @@
                 {{end}}
                 
                 {{if .ValidationError}}
-                {{template "notification" (dict "Type" "danger" "Title" "Validation Error" "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
+                {{template "notification" (dict "Type" "danger" "Title" (T "VM.Create.ValidationErrorTitle") "Message" .ValidationError "Icon" "fas fa-exclamation-circle" "Dismissible" true "Live" "assertive" "ExtraClasses" "mb-4")}}
                 {{end}}
                         {{if not .ProxmoxConnected}}
                         {{template "notification" (dict 
