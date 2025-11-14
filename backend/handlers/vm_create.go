@@ -11,15 +11,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
-	"golang.org/x/sync/errgroup"
-
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
 	"pvmss/utils"
+
+	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 )
 
 // MAC address validation and generation functions
@@ -48,23 +48,6 @@ func NormalizeMACAddress(mac string) string {
 		return clean[0:2] + ":" + clean[2:4] + ":" + clean[4:6] + ":" + clean[6:8] + ":" + clean[8:10] + ":" + clean[10:12]
 	}
 	return mac // Return original if something went wrong
-}
-
-// GenerateRandomMACAddress generates a random locally-administered MAC address
-// Uses the standard format with the second bit of the first byte set to 1 (locally administered)
-func GenerateRandomMACAddress() string {
-	// Use Proxmox-style prefix: BC:24:11 (locally administered, unicast)
-	// BC in binary is 10111100 - second bit is 1 (locally administered), first bit is 1 (unicast)
-	prefix := "BC:24:11"
-
-	// Generate 3 random bytes
-	randomBytes := []string{
-		fmt.Sprintf("%02X", time.Now().Nanosecond()%256),
-		fmt.Sprintf("%02X", (time.Now().UnixNano()/1000)%256),
-		fmt.Sprintf("%02X", (time.Now().UnixNano()/1000000)%256),
-	}
-
-	return fmt.Sprintf("%s:%s:%s:%s", prefix, randomBytes[0], randomBytes[1], randomBytes[2])
 }
 
 // vmDiskCompatibleStorageTypes defines storage types that support VM disk images
