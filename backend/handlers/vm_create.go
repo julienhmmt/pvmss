@@ -5,20 +5,50 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/julienschmidt/httprouter"
-	"golang.org/x/sync/errgroup"
 
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
+	"pvmss/utils"
+
+	"github.com/julienschmidt/httprouter"
+	"golang.org/x/sync/errgroup"
 )
+
+// MAC address validation and generation functions
+var (
+	// MAC address regex pattern - accepts both colon and hyphen separators
+	macAddressRegex = regexp.MustCompile(`^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`)
+)
+
+// ValidateMACAddress checks if a MAC address is in valid format
+func ValidateMACAddress(mac string) bool {
+	if mac == "" {
+		return true // Empty is valid (will be auto-generated)
+	}
+	return macAddressRegex.MatchString(mac)
+}
+
+// NormalizeMACAddress converts MAC address to Proxmox format (uppercase with colons)
+func NormalizeMACAddress(mac string) string {
+	if mac == "" {
+		return ""
+	}
+	// Remove any existing separators and convert to uppercase
+	clean := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(mac, ":", ""), "-", ""))
+	// Add colons every 2 characters
+	if len(clean) == 12 {
+		return clean[0:2] + ":" + clean[2:4] + ":" + clean[4:6] + ":" + clean[6:8] + ":" + clean[8:10] + ":" + clean[10:12]
+	}
+	return mac // Return original if something went wrong
+}
 
 // vmDiskCompatibleStorageTypes defines storage types that support VM disk images
 // These storage types can store VM disks even if their content string doesn't explicitly list "images"
@@ -198,6 +228,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		"name":              "",
 		"network_enabled_0": "1", // First network card enabled by default
 		"network_model_0":   "virtio",
+		"mac_address_0":     "",
 		"node":              activeNode,
 		"pool":              fmt.Sprintf("pvmss_%s", username),
 		"storage":           "",
@@ -1027,6 +1058,15 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	isoImage := strings.TrimSpace(r.FormValue("iso"))
 	bridgeName := strings.TrimSpace(r.FormValue("bridge_0"))
 	networkModel := strings.TrimSpace(r.FormValue("network_model_0"))
+	macAddress := strings.TrimSpace(r.FormValue("mac_address_0"))
+	// Validate MAC address format
+	if macAddress != "" && !utils.ValidateMACAddress(macAddress) {
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
+		renderTemplateInternal(w, r, "vm_create", data)
+		return
+	}
+	// Normalize MAC address to Proxmox format
+	macAddress = utils.NormalizeMACAddress(macAddress)
 	diskBus := strings.TrimSpace(r.FormValue("disk_bus_type"))
 	tags := strings.TrimSpace(r.FormValue("tags"))
 	enableEFI := r.FormValue("enable_efi")
@@ -1043,6 +1083,13 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	// Simple validation
 	if name == "" {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.VMNameRequired")
+		renderTemplateInternal(w, r, "vm_create", data)
+		return
+	}
+
+	// Validate MAC address format for primary network card
+	if macAddress != "" && !ValidateMACAddress(macAddress) {
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
 	}
@@ -1397,15 +1444,20 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		}
 	}
 
-	// Network - Primary network card (net0)
-	networkEnabled := r.FormValue("network_enabled_0") == "1"
+	// Configure primary network card (net0)
 	if bridgeName != "" {
-		netConfig := networkModel + ",bridge=" + bridgeName
+		var netConfig string
+		if macAddress != "" {
+			netConfig = networkModel + "=" + macAddress + ",bridge=" + bridgeName
+		} else {
+			netConfig = networkModel + ",bridge=" + bridgeName
+		}
+		networkEnabled := r.FormValue("network_enabled_0") == "1"
 		if !networkEnabled {
 			netConfig += ",link_down=1"
 		}
 		params.Set("net0", netConfig)
-		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Bool("enabled", networkEnabled).Msg("Configured primary network card")
+		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Bool("enabled", networkEnabled).Msg("Configured primary network card")
 	}
 
 	// Additional network cards (net1, net2, etc.) if configured
@@ -1421,10 +1473,25 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			if additionalModel == "" {
 				additionalModel = "virtio" // Default
 			}
+			// Get MAC address for this card
+			additionalMAC := strings.TrimSpace(r.FormValue(fmt.Sprintf("mac_address_%d", netIdx)))
+			// Validate MAC address format
+			if additionalMAC != "" && !utils.ValidateMACAddress(additionalMAC) {
+				data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
+				renderTemplateInternal(w, r, "vm_create", data)
+				return
+			}
+			// Normalize MAC address to Proxmox format
+			additionalMAC = utils.NormalizeMACAddress(additionalMAC)
 			// Check if network is enabled
 			additionalEnabled := r.FormValue(fmt.Sprintf("network_enabled_%d", netIdx)) == "1"
 			// Build config
-			additionalNetConfig := additionalModel + ",bridge=" + additionalBridge
+			var additionalNetConfig string
+			if additionalMAC != "" {
+				additionalNetConfig = additionalModel + "=" + additionalMAC + ",bridge=" + additionalBridge
+			} else {
+				additionalNetConfig = additionalModel + ",bridge=" + additionalBridge
+			}
 			if !additionalEnabled {
 				additionalNetConfig += ",link_down=1"
 			}

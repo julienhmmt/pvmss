@@ -11,6 +11,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/proxmox"
+	"pvmss/utils"
 )
 
 // Helper function to build VM details URL with refresh
@@ -315,7 +316,14 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 	for i := 0; i < maxNetworkCards; i++ {
 		bridge := strings.TrimSpace(r.FormValue(fmt.Sprintf("bridge_%d", i)))
 		model := strings.TrimSpace(r.FormValue(fmt.Sprintf("network_model_%d", i)))
-		mac := strings.TrimSpace(strings.ToUpper(r.FormValue(fmt.Sprintf("mac_%d", i))))
+		mac := strings.TrimSpace(r.FormValue(fmt.Sprintf("mac_address_%d", i)))
+		// Validate MAC address format
+		if mac != "" && !utils.ValidateMACAddress(mac) {
+			ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "VM.Create.Validation.InvalidMACAddress")
+			return
+		}
+		// Normalize MAC address to Proxmox format
+		mac = utils.NormalizeMACAddress(mac)
 		exists := strings.TrimSpace(r.FormValue(fmt.Sprintf("exists_%d", i))) == "1"
 		optionsRaw := strings.TrimSpace(r.FormValue(fmt.Sprintf("options_%d", i)))
 		linkDownStr := strings.TrimSpace(r.FormValue(fmt.Sprintf("link_down_%d", i)))
