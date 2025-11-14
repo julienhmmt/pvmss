@@ -178,6 +178,10 @@ other = "Le nom de la VM est requis"
 other = "Le stockage est requis"
 ["VM.Create.Error.FailedToGetNextVMID"]
 other = "Échec de l'obtention du prochain ID de VM"
+["VM.Create.Error.MaxVMPerUserReached"]
+other = "Vous avez atteint le nombre maximum de VMs autorisées. Veuillez supprimer une VM existante avant d'en créer une nouvelle."
+["VM.Create.ValidationErrorTitle"]
+other = "Erreur de validation"
 
 # VM Creation - Tooltips
 ["VM.Create.Tooltip.Name"]

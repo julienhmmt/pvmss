@@ -38,6 +38,8 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		switch entity {
 		case "vm":
 			successMsg = i18n.Localize(localizer, "Admin.Limits.Success.VM")
+		case "user":
+			successMsg = i18n.Localize(localizer, "Admin.Limits.Success.User")
 		case "nodes":
 			if nodeParam != "" {
 				tmpl := i18n.Localize(localizer, "Admin.Limits.Success.NodeWithName")
@@ -64,6 +66,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		WithMessages(r),
 		WithData("TitleKey", "Admin.Limits.Title"),
 		WithData("Limits", limitsData),
+		WithData("Settings", settings),
 		WithData("Node", r.URL.Query().Get("node")),
 	}
 
@@ -332,6 +335,63 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
 }
 
+// UpdateUserLimitsHandler handles POST from admin_limits.html to update user limits (max VMs per user)
+func (h *SettingsHandler) UpdateUserLimitsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("UpdateUserLimitsHandler", r)
+
+	localizer := i18n.GetLocalizerFromRequest(r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	// Parse max_vm_per_user value
+	maxVMPerUserStr := r.FormValue("max_vm_per_user")
+	if maxVMPerUserStr == "" {
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.MissingMaxVMPerUser"))
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return
+	}
+
+	maxVMPerUser, err := strconv.Atoi(maxVMPerUserStr)
+	if err != nil || maxVMPerUser < state.MinVMPerUser || maxVMPerUser > state.MaxVMPerUser {
+		log.Warn().
+			Str("value", maxVMPerUserStr).
+			Int("min", state.MinVMPerUser).
+			Int("max", state.MaxVMPerUser).
+			Msg("Invalid max_vm_per_user value")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.InvalidMaxVMPerUser"))
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return
+	}
+
+	// Load settings
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.SettingsUnavailable"))
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return
+	}
+
+	// Update max_vm_per_user
+	settings.MaxVMPerUser = maxVMPerUser
+
+	// Save settings
+	if err := h.stateManager.SetSettings(settings); err != nil {
+		log.Error().Err(err).Msg("Failed to save user limits settings")
+		base := i18n.Localize(localizer, "Admin.Limits.Error.SaveFailed")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(fmt.Sprintf(base, err.Error()))
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return
+	}
+
+	log.Info().Int("max_vm_per_user", maxVMPerUser).Msg("User limits updated successfully")
+
+	// Redirect back to limits page with success banner
+	redirect := "/admin/limits?success=1&entity=user"
+	http.Redirect(w, r, redirect, http.StatusSeeOther)
+}
+
 // RegisterLimitsRoutes registers limits-related routes
 func (h *SettingsHandler) RegisterLimitsRoutes(router *httprouter.Router) {
 	routeHelpers := NewAdminPageRoutes()
@@ -341,4 +401,7 @@ func (h *SettingsHandler) RegisterLimitsRoutes(router *httprouter.Router) {
 		"page":   h.LimitsPageHandler,
 		"update": h.UpdateLimitsFormHandler,
 	})
+
+	// Register user limits route manually (custom key not handled by RegisterCRUDRoutes)
+	routeHelpers.helpers.RegisterAdminRoute(router, "POST", "/admin/limits/update-user", h.UpdateUserLimitsHandler)
 }

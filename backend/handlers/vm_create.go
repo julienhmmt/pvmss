@@ -33,6 +33,40 @@ var vmDiskCompatibleStorageTypes = map[string]bool{
 	"zfs":     true,
 }
 
+// countVMsInPool counts the number of VMs in a user's pool
+func countVMsInPool(ctx context.Context, client proxmox.ClientInterface, poolName string) (int, error) {
+	if client == nil {
+		return 0, fmt.Errorf("proxmox client not available")
+	}
+
+	var poolResp struct {
+		Data struct {
+			Members []struct {
+				Type     string `json:"type"`
+				VMID     int    `json:"vmid"`
+				Template int    `json:"template"`
+			} `json:"members"`
+		} `json:"data"`
+	}
+
+	if err := client.GetJSON(ctx, "/pools/"+poolName, &poolResp); err != nil {
+		return 0, fmt.Errorf("failed to fetch pool members: %w", err)
+	}
+
+	// Count only QEMU VMs (not templates)
+	count := 0
+	for _, member := range poolResp.Data.Members {
+		if member.Template == 1 || member.VMID <= 0 {
+			continue
+		}
+		if strings.EqualFold(member.Type, "qemu") {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
 // VMCreateOptimizedHandler handles VM creation with optimized cluster performance
 type VMCreateOptimizedHandler struct {
 	stateManager state.StateManager
@@ -1113,6 +1147,36 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SystemUnavailable")
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
+	}
+
+	// Check max VMs per user limit
+	maxVMPerUser := settings.MaxVMPerUser
+	if maxVMPerUser > 0 && pool != "" {
+		// Count current VMs in user's pool
+		currentVMCount, err := countVMsInPool(ctx, client, pool)
+		if err != nil {
+			log.Warn().Err(err).Str("pool", pool).Msg("Failed to count VMs in pool, skipping limit check")
+		} else {
+			log.Info().
+				Str("pool", pool).
+				Int("current_vms", currentVMCount).
+				Int("max_allowed", maxVMPerUser).
+				Msg("Checking user VM limit")
+
+			if currentVMCount >= maxVMPerUser {
+				log.Warn().
+					Str("pool", pool).
+					Int("current_vms", currentVMCount).
+					Int("max_allowed", maxVMPerUser).
+					Msg("User has reached maximum VM limit")
+
+				localizer := i18n.GetLocalizerFromRequest(r)
+				errorMsg := i18n.Localize(localizer, "VM.Create.Error.MaxVMPerUserReached", currentVMCount, maxVMPerUser)
+				data["ValidationError"] = errorMsg
+				renderTemplateInternal(w, r, "vm_create", data)
+				return
+			}
+		}
 	}
 
 	// Parse values with proper validation
