@@ -62,6 +62,16 @@ PVMSS est une application stateless (backend Go + frontend HTML/CSS) qui s'appui
 
 ## Configuration
 
+### Créer un token API sur Proxmox
+
+Pour pouvoir utiliser PVMSS, vous devez créer un utilisateur dans votre cluster Proxmox et son token API.
+
+Sur Proxmox, allez à Datacenter > Permissions > Users. Cliquez sur le bouton “Add” et entrez son nom, sélectionnez le realm `Proxmox VE Authentication` et entrez un mot de passe fort.
+
+Ensuite, retourner dans Datacenter > Permissions > API Tokens. Cliquez sur le bouton “Add” et sélectionnez l'utilisateur créé précédemment. Entrez le nom du token, et copiez la valeur (elle ne sera visible qu'une seule fois).
+
+Enfin, allez à Datacenter > Permissions. Cliquez sur le bouton “Add” et sélectionnez “User Permissions”. Sélectionnez le chemin `/` et sélectionnez l'utilisateur créé précédemment. Choisissez le rôle `PVEAdmin` et cochez la case “Propagate”. Enregistrez.
+
 ### settings.json
 
 Le fichier `settings.json` fait office de source de vérité pour les options disponibles aux utilisateurs :
@@ -128,9 +138,9 @@ docker run -d \
   --restart unless-stopped \
   -p 50000:50000 \
   -v $(pwd)/settings.json:/app/settings.json \
-  -e ADMIN_PASSWORD_HASH="$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e" \
+  -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
   -e LOG_LEVEL=INFO \
-  -e PROXMOX_API_TOKEN_NAME="tokenName@changeMe!value" \
+  -e PROXMOX_API_TOKEN_NAME='tokenName@changeMe!value' \
   -e PROXMOX_API_TOKEN_VALUE="aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa" \
   -e PROXMOX_URL=https://ip-or-name:8006/api2/json \
   -e PROXMOX_VERIFY_SSL=false \
