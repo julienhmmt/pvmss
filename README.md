@@ -68,7 +68,7 @@ In order to be able to use PVMSS, you have to create a user inside your Proxmox 
 
 On Proxmox, go to Datacenter > Permissions > Users. Click on “Add” button, set its username, select the realm `Proxmox VE Authentication` and type a strong password.
 
-Next, go to Datacenter > Permissions > API Tokens. Click on “Add” button and select the previous created user. Type the API token name, and get the secret (will be visible only one time).
+Next, go to Datacenter > Permissions > API Tokens. Click on “Add” button and select the previous created user. Type the API token name, uncheck the case "Privilege Separations", and get the secret (will be visible only one time).
 
 Finally, go to Datacenter > Permissions, click on the “Add” button and select “User Permissions”. Select the path `/` and select the previous user created. Choose the role `PVEAdmin` and click the case “Propagate”. Save it and you are set. Soon, we will restrict rights and paths to be more secure.
 

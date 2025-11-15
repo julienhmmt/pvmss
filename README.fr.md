@@ -68,7 +68,7 @@ Pour pouvoir utiliser PVMSS, vous devez créer un utilisateur dans votre cluster
 
 Sur Proxmox, allez à Datacenter > Permissions > Users. Cliquez sur le bouton “Add” et entrez son nom, sélectionnez le realm `Proxmox VE Authentication` et entrez un mot de passe fort.
 
-Ensuite, retourner dans Datacenter > Permissions > API Tokens. Cliquez sur le bouton “Add” et sélectionnez l'utilisateur créé précédemment. Entrez le nom du token, et copiez la valeur (elle ne sera visible qu'une seule fois).
+Ensuite, allez dans Datacenter > Permissions > API Tokens. Cliquez sur le bouton “Add” et sélectionnez l'utilisateur créé précédemment. Entrez le nom du token, décochez la case "Privilege Separation" et copiez la valeur (elle ne sera visible qu'une seule fois).
 
 Enfin, allez à Datacenter > Permissions. Cliquez sur le bouton “Add” et sélectionnez “User Permissions”. Sélectionnez le chemin `/` et sélectionnez l'utilisateur créé précédemment. Choisissez le rôle `PVEAdmin` et cochez la case “Propagate”. Enregistrez.
 
