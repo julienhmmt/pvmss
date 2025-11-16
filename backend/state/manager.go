@@ -30,7 +30,8 @@ type appState struct {
 	proxmoxMu        sync.RWMutex
 
 	// Background monitor control
-	proxmoxMonitorStarted bool
+	proxmoxMonitorStarted  bool
+	nodeCacheWorkerStarted bool
 
 	// Offline mode flag
 	offlineMode bool
@@ -45,6 +46,11 @@ type appState struct {
 
 	// Frontend configuration
 	frontendPath string
+
+	// Cached node details for admin views
+	nodeCache       []*proxmox.NodeDetails
+	nodeCacheMu     sync.RWMutex
+	nodeCacheUpdate time.Time
 
 	// Cleanup callbacks
 	guestAgentCleanupFunc func()
@@ -79,6 +85,28 @@ func (s *appState) startProxmoxMonitor() {
 				_, errMsg := s.GetProxmoxStatus()
 				log.Debug().Str("error", errMsg).Msg("Proxmox connectivity check failed")
 			}
+		}
+	}()
+}
+
+// startNodeCacheWorker launches a background worker that refreshes node details at regular intervals.
+func (s *appState) startNodeCacheWorker() {
+	s.mu.Lock()
+	if s.nodeCacheWorkerStarted {
+		s.mu.Unlock()
+		return
+	}
+	s.nodeCacheWorkerStarted = true
+	s.mu.Unlock()
+
+	log := logger.Get().With().Str("component", "NodeCacheWorker").Logger()
+	go func() {
+		log.Info().Dur("interval", constants.NodeCacheRefreshInterval).Msg("Node cache worker started")
+		s.refreshNodeCache(context.Background())
+		ticker := time.NewTicker(constants.NodeCacheRefreshInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.refreshNodeCache(context.Background())
 		}
 	}()
 }
@@ -121,6 +149,43 @@ func (s *appState) cleanupGuestAgentCache() {
 			cleanupFunc()
 		}
 	}
+}
+
+// refreshNodeCache fetches node information from Proxmox and stores it for fast access.
+func (s *appState) refreshNodeCache(ctx context.Context) {
+	log := logger.Get().With().Str("component", "NodeCacheWorker").Logger()
+	if s.IsOfflineMode() {
+		log.Debug().Msg("Skipping node cache refresh: offline mode enabled")
+		return
+	}
+
+	connected, _ := s.GetProxmoxStatus()
+	if !connected {
+		log.Debug().Msg("Skipping node cache refresh: Proxmox disconnected")
+		return
+	}
+
+	restyClient, err := proxmox.NewRestyClientFromEnv(constants.NodeCacheRequestTimeout)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to create resty client for node cache refresh")
+		return
+	}
+
+	refreshCtx, cancel := context.WithTimeout(ctx, constants.NodeCacheRequestTimeout)
+	defer cancel()
+
+	details, err := proxmox.FetchAllNodeDetailsResty(refreshCtx, restyClient)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to refresh node cache")
+		return
+	}
+
+	s.nodeCacheMu.Lock()
+	s.nodeCache = cloneNodeDetails(details)
+	s.nodeCacheUpdate = time.Now()
+	s.nodeCacheMu.Unlock()
+
+	log.Debug().Int("nodes", len(details)).Msg("Node cache refreshed")
 }
 
 // SetGuestAgentCleanupFunc registers a cleanup function for guest agent caches
@@ -190,6 +255,7 @@ func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 
 	// Start background monitor (only once)
 	s.startProxmoxMonitor()
+	s.startNodeCacheWorker()
 	return nil
 }
 
@@ -267,6 +333,18 @@ func (s *appState) CheckProxmoxConnection() bool {
 	// If we got here, the connection is good - attempt recovery
 	s.handleConnectionRecovery()
 	return true
+}
+
+// GetNodeCache returns a copy of cached node details and the last refresh timestamp.
+func (s *appState) GetNodeCache() ([]*proxmox.NodeDetails, time.Time) {
+	s.nodeCacheMu.RLock()
+	defer s.nodeCacheMu.RUnlock()
+
+	if len(s.nodeCache) == 0 {
+		return []*proxmox.NodeDetails{}, s.nodeCacheUpdate
+	}
+
+	return cloneNodeDetails(s.nodeCache), s.nodeCacheUpdate
 }
 
 // isManualOfflineMode checks if offline mode was set manually (via PVMSS_OFFLINE)
@@ -484,6 +562,22 @@ func (s *appState) GetStorages() []string {
 		return []string{}
 	}
 	return s.settings.EnabledStorages
+}
+
+// cloneNodeDetails creates deep copies of node details slices to avoid data races.
+func cloneNodeDetails(details []*proxmox.NodeDetails) []*proxmox.NodeDetails {
+	if len(details) == 0 {
+		return []*proxmox.NodeDetails{}
+	}
+	cloned := make([]*proxmox.NodeDetails, len(details))
+	for i, detail := range details {
+		if detail == nil {
+			continue
+		}
+		copyDetail := *detail
+		cloned[i] = &copyDetail
+	}
+	return cloned
 }
 
 // Security Methods

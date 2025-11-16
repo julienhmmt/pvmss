@@ -32,6 +32,7 @@ type StateManager interface {
 	IsOfflineMode() bool
 	GetProxmoxStatus() (bool, string) // Returns (connected, errorMessage)
 	CheckProxmoxConnection() bool
+	GetNodeCache() ([]*proxmox.NodeDetails, time.Time)
 
 	// Settings management
 	GetSettings() *AppSettings
