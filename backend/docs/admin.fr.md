@@ -25,6 +25,8 @@ Dans cette interface, plusieurs rubriques seront accessibles au travers d'un men
 
 Cette rubrique affiche la liste de tous les hôtes Proxmox VE, avec un affichage présentant la consommation actuelle du CPU et de la mémoire vive. Le statut du serveur (En ligne, hors ligne) est également affiché.
 
+Les informations de nœuds sont rafraîchies par un worker en tâche de fond toutes les 30 secondes (valeur définie par `NodeCacheRefreshInterval`). Les pages d'administration lisent uniquement ce cache local : l'affichage est donc instantané même sur de gros clusters Proxmox, et un nœud lent n'impacte plus la navigation. Les données restent disponibles hors‑ligne tant que la dernière actualisation n'est pas trop ancienne.
+
 ### Gestion des tags
 
 Cette rubrique permet de gérer les tags utilisés pour catégoriser les machines virtuelles. Tous les tags créés dans PVMSS sont affichés et peuvent être supprimés. Un tag est immuable. Le tag `pvmss` est un tag par défaut et ne peut pas être supprimé.
