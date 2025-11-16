@@ -25,6 +25,8 @@ In this interface, several sections will be accessible through a vertical naviga
 
 This section displays the list of all Proxmox VE hosts, with a display showing current CPU and memory consumption. Server status (Online, offline) is also displayed.
 
+Node information is refreshed by a background worker every 30 seconds (value defined by `NodeCacheRefreshInterval`). The administration pages only read this local cache: the display is therefore instantaneous even on large Proxmox clusters, and a slow node no longer impacts navigation. The data remains available offline as long as the last update is not too old.
+
 ### Tag Management
 
 This section allows you to manage tags used to categorize virtual machines. All tags created in PVMSS are displayed and can be deleted. A tag is immutable. The `pvmss` tag is a default tag and cannot be deleted.

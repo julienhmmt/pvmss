@@ -20,6 +20,15 @@ const (
 	// ProxmoxOfflineThreshold is how long to wait before switching to offline mode
 	// If no connection for 2 minutes, app goes offline automatically
 	ProxmoxOfflineThreshold = 2 * time.Minute
+
+	// NodeCacheRefreshInterval controls how often we refresh cached node data
+	NodeCacheRefreshInterval = 30 * time.Second
+
+	// NodeCacheRequestTimeout is the maximum time we wait when refreshing the cache
+	NodeCacheRequestTimeout = 10 * time.Second
+
+	// NodeCacheStaleThreshold indicates when cached data should be considered stale
+	NodeCacheStaleThreshold = 2 * time.Minute
 )
 
 // Console Session Configuration
