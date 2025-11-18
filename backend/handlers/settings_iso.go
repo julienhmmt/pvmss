@@ -92,6 +92,10 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 	allISOs := make([]ISOEntry, 0)
 	isoCount := 0
 
+	// Cache for shared storage content to avoid redundant API calls
+	// Map Key: Storage Name -> Value: List of ISOs
+	sharedISOCache := make(map[string][]proxmox.ISO)
+
 	// For each node, get ISOs from each compatible storage
 	for _, nodeName := range nodes {
 		for _, storage := range storages {
@@ -101,27 +105,54 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 				continue
 			}
 
-			// Create a new context for this API call
-			isoCtx, isoCancel := context.WithTimeout(ctx, 30*time.Second)
+			var isoList []proxmox.ISO
+			var err error
+			usedCache := false
 
-			isoList, err := proxmox.GetISOListResty(isoCtx, restyClient, nodeName, storage.Storage)
-			if err != nil {
-				logger.Get().Warn().Err(err).
+			// Optimization for Shared Storage (e.g., CephFS, NFS)
+			// If storage is shared and we already fetched it successfully from another node,
+			// use the cached result instead of querying the API again.
+			if storage.Shared == 1 {
+				if cachedList, ok := sharedISOCache[storage.Storage]; ok {
+					isoList = cachedList
+					usedCache = true
+					logger.Get().Debug().
+						Str("node", nodeName).
+						Str("storage", storage.Storage).
+						Int("iso_count", len(isoList)).
+						Msg("Using cached ISO list for shared storage")
+				}
+			}
+
+			// If not in cache (or not shared), fetch from API
+			if !usedCache {
+				// Create a new context for this API call
+				isoCtx, isoCancel := context.WithTimeout(ctx, 30*time.Second)
+
+				isoList, err = proxmox.GetISOListResty(isoCtx, restyClient, nodeName, storage.Storage)
+				isoCancel() // Cancel immediately after API call completes
+
+				if err != nil {
+					logger.Get().Warn().Err(err).
+						Str("node", nodeName).
+						Str("storage", storage.Storage).
+						Str("storage_type", storage.Type).
+						Msg("Failed to get ISO list for storage - continuing with other storages")
+					continue
+				}
+
+				// If storage is shared, cache the successful result for other nodes
+				if storage.Shared == 1 {
+					sharedISOCache[storage.Storage] = isoList
+				}
+
+				logger.Get().Debug().
 					Str("node", nodeName).
 					Str("storage", storage.Storage).
 					Str("storage_type", storage.Type).
-					Msg("Failed to get ISO list for storage - continuing with other storages")
-				isoCancel() // Cancel immediately on error
-				continue
+					Int("iso_count", len(isoList)).
+					Msg("Successfully retrieved ISO list from storage")
 			}
-			isoCancel() // Cancel immediately after successful API call
-
-			logger.Get().Debug().
-				Str("node", nodeName).
-				Str("storage", storage.Storage).
-				Str("storage_type", storage.Type).
-				Int("iso_count", len(isoList)).
-				Msg("Successfully retrieved ISO list from storage")
 
 			for _, iso := range isoList {
 				// Debug log for size field types (helpful for troubleshooting storage-specific issues)

@@ -30,7 +30,7 @@ func GetISOListResty(ctx context.Context, restyClient *RestyClient, node, storag
 		return nil, fmt.Errorf("storage name cannot be empty")
 	}
 
-	path := fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage))
+	path := fmt.Sprintf("/nodes/%s/storage/%s/content?content=iso", url.PathEscape(node), url.PathEscape(storage))
 
 	var response ListResponse[ISO]
 	if err := restyClient.Get(ctx, path, &response); err != nil {
