@@ -14,6 +14,19 @@ import (
 	"pvmss/proxmox"
 )
 
+// SnapshotVM represents a lightweight view of a VM used in the cached snapshot.
+// It contains only the fields required by admin pages (tags, basic resources, status).
+type SnapshotVM struct {
+	Node     string
+	VMID     int
+	Name     string
+	Status   string
+	Tags     string
+	Sockets  int
+	Cores    int
+	MemoryMB int64
+}
+
 // ProxmoxClusterSnapshot stores a best-effort view of the cluster retrieved in the background.
 // It contains the subset of data frequently used by handlers so that they can serve pages
 // without waiting on live Proxmox calls.
@@ -26,6 +39,7 @@ type ProxmoxClusterSnapshot struct {
 	GlobalStorages []proxmox.Storage
 	NodeStorages   map[string][]proxmox.Storage
 	NetworkBridges map[string][]proxmox.VMBR
+	VMs            []SnapshotVM
 	Errors         []string
 }
 
@@ -85,6 +99,88 @@ func buildProxmoxSnapshot(ctx context.Context, client *proxmox.RestyClient) (*Pr
 		errorMu.Lock()
 		snapshot.Errors = append(snapshot.Errors, fmt.Sprintf(format, args...))
 		errorMu.Unlock()
+	}
+
+	// Collect VM list and selected config fields (tags and basic resource config) for snapshot.
+	if vms, err := proxmox.GetVMsResty(ctx, client); err != nil {
+		log.Warn().Err(err).Msg("Failed to refresh VM list for snapshot")
+		snapshot.Errors = append(snapshot.Errors, fmt.Sprintf("vms: %v", err))
+	} else if len(vms) > 0 {
+		vmSnapshots := make([]SnapshotVM, 0, len(vms))
+		var vmMu sync.Mutex
+		semVM := make(chan struct{}, 6)
+		gVM, gvmCtx := errgroup.WithContext(ctx)
+
+		for _, vm := range vms {
+			vm := vm
+			gVM.Go(func() error {
+				select {
+				case semVM <- struct{}{}:
+					defer func() { <-semVM }()
+				case <-gvmCtx.Done():
+					return gvmCtx.Err()
+				}
+
+				cfgCtx, cancelCfg := context.WithTimeout(gvmCtx, constants.ClusterCacheRequestTimeout)
+				defer cancelCfg()
+
+				cfg, cfgErr := proxmox.GetVMConfigResty(cfgCtx, client, vm.Node, vm.VMID)
+				if cfgErr != nil {
+					log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Failed to refresh VM config for snapshot")
+					recordError("vm config %s/%d: %v", vm.Node, vm.VMID, cfgErr)
+					return nil
+				}
+
+				var tags string
+				if v, ok := cfg["tags"].(string); ok {
+					tags = v
+				}
+
+				sockets := 1
+				cores := 1
+				var memoryMB int64
+				if raw, ok := cfg["sockets"]; ok {
+					if f, ok := raw.(float64); ok && f > 0 {
+						sockets = int(f)
+					}
+				}
+				if raw, ok := cfg["cores"]; ok {
+					if f, ok := raw.(float64); ok && f > 0 {
+						cores = int(f)
+					}
+				}
+				if raw, ok := cfg["memory"]; ok {
+					if f, ok := raw.(float64); ok && f > 0 {
+						memoryMB = int64(f)
+					}
+				}
+
+				vmSnapshot := SnapshotVM{
+					Node:     vm.Node,
+					VMID:     vm.VMID,
+					Name:     vm.Name,
+					Status:   vm.Status,
+					Tags:     tags,
+					Sockets:  sockets,
+					Cores:    cores,
+					MemoryMB: memoryMB,
+				}
+
+				vmMu.Lock()
+				vmSnapshots = append(vmSnapshots, vmSnapshot)
+				vmMu.Unlock()
+				return nil
+			})
+		}
+
+		if err := gVM.Wait(); err != nil && err != context.Canceled {
+			log.Warn().Err(err).Msg("VM snapshot worker exited early due to context cancellation")
+		}
+
+		if len(vmSnapshots) > 0 {
+			snapshot.VMs = vmSnapshots
+			log.Debug().Int("vms", len(vmSnapshots)).Msg("VM snapshot updated")
+		}
 	}
 
 	sem := make(chan struct{}, 6)
@@ -151,6 +247,7 @@ func cloneProxmoxSnapshot(snapshot *ProxmoxClusterSnapshot) *ProxmoxClusterSnaps
 		OnlineNodes:    append([]string(nil), snapshot.OnlineNodes...),
 		NodeDetails:    cloneNodeDetails(snapshot.NodeDetails),
 		GlobalStorages: cloneStorages(snapshot.GlobalStorages),
+		VMs:            cloneSnapshotVMs(snapshot.VMs),
 		Errors:         append([]string(nil), snapshot.Errors...),
 	}
 
@@ -177,6 +274,15 @@ func cloneStorages(storages []proxmox.Storage) []proxmox.Storage {
 	}
 	cloned := make([]proxmox.Storage, len(storages))
 	copy(cloned, storages)
+	return cloned
+}
+
+func cloneSnapshotVMs(vms []SnapshotVM) []SnapshotVM {
+	if len(vms) == 0 {
+		return nil
+	}
+	cloned := make([]SnapshotVM, len(vms))
+	copy(cloned, vms)
 	return cloned
 }
 
