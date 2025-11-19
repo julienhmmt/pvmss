@@ -33,8 +33,6 @@ type StateManager interface {
 	GetProxmoxStatus() (bool, string) // Returns (connected, errorMessage)
 	CheckProxmoxConnection() bool
 	GetNodeCache() ([]*proxmox.NodeDetails, time.Time)
-	GetProxmoxSnapshot() *ProxmoxClusterSnapshot
-	RequestSnapshotRefresh()
 
 	// Settings management
 	GetSettings() *AppSettings
