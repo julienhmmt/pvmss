@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -85,6 +86,10 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 	}
 
 	allISOs := make([]ISOEntry, 0)
+	var isoMu sync.Mutex
+	var wg sync.WaitGroup
+	// Semaphore to limit concurrent API calls to Proxmox (avoid overloading)
+	semaphore := make(chan struct{}, 5)
 
 	// For each node, get ISOs from each compatible storage
 	for _, nodeName := range nodes {
@@ -95,31 +100,67 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 				continue
 			}
 
-			isoList, err := proxmox.GetISOListResty(ctx, restyClient, nodeName, storage.Storage)
-			if err != nil {
-				logger.Get().Debug().Err(err).
-					Str("node", nodeName).
-					Str("storage", storage.Storage).
-					Msg("Failed to get ISO list for storage")
-				continue
-			}
+			wg.Add(1)
+			go func(n, s string) {
+				defer wg.Done()
 
-			for _, iso := range isoList {
-				entry := ISOEntry{
-					Node:    nodeName,
-					Storage: storage.Storage,
-					Volid:   iso.VolID,
-					Size:    iso.Size,
-					Format:  iso.Format,
+				// Acquire semaphore
+				select {
+				case semaphore <- struct{}{}:
+					defer func() { <-semaphore }()
+				case <-ctx.Done():
+					return
 				}
 
-				if _, ok := enabledSet[iso.VolID]; ok {
-					entry.Enabled = true
+				// Check context before making request
+				if ctx.Err() != nil {
+					return
 				}
 
-				allISOs = append(allISOs, entry)
-			}
+				isoList, err := proxmox.GetISOListResty(ctx, restyClient, n, s)
+				if err != nil {
+					logger.Get().Debug().Err(err).
+						Str("node", n).
+						Str("storage", s).
+						Msg("Failed to get ISO list for storage (possibly offline or slow)")
+					return
+				}
+
+				isoMu.Lock()
+				defer isoMu.Unlock()
+
+				for _, iso := range isoList {
+					entry := ISOEntry{
+						Node:    n,
+						Storage: s,
+						Volid:   iso.VolID,
+						Size:    iso.Size,
+						Format:  iso.Format,
+					}
+
+					if _, ok := enabledSet[iso.VolID]; ok {
+						entry.Enabled = true
+					}
+
+					allISOs = append(allISOs, entry)
+				}
+			}(nodeName, storage.Storage)
 		}
+	}
+
+	// Wait for all fetches to complete
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	// Wait for completion or context cancellation
+	select {
+	case <-done:
+		// All good
+	case <-ctx.Done():
+		return nil, fmt.Errorf("timeout while fetching ISOs: %w", ctx.Err())
 	}
 
 	return allISOs, nil
