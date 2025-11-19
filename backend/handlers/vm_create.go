@@ -97,6 +97,40 @@ func countVMsInPool(ctx context.Context, client proxmox.ClientInterface, poolNam
 	return count, nil
 }
 
+// countVMsInPool counts the number of VMs in a user's pool
+func countVMsInPool(ctx context.Context, client proxmox.ClientInterface, poolName string) (int, error) {
+	if client == nil {
+		return 0, fmt.Errorf("proxmox client not available")
+	}
+
+	var poolResp struct {
+		Data struct {
+			Members []struct {
+				Type     string `json:"type"`
+				VMID     int    `json:"vmid"`
+				Template int    `json:"template"`
+			} `json:"members"`
+		} `json:"data"`
+	}
+
+	if err := client.GetJSON(ctx, "/pools/"+poolName, &poolResp); err != nil {
+		return 0, fmt.Errorf("failed to fetch pool members: %w", err)
+	}
+
+	// Count only QEMU VMs (not templates)
+	count := 0
+	for _, member := range poolResp.Data.Members {
+		if member.Template == 1 || member.VMID <= 0 {
+			continue
+		}
+		if strings.EqualFold(member.Type, "qemu") {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
 // VMCreateOptimizedHandler handles VM creation with optimized cluster performance
 type VMCreateOptimizedHandler struct {
 	stateManager state.StateManager
@@ -1555,44 +1589,72 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			Msg("TPM requested for VM creation")
 		log.Info().Msg("TPM requested, checking storage compatibility")
 
-		// Get storage info to determine format
-		restyClient, err := getDefaultRestyClient()
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to create resty client for TPM storage check, skipping TPM")
-		} else {
-			storageInfo, err := proxmox.GetStoragesResty(r.Context(), restyClient)
-			if err != nil {
-				log.Warn().Err(err).Msg("Failed to retrieve storage info for TPM, skipping TPM")
-			} else {
-				// Find the selected storage
-				var selectedStorage *proxmox.Storage
-				for i := range storageInfo {
-					if storageInfo[i].Storage == storage {
-						selectedStorage = &storageInfo[i]
-						break
-					}
+		// Try to resolve storage type from the cached Proxmox snapshot first to avoid
+		// an extra live API request when possible.
+		var selectedStorageType string
+		if snapshot := h.stateManager.GetProxmoxSnapshot(); snapshot != nil {
+			for _, st := range snapshot.GlobalStorages {
+				if st.Storage == storage {
+					selectedStorageType = st.Type
+					break
 				}
+			}
+		}
 
-				if selectedStorage != nil {
-					// Check if storage is compatible with raw format (required for TPM)
-					format, compatible := getTPMDiskFormat(selectedStorage.Type)
-					if compatible {
-						// Create TPM disk: tpmstate0=<storage>:4,version=v2.0
-						// TPM disk is always 4 MiB and uses raw format
-						params.Set("tpmstate0", fmt.Sprintf("%s:4,version=v2.0", storage))
-						log.Info().
-							Str("storage", storage).
-							Str("storage_type", selectedStorage.Type).
-							Str("format", format).
-							Msg("TPM disk configured successfully")
-					} else {
-						log.Warn().
-							Str("storage", storage).
-							Str("storage_type", selectedStorage.Type).
-							Msg("Storage type not compatible with TPM (requires raw format support), skipping TPM")
-					}
+		configureTPM := func(storageType string) {
+			log.Debug().
+				Str("storage", storage).
+				Str("storage_type", storageType).
+				Msg("Checking TPM storage compatibility")
+			format, compatible := getTPMDiskFormat(storageType)
+			if compatible {
+				// Create TPM disk: tpmstate0=<storage>:4,version=v2.0
+				// TPM disk is always 4 MiB and uses raw format
+				tpmParam := fmt.Sprintf("%s:4,version=v2.0", storage)
+				params.Set("tpmstate0", tpmParam)
+				log.Info().
+					Str("storage", storage).
+					Str("storage_type", storageType).
+					Str("format", format).
+					Msg("TPM disk configured successfully")
+				log.Debug().
+					Str("storage", storage).
+					Str("tpm_param", tpmParam).
+					Str("tpmstate0", fmt.Sprintf("%s:4,version=v2.0", storage)).
+					Msg("TPM disk parameter details")
+			} else {
+				log.Warn().
+					Str("storage", storage).
+					Str("storage_type", storageType).
+					Msg("Storage type not compatible with TPM (requires raw format support), skipping TPM")
+			}
+		}
+
+		if selectedStorageType != "" {
+			configureTPM(selectedStorageType)
+		} else {
+			// Fallback: get storage info live from Proxmox when snapshot does not
+			// contain the required metadata.
+			restyClient, err := getDefaultRestyClient()
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to create resty client for TPM storage check, skipping TPM")
+			} else {
+				storageInfo, err := proxmox.GetStoragesResty(r.Context(), restyClient)
+				if err != nil {
+					log.Warn().Err(err).Msg("Failed to retrieve storage info for TPM, skipping TPM")
 				} else {
-					log.Warn().Str("storage", storage).Msg("Selected storage not found in storage list, skipping TPM")
+					var liveType string
+					for i := range storageInfo {
+						if storageInfo[i].Storage == storage {
+							liveType = storageInfo[i].Type
+							break
+						}
+					}
+					if liveType != "" {
+						configureTPM(liveType)
+					} else {
+						log.Warn().Str("storage", storage).Msg("Selected storage not found in storage list, skipping TPM")
+					}
 				}
 			}
 		}
