@@ -446,6 +446,17 @@ func (s *appState) GetProxmoxSnapshot() *ProxmoxClusterSnapshot {
 
 // RequestSnapshotRefresh schedules a snapshot refresh if possible.
 func (s *appState) RequestSnapshotRefresh() {
+	if s.IsOfflineMode() {
+		return
+	}
+	s.clusterSnapshotMu.RLock()
+	snapshot := s.clusterSnapshot
+	s.clusterSnapshotMu.RUnlock()
+	if snapshot != nil {
+		if time.Since(snapshot.GeneratedAt) < constants.ClusterCacheRequestMinRefreshInterval {
+			return
+		}
+	}
 	s.triggerSnapshotRefresh("request")
 }
 

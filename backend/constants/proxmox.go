@@ -31,7 +31,8 @@ const (
 	NodeCacheStaleThreshold = 2 * time.Minute
 
 	// ClusterCacheRefreshInterval controls how often the background snapshot worker refreshes Proxmox data
-	ClusterCacheRefreshInterval = 45 * time.Second
+	ClusterCacheRefreshInterval           = 45 * time.Second
+	ClusterCacheRequestMinRefreshInterval = 30 * time.Second
 
 	// ClusterCacheRequestTimeout bounds the overall duration of a single snapshot refresh cycle
 	ClusterCacheRequestTimeout = 20 * time.Second
