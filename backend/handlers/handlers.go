@@ -207,6 +207,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Main App Middleware Chain (with session, CSRF, etc.)
 	var appHandler http.Handler = router
 	appHandler = stateManagerContextMiddleware(stateManager)(appHandler)
+	appHandler = snapshotRefreshMiddleware(stateManager)(appHandler)
 
 	sessionManager := stateManager.GetSessionManager()
 	if sessionManager != nil {
@@ -253,6 +254,18 @@ func stateManagerContextMiddleware(sm state.StateManager) func(http.Handler) htt
 				ctx := context.WithValue(r.Context(), StateManagerKey, sm)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// snapshotRefreshMiddleware triggers an asynchronous Proxmox snapshot refresh on page navigation.
+func snapshotRefreshMiddleware(sm state.StateManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if sm != nil && r.Method == http.MethodGet {
+				sm.RequestSnapshotRefresh()
 			}
 			next.ServeHTTP(w, r)
 		})
