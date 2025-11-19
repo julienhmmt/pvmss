@@ -2,11 +2,10 @@ package handlers
 
 import (
 	"context"
-	// "encoding/json"
 	"errors"
 	"fmt"
-	// "strconv"
 	"strings"
+	"sync"
 	"time"
 
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
@@ -27,10 +26,43 @@ type NodeResourceUsage struct {
 	MaxRamGB int
 }
 
+const nodeUsageCacheTTL = 30 * time.Second
+
+var (
+	nodeUsageCache      map[string]*NodeResourceUsage
+	nodeUsageCacheMu    sync.RWMutex
+	nodeUsageCacheReady bool
+	nodeUsageCacheExp   time.Time
+)
+
 // CalculateNodeResourceUsage calculates the aggregated resources used by VMs with the "pvmss" tag
 // for each node in the Proxmox cluster using resty
 func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
 	log := logger.Get().With().Str("function", "CalculateNodeResourceUsage").Logger()
+
+	if cached, ok := getCachedNodeUsage(); ok {
+		log.Debug().Msg("Returning cached node resource usage")
+		return cached, nil
+	}
+
+	// Prefer using the cached Proxmox cluster snapshot when available to avoid
+	// repeated VM and config lookups. This keeps limits pages responsive while
+	// relying on the background snapshot worker.
+	if snapshotProvider, ok := sm.(interface {
+		GetProxmoxSnapshot() *state.ProxmoxClusterSnapshot
+	}); ok {
+		if snapshot := snapshotProvider.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.VMs) > 0 {
+			usageFromSnapshot := buildNodeUsageFromSnapshot(snapshot, sm.GetSettings())
+			if len(usageFromSnapshot) > 0 {
+				storeNodeUsageCache(usageFromSnapshot)
+				if cached, ok := getCachedNodeUsage(); ok {
+					log.Debug().Int("nodes", len(cached)).Msg("Returning node resource usage from snapshot")
+					return cached, nil
+				}
+				return usageFromSnapshot, nil
+			}
+		}
+	}
 
 	// Create resty client
 	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
@@ -137,7 +169,117 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 		}
 	}
 
+	storeNodeUsageCache(usage)
+	if cached, ok := getCachedNodeUsage(); ok {
+		return cached, nil
+	}
+
 	return usage, nil
+}
+
+// buildNodeUsageFromSnapshot aggregates resource usage per node for VMs with the
+// "pvmss" tag using the cached ProxmoxClusterSnapshot VMs slice.
+func buildNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings) map[string]*NodeResourceUsage {
+	if snapshot == nil {
+		return map[string]*NodeResourceUsage{}
+	}
+
+	usage := make(map[string]*NodeResourceUsage, len(snapshot.NodeNames))
+	for _, node := range snapshot.NodeNames {
+		if node == "" {
+			continue
+		}
+		usage[node] = &NodeResourceUsage{Node: node}
+	}
+
+	for _, vm := range snapshot.VMs {
+		if vm.Node == "" || vm.Tags == "" {
+			continue
+		}
+		// Check if VM has pvmss tag (semicolon and comma separated tags).
+		parsedTags := parseTags(vm.Tags)
+		hasPvmss := false
+		for _, tag := range parsedTags {
+			if strings.EqualFold(strings.TrimSpace(tag), "pvmss") {
+				hasPvmss = true
+				break
+			}
+		}
+		if !hasPvmss {
+			continue
+		}
+
+		nodeUsage, ok := usage[vm.Node]
+		if !ok {
+			nodeUsage = &NodeResourceUsage{Node: vm.Node}
+			usage[vm.Node] = nodeUsage
+		}
+
+		nodeUsage.TotalVMs++
+		if vm.Sockets <= 0 {
+			vm.Sockets = 1
+		}
+		if vm.Cores <= 0 {
+			vm.Cores = 1
+		}
+		nodeUsage.Cores += vm.Sockets * vm.Cores
+		if vm.MemoryMB > 0 {
+			nodeUsage.RamMB += vm.MemoryMB
+		}
+	}
+
+	// Convert RAM from MB to GB for display
+	for _, nodeUsage := range usage {
+		nodeUsage.RamGB = int(MBToGB(nodeUsage.RamMB))
+	}
+
+	// Populate max limits from settings when available
+	if settings != nil {
+		for nodeName, nodeUsage := range usage {
+			if nodeLimits, ok := settings.Limits.Nodes[nodeName]; ok {
+				nodeUsage.MaxCores = nodeLimits.Cores.Max
+				nodeUsage.MaxRamGB = nodeLimits.RAM.Max
+			}
+		}
+	}
+
+	return usage
+}
+
+func getCachedNodeUsage() (map[string]*NodeResourceUsage, bool) {
+	nodeUsageCacheMu.RLock()
+	defer nodeUsageCacheMu.RUnlock()
+	if !nodeUsageCacheReady || time.Now().After(nodeUsageCacheExp) || len(nodeUsageCache) == 0 {
+		return nil, false
+	}
+
+	copied := make(map[string]*NodeResourceUsage, len(nodeUsageCache))
+	for k, v := range nodeUsageCache {
+		if v == nil {
+			continue
+		}
+		copyVal := *v
+		copied[k] = &copyVal
+	}
+	return copied, true
+}
+
+func storeNodeUsageCache(usage map[string]*NodeResourceUsage) {
+	nodeUsageCacheMu.Lock()
+	defer nodeUsageCacheMu.Unlock()
+
+	copied := make(map[string]*NodeResourceUsage, len(usage))
+	for k, v := range usage {
+		if v == nil {
+			continue
+		}
+		copyVal := *v
+		copied[k] = &copyVal
+	}
+
+	nodeUsageCache = copied
+	nodeUsageCacheExp = time.Now().Add(nodeUsageCacheTTL)
+	nodeUsageCacheReady = true
 }
 
 // parseTags splits a tag string by semicolons and commas

@@ -168,10 +168,11 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	// Get Proxmox client and connection status
 	client := h.stateManager.GetProxmoxClient()
 	proxmoxConnected := client != nil && !h.stateManager.IsOfflineMode()
+	clusterSnapshot := h.stateManager.GetProxmoxSnapshot()
 
 	// Get node information
 	log.Debug().Msg("Getting node information")
-	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), client)
+	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), client, clusterSnapshot)
 	if err != nil {
 		log.Warn().Err(err).Msg("Proxmox node information unavailable, falling back to settings")
 		nodes, disabledNodes, activeNode = deriveNodesFromSettings(settingsPtr)
@@ -195,7 +196,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Get storages and bridges concurrently
 	log.Debug().Msg("Getting resources (storages and bridges)")
-	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settingsPtr)
+	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settingsPtr, clusterSnapshot)
 	if err != nil {
 		log.Warn().Err(err).Msg("Proxmox resources unavailable, using settings fallback")
 		storages, storageNodes, bridgeDetails = buildResourcesFromSettings(settingsPtr)
@@ -308,7 +309,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	}
 
 	// Check for offline nodes and create notification
-	offlineNodesCount := h.getOfflineNodesCount(r.Context(), client)
+	offlineNodesCount := h.getOfflineNodesCount(r.Context(), client, clusterSnapshot)
 	if offlineNodesCount > 0 {
 		title := i18n.Localize(localizer, "VM.Create.OfflineNodesTitle")
 		message := i18n.Localize(localizer, "VM.Create.OfflineNodesMessage", offlineNodesCount)
@@ -444,8 +445,25 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 }
 
 // getOptimizedNodeInfo retrieves node information with caching - only online nodes
-func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, client proxmox.ClientInterface) ([]string, map[string]bool, string, error) {
+func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, client proxmox.ClientInterface, snapshot *state.ProxmoxClusterSnapshot) ([]string, map[string]bool, string, error) {
 	log := CreateHandlerLogger("getOptimizedNodeInfo", nil)
+
+	if snapshot != nil {
+		candidates := snapshot.OnlineNodes
+		if len(candidates) == 0 {
+			candidates = snapshot.NodeNames
+		}
+		if len(candidates) > 0 {
+			nodes := append([]string(nil), candidates...)
+			sort.Strings(nodes)
+			disabledNodes := make(map[string]bool, len(nodes))
+			for _, node := range nodes {
+				disabledNodes[node] = false
+			}
+			log.Info().Int("node_count", len(nodes)).Msg("Using cached Proxmox snapshot for node list")
+			return nodes, disabledNodes, nodes[0], nil
+		}
+	}
 
 	if client == nil {
 		return nil, nil, "", fmt.Errorf("proxmox client not available")
@@ -619,8 +637,24 @@ func extractPrefix(identifier string) string {
 }
 
 // getOfflineNodesCount counts the number of offline/down nodes in the cluster
-func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, client proxmox.ClientInterface) int {
+func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, client proxmox.ClientInterface, snapshot *state.ProxmoxClusterSnapshot) int {
 	log := CreateHandlerLogger("getOfflineNodesCount", nil)
+
+	if snapshot != nil {
+		totalNodes := len(snapshot.NodeNames)
+		onlineNodes := len(snapshot.OnlineNodes)
+		if totalNodes > 0 {
+			if onlineNodes > totalNodes {
+				onlineNodes = totalNodes
+			}
+			offline := totalNodes - onlineNodes
+			if offline < 0 {
+				offline = 0
+			}
+			log.Debug().Int("offline_nodes", offline).Msg("Offline node count served from snapshot")
+			return offline
+		}
+	}
 
 	if client == nil {
 		return 0
@@ -689,11 +723,27 @@ func getNodeLimits(settings *state.AppSettings) map[string]interface{} {
 }
 
 // getOptimizedResources retrieves storages and bridges concurrently using errgroup pattern
-func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, client proxmox.ClientInterface, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings) ([]string, map[string]string, []map[string]string, error) {
+func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, client proxmox.ClientInterface, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings, snapshot *state.ProxmoxClusterSnapshot) ([]string, map[string]string, []map[string]string, error) {
 	log := CreateHandlerLogger("getOptimizedResources", nil)
 
-	if client == nil || len(nodes) == 0 {
-		return nil, nil, nil, fmt.Errorf("proxmox client not available or no nodes")
+	if len(nodes) == 0 {
+		return nil, nil, nil, fmt.Errorf("no nodes available")
+	}
+
+	if snapshot != nil {
+		if storages, storageNodes, err := h.getOptimizedStoragesFromSnapshot(snapshot, nodes, disabledNodes, settings); err == nil {
+			if bridgeDetails, err := h.getOptimizedBridgesFromSnapshot(snapshot, nodes, disabledNodes, settings); err == nil {
+				log.Info().Msg("Served VM creation resources from cached Proxmox snapshot")
+				return storages, storageNodes, bridgeDetails, nil
+			}
+			log.Warn().Err(err).Msg("Bridge details unavailable in snapshot, falling back to live calls")
+		} else {
+			log.Warn().Err(err).Msg("Storages unavailable in snapshot, falling back to live calls")
+		}
+	}
+
+	if client == nil {
+		return nil, nil, nil, fmt.Errorf("proxmox client not available and cached data missing")
 	}
 
 	// Create resty client
@@ -746,6 +796,79 @@ func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, cl
 		Msg("Resources retrieved concurrently with errgroup")
 
 	return storages, storageNodes, bridgeDetails, nil
+}
+
+func (h *VMCreateOptimizedHandler) getOptimizedStoragesFromSnapshot(snapshot *state.ProxmoxClusterSnapshot, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings) ([]string, map[string]string, error) {
+	log := CreateHandlerLogger("getOptimizedStoragesFromSnapshot", nil)
+	if snapshot == nil || len(snapshot.NodeStorages) == 0 {
+		return nil, nil, fmt.Errorf("snapshot does not include storage data")
+	}
+
+	globalStorageInfo := make(map[string]proxmox.Storage)
+	for _, item := range snapshot.GlobalStorages {
+		globalStorageInfo[item.Storage] = item
+	}
+
+	enabledStorageMap := make(map[string]bool)
+	for _, enabledStorage := range settings.EnabledStorages {
+		enabledStorageMap[enabledStorage] = true
+	}
+
+	storageMap := make(map[string]string)
+	for _, nodeName := range nodes {
+		if disabledNodes[nodeName] {
+			continue
+		}
+		nodeStorages, ok := snapshot.NodeStorages[nodeName]
+		if !ok {
+			continue
+		}
+		for _, storage := range nodeStorages {
+			storageInfo := storage
+			if global, exists := globalStorageInfo[storage.Storage]; exists {
+				if storageInfo.Content == "" && global.Content != "" {
+					storageInfo.Content = global.Content
+				}
+				if storageInfo.Type == "" && global.Type != "" {
+					storageInfo.Type = global.Type
+				}
+				if storageInfo.Description == "" && global.Description != "" {
+					storageInfo.Description = global.Description
+				}
+			}
+
+			uniqueID := nodeName + ":" + storage.Storage
+			isEnabledStorage := len(settings.EnabledStorages) == 0 || enabledStorageMap[uniqueID]
+			storageType := strings.ToLower(storageInfo.Type)
+			storageContent := strings.ToLower(storageInfo.Content)
+
+			supportsVMDisk := strings.Contains(storageContent, "images")
+			if !supportsVMDisk {
+				if _, ok := vmDiskCompatibleStorageTypes[storageType]; ok {
+					supportsVMDisk = true
+				}
+			}
+
+			if isEnabledStorage && storage.Enabled == 1 && supportsVMDisk {
+				if _, exists := storageMap[storage.Storage]; !exists {
+					storageMap[storage.Storage] = nodeName
+				}
+			}
+		}
+	}
+
+	if len(storageMap) == 0 {
+		return nil, nil, fmt.Errorf("no storages found in snapshot")
+	}
+
+	storages := make([]string, 0, len(storageMap))
+	for storage := range storageMap {
+		storages = append(storages, storage)
+	}
+	sort.Strings(storages)
+
+	log.Info().Int("snapshot_storages", len(storages)).Msg("Storages served from snapshot cache")
+	return storages, storageMap, nil
 }
 
 // getOptimizedStorages retrieves storage information with batch processing
@@ -887,6 +1010,55 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 		Msg("Storages retrieved with optimization")
 
 	return storages, storageMap, nil
+}
+
+func (h *VMCreateOptimizedHandler) getOptimizedBridgesFromSnapshot(snapshot *state.ProxmoxClusterSnapshot, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings) ([]map[string]string, error) {
+	log := CreateHandlerLogger("getOptimizedBridgesFromSnapshot", nil)
+	if snapshot == nil || len(snapshot.NetworkBridges) == 0 {
+		return nil, fmt.Errorf("snapshot does not include network data")
+	}
+
+	bridgeNodes := make(map[string]string)
+	bridgeDescriptions := make(map[string]string)
+	nodeSet := make(map[string]struct{}, len(nodes))
+	for _, n := range nodes {
+		nodeSet[n] = struct{}{}
+	}
+
+	for nodeName, vmbrs := range snapshot.NetworkBridges {
+		if _, ok := nodeSet[nodeName]; !ok || disabledNodes[nodeName] {
+			continue
+		}
+		for _, vmbr := range vmbrs {
+			name := getVMBRInterface(vmbr)
+			if name == "" {
+				continue
+			}
+			if _, exists := bridgeNodes[name]; !exists {
+				bridgeNodes[name] = nodeName
+			}
+			if desc := bridgeDescriptions[name]; desc == "" {
+				bridgeDescriptions[name] = buildVMBRDescription(vmbr)
+			}
+		}
+	}
+
+	var bridgeDetails []map[string]string
+	for _, bridgeIdentifier := range settings.VMBRs {
+		bridgeName := bridgeIdentifier
+		if colonIndex := strings.Index(bridgeIdentifier, ":"); colonIndex != -1 {
+			bridgeName = bridgeIdentifier[colonIndex+1:]
+		}
+
+		bridgeDetails = append(bridgeDetails, map[string]string{
+			"description": bridgeDescriptions[bridgeName],
+			"name":        bridgeName,
+			"node":        bridgeNodes[bridgeName],
+		})
+	}
+
+	log.Info().Int("snapshot_bridges", len(bridgeDetails)).Msg("Bridges served from snapshot cache")
+	return bridgeDetails, nil
 }
 
 // getOptimizedBridges retrieves bridge information with batch processing
@@ -1250,6 +1422,21 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		}
 	}
 	if vmid == 0 {
+		// Prefer using the cached Proxmox cluster snapshot when available to avoid
+		// re-listing all VMs from Proxmox just to compute the next VMID.
+		if snapshot := h.stateManager.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.VMs) > 0 {
+			highest := 0
+			for _, svm := range snapshot.VMs {
+				if svm.VMID > highest {
+					highest = svm.VMID
+				}
+			}
+			if highest > 0 {
+				vmid = highest + 1
+			}
+		}
+	}
+	if vmid == 0 {
 		restyClient, err := getDefaultRestyClient()
 		if err != nil {
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Error.FailedToGetNextVMID")
@@ -1368,54 +1555,72 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			Msg("TPM requested for VM creation")
 		log.Info().Msg("TPM requested, checking storage compatibility")
 
-		// Get storage info to determine format
-		restyClient, err := getDefaultRestyClient()
-		if err != nil {
-			log.Warn().Err(err).Msg("Failed to create resty client for TPM storage check, skipping TPM")
-		} else {
-			storageInfo, err := proxmox.GetStoragesResty(r.Context(), restyClient)
-			if err != nil {
-				log.Warn().Err(err).Msg("Failed to retrieve storage info for TPM, skipping TPM")
-			} else {
-				// Find the selected storage
-				var selectedStorage *proxmox.Storage
-				for i := range storageInfo {
-					if storageInfo[i].Storage == storage {
-						selectedStorage = &storageInfo[i]
-						break
-					}
+		// Try to resolve storage type from the cached Proxmox snapshot first to avoid
+		// an extra live API request when possible.
+		var selectedStorageType string
+		if snapshot := h.stateManager.GetProxmoxSnapshot(); snapshot != nil {
+			for _, st := range snapshot.GlobalStorages {
+				if st.Storage == storage {
+					selectedStorageType = st.Type
+					break
 				}
+			}
+		}
 
-				if selectedStorage != nil {
-					// Check if storage is compatible with raw format (required for TPM)
-					log.Debug().
-						Str("storage", storage).
-						Str("storage_type", selectedStorage.Type).
-						Msg("Checking TPM storage compatibility")
-					format, compatible := getTPMDiskFormat(selectedStorage.Type)
-					if compatible {
-						// Create TPM disk: tpmstate0=<storage>:4,version=v2.0
-						// TPM disk is always 4 MiB and uses raw format
-						tpmParam := fmt.Sprintf("%s:4,version=v2.0", storage)
-						params.Set("tpmstate0", tpmParam)
-						log.Info().
-							Str("storage", storage).
-							Str("storage_type", selectedStorage.Type).
-							Str("format", format).
-							Msg("TPM disk configured successfully")
-						log.Debug().
-							Str("storage", storage).
-							Str("tpm_param", tpmParam).
-							Str("tpmstate0", fmt.Sprintf("%s:4,version=v2.0", storage)).
-							Msg("TPM disk parameter details")
-					} else {
-						log.Warn().
-							Str("storage", storage).
-							Str("storage_type", selectedStorage.Type).
-							Msg("Storage type not compatible with TPM (requires raw format support), skipping TPM")
-					}
+		configureTPM := func(storageType string) {
+			log.Debug().
+				Str("storage", storage).
+				Str("storage_type", storageType).
+				Msg("Checking TPM storage compatibility")
+			format, compatible := getTPMDiskFormat(storageType)
+			if compatible {
+				// Create TPM disk: tpmstate0=<storage>:4,version=v2.0
+				// TPM disk is always 4 MiB and uses raw format
+				tpmParam := fmt.Sprintf("%s:4,version=v2.0", storage)
+				params.Set("tpmstate0", tpmParam)
+				log.Info().
+					Str("storage", storage).
+					Str("storage_type", storageType).
+					Str("format", format).
+					Msg("TPM disk configured successfully")
+				log.Debug().
+					Str("storage", storage).
+					Str("tpm_param", tpmParam).
+					Str("tpmstate0", fmt.Sprintf("%s:4,version=v2.0", storage)).
+					Msg("TPM disk parameter details")
+			} else {
+				log.Warn().
+					Str("storage", storage).
+					Str("storage_type", storageType).
+					Msg("Storage type not compatible with TPM (requires raw format support), skipping TPM")
+			}
+		}
+
+		if selectedStorageType != "" {
+			configureTPM(selectedStorageType)
+		} else {
+			// Fallback: get storage info live from Proxmox when snapshot does not
+			// contain the required metadata.
+			restyClient, err := getDefaultRestyClient()
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to create resty client for TPM storage check, skipping TPM")
+			} else {
+				storageInfo, err := proxmox.GetStoragesResty(r.Context(), restyClient)
+				if err != nil {
+					log.Warn().Err(err).Msg("Failed to retrieve storage info for TPM, skipping TPM")
 				} else {
-					log.Warn().Str("storage", storage).Msg("Selected storage not found in storage list, skipping TPM")
+					var liveType string
+					for i := range storageInfo {
+						if storageInfo[i].Storage == storage {
+							liveType = storageInfo[i].Type
+							break
+						}
+					}
+					if liveType != "" {
+						configureTPM(liveType)
+					} else {
+						log.Warn().Str("storage", storage).Msg("Selected storage not found in storage list, skipping TPM")
+					}
 				}
 			}
 		}
