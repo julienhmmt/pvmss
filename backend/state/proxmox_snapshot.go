@@ -101,85 +101,41 @@ func buildProxmoxSnapshot(ctx context.Context, client *proxmox.RestyClient) (*Pr
 		errorMu.Unlock()
 	}
 
-	// Collect VM list and selected config fields (tags and basic resource config) for snapshot.
+	// Collect VM list and selected fields (tags and basic resource config) for snapshot.
 	if vms, err := proxmox.GetVMsResty(ctx, client); err != nil {
 		log.Warn().Err(err).Msg("Failed to refresh VM list for snapshot")
 		snapshot.Errors = append(snapshot.Errors, fmt.Sprintf("vms: %v", err))
 	} else if len(vms) > 0 {
 		vmSnapshots := make([]SnapshotVM, 0, len(vms))
-		var vmMu sync.Mutex
-		semVM := make(chan struct{}, 6)
-		gVM, gvmCtx := errgroup.WithContext(ctx)
-
 		for _, vm := range vms {
-			vm := vm
-			gVM.Go(func() error {
-				select {
-				case semVM <- struct{}{}:
-					defer func() { <-semVM }()
-				case <-gvmCtx.Done():
-					return gvmCtx.Err()
-				}
+			// Tags are provided directly on the VM list when available.
+			tags := vm.Tags
+			// Use total virtual CPUs as cores; sockets are set to 1 for aggregate calculations.
+			cores := vm.CPUs
+			if cores <= 0 {
+				cores = 1
+			}
+			// MaxMem is reported in bytes; convert to MB for consistency with previous logic.
+			var memoryMB int64
+			if vm.MaxMem > 0 {
+				memoryMB = int64(vm.MaxMem / (1024 * 1024))
+			}
 
-				cfgCtx, cancelCfg := context.WithTimeout(gvmCtx, constants.ClusterCacheRequestTimeout)
-				defer cancelCfg()
-
-				cfg, cfgErr := proxmox.GetVMConfigResty(cfgCtx, client, vm.Node, vm.VMID)
-				if cfgErr != nil {
-					log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Failed to refresh VM config for snapshot")
-					recordError("vm config %s/%d: %v", vm.Node, vm.VMID, cfgErr)
-					return nil
-				}
-
-				var tags string
-				if v, ok := cfg["tags"].(string); ok {
-					tags = v
-				}
-
-				sockets := 1
-				cores := 1
-				var memoryMB int64
-				if raw, ok := cfg["sockets"]; ok {
-					if f, ok := raw.(float64); ok && f > 0 {
-						sockets = int(f)
-					}
-				}
-				if raw, ok := cfg["cores"]; ok {
-					if f, ok := raw.(float64); ok && f > 0 {
-						cores = int(f)
-					}
-				}
-				if raw, ok := cfg["memory"]; ok {
-					if f, ok := raw.(float64); ok && f > 0 {
-						memoryMB = int64(f)
-					}
-				}
-
-				vmSnapshot := SnapshotVM{
-					Node:     vm.Node,
-					VMID:     vm.VMID,
-					Name:     vm.Name,
-					Status:   vm.Status,
-					Tags:     tags,
-					Sockets:  sockets,
-					Cores:    cores,
-					MemoryMB: memoryMB,
-				}
-
-				vmMu.Lock()
-				vmSnapshots = append(vmSnapshots, vmSnapshot)
-				vmMu.Unlock()
-				return nil
-			})
+			vmSnapshot := SnapshotVM{
+				Node:     vm.Node,
+				VMID:     vm.VMID,
+				Name:     vm.Name,
+				Status:   vm.Status,
+				Tags:     tags,
+				Sockets:  1,
+				Cores:    cores,
+				MemoryMB: memoryMB,
+			}
+			vmSnapshots = append(vmSnapshots, vmSnapshot)
 		}
-
-		if err := gVM.Wait(); err != nil && err != context.Canceled {
-			log.Warn().Err(err).Msg("VM snapshot worker exited early due to context cancellation")
-		}
-
 		if len(vmSnapshots) > 0 {
 			snapshot.VMs = vmSnapshots
-			log.Debug().Int("vms", len(vmSnapshots)).Msg("VM snapshot updated")
+			log.Debug().Int("vms", len(vmSnapshots)).Msg("VM snapshot updated from VM list")
 		}
 	}
 
