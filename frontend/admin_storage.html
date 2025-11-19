@@ -110,8 +110,11 @@
             </td>
             <td>
               <div class="tags">
+                <span class="tag is-info is-light">{{.Type}}</span>
                 {{range $type := split .Content ","}}
-                  <span class="tag is-light">{{$type}}</span>
+                  {{if ne $type ""}}
+                    <span class="tag is-light">{{$type}}</span>
+                  {{end}}
                 {{end}}
               </div>
             </td>
