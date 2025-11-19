@@ -312,37 +312,60 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// both ';' and ',' to ensure each individual tag is counted.
 	log := logger.Get()
 	tagCounts := make(map[string]int)
-	if h.stateManager.IsOfflineMode() {
-		log.Debug().Msg("Offline mode enabled; skipping tag usage lookup")
-	} else if restyClient, err := getDefaultRestyClient(); err == nil {
-		if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
-			for i := range vms {
-				if cfg, err := proxmox.GetVMConfigResty(r.Context(), restyClient, vms[i].Node, vms[i].VMID); err == nil {
-					if v, ok := cfg["tags"].(string); ok && v != "" {
-						// First split by ';'
-						semiParts := strings.Split(v, ";")
-						for _, sp := range semiParts {
-							sp = strings.TrimSpace(sp)
-							if sp == "" {
-								continue
-							}
-							// Then split each part by ','
-							commaParts := strings.Split(sp, ",")
-							for _, cp := range commaParts {
-								t := strings.TrimSpace(cp)
-								if t != "" {
-									tagCounts[t]++
+
+	// Prefer cached snapshot VMs when available to avoid N+1 config fetches.
+	if snapshot := h.stateManager.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.VMs) > 0 {
+		for _, vm := range snapshot.VMs {
+			if vm.Tags == "" {
+				continue
+			}
+			semiParts := strings.Split(vm.Tags, ";")
+			for _, sp := range semiParts {
+				sp = strings.TrimSpace(sp)
+				if sp == "" {
+					continue
+				}
+				commaParts := strings.Split(sp, ",")
+				for _, cp := range commaParts {
+					t := strings.TrimSpace(cp)
+					if t != "" {
+						tagCounts[t]++
+					}
+				}
+			}
+		}
+		log.Debug().Int("vm_snapshot_count", len(snapshot.VMs)).Msg("Tag counts calculated from snapshot")
+	} else {
+		if h.stateManager.IsOfflineMode() {
+			log.Debug().Msg("Offline mode enabled; skipping tag usage lookup")
+		} else if restyClient, err := getDefaultRestyClient(); err == nil {
+			if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
+				for i := range vms {
+					if cfg, err := proxmox.GetVMConfigResty(r.Context(), restyClient, vms[i].Node, vms[i].VMID); err == nil {
+						if v, ok := cfg["tags"].(string); ok && v != "" {
+							semiParts := strings.Split(v, ";")
+							for _, sp := range semiParts {
+								sp = strings.TrimSpace(sp)
+								if sp == "" {
+									continue
+								}
+								commaParts := strings.Split(sp, ",")
+								for _, cp := range commaParts {
+									t := strings.TrimSpace(cp)
+									if t != "" {
+										tagCounts[t]++
+									}
 								}
 							}
 						}
 					}
 				}
+			} else {
+				log.Debug().Err(err).Msg("Failed to retrieve VM list for tag usage lookup")
 			}
 		} else {
-			log.Debug().Err(err).Msg("Failed to retrieve VM list for tag usage lookup")
+			log.Debug().Err(err).Msg("Failed to create resty client for tag usage lookup")
 		}
-	} else {
-		log.Debug().Err(err).Msg("Failed to create resty client for tag usage lookup")
 	}
 
 	// Debug logging for tag counts

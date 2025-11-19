@@ -77,13 +77,17 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		opts = append(opts, WithError(errorMsg))
 	}
 
+	snapshot := h.stateManager.GetProxmoxSnapshot()
+
 	// Get node names for dropdown
 	var nodeNames []string
 	client := h.stateManager.GetProxmoxClient()
 	offlineMode := h.stateManager.IsOfflineMode()
 	proxmoxConnected := client != nil && !offlineMode
 
-	if proxmoxConnected {
+	if snapshot != nil && len(snapshot.NodeNames) > 0 {
+		nodeNames = append(nodeNames, snapshot.NodeNames...)
+	} else if proxmoxConnected {
 		pc, ok := client.(*proxmox.Client)
 		if ok {
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
@@ -100,10 +104,8 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		nodeNames = settingsNodes
 	}
 
+	nodeNames = uniqueNonEmptyStrings(nodeNames)
 	// Always provide NodeNames (empty array if no nodes available)
-	if nodeNames == nil {
-		nodeNames = []string{}
-	}
 	// Ensure alphabetical order of nodes in the dropdown
 	if len(nodeNames) > 1 {
 		sort.Strings(nodeNames)
@@ -113,6 +115,9 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	// Get resource usage for all nodes
 	var nodeUsage map[string]*NodeResourceUsage
 	var nodeCapacities map[string]*NodeCapacity
+	if snapshot != nil {
+		nodeCapacities = buildNodeCapacitiesFromSnapshot(snapshot)
+	}
 	if proxmoxConnected {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
@@ -124,8 +129,13 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 
 		// Get node capacities
 		if nodeNames != nil {
-			nodeCapacities = make(map[string]*NodeCapacity)
+			if nodeCapacities == nil {
+				nodeCapacities = make(map[string]*NodeCapacity)
+			}
 			for _, nodeName := range nodeNames {
+				if nodeCapacities[nodeName] != nil {
+					continue
+				}
 				if capacity, err := GetNodeCapacity(ctx, client, nodeName); err == nil {
 					nodeCapacities[nodeName] = capacity
 				}
@@ -333,6 +343,47 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		redirect += "&node=" + strings.TrimSpace(r.FormValue("nodeName"))
 	}
 	http.Redirect(w, r, redirect, http.StatusSeeOther)
+}
+
+func uniqueNonEmptyStrings(values []string) []string {
+	if len(values) == 0 {
+		return []string{}
+	}
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, v := range values {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		if _, exists := seen[v]; exists {
+			continue
+		}
+		seen[v] = struct{}{}
+		result = append(result, v)
+	}
+	return result
+}
+
+func buildNodeCapacitiesFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) map[string]*NodeCapacity {
+	if snapshot == nil || len(snapshot.NodeDetails) == 0 {
+		return nil
+	}
+
+	capacities := make(map[string]*NodeCapacity, len(snapshot.NodeDetails))
+	for _, detail := range snapshot.NodeDetails {
+		if detail == nil || detail.Node == "" {
+			continue
+		}
+		memoryBytes := int64(detail.MaxMemory)
+		capacities[detail.Node] = &NodeCapacity{
+			Node:     detail.Node,
+			CPUs:     detail.MaxCPU,
+			MemoryMB: memoryBytes / (1024 * 1024),
+			MemoryGB: int(memoryBytes / (1024 * 1024 * 1024)),
+		}
+	}
+	return capacities
 }
 
 // UpdateUserLimitsHandler handles POST from admin_limits.html to update user limits (max VMs per user)
