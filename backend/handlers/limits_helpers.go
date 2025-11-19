@@ -7,6 +7,7 @@ import (
 	"fmt"
 	// "strconv"
 	"strings"
+	"sync"
 	"time"
 
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
@@ -27,10 +28,24 @@ type NodeResourceUsage struct {
 	MaxRamGB int
 }
 
+const nodeUsageCacheTTL = 30 * time.Second
+
+var (
+	nodeUsageCache      map[string]*NodeResourceUsage
+	nodeUsageCacheMu    sync.RWMutex
+	nodeUsageCacheReady bool
+	nodeUsageCacheExp   time.Time
+)
+
 // CalculateNodeResourceUsage calculates the aggregated resources used by VMs with the "pvmss" tag
 // for each node in the Proxmox cluster using resty
 func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
 	log := logger.Get().With().Str("function", "CalculateNodeResourceUsage").Logger()
+
+	if cached, ok := getCachedNodeUsage(); ok {
+		log.Debug().Msg("Returning cached node resource usage")
+		return cached, nil
+	}
 
 	// Create resty client
 	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
@@ -137,7 +152,48 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 		}
 	}
 
+	storeNodeUsageCache(usage)
+	if cached, ok := getCachedNodeUsage(); ok {
+		return cached, nil
+	}
+
 	return usage, nil
+}
+
+func getCachedNodeUsage() (map[string]*NodeResourceUsage, bool) {
+	nodeUsageCacheMu.RLock()
+	defer nodeUsageCacheMu.RUnlock()
+	if !nodeUsageCacheReady || time.Now().After(nodeUsageCacheExp) || len(nodeUsageCache) == 0 {
+		return nil, false
+	}
+
+	copied := make(map[string]*NodeResourceUsage, len(nodeUsageCache))
+	for k, v := range nodeUsageCache {
+		if v == nil {
+			continue
+		}
+		copyVal := *v
+		copied[k] = &copyVal
+	}
+	return copied, true
+}
+
+func storeNodeUsageCache(usage map[string]*NodeResourceUsage) {
+	nodeUsageCacheMu.Lock()
+	defer nodeUsageCacheMu.Unlock()
+
+	copied := make(map[string]*NodeResourceUsage, len(usage))
+	for k, v := range usage {
+		if v == nil {
+			continue
+		}
+		copyVal := *v
+		copied[k] = &copyVal
+	}
+
+	nodeUsageCache = copied
+	nodeUsageCacheExp = time.Now().Add(nodeUsageCacheTTL)
+	nodeUsageCacheReady = true
 }
 
 // parseTags splits a tag string by semicolons and commas

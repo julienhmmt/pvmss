@@ -73,20 +73,13 @@
           {{$used := .Used}}
           {{$total := .Total}}
           {{$hasValidData := .HasValidData}}
-          {{$isFromCache := .IsFromCache}}
           {{$storageName := .Storage}}
           {{$nodeName := .Node}}
           {{$uniqueID := printf "%s:%s" $nodeName $storageName}}
           {{$isEnabled := index $.EnabledMap $uniqueID}}
-          <tr data-node="{{$nodeName}}"{{if $isFromCache}} class="has-background-grey-lighter"{{end}}>
+          <tr data-node="{{$nodeName}}">
             <td>
               <span class="has-text-weight-semibold">{{$storageName}}</span>
-              {{if $isFromCache}}
-                <span class="tag is-warning is-light ml-2" title="{{T "Admin.Storage.FromCache"}}">
-                  <span class="icon is-small"><i class="fas fa-clock"></i></span>
-                  <span>{{T "Admin.Storage.Cached"}}</span>
-                </span>
-              {{end}}
               {{if $nodeName}}
                 <br><small class="has-text-grey">{{T "Admin.Storage.Node"}}: {{$nodeName}}</small>
               {{end}}
@@ -128,10 +121,9 @@
                 <input type="hidden" name="storage" value="{{$storageName}}">
                 <input type="hidden" name="node" value="{{$nodeName}}">
                 <input type="hidden" name="action" value="{{if $isEnabled}}disable{{else}}enable{{end}}">
-                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}{{if $isFromCache}} is-disabled{{end}}"
+                <button type="submit" class="button is-small {{if $isEnabled}}is-success is-light{{else}}is-ghost{{end}}"
                   aria-label="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storageName}}"
-                  title="{{if $isFromCache}}{{T "Admin.Storage.NodeOffline"}}{{else}}{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storageName}}{{end}}"
-                  {{if $isFromCache}}disabled{{end}}>
+                  title="{{if $isEnabled}}{{T "Common.Disable"}}{{else}}{{T "Common.Enable"}}{{end}} {{$storageName}}">
                   <span class="icon is-small">
                     {{if $isEnabled}}
                       <i class="fas fa-toggle-on"></i>
