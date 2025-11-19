@@ -52,6 +52,13 @@ type appState struct {
 	nodeCacheMu     sync.RWMutex
 	nodeCacheUpdate time.Time
 
+	// Cached cluster snapshot for frequently accessed Proxmox data
+	clusterSnapshot            *ProxmoxClusterSnapshot
+	clusterSnapshotMu          sync.RWMutex
+	clusterSnapshotWorkerStart bool
+	clusterSnapshotRefreshMu   sync.Mutex
+	clusterSnapshotRefreshing  bool
+
 	// Cleanup callbacks
 	guestAgentCleanupFunc func()
 	cleanupMu             sync.RWMutex
@@ -109,6 +116,88 @@ func (s *appState) startNodeCacheWorker() {
 			s.refreshNodeCache(context.Background())
 		}
 	}()
+}
+
+// startClusterSnapshotWorker launches a background worker that keeps a warm snapshot of cluster resources.
+func (s *appState) startClusterSnapshotWorker() {
+	s.mu.Lock()
+	if s.clusterSnapshotWorkerStart {
+		s.mu.Unlock()
+		return
+	}
+	s.clusterSnapshotWorkerStart = true
+	s.mu.Unlock()
+
+	log := logger.Get().With().Str("component", "ClusterSnapshotWorker").Logger()
+	go func() {
+		log.Info().Dur("interval", constants.ClusterCacheRefreshInterval).Msg("Cluster snapshot worker started")
+		s.triggerSnapshotRefresh("worker_init")
+		ticker := time.NewTicker(constants.ClusterCacheRefreshInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.triggerSnapshotRefresh("worker")
+		}
+	}()
+}
+
+// triggerSnapshotRefresh schedules an asynchronous refresh if one isn't already in progress.
+func (s *appState) triggerSnapshotRefresh(trigger string) {
+	if s.IsOfflineMode() {
+		return
+	}
+
+	s.clusterSnapshotRefreshMu.Lock()
+	if s.clusterSnapshotRefreshing {
+		s.clusterSnapshotRefreshMu.Unlock()
+		return
+	}
+	s.clusterSnapshotRefreshing = true
+	s.clusterSnapshotRefreshMu.Unlock()
+
+	go func() {
+		s.refreshProxmoxSnapshot(trigger)
+		s.clusterSnapshotRefreshMu.Lock()
+		s.clusterSnapshotRefreshing = false
+		s.clusterSnapshotRefreshMu.Unlock()
+	}()
+}
+
+// refreshProxmoxSnapshot refreshes the cached cluster snapshot.
+func (s *appState) refreshProxmoxSnapshot(trigger string) {
+	if s.IsOfflineMode() {
+		return
+	}
+
+	log := logger.Get().With().
+		Str("component", "ClusterSnapshotWorker").
+		Str("trigger", trigger).
+		Logger()
+
+	client, err := proxmox.NewRestyClientFromEnv(constants.ClusterCacheRequestTimeout)
+	if err != nil {
+		log.Warn().Err(err).Msg("Unable to create resty client for snapshot refresh")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), constants.ClusterCacheRequestTimeout)
+	defer cancel()
+
+	snapshot, err := buildProxmoxSnapshot(ctx, client)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to refresh Proxmox snapshot")
+		return
+	}
+
+	s.clusterSnapshotMu.Lock()
+	s.clusterSnapshot = snapshot
+	s.clusterSnapshotMu.Unlock()
+
+	log.Debug().
+		Time("generated_at", snapshot.GeneratedAt).
+		Dur("duration", snapshot.Duration).
+		Int("nodes", len(snapshot.NodeNames)).
+		Int("storages", len(snapshot.NodeStorages)).
+		Msg("Proxmox snapshot updated")
 }
 
 // NewAppState creates a new instance of the application state manager
@@ -256,6 +345,7 @@ func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 	// Start background monitor (only once)
 	s.startProxmoxMonitor()
 	s.startNodeCacheWorker()
+	s.startClusterSnapshotWorker()
 	return nil
 }
 
@@ -345,6 +435,29 @@ func (s *appState) GetNodeCache() ([]*proxmox.NodeDetails, time.Time) {
 	}
 
 	return cloneNodeDetails(s.nodeCache), s.nodeCacheUpdate
+}
+
+// GetProxmoxSnapshot returns the cached cluster snapshot (if available).
+func (s *appState) GetProxmoxSnapshot() *ProxmoxClusterSnapshot {
+	s.clusterSnapshotMu.RLock()
+	defer s.clusterSnapshotMu.RUnlock()
+	return cloneProxmoxSnapshot(s.clusterSnapshot)
+}
+
+// RequestSnapshotRefresh schedules a snapshot refresh if possible.
+func (s *appState) RequestSnapshotRefresh() {
+	if s.IsOfflineMode() {
+		return
+	}
+	s.clusterSnapshotMu.RLock()
+	snapshot := s.clusterSnapshot
+	s.clusterSnapshotMu.RUnlock()
+	if snapshot != nil {
+		if time.Since(snapshot.GeneratedAt) < constants.ClusterCacheRequestMinRefreshInterval {
+			return
+		}
+	}
+	s.triggerSnapshotRefresh("request")
 }
 
 // isManualOfflineMode checks if offline mode was set manually (via PVMSS_OFFLINE)

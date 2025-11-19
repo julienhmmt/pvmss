@@ -68,8 +68,63 @@ func ensureStoragesInitialized(settings *state.AppSettings) {
 	}
 }
 
-// projectEnabledFlagsWithCache adds Enabled field and handles cache flag for storage items
-func projectEnabledFlagsWithCache(base []map[string]interface{}, enabled []string, isFromCache bool) []map[string]interface{} {
+// extractNodesFromSnapshot returns a sorted list of nodes discovered in the cached snapshot.
+func extractNodesFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) []string {
+	if snapshot == nil {
+		return []string{}
+	}
+
+	nodes := append([]string(nil), snapshot.NodeNames...)
+	if len(nodes) == 0 && len(snapshot.NodeStorages) > 0 {
+		for nodeName := range snapshot.NodeStorages {
+			nodes = append(nodes, nodeName)
+		}
+	}
+	sort.Strings(nodes)
+	return nodes
+}
+
+// buildStoragesFromSnapshot converts cached node storages into template-friendly maps.
+func buildStoragesFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) []map[string]interface{} {
+	if snapshot == nil {
+		return []map[string]interface{}{}
+	}
+
+	storagesByID := make(map[string]map[string]interface{})
+	for nodeName, storages := range snapshot.NodeStorages {
+		for _, st := range storages {
+			if st.Enabled == 0 {
+				continue
+			}
+			if !canHoldVMDisks(st) {
+				continue
+			}
+			item := buildStorageTemplateItem(nodeName, st)
+			uniqueID := nodeName + ":" + st.Storage
+			storagesByID[uniqueID] = item
+		}
+	}
+
+	result := make([]map[string]interface{}, 0, len(storagesByID))
+	for _, storage := range storagesByID {
+		result = append(result, storage)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		nodeI, _ := result[i]["Node"].(string)
+		nodeJ, _ := result[j]["Node"].(string)
+		if nodeI == nodeJ {
+			nameI, _ := result[i]["Storage"].(string)
+			nameJ, _ := result[j]["Storage"].(string)
+			return nameI < nameJ
+		}
+		return nodeI < nodeJ
+	})
+
+	return result
+}
+
+// projectEnabledFlags adds Enabled field to storage items
+func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[string]interface{} {
 	enabledMap := buildEnabledMap(enabled)
 	projected := make([]map[string]interface{}, 0, len(base))
 
@@ -84,11 +139,6 @@ func projectEnabledFlagsWithCache(base []map[string]interface{}, enabled []strin
 		// Check if node:storage is enabled
 		uniqueID := node + ":" + name
 		cpy["Enabled"] = len(enabled) == 0 || enabledMap[uniqueID]
-
-		// Mark as from cache if needed
-		if isFromCache {
-			cpy["IsFromCache"] = true
-		}
 
 		projected = append(projected, cpy)
 	}
@@ -189,6 +239,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 	client := h.stateManager.GetProxmoxClient()
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	clusterSnapshot := h.stateManager.GetProxmoxSnapshot()
 
 	// Get node filter from query parameter (optional, for frontend filtering)
 	node := r.URL.Query().Get("node")
@@ -198,9 +249,16 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 	allStorages := make([]map[string]interface{}, 0)
 	allNodes := make([]string, 0)
-
-	if client == nil || !proxmoxConnected {
-		log.Warn().Bool("connected", proxmoxConnected).Msg("Proxmox not available; rendering page with empty storage list")
+	if clusterSnapshot != nil && len(clusterSnapshot.NodeStorages) > 0 {
+		allNodes = extractNodesFromSnapshot(clusterSnapshot)
+		allStorages = buildStoragesFromSnapshot(clusterSnapshot)
+		log.Info().
+			Int("storage_total", len(allStorages)).
+			Msg("Serving storages from cached Proxmox snapshot")
+	} else if client == nil || !proxmoxConnected {
+		log.Warn().
+			Bool("connected", proxmoxConnected).
+			Msg("Proxmox not available; rendering page with empty storage list")
 	} else {
 		nodeNames, err := proxmox.GetNodeNames(client)
 		if err != nil {
@@ -243,11 +301,12 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 				}
 				return nodeI < nodeJ
 			})
-
-			// Apply enabled flags after deduplication
-			allStorages = projectEnabledFlagsWithCache(allStorages, settings.EnabledStorages, false)
 		}
 		log.Info().Int("storage_total", len(allStorages)).Msg("Total storages prepared for template")
+	}
+
+	if len(allStorages) > 0 {
+		allStorages = projectEnabledFlags(allStorages, settings.EnabledStorages)
 	}
 
 	enabledMap := make(map[string]bool, len(settings.EnabledStorages))
@@ -386,7 +445,7 @@ func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface
 			storCacheMu.Unlock()
 			if ok && time.Now().Before(cached.expiresAt) {
 				log.Debug().Str("node", chosenNode).Time("expiresAt", cached.expiresAt).Msg("storage cache hit")
-				return projectEnabledFlagsWithCache(cached.items, enabled, true), buildEnabledMap(enabled), chosenNode, nil
+				return projectEnabledFlags(cached.items, enabled), buildEnabledMap(enabled), chosenNode, nil
 			}
 		}
 
@@ -402,7 +461,7 @@ func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface
 			storCacheMu.Unlock()
 			if ok {
 				log.Info().Str("node", chosenNode).Msg("Using cached storages as fallback for offline node")
-				return projectEnabledFlagsWithCache(cached.items, enabled, true), buildEnabledMap(enabled), chosenNode, nil
+				return projectEnabledFlags(cached.items, enabled), buildEnabledMap(enabled), chosenNode, nil
 			}
 
 			continue // Try next node
@@ -551,7 +610,6 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 			"Content":      st.Content,
 			"UsedPercent":  percent,
 			"HasValidData": hasValidData,
-			"IsFromCache":  false, // Fresh data from online node
 			"Node":         node,
 		}
 		if st.Avail.String() != "" {
@@ -569,7 +627,7 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 	storCacheMu.Unlock()
 	log.Debug().Str("node", node).Int("items", len(base)).Dur("ttl", cacheTTL).Msg("storage cache updated")
 
-	return projectEnabledFlagsWithCache(base, enabled, false), nil
+	return projectEnabledFlags(base, enabled), nil
 }
 
 // fetchRawStoragesFromNode fetches raw storage data without enabled flags (for deduplication)
@@ -610,42 +668,7 @@ func fetchRawStoragesFromNode(ctx context.Context, node string) ([]map[string]in
 			continue
 		}
 
-		used, usedErr := st.Used.Int64()
-		total, totalErr := st.Total.Int64()
-
-		percent := 0
-		hasValidData := totalErr == nil && usedErr == nil && total >= 0
-
-		if hasValidData {
-			if total > 0 {
-				percent = int((used * 100) / total)
-				if percent < 0 {
-					percent = 0
-				} else if percent > 100 {
-					percent = 100
-				}
-			} else {
-				percent = 0
-			}
-		}
-
-		item := map[string]interface{}{
-			"Storage":      st.Storage,
-			"Type":         st.Type,
-			"Used":         used,
-			"Total":        total,
-			"Description":  st.Description,
-			"Content":      st.Content,
-			"UsedPercent":  percent,
-			"HasValidData": hasValidData,
-			"IsFromCache":  false, // Fresh data
-			"Node":         node,
-		}
-		if st.Avail.String() != "" {
-			if avail, err := st.Avail.Int64(); err == nil {
-				item["Available"] = avail
-			}
-		}
+		item := buildStorageTemplateItem(node, st)
 		base = append(base, item)
 	}
 
@@ -655,4 +678,44 @@ func fetchRawStoragesFromNode(ctx context.Context, node string) ([]map[string]in
 	storCacheMu.Unlock()
 
 	return base, nil
+}
+
+// buildStorageTemplateItem converts a proxmox storage entry to the map used by templates.
+func buildStorageTemplateItem(node string, st proxmox.Storage) map[string]interface{} {
+	used, usedErr := st.Used.Int64()
+	total, totalErr := st.Total.Int64()
+
+	percent := 0
+	hasValidData := totalErr == nil && usedErr == nil && total >= 0
+
+	if hasValidData {
+		if total > 0 {
+			percent = int((used * 100) / total)
+			if percent < 0 {
+				percent = 0
+			} else if percent > 100 {
+				percent = 100
+			}
+		} else {
+			percent = 0
+		}
+	}
+
+	item := map[string]interface{}{
+		"Storage":      st.Storage,
+		"Type":         st.Type,
+		"Used":         used,
+		"Total":        total,
+		"Description":  st.Description,
+		"Content":      st.Content,
+		"UsedPercent":  percent,
+		"HasValidData": hasValidData,
+		"Node":         node,
+	}
+	if st.Avail.String() != "" {
+		if avail, err := st.Avail.Int64(); err == nil {
+			item["Available"] = avail
+		}
+	}
+	return item
 }

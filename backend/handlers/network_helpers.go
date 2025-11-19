@@ -51,6 +51,14 @@ func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]s
 		return nil, nil
 	}
 
+	if snapshot := sm.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.NetworkBridges) > 0 {
+		vmbrs := vmbrsFromSnapshot(snapshot)
+		if len(vmbrs) > 0 {
+			log.Info().Int("vmbr_count", len(vmbrs)).Msg("Serving VMBRs from cached snapshot")
+			return vmbrs, nil
+		}
+	}
+
 	// Respect background connectivity monitor: short-circuit when offline
 	if connected, _ := sm.GetProxmoxStatus(); !connected {
 		log.Warn().Msg("Proxmox reported offline by background monitor; trying cache fallback")
@@ -198,4 +206,31 @@ func collectVMBRsFromCache() []map[string]string {
 		}
 	}
 	return allVMBRs
+}
+
+// vmbrsFromSnapshot flattens the cached snapshot bridges into template-friendly maps.
+func vmbrsFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) []map[string]string {
+	if snapshot == nil {
+		return []map[string]string{}
+	}
+	result := make([]map[string]string, 0)
+	for nodeName, vmbrs := range snapshot.NetworkBridges {
+		for _, vmbr := range vmbrs {
+			if vmbr.Type != "bridge" {
+				continue
+			}
+			result = append(result, map[string]string{
+				"node":        nodeName,
+				"iface":       getVMBRInterface(vmbr),
+				"type":        vmbr.Type,
+				"method":      vmbr.Method,
+				"address":     vmbr.Address,
+				"netmask":     vmbr.Netmask,
+				"gateway":     vmbr.Gateway,
+				"description": buildVMBRDescription(vmbr),
+				"isFromCache": "true",
+			})
+		}
+	}
+	return result
 }

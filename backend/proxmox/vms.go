@@ -291,6 +291,7 @@ type VM struct {
 	Name    string  `json:"name"`
 	Node    string  `json:"node"`
 	Status  string  `json:"status"`
+	Tags    string  `json:"tags"`
 	Uptime  int64   `json:"uptime"`
 	VMID    int     `json:"vmid"`
 }

@@ -177,14 +177,71 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo
 		Str("function", "getVMsWithPVMSSTag").
 		Logger()
 
-	// Create resty client
+	// Prefer cached snapshot VMs when available to avoid repeated config fetches.
+	if snapshot := h.stateManager.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.VMs) > 0 {
+		results := make([]AdminVMInfo, 0, len(snapshot.VMs))
+		for _, vm := range snapshot.VMs {
+			if vm.Tags == "" {
+				continue
+			}
+			// Reuse tag parsing semantics: tags may be separated by ';' and ','.
+			parts := strings.Split(vm.Tags, ";")
+			found := false
+			for _, sp := range parts {
+				sp = strings.TrimSpace(sp)
+				if sp == "" {
+					continue
+				}
+				for _, cp := range strings.Split(sp, ",") {
+					t := strings.ToLower(strings.TrimSpace(cp))
+					if t == "pvmss" {
+						found = true
+						break
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+
+			status := vm.Status
+			if status == "" {
+				status = "unknown"
+			}
+
+			info := AdminVMInfo{
+				VMID:   vm.VMID,
+				Name:   vm.Name,
+				Node:   vm.Node,
+				Status: strings.ToLower(status),
+				Tags:   vm.Tags,
+			}
+			results = append(results, info)
+		}
+
+		if len(results) > 0 {
+			sort.Slice(results, func(i, j int) bool {
+				return results[i].VMID < results[j].VMID
+			})
+			log.Info().
+				Int("total_found", len(results)).
+				Int("total_checked", len(snapshot.VMs)).
+				Msg("Completed filtering VMs with pvmss tag from snapshot")
+			return results, ""
+		}
+		log.Info().Int("total_checked", len(snapshot.VMs)).Msg("No VMs with pvmss tag found in snapshot; falling back to live fetch")
+	}
+
+	// Fallback to live Resty-based implementation when snapshot is unavailable or empty.
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
 		return nil, "Admin.VMs.Error.CreateAPIClient"
 	}
 
-	// Get all VMs from Proxmox using resty
 	allVMs, err := proxmox.GetVMsResty(ctx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get VMs (resty)")
@@ -193,17 +250,14 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo
 
 	log.Info().Int("total_vms", len(allVMs)).Msg("Retrieved all VMs (resty)")
 
-	// Filter VMs with pvmss tag using concurrent config fetch
 	results := make([]AdminVMInfo, 0, len(allVMs))
 	var mu sync.Mutex
-	// Limit parallelism to avoid overwhelming API
 	sem := make(chan struct{}, 8)
 	g, gctx := errgroup.WithContext(ctx)
 
 	for i := range allVMs {
-		vm := allVMs[i] // capture
+		vm := allVMs[i]
 		g.Go(func() error {
-			// Acquire semaphore slot
 			select {
 			case sem <- struct{}{}:
 				defer func() { <-sem }()
@@ -256,7 +310,6 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo
 		log.Warn().Err(err).Msg("Concurrent VM config fetch encountered errors")
 	}
 
-	// Sort by VMID
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].VMID < results[j].VMID
 	})
