@@ -11,13 +11,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/julienschmidt/httprouter"
 	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/middleware"
 	"pvmss/security"
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 // SetFrontendPath stores the frontend path in the state manager
@@ -117,16 +118,20 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Create a new router
 	router := httprouter.New()
 
-	// Configure rate limiter
+	// Configure rate limiter (disabled in automated test environment to avoid
+	// interfering with functional route tests that perform repeated logins).
+	isTestEnv := os.Getenv("GO_TEST_ENVIRONMENT") == "1"
 	rateLimiter := middleware.NewRateLimiter(constants.RateLimitWindow, constants.RateLimitCleanup)
-	rateLimiter.AddRule("POST", "/login", middleware.Rule{
-		Capacity: constants.LoginRateLimitCapacity,
-		Refill:   constants.LoginRateLimitRefill,
-	})
-	rateLimiter.AddRule("POST", "/admin/login", middleware.Rule{
-		Capacity: constants.LoginRateLimitCapacity,
-		Refill:   constants.LoginRateLimitRefill,
-	})
+	if !isTestEnv {
+		rateLimiter.AddRule("POST", "/login", middleware.Rule{
+			Capacity: constants.LoginRateLimitCapacity,
+			Refill:   constants.LoginRateLimitRefill,
+		})
+		rateLimiter.AddRule("POST", "/admin/login", middleware.Rule{
+			Capacity: constants.LoginRateLimitCapacity,
+			Refill:   constants.LoginRateLimitRefill,
+		})
+	}
 
 	// Ensure default tag exists
 	if err := EnsureDefaultTag(stateManager); err != nil {
@@ -223,7 +228,9 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 
 	// Apply middleware that should run for the main app but after sessions
 	appHandler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(appHandler)
-	appHandler = middleware.RateLimitMiddleware(rateLimiter)(appHandler)
+	if !isTestEnv {
+		appHandler = middleware.RateLimitMiddleware(rateLimiter)(appHandler)
+	}
 	appHandler = trailingSlashRedirectMiddleware(appHandler)
 	// Limit request body size globally for the application to mitigate DoS via large uploads
 	appHandler = maxBodySizeMiddleware(appHandler, int64(constants.MaxFormSize))
