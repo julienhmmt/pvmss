@@ -16,21 +16,30 @@ PVMSS (Proxmox Virtual Machine Self-Service) est une application web intuitive p
 
 Pour créer une machine virtuelle, accédez au formulaire de configuration via le bouton "Créer une VM" après vous être connecté à PVMSS. Les paramètres suivants doivent être configurés :
 
-- **Nœud** : Sélectionnez le nœud Proxmox sur lequel la VM sera créée (parmi les nœuds disponibles configurés par les administrateurs).
+- **Nœud** : Sélectionnez le nœud Proxmox sur lequel la VM sera créée (parmi les nœuds disponibles configurés par les administrateurs). Certains nœuds peuvent être désactivés s'ils ont atteint les limites définies par l'administrateur.
 - **Nom et description** : Saisissez un nom unique (caractères alphanumériques, tirets et underscores uniquement) et une description pour identifier votre machine virtuelle.
 - **Système d'exploitation** : Sélectionnez une image ISO parmi une liste prédéfinie par les administrateurs pour installer le système d'exploitation.
 - **Ressources** : Configurez les ressources nécessaires :
-  - **Cœurs CPU** : Nombre de cœurs processeur (dans les limites fixées par les administrateurs)
-  - **Mémoire (RAM)** : Quantité de mémoire en Mo (dans les limites fixées par les administrateurs)
-  - **Taille du disque** : Capacité de stockage en Go (dans les limites fixées par les administrateurs)
-  - **Pont réseau** : Sélectionnez le pont réseau (VMBR) pour la connectivité réseau
+  - **CPU** : Nombre de sockets et de cœurs CPU (dans les limites fixées par les administrateurs)
+  - **Mémoire (RAM)** : Quantité de mémoire en Mo ou en Go (dans les limites fixées par les administrateurs)
+  - **Disques** : Taille du disque principal en Go et, si les administrateurs l'autorisent, un ou plusieurs disques de données supplémentaires
+  - **Type de bus disque** : Bus de stockage utilisé pour les disques (VirtIO, SCSI, SATA, IDE), ce qui peut avoir un impact sur les performances et sur le nombre maximal de disques
+- **Stockage** : Sélectionnez le stockage sur lequel les disques de la VM seront créés, parmi les stockages activés par les administrateurs.
+- **Réseau** : Configurez une ou plusieurs cartes réseau (en fonction de la configuration définie par l'administrateur) :
+  - **Pont réseau** : Sélectionnez le pont réseau (VMBR) pour la connectivité
+  - **Modèle de carte réseau** : Choisissez le modèle (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
+  - **Adresse MAC** : Facultatif, vous pouvez saisir une adresse MAC ou laisser PVMSS en générer une automatiquement
+- **Firmware et sécurité** :
+  - **Démarrage EFI** : Active le firmware UEFI (généralement activé par défaut pour les systèmes modernes)
+  - **TPM (Trusted Platform Module)** : Permet d'activer un TPM v2.0 pour les systèmes qui l'exigent (par exemple Windows 11)
+- **Démarrage** : Choisissez si la VM doit être démarrée automatiquement après sa création.
 - **Tags** : Ajoutez des tags prédéfinis pour organiser et faciliter la recherche de vos machines virtuelles.
 
 **Notes importantes :**
 
 - Vous ne pouvez créer qu'une seule machine à la fois.
 - Les limites de ressources par machine virtuelle (CPU, RAM, disque) sont imposées par les administrateurs.
-- Vous ne pouvez pas modifier les ressources d'une machine virtuelle existante après sa création.
+- Des quotas supplémentaires peuvent s'appliquer, comme un nombre maximum de VMs par utilisateur ou des plafonds globaux par nœud. Si vous atteignez ces limites, vous ne pourrez plus créer de nouvelles VMs tant qu'un administrateur n'aura pas ajusté la configuration.
 
 ### Recherche d'une machine virtuelle
 
@@ -81,12 +90,28 @@ Consultez les informations de configuration détaillées :
 
 ### Gestion du profil
 
-Vous pouvez modifier certaines propriétés de la VM :
+Vous pouvez modifier certaines propriétés de la VM depuis la page de détails de la VM et depuis votre profil :
 
-- **Description** : Mettre à jour la description de la VM
+- **Description** : Mettre à jour la description de la VM (texte simple ou Markdown léger, selon la configuration choisie par l'administrateur)
 - **Tags** : Ajouter ou supprimer des tags pour une meilleure organisation
 
-**Note** : Les ressources matérielles (CPU, RAM, disque) et le choix du pont réseau ne peuvent pas être modifiées après la création de la VM.
+### Modification des ressources d'une machine virtuelle
+
+En plus de la description et des tags, vous pouvez modifier certaines ressources d'une VM existante depuis la page *Détails de la VM*, à condition que la VM soit **arrêtée** :
+
+- **CPU** : Nombre de sockets et de cœurs (dans les limites définies par les administrateurs)
+- **Mémoire (RAM)** : Mémoire allouée en Mo/Go (dans les limites définies par les administrateurs)
+- **Cartes réseau** :
+  - Pont utilisé par chaque carte réseau
+  - Modèle de carte (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
+  - Adresse MAC de chaque carte (optionnelle)
+- **CD-ROM / ISO** : Image ISO chargée dans le lecteur CD-ROM virtuel, ou éjection de l'ISO actuelle
+
+Certaines opérations restent restreintes et peuvent nécessiter la création d'une nouvelle VM puis la copie des données manuellement, par exemple :
+
+- Modifier la taille des disques ou le nombre de disques au-delà de ce que les administrateurs autorisent
+- Migrer vers un autre stockage lorsque ce n'est pas pris en charge automatiquement par Proxmox
+- Effectuer des changements structurels qui ne sont pas exposés dans l'interface PVMSS
 
 ### Accès à la console
 
@@ -140,12 +165,12 @@ L'application PVMSS est gérée par l'équipe informatique de votre organisation
 
 L'application PVMSS ne prend actuellement pas en charge :
 
-- **Modification des ressources** : Vous ne pouvez pas modifier les ressources de la machine virtuelle (CPU, mémoire, stockage, pont réseau) après sa création. Si vous devez modifier les ressources, vous devez créer une nouvelle VM et migrer vos données.
+- **Reconfiguration complète des ressources** : Même si vous pouvez modifier le CPU, la mémoire, les cartes réseau et l'ISO d'une VM arrêtée, certaines opérations restent indisponibles (par exemple l'agrandissement des disques, le changement du nombre de disques au-delà des limites définies par l'administrateur, ou la modification de certains paramètres bas-niveau Proxmox).
 - **Conteneurs LXC** : Seules les machines virtuelles KVM/QEMU sont prises en charge. La création de conteneurs LXC n'est pas disponible.
 - **Snapshots** : La création et la gestion de snapshots de VM ne sont pas disponibles via PVMSS.
 - **Sauvegardes** : Les opérations de sauvegarde et de restauration de VM doivent être effectuées par les administrateurs directement via Proxmox.
 - **Migration en direct** : Le déplacement de VMs entre nœuds n'est pas disponible via PVMSS.
-- **Mise en réseau avancée** : Seule l'assignation de pont réseau de base est prise en charge. Les fonctionnalités de mise en réseau avancées (VLANs, règles de pare-feu, etc.) doivent être configurées par les administrateurs.
+- **Mise en réseau avancée** : Les fonctionnalités de mise en réseau avancées (VLANs, règles de pare-feu, etc.) doivent être configurées par les administrateurs, même si PVMSS supporte plusieurs cartes réseau et plusieurs modèles de cartes.
 - **Accès direct à Proxmox** : PVMSS est conçu comme une interface simplifiée et ne fournit pas l'accès à toutes les fonctionnalités de Proxmox.
 
 ## Sécurité et confidentialité

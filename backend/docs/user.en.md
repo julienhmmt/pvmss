@@ -16,21 +16,30 @@ PVMSS (Proxmox Virtual Machine Self-Service) is an intuitive web application tha
 
 To create a VM, open the configuration form via the "Create VM" button after signing in to PVMSS. Configure the following parameters:
 
-- **Node**: Select the Proxmox node where the VM will be created (among the administrator-configured nodes).
+- **Node**: Select the Proxmox node where the VM will be created (among the administrator-configured nodes). Some nodes may be disabled if they have reached the limits defined by administrators.
 - **Name and description**: Enter a unique name (alphanumeric characters, hyphens, and underscores only) and a description to identify your VM.
 - **Operating system**: Choose an ISO image from a list defined by administrators to install the OS.
 - **Resources**: Configure the required resources:
-  - **CPU cores**: Number of processor cores (within administrator-defined limits)
-  - **Memory (RAM)**: Amount of memory in MB (within administrator-defined limits)
-  - **Disk size**: Storage capacity in GB (within administrator-defined limits)
-  - **Network bridge**: Select the network bridge (VMBR) for network connectivity
+  - **CPU**: Number of CPU sockets and cores (within administrator-defined limits)
+  - **Memory (RAM)**: Amount of memory in MB or GB (within administrator-defined limits)
+  - **Disks**: Size of the main disk in GB and, if allowed by administrators, one or more additional data disks
+  - **Disk bus type**: Storage bus used for disks (VirtIO, SCSI, SATA, IDE), which may impact performance and maximum number of disks
+- **Storage**: Select the storage where the VM disks will be created, among the storages enabled by administrators.
+- **Network**: Configure one or more network cards (depending on administrator settings):
+  - **Network bridge**: Select the network bridge (VMBR) for connectivity
+  - **Network card model**: Choose the adapter model (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
+  - **MAC address**: Optionally specify a MAC address or let PVMSS generate one automatically
+- **Firmware & security**:
+  - **EFI boot**: Enable UEFI firmware (typically enabled by default for modern operating systems)
+  - **TPM (Trusted Platform Module)**: Optionally enable TPM v2.0 for operating systems that require it (for example Windows 11)
+- **Startup**: Choose whether the VM should be started automatically after creation.
 - **Tags**: Add predefined tags to organize your VMs and make them easier to find.
 
 **Important notes:**
 
 - You can create only one VM at a time.
 - Resource limits per VM (CPU, RAM, disk) are imposed by administrators.
-- You cannot modify the resources of an existing VM after it has been created.
+- Additional quotas may apply, such as the maximum number of VMs per user or per node. If you reach these limits, you may not be able to create new VMs until an administrator adjusts the configuration.
 
 ### Searching for a virtual machine
 
@@ -81,12 +90,28 @@ Review detailed configuration information:
 
 ### Profile management
 
-You can update certain VM properties:
+You can update certain VM properties from the VM details page and from your profile:
 
-- **Description**: Update the VM description
+- **Description**: Update the VM description (plain text or simple Markdown, depending on administrator configuration)
 - **Tags**: Add or remove tags for better organization
 
-**Note**: Hardware resources (CPU, RAM, disk) and the network bridge selection cannot be changed after the VM is created.
+### Editing virtual machine resources
+
+In addition to description and tags, you can modify some resources of an existing VM from the *VM details* page, as long as the VM is **stopped**:
+
+- **CPU**: Number of sockets and cores (within the limits defined by administrators)
+- **Memory (RAM)**: Allocated memory in MB/GB (within the limits defined by administrators)
+- **Network cards**:
+  - Bridge used by each network card
+  - Network card model (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
+  - MAC address of each card (optional)
+- **CD-ROM / ISO**: Loaded ISO image for the virtual CD-ROM drive, or ejection of the current ISO
+
+Some operations remain restricted and may still require a new VM to be created by copying data manually, for example:
+
+- Changing disk size or the number of disks beyond what administrators allow
+- Migrating to a different storage backend when not supported by Proxmox
+- Structural changes that are not exposed in the PVMSS interface
 
 ### Console access
 
@@ -140,12 +165,12 @@ The PVMSS application is maintained by your organization's IT team. Contact your
 
 The PVMSS application currently does not support:
 
-- **Resource modification**: You cannot change VM resources (CPU, memory, storage, network bridge) after creation. To adjust resources, create a new VM and migrate your data.
+- **Full resource reconfiguration**: While you can change CPU, memory, network cards and ISO for a stopped VM, some operations remain unavailable (for example, growing disks, changing the number of disks beyond administrator limits, or editing certain low-level Proxmox options).
 - **LXC containers**: Only KVM/QEMU VMs are supported. LXC container creation is unavailable.
 - **Snapshots**: VM snapshot creation and management are not available through PVMSS.
 - **Backups**: VM backup and restore operations must be handled directly by administrators in Proxmox.
 - **Live migration**: Moving VMs between nodes is not available via PVMSS.
-- **Advanced networking**: Only basic network bridge assignment is supported. Advanced networking features (VLANs, firewall rules, etc.) must be configured by administrators.
+- **Advanced networking**: Advanced networking features (VLANs, firewall rules, etc.) must be configured by administrators, even though multiple network cards and network models are supported in PVMSS.
 - **Direct Proxmox access**: PVMSS is designed as a simplified interface and does not provide access to all Proxmox features.
 
 ## Security and privacy
