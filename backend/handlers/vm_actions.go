@@ -249,6 +249,40 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		return
 	}
 
+	if action == "shutdown" {
+		log.Info().Int("vmid", vmidInt).Msg("Waiting for VM to shutdown after guest agent request")
+
+		vmStopped := false
+		for i := 0; i < constants.GuestAgentShutdownMaxAttempts; i++ {
+			if r.Context().Err() != nil {
+				log.Warn().Int("vmid", vmidInt).Msg("Shutdown polling cancelled by request context")
+				break
+			}
+			if i > 0 {
+				time.Sleep(constants.GuestAgentShutdownPollInterval)
+			}
+
+			currentStatus, statusErr := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
+			if statusErr != nil {
+				log.Warn().Err(statusErr).Int("vmid", vmidInt).Int("attempt", i+1).Msg("Failed to get VM status during shutdown polling")
+				break
+			}
+			if currentStatus != nil && currentStatus.Status != "running" {
+				vmStopped = true
+				log.Info().Int("vmid", vmidInt).Int("attempt", i+1).Str("status", currentStatus.Status).Msg("VM stopped after guest agent shutdown")
+				break
+			}
+
+			log.Debug().Int("vmid", vmidInt).Int("attempt", i+1).Msg("VM still running after guest agent shutdown, continuing to poll")
+		}
+
+		if !vmStopped && r.Context().Err() == nil {
+			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentShutdownSlow")
+			return
+		}
+	}
+
 	log.Info().Str("action", action).Int("vmid", vmidInt).Msg("VM action completed successfully")
 
 	ctx := NewHandlerContext(w, r, "VMActionHandler")

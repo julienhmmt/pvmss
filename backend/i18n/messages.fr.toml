@@ -19,3 +19,5 @@ other = "Impossible de modifier l'interface réseau principale pendant l'exécut
 other = "L'agent QEMU n'est pas en cours d'exécution ou ne répond pas. L'arrêt de la VM a échoué car l'agent invité est requis pour un arrêt gracieux. Veuillez utiliser 'Stop' pour forcer l'extinction de la VM, ou installez l'agent invité QEMU dans la VM et réessayez."
 ["VMDetails.QemuGuestAgentOffline"]
 other = "PVMSS est en mode hors ligne ou Proxmox n'est pas disponible. L'arrêt gracieux via l'agent invité QEMU n'est pas possible. Veuillez utiliser 'Stop' ou attendre que le cluster Proxmox soit de nouveau en ligne."
+["VMDetails.QemuGuestAgentShutdownSlow"]
+other = "L'arrêt via l'agent QEMU n'a pas été terminé dans le délai attendu. La VM semble toujours en cours d'exécution. Veuillez attendre encore un peu ou utiliser 'Stop' pour forcer l'arrêt de la VM."

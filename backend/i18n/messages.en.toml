@@ -19,3 +19,5 @@ other = "Cannot modify primary network interface while VM is running"
 other = "QEMU Guest Agent is not running or not responding. The VM shutdown failed because the guest agent is required for graceful shutdown. Please use 'Stop' instead to force power off the VM, or install the QEMU Guest Agent inside the VM and try again."
 ["VMDetails.QemuGuestAgentOffline"]
 other = "PVMSS is running in offline mode or Proxmox is not available. Graceful shutdown via QEMU Guest Agent cannot be performed. Please use 'Stop' instead or wait until the Proxmox cluster is back online."
+["VMDetails.QemuGuestAgentShutdownSlow"]
+other = "QEMU Guest Agent shutdown did not complete within the expected time. The VM still appears to be running. Please wait a bit longer or use 'Stop' to force power off the VM."
