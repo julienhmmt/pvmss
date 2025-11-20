@@ -771,6 +771,14 @@
                                         <span class="tag is-light"><i class="fas fa-clock"></i></span>
                                         <span class="tag is-warning" data-metric="uptime" data-uptime>{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
                                     </div>
+                                    <div class="tags has-addons mb-0" aria-label='{{T "VMDetails.Agent.Label"}}'>
+                                        <span class="tag is-light" title='{{T "VMDetails.Agent.Label"}}'>
+                                            QEMU agent
+                                        </span>
+                                        <span class="tag {{.AgentStatusClass}}" data-agent-status>
+                                            {{T (printf "VMDetails.Agent.Status.%s" .AgentStatusKey)}}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

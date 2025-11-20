@@ -187,3 +187,13 @@ other = "Actualisation..."
 other = "Suppression..."
 ["VMDetails.Action.ConfirmDelete"]
 other = "Êtes-vous sûr de vouloir supprimer cette VM ? Cette action est irréversible."
+["VMDetails.Agent.Label"]
+other = "Agent QEMU Guest"
+["VMDetails.Agent.Status.Available"]
+other = "Disponible"
+["VMDetails.Agent.Status.Unavailable"]
+other = "Indisponible"
+["VMDetails.Agent.Status.Unknown"]
+other = "Inconnu"
+["VMDetails.Agent.Status.Offline"]
+other = "Hors ligne (PVMSS)"

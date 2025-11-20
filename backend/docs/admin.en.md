@@ -242,6 +242,23 @@ PVMSS uses its own logging system (configured with the `LOG_LEVEL` environment v
 
 When investigating issues, always combine `/admin/appinfo`, the **Nodes** and **Limits** pages, and the local PVMSS logs on the host machine. For deeper Proxmox problems (cluster status, storage errors, HA, etc.), refer directly to Proxmox tools and logs.
 
+## QEMU Guest Agent integration
+
+PVMSS does not manage the installation of the **QEMU Guest Agent** inside VMs, but it exposes and consumes its status in several places:
+
+- On the **VM details** page, a small badge labelled *“QEMU Guest Agent”* shows the last known agent state (Available / Unavailable / Unknown / Offline).
+- The **Shutdown** action uses a short health check against the agent:
+  - If the agent is clearly unavailable, PVMSS fails fast with a user-friendly message and suggests using **Stop** instead of waiting for long timeouts.
+  - If the agent is available, PVMSS sends a graceful shutdown request and briefly polls the VM status to confirm that it stops.
+- When `PVMSS_OFFLINE=true` or Proxmox is unreachable, PVMSS does not attempt any agent calls and shows an **Offline (PVMSS)** state in the badge.
+
+From a logging perspective:
+
+- Health checks against the QEMU agent are logged with structured fields (operation, node, VMID, result, duration, error message).
+- Shutdown attempts record whether the agent pre-check passed, whether the shutdown completed within the expected window, or whether it was aborted because of offline mode.
+
+Administrators should monitor these logs to detect recurring problems with guest configurations (for example missing or misconfigured agents on a specific OS image).
+
 ## Operational runbooks
 
 ### Runbook: a user cannot create a VM

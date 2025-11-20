@@ -749,6 +749,23 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 	}
 
+	agentStatusKey := "Unknown"
+	agentStatusClass := "is-light"
+	if stateManager != nil {
+		if connected, _ := stateManager.GetProxmoxStatus(); !connected {
+			agentStatusKey = "Offline"
+			agentStatusClass = "is-warning is-light"
+		} else if vm.Status == "running" {
+			if cachedIfaces, found := getGuestAgentIPsFromCache(vm.Node, vm.VMID); found && len(cachedIfaces) > 0 {
+				agentStatusKey = "Available"
+				agentStatusClass = "is-success is-light"
+			} else if isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
+				agentStatusKey = "Unavailable"
+				agentStatusClass = "is-warning is-light"
+			}
+		}
+	}
+
 	for _, card := range networkCardsData {
 		if card.Bridge != "" {
 			if _, exists := availableVMBRSet[card.Bridge]; !exists {
@@ -840,6 +857,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"NetworkBridges":        networkBridgesStr,
 		"NetworkCards":          networkCardsData,
 		"NetworkInterfaces":     networkInterfaces,
+		"AgentStatusKey":        agentStatusKey,
+		"AgentStatusClass":      agentStatusClass,
 		"ShowDescriptionEditor": showDescriptionEditor,
 		"ShowResourcesEditor":   showResourcesEditor,
 		"ShowTagsEditor":        showTagsEditor,
