@@ -8,8 +8,65 @@
     }
   })();
 </script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var content = document.querySelector('.content');
+    if (!content) {
+      return;
+    }
+
+    // Find the "Table of contents" / "Table des matières" heading and its list
+    var headings = Array.from(content.querySelectorAll('h2'));
+    if (!headings.length) {
+      return;
+    }
+
+    var tocHeading = headings.find(function (h) {
+      var text = (h.textContent || '').trim().toLowerCase();
+      return text === 'table of contents' || text === 'table des matières';
+    });
+
+    if (!tocHeading) {
+      return;
+    }
+
+    var node = tocHeading.nextElementSibling;
+    var tocList = null;
+    while (node) {
+      if (node.tagName && node.tagName.toLowerCase() === 'ul') {
+        tocList = node;
+        break;
+      }
+      node = node.nextElementSibling;
+    }
+
+    if (!tocList) {
+      return;
+    }
+
+    var tocLinks = Array.from(tocList.querySelectorAll('a[href^="#"]'));
+    var targetHeadings = headings.filter(function (h) { return h !== tocHeading; });
+
+    tocLinks.forEach(function (link, index) {
+      if (!targetHeadings[index]) {
+        return;
+      }
+      var href = link.getAttribute('href') || '';
+      if (!href.startsWith('#')) {
+        return;
+      }
+      var id = href.slice(1);
+      if (!id) {
+        return;
+      }
+      targetHeadings[index].id = id;
+    });
+  });
+</script>
 <section class="section">
   <div class="container">
+
+    <div id="top"></div>
 
     <div class="field is-grouped mb-4">
       <p class="control">
@@ -23,4 +80,7 @@
     <div class="content">{{.Content}}</div>
   </div>
 </section>
+<a href="#top" class="button is-small is-light" style="position: fixed; right: 1rem; bottom: 1rem; z-index: 40;" aria-label="Back to top">
+  ↑
+</a>
 {{end}}
