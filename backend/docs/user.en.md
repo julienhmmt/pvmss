@@ -81,6 +81,19 @@ The VM details page provides comprehensive management and monitoring capabilitie
 - **Refresh**: Refresh the VM information (invalidate the cache)
 - **Delete**: Permanently delete the virtual machine (requires confirmation)
 
+#### QEMU guest agent
+
+On the *VM details* page, a small badge labelled **“QEMU guest agent”** indicates the last known status of the QEMU agent inside the guest:
+
+- **Available**: PVMSS has recently received data from the agent (for example IP addresses). Graceful shutdowns are expected to work.
+- **Unavailable**: The guest agent is not installed, not running, or did not respond in time. In this case:
+  - The **Shutdown** action may fail fast with a clear message suggesting to use **Stop**.
+  - You should prefer **Stop** if the VM does not react to Shutdown.
+- **Unknown**: The agent has not been queried recently, or the VM is stopped. PVMSS will try a short agent check the next time you use an action that depends on it.
+- **Offline (PVMSS)**: The application is in **offline mode** and does not call the Proxmox API. In this state, actions relying on the QEMU agent (such as graceful shutdown) are not available.
+
+**Important:** Whenever possible, prefer **Shutdown** (graceful) over **Stop** (forced power off). If you see repeated messages about the QEMU guest agent being unavailable, contact your administrator or install/enable the agent inside the VM.
+
 ### Configuration details
 
 View real-time information about your VM:

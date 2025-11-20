@@ -242,6 +242,25 @@ PVMSS utilise son propre système de logs (configuré via la variable d'environn
 
 Pour investiguer un problème, combinez toujours les informations de `/admin/appinfo`, des rubriques **Nœuds** et **Limites**, ainsi que les logs PVMSS locaux sur le serveur. Pour tout problème plus profond côté Proxmox, référez‑vous directement aux outils et journaux Proxmox.
 
+## Intégration de l'agent invité QEMU
+
+PVMSS ne gère pas l'installation de l'**agent invité QEMU** dans les machines virtuelles, mais il expose et consomme son statut à plusieurs endroits :
+
+- Sur la page **Détails de la VM**, un petit badge intitulé *« Agent invité QEMU »* affiche l'état connu de l'agent (Disponible / Indisponible / Inconnu / Hors ligne).
+- L'action **Arrêt** utilise un court contrôle de santé de l'agent :
+  - Si l'agent est clairement indisponible, PVMSS échoue rapidement avec un message convivial et suggère d'utiliser **Arrêter** au lieu d'attendre de longs timeouts.
+  - Si l'agent est disponible, PVMSS envoie une requête d'arrêt gracieux et interroge brièvement l'état de la VM pour confirmer qu'elle s'arrête.
+  - Si l'agent est clairement indisponible, PVMSS échoue rapidement avec un message convivial et suggère d'utiliser **Arrêter** au lieu d'attendre de longs timeouts.
+  - Si l'agent est disponible, PVMSS envoie une requête d'arrêt gracieux et interroge brièvement l'état de la VM pour confirmer qu'elle s'arrête.
+- Quand `PVMSS_OFFLINE=true` ou que Proxmox est injoignable, PVMSS ne tente aucun appel d'agent et affiche un état **Hors ligne (PVMSS)** dans le badge.
+
+D'après la perspective de journalisation :
+
+- Les contrôles de santé de l'agent QEMU sont journalisés avec des champs structurés (opération, nœud, ID VM, résultat, durée, message d'erreur).
+- Les tentatives d'arrêt enregistrent si le pré-vérification de l'agent a réussi, si l'arrêt s'est terminé dans la fenêtre attendue, ou s'il a été interrompu en raison du mode hors ligne.
+
+Les administrateurs doivent surveiller ces journaux pour détecter les problèmes récurrents liés aux configurations invitées (par exemple agents manquants ou mal configurés sur une image OS spécifique).
+
 ## Runbooks opérationnels
 
 ### Runbook : un utilisateur ne peut pas créer de VM
