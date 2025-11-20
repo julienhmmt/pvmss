@@ -33,7 +33,26 @@
   - Lire les **bridges réseau** (vmbr et sdn) et les **ISOs**.
   - Gérer **utilisateurs et les pools** côté Proxmox.
 
-Compte sensible, qui a des droits élevés sur l'ensemble du cluster. Il est recommandé de limiter son utilisation à des opérations automatisées uniquement et de ne pas l'utiliser pour des tâches manuelles.
+Ce compte est sensible, qui a des droits élevés sur l'ensemble du cluster. Il est recommandé de limiter son utilisation à des opérations automatisées uniquement et de ne pas l'utiliser pour des tâches manuelles.
+
+```bash
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate User.Modify Permissions.Modify Realm.AllocateUser"
+
+pveum useradd pvmss-svc@pve \
+  -comment "PVMSS service account" \
+  -enable 1
+
+pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
+┌──────────────┬──────────────────────────────────────┐
+│ key          │ value                                │
+╞══════════════╪══════════════════════════════════════╡
+│ full-tokenid │ pvmss-svc@pve!pvmss-service-token    │
+├──────────────┼──────────────────────────────────────┤
+│ info         │ {"privsep":"0"}                      │
+├──────────────┼──────────────────────────────────────┤
+│ value        │ secret_value_to_store_in_env         │
+└──────────────┴──────────────────────────────────────┘
+```
 
 ### 2.2 Administrateurs PVMSS (`PVMSS_Admin`)
 
@@ -46,7 +65,19 @@ Compte sensible, qui a des droits élevés sur l'ensemble du cluster. Il est rec
   - Ne pas gérer les comptes utilisateurs existants hors du périmètre de PVMSS.
   - Ne pas accéder aux paramètres système globaux non liés aux VMs.
 
-### 2.3 Utilisateurs finaux PVMSS (`PVMSS_User`)
+Dans Proxmox, ce compte est créé avec les privilèges suivants :
+
+```bash
+pveum roleadd PVMSS_Admin -privs "Sys.Audit VM.Audit VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate User.Modify Permissions.Modify Realm.AllocateUser"
+
+pveum useradd pvmss-admin1@pve \
+  -comment "PVMSS administrator <name>" \
+  -enable 1
+
+pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
+```
+
+### 2.3 Utilisateurs finaux PVMSS (`PVEVMUser`)
 
 - Utilisateurs finaux qui consomment des VMs via PVMSS.
 - Accès typique :
@@ -56,6 +87,8 @@ Compte sensible, qui a des droits élevés sur l'ensemble du cluster. Il est rec
   - Modifier des paramètres limités de leur VM (ex. description, ISO, options cloud-init).
   - Ne pas accéder aux paramètres système globaux non liés aux VMs.
   - Ne pas accéder aux configurations de cluster ou de nœuds.
+
+Le rôle `PVEVMUser` est déjà créé par Proxmox. Il n'est pas nécessaire de le créer manuellement.
 
 ---
 

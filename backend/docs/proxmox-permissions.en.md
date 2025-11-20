@@ -38,11 +38,7 @@ Sensitive account with high privileges on the whole cluster. It is recommended t
 On Proxmox, this account is created with the following privileges:
 
 ```bash
-pveum roleadd PVMSS_Service -privs "Sys.Audit \
-  VM.Audit VM.Allocate VM.PowerMgmt VM.Console \
-  VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit \
-  Datastore.Audit Datastore.AllocateSpace \
-  Pool.Allocate User.Modify Permissions.Modify"
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
 
 pveum useradd pvmss-svc@pve \
   -comment "PVMSS service account" \
@@ -74,7 +70,7 @@ pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 On Proxmox, this account is created with the following privileges:
 
 ```bash
-pveum roleadd PVMSS_Admin -privs "Sys.Audit VM.Audit VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate User.Modify Permissions.Modify"
+pveum roleadd PVMSS_Admin -privs "Sys.Audit VM.Audit VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.HWType VM.GuestAgent.Audit VM.Migrate VM.Config.CDROM VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Audit Group.Allocate"
 
 pveum useradd pvmss-admin1@pve \
   -comment "PVMSS administrator <name>" \
@@ -83,7 +79,7 @@ pveum useradd pvmss-admin1@pve \
 pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 ```
 
-### 2.3 PVMSS end users (`PVMSS_User`)
+### 2.3 PVMSS end users (`PVEVMUser`)
 
 - End users consuming VMs through PVMSS.
 - Typical access:
@@ -94,12 +90,7 @@ pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
   - Do **not** access global system settings unrelated to VMs.
   - Do **not** access cluster or node configuration.
 
-On Proxmox, the `PVMSS_User` role can be created with this line:
-
-```bash
-pveum roleadd PVMSSUser -privs "VM.Audit VM.PowerMgmt VM.Console \
-  VM.Config.CDROM Datastore.Audit Pool.Audit"
-```
+On Proxmox, the `PVEVMUser` is already created by default.
 
 ---
 
