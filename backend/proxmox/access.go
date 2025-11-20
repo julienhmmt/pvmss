@@ -46,6 +46,7 @@ type CreateTicketOptions struct {
 //
 // The ticket is valid for 2 hours and must be sent as a cookie (PVEAuthCookie) in subsequent requests.
 // The CSRFPreventionToken must be included in the header for any state-changing operations (POST, PUT, DELETE).
+// TODO Telmate migration: implement this ticket creation using the Resty client and cookie-based authentication instead of the Telmate ClientInterface.
 func CreateTicket(ctx context.Context, client ClientInterface, username, password string, opts *CreateTicketOptions) (*TicketResponse, error) {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
 		return nil, fmt.Errorf("failed to validate ticket creation params for user %s: %w", username, err)
@@ -109,6 +110,7 @@ func CreateTicket(ctx context.Context, client ClientInterface, username, passwor
 }
 
 // EnsureUser creates a Proxmox user if it does not already exist. This function is idempotent.
+// TODO Telmate migration: replace this Telmate-based admin helper by a Resty-based implementation calling the corresponding /access/users endpoints.
 func EnsureUser(ctx context.Context, client ClientInterface, username, password, email, comment, realm string, enable bool) error {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
 		return fmt.Errorf("failed to validate params for EnsureUser %s: %w", username, err)
@@ -167,6 +169,7 @@ func EnsureUser(ctx context.Context, client ClientInterface, username, password,
 //   - error if the password update fails
 //
 // Note: This requires cookie-based authentication (PVEAuthCookie), not API tokens.
+// TODO Telmate migration: implement this password update using Resty (PUT /access/password) with CSRFPreventionToken and PVEAuthCookie instead of the Telmate client.
 func UpdateUserPassword(ctx context.Context, client ClientInterface, username, password, confirmPassword, realm string) error {
 	if err := validateClientAndParams(client, param{"username", username}, param{"password", password}); err != nil {
 		return fmt.Errorf("failed to validate params for UpdateUserPassword %s: %w", username, err)
@@ -200,6 +203,7 @@ func UpdateUserPassword(ctx context.Context, client ClientInterface, username, p
 }
 
 // EnsurePool creates a Proxmox pool if it is missing. This function is idempotent.
+// TODO Telmate migration: replace this Telmate-based admin helper by a Resty-based implementation calling the /pools endpoints.
 func EnsurePool(ctx context.Context, client ClientInterface, poolID, comment string) error {
 	if err := validateClientAndParams(client, param{"poolID", poolID}); err != nil {
 		return fmt.Errorf("failed to validate params for EnsurePool %s: %w", poolID, err)
@@ -235,6 +239,7 @@ func EnsurePool(ctx context.Context, client ClientInterface, poolID, comment str
 }
 
 // EnsurePoolACL grants a role to a user for a pool. This operation is idempotent on the Proxmox API side.
+// TODO Telmate migration: replace this Telmate-based admin helper by a Resty-based implementation calling the /access/acl endpoint.
 func EnsurePoolACL(ctx context.Context, client ClientInterface, userID, poolID, role string, propagate bool) error {
 	if err := validateClientAndParams(client, param{"userID", userID}, param{"poolID", poolID}, param{"role", role}); err != nil {
 		return fmt.Errorf("failed to validate params for EnsurePoolACL user=%s pool=%s role=%s: %w", userID, poolID, role, err)
@@ -260,6 +265,7 @@ func EnsurePoolACL(ctx context.Context, client ClientInterface, userID, poolID, 
 }
 
 // EnsureRole creates a custom Proxmox role if it does not already exist. This function is idempotent.
+// TODO Telmate migration: replace this Telmate-based admin helper by a Resty-based implementation calling the /access/roles endpoints.
 func EnsureRole(ctx context.Context, client ClientInterface, roleID string, privileges []string) error {
 	if err := validateClientAndParams(client, param{"roleID", roleID}); err != nil {
 		return fmt.Errorf("failed to validate params for EnsureRole %s: %w", roleID, err)

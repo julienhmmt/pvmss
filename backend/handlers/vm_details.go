@@ -429,6 +429,7 @@ type VMStateManager interface {
 }
 
 // VMHandler handles VM-related pages and API endpoints
+// TODO Telmate migration: this handler still relies on Telmate-based helpers (guest agent data, cache invalidation). Replace them with Resty-based helpers and drop the Telmate cache.
 func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := CreateHandlerLogger("VMDetailsHandler", r)
 

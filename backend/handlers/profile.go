@@ -205,6 +205,7 @@ func writeProfileAPIError(w http.ResponseWriter, statusCode int, message string)
 }
 
 // fetchUserVMs retrieves all VMs in the user's pool with their status
+// TODO Telmate migration: this helper still uses the Telmate client for pool membership and node access; migrate these paths to the Resty helpers and remove the Telmate dependency.
 func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.ClientInterface, poolName string) []VMInfo {
 	log := CreateHandlerLogger("fetchUserVMs", nil)
 
@@ -345,6 +346,7 @@ func (h *ProfileHandler) getNodeNames(ctx context.Context, client interface {
 }
 
 // UpdatePassword handles user password change requests
+// TODO Telmate migration: this password change flow still depends on Telmate ticket creation; migrate it to the Resty-based access helpers.
 func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("ProfileHandler.UpdatePassword", r)
 

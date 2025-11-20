@@ -20,9 +20,10 @@ import (
 type appState struct {
 	templates      *template.Template
 	sessionManager *scs.SessionManager
-	proxmoxClient  proxmox.ClientInterface
-	settings       *AppSettings
-	mu             sync.RWMutex
+	// TODO Telmate migration: this field stores the Telmate ClientInterface; remove it once all handlers use Resty-based helpers.
+	proxmoxClient proxmox.ClientInterface
+	settings      *AppSettings
+	mu            sync.RWMutex
 
 	// Proxmox connection status
 	proxmoxConnected bool
@@ -323,6 +324,7 @@ func (s *appState) SetSessionManager(sm *scs.SessionManager) error {
 }
 
 // GetProxmoxClient returns the Proxmox client
+// TODO Telmate migration: this getter is only needed for the Telmate ClientInterface; delete it after the migration and rely on Resty-based helpers instead.
 func (s *appState) GetProxmoxClient() proxmox.ClientInterface {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -330,6 +332,7 @@ func (s *appState) GetProxmoxClient() proxmox.ClientInterface {
 }
 
 // SetProxmoxClient sets the Proxmox client
+// TODO Telmate migration: this setter is only needed for the Telmate ClientInterface; delete it after the migration and rely on Resty-based helpers instead.
 func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
 	if pc == nil {
 		return errors.New("proxmox client cannot be nil")
@@ -381,6 +384,7 @@ func (s *appState) GetProxmoxStatus() (bool, string) {
 }
 
 // CheckProxmoxConnection checks the connection to the Proxmox server and updates the status
+// TODO Telmate migration: reimplement this Proxmox health check using only Resty-based helpers instead of the Telmate client.
 func (s *appState) CheckProxmoxConnection() bool {
 	s.mu.RLock()
 	client := s.proxmoxClient

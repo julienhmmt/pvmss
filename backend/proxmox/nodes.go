@@ -56,6 +56,7 @@ func GetNodeDetails(client ClientInterface, nodeName string) (*NodeDetails, erro
 // GetNodeDetailsWithContext fetches the status of a specific node from the Proxmox API using the provided context.
 // It then unmarshals the raw response into the NodeStatus struct and maps the relevant data
 // into the cleaner, application-friendly NodeDetails struct.
+// TODO Telmate migration: migrate this Telmate-based node helper to the Resty node helper (GetNodeDetailsResty) and remove the ClientInterface dependency.
 func GetNodeDetailsWithContext(ctx context.Context, client ClientInterface, nodeName string) (*NodeDetails, error) {
 
 	// Get node status from Proxmox API
@@ -131,6 +132,7 @@ type NodeInfo struct {
 
 // GetNodeNamesWithContext fetches the list of all configured nodes from the `/nodes` endpoint of the Proxmox API.
 // It parses the response to extract and return a simple slice of node names.
+// TODO Telmate migration: migrate this Telmate-based node helper to the Resty node helper (GetNodeNamesResty) and remove the ClientInterface dependency.
 func GetNodeNamesWithContext(ctx context.Context, client ClientInterface) ([]string, error) {
 
 	// Use the new GetJSON method to directly unmarshal into our typed response

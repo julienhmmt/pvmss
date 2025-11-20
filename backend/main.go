@@ -117,6 +117,7 @@ func initializeApp(stateManager state.StateManager) error {
 		logger.Get().Info().Msg("Environment variable PVMSS_OFFLINE is set to true. Starting in offline mode (Proxmox API calls disabled)")
 		stateManager.SetOfflineMode()
 	} else {
+		// TODO Telmate migration: stop passing a Telmate ClientInterface into the state manager; use Resty-based Proxmox status and health checks instead.
 		proxmoxClient, err := initProxmoxClient()
 		if err != nil {
 			return fmt.Errorf("failed to initialize Proxmox client: %w", err)
@@ -161,6 +162,8 @@ func initializeApp(stateManager state.StateManager) error {
 	return nil
 }
 
+// initProxmoxClient initializes the Telmate-based Proxmox client from environment variables.
+// TODO Telmate migration: replace this bootstrap with a simple Resty-based health check and configuration validation.
 func initProxmoxClient() (*proxmox.Client, error) {
 	proxmoxURL := os.Getenv("PROXMOX_URL")
 	tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")

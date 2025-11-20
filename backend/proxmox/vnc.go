@@ -50,6 +50,8 @@ type VNCProxyOptions struct {
 //	    return err
 //	}
 //	fmt.Printf("VNC Port: %d, Ticket: %s\n", vncProxy.Port, vncProxy.Ticket)
+//
+// TODO Telmate migration: build the VNC proxy ticket using the Resty client with cookie authentication instead of the Telmate ClientInterface.
 func GetVNCProxy(ctx context.Context, client ClientInterface, node string, vmid int, opts *VNCProxyOptions) (*VNCProxyResponse, error) {
 	if err := validateClientAndParams(client, param{"node", node}); err != nil {
 		return nil, fmt.Errorf("failed to validate VNC proxy params for node %s, vmid %d: %w", node, vmid, err)
