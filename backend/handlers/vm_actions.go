@@ -20,6 +20,7 @@ func buildVMDetailsURL(vmid string) string {
 }
 
 // UpdateVMDescriptionHandler updates the VM description (Markdown supported on display)
+// TODO Telmate migration: this handler still uses Telmate-based VM config helpers (for description). Replace them with UpdateVMConfigResty and remove the Telmate client usage.
 func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := NewHandlerContext(w, r, "UpdateVMDescriptionHandler")
 
@@ -69,6 +70,7 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 }
 
 // UpdateVMTagsHandler updates the VM tags from selected checkboxes
+// TODO Telmate migration: this handler still uses Telmate-based VM config helpers (for tags). Replace them with UpdateVMConfigResty and remove the Telmate client usage.
 func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := NewHandlerContext(w, r, "UpdateVMTagsHandler")
 

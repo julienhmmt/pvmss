@@ -139,6 +139,7 @@ func (c *Client) GetWithContext(ctx context.Context, path string) (map[string]in
 }
 
 // GetJSON performs a GET request and unmarshals the response into a target interface.
+// TODO Telmate migration: this Telmate-based JSON helper should be replaced by Resty-based helpers; callers must stop depending on the Telmate client.
 func (c *Client) GetJSON(ctx context.Context, path string, target interface{}) error {
 	rawData, err := c.GetRawWithContext(ctx, path)
 	if err != nil {
@@ -244,6 +245,7 @@ func (c *Client) doJSONRequest(ctx context.Context, method, path string, data ur
 }
 
 // InvalidateCache removes a specific entry from the client's cache.
+// TODO Telmate migration: this cache layer is tied to the Telmate client; once all API calls use Resty, remove this cache or reimplement it on top of RestyClient.
 func (c *Client) InvalidateCache(path string) {
 	if c.lruCache != nil {
 		c.lruCache.Delete(path)
@@ -260,6 +262,7 @@ func (c *Client) ClearCache() {
 }
 
 // CleanExpiredCache removes expired entries from the cache and returns the count.
+// TODO Telmate migration: this cache layer is tied to the Telmate client; once all API calls use Resty, remove this cache or reimplement it on top of RestyClient.
 func (c *Client) CleanExpiredCache() int {
 	if c.lruCache != nil {
 		count := c.lruCache.CleanExpired()

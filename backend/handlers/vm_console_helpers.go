@@ -25,6 +25,8 @@ import (
 //   - VNC ticket string
 //   - VNC port number
 //   - error if ticket creation fails
+//
+// TODO Telmate migration: stop building a Telmate cookie client here; use a Resty-based VNC proxy helper instead.
 func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port int, err error) {
 	log := CreateHandlerLogger("GetVNCProxyTicket", r).With().
 		Str("node", node).
