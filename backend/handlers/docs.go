@@ -93,9 +93,10 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	if found {
 		log.Debug().Str("cache_key", cacheKey).Msg("Serving cached documentation")
 		titleKey := "Docs.User.Title"
-		if docType == "admin" {
+		switch docType {
+		case "admin":
 			titleKey = "Docs.Admin.Title"
-		} else if docType == "proxmox-permissions" {
+		case "proxmox-permissions":
 			titleKey = "Docs.ProxmoxPermissions.Title"
 		}
 		data := map[string]interface{}{
@@ -162,9 +163,10 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	log.Debug().Str("cache_key", cacheKey).Msg("Documentation cached")
 
 	titleKey := "Docs.User.Title"
-	if docType == "admin" {
+	switch docType {
+	case "admin":
 		titleKey = "Docs.Admin.Title"
-	} else if docType == "proxmox-permissions" {
+	case "proxmox-permissions":
 		titleKey = "Docs.ProxmoxPermissions.Title"
 	}
 	data := map[string]interface{}{
