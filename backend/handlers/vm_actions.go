@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/constants"
 	"pvmss/proxmox"
 	"pvmss/utils"
 )
@@ -17,6 +19,47 @@ import (
 // Helper function to build VM details URL with refresh
 func buildVMDetailsURL(vmid string) string {
 	return fmt.Sprintf("/vm/details/%s?refresh=1&ts=%d", vmid, time.Now().Unix())
+}
+
+type agentStatus int
+
+const (
+	agentStatusUnknown agentStatus = iota
+	agentStatusAvailable
+	agentStatusUnavailable
+)
+
+func getGuestAgentStatus(r *http.Request, node string, vmid int) agentStatus {
+	stateManager := getStateManager(r)
+	if stateManager == nil || stateManager.IsOfflineMode() {
+		return agentStatusUnknown
+	}
+
+	if isGuestAgentUnavailableCached(node, vmid) {
+		return agentStatusUnavailable
+	}
+
+	client := stateManager.GetProxmoxClient()
+	if client == nil {
+		return agentStatusUnknown
+	}
+
+	timeout := constants.GuestAgentTimeout
+	if timeout <= 0 {
+		timeout = time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
+	defer cancel()
+
+	interfaces, err := proxmox.GetGuestAgentNetworkInterfaces(ctx, client, node, vmid)
+	if err != nil || len(interfaces) == 0 {
+		cacheGuestAgentUnavailable(node, vmid)
+		return agentStatusUnavailable
+	}
+
+	cacheGuestAgentIPs(node, vmid, interfaces)
+	return agentStatusAvailable
 }
 
 // UpdateVMDescriptionHandler updates the VM description (Markdown supported on display)
@@ -156,6 +199,15 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		log.Error().Msg("Proxmox client not available")
 		RespondWithError(w, r, ErrProxmoxConnection)
 		return
+	}
+
+	if action == "shutdown" {
+		status := getGuestAgentStatus(r, node, vmidInt)
+		if status == agentStatusUnavailable {
+			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentTimeout")
+			return
+		}
 	}
 
 	log.Info().Str("action", action).Int("vmid", vmidInt).Msg("executing VM action")
