@@ -66,6 +66,8 @@
 <section class="section">
   <div class="container">
 
+    <div id="top"></div>
+
     <div class="field is-grouped mb-4">
       <p class="control">
         <a class="button {{if eq .CurrentLang "en"}}is-primary{{else}}is-light{{end}}" href="/set-lang?lang=en">English</a>
@@ -78,4 +80,7 @@
     <div class="content">{{.Content}}</div>
   </div>
 </section>
+<a href="#top" class="button is-small is-light" style="position: fixed; right: 1rem; bottom: 1rem; z-index: 40;" aria-label="Back to top">
+  ↑
+</a>
 {{end}}
