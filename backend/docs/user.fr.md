@@ -2,6 +2,18 @@
 
 PVMSS (Proxmox Virtual Machine Self-Service) est une application web intuitive permettant de créer, gérer et accéder aux consoles des machines virtuelles hébergées sur un serveur Proxmox Virtual Environment, de manière simplifiée.
 
+## Table des matières
+
+- [Guide de démarrage rapide](#guide-de-démarrage-rapide)
+- [Fonctionnalités principales](#fonctionnalités-principales)
+- [Bonnes pratiques](#bonnes-pratiques)
+- [Support](#support)
+- [FAQ](#faq)
+- [PVMSS vs Proxmox](#pvmss-vs-proxmox-ve--que-faire-où-)
+- [Limites connues](#limites-connues)
+- [Sécurité et confidentialité](#sécurité-et-confidentialité)
+- [Astuces et conseils](#astuces-et-conseils)
+
 ## Guide de démarrage rapide
 
 1. **Connexion à l'application** : Connectez-vous à PVMSS à l'aide de vos identifiants pour accéder aux fonctionnalités de création et de gestion des machines virtuelles.
@@ -144,10 +156,10 @@ Si vous rencontrez des problèmes de connexion à la console :
 
 ## Bonnes pratiques
 
-- **Arrêt approprié** : Utilisez toujours le bouton "Éteindre" (arrêt gracieux) plutôt que "Arrêter" lorsque c'est possible pour éviter toute perte de données et garantir que le système d'exploitation s'arrête correctement.
-- **Convention de nommage** : Utilisez des noms clairs et descriptifs conformes aux normes de votre organisation pour vos machines virtuelles. Utilisez uniquement des caractères alphanumériques, des tirets et des underscores.
+- **Arrêt approprié** : Utilisez toujours le bouton "Éteindre" (arrêt gracieux) plutôt que "Arrêter" lorsque c'est possible pour éviter toute perte de données et garantir que le système d'exploitation s'arrête correctement. N'utilisez "Arrêter" ou "Reset" qu'en dernier recours si la VM ne répond plus.
+- **Convention de nommage** : Utilisez des noms clairs et descriptifs conformes aux normes de votre organisation pour vos machines virtuelles. Un schéma courant est `equipe-env-rôle` (par exemple `ml-prod-api`, `etudiants-dev-lab1`). Utilisez uniquement des caractères alphanumériques, des tirets et des underscores.
 - **Planification des ressources** : Planifiez vos besoins en ressources avant de créer une VM. Contactez votre administrateur si vous avez besoin de ressources au-delà des limites configurées.
-- **Organisation par tags** : Utilisez les tags de manière cohérente pour organiser vos VMs et les rendre plus faciles à trouver.
+- **Organisation par tags** : Utilisez les tags de manière cohérente pour organiser vos VMs et les rendre plus faciles à trouver. Privilégiez des tags structurés comme `env:prod`, `env:test`, `team:ml`, `project:monapp` ou `promo:2025` plutôt que du texte libre.
 - **Sécurité de la console** : Fermez la fenêtre de la console lorsqu'elle n'est pas utilisée pour libérer des ressources.
 - **Sécurité des identifiants** : Ne partagez jamais vos identifiants de connexion afin de garantir la sécurité de votre compte et de vos machines virtuelles.
 - **Surveillance régulière** : Vérifiez régulièrement l'utilisation des ressources de votre VM pour vous assurer qu'elle fonctionne efficacement.
@@ -163,6 +175,40 @@ L'application PVMSS est gérée par l'équipe informatique de votre organisation
 - **Problèmes de permissions** : Si vous ne pouvez pas accéder à certaines fonctionnalités ou VMs, contactez votre administrateur.
 - **Problèmes techniques** : Toute erreur, bug ou comportement inattendu dans l'application, contactez votre administrateur.
 - **Demandes de fonctionnalités** : Suggestions pour de nouvelles ISOs, ponts réseau ou autres ressources, contactez votre administrateur.
+
+## FAQ
+
+- **Pourquoi le bouton "Créer une VM" est-il grisé ou désactivé ?**  
+  Vous avez peut-être atteint une limite de ressources ou de quota (par exemple nombre maximum de VMs par utilisateur ou par nœud), le nœud ou le stockage sélectionné peut être désactivé, ou l'application peut fonctionner en mode hors‑ligne. Vérifiez le message d'erreur affiché sur la page et contactez votre administrateur si nécessaire.
+- **Pourquoi je ne peux pas sélectionner plus de CPU, de RAM ou de disque pour ma VM ?**  
+  Les limites par VM sont définies par les administrateurs dans PVMSS. Si vous avez besoin de plus de ressources que la plage autorisée, vous devez demander une augmentation à votre administrateur.
+- **Pourquoi certains nœuds sont-ils indisponibles ou grisés dans le formulaire de création de VM ?**  
+  Les administrateurs peuvent avoir désactivé certains nœuds, ou le nœud peut avoir atteint ses limites agrégées configurées. Dans ce cas, vous devez choisir un autre nœud ou attendre que votre administrateur libère ou augmente les ressources.
+- **Que signifie le mode hors‑ligne pour moi ?**  
+  En mode hors‑ligne, PVMSS n'appelle pas l'API Proxmox. Vous pouvez éventuellement vous connecter et voir des informations mises en cache, mais les opérations comme la création de nouvelles VMs ou la modification des ressources sont temporairement indisponibles tant que les administrateurs n'ont pas rétabli la connectivité.
+- **Que faire si la fenêtre de console reste noire ou ne se connecte pas ?**  
+  Vérifiez d'abord que la VM est en cours d'exécution, puis actualisez la fenêtre de console ou déconnectez-vous/reconnectez-vous à l'application. Si le problème persiste, contactez votre administrateur en indiquant le VMID et l'heure approximative du problème.
+- **Puis-je récupérer une VM supprimée depuis PVMSS ?**  
+  La suppression d'une VM dans PVMSS est définitive du point de vue de l'application. Une récupération n'est possible que si vos administrateurs ont configuré des sauvegardes Proxmox et peuvent restaurer la VM à partir d'une sauvegarde en dehors de PVMSS.
+
+## PVMSS vs Proxmox VE : que faire où ?
+
+PVMSS fournit une interface self‑service simplifiée au‑dessus de Proxmox VE. Le tableau ci‑dessous résume où réaliser les actions les plus courantes :
+
+| Action | PVMSS | Interface Proxmox VE |
+| --- | --- | --- |
+| Créer une VM KVM/QEMU | Oui (création self‑service dans les limites définies par les administrateurs) | Oui (toutes les options de configuration) |
+| Créer un conteneur LXC | Non | Oui |
+| Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options) |
+| Gérer les snapshots | Non | Oui |
+| Lancer des sauvegardes / restaurations | Non | Oui |
+| Migrer des VMs entre nœuds (migration à chaud) | Non | Oui |
+| Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.) | Partiellement (choix du pont et du modèle de carte uniquement) | Oui (pile réseau complète) |
+| Gérer des templates de VM / clonage | Non | Oui |
+| Configurer cloud-init | Non | Oui |
+| Gérer les utilisateurs et permissions | Indirectement (votre compte et votre pool sont gérés par les administrateurs) | Oui (RBAC complet, royaumes, rôles, ACLs) |
+
+Si vous avez besoin d'une fonctionnalité disponible uniquement dans Proxmox VE, contactez vos administrateurs pour qu'ils réalisent l'opération directement ou ajustent votre environnement.
 
 ## Limites connues
 

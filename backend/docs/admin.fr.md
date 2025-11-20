@@ -4,6 +4,18 @@ Ce guide couvre toutes les fonctionnalités administratives et les workflows dis
 
 L'administrateur de l'application PVMSS dispose d'un accès complet à toutes les fonctionnalités de l'application. Il n'y a pas de rôle administrateur distinct, pas de rôle auditeur ou observateur. En naviguant vers la page <http://ip_ou_nom-de-domaine/admin>, vous accéderez à l'interface d'administration après avoir validé la connexion avec le mot de passe administrateur.
 
+## Table des matières
+
+- [Guide de démarrage](#guide-de-démarrage)
+- [Configuration de l'application](#configuration-de-lapplication)
+- [Comparatif PVMSS / Proxmox](#comparatif-des-fonctionnalités--pvmss-vs-proxmox-ve)
+- [Journalisation et diagnostic](#journalisation-et-diagnostic)
+- [Runbooks opérationnels](#runbooks-opérationnels)
+- [Checklist de déploiement](#checklist-de-déploiement-et-de-mise-à-jour)
+- [Sécurité et contrôle d'accès](#recommandations-de-sécurité-et-de-contrôle-daccès)
+- [Glossaire](#glossaire)
+- [Limites connues](#limites-connues)
+
 ## Guide de démarrage
 
 1. Accédez au panneau d'administration sur `/admin` (mot de passe administrateur requis)
@@ -195,6 +207,25 @@ Après création, l'utilisateur peut se connecter à PVMSS avec les identifiants
   - Ouvrir la page de détails de n'importe quelle VM.
   - Utiliser les mêmes actions de cycle de vie et de modification de ressources que celles exposées aux utilisateurs finaux (sous réserve des permissions Proxmox).
 
+## Comparatif des fonctionnalités : PVMSS vs Proxmox VE
+
+PVMSS est une interface self‑service ciblée construite au‑dessus de Proxmox VE. Le tableau suivant résume où réaliser les actions les plus courantes :
+
+| Action | PVMSS | Interface Proxmox VE |
+| --- | --- | --- |
+| Créer une VM KVM/QEMU | Oui (self‑service, contraintes par les limites et presets définis par les admins) | Oui (toutes les options de configuration) |
+| Créer un conteneur LXC | Non | Oui |
+| Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options) |
+| Gérer les snapshots | Non | Oui |
+| Lancer des sauvegardes / restaurations | Non | Oui |
+| Migrer des VMs entre nœuds (migration à chaud) | Non | Oui |
+| Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.) | Partiellement (choix du pont et du modèle de carte uniquement) | Oui (pile réseau complète) |
+| Gérer des templates de VM / clonage | Non | Oui |
+| Configurer cloud-init | Non | Oui |
+| Gérer les utilisateurs et permissions | Oui (création/suppression d'utilisateurs PVMSS et de pools ; s'appuie sur les rôles Proxmox) | Oui (RBAC complet, royaumes, rôles, ACLs) |
+
+Ce comparatif n'est pas exhaustif mais met en avant le fait que PVMSS expose volontairement un sous‑ensemble sécurisé des fonctionnalités Proxmox pour les utilisateurs finaux.
+
 ## Journalisation et diagnostic
 
 PVMSS utilise son propre système de logs (configuré via la variable d'environnement `LOG_LEVEL`). Ces logs sont écrits localement par le backend PVMSS et ne sont **pas** envoyés à Proxmox ni à un système de journalisation externe par défaut.
@@ -210,6 +241,67 @@ PVMSS utilise son propre système de logs (configuré via la variable d'environn
   - Pour déboguer Proxmox lui‑même (nœuds, stockage, cluster, HA, etc.), vous devez continuer à utiliser l'interface et les logs Proxmox.
 
 Pour investiguer un problème, combinez toujours les informations de `/admin/appinfo`, des rubriques **Nœuds** et **Limites**, ainsi que les logs PVMSS locaux sur le serveur. Pour tout problème plus profond côté Proxmox, référez‑vous directement aux outils et journaux Proxmox.
+
+## Runbooks opérationnels
+
+### Runbook : un utilisateur ne peut pas créer de VM
+
+1. Demandez à l'utilisateur le message d'erreur exact et le nœud/stockage sélectionné.
+2. Ouvrez `/admin/limits` et vérifiez :
+   - La valeur globale **`max_vm_per_user`** et le nombre de VMs déjà possédées par cet utilisateur (via `/admin/vms` ou la page Recherche).
+   - Les limites par VM (CPU, RAM, disque) pour confirmer que la configuration demandée est dans la plage autorisée.
+   - Les limites agrégées par nœud afin de voir si un nœud est déjà à ou au‑delà de sa capacité configurée.
+3. Ouvrez les rubriques **Nœuds** et **Stockages** pour vérifier que le nœud et le stockage sélectionnés sont activés et non marqués hors‑ligne ou saturés.
+4. Ouvrez `/admin/appinfo` pour confirmer que PVMSS n'est **pas** en mode `offline` et que le cluster Proxmox est joignable.
+5. Consultez les logs PVMSS sur le serveur pour rechercher des erreurs de quota, de permissions ou d'API Proxmox liées à l'utilisateur ou à la création de VM.
+6. Si nécessaire, ajustez les limites ou la configuration des nœuds/stockages, puis demandez à l'utilisateur de retenter la création en respectant la nouvelle politique.
+
+### Runbook : la console ne fonctionne pas pour plusieurs utilisateurs
+
+1. Confirmez que les VMs concernées sont **démarrées** et accessibles directement depuis l'interface Proxmox.
+2. Vérifiez dans `/admin/appinfo` que PVMSS n'est pas en mode `offline` et que Proxmox est joignable.
+3. Contrôlez la configuration de votre reverse proxy / TLS et que le trafic WebSocket vers PVMSS est autorisé conformément aux standards de votre infrastructure.
+4. Inspectez les logs PVMSS pour détecter d'éventuelles erreurs liées à la console ou aux WebSockets.
+5. Si le problème est limité à une seule VM ou un seul utilisateur, vérifiez ses permissions Proxmox et la configuration réseau de la VM depuis l'interface Proxmox.
+
+## Checklist de déploiement et de mise à jour
+
+- Confirmez que la version cible de Proxmox VE est supportée (9.0 ou supérieure).
+- Configurez les variables d'environnement obligatoires : `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV`, `PVMSS_OFFLINE`, `PVMSS_SETTINGS_PATH`, `ADMIN_PASSWORD_HASH`, `LOG_LEVEL`.
+- Démarrez PVMSS et ouvrez `/admin/appinfo` pour vérifier :
+  - Le mode d'environnement (`development`, `production`, `offline`).
+  - L'URL Proxmox et les paramètres de vérification SSL.
+  - La détection cluster vs standalone et le nombre de nœuds visibles.
+- Configurez, dans l'ordre :
+  - Les nœuds et stockages exposés sur la page *Créer une VM*.
+  - Les images ISO disponibles pour les utilisateurs.
+  - Les ponts réseau (VMBR) et le nombre maximum de cartes réseau.
+  - Les limites de VM, de nœud et d'utilisateur dans la rubrique **Limites**.
+- Créez un utilisateur self‑service temporaire dans `/admin/userpool` et exécutez un test de bout‑en‑bout :
+  - Connexion avec cet utilisateur.
+  - Création d'une VM, démarrage/arrêt, ouverture de la console, puis suppression de la VM.
+- Après une mise à jour, répétez les vérifications `/admin/appinfo` et un court test de bout‑en‑bout avec un utilisateur de test non critique.
+
+## Recommandations de sécurité et de contrôle d'accès
+
+- Exposez PVMSS uniquement en HTTPS (souvent derrière un reverse proxy) et restreignez l'accès aux réseaux de confiance.
+- Utilisez des comptes Proxmox dédiés pour les administrateurs PVMSS ; évitez de partager le mot de passe de l'administrateur intégré.
+- Gardez les permissions Proxmox simples :
+  - Utilisateurs finaux avec le rôle `PVEVMUser` sur leur pool dédié.
+  - Administrateurs PVMSS avec le rôle `PVEAdmin` à la racine de l'arbre Proxmox.
+- Ne donnez pas le rôle `PVEAdmin` à des utilisateurs réguliers ou à des comptes destinés uniquement au self‑service.
+- Passez régulièrement en revue les pools d'utilisateurs et désactivez ou supprimez les comptes et pools inutilisés.
+
+## Glossaire
+
+- **Nœud** : Hôte Proxmox VE qui exécute des machines virtuelles.
+- **VM (Machine virtuelle)** : Invité KVM/QEMU géré par Proxmox et exposé dans PVMSS.
+- **Pool** : Conteneur de ressources Proxmox (par exemple `pvmss_jdupont`) regroupant les VMs d'un utilisateur.
+- **Pont / VMBR** : Pont réseau Proxmox utilisé pour connecter les VMs à un réseau.
+- **Tag** : Étiquette appliquée aux VMs (par exemple `env:prod`, `team:ml`, `promo:2025`) pouvant être utilisée pour le filtrage et la recherche.
+- **Mode hors‑ligne** : Mode PVMSS dans lequel les appels à l'API Proxmox sont désactivés (par exemple lorsque `PVMSS_OFFLINE=true`) ; les opérations self‑service comme la création de VM ne sont alors pas disponibles.
+- **Limites** : Configuration de `/admin/limits` définissant les bornes de ressources par VM, par nœud et par utilisateur.
+- **Utilisateur self‑service** : Utilisateur Proxmox avec un pool dédié `pvmss_<username>` géré via `/admin/userpool`.
 
 ## Limites connues
 

@@ -2,6 +2,18 @@
 
 PVMSS (Proxmox Virtual Machine Self-Service) is an intuitive web application that simplifies creating, managing, and accessing the consoles of virtual machines hosted on a Proxmox Virtual Environment server.
 
+## Table of contents
+
+- [Quick start guide](#quick-start-guide)
+- [Main features](#main-features)
+- [Best practices](#best-practices)
+- [Support](#support)
+- [FAQ](#faq)
+- [PVMSS vs Proxmox](#pvmss-vs-proxmox-ve-what-to-use-for-which-task)
+- [Known limitations](#known-limitations)
+- [Security and privacy](#security-and-privacy)
+- [Tips and tricks](#tips-and-tricks)
+
 ## Quick start guide
 
 1. **Log in to the application**: Sign in to PVMSS with your credentials to access the virtual machine creation and management features.
@@ -144,10 +156,10 @@ If you encounter console connection issues:
 
 ## Best practices
 
-- **Proper shutdown**: Always use the "Shutdown" (graceful) button instead of "Stop" whenever possible to avoid data loss and ensure the OS shuts down cleanly.
-- **Naming convention**: Use clear, descriptive names that follow your organization's standards for your virtual machines. Use only alphanumeric characters, hyphens, and underscores.
+- **Proper shutdown**: Always use the "Shutdown" (graceful) button instead of "Stop" whenever possible to avoid data loss and ensure the OS shuts down cleanly. Use "Stop" or "Reset" only as a last resort when the VM is unresponsive.
+- **Naming convention**: Use clear, descriptive names that follow your organization's standards for your virtual machines. A common pattern is `team-env-role` (for example `ml-prod-api`, `students-dev-lab1`). Use only alphanumeric characters, hyphens, and underscores.
 - **Resource planning**: Plan your resource needs before creating a VM. Contact your administrator if you need resources beyond the configured limits.
-- **Tag organization**: Use tags consistently to organize your VMs and make them easier to locate.
+- **Tag organization**: Use tags consistently to organize your VMs and make them easier to locate. Prefer structured tags such as `env:prod`, `env:test`, `team:ml`, `project:myapp` or `promo:2025` instead of free‑form text.
 - **Console security**: Close the console window when not in use to free resources.
 - **Credential security**: Never share your login credentials to keep your account and VMs secure.
 - **Regular monitoring**: Check your VM's resource usage regularly to ensure it operates efficiently.
@@ -163,6 +175,40 @@ The PVMSS application is maintained by your organization's IT team. Contact your
 - **Permission issues**: Let your administrator know if you cannot access certain features or VMs.
 - **Technical problems**: Report any errors, bugs, or unexpected behavior in the application.
 - **Feature requests**: Suggest new ISOs, network bridges, or other resources through your administrator.
+
+## FAQ
+
+- **Why is the "Create VM" button disabled or greyed out?**  
+  You may have reached a resource or quota limit (for example maximum number of VMs per user or per node), the selected node or storage may be disabled, or the application may be running in offline mode. Check the error message displayed on the page and contact your administrator if needed.
+- **Why can't I select more CPU, RAM, or disk for my VM?**  
+  Per‑VM limits are defined by administrators in PVMSS. If you need more resources than the allowed range, you must request an increase from your administrator.
+- **Why are some nodes unavailable or greyed out in the Create VM form?**  
+  Administrators may have disabled some nodes, or the node may have reached its configured aggregate limits. In that case you must select another node or wait for your administrator to free or extend resources.
+- **What does offline mode mean for me?**  
+  In offline mode, PVMSS does not call the Proxmox API. You may be able to sign in and view cached information, but operations such as creating new VMs or changing resources are temporarily unavailable until administrators restore connectivity.
+- **What should I do if the console window stays black or fails to connect?**  
+  First check that the VM is running, then refresh the console window or sign out and sign back in. If the problem persists, contact your administrator and mention the VMID and approximate time of the issue.
+- **Can I recover a deleted VM from PVMSS?**  
+  Deleting a VM in PVMSS is permanent from the application's perspective. Recovery is only possible if your administrators configured Proxmox backups and can restore the VM from a backup outside of PVMSS.
+
+## PVMSS vs Proxmox VE: what to use for which task
+
+PVMSS provides a simplified self‑service interface on top of Proxmox VE. The table below summarizes where common actions are performed:
+
+| Action | PVMSS | Proxmox VE GUI |
+| --- | --- | --- |
+| Create KVM/QEMU VM | Yes (self‑service creation within administrator‑defined limits) | Yes (full configuration options) |
+| Create LXC container | No | Yes |
+| Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options) |
+| Manage snapshots | No | Yes |
+| Run backups / restores | No | Yes |
+| Live migrate VMs between nodes | No | Yes |
+| Configure advanced networking (VLANs, firewall rules, etc.) | Partially (choose bridge and NIC model only) | Yes (full networking stack) |
+| Manage VM templates / cloning | No | Yes |
+| Configure cloud-init | No | Yes |
+| Manage users and permissions | Indirectly (your account and pool are managed by administrators) | Yes (full RBAC, realms, roles, ACLs) |
+
+If you need a feature that is only available in Proxmox VE, contact your administrators so they can perform the operation directly or adjust your environment.
 
 ## Known limitations
 
