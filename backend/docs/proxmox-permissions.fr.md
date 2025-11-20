@@ -71,7 +71,7 @@ Dans Proxmox, ce compte est créé avec les privilèges suivants :
 pveum roleadd PVMSS_Admin -privs "Sys.Audit VM.Audit VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate User.Modify Permissions.Modify Realm.AllocateUser"
 
 pveum useradd pvmss-admin1@pve \
-  -comment "PVMSS administrator <name>" \
+  -comment "PVMSS administrator <name>" -password "strong_password" \
   -enable 1
 
 pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
