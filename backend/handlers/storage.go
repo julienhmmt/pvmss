@@ -260,6 +260,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 			Bool("connected", proxmoxConnected).
 			Msg("Proxmox not available; rendering page with empty storage list")
 	} else {
+		// TODO Telmate migration: this fallback still uses Telmate-based node listing (GetNodeNames); replace it with a Resty-based node listing helper.
 		nodeNames, err := proxmox.GetNodeNames(client)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting node names")

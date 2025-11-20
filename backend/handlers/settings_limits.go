@@ -156,6 +156,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 }
 
 // UpdateLimitsFormHandler handles POST from admin_limits.html to update VM/Node limits
+// TODO Telmate migration: this handler uses Telmate-based node helpers to validate limits; migrate it to the Resty node helpers and drop the ClientInterface usage.
 func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("UpdateLimitsFormHandler", r)
 

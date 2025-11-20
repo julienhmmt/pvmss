@@ -198,6 +198,7 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 }
 
 // searchVMsOptimized performs VM search with batch API calls and concurrent processing
+// TODO Telmate migration: this search helper still calls GetVMConfigWithContext for tag and pvmss checks; switch to Resty-based VM config helpers and remove the Telmate ClientInterface.
 func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery string, tagQueries []string, username string, isAdmin bool) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("function", "searchVMsOptimized").
@@ -651,6 +652,7 @@ func (h *SearchOptimizedHandler) SearchAPIHandler(w http.ResponseWriter, r *http
 }
 
 // searchVMsAJAX performs VM search for AJAX API with advanced filtering
+// TODO Telmate migration: this AJAX search helper still calls GetVMConfigWithContext for tag and pvmss checks; switch to Resty-based VM config helpers and remove the Telmate ClientInterface.
 func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery string, tagsFilter []string, username string, isAdmin bool, limit int) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("function", "searchVMsAJAX").
