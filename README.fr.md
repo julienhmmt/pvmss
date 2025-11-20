@@ -14,8 +14,6 @@ Version anglaise : [README.md](README.md)
 2. [Fonctionnalités](#fonctionnalités)
 3. [Architecture en un coup d'œil](#architecture-en-un-coup-dœil)
 4. [Configuration](#configuration)
-   - [settings.json](#settingsjson)
-   - [Variables d'environnement](#variables-denvironnement)
 5. [Options de déploiement](#options-de-déploiement)
 6. [Démarrage rapide avec Docker run](#démarrage-rapide-avec-docker-run)
 7. [Démarrer avec Docker compose](#démarrer-avec-docker-compose)
@@ -56,23 +54,61 @@ PVMSS est une application stateless (backend Go + frontend HTML/CSS) qui s'appui
 
 ## Architecture en un coup d'œil
 
-- **Backend** : Go 1.25+, client RESTy pour les API Proxmox, templates HTML protégés CSRF.
+- **Backend** : Go 1.25+, client RESTy pour les API Proxmox, templates HTML basiques.
 - **Frontend** : Basé sur Bulma avec CSS personnalisé.
 - **Authentification** : token API Proxmox pour le backend, sessions utilisateur pour l'UI.
 
 ## Configuration
 
-### Créer un token API sur Proxmox
+### Roles et permissions (obligatoire)
 
-Pour pouvoir utiliser PVMSS, vous devez créer un utilisateur dans votre cluster Proxmox et son token API.
+PVMSS utilise des rôles et des ACLs Proxmox pour fonctionner correctement (compte service, comptes admin, pools utilisateurs).
 
-Sur Proxmox, allez à Datacenter > Permissions > Users. Cliquez sur le bouton “Add” et entrez son nom, sélectionnez le realm `Proxmox VE Authentication` et entrez un mot de passe fort.
+Avant d'utiliser PVMSS en production, vous **devez**:
 
-Ensuite, allez dans Datacenter > Permissions > API Tokens. Cliquez sur le bouton “Add” et sélectionnez l'utilisateur créé précédemment. Entrez le nom du token, décochez la case "Privilege Separation" et copiez la valeur (elle ne sera visible qu'une seule fois).
+- Créer les rôles `PVMSS_Service` et `PVMSS_Admin` avec les privilèges attendus.
+- Créer les utilisateurs Proxmox correspondants, le token API et les ACL.
 
-Enfin, allez à Datacenter > Permissions. Cliquez sur le bouton “Add” et sélectionnez “User Permissions”. Sélectionnez le chemin `/` et sélectionnez l'utilisateur créé précédemment. Choisissez le rôle `PVEAdmin` et cochez la case “Propagate”. Enregistrez.
+Les commandes `pveum` exactes et les privilèges requis sont documentés dans:
 
-### settings.json
+- `backend/docs/proxmox-permissions.fr.md` (dans ce dépôt)
+- La page d'admin intégrée `/docs/proxmox-permissions` (une fois PVMSS démarré)
+
+Vous pouvez créer les rôles et les ACLs en utilisant le `pveum` en ligne de commande. Vous pouvez également les créer en utilisant l'interface web de Proxmox. En tant qu'utilisateur *root*, créez les rôles et les privilèges suivants :
+
+```bash
+# PVMSS_Service
+pveum roleadd PVMSS_Service -privs "Sys.Audit VM.Audit VM.Allocate VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Allocate SDN.Audit SDN.Use"
+
+pveum useradd pvmss-svc@pve -comment "PVMSS service account" \
+  -enable 1
+
+pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
+
+# PVMSS_Admin
+pveum roleadd PVMSS_Admin -privs "Sys.Audit VM.Audit VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.HWType VM.GuestAgent.Audit VM.Migrate VM.Config.CDROM VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate Pool.Audit User.Modify Permissions.Modify Realm.AllocateUser SDN.Audit Group.Allocate"
+
+pveum useradd pvmss-admin1@pve \
+  -comment "PVMSS administrator <name>" -password "strong_password" \
+  -enable 1
+
+pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
+```
+
+Les commandes `pveum` et les informations relatives aux rôles et aux privilèges requis sont détaillées dans :
+
+- `backend/docs/proxmox-permissions.fr.md` (dans ce dépôt)
+- La page d'admin intégrée `/docs/proxmox-permissions` (une fois PVMSS démarré et vous êtes connecté en tant qu'administrateur)
+
+### Créer un token API pour l'utilisateur root@pam
+
+Si vous souhaitez utiliser PVMSS en développement, vous **devez** créer un token API pour l'utilisateur `root@pam`. C'est la manière la plus simple de commencer, mais gardez à l'esprit que c'est la moins sécurisée.
+
+Allez dans Datacenter > Permissions > API Tokens. Cliquez sur le bouton “Add” et sélectionnez l'utilisateur `root@pam`. Tapez le nom du token API, décochez la case "Privilege Separations", et récupérez le secret (sera visible une seule fois).
+
+Vous pouvez maintenant utiliser le token API dans les variables d'environnement `PROXMOX_API_TOKEN_NAME` et `PROXMOX_API_TOKEN_VALUE`.
+
+### Le fichier de configuration settings.json
 
 Le fichier `settings.json` fait office de source de vérité pour les options disponibles aux utilisateurs :
 
@@ -84,6 +120,7 @@ Le fichier `settings.json` fait office de source de vérité pour les options di
   "enabled_storages": [],
   "max_network_cards": 1,
   "max_disk_per_vm": 1,
+  "max_vm_per_user": 3,
   "limits": {
     "nodes": {},
     "vm": {
@@ -149,14 +186,14 @@ docker run -d \
   -e PVMSS_SETTINGS_PATH="/app/settings.json" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.2.0
+  jhmmt/pvmss:0.2.1
 ```
 
 L'application sera accessible sur <http://localhost:50000>.
 
 ## Démarrer avec Docker compose
 
-1. **Créer `settings.json`** (voir [settings.json](#settingsjson)) puis protéger le fichier :
+1. **Créer `settings.json`** (voir [la configuration](#le-fichier-de-configuration-settingsjson)) puis protéger le fichier :
 
    ```bash
    chmod 600 settings.json
@@ -167,7 +204,7 @@ L'application sera accessible sur <http://localhost:50000>.
    ```yaml
    services:
      pvmss:
-       image: jhmmt/pvmss:0.2.0
+       image: jhmmt/pvmss:0.2.1
        container_name: pvmss
        restart: unless-stopped
        ports:
@@ -217,9 +254,14 @@ Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votr
 ## Limites & feuille de route
 
 - Pas encore d'audit de sécurité complet.
-- Cloud-Init non supporté pour l'instant.
-- Intégration OpenID Connect / SSO planifiée mais non disponible.
-- Export avancé des logs (fichiers, syslog distant) planifié.
+- Les clusters volumineux peuvent ralentir PVMSS ou le rendre irresponsive, en raison de trop de requêtes API et de trop de temps d'attente.
+
+### Prochaines évolutions majeures
+
+- Support de Cloud-Init;
+- Intégration OpenID Connect / SSO ;
+- Migration de VM entre les nœuds Proxmox ;
+- Export avancé des logs (fichiers, syslog distant).
 
 Toute suggestion et contribution sont les bienvenues via issues ou pull requests.
 

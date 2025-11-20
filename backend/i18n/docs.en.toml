@@ -7,3 +7,6 @@ other = "Administrator documentation - PVMSS"
 other = "Instructions for using PVMSS and managing your virtual machines"
 ["Docs.User.Title"]
 other = "User documentation - PVMSS"
+
+["Docs.ProxmoxPermissions.Title"]
+other = "Proxmox permissions - PVMSS"

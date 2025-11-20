@@ -19,3 +19,5 @@ other = "Search VM"
 other = "User docs"
 ["Navbar.Profile"]
 other = "Profile"
+["Navbar.ProxmoxPermissions"]
+other = "Proxmox permissions"
