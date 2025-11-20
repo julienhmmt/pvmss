@@ -194,6 +194,17 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		return
 	}
 
+	if stateManager.IsOfflineMode() {
+		if action == "shutdown" {
+			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentOffline")
+			return
+		}
+		log.Error().Msg("Proxmox is offline, VM action not available")
+		RespondWithError(w, r, ErrProxmoxConnection)
+		return
+	}
+
 	client := stateManager.GetProxmoxClient()
 	if client == nil {
 		log.Error().Msg("Proxmox client not available")
