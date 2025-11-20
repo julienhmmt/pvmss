@@ -18,7 +18,7 @@
     - Privileges & Roles : [https://pve.proxmox.com/wiki/User_Management](https://pve.proxmox.com/wiki/User_Management)
     - Proxmox API Viewer : [https://pve.proxmox.com/pve-docs/api-viewer/](https://pve.proxmox.com/pve-docs/api-viewer/)
 
-> **NOTE LLM** : Les noms d’API et de privilèges sont alignés sur l’API Viewer Proxmox, mais la liste exacte de privilèges minimaux doit toujours être validée dans la doc Proxmox, car certaines combinaisons peuvent dépendre de la version de PVE. On utilise Proxmox 9.1.
+> Les noms d’API et de privilèges sont alignés sur l’API Viewer Proxmox, mais la liste exacte de privilèges minimaux doit toujours être validée dans la doc Proxmox, car certaines combinaisons peuvent dépendre de la version de PVE. On utilise Proxmox 9.1.
 
 ---
 
@@ -523,4 +523,4 @@ Cette section fournit un format plus structuré que les agents peuvent parser fa
   - `min_privileges` : `[VM.Console]`
   - `roles` : `[PVMSS_Admin, PVMSS_User]`
 
-> **NOTE FINALE** : Pour tout ajustement fin des privilèges (par exemple séparer `VM.Config.Disk` de `VM.Config.CPU`), se référer impérativement aux sections « Privileges » et « Predefined Roles » de la doc Proxmox, et adapter ce dictionnaire en conséquence.
+> Pour tout ajustement fin des privilèges (par exemple séparer `VM.Config.Disk` de `VM.Config.CPU`), se référer impérativement aux sections « Privileges » et « Predefined Roles » de la doc Proxmox, et adapter ce dictionnaire en conséquence.

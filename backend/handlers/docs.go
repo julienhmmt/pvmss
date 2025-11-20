@@ -66,15 +66,22 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	// Sanitize language code (security)
 	lang = sanitizeLangCode(lang)
 
-	// Determine the documentation type (admin or user)
+	// Determine the documentation type (admin, user or proxmox-permissions)
 	docType := ps.ByName("type")
 	if docType == "" {
 		docType = "user"
 	}
 	// Sanitize doc type (security)
-	if docType != "user" && docType != "admin" {
+	if docType != "user" && docType != "admin" && docType != "proxmox-permissions" {
 		log.Warn().Str("invalid_type", docType).Msg("Invalid doc type, using 'user'")
 		docType = "user"
+	}
+
+	// Restrict Proxmox permissions documentation to admin users only
+	if docType == "proxmox-permissions" && !IsAdmin(r) {
+		log.Warn().Msg("Unauthorized access attempt to proxmox-permissions documentation")
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Forbidden"), http.StatusForbidden)
+		return
 	}
 
 	// Check cache first
@@ -88,6 +95,8 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 		titleKey := "Docs.User.Title"
 		if docType == "admin" {
 			titleKey = "Docs.Admin.Title"
+		} else if docType == "proxmox-permissions" {
+			titleKey = "Docs.ProxmoxPermissions.Title"
 		}
 		data := map[string]interface{}{
 			"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
@@ -155,6 +164,8 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	titleKey := "Docs.User.Title"
 	if docType == "admin" {
 		titleKey = "Docs.Admin.Title"
+	} else if docType == "proxmox-permissions" {
+		titleKey = "Docs.ProxmoxPermissions.Title"
 	}
 	data := map[string]interface{}{
 		"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
