@@ -30,17 +30,51 @@ const (
 )
 
 func getGuestAgentStatus(r *http.Request, node string, vmid int) agentStatus {
+	log := CreateHandlerLogger("GuestAgentStatus", r)
+	start := time.Now()
+
 	stateManager := getStateManager(r)
-	if stateManager == nil || stateManager.IsOfflineMode() {
+	if stateManager == nil {
+		log.Error().
+			Str("operation", "guest_agent_health_check").
+			Str("node", node).
+			Int("vmid", vmid).
+			Str("result", "unknown").
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Msg("Guest agent status check failed: state manager not available")
+		return agentStatusUnknown
+	}
+	if stateManager.IsOfflineMode() {
+		log.Info().
+			Str("operation", "guest_agent_health_check").
+			Str("node", node).
+			Int("vmid", vmid).
+			Str("result", "unknown").
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Msg("Guest agent status: unknown (offline mode)")
 		return agentStatusUnknown
 	}
 
 	if isGuestAgentUnavailableCached(node, vmid) {
+		log.Debug().
+			Str("operation", "guest_agent_health_check").
+			Str("node", node).
+			Int("vmid", vmid).
+			Str("result", "unavailable").
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Msg("Guest agent status: unavailable (cached)")
 		return agentStatusUnavailable
 	}
 
 	client := stateManager.GetProxmoxClient()
 	if client == nil {
+		log.Error().
+			Str("operation", "guest_agent_health_check").
+			Str("node", node).
+			Int("vmid", vmid).
+			Str("result", "unknown").
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Msg("Guest agent status: unknown (Proxmox client not available)")
 		return agentStatusUnknown
 	}
 
@@ -55,10 +89,26 @@ func getGuestAgentStatus(r *http.Request, node string, vmid int) agentStatus {
 	interfaces, err := proxmox.GetGuestAgentNetworkInterfaces(ctx, client, node, vmid)
 	if err != nil || len(interfaces) == 0 {
 		cacheGuestAgentUnavailable(node, vmid)
+		log.Warn().
+			Str("operation", "guest_agent_health_check").
+			Str("node", node).
+			Int("vmid", vmid).
+			Str("result", "unavailable").
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Err(err).
+			Msg("Guest agent status: unavailable (Proxmox agent call failed or no interfaces returned)")
 		return agentStatusUnavailable
 	}
 
 	cacheGuestAgentIPs(node, vmid, interfaces)
+	log.Info().
+		Str("operation", "guest_agent_health_check").
+		Str("node", node).
+		Int("vmid", vmid).
+		Str("result", "available").
+		Int("interface_count", len(interfaces)).
+		Int64("duration_ms", time.Since(start).Milliseconds()).
+		Msg("Guest agent status: available")
 	return agentStatusAvailable
 }
 
@@ -166,6 +216,7 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 // VMActionHandler handles VM lifecycle actions via server-side POST forms
 func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("VMActionHandler", r)
+	start := time.Now()
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
@@ -196,11 +247,24 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 	if stateManager.IsOfflineMode() {
 		if action == "shutdown" {
+			log.Warn().
+				Str("action", action).
+				Str("node", node).
+				Int("vmid", vmidInt).
+				Str("result", "guest_agent_offline").
+				Int64("duration_ms", time.Since(start).Milliseconds()).
+				Msg("Shutdown aborted: Proxmox is offline or PVMSS offline mode active")
 			ctx := NewHandlerContext(w, r, "VMActionHandler")
 			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentOffline")
 			return
 		}
-		log.Error().Msg("Proxmox is offline, VM action not available")
+		log.Error().
+			Str("action", action).
+			Str("node", node).
+			Int("vmid", vmidInt).
+			Str("result", "proxmox_offline").
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Msg("Proxmox is offline, VM action not available")
 		RespondWithError(w, r, ErrProxmoxConnection)
 		return
 	}
@@ -215,10 +279,25 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if action == "shutdown" {
 		status := getGuestAgentStatus(r, node, vmidInt)
 		if status == agentStatusUnavailable {
+			log.Info().
+				Str("action", action).
+				Str("node", node).
+				Int("vmid", vmidInt).
+				Str("result", "guest_agent_unavailable_precheck").
+				Int64("duration_ms", time.Since(start).Milliseconds()).
+				Msg("Guest agent unavailable before shutdown, aborting graceful shutdown")
 			ctx := NewHandlerContext(w, r, "VMActionHandler")
 			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentTimeout")
 			return
 		}
+
+		log.Debug().
+			Str("action", action).
+			Str("node", node).
+			Int("vmid", vmidInt).
+			Str("result", "guest_agent_precheck_ok").
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Msg("Guest agent precheck passed, proceeding with shutdown")
 	}
 
 	log.Info().Str("action", action).Int("vmid", vmidInt).Msg("executing VM action")
@@ -277,13 +356,26 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		}
 
 		if !vmStopped && r.Context().Err() == nil {
+			log.Warn().
+				Str("action", action).
+				Str("node", node).
+				Int("vmid", vmidInt).
+				Str("result", "guest_agent_shutdown_slow").
+				Int64("duration_ms", time.Since(start).Milliseconds()).
+				Msg("Guest agent shutdown did not complete within expected time window")
 			ctx := NewHandlerContext(w, r, "VMActionHandler")
 			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentShutdownSlow")
 			return
 		}
 	}
 
-	log.Info().Str("action", action).Int("vmid", vmidInt).Msg("VM action completed successfully")
+	log.Info().
+		Str("action", action).
+		Str("node", node).
+		Int("vmid", vmidInt).
+		Str("result", "success").
+		Int64("duration_ms", time.Since(start).Milliseconds()).
+		Msg("VM action completed successfully")
 
 	ctx := NewHandlerContext(w, r, "VMActionHandler")
 	ctx.RedirectWithParams(buildVMDetailsURL(vmid), map[string]string{
