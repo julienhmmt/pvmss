@@ -517,8 +517,8 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 		Bool("has_csrf_token", ticketResp.CSRFPreventionToken != "").
 		Msg("Admin authentication successful via Proxmox, checking PVEAdmin role")
 
-	// Check if user has PVEAdmin role - REQUIRED for admin login
-	isAdmin := proxmox.HasRole(ticketResp.Cap, "PVEAdmin")
+	// Check if user has PVEAdmin or PVMSS_Admin role - REQUIRED for admin login
+	isAdmin := proxmox.HasRole(ticketResp.Cap, "PVEAdmin") || proxmox.HasRole(ticketResp.Cap, "PVMSS_Admin")
 	if !isAdmin {
 		log.Info().
 			Str("ip", r.RemoteAddr).

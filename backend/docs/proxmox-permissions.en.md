@@ -35,6 +35,31 @@
 
 Sensitive account with high privileges on the whole cluster. It is recommended to restrict its usage to **automated operations only** and never use it for manual tasks.
 
+On Proxmox, this account is created with the following privileges:
+
+```bash
+pveum roleadd PVMSS_Service -privs "Sys.Audit \
+  VM.Audit VM.Allocate VM.PowerMgmt VM.Console \
+  VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit \
+  Datastore.Audit Datastore.AllocateSpace \
+  Pool.Allocate User.Modify Permissions.Modify"
+
+pveum useradd pvmss-svc@pve \
+  -comment "PVMSS service account" \
+  -enable 1
+
+pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
+┌──────────────┬──────────────────────────────────────┐
+│ key          │ value                                │
+╞══════════════╪══════════════════════════════════════╡
+│ full-tokenid │ pvmss-svc@pve!pvmss-service-token    │
+├──────────────┼──────────────────────────────────────┤
+│ info         │ {"privsep":"0"}                      │
+├──────────────┼──────────────────────────────────────┤
+│ value        │ secret_value_to_store_in_env         │
+└──────────────┴──────────────────────────────────────┘
+```
+
 ### 2.2 PVMSS administrators (`PVMSS_Admin`)
 
 - Human administrators of PVMSS.
@@ -46,6 +71,18 @@ Sensitive account with high privileges on the whole cluster. It is recommended t
   - Do **not** manage existing user accounts outside the scope of PVMSS.
   - Do **not** access global system settings unrelated to VMs.
 
+On Proxmox, this account is created with the following privileges:
+
+```bash
+pveum roleadd PVMSS_Admin -privs "Sys.Audit VM.Audit VM.PowerMgmt VM.Console VM.Config.CPU VM.Config.Memory VM.Config.Disk VM.Config.Network VM.Config.Options VM.Config.Cloudinit Datastore.Audit Datastore.AllocateSpace Pool.Allocate User.Modify Permissions.Modify"
+
+pveum useradd pvmss-admin1@pve \
+  -comment "PVMSS administrator <name>" \
+  -enable 1
+
+pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
+```
+
 ### 2.3 PVMSS end users (`PVMSS_User`)
 
 - End users consuming VMs through PVMSS.
@@ -56,6 +93,13 @@ Sensitive account with high privileges on the whole cluster. It is recommended t
   - Edit a limited subset of VM settings (e.g. description, ISO, cloud-init options).
   - Do **not** access global system settings unrelated to VMs.
   - Do **not** access cluster or node configuration.
+
+On Proxmox, the `PVMSS_User` role can be created with this line:
+
+```bash
+pveum roleadd PVMSSUser -privs "VM.Audit VM.PowerMgmt VM.Console \
+  VM.Config.CDROM Datastore.Audit Pool.Audit"
+```
 
 ---
 
