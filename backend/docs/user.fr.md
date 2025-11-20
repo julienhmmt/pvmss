@@ -81,6 +81,19 @@ La page de détails de la VM fournit des capacités complètes de gestion et de 
 - **Actualiser** : Rafraîchir les informations de la VM (invalidation du cache)
 - **Supprimer** : Supprimer définitivement la machine virtuelle (nécessite une confirmation)
 
+#### QEMU guest agent
+
+Sur la page *Détails de la VM*, un petit badge intitulé **“QEMU guest agent”** indique l'état connu de l'agent QEMU à l'intérieur de la machine virtuelle :
+
+- **Disponible** : PVMSS a récemment reçu des données de l'agent (par exemple les adresses IP). Les arrêts gracieux devraient fonctionner.
+- **Indisponible** : L'agent invité n'est pas installé, n'est pas en cours d'exécution, ou n'a pas répondu à temps. Dans ce cas :
+  - L'action **Éteindre** peut échouer rapidement avec un message clair suggérant d'utiliser **Arrêter**.
+  - Vous devriez préférer **Arrêter** si la VM ne réagit pas à Éteindre.
+- **Inconnu** : L'agent n'a pas été interrogé récemment, ou la VM est arrêtée. PVMSS tentera un bref contrôle de l'agent la prochaine fois que vous utiliserez une action qui en dépend.
+- **Hors ligne (PVMSS)** : L'application est en **mode hors ligne** et n'appelle pas l'API Proxmox. Dans cet état, les actions dépendant de l'agent QEMU (comme l'arrêt gracieux) ne sont pas disponibles.
+
+**Important** : Préférez toujours **Éteindre** (arrêt gracieux) plutôt que **Arrêter** (arrêt forcé). Si vous voyez des messages répétés sur l'agent QEMU invité indisponible, contactez votre administrateur ou installez/activez l'agent à l'intérieur de la VM.
+
 ### Détails de configuration
 
 Consultez les informations en temps réel sur votre machine virtuelle :

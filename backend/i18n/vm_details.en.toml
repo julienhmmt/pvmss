@@ -187,3 +187,13 @@ other = "Refreshing..."
 other = "Deleting..."
 ["VMDetails.Action.ConfirmDelete"]
 other = "Are you sure you want to delete this VM? This action cannot be undone."
+["VMDetails.Agent.Label"]
+other = "QEMU Guest Agent"
+["VMDetails.Agent.Status.Available"]
+other = "Available"
+["VMDetails.Agent.Status.Unavailable"]
+other = "Unavailable"
+["VMDetails.Agent.Status.Unknown"]
+other = "Unknown"
+["VMDetails.Agent.Status.Offline"]
+other = "Offline (PVMSS)"
