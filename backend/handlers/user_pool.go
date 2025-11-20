@@ -548,6 +548,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	privileges := []string{
 		"VM.Audit",        // View VM status and configuration
 		"VM.PowerMgmt",    // Start, stop, reset VMs
+		"VM.Console",      // Access VM console (required for noVNC)
 		"VM.Config.CDROM", // Mount ISO files
 		"Datastore.Audit", // View datastore status
 		"Pool.Audit",      // View pool contents
