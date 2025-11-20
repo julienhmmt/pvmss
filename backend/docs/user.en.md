@@ -8,7 +8,7 @@ PVMSS (Proxmox Virtual Machine Self-Service) is an intuitive web application tha
 2. **Search for virtual machines**: Use the search function to locate a specific VM by its name or VMID and view its details.
 3. **Create a virtual machine**: Click the "Create VM" button to open the configuration form, then fill in the required parameters.
 4. **Access the console**: After the VM is created and started, click the "Console" button to connect to its graphical interface through the integrated noVNC web client.
-5. **Manage your profile**: Open your profile to review and update your description and manage the tags assigned to you.
+5. **Manage your profile**: Open your profile to view your personal VM list, see how many VMs are running or stopped, and change your password if needed.
 
 ## Main features
 
@@ -43,13 +43,14 @@ To create a VM, open the configuration form via the "Create VM" button after sig
 
 ### Searching for a virtual machine
 
-Use the search function to locate a VM by its **name** or **VMID** (unique identifier assigned to each VM by Proxmox). The search is case-insensitive and supports partial matches.
+Use the search function to locate a VM by its **name**, **VMID**, or associated **tags** (for example, environment or project tags). The search is case-insensitive and supports partial matches.
 
 The results list shows:
 
 - The VMID
 - The VM name
 - The node hosting the VM
+- The tags associated with the VM (excluding the internal `pvmss` tag)
 - The current status (running, stopped, etc.)
 - The "VM Details" button (to view complete VM information and access advanced management features)
 
@@ -90,10 +91,12 @@ Review detailed configuration information:
 
 ### Profile management
 
-You can update certain VM properties from the VM details page and from your profile:
+You can update certain VM properties from the *VM details* page:
 
 - **Description**: Update the VM description (plain text or simple Markdown, depending on administrator configuration)
 - **Tags**: Add or remove tags for better organization
+
+Your **Profile** page shows a summary of your VMs (total, running, stopped) and provides a secure form to change your password.
 
 ### Editing virtual machine resources
 

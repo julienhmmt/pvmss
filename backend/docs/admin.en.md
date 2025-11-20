@@ -32,6 +32,17 @@ This section (accessible at `/admin/appinfo`) provides a read-only overview of t
 
 Use this page to quickly validate that the instance is running with the expected configuration and connected to the correct Proxmox environment.
 
+#### Example workflow: diagnose Proxmox connection and offline mode
+
+1. Open `/admin/appinfo` and check the **Environment** badge:
+   - `production` means normal online mode,
+   - `development` means you are running a dev build,
+   - `offline` means `PVMSS_OFFLINE=true` and Proxmox API calls are disabled by design.
+2. Verify the **environment variables** table for `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV` and `PVMSS_OFFLINE` to ensure they match your expected deployment configuration.
+3. In the **Proxmox information** section, check whether PVMSS detects a cluster or standalone mode and how many nodes are visible.
+4. If the application reports offline mode or cannot reach Proxmox, review the backend logs on the PVMSS host (see "Logging and diagnostics" below) to identify connection errors or misconfiguration.
+5. Once the configuration is fixed (environment variables, network connectivity, Proxmox permissions), restart PVMSS and refresh `/admin/appinfo` to confirm the expected environment and cluster status.
+
 ### Node management
 
 This section displays the list of all Proxmox VE hosts, with a display showing current CPU and memory consumption. Server status (Online, offline) is also displayed.
@@ -88,6 +99,36 @@ Parameters for node limits are saved in a JSON format file (path: `{"limits": {"
 
 Finally, a **User limits** section lets you define the **maximum number of VMs per user** (`max_vm_per_user`). This global limit is stored alongside the other settings (for example: `{"max_vm_per_user": 5}`) and is enforced when users try to create new VMs.
 
+#### Example workflow: adjust limits when a user or node is saturated
+
+1. From `/admin/vms` and the **Nodes** page, identify the node or user that is reaching CPU, memory, or VM count limits (for example, a node with very high usage or a user with many VMs).
+2. Open `/admin/limits` and review the current **VM limits**, **node limits**, and **user limits**.
+3. Decide whether you want to:
+   - Increase or decrease the global per‑VM limits (CPU, RAM, disk),
+   - Tighten or relax the aggregate limits for the affected node(s),
+   - Adjust `max_vm_per_user` for all users.
+4. Apply the changes and save the configuration. PVMSS will immediately enforce the new limits for subsequent VM creations and resource modifications.
+5. Inform the impacted users of the new limits and, if necessary, ask them to shut down or delete VMs to comply with the updated policy.
+
+### Global VM overview (Admin VMs)
+
+This section (accessible at `/admin/vms`) provides a cluster-wide overview of all VMs known to PVMSS:
+
+- A **summary badge** shows the total number of VMs across all nodes.
+- A **table** lists each VM with its VMID, name, node, status, and tags.
+- An **action button** on each row opens the VM details page, where lifecycle actions (start, stop, shutdown, reset, console) and resource edits (when the VM is stopped) are available.
+- A **link to the search page** allows administrators to switch to more advanced filters.
+
+Administrators cannot create new VMs from this page; it is strictly a monitoring and navigation view over existing VMs.
+
+#### Example workflow: audit the VMs of a specific user
+
+1. Open `/admin/userpool` and locate the user you want to audit. Note the Proxmox pool name (for example `pvmss_training`).
+2. Ask the user to provide the names or tags of the VMs they have created, if needed.
+3. Open `/admin/vms` and use the table, combined with the **Search** page, to locate these VMs by VMID, name, tags, or node.
+4. For each VM, open the **VM details** page to review its configuration (CPU, memory, disks, network, EFI/TPM) and recent actions.
+5. If you detect issues (for example, too many VMs on the same node or misconfigured resources), coordinate with the user and adjust limits or VM settings as appropriate.
+
 ### User management
 
 This section allows you to manage PVMSS application users. Rather than storing users in a database, users are directly created in the Proxmox VE node, using the provided API.
@@ -97,6 +138,25 @@ A user account consists of a username, a realm, a password, and a role. The real
 So that each user can have their VMs in a single unique folder, a Proxmox pool is created for each user, whose name consists of `pvmss_` and the username.
 
 For example, for the user `essai`, the pool will be `pvmss_essai` and their account will be `essai@pve`. It is not possible to modify the user account, but it is possible to delete it. This deletion will also delete the Proxmox pool and all associated VMs.
+
+### User pool management
+
+This section (accessible at `/admin/userpool`) provides a convenient interface to manage the **`pvmss_*` pools** and their corresponding users:
+
+- A **creation form** lets you create a new user by specifying a username, password, and optional comment.
+- Each created user is stored directly in Proxmox with the `PVEVMUser` role and associated with a dedicated pool named `pvmss_<username>`.
+- A **table of existing pools** shows, for each user, the Proxmox pool name, optional comment, and the number of VMs in that pool.
+- For each pool, you can **refresh** the VM count and **delete** the pool and its user account (which also deletes all associated VMs).
+
+This page is the main entry point for administrators to manage self‑service users of PVMSS.
+
+#### Example workflow: create a self-service user and review their VMs
+
+1. Open `/admin/userpool` and create a new user by filling in the username, password, and optional comment, then submit the form.
+2. Communicate the PVMSS URL and this new username/password to the user.
+3. Ask the user to sign in to PVMSS, then use the **Create VM** page to create one or more VMs in their dedicated `pvmss_<username>` pool.
+4. As an administrator, open `/admin/vms` to see the newly created VMs in the global list, or use the **Search** page to filter by VMID, name, tags, or node.
+5. If needed, adjust **VM limits**, **node limits** or **user limits** on the **Limits** page to control how many resources this user and their VMs can consume.
 
 ### Administrator accounts
 
@@ -125,8 +185,37 @@ pveum aclmod / -user admin-user@pve -role PVEAdmin
 
 After creation, the user can log in to PVMSS using `admin-user@pve` credentials and will automatically have access to the admin interface.
 
+#### Administrator capabilities on user virtual machines
+
+- Administrator accounts are **not** associated with a dedicated PVMSS pool, and therefore do not have a "Create VM" workflow in the admin interface.
+- To create self‑service VMs, administrators must either:
+  - Log in as a regular PVMSS user (with its own `pvmss_*` pool), or
+  - Create and manage VMs directly from the Proxmox interface.
+- From the PVMSS admin interface, administrators can **view and manage user VMs** via the *Search* page and the *Admin VMs* page:
+  - Open the VM details page for any VM.
+  - Use the same lifecycle and resource actions exposed to end‑users (subject to Proxmox permissions).
+
+## Logging and diagnostics
+
+PVMSS uses its own logging system (configured with the `LOG_LEVEL` environment variable). These logs are written locally by the PVMSS backend process and are **not** forwarded to Proxmox or any external logging system by default.
+
+- **Scope of PVMSS logs**:
+  - Application startup and shutdown events.
+  - HTTP request handling and internal errors.
+  - Proxmox API calls made by PVMSS and any associated failures.
+  - Background workers (cache refresh, guest agent cache, etc.).
+- **Not a Proxmox monitoring solution**:
+  - Only errors and warnings returned by Proxmox during API calls appear in PVMSS logs.
+  - PVMSS does **not** collect or expose full Proxmox cluster logs, syslog, or task history.
+  - You must continue to use the Proxmox interface and its own logs to debug Proxmox issues, nodes, storage, or cluster services.
+
+When investigating issues, always combine `/admin/appinfo`, the **Nodes** and **Limits** pages, and the local PVMSS logs on the host machine. For deeper Proxmox problems (cluster status, storage errors, HA, etc.), refer directly to Proxmox tools and logs.
+
 ## Known limitations
 
 - The PVMSS application is designed to work on Proxmox VE 9.0 servers and higher
 - It is not possible to connect an external authentication system to the PVMSS application (OIDC, SAML, etc.)
 - PVMSS supports both standalone Proxmox servers and Proxmox clusters, but advanced cluster operations (such as live migration, high availability configuration, or backup orchestration) must still be performed directly from the Proxmox interface.
+- There is **no built-in VM templating system** or catalog of reusable VM models in PVMSS. VM templates and advanced cloning workflows must be managed directly from Proxmox.
+- PVMSS does **not** currently integrate with **cloud-init**. Cloud-init user data, SSH keys injection, and similar guest customization features must be configured directly in Proxmox or inside the guest operating system.
+- Administrators **cannot create VMs from the admin interface**; VM creation is only available in the self‑service user interface or directly in Proxmox.

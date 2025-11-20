@@ -8,7 +8,7 @@ PVMSS (Proxmox Virtual Machine Self-Service) est une application web intuitive p
 2. **Recherche de machines virtuelles** : Utilisez la fonction de recherche pour localiser une machine virtuelle spécifique par son nom ou son VMID et consulter ses détails.
 3. **Création d'une machine virtuelle** : Cliquez sur le bouton "Créer une VM" pour ouvrir le formulaire de configuration, puis renseignez les paramètres requis.
 4. **Accès à la console** : Une fois la machine virtuelle créée et démarrée, cliquez sur le bouton "Console" pour vous connecter à son interface graphique via le client web noVNC intégré.
-5. **Gestion du profil** : Accédez à votre profil pour consulter et modifier votre description et gérer les tags qui vous sont assignés.
+5. **Gestion du profil** : Accédez à votre profil pour consulter la liste de vos VMs, voir combien sont en cours d'exécution ou arrêtées, et changer votre mot de passe si nécessaire.
 
 ## Fonctionnalités principales
 
@@ -43,13 +43,14 @@ Pour créer une machine virtuelle, accédez au formulaire de configuration via l
 
 ### Recherche d'une machine virtuelle
 
-Utilisez la fonction de recherche pour localiser une machine virtuelle par son **nom** ou son **VMID** (identifiant unique attribué à chaque machine virtuelle par Proxmox). La recherche est insensible à la casse et supporte la correspondance partielle.
+Utilisez la fonction de recherche pour localiser une machine virtuelle par son **nom**, son **VMID** ou ses **tags** associés (par exemple un environnement ou un projet). La recherche est insensible à la casse et supporte la correspondance partielle.
 
 Une liste de résultats s'affichera en fonction des critères saisis, affichant :
 
 - Le VMID
 - Le nom de la VM
-- Le node sur lequel la VM est hébergée
+- Le nœud sur lequel la VM est hébergée
+- Les tags associés à la VM (hors tag interne `pvmss`)
 - L'état actuel (en cours d'exécution, arrêté, etc.)
 - Le bouton "Détails de la VM" (pour consulter les informations complètes de la machine virtuelle et accéder aux fonctionnalités de gestion avancées).
 
@@ -90,10 +91,12 @@ Consultez les informations de configuration détaillées :
 
 ### Gestion du profil
 
-Vous pouvez modifier certaines propriétés de la VM depuis la page de détails de la VM et depuis votre profil :
+Vous pouvez modifier certaines propriétés de la VM depuis la page *Détails de la VM* :
 
 - **Description** : Mettre à jour la description de la VM (texte simple ou Markdown léger, selon la configuration choisie par l'administrateur)
 - **Tags** : Ajouter ou supprimer des tags pour une meilleure organisation
+
+Votre **profil** affiche un résumé de vos VMs (nombre total, en cours d'exécution, arrêtées) et fournit un formulaire sécurisé pour changer votre mot de passe.
 
 ### Modification des ressources d'une machine virtuelle
 
