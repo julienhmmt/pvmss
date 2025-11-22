@@ -37,12 +37,27 @@ type NodeISOGroup struct {
 	ISOs []ISOEntry `json:"isos"`
 }
 
-// fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls
-func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, error) {
+// isoPerStorageTimeout defines the maximum duration allowed for querying a single
+// storage's ISO content. This prevents a slow or unresponsive backend (e.g. cephfs)
+// from blocking or cancelling the entire ISO listing.
+const isoPerStorageTimeout = 15 * time.Second
+
+// fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls.
+// It also returns the number of storages that failed to list their ISO content and a list of failed storage details.
+func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, int, []string, error) {
+	log := logger.Get().With().Str("function", "fetchAllISOs").Logger()
+
+	// Check if incoming context is already cancelled
+	if ctx.Err() != nil {
+		log.Error().Err(ctx.Err()).Msg("Incoming context is already cancelled before ISO fetch")
+		return nil, 0, nil, fmt.Errorf("incoming context cancelled: %w", ctx.Err())
+	}
+	log.Debug().Msg("Starting ISO fetch with valid context")
+
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resty client for ISO retrieval: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to create resty client for ISO retrieval: %w", err)
 	}
 
 	// Use errgroup for concurrent API calls
@@ -73,7 +88,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 
 	// Wait for all goroutines to complete
 	if err := g.Wait(); err != nil {
-		return nil, fmt.Errorf("failed to fetch nodes/storages for ISO retrieval: %w", err)
+		return nil, 0, nil, fmt.Errorf("failed to fetch nodes/storages for ISO retrieval: %w", err)
 	}
 
 	enabledSet := make(map[string]struct{})
@@ -90,6 +105,8 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 	var wg sync.WaitGroup
 	// Semaphore to limit concurrent API calls to Proxmox (avoid overloading)
 	semaphore := make(chan struct{}, 5)
+	failedStorages := 0
+	failedStorageDetails := make([]string, 0)
 
 	// For each node, get ISOs from each compatible storage
 	for _, nodeName := range nodes {
@@ -103,6 +120,25 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 			wg.Add(1)
 			go func(n, s string) {
 				defer wg.Done()
+			// Create a fresh context for each storage to avoid context cancellation issues
+			// Use background context with timeout instead of inheriting from parent
+			storageCtx, storageCancel := context.WithTimeout(context.Background(), isoPerStorageTimeout)
+			isoList, err := proxmox.GetISOListResty(storageCtx, restyClient, nodeName, storage.Storage)
+			storageCancel()
+			if err != nil {
+				failedStorages++
+				// Collect failed storage details
+				detail := fmt.Sprintf("%s (%s)", storage.Storage, nodeName)
+				failedStorageDetails = append(failedStorageDetails, detail)
+
+				logger.Get().Warn().Err(err).
+					Str("node", nodeName).
+					Str("storage", storage.Storage).
+					Str("storage_type", storage.Type).
+					Str("content", storage.Content).
+					Msg("Failed to get ISO list for storage, skipping")
+				continue
+			}
 
 				// Acquire semaphore
 				select {
@@ -250,21 +286,51 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 
 	// Return early if Proxmox not connected
 	if !data["ProxmoxConnected"].(bool) {
-		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError")
+		data["Warning"] = true
+		data["WarningMessage"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError")
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 90*time.Second)
 	defer cancel()
 
 	// Fetch all ISOs with enabled check
-	isos, err := h.fetchAllISOs(ctx, true)
+	isos, failedStorages, failedStorageDetails, err := h.fetchAllISOs(ctx, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
-		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources")
+		data["Warning"] = true
+		data["WarningMessage"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources")
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
+	}
+
+	// If some storages failed to list their content, show a non-blocking warning.
+	if failedStorages > 0 {
+		data["Warning"] = true
+		if len(failedStorageDetails) > 0 {
+			if len(failedStorageDetails) == 1 {
+				// Single storage failure - more specific message
+				parts := strings.Split(failedStorageDetails[0], " (")
+				storageName := parts[0]
+				nodeName := strings.TrimSuffix(parts[1], ")")
+
+				localizer := appI18n.GetLocalizerFromRequest(r)
+				data["WarningMessage"] = fmt.Sprintf("%s: %s",
+					appI18n.Localize(localizer, "Admin.ISO.PartialStorageFailure"),
+					fmt.Sprintf(appI18n.Localize(localizer, "Admin.ISO.StorageUnavailableOnNode"), storageName, nodeName))
+			} else {
+				// Multiple storage failures
+				details := strings.Join(failedStorageDetails, ", ")
+				data["WarningMessage"] = fmt.Sprintf("%s: %s",
+					appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Admin.ISO.PartialStorageFailure"),
+					details)
+			}
+		} else {
+			data["WarningMessage"] = fmt.Sprintf("%s: %d storage(s) failed",
+				appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Admin.ISO.PartialStorageFailure"),
+				failedStorages)
+		}
 	}
 
 	sort.Slice(isos, func(i, j int) bool {

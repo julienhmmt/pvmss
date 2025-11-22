@@ -59,4 +59,10 @@ const (
 
 	// GuestAgentTimeout is the maximum time to wait for guest agent responses
 	GuestAgentTimeout = 1 * time.Second
+
+	// GuestAgentShutdownPollInterval is the delay between status checks after an agent-based shutdown
+	GuestAgentShutdownPollInterval = 3 * time.Second
+
+	// GuestAgentShutdownMaxAttempts is the maximum number of status checks after an agent-based shutdown
+	GuestAgentShutdownMaxAttempts = 5
 )

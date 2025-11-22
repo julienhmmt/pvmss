@@ -2,13 +2,25 @@
 
 PVMSS (Proxmox Virtual Machine Self-Service) is an intuitive web application that simplifies creating, managing, and accessing the consoles of virtual machines hosted on a Proxmox Virtual Environment server.
 
+## Table of contents
+
+- [Quick start guide](#quick-start-guide)
+- [Main features](#main-features)
+- [Best practices](#best-practices)
+- [Support](#support)
+- [FAQ](#faq)
+- [PVMSS vs Proxmox](#pvmss-vs-proxmox-ve-what-to-use-for-which-task)
+- [Known limitations](#known-limitations)
+- [Security and privacy](#security-and-privacy)
+- [Tips and tricks](#tips-and-tricks)
+
 ## Quick start guide
 
 1. **Log in to the application**: Sign in to PVMSS with your credentials to access the virtual machine creation and management features.
 2. **Search for virtual machines**: Use the search function to locate a specific VM by its name or VMID and view its details.
 3. **Create a virtual machine**: Click the "Create VM" button to open the configuration form, then fill in the required parameters.
 4. **Access the console**: After the VM is created and started, click the "Console" button to connect to its graphical interface through the integrated noVNC web client.
-5. **Manage your profile**: Open your profile to review and update your description and manage the tags assigned to you.
+5. **Manage your profile**: Open your profile to view your personal VM list, see how many VMs are running or stopped, and change your password if needed.
 
 ## Main features
 
@@ -16,31 +28,41 @@ PVMSS (Proxmox Virtual Machine Self-Service) is an intuitive web application tha
 
 To create a VM, open the configuration form via the "Create VM" button after signing in to PVMSS. Configure the following parameters:
 
-- **Node**: Select the Proxmox node where the VM will be created (among the administrator-configured nodes).
+- **Node**: Select the Proxmox node where the VM will be created (among the administrator-configured nodes). Some nodes may be disabled if they have reached the limits defined by administrators.
 - **Name and description**: Enter a unique name (alphanumeric characters, hyphens, and underscores only) and a description to identify your VM.
 - **Operating system**: Choose an ISO image from a list defined by administrators to install the OS.
 - **Resources**: Configure the required resources:
-  - **CPU cores**: Number of processor cores (within administrator-defined limits)
-  - **Memory (RAM)**: Amount of memory in MB (within administrator-defined limits)
-  - **Disk size**: Storage capacity in GB (within administrator-defined limits)
-  - **Network bridge**: Select the network bridge (VMBR) for network connectivity
+  - **CPU**: Number of CPU sockets and cores (within administrator-defined limits)
+  - **Memory (RAM)**: Amount of memory in MB or GB (within administrator-defined limits)
+  - **Disks**: Size of the main disk in GB and, if allowed by administrators, one or more additional data disks
+  - **Disk bus type**: Storage bus used for disks (VirtIO, SCSI, SATA, IDE), which may impact performance and maximum number of disks
+- **Storage**: Select the storage where the VM disks will be created, among the storages enabled by administrators.
+- **Network**: Configure one or more network cards (depending on administrator settings):
+  - **Network bridge**: Select the network bridge (VMBR) for connectivity
+  - **Network card model**: Choose the adapter model (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
+  - **MAC address**: Optionally specify a MAC address or let PVMSS generate one automatically
+- **Firmware & security**:
+  - **EFI boot**: Enable UEFI firmware (typically enabled by default for modern operating systems)
+  - **TPM (Trusted Platform Module)**: Optionally enable TPM v2.0 for operating systems that require it (for example Windows 11)
+- **Startup**: Choose whether the VM should be started automatically after creation.
 - **Tags**: Add predefined tags to organize your VMs and make them easier to find.
 
 **Important notes:**
 
 - You can create only one VM at a time.
 - Resource limits per VM (CPU, RAM, disk) are imposed by administrators.
-- You cannot modify the resources of an existing VM after it has been created.
+- Additional quotas may apply, such as the maximum number of VMs per user or per node. If you reach these limits, you may not be able to create new VMs until an administrator adjusts the configuration.
 
 ### Searching for a virtual machine
 
-Use the search function to locate a VM by its **name** or **VMID** (unique identifier assigned to each VM by Proxmox). The search is case-insensitive and supports partial matches.
+Use the search function to locate a VM by its **name**, **VMID**, or associated **tags** (for example, environment or project tags). The search is case-insensitive and supports partial matches.
 
 The results list shows:
 
 - The VMID
 - The VM name
 - The node hosting the VM
+- The tags associated with the VM (excluding the internal `pvmss` tag)
 - The current status (running, stopped, etc.)
 - The "VM Details" button (to view complete VM information and access advanced management features)
 
@@ -58,6 +80,19 @@ The VM details page provides comprehensive management and monitoring capabilitie
 - **Reset**: Forcefully reset the virtual machine
 - **Refresh**: Refresh the VM information (invalidate the cache)
 - **Delete**: Permanently delete the virtual machine (requires confirmation)
+
+#### QEMU guest agent
+
+On the *VM details* page, a small badge labelled **“QEMU guest agent”** indicates the last known status of the QEMU agent inside the guest:
+
+- **Available**: PVMSS has recently received data from the agent (for example IP addresses). Graceful shutdowns are expected to work.
+- **Unavailable**: The guest agent is not installed, not running, or did not respond in time. In this case:
+  - The **Shutdown** action may fail fast with a clear message suggesting to use **Stop**.
+  - You should prefer **Stop** if the VM does not react to Shutdown.
+- **Unknown**: The agent has not been queried recently, or the VM is stopped. PVMSS will try a short agent check the next time you use an action that depends on it.
+- **Offline (PVMSS)**: The application is in **offline mode** and does not call the Proxmox API. In this state, actions relying on the QEMU agent (such as graceful shutdown) are not available.
+
+**Important:** Whenever possible, prefer **Shutdown** (graceful) over **Stop** (forced power off). If you see repeated messages about the QEMU guest agent being unavailable, contact your administrator or install/enable the agent inside the VM.
 
 ### Configuration details
 
@@ -81,12 +116,30 @@ Review detailed configuration information:
 
 ### Profile management
 
-You can update certain VM properties:
+You can update certain VM properties from the *VM details* page:
 
-- **Description**: Update the VM description
+- **Description**: Update the VM description (plain text or simple Markdown, depending on administrator configuration)
 - **Tags**: Add or remove tags for better organization
 
-**Note**: Hardware resources (CPU, RAM, disk) and the network bridge selection cannot be changed after the VM is created.
+Your **Profile** page shows a summary of your VMs (total, running, stopped) and provides a secure form to change your password.
+
+### Editing virtual machine resources
+
+In addition to description and tags, you can modify some resources of an existing VM from the *VM details* page, as long as the VM is **stopped**:
+
+- **CPU**: Number of sockets and cores (within the limits defined by administrators)
+- **Memory (RAM)**: Allocated memory in MB/GB (within the limits defined by administrators)
+- **Network cards**:
+  - Bridge used by each network card
+  - Network card model (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
+  - MAC address of each card (optional)
+- **CD-ROM / ISO**: Loaded ISO image for the virtual CD-ROM drive, or ejection of the current ISO
+
+Some operations remain restricted and may still require a new VM to be created by copying data manually, for example:
+
+- Changing disk size or the number of disks beyond what administrators allow
+- Migrating to a different storage backend when not supported by Proxmox
+- Structural changes that are not exposed in the PVMSS interface
 
 ### Console access
 
@@ -116,10 +169,10 @@ If you encounter console connection issues:
 
 ## Best practices
 
-- **Proper shutdown**: Always use the "Shutdown" (graceful) button instead of "Stop" whenever possible to avoid data loss and ensure the OS shuts down cleanly.
-- **Naming convention**: Use clear, descriptive names that follow your organization's standards for your virtual machines. Use only alphanumeric characters, hyphens, and underscores.
+- **Proper shutdown**: Always use the "Shutdown" (graceful) button instead of "Stop" whenever possible to avoid data loss and ensure the OS shuts down cleanly. Use "Stop" or "Reset" only as a last resort when the VM is unresponsive.
+- **Naming convention**: Use clear, descriptive names that follow your organization's standards for your virtual machines. A common pattern is `team-env-role` (for example `ml-prod-api`, `students-dev-lab1`). Use only alphanumeric characters, hyphens, and underscores.
 - **Resource planning**: Plan your resource needs before creating a VM. Contact your administrator if you need resources beyond the configured limits.
-- **Tag organization**: Use tags consistently to organize your VMs and make them easier to locate.
+- **Tag organization**: Use tags consistently to organize your VMs and make them easier to locate. Prefer structured tags such as `env:prod`, `env:test`, `team:ml`, `project:myapp` or `promo:2025` instead of free‑form text.
 - **Console security**: Close the console window when not in use to free resources.
 - **Credential security**: Never share your login credentials to keep your account and VMs secure.
 - **Regular monitoring**: Check your VM's resource usage regularly to ensure it operates efficiently.
@@ -136,16 +189,50 @@ The PVMSS application is maintained by your organization's IT team. Contact your
 - **Technical problems**: Report any errors, bugs, or unexpected behavior in the application.
 - **Feature requests**: Suggest new ISOs, network bridges, or other resources through your administrator.
 
+## FAQ
+
+- **Why is the "Create VM" button disabled or greyed out?**  
+  You may have reached a resource or quota limit (for example maximum number of VMs per user or per node), the selected node or storage may be disabled, or the application may be running in offline mode. Check the error message displayed on the page and contact your administrator if needed.
+- **Why can't I select more CPU, RAM, or disk for my VM?**  
+  Per‑VM limits are defined by administrators in PVMSS. If you need more resources than the allowed range, you must request an increase from your administrator.
+- **Why are some nodes unavailable or greyed out in the Create VM form?**  
+  Administrators may have disabled some nodes, or the node may have reached its configured aggregate limits. In that case you must select another node or wait for your administrator to free or extend resources.
+- **What does offline mode mean for me?**  
+  In offline mode, PVMSS does not call the Proxmox API. You may be able to sign in and view cached information, but operations such as creating new VMs or changing resources are temporarily unavailable until administrators restore connectivity.
+- **What should I do if the console window stays black or fails to connect?**  
+  First check that the VM is running, then refresh the console window or sign out and sign back in. If the problem persists, contact your administrator and mention the VMID and approximate time of the issue.
+- **Can I recover a deleted VM from PVMSS?**  
+  Deleting a VM in PVMSS is permanent from the application's perspective. Recovery is only possible if your administrators configured Proxmox backups and can restore the VM from a backup outside of PVMSS.
+
+## PVMSS vs Proxmox VE: what to use for which task
+
+PVMSS provides a simplified self‑service interface on top of Proxmox VE. The table below summarizes where common actions are performed:
+
+| Action | PVMSS | Proxmox VE GUI |
+| --- | --- | --- |
+| Create KVM/QEMU VM | Yes (self‑service creation within administrator‑defined limits) | Yes (full configuration options) |
+| Create LXC container | No | Yes |
+| Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options) |
+| Manage snapshots | No | Yes |
+| Run backups / restores | No | Yes |
+| Live migrate VMs between nodes | No | Yes |
+| Configure advanced networking (VLANs, firewall rules, etc.) | Partially (choose bridge and NIC model only) | Yes (full networking stack) |
+| Manage VM templates / cloning | No | Yes |
+| Configure cloud-init | No | Yes |
+| Manage users and permissions | Indirectly (your account and pool are managed by administrators) | Yes (full RBAC, realms, roles, ACLs) |
+
+If you need a feature that is only available in Proxmox VE, contact your administrators so they can perform the operation directly or adjust your environment.
+
 ## Known limitations
 
 The PVMSS application currently does not support:
 
-- **Resource modification**: You cannot change VM resources (CPU, memory, storage, network bridge) after creation. To adjust resources, create a new VM and migrate your data.
+- **Full resource reconfiguration**: While you can change CPU, memory, network cards and ISO for a stopped VM, some operations remain unavailable (for example, growing disks, changing the number of disks beyond administrator limits, or editing certain low-level Proxmox options).
 - **LXC containers**: Only KVM/QEMU VMs are supported. LXC container creation is unavailable.
 - **Snapshots**: VM snapshot creation and management are not available through PVMSS.
 - **Backups**: VM backup and restore operations must be handled directly by administrators in Proxmox.
 - **Live migration**: Moving VMs between nodes is not available via PVMSS.
-- **Advanced networking**: Only basic network bridge assignment is supported. Advanced networking features (VLANs, firewall rules, etc.) must be configured by administrators.
+- **Advanced networking**: Advanced networking features (VLANs, firewall rules, etc.) must be configured by administrators, even though multiple network cards and network models are supported in PVMSS.
 - **Direct Proxmox access**: PVMSS is designed as a simplified interface and does not provide access to all Proxmox features.
 
 ## Security and privacy

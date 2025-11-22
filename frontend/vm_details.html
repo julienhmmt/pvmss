@@ -771,6 +771,14 @@
                                         <span class="tag is-light"><i class="fas fa-clock"></i></span>
                                         <span class="tag is-warning" data-metric="uptime" data-uptime>{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
                                     </div>
+                                    <div class="tags has-addons mb-0" aria-label='{{T "VMDetails.Agent.Label"}}'>
+                                        <span class="tag is-light" title='{{T "VMDetails.Agent.Label"}}'>
+                                            QEMU agent
+                                        </span>
+                                        <span class="tag {{.AgentStatusClass}}" data-agent-status>
+                                            {{T (printf "VMDetails.Agent.Status.%s" .AgentStatusKey)}}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -874,7 +882,7 @@
 
                     <!-- Disk Stat -->
                     <div class="column is-one-third-tablet is-half-mobile">
-                        <div id="disk-stat-card" class="stat-card disk-stat-card">
+                        <div id="disk-stat-card" class="stat-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;">
                             <!-- Header -->
                             <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
                                 <div class="is-flex is-align-items-center">

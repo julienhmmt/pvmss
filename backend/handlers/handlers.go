@@ -64,7 +64,7 @@ func recoverMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if rec := recover(); rec != nil {
 				logger.Get().Error().Interface("panic", rec).Str("path", r.URL.Path).Msg("Unhandled panic recovered")
-				RenderErrorPage(w, r, http.StatusInternalServerError, "Internal Server Error")
+				RenderErrorPageWithI18n(w, r, http.StatusInternalServerError, "Error.InternalServer", "Internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)

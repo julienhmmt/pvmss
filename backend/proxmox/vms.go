@@ -25,6 +25,7 @@ type VMInfo struct {
 // GET /nodes/{node}/qemu/{vmid}/config
 // It returns the raw "data" map as provided by the API so callers can extract
 // fields such as description, tags, and network interfaces (net0/net1...).
+// TODO Telmate migration: replace this Telmate-based VM helper by the corresponding Resty helper (GetVMConfigResty) and drop the ClientInterface dependency.
 func GetVMConfigWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (map[string]interface{}, error) {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
 	var resp struct {
@@ -43,6 +44,7 @@ func GetVMConfigWithContext(ctx context.Context, client ClientInterface, node st
 //	POST /nodes/{node}/qemu/{vmid}/config
 //
 // Params may include keys like "description" and "tags" (semicolon-separated).
+// TODO Telmate migration: replace this Telmate-based VM helper by the corresponding Resty helper (UpdateVMConfigResty) and drop the ClientInterface dependency.
 func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node string, vmid int, params map[string]string) error {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
 	values := make(url.Values)
@@ -271,6 +273,7 @@ type VMCurrent struct {
 }
 
 // GetVMCurrentWithContext fetches the current runtime metrics for a VM
+// TODO Telmate migration: replace this Telmate-based VM helper by the corresponding Resty helper (GetVMCurrentResty) and drop the ClientInterface dependency.
 func GetVMCurrentWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (*VMCurrent, error) {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid)
 	var resp Response[VMCurrent]
@@ -314,6 +317,7 @@ type VM struct {
 //
 // Where action is one of: start, stop, shutdown, reboot, reset
 // Returns the UPID string on success (for async tasks), or an empty string when not applicable.
+// TODO Telmate migration: replace this Telmate-based VM action by VMActionResty and remove the Telmate client usage.
 func VMActionWithContext(ctx context.Context, client ClientInterface, node string, vmid string, action string) (string, error) {
 	// Validate action
 	switch action {
@@ -342,6 +346,7 @@ func VMActionWithContext(ctx context.Context, client ClientInterface, node strin
 // DeleteVMWithContext deletes a VM from Proxmox.
 // This performs a DELETE request to /nodes/{node}/qemu/{vmid}
 // Note: The VM must be stopped before deletion. Use VMActionWithContext to stop it first if needed.
+// TODO Telmate migration: replace this Telmate-based VM action by DeleteVMResty and remove the Telmate client usage.
 func DeleteVMWithContext(ctx context.Context, client ClientInterface, node string, vmid int) error {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d", url.PathEscape(node), vmid)
 

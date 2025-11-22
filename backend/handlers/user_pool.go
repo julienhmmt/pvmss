@@ -69,6 +69,7 @@ type UserPoolHandler struct {
 }
 
 // DeleteUserPool deletes all VMs in the pool (purge), then the derived user, then the pool itself.
+// TODO Telmate migration: this handler still uses Telmate-based pool and user helpers (GetJSON/DeleteWithContext/InvalidateCache); migrate it to Resty-based access and pool helpers.
 func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("DeleteUserPool", r)
 
@@ -482,6 +483,7 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 }
 
 // CreateUserPool handles POST to create a user in PVE realm, create pool pvmss_<username>, and grant ACL
+// TODO Telmate migration: this handler still relies on Telmate-based EnsureUser/EnsurePool/EnsurePoolACL; switch to the Resty-based admin helpers and remove the ClientInterface.
 func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("CreateUserPool", r)
 
@@ -546,6 +548,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	privileges := []string{
 		"VM.Audit",        // View VM status and configuration
 		"VM.PowerMgmt",    // Start, stop, reset VMs
+		"VM.Console",      // Access VM console (required for noVNC)
 		"VM.Config.CDROM", // Mount ISO files
 		"Datastore.Audit", // View datastore status
 		"Pool.Audit",      // View pool contents
