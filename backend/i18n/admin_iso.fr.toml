@@ -13,16 +13,11 @@ other = "Stockage"
 other = "Gestion des ISOs"
 ["Admin.ISO.NoISOs"]
 other = "Aucune ISO ou IMG trouvée"
-
 ["Admin.ISO.ToggleEnabled"]
 other = "ISO {{.Name}} activée"
-
 ["Admin.ISO.ToggleDisabled"]
 other = "ISO {{.Name}} désactivée"
-
 ["Admin.ISO.ToggleUpdated"]
 other = "Paramètres ISO mis à jour"
-
-[# Avertissement lorsque certains stockages échouent à lister leur contenu ISO]
 ["Admin.ISO.PartialStorageFailure"]
 other = "Certains stockages n'ont pas pu être listés. La liste des ISO peut être incomplète."
