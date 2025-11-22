@@ -19,12 +19,12 @@ import (
 // ValidateMethodAndParseForm validates HTTP method and parses form data
 func ValidateMethodAndParseForm(w http.ResponseWriter, r *http.Request, requiredMethod string) bool {
 	if r.Method != requiredMethod {
-		RenderErrorPage(w, r, http.StatusMethodNotAllowed, "Method not allowed")
+		RenderErrorPage(w, r, http.StatusMethodNotAllowed, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MethodNotAllowed"))
 		return false
 	}
 
 	if err := r.ParseForm(); err != nil {
-		RenderErrorPage(w, r, http.StatusBadRequest, "Invalid form data")
+		RenderErrorPage(w, r, http.StatusBadRequest, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"))
 		return false
 	}
 
@@ -48,7 +48,7 @@ func CreateHandlerLogger(handlerName string, r *http.Request) zerolog.Logger {
 func PostOnlyHandler(handler httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if r.Method != http.MethodPost {
-			RenderErrorPage(w, r, http.StatusMethodNotAllowed, "Method not allowed")
+			RenderErrorPage(w, r, http.StatusMethodNotAllowed, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MethodNotAllowed"))
 			return
 		}
 		handler(w, r, ps)
@@ -59,7 +59,7 @@ func PostOnlyHandler(handler httprouter.Handle) httprouter.Handle {
 func ParseFormMiddleware(handler httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if err := r.ParseForm(); err != nil {
-			RenderErrorPage(w, r, http.StatusBadRequest, "Invalid form data")
+			RenderErrorPage(w, r, http.StatusBadRequest, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"))
 			return
 		}
 		handler(w, r, ps)
@@ -115,8 +115,9 @@ func RedirectWithError(w http.ResponseWriter, r *http.Request, targetURL, messag
 // It also provides navigation options (Back/Home) to help the user recover.
 func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message string) {
 	// Prepare minimal data for the error template
+	localizer := i18n.GetLocalizerFromRequest(r)
 	data := map[string]interface{}{
-		"Title":      "Error",
+		"Title":      i18n.Localize(localizer, "Error.Title"),
 		"StatusCode": status,
 		"Error":      message,
 	}

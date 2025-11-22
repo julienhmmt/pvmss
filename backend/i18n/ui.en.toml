@@ -21,6 +21,8 @@ other = 'PVMSS - Julien HOMMET. Made with ❤️ in 🇫🇷 🇪🇺.'
 other = "Get started"
 ["UI.Header"]
 other = "Proxmox VM Self-Service"
+["UI.NoContent"]
+other = "No content available"
 ["UI.Subtitle"]
 other = "A simple and self-service portal for Proxmox VE."
 ["UI.ViewDocumentation"]

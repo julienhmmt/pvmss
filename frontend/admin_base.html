@@ -60,7 +60,7 @@
     {{if .Warning}}
     {{template "notification" (dict 
       "Type" "warning" 
-      "Message" .Warning 
+      "Message" .WarningMessage 
       "Icon" "fas fa-exclamation-triangle" 
       "Dismissible" true
     )}}
@@ -154,7 +154,7 @@
             <!-- Default admin dashboard -->
             {{template "notification" (dict 
               "Type" "info" 
-              "Message" "Welcome to the admin panel. Select a section from the menu to get started." 
+              "Message" (T "Admin.SelectSectionPrompt") 
               "Icon" "fas fa-info-circle"
             )}}
           {{end}}
