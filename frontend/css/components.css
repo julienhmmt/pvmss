@@ -115,6 +115,7 @@ fieldset[disabled]::after {
   background: var(--glass-white);
   border-bottom: 1px solid var(--glass-border);
   box-shadow: var(--shadow-md);
+  backdrop-filter: var(--blur-sm);
   min-height: 3.5rem;
   display: flex;
   align-items: center;
@@ -162,6 +163,18 @@ fieldset[disabled]::after {
   color: var(--primary);
   font-weight: 600;
   position: relative;
+}
+
+.navbar-item.is-active::after {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0.35rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+  opacity: 0.9;
 }
 
 .navbar-item.is-active:hover {
@@ -308,6 +321,18 @@ fieldset[disabled]::after {
 
 .navbar-burger span:nth-child(3) {
   top: calc(50% + 4px);
+}
+
+#nav-toggle:checked + nav .navbar-burger span:nth-child(1) {
+  transform: translateY(5px) rotate(45deg);
+}
+
+#nav-toggle:checked + nav .navbar-burger span:nth-child(2) {
+  opacity: 0;
+}
+
+#nav-toggle:checked + nav .navbar-burger span:nth-child(3) {
+  transform: translateY(-5px) rotate(-45deg);
 }
 
 .navbar-burger:hover {
