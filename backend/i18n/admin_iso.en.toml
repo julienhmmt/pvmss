@@ -22,3 +22,7 @@ other = "ISO {{.Name}} disabled"
 
 ["Admin.ISO.ToggleUpdated"]
 other = "ISO settings updated"
+
+[# Warning when some storages fail to list ISO content]
+["Admin.ISO.PartialStorageFailure"]
+other = "Some storages could not be listed. The ISO list may be incomplete."
