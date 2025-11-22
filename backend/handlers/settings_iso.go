@@ -36,12 +36,18 @@ type NodeISOGroup struct {
 	ISOs []ISOEntry `json:"isos"`
 }
 
-// fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls
-func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, error) {
+// isoPerStorageTimeout defines the maximum duration allowed for querying a single
+// storage's ISO content. This prevents a slow or unresponsive backend (e.g. cephfs)
+// from blocking or cancelling the entire ISO listing.
+const isoPerStorageTimeout = 5 * time.Second
+
+// fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls.
+// It also returns the number of storages that failed to list their ISO content.
+func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, int, error) {
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resty client for ISO retrieval: %w", err)
+		return nil, 0, fmt.Errorf("failed to create resty client for ISO retrieval: %w", err)
 	}
 
 	// Use errgroup for concurrent API calls
@@ -72,7 +78,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 
 	// Wait for all goroutines to complete
 	if err := g.Wait(); err != nil {
-		return nil, fmt.Errorf("failed to fetch nodes/storages for ISO retrieval: %w", err)
+		return nil, 0, fmt.Errorf("failed to fetch nodes/storages for ISO retrieval: %w", err)
 	}
 
 	enabledSet := make(map[string]struct{})
@@ -85,6 +91,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 	}
 
 	allISOs := make([]ISOEntry, 0)
+	failedStorages := 0
 
 	// For each node, get ISOs from each compatible storage
 	for _, nodeName := range nodes {
@@ -95,12 +102,20 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 				continue
 			}
 
-			isoList, err := proxmox.GetISOListResty(ctx, restyClient, nodeName, storage.Storage)
+			// Use a dedicated, short-lived context per storage so that a slow or failing
+			// backend (for example a cephfs share) does not cancel the global context
+			// and prevent other storages from listing their ISOs.
+			storageCtx, storageCancel := context.WithTimeout(ctx, isoPerStorageTimeout)
+			isoList, err := proxmox.GetISOListResty(storageCtx, restyClient, nodeName, storage.Storage)
+			storageCancel()
 			if err != nil {
-				logger.Get().Debug().Err(err).
+				failedStorages++
+				logger.Get().Warn().Err(err).
 					Str("node", nodeName).
 					Str("storage", storage.Storage).
-					Msg("Failed to get ISO list for storage")
+					Str("storage_type", storage.Type).
+					Str("content", storage.Content).
+					Msg("Failed to get ISO list for storage, skipping")
 				continue
 			}
 
@@ -122,7 +137,7 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 		}
 	}
 
-	return allISOs, nil
+	return allISOs, failedStorages, nil
 }
 
 // ISOPageHandler renders the ISO management page (server-rendered, no JS required)
@@ -218,12 +233,17 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	defer cancel()
 
 	// Fetch all ISOs with enabled check
-	isos, err := h.fetchAllISOs(ctx, true)
+	isos, failedStorages, err := h.fetchAllISOs(ctx, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
 		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources")
 		renderTemplateInternal(w, r, "admin_iso", data)
 		return
+	}
+
+	// If some storages failed to list their content, show a non-blocking warning.
+	if failedStorages > 0 {
+		data["Warning"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Admin.ISO.PartialStorageFailure")
 	}
 
 	sort.Slice(isos, func(i, j int) bool {
