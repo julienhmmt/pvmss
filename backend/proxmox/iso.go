@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"pvmss/logger"
 )
@@ -45,7 +46,8 @@ func GetISOListResty(ctx context.Context, restyClient *RestyClient, node, storag
 	// Filter for ISO files only
 	var isos []ISO
 	for _, item := range response.Data {
-		if item.Format == "iso" {
+		volidLower := strings.ToLower(item.VolID)
+		if item.Format == "iso" || strings.HasSuffix(volidLower, ".iso") {
 			isos = append(isos, item)
 		}
 	}

@@ -363,7 +363,9 @@ type cachedStorages struct {
 
 var vmDiskTypes = map[string]struct{}{
 	"cephfs":  {},
+	"cifs":    {},
 	"dir":     {},
+	"iscsi":   {},
 	"lvm":     {},
 	"lvmthin": {},
 	"nfs":     {},
