@@ -53,14 +53,14 @@ func NormalizeMACAddress(mac string) string {
 // vmDiskCompatibleStorageTypes defines storage types that support VM disk images
 // These storage types can store VM disks even if their content string doesn't explicitly list "images"
 var vmDiskCompatibleStorageTypes = map[string]bool{
-	"lvmthin": true,
-	"lvm":     true,
-	"zfs":     true,
-	"ceph":    true,
-	"iscsi":   true,
-	"dir":     true,
-	"nfs":     true,
 	"cifs":    true,
+	"dir":     true,
+	"iscsi":   true,
+	"lvm":     true,
+	"lvmthin": true,
+	"nfs":     true,
+	"rbd":     true,
+	"zfs":     true,
 }
 
 // countVMsInPool counts the number of VMs in a user's pool
@@ -1152,7 +1152,6 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 
 	// Block-based storages that support raw format
 	blockStorages := map[string]bool{
-		"ceph":    true,
 		"iscsi":   true,
 		"lvm":     true,
 		"lvmthin": true,
@@ -1162,9 +1161,10 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 
 	// File-based storages that support raw format
 	fileStorages := map[string]bool{
-		"dir":  true,
-		"nfs":  true,
-		"cifs": true,
+		"cephfs": true,
+		"cifs":   true,
+		"dir":    true,
+		"nfs":    true,
 	}
 
 	// Check if storage type is compatible
