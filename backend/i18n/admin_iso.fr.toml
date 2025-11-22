@@ -21,3 +21,5 @@ other = "ISO {{.Name}} désactivée"
 other = "Paramètres ISO mis à jour"
 ["Admin.ISO.PartialStorageFailure"]
 other = "Certains stockages n'ont pas pu être listés. La liste des ISO peut être incomplète."
+["Admin.ISO.StorageUnavailableOnNode"]
+other = "le stockage '%s' n'est pas disponible sur le nœud '%s'"
