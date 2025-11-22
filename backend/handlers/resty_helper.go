@@ -17,7 +17,7 @@ func getRestyClient(timeout time.Duration) (*proxmox.RestyClient, error) {
 	return client, nil
 }
 
-// getDefaultRestyClient creates a resty client with a 30-second timeout
+// getDefaultRestyClient creates a resty client with a 60-second timeout
 func getDefaultRestyClient() (*proxmox.RestyClient, error) {
-	return getRestyClient(30 * time.Second)
+	return getRestyClient(60 * time.Second)
 }

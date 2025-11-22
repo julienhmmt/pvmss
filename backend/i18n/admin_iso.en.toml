@@ -21,3 +21,5 @@ other = "ISO {{.Name}} disabled"
 other = "ISO settings updated"
 ["Admin.ISO.PartialStorageFailure"]
 other = "Some storages could not be listed. The ISO list may be incomplete."
+["Admin.ISO.StorageUnavailableOnNode"]
+other = "storage '%s' is not available on node '%s'"
