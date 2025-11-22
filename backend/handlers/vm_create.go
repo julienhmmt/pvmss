@@ -254,6 +254,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	isos := settings.ISOs
 	if isos == nil {
 		isos = []string{}
+	} else {
+		sort.Strings(isos)
 	}
 	limits := make(map[string]interface{})
 	// Convert LimitsConfig to map[string]interface{} for template compatibility
@@ -334,6 +336,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 			bridgeDescriptions[bridgeName] = detail["description"]
 		}
 	}
+	sort.Strings(bridges)
 
 	// Add bridge data for template
 	data["Bridges"] = bridges
@@ -348,6 +351,8 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	availableTags := settings.Tags
 	if availableTags == nil {
 		availableTags = []string{}
+	} else {
+		sort.Strings(availableTags)
 	}
 	data["AvailableTags"] = availableTags
 

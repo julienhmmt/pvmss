@@ -311,6 +311,14 @@ fieldset[disabled]::after {
   letter-spacing: 0.05em;
 }
 
+.table td>.progress+span {
+  display: inline-block;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .navbar-burger span:nth-child(1) {
   top: calc(50% - 6px);
 }
@@ -951,7 +959,6 @@ input[type="radio"] {
   accent-color: var(--primary);
 }
 
-/* Tag selection */
 label>input[type="checkbox"].is-hidden+.tag {
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
@@ -992,7 +999,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   height: 0.375rem;
 }
 
-/* Inline progress in tables */
 .table td>.progress {
   display: inline-block;
   width: 120px;
@@ -1001,15 +1007,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   vertical-align: middle;
 }
 
-.table td>.progress+span {
-  display: inline-block;
-  margin-left: 0.5rem;
-  vertical-align: middle;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* Color variants */
 .progress.is-primary::-webkit-progress-value,
 .progress.is-primary::-moz-progress-bar {
   background-color: var(--primary);
