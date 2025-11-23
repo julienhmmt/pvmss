@@ -1,5 +1,5 @@
 {
-  "name": "pvmss-website",
+  "name": "pvmss",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -10,9 +10,11 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/svelte": "^7.2.1",
-    "astro": "^5.15.3",
-    "svelte": "^5.43.2",
+    "@astrojs/check": "^0.9.5",
+    "@astrojs/db": "^0.18.3",
+    "@astrojs/svelte": "^7.2.2",
+    "astro": "^5.16.0",
+    "svelte": "^5.43.14",
     "typescript": "^5.9.3"
   }
 }
