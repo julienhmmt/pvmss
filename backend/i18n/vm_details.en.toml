@@ -219,3 +219,25 @@ other = "Disk resize failed: {{.Error}}"
 other = "Filesystem trimmed successfully via QEMU agent"
 ["VMDetails.DiskResize.FstrimSkipped"]
 other = "VM is not running - fstrim skipped. You can run fstrim manually inside the VM after boot."
+["VMDetails.DiskResize.PreviewTitle"]
+other = "Resize Preview"
+["VMDetails.DiskResize.CurrentSize"]
+other = "Current size:"
+["VMDetails.DiskResize.Increment"]
+other = "Increment:"
+["VMDetails.DiskResize.NewSize"]
+other = "New size:"
+["VMDetails.DiskResize.UsageEstimate"]
+other = "Estimated usage after resize"
+["VMDetails.DiskResize.ConfirmTitle"]
+other = "Confirm Resize"
+["VMDetails.DiskResize.ConfirmMessage"]
+other = "You are about to increase the size of disk <strong>{disk}</strong> by <strong>{increment} GB</strong>."
+["VMDetails.DiskResize.ConfirmNote"]
+other = "<strong>Important note:</strong> After resizing, you will likely need to expand the partition in your operating system to use the new space."
+["VMDetails.DiskResize.ConfirmQuestion"]
+other = "Do you want to continue?"
+["VMDetails.DiskResize.ConfirmButton"]
+other = "Yes, resize"
+["VMDetails.DiskResize.CancelButton"]
+other = "Cancel"

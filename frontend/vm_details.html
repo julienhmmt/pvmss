@@ -1660,10 +1660,10 @@
                                 <label class="label is-size-7 has-text-grey" for="diskResizeDisk">{{T "VMDetails.DiskResize.SelectDisk"}}</label>
                                 <div class="control">
                                     <div class="select is-fullwidth is-medium">
-                                        <select id="diskResizeDisk" name="disk_resize_disk">
+                                        <select id="diskResizeDisk" name="disk_resize_disk" onchange="updateDiskResizePreview()">
                                             <option value="">{{T "VMDetails.DiskResize.NoResize"}} --</option>
                                             {{range $d := .Disks}}
-                                            <option value="{{$d.Index}}">{{$d.Index}} ({{$d.SizeLabel}})</option>
+                                            <option value="{{$d.Index}}" data-size="{{$d.SizeGB}}">{{$d.Index}} ({{$d.SizeLabel}})</option>
                                             {{end}}
                                         </select>
                                     </div>
@@ -1673,7 +1673,7 @@
                                 <label class="label is-size-7 has-text-grey" for="diskResizeGB">{{T "VMDetails.DiskResize.IncrementGB"}}</label>
                                 <div class="field has-addons">
                                     <div class="control is-expanded">
-                                        <input id="diskResizeGB" class="input is-medium" type="number" name="disk_resize_gb" min="1" max="100" value="" placeholder="1" inputmode="numeric">
+                                        <input id="diskResizeGB" class="input is-medium" type="number" name="disk_resize_gb" min="1" max="100" value="" placeholder="1" inputmode="numeric" oninput="updateDiskResizePreview()">
                                     </div>
                                     <div class="control">
                                         <div class="select is-medium">
@@ -1683,6 +1683,42 @@
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <!-- Real-time preview -->
+                                <div id="diskResizePreview" class="mt-3 p-3 has-background-light has-radius" style="display: none; border-radius: 6px; border: 1px solid #dbdbdb;">
+                                    <div class="is-flex is-align-items-center mb-2">
+                                        <span class="icon has-text-info">
+                                            <i class="fas fa-hdd"></i>
+                                        </span>
+                                        <span class="has-text-weight-semibold is-size-6">{{T "VMDetails.DiskResize.PreviewTitle"}}</span>
+                                    </div>
+                                    <div class="is-size-7">
+                                        <div class="mb-1">
+                                            <span class="has-text-grey">{{T "VMDetails.DiskResize.CurrentSize"}}</span> 
+                                            <span id="currentSize" class="has-text-weight-semibold">-- GB</span>
+                                        </div>
+                                        <div class="mb-1">
+                                            <span class="has-text-grey">{{T "VMDetails.DiskResize.Increment"}}</span> 
+                                            <span id="incrementSize" class="has-text-weight-semibold has-text-primary">+-- GB</span>
+                                        </div>
+                                        <div class="has-border-top pt-2">
+                                            <span class="has-text-grey">{{T "VMDetails.DiskResize.NewSize"}}</span> 
+                                            <span id="newSize" class="has-text-weight-semibold has-text-success">-- GB</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Visual progress indicator -->
+                                    <div class="mt-3">
+                                        <div class="is-size-7 has-text-grey mb-1">{{T "VMDetails.DiskResize.UsageEstimate"}}</div>
+                                        <div class="progress is-small is-primary" style="height: 8px;">
+                                            <div id="diskUsageBar" class="progress-bar" style="width: 0%; transition: width 0.3s ease;"></div>
+                                        </div>
+                                        <div class="is-size-7 has-text-grey mt-1">
+                                            <span id="usagePercentage">0%</span> {{T "Common.Used"}}
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <p class="help has-text-grey is-size-7 mt-2">
                                     <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
                                     {{T "VMDetails.DiskResize.IncrementHelp"}}
@@ -1857,12 +1893,213 @@
     const STATUS_CHECK_MS = 30000; // 30 seconds for status changes
     const API_ENDPOINT = `/api/vm/${VMID}/metrics`;
 
+    // Disk resize preview functionality
+    function updateDiskResizePreview() {
+        const diskSelect = document.getElementById('diskResizeDisk');
+        const incrementInput = document.getElementById('diskResizeGB');
+        const preview = document.getElementById('diskResizePreview');
+        
+        if (!diskSelect || !incrementInput || !preview) return;
+        
+        const selectedOption = diskSelect.options[diskSelect.selectedIndex];
+        const currentSizeGB = parseInt(selectedOption.dataset?.size || '0');
+        const incrementGB = parseInt(incrementInput.value || '0');
+        
+        // Show/hide preview based on selection
+        if (currentSizeGB > 0 && incrementGB > 0) {
+            const newSizeGB = currentSizeGB + incrementGB;
+            
+            // Update size displays with animation
+            animateValue('currentSize', 0, currentSizeGB, 300, '', ' GB');
+            animateValue('incrementSize', 0, incrementGB, 300, '+', ' GB');
+            animateValue('newSize', 0, newSizeGB, 300, '', ' GB');
+            
+            // Update progress bar with smooth animation
+            updateDiskUsageBar(newSizeGB);
+            
+            // Show preview with fade-in effect
+            preview.style.display = 'block';
+            preview.style.opacity = '0';
+            preview.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                preview.style.transition = 'all 0.3s ease';
+                preview.style.opacity = '1';
+                preview.style.transform = 'translateY(0)';
+            }, 50);
+            
+            // Add visual feedback to input
+            incrementInput.classList.add('is-success');
+            incrementInput.classList.remove('is-danger');
+            
+        } else {
+            // Hide preview with fade-out effect
+            preview.style.transition = 'all 0.2s ease';
+            preview.style.opacity = '0';
+            preview.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                preview.style.display = 'none';
+            }, 200);
+            
+            // Remove visual feedback
+            incrementInput.classList.remove('is-success', 'is-danger');
+        }
+        
+        // Validate increment range
+        if (incrementGB > 0 && (incrementGB < 1 || incrementGB > 100)) {
+            incrementInput.classList.add('is-danger');
+            incrementInput.classList.remove('is-success');
+        }
+    }
+    
+    function animateValue(elementId, start, end, duration, prefix = '', suffix = '') {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+        
+        const range = end - start;
+        const increment = range / (duration / 16);
+        let current = start;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+                current = end;
+                clearInterval(timer);
+            }
+            element.textContent = prefix + Math.round(current) + suffix;
+        }, 16);
+    }
+    
+    function updateDiskUsageBar(newSizeGB) {
+        const usageBar = document.getElementById('diskUsageBar');
+        const usagePercentage = document.getElementById('usagePercentage');
+        
+        if (!usageBar || !usagePercentage) return;
+        
+        // Simulate usage percentage (you could make this more realistic)
+        const estimatedUsage = Math.min(85, Math.round((newSizeGB / 200) * 100));
+        
+        // Animate progress bar
+        usageBar.style.transition = 'width 0.5s ease';
+        usageBar.style.width = estimatedUsage + '%';
+        
+        // Update percentage with animation
+            animateValue(usagePercentage, 0, estimatedUsage, 500, '', '%');
+        
+        // Change color based on usage
+        usageBar.className = 'progress-bar';
+        if (estimatedUsage > 80) {
+            usageBar.classList.add('is-danger');
+        } else if (estimatedUsage > 60) {
+            usageBar.classList.add('is-warning');
+        } else {
+            usageBar.classList.add('is-success');
+        }
+    }
+    
+    // Enhanced form submission with confirmation
+    function confirmDiskResize(event) {
+        const diskSelect = document.getElementById('diskResizeDisk');
+        const incrementInput = document.getElementById('diskResizeGB');
+        
+        if (!diskSelect || !incrementInput) return true;
+        
+        const selectedOption = diskSelect.options[diskSelect.selectedIndex];
+        const diskName = selectedOption.value;
+        const incrementGB = parseInt(incrementInput.value || '0');
+        
+        if (diskName && incrementGB > 0) {
+            // Create confirmation modal with i18n translations
+            const modal = document.createElement('div');
+            modal.className = 'modal is-active';
+            modal.innerHTML = `
+                <div class="modal-background"></div>
+                <div class="modal-card">
+                    <header class="modal-card-head">
+                        <p class="modal-card-title">
+                            <span class="icon has-text-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </span>
+                            ${translations.confirmTitle}
+                        </p>
+                        <button class="delete" aria-label="close"></button>
+                    </header>
+                    <section class="modal-card-body">
+                        <div class="content">
+                            <p>${translations.confirmMessage.replace('{disk}', '<strong>' + diskName + '</strong>').replace('{increment}', '<strong>' + incrementGB + ' GB</strong>')}</p>
+                            <div class="notification is-info is-light">
+                                ${translations.confirmNote}
+                            </div>
+                            <p>${translations.confirmQuestion}</p>
+                        </div>
+                    </section>
+                    <footer class="modal-card-foot">
+                        <button class="button is-danger" id="confirmResize">
+                            <span class="icon"><i class="fas fa-hdd"></i></span>
+                            <span>${translations.confirmButton}</span>
+                        </button>
+                        <button class="button" id="cancelResize">${translations.cancelButton}</button>
+                    </footer>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Handle modal events
+            modal.querySelector('.delete').onclick = () => {
+                document.body.removeChild(modal);
+                event.preventDefault();
+            };
+            
+            modal.querySelector('#cancelResize').onclick = () => {
+                document.body.removeChild(modal);
+                event.preventDefault();
+            };
+            
+            modal.querySelector('#confirmResize').onclick = () => {
+                document.body.removeChild(modal);
+                // Submit the form programmatically
+                event.target.form.submit();
+            };
+            
+            // Prevent default submission until confirmed
+            event.preventDefault();
+        }
+    }
+    
+    // Initialize disk resize functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add event listeners
+        const diskSelect = document.getElementById('diskResizeDisk');
+        const incrementInput = document.getElementById('diskResizeGB');
+        const resourceForm = document.querySelector('form[action="/vm/update/resources"]');
+        
+        if (diskSelect) diskSelect.addEventListener('change', updateDiskResizePreview);
+        if (incrementInput) incrementInput.addEventListener('input', updateDiskResizePreview);
+        if (resourceForm) resourceForm.addEventListener('submit', confirmDiskResize);
+        
+        // Initial preview update
+        updateDiskResizePreview();
+    });
+    
+    // Make functions globally available
+    window.updateDiskResizePreview = updateDiskResizePreview;
+    window.confirmDiskResize = confirmDiskResize;
+
     // Translations from template
     const translations = {
         running: '{{T "Status.Running"}}',
         stopped: '{{T "Status.Stopped"}}',
         paused: '{{T "Status.Paused"}}',
-        unknown: '{{T "Status.Unknown"}}'
+        unknown: '{{T "Status.Unknown"}}',
+        // Disk resize translations
+        confirmTitle: '{{T "VMDetails.DiskResize.ConfirmTitle"}}',
+        confirmMessage: '{{T "VMDetails.DiskResize.ConfirmMessage"}}',
+        confirmNote: '{{T "VMDetails.DiskResize.ConfirmNote"}}',
+        confirmQuestion: '{{T "VMDetails.DiskResize.ConfirmQuestion"}}',
+        confirmButton: '{{T "VMDetails.DiskResize.ConfirmButton"}}',
+        cancelButton: '{{T "VMDetails.DiskResize.CancelButton"}}'
     };
     let metricsTimer = null;
     let statusTimer = null;
