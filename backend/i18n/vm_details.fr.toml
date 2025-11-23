@@ -197,3 +197,25 @@ other = "Indisponible"
 other = "Inconnu"
 ["VMDetails.Agent.Status.Offline"]
 other = "Hors ligne (PVMSS)"
+
+# Disk Resize functionality
+["VMDetails.DiskResize.Title"]
+other = "Redimensionnement de disque"
+["VMDetails.DiskResize.Help"]
+other = "Augmenter la taille du disque pour un stockage supplémentaire. Seules les augmentations sont autorisées (pas de réduction). Après redimensionnement, vous devrez peut-être étendre la partition dans votre système d'exploitation."
+["VMDetails.DiskResize.SelectDisk"]
+other = "Sélectionner un disque"
+["VMDetails.DiskResize.NoResize"]
+other = "Pas de redimensionnement"
+["VMDetails.DiskResize.IncrementGB"]
+other = "Taille d'augmentation"
+["VMDetails.DiskResize.IncrementHelp"]
+other = "Entrez le montant à ajouter au disque (1-100 Go). Le disque sera augmenté de ce montant."
+["VMDetails.DiskResize.Success"]
+other = "Disque redimensionné avec succès ! Le disque a été augmenté de {{.Increment}} Go. Note : Vous devrez peut-être étendre la partition dans votre système d'exploitation pour utiliser le nouvel espace."
+["VMDetails.DiskResize.Failed"]
+other = "Échec du redimensionnement du disque : {{.Error}}"
+["VMDetails.DiskResize.FstrimExecuted"]
+other = "Système de fichiers nettoyé avec succès via l'agent QEMU"
+["VMDetails.DiskResize.FstrimSkipped"]
+other = "La VM n'est pas en cours d'exécution - fstrim ignoré. Vous pouvez exécuter fstrim manuellement dans la VM après le démarrage."

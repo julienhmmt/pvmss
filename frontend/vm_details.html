@@ -1631,6 +1631,67 @@
                         </div>
                     </div>
 
+                    <!-- Disk Resize Configuration -->
+                    {{if .Disks}}
+                    <hr class="my-4">
+                    <div class="field">
+                        <label class="label has-text-weight-semibold">
+                            <span class="icon-text">
+                                <span class="icon"><i class="fas fa-hdd"></i></span>
+                                <span>{{T "VMDetails.DiskResize.Title"}}</span>
+                            </span>
+                        </label>
+                        
+                        <div class="notification is-info is-light">
+                            <div class="media">
+                                <div class="media-left">
+                                    <span class="icon has-text-info">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                </div>
+                                <div class="media-content">
+                                    <p class="is-size-7">{{T "VMDetails.DiskResize.Help"}}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="columns is-mobile is-variable is-2">
+                            <div class="column">
+                                <label class="label is-size-7 has-text-grey" for="diskResizeDisk">{{T "VMDetails.DiskResize.SelectDisk"}}</label>
+                                <div class="control">
+                                    <div class="select is-fullwidth is-medium">
+                                        <select id="diskResizeDisk" name="disk_resize_disk">
+                                            <option value="">{{T "VMDetails.DiskResize.NoResize"}} --</option>
+                                            {{range $d := .Disks}}
+                                            <option value="{{$d.Index}}">{{$d.Index}} ({{$d.SizeLabel}})</option>
+                                            {{end}}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column">
+                                <label class="label is-size-7 has-text-grey" for="diskResizeGB">{{T "VMDetails.DiskResize.IncrementGB"}}</label>
+                                <div class="field has-addons">
+                                    <div class="control is-expanded">
+                                        <input id="diskResizeGB" class="input is-medium" type="number" name="disk_resize_gb" min="1" max="100" value="" placeholder="1" inputmode="numeric">
+                                    </div>
+                                    <div class="control">
+                                        <div class="select is-medium">
+                                            <select>
+                                                <option value="GB">GB</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="help has-text-grey is-size-7 mt-2">
+                                    <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
+                                    {{T "VMDetails.DiskResize.IncrementHelp"}}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+
                     <hr class="my-4">
                     <div class="field is-grouped is-justify-content-space-between">
                         <div class="control">

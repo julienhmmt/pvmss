@@ -197,3 +197,25 @@ other = "Unavailable"
 other = "Unknown"
 ["VMDetails.Agent.Status.Offline"]
 other = "Offline (PVMSS)"
+
+# Disk Resize functionality
+["VMDetails.DiskResize.Title"]
+other = "Disk Resize"
+["VMDetails.DiskResize.Help"]
+other = "Increase disk size for additional storage. Only increments are allowed (no shrinking). After resize, you may need to expand the partition within your operating system."
+["VMDetails.DiskResize.SelectDisk"]
+other = "Select Disk"
+["VMDetails.DiskResize.NoResize"]
+other = "No resize"
+["VMDetails.DiskResize.IncrementGB"]
+other = "Increment Size"
+["VMDetails.DiskResize.IncrementHelp"]
+other = "Enter the amount to add to the disk (1-100 GB). The disk will be increased by this amount."
+["VMDetails.DiskResize.Success"]
+other = "Disk resized successfully! The disk has been increased by {{.Increment}} GB. Note: You may need to expand the partition within your operating system to use the new space."
+["VMDetails.DiskResize.Failed"]
+other = "Disk resize failed: {{.Error}}"
+["VMDetails.DiskResize.FstrimExecuted"]
+other = "Filesystem trimmed successfully via QEMU agent"
+["VMDetails.DiskResize.FstrimSkipped"]
+other = "VM is not running - fstrim skipped. You can run fstrim manually inside the VM after boot."
