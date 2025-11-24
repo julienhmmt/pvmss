@@ -536,11 +536,22 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		bridge := strings.TrimSpace(r.FormValue(fmt.Sprintf("bridge_%d", i)))
 		model := strings.TrimSpace(r.FormValue(fmt.Sprintf("network_model_%d", i)))
 		mac := strings.TrimSpace(r.FormValue(fmt.Sprintf("mac_address_%d", i)))
+		vlan := strings.TrimSpace(r.FormValue(fmt.Sprintf("vlan_tag_%d", i)))
+
 		// Validate MAC address format
 		if mac != "" && !utils.ValidateMACAddress(mac) {
 			ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "VM.Create.Validation.InvalidMACAddress")
 			return
 		}
+
+		// Validate VLAN tag if provided
+		if vlan != "" {
+			if vlanID, err := strconv.Atoi(vlan); err != nil || vlanID < 1 || vlanID > 4096 {
+				ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Validation.VLANRange")
+				return
+			}
+		}
+
 		// Normalize MAC address to Proxmox format
 		mac = utils.NormalizeMACAddress(mac)
 		exists := strings.TrimSpace(r.FormValue(fmt.Sprintf("exists_%d", i))) == "1"
@@ -585,6 +596,11 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 			netParts = append(netParts, model)
 		}
 		netParts = append(netParts, "bridge="+bridge)
+
+		// Add VLAN tag if provided
+		if vlan != "" {
+			netParts = append(netParts, "tag="+vlan)
+		}
 
 		// Add link_down option if interface is disabled
 		if linkDown {
@@ -724,7 +740,7 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Parse current config
-	model, mac, bridge, options, currentLinkDown := parseNetworkConfig(currentConfig)
+	model, mac, bridge, vlan, options, currentLinkDown := parseNetworkConfig(currentConfig)
 
 	ctx.Log.Info().Str("vmid", vmidStr).Str("node", node).Int("card_index", cardIndex).
 		Str("current_config", currentConfig).Str("model", model).Str("mac", mac).
@@ -769,6 +785,11 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		netParts = append(netParts, model)
 	}
 	netParts = append(netParts, "bridge="+bridge)
+
+	// Add VLAN tag if present
+	if vlan != "" {
+		netParts = append(netParts, "tag="+vlan)
+	}
 
 	// Filter out any existing link_down options from the options list
 	filteredOptions := []string{}

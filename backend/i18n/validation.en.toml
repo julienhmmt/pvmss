@@ -19,3 +19,5 @@ other = "Must be a valid IP address"
 other = "Must be a positive number"
 ["Validation.Negative"]
 other = "Must be a negative number"
+["Validation.VLANRange"]
+other = "VLAN tag must be between 1 and 4096"

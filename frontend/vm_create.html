@@ -858,6 +858,46 @@
                                                     {{end}}
                                                 </div>
                                                 <div class="field">
+                                                    <label for="networkVLAN_{{$cardIdx}}" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-tags"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.NetworkVLAN"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.NetworkVLAN"}} #{{add $cardIdx 1}} ({{T "VM.Create.NetworkOptional"}})
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkVLAN"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkVLAN-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.NetworkVLAN"}}
+                                                            </div>
+                                                        </span>
+                                                        {{end}}
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="networkVLAN_{{$cardIdx}}" 
+                                                               type="number" 
+                                                               name="vlan_tag_{{$cardIdx}}" 
+                                                               class="input is-medium" 
+                                                               placeholder="1-4096"
+                                                               min="1"
+                                                               max="4096"
+                                                               value="{{index $.FormData (printf "vlan_tag_%d" $cardIdx)}}"
+                                                               {{if ne $cardIdx 0}}aria-describedby="networkVLAN-help"{{end}}>
+                                                    </div>
+                                                    {{if eq $cardIdx 0}}
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p>{{T "VM.Create.NetworkVLANHelp"}}</p>
+                                                    </div>
+                                                    {{end}}
+                                                </div>
+                                                <div class="field">
                                                     <label for="networkModel_{{$cardIdx}}" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-network-wired"></i></span>
