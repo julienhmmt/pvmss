@@ -1228,6 +1228,10 @@ func (h *VMCreateOptimizedHandler) preserveNetworkCardFormData(r *http.Request, 
 		if enabled := r.FormValue(fmt.Sprintf("network_enabled_%d", netIdx)); enabled != "" {
 			formData[fmt.Sprintf("network_enabled_%d", netIdx)] = enabled
 		}
+		// Preserve network speed
+		if rate := r.FormValue(fmt.Sprintf("rate_limit_%d", netIdx)); rate != "" {
+			formData[fmt.Sprintf("rate_limit_%d", netIdx)] = rate
+		}
 	}
 }
 
@@ -1254,6 +1258,8 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	networkModel := strings.TrimSpace(r.FormValue("network_model_0"))
 	macAddress := strings.TrimSpace(r.FormValue("mac_address_0"))
 	vlanTag := strings.TrimSpace(r.FormValue("vlan_tag_0"))
+	rateLimit := strings.TrimSpace(r.FormValue("rate_limit_0"))
+
 	// Validate MAC address format
 	if macAddress != "" && !utils.ValidateMACAddress(macAddress) {
 		// Preserve form data for all network cards before rendering error
@@ -1268,6 +1274,16 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			// Preserve form data for all network cards before rendering error
 			h.preserveNetworkCardFormData(r, data)
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.VLANRange")
+			renderTemplateInternal(w, r, "vm_create", data)
+			return
+		}
+	}
+	// Validate Rate Limit if provided
+	if rateLimit != "" {
+		if rate, err := strconv.ParseFloat(rateLimit, 64); err != nil || rate < 1 || rate > 10240 {
+			// Preserve form data for all network cards before rendering error
+			h.preserveNetworkCardFormData(r, data)
+			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.RateLimitRange")
 			renderTemplateInternal(w, r, "vm_create", data)
 			return
 		}
@@ -1649,12 +1665,17 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			netConfig += ",tag=" + vlanTag
 			log.Info().Str("vlanTag", vlanTag).Msg("VLAN tag added to network configuration")
 		}
+		// Add Rate Limit if provided
+		if rateLimit != "" {
+			netConfig += ",rate=" + rateLimit
+			log.Info().Str("rateLimit", rateLimit).Msg("Rate limit added to network configuration")
+		}
 		networkEnabled := r.FormValue("network_enabled_0") == "1"
 		if !networkEnabled {
 			netConfig += ",link_down=1"
 		}
 		params.Set("net0", netConfig)
-		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Str("vlan", vlanTag).Bool("enabled", networkEnabled).Str("netConfig", netConfig).Msg("Configured primary network card")
+		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Str("vlan", vlanTag).Str("rate", rateLimit).Bool("enabled", networkEnabled).Str("netConfig", netConfig).Msg("Configured primary network card")
 	} else {
 		log.Warn().Msg("Bridge name is empty, skipping network card configuration")
 	}
@@ -1676,6 +1697,8 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			additionalMAC := strings.TrimSpace(r.FormValue(fmt.Sprintf("mac_address_%d", netIdx)))
 			// Get VLAN tag for this card
 			additionalVLANTag := strings.TrimSpace(r.FormValue(fmt.Sprintf("vlan_tag_%d", netIdx)))
+			// Get Rate Limit for this card
+			additionalRateLimit := strings.TrimSpace(r.FormValue(fmt.Sprintf("rate_limit_%d", netIdx)))
 			// Validate MAC address format
 			if additionalMAC != "" && !utils.ValidateMACAddress(additionalMAC) {
 				// Preserve form data for all network cards before rendering error
@@ -1690,6 +1713,16 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 					// Preserve form data for all network cards before rendering error
 					h.preserveNetworkCardFormData(r, data)
 					data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.VLANRange")
+					renderTemplateInternal(w, r, "vm_create", data)
+					return
+				}
+			}
+			// Validate Rate Limit if provided
+			if additionalRateLimit != "" {
+				if rate, err := strconv.ParseFloat(additionalRateLimit, 64); err != nil || rate < 1 || rate > 10240 {
+					// Preserve form data for all network cards before rendering error
+					h.preserveNetworkCardFormData(r, data)
+					data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.RateLimitRange")
 					renderTemplateInternal(w, r, "vm_create", data)
 					return
 				}
@@ -1709,13 +1742,17 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			if additionalVLANTag != "" {
 				additionalNetConfig += ",tag=" + additionalVLANTag
 			}
+			// Add Rate Limit if provided
+			if additionalRateLimit != "" {
+				additionalNetConfig += ",rate=" + additionalRateLimit
+			}
 			if !additionalEnabled {
 				additionalNetConfig += ",link_down=1"
 			}
 			// Set parameter
 			netParam := fmt.Sprintf("net%d", netIdx)
 			params.Set(netParam, additionalNetConfig)
-			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Str("vlan", additionalVLANTag).Bool("enabled", additionalEnabled).Msg("Added additional network card")
+			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Str("vlan", additionalVLANTag).Str("rate", additionalRateLimit).Bool("enabled", additionalEnabled).Msg("Added additional network card")
 		}
 	}
 

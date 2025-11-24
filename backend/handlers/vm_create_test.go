@@ -112,15 +112,17 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 			mac      string
 			bridge   string
 			vlan     string
+			rate     string
 			linkDown bool
 			expected string
 		}{
 			{
-				name:     "Basic config without VLAN",
+				name:     "Basic config without VLAN or Rate",
 				model:    "virtio",
 				mac:      "AA:BB:CC:DD:EE:FF",
 				bridge:   "vmbr0",
 				vlan:     "",
+				rate:     "",
 				linkDown: false,
 				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0",
 			},
@@ -130,17 +132,29 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 				mac:      "AA:BB:CC:DD:EE:FF",
 				bridge:   "vmbr0",
 				vlan:     "100",
+				rate:     "",
 				linkDown: false,
 				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=100",
 			},
 			{
-				name:     "Config with VLAN and link down",
+				name:     "Config with Rate Limit",
+				model:    "virtio",
+				mac:      "AA:BB:CC:DD:EE:FF",
+				bridge:   "vmbr0",
+				vlan:     "",
+				rate:     "1000",
+				linkDown: false,
+				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000",
+			},
+			{
+				name:     "Config with VLAN, Rate and link down",
 				model:    "virtio",
 				mac:      "AA:BB:CC:DD:EE:FF",
 				bridge:   "vmbr0",
 				vlan:     "200",
+				rate:     "50",
 				linkDown: true,
-				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=200,link_down=1",
+				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=200,rate=50,link_down=1",
 			},
 			{
 				name:     "Config without MAC",
@@ -148,6 +162,7 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 				mac:      "",
 				bridge:   "vmbr0",
 				vlan:     "300",
+				rate:     "",
 				linkDown: false,
 				expected: "virtio,bridge=vmbr0,tag=300",
 			},
@@ -155,7 +170,7 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 
 		for _, test := range testCases {
 			t.Run(test.name, func(t *testing.T) {
-				result := buildNetworkConfig(test.model, test.mac, test.bridge, test.vlan, test.linkDown)
+				result := buildNetworkConfig(test.model, test.mac, test.bridge, test.vlan, test.rate, test.linkDown)
 				if result != test.expected {
 					t.Errorf("buildNetworkConfig() = %q; want %q", result, test.expected)
 				}
@@ -163,30 +178,31 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 		}
 	})
 
-	t.Run("Multiple Network Cards with VLANs", func(t *testing.T) {
+	t.Run("Multiple Network Cards with VLANs and Rate Limits", func(t *testing.T) {
 		networkCards := []struct {
 			model    string
 			mac      string
 			bridge   string
 			vlan     string
+			rate     string
 			linkDown bool
 		}{
-			{"virtio", "AA:BB:CC:DD:EE:01", "vmbr0", "100", false},
-			{"e1000", "AA:BB:CC:DD:EE:02", "vmbr1", "200", false},
-			{"virtio", "AA:BB:CC:DD:EE:03", "vmbr0", "", true}, // No VLAN
-			{"e1000e", "AA:BB:CC:DD:EE:04", "vmbr1", "400", false},
+			{"virtio", "AA:BB:CC:DD:EE:01", "vmbr0", "100", "1000", false},
+			{"e1000", "AA:BB:CC:DD:EE:02", "vmbr1", "200", "", false},
+			{"virtio", "AA:BB:CC:DD:EE:03", "vmbr0", "", "10", true}, // No VLAN, Rate 10
+			{"e1000e", "AA:BB:CC:DD:EE:04", "vmbr1", "400", "5000", false},
 		}
 
 		expectedConfigs := []string{
-			"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0,tag=100",
+			"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0,tag=100,rate=1000",
 			"e1000=AA:BB:CC:DD:EE:02,bridge=vmbr1,tag=200",
-			"virtio=AA:BB:CC:DD:EE:03,bridge=vmbr0,link_down=1",
-			"e1000e=AA:BB:CC:DD:EE:04,bridge=vmbr1,tag=400",
+			"virtio=AA:BB:CC:DD:EE:03,bridge=vmbr0,rate=10,link_down=1",
+			"e1000e=AA:BB:CC:DD:EE:04,bridge=vmbr1,tag=400,rate=5000",
 		}
 
 		for i, card := range networkCards {
 			t.Run(fmt.Sprintf("Card_%d", i), func(t *testing.T) {
-				config := buildNetworkConfig(card.model, card.mac, card.bridge, card.vlan, card.linkDown)
+				config := buildNetworkConfig(card.model, card.mac, card.bridge, card.vlan, card.rate, card.linkDown)
 				expected := expectedConfigs[i]
 				if config != expected {
 					t.Errorf("Network card %d config = %q; want %q", i, config, expected)
@@ -215,6 +231,25 @@ func validateVLANTag(vlanStr string) bool {
 	return vlanID >= 1 && vlanID <= 4096
 }
 
+// validateRateLimit replicates the validation logic for Network Speed (Rate)
+func validateRateLimit(rateStr string) bool {
+	rateStr = strings.TrimSpace(rateStr)
+
+	if rateStr == "" {
+		// Empty Rate is valid (optional field, unlimited)
+		return true
+	}
+
+	// Check if value is numeric
+	rate, err := strconv.ParseFloat(rateStr, 64)
+	if err != nil {
+		return false
+	}
+
+	// Validate Network Speed range (1-10240 MB/s, Proxmox limit)
+	return rate >= 1 && rate <= 10240
+}
+
 // getVLANValidationMessage replicates the message logic from ValidateVLANHandler
 func getVLANValidationMessage(vlanStr string) string {
 	vlanStr = strings.TrimSpace(vlanStr)
@@ -239,7 +274,7 @@ func getVLANValidationMessage(vlanStr string) string {
 }
 
 // buildNetworkConfig replicates the network configuration building logic
-func buildNetworkConfig(model, mac, bridge, vlan string, linkDown bool) string {
+func buildNetworkConfig(model, mac, bridge, vlan, rate string, linkDown bool) string {
 	netParts := []string{}
 
 	if mac != "" {
@@ -253,6 +288,11 @@ func buildNetworkConfig(model, mac, bridge, vlan string, linkDown bool) string {
 	// Add VLAN tag if provided
 	if vlan != "" {
 		netParts = append(netParts, "tag="+vlan)
+	}
+
+	// Add Rate Limit if provided
+	if rate != "" {
+		netParts = append(netParts, "rate="+rate)
 	}
 
 	// Add link_down flag explicitly

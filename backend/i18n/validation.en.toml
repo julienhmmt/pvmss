@@ -21,6 +21,8 @@ other = "Must be a positive number"
 other = "Must be a negative number"
 ["Validation.VLANRange"]
 other = "VLAN tag must be between 1 and 4096"
+["Validation.RateLimitRange"]
+other = "Network speed must be between 1 and 10240 MB/s (Proxmox limit)"
 ["VM.Create.Validation.VLANNumeric"]
 other = "VLAN tag must contain only numbers"
 ["VM.Create.Validation.VLANValid"]

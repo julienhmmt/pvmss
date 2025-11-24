@@ -537,6 +537,7 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		model := strings.TrimSpace(r.FormValue(fmt.Sprintf("network_model_%d", i)))
 		mac := strings.TrimSpace(r.FormValue(fmt.Sprintf("mac_address_%d", i)))
 		vlan := strings.TrimSpace(r.FormValue(fmt.Sprintf("vlan_tag_%d", i)))
+		rate := strings.TrimSpace(r.FormValue(fmt.Sprintf("rate_limit_%d", i)))
 
 		// Validate MAC address format
 		if mac != "" && !utils.ValidateMACAddress(mac) {
@@ -548,6 +549,14 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		if vlan != "" {
 			if vlanID, err := strconv.Atoi(vlan); err != nil || vlanID < 1 || vlanID > 4096 {
 				ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Validation.VLANRange")
+				return
+			}
+		}
+
+		// Validate Rate Limit if provided
+		if rate != "" {
+			if rVal, err := strconv.ParseFloat(rate, 64); err != nil || rVal < 1 || rVal > 10240 {
+				ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Validation.RateLimitRange")
 				return
 			}
 		}
@@ -600,6 +609,11 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		// Add VLAN tag if provided
 		if vlan != "" {
 			netParts = append(netParts, "tag="+vlan)
+		}
+
+		// Add Rate Limit if provided
+		if rate != "" {
+			netParts = append(netParts, "rate="+rate)
 		}
 
 		// Add link_down option if interface is disabled
@@ -740,7 +754,7 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Parse current config
-	model, mac, bridge, vlan, options, currentLinkDown := parseNetworkConfig(currentConfig)
+	model, mac, bridge, vlan, rate, options, currentLinkDown := parseNetworkConfig(currentConfig)
 
 	ctx.Log.Info().Str("vmid", vmidStr).Str("node", node).Int("card_index", cardIndex).
 		Str("current_config", currentConfig).Str("model", model).Str("mac", mac).
@@ -789,6 +803,11 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	// Add VLAN tag if present
 	if vlan != "" {
 		netParts = append(netParts, "tag="+vlan)
+	}
+
+	// Add Rate limit if present
+	if rate != "" {
+		netParts = append(netParts, "rate="+rate)
 	}
 
 	// Filter out any existing link_down options from the options list
