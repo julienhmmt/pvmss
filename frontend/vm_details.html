@@ -1608,7 +1608,12 @@
                                             </div>
                                         </div>
                                         <div class="column is-half">
-                                            <label class="label is-size-7 has-text-grey" for="networkRateLimit_{{$idx}}">{{T "VM.Create.NetworkRateLimit"}}</label>
+                                            <label class="label is-size-7 has-text-grey" for="networkRateLimit_{{$idx}}">
+                                                {{T "VM.Create.NetworkRateLimit"}}
+                                                <span class="icon is-small has-text-grey" title='{{T "VM.Create.Tooltip.NetworkRateLimit"}}'>
+                                                    <i class="fas fa-info-circle"></i>
+                                                </span>
+                                            </label>
                                             <div class="control">
                                                 <input id="networkRateLimit_{{$idx}}" 
                                                        type="number" 

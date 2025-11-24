@@ -55,15 +55,11 @@ func TestVMCreateHandlerMACValidationTests(t *testing.T) {
 			{"1a", false, "Alphanumeric"},
 		}
 
-		for _, test := range testRates {
-			// Capture range variable
-			test := test
-			t.Run(test.desc, func(t *testing.T) {
-				if t != nil {
-					result := validateRateLimit(test.input)
-					if result != test.valid {
-						t.Errorf("validateRateLimit(%q) = %v; want %v", test.input, result, test.valid)
-					}
+		for _, tc := range testRates {
+			t.Run(tc.desc, func(t *testing.T) {
+				result := validateRateLimit(tc.input)
+				if result != tc.valid {
+					t.Errorf("validateRateLimit(%q) = %v; want %v", tc.input, result, tc.valid)
 				}
 			})
 		}
