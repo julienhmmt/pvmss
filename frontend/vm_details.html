@@ -1569,21 +1569,6 @@
                                         </div>
                                         </div>
                                         <div class="column">
-                                            <label class="label is-size-7 has-text-grey" for="networkVLAN_{{$idx}}">{{T "VM.Create.NetworkVLAN"}}</label>
-                                            <div class="control">
-                                                <input id="networkVLAN_{{$idx}}" 
-                                                       type="number" 
-                                                       name="vlan_tag_{{$idx}}" 
-                                                       class="input is-medium" 
-                                                       placeholder="1-4096"
-                                                       min="1" 
-                                                       max="4096"
-                                                       value="{{$card.VLAN}}"
-                                                       {{if $isRunning}}disabled{{end}}>
-                                                <p class="help is-size-7">{{T "VM.Create.NetworkVLANHelp"}}</p>
-                                            </div>
-                                        </div>
-                                        <div class="column">
                                             <label class="label is-size-7 has-text-grey" for="networkModel_{{$idx}}">{{T "VM.Create.NetworkModel"}}</label>
                                             <div class="control">
                                                 <div class="select is-fullwidth is-medium">
@@ -1595,6 +1580,26 @@
                                                         <option value="vmxnet3" title="{{T "VM.Create.NetworkModel.VMXNet3"}}" {{if eq $card.Model "vmxnet3"}}selected{{end}}>VMXNet3</option>
                                                     </select>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- VLAN field moved below MAC/Model fields -->
+                                    <div class="columns mt-3">
+                                        <div class="column is-full">
+                                            <label class="label is-size-7 has-text-grey" for="networkVLAN_{{$idx}}">{{T "VM.Create.NetworkVLAN"}}</label>
+                                            <div class="control">
+                                                <input id="networkVLAN_{{$idx}}" 
+                                                       type="text" 
+                                                       name="vlan_tag_{{$idx}}" 
+                                                       class="input is-medium" 
+                                                       placeholder="1-4096"
+                                                       pattern="[0-9]+"
+                                                       value="{{$card.VLAN}}"
+                                                       {{if $isRunning}}disabled{{end}}
+                                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                                       data-field-validation>
+                                                <div class="field-validation-message is-hidden" data-validation-for="networkVLAN_{{$idx}}"></div>
+                                                <p class="help is-size-7">{{T "VM.Create.NetworkVLANHelp"}}</p>
                                             </div>
                                         </div>
                                     </div>

@@ -21,3 +21,7 @@ other = "Must be a positive number"
 other = "Must be a negative number"
 ["Validation.VLANRange"]
 other = "VLAN tag must be between 1 and 4096"
+["VM.Create.Validation.VLANNumeric"]
+other = "VLAN tag must contain only numbers"
+["VM.Create.Validation.VLANValid"]
+other = "Valid VLAN tag"

@@ -882,14 +882,16 @@
                                                     </label>
                                                     <div class="control">
                                                         <input id="networkVLAN_{{$cardIdx}}" 
-                                                               type="number" 
+                                                               type="text" 
                                                                name="vlan_tag_{{$cardIdx}}" 
                                                                class="input is-medium" 
                                                                placeholder="1-4096"
-                                                               min="1"
-                                                               max="4096"
+                                                               pattern="[0-9]+"
                                                                value="{{index $.FormData (printf "vlan_tag_%d" $cardIdx)}}"
-                                                               {{if ne $cardIdx 0}}aria-describedby="networkVLAN-help"{{end}}>
+                                                               {{if ne $cardIdx 0}}aria-describedby="networkVLAN-help"{{end}}
+                                                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                                               data-field-validation>
+                                                        <div class="field-validation-message is-hidden" data-validation-for="networkVLAN_{{$cardIdx}}"></div>
                                                     </div>
                                                     {{if eq $cardIdx 0}}
                                                     <div class="help is-size-7 has-text-grey-light mt-2">
