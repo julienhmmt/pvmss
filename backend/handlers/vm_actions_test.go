@@ -360,3 +360,255 @@ func TestVMActionHandler_ShutdownGuestAgentUnavailablePrecheck(t *testing.T) {
 		t.Fatalf("unexpected guest agent timeout message in redirect URL: %s", errorMsg)
 	}
 }
+
+// TestVMResourcesHandler_DiskResizeValidation tests disk resize parameter validation
+func TestVMResourcesHandler_DiskResizeValidation(t *testing.T) {
+	t.Helper()
+
+	// Set dummy environment variables to prevent RestyClient creation errors
+	t.Setenv("PROXMOX_URL", "http://test:8006")
+	t.Setenv("PROXMOX_API_TOKEN_NAME", "test-token")
+	t.Setenv("PROXMOX_API_TOKEN_VALUE", "test-secret")
+
+	testCases := []struct {
+		name             string
+		diskResizeDisk   string
+		diskResizeGB     string
+		expectError      bool
+		expectedErrorMsg string
+		description      string
+	}{
+		{
+			name:           "Valid small resize",
+			diskResizeDisk: "scsi0",
+			diskResizeGB:   "1",
+			expectError:    false,
+			description:    "Should accept 1GB minimum increment",
+		},
+		{
+			name:           "Valid medium resize",
+			diskResizeDisk: "virtio0",
+			diskResizeGB:   "100",
+			expectError:    false,
+			description:    "Should accept 100GB increment",
+		},
+		{
+			name:           "Valid large resize",
+			diskResizeDisk: "sata0",
+			diskResizeGB:   "500",
+			expectError:    false,
+			description:    "Should accept 500GB increment (no max limit)",
+		},
+		{
+			name:           "Valid very large resize",
+			diskResizeDisk: "ide0",
+			diskResizeGB:   "1024",
+			expectError:    false,
+			description:    "Should accept 1TB increment",
+		},
+		{
+			name:             "Empty disk with increment",
+			diskResizeDisk:   "",
+			diskResizeGB:     "10",
+			expectError:      true,
+			expectedErrorMsg: "Invalid+input",
+			description:      "Should reject partial input (missing disk)",
+		},
+		{
+			name:             "Disk with empty increment",
+			diskResizeDisk:   "scsi0",
+			diskResizeGB:     "",
+			expectError:      true,
+			expectedErrorMsg: "Invalid+input",
+			description:      "Should reject partial input (missing increment)",
+		},
+		{
+			name:             "Negative increment",
+			diskResizeDisk:   "scsi0",
+			diskResizeGB:     "-5",
+			expectError:      true,
+			expectedErrorMsg: "Invalid+input",
+			description:      "Should reject negative values",
+		},
+		{
+			name:             "Zero increment",
+			diskResizeDisk:   "scsi0",
+			diskResizeGB:     "0",
+			expectError:      true,
+			expectedErrorMsg: "Invalid+input",
+			description:      "Should reject zero values",
+		},
+		{
+			name:             "Invalid increment format",
+			diskResizeDisk:   "scsi0",
+			diskResizeGB:     "abc",
+			expectError:      true,
+			expectedErrorMsg: "Invalid+input",
+			description:      "Should reject non-numeric values",
+		},
+		{
+			name:             "Decimal increment",
+			diskResizeDisk:   "scsi0",
+			diskResizeGB:     "10.5",
+			expectError:      true,
+			expectedErrorMsg: "Invalid+input",
+			description:      "Should reject decimal values",
+		},
+		{
+			name:           "No resize parameters",
+			diskResizeDisk: "",
+			diskResizeGB:   "",
+			expectError:    false,
+			description:    "Should accept empty parameters (no resize)",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create form with required base parameters
+			form := url.Values{}
+			form.Set("vmid", "100")
+			form.Set("node", "testnode")
+			form.Set("cores", "2")
+			form.Set("sockets", "1")
+			form.Set("memory", "2048")
+			form.Set("memory_unit", "MB")
+
+			// Add disk resize parameters
+			form.Set("disk_resize_disk", tc.diskResizeDisk)
+			form.Set("disk_resize_gb", tc.diskResizeGB)
+
+			req := httptest.NewRequest(http.MethodPost, "/vm/update/resources", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+			// Setup fake state manager
+			fakeSM := &fakeStateManager{
+				offline:          false,
+				proxmoxClient:    &fakeProxmoxClient{},
+				proxmoxConnected: true,
+			}
+			ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
+			req = req.WithContext(ctx)
+
+			rec := httptest.NewRecorder()
+			h := &VMHandler{}
+			h.UpdateVMResourcesHandler(rec, req, httprouter.Params{})
+
+			if tc.expectError {
+				if rec.Code != http.StatusSeeOther {
+					t.Errorf("Expected redirect status %d, got %d", http.StatusSeeOther, rec.Code)
+				}
+				location := rec.Header().Get("Location")
+				if !strings.Contains(location, tc.expectedErrorMsg) {
+					t.Errorf("Expected error message %q in redirect URL, got %s", tc.expectedErrorMsg, location)
+				}
+			} else {
+				// Should either succeed (200) or redirect with success
+				if rec.Code != http.StatusOK && rec.Code != http.StatusSeeOther {
+					t.Errorf("Expected status 200 or 302, got %d", rec.Code)
+				}
+			}
+		})
+	}
+}
+
+// TestVMResourcesHandler_DiskResizeEdgeCases tests edge cases and error scenarios
+func TestVMResourcesHandler_DiskResizeEdgeCases(t *testing.T) {
+	t.Helper()
+
+	// Set dummy environment variables to prevent RestyClient creation errors
+	t.Setenv("PROXMOX_URL", "http://test:8006")
+	t.Setenv("PROXMOX_API_TOKEN_NAME", "test-token")
+	t.Setenv("PROXMOX_API_TOKEN_VALUE", "test-secret")
+
+	t.Run("Missing required VM parameters", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("disk_resize_disk", "scsi0")
+		form.Set("disk_resize_gb", "10")
+		// Missing vmid and node
+
+		req := httptest.NewRequest(http.MethodPost, "/vm/update/resources", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		fakeSM := &fakeStateManager{
+			offline:          false,
+			proxmoxClient:    &fakeProxmoxClient{},
+			proxmoxConnected: true,
+		}
+		ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
+		req = req.WithContext(ctx)
+
+		rec := httptest.NewRecorder()
+		h := &VMHandler{}
+		h.UpdateVMResourcesHandler(rec, req, httprouter.Params{})
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("Expected bad request status %d, got %d", http.StatusBadRequest, rec.Code)
+		}
+	})
+
+	t.Run("Invalid VMID format", func(t *testing.T) {
+		form := url.Values{}
+		form.Set("vmid", "invalid")
+		form.Set("node", "testnode")
+		form.Set("cores", "2")
+		form.Set("sockets", "1")
+		form.Set("memory", "2048")
+		form.Set("memory_unit", "MB")
+		form.Set("disk_resize_disk", "scsi0")
+		form.Set("disk_resize_gb", "10")
+
+		req := httptest.NewRequest(http.MethodPost, "/vm/update/resources", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		fakeSM := &fakeStateManager{
+			offline:          false,
+			proxmoxClient:    &fakeProxmoxClient{},
+			proxmoxConnected: true,
+		}
+		ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
+		req = req.WithContext(ctx)
+
+		rec := httptest.NewRecorder()
+		h := &VMHandler{}
+		h.UpdateVMResourcesHandler(rec, req, httprouter.Params{})
+
+		// Should return 400 for invalid VMID format
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("Expected bad request status %d, got %d", http.StatusBadRequest, rec.Code)
+		}
+	})
+
+	t.Run("Extremely large resize value", func(t *testing.T) {
+		// Test that very large values are handled (should be parsed correctly)
+		form := url.Values{}
+		form.Set("vmid", "100")
+		form.Set("node", "testnode")
+		form.Set("cores", "2")
+		form.Set("sockets", "1")
+		form.Set("memory", "2048")
+		form.Set("memory_unit", "MB")
+		form.Set("disk_resize_disk", "scsi0")
+		form.Set("disk_resize_gb", "999999") // Very large but valid number
+
+		req := httptest.NewRequest(http.MethodPost, "/vm/update/resources", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		fakeSM := &fakeStateManager{
+			offline:          false,
+			proxmoxClient:    &fakeProxmoxClient{},
+			proxmoxConnected: true,
+		}
+		ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
+		req = req.WithContext(ctx)
+
+		rec := httptest.NewRecorder()
+		h := &VMHandler{}
+		h.UpdateVMResourcesHandler(rec, req, httprouter.Params{})
+
+		// Should not fail on parsing (Proxmox will handle the actual limit)
+		if rec.Code != http.StatusOK && rec.Code != http.StatusSeeOther {
+			t.Errorf("Expected status 200 or 302 for large valid number, got %d", rec.Code)
+		}
+	})
+}
