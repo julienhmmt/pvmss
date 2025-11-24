@@ -1594,16 +1594,14 @@
                                         </div>
                                     </div>
                                     <!-- VLAN field moved below MAC/Model fields -->
-                                    <div class="columns mt-3">
-                                        <div class="column is-one-third">
-                                        </div>
+                                    <div class="columns is-multiline is-variable is-3">
                                         <div class="column is-one-third">
                                             <label class="label is-size-7 has-text-grey" for="networkVLAN_{{$idx}}">{{T "VM.Create.NetworkVLAN"}}</label>
                                             <div class="control">
-                                                <input id="networkVLAN_{{$idx}}" 
-                                                       type="text" 
-                                                       name="vlan_tag_{{$idx}}" 
-                                                       class="input is-medium" 
+                                                <input id="networkVLAN_{{$idx}}"
+                                                       type="text"
+                                                       name="vlan_tag_{{$idx}}"
+                                                       class="input is-medium"
                                                        placeholder="1-4096"
                                                        pattern="[0-9]+"
                                                        value="{{$card.VLAN}}"
@@ -1622,10 +1620,10 @@
                                                 </span>
                                             </label>
                                             <div class="control">
-                                                <input id="networkRateLimit_{{$idx}}" 
-                                                       type="number" 
-                                                       name="rate_limit_{{$idx}}" 
-                                                       class="input is-medium" 
+                                                <input id="networkRateLimit_{{$idx}}"
+                                                       type="number"
+                                                       name="rate_limit_{{$idx}}"
+                                                       class="input is-medium"
                                                        placeholder="1000"
                                                        min="1"
                                                        max="10240"
