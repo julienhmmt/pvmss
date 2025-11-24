@@ -27,3 +27,5 @@ other = "La vitesse réseau doit être comprise entre 1 et 10240 Mo/s (limite Pr
 other = "Le tag VLAN doit contenir uniquement des chiffres"
 ["VM.Create.Validation.VLANValid"]
 other = "Tag VLAN valide"
+["Validation.MTURange"]
+other = "Le MTU doit être un nombre compris entre 576 et 9000"

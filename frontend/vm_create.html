@@ -943,6 +943,46 @@
                                                     {{end}}
                                                 </div>
                                                 <div class="field">
+                                                    <label for="networkMTU_{{$cardIdx}}" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-arrows-left-right-to-line"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.NetworkMTU"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.NetworkMTU"}} #{{add $cardIdx 1}} ({{T "VM.Create.NetworkOptional"}})
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkMTU"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkMTU-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.NetworkMTU"}}
+                                                            </div>
+                                                        </span>
+                                                        {{end}}
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="networkMTU_{{$cardIdx}}"
+                                                               type="number"
+                                                               name="mtu_{{$cardIdx}}"
+                                                               class="input is-medium"
+                                                               placeholder="1500"
+                                                               min="576"
+                                                               max="9000"
+                                                               step="1"
+                                                               value="{{index $.FormData (printf "mtu_%d" $cardIdx)}}">
+                                                    </div>
+                                                    {{if eq $cardIdx 0}}
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p>{{T "VM.Create.NetworkMTUHelp"}}</p>
+                                                    </div>
+                                                    {{end}}
+                                                </div>
+                                                <div class="field">
                                                     <label for="networkModel_{{$cardIdx}}" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-network-wired"></i></span>

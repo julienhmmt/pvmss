@@ -268,6 +268,12 @@ other = "Network Speed (MB/s)"
 other = "Limit the network card speed in Megabytes per second (MB/s). Optional. Default: unlimited (empty). Maximum: 10240 MB/s (Proxmox limit, cannot be exceeded)."
 ["VM.Create.Tooltip.NetworkRateLimit"]
 other = "Network interface speed limit in Megabytes per second (MB/s). Leave empty for unlimited speed (Proxmox default). Accepted range: 1-10240 MB/s (Proxmox maximum). Example: 100 = 100 MB/s."
+["VM.Create.NetworkMTU"]
+other = "MTU (Maximum Transmission Unit)"
+["VM.Create.NetworkMTUHelp"]
+other = "Advanced optional parameter. Default MTU is 1500. Changing it may impact network performance and connectivity. Unless you know exactly what you are doing (for example specific VLANs or jumbo frames), keep 1500."
+["VM.Create.Tooltip.NetworkMTU"]
+other = "Network packet size (MTU) in bytes. Default is 1500 on most networks. Using a wrong MTU can cause performance issues or even loss of connectivity. Recommended: keep 1500 unless your network team explicitly asks for another value."
 ["VM.Create.Tooltip.DiskBusType"]
 other = "Disk controller type for the VM. Determines the type of disk controller to use (VirtIO, SCSI, SATA, IDE)."
 ["VM.Create.NetworkEnabled"]

@@ -1590,7 +1590,9 @@
                                     </div>
                                     <!-- VLAN field moved below MAC/Model fields -->
                                     <div class="columns mt-3">
-                                        <div class="column is-half">
+                                        <div class="column is-one-third">
+                                        </div>
+                                        <div class="column is-one-third">
                                             <label class="label is-size-7 has-text-grey" for="networkVLAN_{{$idx}}">{{T "VM.Create.NetworkVLAN"}}</label>
                                             <div class="control">
                                                 <input id="networkVLAN_{{$idx}}" 
@@ -1607,7 +1609,7 @@
                                                 <p class="help is-size-7">{{T "VM.Create.NetworkVLANHelp"}}</p>
                                             </div>
                                         </div>
-                                        <div class="column is-half">
+                                        <div class="column is-one-third">
                                             <label class="label is-size-7 has-text-grey" for="networkRateLimit_{{$idx}}">
                                                 {{T "VM.Create.NetworkRateLimit"}}
                                                 <span class="icon is-small has-text-grey" title='{{T "VM.Create.Tooltip.NetworkRateLimit"}}'>
@@ -1628,6 +1630,27 @@
                                                        data-field-validation>
                                                 <div class="field-validation-message is-hidden" data-validation-for="networkRateLimit_{{$idx}}"></div>
                                                 <p class="help is-size-7">{{T "VM.Create.NetworkRateLimitHelp"}}</p>
+                                            </div>
+                                        </div>
+                                        <div class="column is-one-third">
+                                            <label class="label is-size-7 has-text-grey" for="networkMTU_{{$idx}}">
+                                                {{T "VM.Create.NetworkMTU"}}
+                                                <span class="icon is-small has-text-grey" title='{{T "VM.Create.Tooltip.NetworkMTU"}}'>
+                                                    <i class="fas fa-info-circle"></i>
+                                                </span>
+                                            </label>
+                                            <div class="control">
+                                                <input id="networkMTU_{{$idx}}"
+                                                       type="number"
+                                                       name="mtu_{{$idx}}"
+                                                       class="input is-medium"
+                                                       placeholder="1500"
+                                                       min="576"
+                                                       max="9000"
+                                                       step="1"
+                                                       value="{{$card.MTU}}"
+                                                       {{if $isRunning}}disabled{{end}}>
+                                                <p class="help is-size-7">{{T "VM.Create.NetworkMTUHelp"}}</p>
                                             </div>
                                         </div>
                                     </div>
