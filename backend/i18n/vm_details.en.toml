@@ -197,3 +197,47 @@ other = "Unavailable"
 other = "Unknown"
 ["VMDetails.Agent.Status.Offline"]
 other = "Offline (PVMSS)"
+
+# Disk Resize functionality
+["VMDetails.DiskResize.Title"]
+other = "Disk Resize"
+["VMDetails.DiskResize.Help"]
+other = "Increase disk size for additional storage. Only increments are allowed (no shrinking). After resize, you may need to expand the partition within your operating system."
+["VMDetails.DiskResize.SelectDisk"]
+other = "Select Disk"
+["VMDetails.DiskResize.NoResize"]
+other = "No resize"
+["VMDetails.DiskResize.IncrementGB"]
+other = "Increment Size"
+["VMDetails.DiskResize.IncrementHelp"]
+other = "Enter the amount to add to the disk. The disk will be increased by this amount."
+["VMDetails.DiskResize.Success"]
+other = "Disk resized successfully! The disk has been increased. Note: You may need to expand the partition within your operating system to use the new space."
+["VMDetails.DiskResize.Failed"]
+other = "Disk resize failed: {{.Error}}"
+["VMDetails.DiskResize.FstrimExecuted"]
+other = "Filesystem trimmed successfully via QEMU agent"
+["VMDetails.DiskResize.FstrimSkipped"]
+other = "VM is not running - fstrim skipped. You can run fstrim manually inside the VM after boot."
+["VMDetails.DiskResize.PreviewTitle"]
+other = "Resize Preview"
+["VMDetails.DiskResize.CurrentSize"]
+other = "Current size:"
+["VMDetails.DiskResize.Increment"]
+other = "Increment:"
+["VMDetails.DiskResize.NewSize"]
+other = "New size:"
+["VMDetails.DiskResize.UsageEstimate"]
+other = "Estimated usage after resize"
+["VMDetails.DiskResize.ConfirmTitle"]
+other = "Confirm Resize"
+["VMDetails.DiskResize.ConfirmMessage"]
+other = "You are about to increase the size of disk <strong>{disk}</strong> by <strong>{increment} GB</strong>."
+["VMDetails.DiskResize.ConfirmNote"]
+other = "<strong>Important note:</strong> After resizing, you will likely need to expand the partition in your operating system to use the new space."
+["VMDetails.DiskResize.ConfirmQuestion"]
+other = "Do you want to continue?"
+["VMDetails.DiskResize.ConfirmButton"]
+other = "Yes, resize"
+["VMDetails.DiskResize.CancelButton"]
+other = "Cancel"
