@@ -1396,7 +1396,7 @@
                 {{template "notification" (dict "Type" "danger" "Title" (T "VMDetails.ResourcesDisabledTitle") "Message" (T "VMDetails.ResourcesDisabledMessage") "Icon" "fas fa-exclamation-circle" "Dismissible" false)}}
                 {{end}}
 
-                <form action="/vm/update/resources" method="post" {{if $isRunning}}disabled{{end}}>
+                <form action="/vm/update/resources" method="post" id="resourcesForm">
                     {{$ctx := .}}
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}" />
                     <input type="hidden" name="vmid" value="{{.VM.VMID}}" />
@@ -2005,11 +2005,21 @@
         
         if (!diskSelect || !incrementInput) return true;
         
-        const selectedOption = diskSelect.options[diskSelect.selectedIndex];
-        const diskName = selectedOption.value;
-        const incrementGB = parseInt(incrementInput.value || '0');
+        const diskName = diskSelect.value;
+        const incrementValue = incrementInput.value;
+        const incrementGB = parseInt(incrementValue || '0');
         
+        // Check for partial inputs
+        if ((diskName && !incrementValue) || (!diskName && incrementValue)) {
+            alert('{{T "Error.InvalidInput"}}'); // Simple alert for now, or could use a toast
+            event.preventDefault();
+            return false;
+        }
+
         if (diskName && incrementGB > 0) {
+            // Store reference to the form before creating modal
+            const formToSubmit = event.target.form;
+            
             // Create confirmation modal with i18n translations
             const modal = document.createElement('div');
             modal.className = 'modal is-active';
@@ -2027,7 +2037,7 @@
                     </header>
                     <section class="modal-card-body">
                         <div class="content">
-                            <p>${translations.confirmMessage.replace('{disk}', '<strong>' + diskName + '</strong>').replace('{increment}', '<strong>' + incrementGB + ' GB</strong>')}</p>
+                            <p>${translations.confirmMessage.replace('{disk}', '<strong>' + diskName + '</strong>').replace('{increment}', '<strong>' + incrementGB + '</strong>')}</p>
                             <div class="notification is-info is-light">
                                 ${translations.confirmNote}
                             </div>
@@ -2059,8 +2069,10 @@
             
             modal.querySelector('#confirmResize').onclick = () => {
                 document.body.removeChild(modal);
-                // Submit the form programmatically
-                event.target.form.submit();
+                // Submit the stored form reference
+                if (formToSubmit) {
+                    formToSubmit.submit();
+                }
             };
             
             // Prevent default submission until confirmed

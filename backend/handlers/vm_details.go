@@ -929,10 +929,40 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
+	// Resolve node for VMID
+	node := ""
+	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
+	if err == nil {
+		for _, vm := range vms {
+			if vm.VMID == vmidInt {
+				node = vm.Node
+				break
+			}
+		}
+	}
+
+	if node == "" {
+		// Fallback: try to find node by iterating all nodes
+		if nodes, err := proxmox.GetNodeNamesResty(r.Context(), restyClient); err == nil {
+			for _, n := range nodes {
+				if status, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, n, vmidInt); err == nil && status != nil {
+					node = n
+					break
+				}
+			}
+		}
+	}
+
+	if node == "" {
+		log.Error().Int("vmid", vmidInt).Msg("VM not found on any node")
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.NotFound"), http.StatusNotFound)
+		return
+	}
+
 	// Get current VM status and metrics
-	vmCurrent, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, "", vmidInt)
+	vmCurrent, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
 	if err != nil {
-		log.Error().Err(err).Int("vmid", vmidInt).Msg("Failed to get VM metrics")
+		log.Error().Err(err).Int("vmid", vmidInt).Str("node", node).Msg("Failed to get VM metrics")
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources"), http.StatusInternalServerError)
 		return
 	}

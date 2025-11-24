@@ -210,7 +210,7 @@ other = "Pas de redimensionnement"
 ["VMDetails.DiskResize.IncrementGB"]
 other = "Taille d'augmentation"
 ["VMDetails.DiskResize.IncrementHelp"]
-other = "Entrez le montant à ajouter au disque (1-100 Go). Le disque sera augmenté de ce montant."
+other = "Entrez le montant à ajouter au disque. Le disque sera augmenté de ce montant."
 ["VMDetails.DiskResize.Success"]
 other = "Disque redimensionné avec succès ! Le disque a été augmenté de {{.Increment}} Go. Note : Vous devrez peut-être étendre la partition dans votre système d'exploitation pour utiliser le nouvel espace."
 ["VMDetails.DiskResize.Failed"]

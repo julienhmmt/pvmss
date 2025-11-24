@@ -210,7 +210,7 @@ other = "No resize"
 ["VMDetails.DiskResize.IncrementGB"]
 other = "Increment Size"
 ["VMDetails.DiskResize.IncrementHelp"]
-other = "Enter the amount to add to the disk (1-100 GB). The disk will be increased by this amount."
+other = "Enter the amount to add to the disk. The disk will be increased by this amount."
 ["VMDetails.DiskResize.Success"]
 other = "Disk resized successfully! The disk has been increased by {{.Increment}} GB. Note: You may need to expand the partition within your operating system to use the new space."
 ["VMDetails.DiskResize.Failed"]

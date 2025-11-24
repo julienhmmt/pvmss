@@ -415,6 +415,13 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Strict validation: Both fields must be present if either is provided
+	if (diskResizeDisk != "" && diskResizeGB == "") || (diskResizeDisk == "" && diskResizeGB != "") {
+		ctx.Log.Warn().Str("disk", diskResizeDisk).Str("gb", diskResizeGB).Msg("Incomplete disk resize parameters")
+		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+		return
+	}
+
 	// Parse and validate numeric values
 	sockets, err := strconv.Atoi(socketsStr)
 	if err != nil || sockets < 1 {
