@@ -1595,7 +1595,6 @@
                                                        placeholder="1-4096"
                                                        pattern="[0-9]+"
                                                        value="{{$card.VLAN}}"
-                                                       {{if $isRunning}}disabled{{end}}
                                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                                        data-field-validation>
                                                 <div class="field-validation-message is-hidden" data-validation-for="networkVLAN_{{$idx}}"></div>
