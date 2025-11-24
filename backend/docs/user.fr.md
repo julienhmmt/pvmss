@@ -41,6 +41,7 @@ Pour créer une machine virtuelle, accédez au formulaire de configuration via l
   - **Pont réseau** : Sélectionnez le pont réseau (VMBR) pour la connectivité
   - **Modèle de carte réseau** : Choisissez le modèle (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
   - **Adresse MAC** : Facultatif, vous pouvez saisir une adresse MAC ou laisser PVMSS en générer une automatiquement
+  - **Tag VLAN** : Facultatif, spécifiez un tag VLAN (1-4096) pour la segmentation réseau. Laissez vide si aucun VLAN n'est nécessaire. Contactez votre administrateur pour connaître le bon ID VLAN à utiliser pour vos besoins réseau spécifiques.
 - **Firmware et sécurité** :
   - **Démarrage EFI** : Active le firmware UEFI (généralement activé par défaut pour les systèmes modernes)
   - **TPM (Trusted Platform Module)** : Permet d'activer un TPM v2.0 pour les systèmes qui l'exigent (par exemple Windows 11)

@@ -97,6 +97,29 @@ Les paramètres sont enregistrés dans un fichier au format JSON (chemin : `{"vm
 
 En haut de la page, une section **Configuration des cartes réseau** permet de définir le **nombre maximum de cartes réseau par VM** (`MaxNetworkCards`). Cette valeur contrôle le nombre de sections de carte réseau affichées sur la page *Créer une VM*. Elle est actuellement bornée entre 1 et 10.
 
+#### Considérations pour la configuration VLAN
+
+**Important** : Les utilisateurs peuvent spécifier un tag VLAN (1-4096) lors de la création de VM. En tant qu'administrateur, soyez conscient des points suivants :
+
+- **Infrastructure VLAN** : Assurez-vous que vos commutateurs réseau physiques et ponts Proxmox sont correctement configurés pour les IDs VLAN que vous autorisez les utilisateurs à utiliser
+- **Isolation réseau** : Une configuration VLAN incorrecte peut causer une isolation complète des VMs du réseau
+- **Plage VLAN** : Seuls les IDs VLAN 1-4096 sont acceptés, avec validation appliquée au niveau de l'application
+- **Guidage utilisateur** : Fournissez une documentation claire aux utilisateurs sur les IDs VLAN qu'ils devraient utiliser pour leurs besoins spécifiques
+- **Configuration des ponts** : Le taggage VLAN fonctionne en ajoutant `,tag=X` à la configuration de l'interface réseau Proxmox (par exemple, `net0=virtio,bridge=vmbr0,tag=100`)
+
+**Problèmes potentiels à surveiller** :
+
+- Les utilisateurs spécifiant des IDs VLAN incorrects qui n'existent pas sur votre infrastructure réseau
+- Les VMs perdant la connectivité réseau en raison d'une mauvaise configuration VLAN
+- Plusieurs VMs utilisant le même VLAN alors qu'elles devraient être isolées
+
+**Recommandations** :
+
+- Documentez les IDs VLAN disponibles et leurs objectifs pour vos utilisateurs
+- Envisagez de restreindre l'accès aux ponts si vous devez contrôler plus strictement l'utilisation des VLAN
+- Surveillez les journaux de création de VM pour les problèmes liés aux VLAN
+- Testez les configurations VLAN avec une VM non critique avant d'autoriser une utilisation plus large
+
 ### Gestion des limites des ressources
 
 Cette rubrique permet de gérer des limites pour les machines virtuelles, pour les nœuds et pour les utilisateurs.

@@ -75,6 +75,7 @@ type NetworkInterface struct {
 	ModelLabel             string   // e.g., "VirtIO", "E1000"
 	ModelTranslationSuffix string
 	Rate                   string // bandwidth limit if set
+	VLAN                   string // VLAN tag if present, e.g., "100"
 }
 
 var networkModelMetadata = map[string]struct {
@@ -137,6 +138,8 @@ func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
 				}
 			} else if strings.HasPrefix(p, "bridge=") {
 				iface.Bridge = strings.TrimPrefix(p, "bridge=")
+			} else if strings.HasPrefix(p, "tag=") {
+				iface.VLAN = strings.TrimPrefix(p, "tag=")
 			} else if p == "firewall=1" {
 				iface.Firewall = true
 			} else if p == "link_down=1" {

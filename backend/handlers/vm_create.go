@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -230,6 +231,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		"network_enabled_0": "1", // First network card enabled by default
 		"network_model_0":   "virtio",
 		"mac_address_0":     "",
+		"vlan_tag_0":        "", // VLAN tag for first network card (optional)
 		"node":              activeNode,
 		"pool":              fmt.Sprintf("pvmss_%s", username),
 		"storage":           "",
@@ -1184,6 +1186,51 @@ func getTPMDiskFormat(storageType string) (string, bool) {
 	return "raw", false
 }
 
+// preserveNetworkCardFormData preserves all dynamic network card fields from the request form
+// into the template data for form repopulation during validation errors
+func (h *VMCreateOptimizedHandler) preserveNetworkCardFormData(r *http.Request, data map[string]interface{}) {
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		return
+	}
+
+	maxNetworkCards := settings.MaxNetworkCards
+	if maxNetworkCards <= 0 {
+		maxNetworkCards = 1
+	}
+
+	// Get existing FormData or create new map
+	formData, ok := data["FormData"].(map[string]string)
+	if !ok {
+		formData = make(map[string]string)
+		data["FormData"] = formData
+	}
+
+	// Preserve all network card fields for indices 0 to maxNetworkCards-1
+	for netIdx := 0; netIdx < maxNetworkCards; netIdx++ {
+		// Preserve bridge selection
+		if bridge := r.FormValue(fmt.Sprintf("bridge_%d", netIdx)); bridge != "" {
+			formData[fmt.Sprintf("bridge_%d", netIdx)] = bridge
+		}
+		// Preserve MAC address
+		if mac := r.FormValue(fmt.Sprintf("mac_address_%d", netIdx)); mac != "" {
+			formData[fmt.Sprintf("mac_address_%d", netIdx)] = mac
+		}
+		// Preserve VLAN tag
+		if vlan := r.FormValue(fmt.Sprintf("vlan_tag_%d", netIdx)); vlan != "" {
+			formData[fmt.Sprintf("vlan_tag_%d", netIdx)] = vlan
+		}
+		// Preserve network model
+		if model := r.FormValue(fmt.Sprintf("network_model_%d", netIdx)); model != "" {
+			formData[fmt.Sprintf("network_model_%d", netIdx)] = model
+		}
+		// Preserve network enabled state
+		if enabled := r.FormValue(fmt.Sprintf("network_enabled_%d", netIdx)); enabled != "" {
+			formData[fmt.Sprintf("network_enabled_%d", netIdx)] = enabled
+		}
+	}
+}
+
 // handleVMCreation processes the VM creation form submission
 func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *http.Request, client proxmox.ClientInterface, data map[string]interface{}) {
 	log := CreateHandlerLogger("handleVMCreation", r)
@@ -1206,11 +1253,24 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	bridgeName := strings.TrimSpace(r.FormValue("bridge_0"))
 	networkModel := strings.TrimSpace(r.FormValue("network_model_0"))
 	macAddress := strings.TrimSpace(r.FormValue("mac_address_0"))
+	vlanTag := strings.TrimSpace(r.FormValue("vlan_tag_0"))
 	// Validate MAC address format
 	if macAddress != "" && !utils.ValidateMACAddress(macAddress) {
+		// Preserve form data for all network cards before rendering error
+		h.preserveNetworkCardFormData(r, data)
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
+	}
+	// Validate VLAN tag if provided
+	if vlanTag != "" {
+		if vlanID, err := strconv.Atoi(vlanTag); err != nil || vlanID < 1 || vlanID > 4096 {
+			// Preserve form data for all network cards before rendering error
+			h.preserveNetworkCardFormData(r, data)
+			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.VLANRange")
+			renderTemplateInternal(w, r, "vm_create", data)
+			return
+		}
 	}
 	// Normalize MAC address to Proxmox format
 	macAddress = utils.NormalizeMACAddress(macAddress)
@@ -1576,6 +1636,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	}
 
 	// Configure primary network card (net0)
+	log.Info().Str("bridgeName", bridgeName).Msg("Starting network card configuration")
 	if bridgeName != "" {
 		var netConfig string
 		if macAddress != "" {
@@ -1583,12 +1644,19 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		} else {
 			netConfig = networkModel + ",bridge=" + bridgeName
 		}
+		// Add VLAN tag if provided
+		if vlanTag != "" {
+			netConfig += ",tag=" + vlanTag
+			log.Info().Str("vlanTag", vlanTag).Msg("VLAN tag added to network configuration")
+		}
 		networkEnabled := r.FormValue("network_enabled_0") == "1"
 		if !networkEnabled {
 			netConfig += ",link_down=1"
 		}
 		params.Set("net0", netConfig)
-		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Bool("enabled", networkEnabled).Msg("Configured primary network card")
+		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Str("vlan", vlanTag).Bool("enabled", networkEnabled).Str("netConfig", netConfig).Msg("Configured primary network card")
+	} else {
+		log.Warn().Msg("Bridge name is empty, skipping network card configuration")
 	}
 
 	// Additional network cards (net1, net2, etc.) if configured
@@ -1606,11 +1674,25 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			}
 			// Get MAC address for this card
 			additionalMAC := strings.TrimSpace(r.FormValue(fmt.Sprintf("mac_address_%d", netIdx)))
+			// Get VLAN tag for this card
+			additionalVLANTag := strings.TrimSpace(r.FormValue(fmt.Sprintf("vlan_tag_%d", netIdx)))
 			// Validate MAC address format
 			if additionalMAC != "" && !utils.ValidateMACAddress(additionalMAC) {
+				// Preserve form data for all network cards before rendering error
+				h.preserveNetworkCardFormData(r, data)
 				data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
 				renderTemplateInternal(w, r, "vm_create", data)
 				return
+			}
+			// Validate VLAN tag if provided
+			if additionalVLANTag != "" {
+				if vlanID, err := strconv.Atoi(additionalVLANTag); err != nil || vlanID < 1 || vlanID > 4096 {
+					// Preserve form data for all network cards before rendering error
+					h.preserveNetworkCardFormData(r, data)
+					data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.VLANRange")
+					renderTemplateInternal(w, r, "vm_create", data)
+					return
+				}
 			}
 			// Normalize MAC address to Proxmox format
 			additionalMAC = utils.NormalizeMACAddress(additionalMAC)
@@ -1623,13 +1705,17 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			} else {
 				additionalNetConfig = additionalModel + ",bridge=" + additionalBridge
 			}
+			// Add VLAN tag if provided
+			if additionalVLANTag != "" {
+				additionalNetConfig += ",tag=" + additionalVLANTag
+			}
 			if !additionalEnabled {
 				additionalNetConfig += ",link_down=1"
 			}
 			// Set parameter
 			netParam := fmt.Sprintf("net%d", netIdx)
 			params.Set(netParam, additionalNetConfig)
-			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Bool("enabled", additionalEnabled).Msg("Added additional network card")
+			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Str("vlan", additionalVLANTag).Bool("enabled", additionalEnabled).Msg("Added additional network card")
 		}
 	}
 
@@ -1647,8 +1733,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	// Create VM
 	path := "/nodes/" + url.PathEscape(node) + "/qemu"
+
+	// Debug: Log all parameters being sent to Proxmox API
+	log.Info().Str("path", path).Str("params", params.Encode()).Msg("Sending VM creation request to Proxmox API")
+
 	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
-		log.Error().Err(err).Str("node", node).Msg("VM create API call failed")
+		log.Error().Err(err).Str("node", node).Str("params", params.Encode()).Msg("VM create API call failed")
 		data["ValidationError"] = fmt.Sprintf("Failed to create VM: %v", err)
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
