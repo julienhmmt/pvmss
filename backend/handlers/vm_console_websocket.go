@@ -12,13 +12,13 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rs/zerolog"
 
 	"pvmss/i18n"
+	"pvmss/logger"
 )
 
 // forwardWebSocketMessages reads from source and writes to destination
-func forwardWebSocketMessages(source, dest *websocket.Conn, direction string, errChan chan<- error, log *zerolog.Logger) {
+func forwardWebSocketMessages(source, dest *websocket.Conn, direction string, errChan chan<- error, log *logger.Logger) {
 	defer log.Debug().Str("direction", direction).Msg("Goroutine finished")
 	for {
 		messageType, message, err := source.ReadMessage()
@@ -174,7 +174,7 @@ func buildProxmoxWebSocketURL(proxmoxURL, node, vmid string, port int, vncticket
 }
 
 // proxyVNCWebSocket handles the WebSocket proxying between client and Proxmox using gorilla/websocket
-func proxyVNCWebSocket(w http.ResponseWriter, r *http.Request, proxmoxWSURL, pveTicket string, log *zerolog.Logger) error {
+func proxyVNCWebSocket(w http.ResponseWriter, r *http.Request, proxmoxWSURL, pveTicket string, log *logger.Logger) error {
 	// Configure WebSocket upgrader for client connection
 	clientUpgrader := websocket.Upgrader{
 		ReadBufferSize:  4096,
