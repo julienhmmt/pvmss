@@ -19,3 +19,9 @@ other = "Doit être une adresse IP valide"
 other = "Doit être un nombre positif"
 ["Validation.Negative"]
 other = "Doit être un nombre négatif"
+["Validation.VLANRange"]
+other = "Le tag VLAN doit être entre 1 et 4096"
+["VM.Create.Validation.VLANNumeric"]
+other = "Le tag VLAN doit contenir uniquement des chiffres"
+["VM.Create.Validation.VLANValid"]
+other = "Tag VLAN valide"

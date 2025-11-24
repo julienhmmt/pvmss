@@ -97,6 +97,29 @@ Parameters are saved in a JSON format file (path: `{"vmbrs": ["node-name:network
 
 At the top of the page, a **Network cards configuration** section lets you define the **maximum number of network cards per VM** (`MaxNetworkCards`). This value controls how many network card sections are displayed on the *Create VM* page. It is currently clamped between 1 and 10.
 
+#### VLAN configuration considerations
+
+**Important**: Users can now specify VLAN tags (1-4096) when creating VMs. As an administrator, be aware of the following:
+
+- **VLAN infrastructure**: Ensure your physical network switches and Proxmox bridges are properly configured for the VLAN IDs you allow users to use
+- **Network isolation**: Incorrect VLAN configuration can cause VMs to become completely isolated from the network
+- **VLAN range**: Only VLAN IDs 1-4096 are supported, with validation enforced at the application level
+- **User guidance**: Provide clear documentation to users about which VLAN IDs they should use for their specific needs
+- **Bridge configuration**: VLAN tagging works by appending `,tag=X` to the Proxmox network interface configuration (e.g., `net0=virtio,bridge=vmbr0,tag=100`)
+
+**Potential issues to monitor**:
+
+- Users specifying incorrect VLAN IDs that don't exist on your network infrastructure
+- VMs losing network connectivity due to VLAN misconfiguration
+- Multiple VMs using the same VLAN when they should be isolated
+
+**Recommendations**:
+
+- Document the available VLAN IDs and their purposes for your users
+- Consider restricting bridge access if you need to control VLAN usage more strictly
+- Monitor VM creation logs for VLAN-related issues
+- Test VLAN configurations with a non-critical VM before allowing broader usage
+
 ### Resource limits management
 
 This section allows you to manage limits for virtual machines, nodes, and users.

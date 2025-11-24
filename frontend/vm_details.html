@@ -1043,6 +1043,11 @@
                                                     <i class="fas fa-ethernet" style="font-size: 0.7rem; margin-right: 3px;"></i>{{$iface.MACAddress}}
                                                 </span>
                                                 {{end}}
+                                                {{if $iface.VLAN}}
+                                                <span class="tag" style="background: rgb(168 85 247 / 12%); color: #7c3aed; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    <i class="fas fa-tags" style="font-size: 0.7rem; margin-right: 3px;"></i>VLAN {{$iface.VLAN}}
+                                                </span>
+                                                {{end}}
                                                 {{if $iface.LinkDown}}
                                                 <span class="tag" style="background: rgba(245,158,11,0.08); color: #d97706; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     <i class="fas fa-link-slash" style="font-size: 0.7rem;"></i> {{T "Status.Down"}}
@@ -1575,6 +1580,25 @@
                                                         <option value="vmxnet3" title="{{T "VM.Create.NetworkModel.VMXNet3"}}" {{if eq $card.Model "vmxnet3"}}selected{{end}}>VMXNet3</option>
                                                     </select>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- VLAN field moved below MAC/Model fields -->
+                                    <div class="columns mt-3">
+                                        <div class="column is-full">
+                                            <label class="label is-size-7 has-text-grey" for="networkVLAN_{{$idx}}">{{T "VM.Create.NetworkVLAN"}}</label>
+                                            <div class="control">
+                                                <input id="networkVLAN_{{$idx}}" 
+                                                       type="text" 
+                                                       name="vlan_tag_{{$idx}}" 
+                                                       class="input is-medium" 
+                                                       placeholder="1-4096"
+                                                       pattern="[0-9]+"
+                                                       value="{{$card.VLAN}}"
+                                                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                                       data-field-validation>
+                                                <div class="field-validation-message is-hidden" data-validation-for="networkVLAN_{{$idx}}"></div>
+                                                <p class="help is-size-7">{{T "VM.Create.NetworkVLANHelp"}}</p>
                                             </div>
                                         </div>
                                     </div>

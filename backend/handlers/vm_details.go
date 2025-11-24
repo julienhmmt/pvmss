@@ -78,6 +78,7 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 
 	router.POST("/api/vm/validate/vmid", RequireAuthHandle(h.ValidateVMIDHandler))
 	router.POST("/api/vm/validate/name", RequireAuthHandle(h.ValidateVMNameHandler))
+	router.POST("/api/vm/validate/vlan_tag", RequireAuthHandle(h.ValidateVLANHandler))
 
 	router.POST("/vm/update/description", SecureFormHandler("UpdateVMDescription",
 		RequireAuthHandle(h.UpdateVMDescriptionHandler),
@@ -134,6 +135,7 @@ type networkCardTemplateData struct {
 	Bridge   string
 	Model    string
 	MAC      string
+	VLAN     string
 	Exists   bool
 	Options  []string
 	LinkDown bool // true = disabled, false = enabled
@@ -141,7 +143,7 @@ type networkCardTemplateData struct {
 
 var networkModelKeys = []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
 
-func parseNetworkConfig(raw string) (model, mac, bridge string, options []string, linkDown bool) {
+func parseNetworkConfig(raw string) (model, mac, bridge, vlan string, options []string, linkDown bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return
@@ -163,6 +165,8 @@ func parseNetworkConfig(raw string) (model, mac, bridge string, options []string
 				model = value
 			case key == "bridge":
 				bridge = value
+			case key == "tag":
+				vlan = value
 			case key == "link_down":
 				linkDown = (value == "1" || value == "true")
 			case containsString(networkModelKeys, key):
@@ -312,12 +316,13 @@ func buildNetworkCardsData(cfg map[string]interface{}, maxCards int) []networkCa
 				rawVal = netVal
 			}
 		}
-		model, mac, bridge, opts, linkDown := parseNetworkConfig(rawVal)
+		model, mac, bridge, vlan, opts, linkDown := parseNetworkConfig(rawVal)
 		cards[i] = networkCardTemplateData{
 			Index:    key,
 			Bridge:   bridge,
 			Model:    model,
 			MAC:      mac,
+			VLAN:     vlan,
 			Exists:   rawVal != "",
 			Options:  opts,
 			LinkDown: linkDown,
@@ -1139,6 +1144,57 @@ func (h *VMHandler) ValidateVMNameHandler(w http.ResponseWriter, r *http.Request
 	// For now, just validate format - uniqueness check would require scanning all VMs
 	// which could be expensive. We can add that later if needed.
 	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: i18n.Localize(localizer, "VM.Create.Validation.VMNameValid")}); encodeErr != nil {
+		log.Error().Err(encodeErr).Msg("Failed to encode error response")
+	}
+}
+
+// ValidateVLANHandler validates VLAN tag values (1-4096)
+func (h *VMHandler) ValidateVLANHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("ValidateVLANHandler", r)
+	localizer := i18n.GetLocalizerFromRequest(r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	var req ValidationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Error().Err(err).Msg("Failed to decode validation request")
+		w.WriteHeader(http.StatusBadRequest)
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: "Invalid request"}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	vlanStr := strings.TrimSpace(req.Value)
+	if vlanStr == "" {
+		// Empty VLAN is valid (optional field)
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: i18n.Localize(localizer, "VM.Create.Validation.VLANValid")}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Check if value is numeric
+	vlanID, err := strconv.Atoi(vlanStr)
+	if err != nil {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VLANNumeric")}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// Validate VLAN range (1-4096)
+	if vlanID < 1 || vlanID > 4096 {
+		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "VM.Create.Validation.VLANRange")}); encodeErr != nil {
+			log.Error().Err(encodeErr).Msg("Failed to encode error response")
+		}
+		return
+	}
+
+	// VLAN is valid
+	if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: true, Message: i18n.Localize(localizer, "VM.Create.Validation.VLANValid")}); encodeErr != nil {
 		log.Error().Err(encodeErr).Msg("Failed to encode error response")
 	}
 }

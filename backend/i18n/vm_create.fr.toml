@@ -65,6 +65,10 @@ other = "Sélectionnez un pont réseau pour connecter la VM"
 other = "Adresse MAC"
 ["VM.Create.NetworkMACAddressHelp"]
 other = "Adresse MAC pour la carte réseau (optionnel). Laissez vide pour générer automatiquement."
+["VM.Create.NetworkVLAN"]
+other = "Tag VLAN"
+["VM.Create.NetworkVLANHelp"]
+other = "Tag VLAN pour la segmentation réseau (optionnel). Laissez vide si aucun VLAN n'est nécessaire. Contactez votre administrateur pour connaître le bon ID VLAN à utiliser."
 ["VM.Create.Random"]
 other = "Aléatoire"
 ["VM.Create.GenerateRandomMAC"]
@@ -248,6 +252,8 @@ other = "Active le Trusted Platform Module v2.0 pour des fonctionnalités de sé
 other = "Démarrer la VM immédiatement après sa création."
 ["VM.Create.Tooltip.NetworkModel"]
 other = "Modèle de carte réseau virtuelle pour la VM. Détermine le type de carte réseau à utiliser (VirtIO, E1000, E1000E, RTL8139, VMXNet3)."
+["VM.Create.Tooltip.NetworkVLAN"]
+other = "Tag VLAN pour la segmentation réseau (1-4096). Assigne la VM à un VLAN spécifique pour l'isolation réseau. Laissez vide si aucun VLAN n'est nécessaire. Assurez-vous que votre infrastructure réseau supporte l'ID VLAN spécifié."
 ["VM.Create.Tooltip.DiskBusType"]
 other = "Type de contrôleur de disque pour la VM. Détermine le type de contrôleur de disque à utiliser (VirtIO, SCSI, SATA, IDE)."
 ["VM.Create.NetworkEnabled"]

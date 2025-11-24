@@ -41,6 +41,7 @@ To create a VM, open the configuration form via the "Create VM" button after sig
   - **Network bridge**: Select the network bridge (VMBR) for connectivity
   - **Network card model**: Choose the adapter model (VirtIO, E1000, E1000E, RTL8139, VMXNet3)
   - **MAC address**: Optionally specify a MAC address or let PVMSS generate one automatically
+  - **VLAN tag**: Optionally specify a VLAN tag (1-4096) for network segmentation. Leave empty if no VLAN is needed. Contact your administrator for the correct VLAN ID to use for your specific network requirements.
 - **Firmware & security**:
   - **EFI boot**: Enable UEFI firmware (typically enabled by default for modern operating systems)
   - **TPM (Trusted Platform Module)**: Optionally enable TPM v2.0 for operating systems that require it (for example Windows 11)
