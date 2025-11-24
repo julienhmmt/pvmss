@@ -900,6 +900,49 @@
                                                     {{end}}
                                                 </div>
                                                 <div class="field">
+                                                    <label for="networkRateLimit_{{$cardIdx}}" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-tachometer-alt"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">
+                                                            {{if eq $cardIdx 0}}
+                                                                {{T "VM.Create.NetworkRateLimit"}}{{if gt (toInt $maxNetCards) 1}} #1{{end}}
+                                                            {{else}}
+                                                                {{T "VM.Create.NetworkRateLimit"}} #{{add $cardIdx 1}} ({{T "VM.Create.NetworkOptional"}})
+                                                            {{end}}
+                                                        </span>
+                                                        {{if eq $cardIdx 0}}
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.NetworkRateLimit"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="networkRateLimit-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.NetworkRateLimit"}}
+                                                            </div>
+                                                        </span>
+                                                        {{end}}
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="networkRateLimit_{{$cardIdx}}" 
+                                                               type="number" 
+                                                               name="rate_limit_{{$cardIdx}}" 
+                                                               class="input is-medium" 
+                                                               placeholder="1000"
+                                                               min="1"
+                                                               max="10240"
+                                                               step="0.1"
+                                                               value="{{index $.FormData (printf "rate_limit_%d" $cardIdx)}}"
+                                                               {{if ne $cardIdx 0}}aria-describedby="networkRateLimit-help"{{end}}
+                                                               data-field-validation>
+                                                        <div class="field-validation-message is-hidden" data-validation-for="networkRateLimit_{{$cardIdx}}"></div>
+                                                    </div>
+                                                    {{if eq $cardIdx 0}}
+                                                    <div class="help is-size-7 has-text-grey-light mt-2">
+                                                        <p>{{T "VM.Create.NetworkRateLimitHelp"}}</p>
+                                                    </div>
+                                                    {{end}}
+                                                </div>
+                                                <div class="field">
                                                     <label for="networkModel_{{$cardIdx}}" class="form-label">
                                                         <span class="form-label-icon">
                                                             <span class="icon"><i class="fas fa-network-wired"></i></span>

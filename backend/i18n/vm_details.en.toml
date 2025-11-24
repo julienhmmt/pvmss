@@ -79,6 +79,10 @@ other = "IP address"
 other = "MAC address"
 ["VMDetails.Label.Bridge"]
 other = "Bridge"
+["VMDetails.Label.RateLimit"]
+other = "Network Speed"
+["VMDetails.Label.Unlimited"]
+other = "Unlimited"
 ["VMDetails.NoDescription"]
 other = "No description available"
 ["VMDetails.ModifyResources"]
