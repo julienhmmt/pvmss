@@ -538,6 +538,7 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		mac := strings.TrimSpace(r.FormValue(fmt.Sprintf("mac_address_%d", i)))
 		vlan := strings.TrimSpace(r.FormValue(fmt.Sprintf("vlan_tag_%d", i)))
 		rate := strings.TrimSpace(r.FormValue(fmt.Sprintf("rate_limit_%d", i)))
+		mtu := strings.TrimSpace(r.FormValue(fmt.Sprintf("mtu_%d", i)))
 
 		// Validate MAC address format
 		if mac != "" && !utils.ValidateMACAddress(mac) {
@@ -557,6 +558,14 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		if rate != "" {
 			if rVal, err := strconv.ParseFloat(rate, 64); err != nil || rVal < 1 || rVal > 10240 {
 				ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Validation.RateLimitRange")
+				return
+			}
+		}
+
+		// Validate MTU if provided
+		if mtu != "" {
+			if mtuVal, err := strconv.Atoi(mtu); err != nil || mtuVal < 576 || mtuVal > 9000 {
+				ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Validation.MTURange")
 				return
 			}
 		}
@@ -614,6 +623,11 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		// Add Rate Limit if provided
 		if rate != "" {
 			netParts = append(netParts, "rate="+rate)
+		}
+
+		// Add MTU if provided
+		if mtu != "" {
+			netParts = append(netParts, "mtu="+mtu)
 		}
 
 		// Add link_down option if interface is disabled
@@ -754,7 +768,7 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Parse current config
-	model, mac, bridge, vlan, rate, options, currentLinkDown := parseNetworkConfig(currentConfig)
+	model, mac, bridge, vlan, rate, mtu, options, currentLinkDown := parseNetworkConfig(currentConfig)
 
 	ctx.Log.Info().Str("vmid", vmidStr).Str("node", node).Int("card_index", cardIndex).
 		Str("current_config", currentConfig).Str("model", model).Str("mac", mac).
@@ -808,6 +822,11 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	// Add Rate limit if present
 	if rate != "" {
 		netParts = append(netParts, "rate="+rate)
+	}
+
+	// Add MTU if present
+	if mtu != "" {
+		netParts = append(netParts, "mtu="+mtu)
 	}
 
 	// Filter out any existing link_down options from the options list

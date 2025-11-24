@@ -1232,6 +1232,10 @@ func (h *VMCreateOptimizedHandler) preserveNetworkCardFormData(r *http.Request, 
 		if rate := r.FormValue(fmt.Sprintf("rate_limit_%d", netIdx)); rate != "" {
 			formData[fmt.Sprintf("rate_limit_%d", netIdx)] = rate
 		}
+		// Preserve MTU
+		if mtu := r.FormValue(fmt.Sprintf("mtu_%d", netIdx)); mtu != "" {
+			formData[fmt.Sprintf("mtu_%d", netIdx)] = mtu
+		}
 	}
 }
 
@@ -1247,18 +1251,19 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	}
 
 	// Extract form values
-	name := strings.TrimSpace(r.FormValue("name"))
+	bridgeName := strings.TrimSpace(r.FormValue("bridge_0"))
 	description := strings.TrimSpace(r.FormValue("description"))
-	vmidStr := strings.TrimSpace(r.FormValue("vmid"))
+	isoImage := strings.TrimSpace(r.FormValue("iso"))
+	macAddress := strings.TrimSpace(r.FormValue("mac_address_0"))
+	mtu := strings.TrimSpace(r.FormValue("mtu_0"))
+	name := strings.TrimSpace(r.FormValue("name"))
+	networkModel := strings.TrimSpace(r.FormValue("network_model_0"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	pool := strings.TrimSpace(r.FormValue("pool"))
-	storage := strings.TrimSpace(r.FormValue("storage"))
-	isoImage := strings.TrimSpace(r.FormValue("iso"))
-	bridgeName := strings.TrimSpace(r.FormValue("bridge_0"))
-	networkModel := strings.TrimSpace(r.FormValue("network_model_0"))
-	macAddress := strings.TrimSpace(r.FormValue("mac_address_0"))
-	vlanTag := strings.TrimSpace(r.FormValue("vlan_tag_0"))
 	rateLimit := strings.TrimSpace(r.FormValue("rate_limit_0"))
+	storage := strings.TrimSpace(r.FormValue("storage"))
+	vlanTag := strings.TrimSpace(r.FormValue("vlan_tag_0"))
+	vmidStr := strings.TrimSpace(r.FormValue("vmid"))
 
 	// Validate MAC address format
 	if macAddress != "" && !utils.ValidateMACAddress(macAddress) {
@@ -1670,12 +1675,17 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			netConfig += ",rate=" + rateLimit
 			log.Info().Str("rateLimit", rateLimit).Msg("Rate limit added to network configuration")
 		}
+		// Add MTU if provided
+		if mtu != "" {
+			netConfig += ",mtu=" + mtu
+			log.Info().Str("mtu", mtu).Msg("MTU added to network configuration")
+		}
 		networkEnabled := r.FormValue("network_enabled_0") == "1"
 		if !networkEnabled {
 			netConfig += ",link_down=1"
 		}
 		params.Set("net0", netConfig)
-		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Str("vlan", vlanTag).Str("rate", rateLimit).Bool("enabled", networkEnabled).Str("netConfig", netConfig).Msg("Configured primary network card")
+		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Str("vlan", vlanTag).Str("rate", rateLimit).Str("mtu", mtu).Bool("enabled", networkEnabled).Str("netConfig", netConfig).Msg("Configured primary network card")
 	} else {
 		log.Warn().Msg("Bridge name is empty, skipping network card configuration")
 	}
@@ -1699,6 +1709,8 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			additionalVLANTag := strings.TrimSpace(r.FormValue(fmt.Sprintf("vlan_tag_%d", netIdx)))
 			// Get Rate Limit for this card
 			additionalRateLimit := strings.TrimSpace(r.FormValue(fmt.Sprintf("rate_limit_%d", netIdx)))
+			// Get MTU for this card
+			additionalMTU := strings.TrimSpace(r.FormValue(fmt.Sprintf("mtu_%d", netIdx)))
 			// Validate MAC address format
 			if additionalMAC != "" && !utils.ValidateMACAddress(additionalMAC) {
 				// Preserve form data for all network cards before rendering error
@@ -1727,6 +1739,16 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 					return
 				}
 			}
+			// Validate MTU if provided
+			if additionalMTU != "" {
+				if mtuVal, err := strconv.Atoi(additionalMTU); err != nil || mtuVal < 576 || mtuVal > 9000 {
+					// Preserve form data for all network cards before rendering error
+					h.preserveNetworkCardFormData(r, data)
+					data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.MTURange")
+					renderTemplateInternal(w, r, "vm_create", data)
+					return
+				}
+			}
 			// Normalize MAC address to Proxmox format
 			additionalMAC = utils.NormalizeMACAddress(additionalMAC)
 			// Check if network is enabled
@@ -1746,13 +1768,17 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			if additionalRateLimit != "" {
 				additionalNetConfig += ",rate=" + additionalRateLimit
 			}
+			// Add MTU if provided
+			if additionalMTU != "" {
+				additionalNetConfig += ",mtu=" + additionalMTU
+			}
 			if !additionalEnabled {
 				additionalNetConfig += ",link_down=1"
 			}
 			// Set parameter
 			netParam := fmt.Sprintf("net%d", netIdx)
 			params.Set(netParam, additionalNetConfig)
-			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Str("vlan", additionalVLANTag).Str("rate", additionalRateLimit).Bool("enabled", additionalEnabled).Msg("Added additional network card")
+			log.Info().Int("net_idx", netIdx).Str("bridge", additionalBridge).Str("model", additionalModel).Str("vlan", additionalVLANTag).Str("rate", additionalRateLimit).Str("mtu", additionalMTU).Bool("enabled", additionalEnabled).Msg("Added additional network card")
 		}
 	}
 

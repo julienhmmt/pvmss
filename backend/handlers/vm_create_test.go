@@ -141,6 +141,7 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 			bridge   string
 			vlan     string
 			rate     string
+			mtu      string
 			linkDown bool
 			expected string
 		}{
@@ -151,6 +152,7 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 				bridge:   "vmbr0",
 				vlan:     "",
 				rate:     "",
+				mtu:      "",
 				linkDown: false,
 				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0",
 			},
@@ -161,6 +163,7 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 				bridge:   "vmbr0",
 				vlan:     "100",
 				rate:     "",
+				mtu:      "",
 				linkDown: false,
 				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=100",
 			},
@@ -171,6 +174,7 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 				bridge:   "vmbr0",
 				vlan:     "",
 				rate:     "1000",
+				mtu:      "",
 				linkDown: false,
 				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000",
 			},
@@ -181,6 +185,7 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 				bridge:   "vmbr0",
 				vlan:     "200",
 				rate:     "50",
+				mtu:      "",
 				linkDown: true,
 				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=200,rate=50,link_down=1",
 			},
@@ -191,14 +196,37 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 				bridge:   "vmbr0",
 				vlan:     "300",
 				rate:     "",
+				mtu:      "",
 				linkDown: false,
 				expected: "virtio,bridge=vmbr0,tag=300",
+			},
+			{
+				name:     "Config with MTU only",
+				model:    "virtio",
+				mac:      "AA:BB:CC:DD:EE:FF",
+				bridge:   "vmbr0",
+				vlan:     "",
+				rate:     "",
+				mtu:      "1500",
+				linkDown: false,
+				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,mtu=1500",
+			},
+			{
+				name:     "Config with VLAN, Rate, MTU and link down",
+				model:    "virtio",
+				mac:      "AA:BB:CC:DD:EE:FF",
+				bridge:   "vmbr0",
+				vlan:     "200",
+				rate:     "50",
+				mtu:      "9000",
+				linkDown: true,
+				expected: "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=200,rate=50,mtu=9000,link_down=1",
 			},
 		}
 
 		for _, test := range testCases {
 			t.Run(test.name, func(t *testing.T) {
-				result := buildNetworkConfig(test.model, test.mac, test.bridge, test.vlan, test.rate, test.linkDown)
+				result := buildNetworkConfig(test.model, test.mac, test.bridge, test.vlan, test.rate, test.mtu, test.linkDown)
 				if result != test.expected {
 					t.Errorf("buildNetworkConfig() = %q; want %q", result, test.expected)
 				}
@@ -206,36 +234,63 @@ func TestVMCreateHandlerVLANValidationTests(t *testing.T) {
 		}
 	})
 
-	t.Run("Multiple Network Cards with VLANs and Rate Limits", func(t *testing.T) {
+	t.Run("Multiple Network Cards with VLANs, Rate Limits and MTU", func(t *testing.T) {
 		networkCards := []struct {
 			model    string
 			mac      string
 			bridge   string
 			vlan     string
 			rate     string
+			mtu      string
 			linkDown bool
 		}{
-			{"virtio", "AA:BB:CC:DD:EE:01", "vmbr0", "100", "1000", false},
-			{"e1000", "AA:BB:CC:DD:EE:02", "vmbr1", "200", "", false},
-			{"virtio", "AA:BB:CC:DD:EE:03", "vmbr0", "", "10", true}, // No VLAN, Rate 10
-			{"e1000e", "AA:BB:CC:DD:EE:04", "vmbr1", "400", "5000", false},
+			{"virtio", "AA:BB:CC:DD:EE:01", "vmbr0", "100", "1000", "1500", false},
+			{"e1000", "AA:BB:CC:DD:EE:02", "vmbr1", "200", "", "", false},
+			{"virtio", "AA:BB:CC:DD:EE:03", "vmbr0", "", "10", "9000", true}, // No VLAN, Rate 10, custom MTU
+			{"e1000e", "AA:BB:CC:DD:EE:04", "vmbr1", "400", "5000", "", false},
 		}
 
 		expectedConfigs := []string{
-			"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0,tag=100,rate=1000",
+			"virtio=AA:BB:CC:DD:EE:01,bridge=vmbr0,tag=100,rate=1000,mtu=1500",
 			"e1000=AA:BB:CC:DD:EE:02,bridge=vmbr1,tag=200",
-			"virtio=AA:BB:CC:DD:EE:03,bridge=vmbr0,rate=10,link_down=1",
+			"virtio=AA:BB:CC:DD:EE:03,bridge=vmbr0,rate=10,mtu=9000,link_down=1",
 			"e1000e=AA:BB:CC:DD:EE:04,bridge=vmbr1,tag=400,rate=5000",
 		}
 
 		for i, card := range networkCards {
 			t.Run(fmt.Sprintf("Card_%d", i), func(t *testing.T) {
-				config := buildNetworkConfig(card.model, card.mac, card.bridge, card.vlan, card.rate, card.linkDown)
+				config := buildNetworkConfig(card.model, card.mac, card.bridge, card.vlan, card.rate, card.mtu, card.linkDown)
 				expected := expectedConfigs[i]
 				if config != expected {
 					t.Errorf("Network card %d config = %q; want %q", i, config, expected)
 				}
 			})
+		}
+	})
+
+	t.Run("MTU Range Validation", func(t *testing.T) {
+		testMTUs := []struct {
+			input string
+			valid bool
+			desc  string
+		}{
+			{"", true, "Empty (optional field)"},
+			{"576", true, "Minimum valid MTU"},
+			{"1500", true, "Default MTU"},
+			{"9000", true, "Maximum valid MTU"},
+			{"575", false, "Below minimum"},
+			{"9001", false, "Above maximum"},
+			{"0", false, "Zero MTU"},
+			{"-1", false, "Negative MTU"},
+			{"abc", false, "Non-numeric"},
+			{"1500a", false, "Alphanumeric"},
+		}
+
+		for _, tc := range testMTUs {
+			result := validateMTU(tc.input)
+			if result != tc.valid {
+				t.Errorf("validateMTU(%q) = %v; want %v", tc.input, result, tc.valid)
+			}
 		}
 	})
 }
@@ -278,6 +333,23 @@ func validateRateLimit(rateStr string) bool {
 	return rate >= 1 && rate <= 10240
 }
 
+func validateMTU(mtuStr string) bool {
+	mtuStr = strings.TrimSpace(mtuStr)
+
+	if mtuStr == "" {
+		// Empty MTU is valid (optional field)
+		return true
+	}
+
+	mtu, err := strconv.Atoi(mtuStr)
+	if err != nil {
+		return false
+	}
+
+	// Validate MTU range (576-9000)
+	return mtu >= 576 && mtu <= 9000
+}
+
 // getVLANValidationMessage replicates the message logic from ValidateVLANHandler
 func getVLANValidationMessage(vlanStr string) string {
 	vlanStr = strings.TrimSpace(vlanStr)
@@ -302,7 +374,7 @@ func getVLANValidationMessage(vlanStr string) string {
 }
 
 // buildNetworkConfig replicates the network configuration building logic
-func buildNetworkConfig(model, mac, bridge, vlan, rate string, linkDown bool) string {
+func buildNetworkConfig(model, mac, bridge, vlan, rate, mtu string, linkDown bool) string {
 	netParts := []string{}
 
 	if mac != "" {
@@ -321,6 +393,11 @@ func buildNetworkConfig(model, mac, bridge, vlan, rate string, linkDown bool) st
 	// Add Rate Limit if provided
 	if rate != "" {
 		netParts = append(netParts, "rate="+rate)
+	}
+
+	// Add MTU if provided
+	if mtu != "" {
+		netParts = append(netParts, "mtu="+mtu)
 	}
 
 	// Add link_down flag explicitly

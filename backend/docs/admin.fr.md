@@ -131,6 +131,24 @@ Ce réglage permet de limiter légèrement la bande passante de certaines VMs, m
 - Surveillez les journaux de création de VM pour les problèmes liés aux VLAN
 - Testez les configurations VLAN avec une VM non critique avant d'autoriser une utilisation plus large
 
+#### Considérations pour la configuration du MTU
+
+Les utilisateurs peuvent, de façon optionnelle, spécifier un **MTU (Maximum Transmission Unit)** pour chaque carte réseau virtuelle dans les formulaires *Créer une VM* et *Modifier les ressources*.
+
+- Si le **champ MTU est laissé vide**, PVMSS ne transmet **aucun** paramètre explicite `mtu=` à Proxmox et l'interface utilise le **MTU par défaut de 1500**.
+- Si une valeur est fournie, elle est interprétée comme un MTU en **octets** et doit se situer dans la plage **576–9000**.
+- Les valeurs en dehors de cette plage sont rejetées lors de la validation avec un message d'erreur explicite.
+
+Du point de vue administrateur :
+
+- Un mauvais MTU peut provoquer des problèmes subtils (pertes de paquets, fragmentation, timeouts) souvent difficiles à diagnostiquer.
+- Seuls les environnements avec une **infrastructure réseau maîtrisée** (par exemple jumbo frames et VLANs dédiés) devraient utiliser des MTU non par défaut.
+
+**Recommandation forte** :
+
+- Communiquez clairement aux utilisateurs que **laisser le MTU à 1500 est le choix le plus sûr et le plus recommandé**.
+- Réservez les MTU personnalisés aux scénarios avancés explicitement validés par l'équipe réseau.
+
 ### Gestion des limites des ressources
 
 Cette rubrique permet de gérer des limites pour les machines virtuelles, pour les nœuds et pour les utilisateurs.

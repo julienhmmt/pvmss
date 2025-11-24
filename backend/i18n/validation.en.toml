@@ -27,3 +27,5 @@ other = "Network speed must be between 1 and 10240 MB/s (Proxmox limit)"
 other = "VLAN tag must contain only numbers"
 ["VM.Create.Validation.VLANValid"]
 other = "Valid VLAN tag"
+["Validation.MTURange"]
+other = "MTU must be a number between 576 and 9000"
