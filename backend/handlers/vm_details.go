@@ -762,6 +762,22 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			} else if isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
 				agentStatusKey = "Unavailable"
 				agentStatusClass = "is-warning is-light"
+			} else {
+				// No cached data, check guest agent status in real-time
+				log.Debug().Int("vmid", vm.VMID).Str("node", vm.Node).Msg("Performing real-time guest agent status check (no cached data)")
+				guestCtx, cancel := context.WithTimeout(r.Context(), constants.GuestAgentTimeout)
+				defer cancel()
+				if _, err := proxmox.GetGuestAgentNetworkInterfaces(guestCtx, client, vm.Node, vm.VMID); err == nil {
+					log.Debug().Int("vmid", vm.VMID).Str("node", vm.Node).Msg("Real-time guest agent check succeeded")
+					agentStatusKey = "Available"
+					agentStatusClass = "is-success is-light"
+				} else {
+					log.Debug().Int("vmid", vm.VMID).Str("node", vm.Node).Err(err).Msg("Real-time guest agent check failed")
+					// Cache the unavailability to avoid repeated checks
+					cacheGuestAgentUnavailable(vm.Node, vm.VMID)
+					agentStatusKey = "Unavailable"
+					agentStatusClass = "is-warning is-light"
+				}
 			}
 		}
 	}
