@@ -1053,6 +1053,11 @@
                                                     <i class="fas fa-tachometer-alt" style="font-size: 0.7rem; margin-right: 3px;"></i>{{$iface.Rate}} MB/s
                                                 </span>
                                                 {{end}}
+                                                {{if and $iface.MTU (ne $iface.MTU "1500")}}
+                                                <span class="tag" style="background: rgb(34 197 94 / 12%); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    <i class="fas fa-arrows-left-right-to-line" style="font-size: 0.7rem; margin-right: 3px;"></i>MTU {{$iface.MTU}}
+                                                </span>
+                                                {{end}}
                                                 {{if $iface.LinkDown}}
                                                 <span class="tag" style="background: rgba(245,158,11,0.08); color: #d97706; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     <i class="fas fa-link-slash" style="font-size: 0.7rem;"></i> {{T "Status.Down"}}

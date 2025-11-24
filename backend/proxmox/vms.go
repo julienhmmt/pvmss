@@ -76,6 +76,7 @@ type NetworkInterface struct {
 	ModelTranslationSuffix string
 	Rate                   string // bandwidth limit in MB/s if set
 	VLAN                   string // VLAN tag if present, e.g., "100"
+	MTU                    string
 }
 
 var networkModelMetadata = map[string]struct {
@@ -142,6 +143,8 @@ func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
 				iface.VLAN = strings.TrimPrefix(p, "tag=")
 			} else if strings.HasPrefix(p, "rate=") {
 				iface.Rate = strings.TrimPrefix(p, "rate=")
+			} else if strings.HasPrefix(p, "mtu=") {
+				iface.MTU = strings.TrimPrefix(p, "mtu=")
 			} else if p == "firewall=1" {
 				iface.Firewall = true
 			} else if p == "link_down=1" {
