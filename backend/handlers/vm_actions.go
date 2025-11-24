@@ -460,12 +460,6 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		// Validate disk resize increment (minimum 1GB, no maximum limit)
-		if diskResizeGBInt < 1 {
-			ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
-			return
-		}
-
 		ctx.Log.Info().
 			Str("disk", diskResizeDisk).
 			Int64("increment_gb", diskResizeGBInt).
