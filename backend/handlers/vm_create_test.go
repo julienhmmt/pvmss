@@ -37,6 +37,38 @@ func TestVMCreateHandlerMACValidationTests(t *testing.T) {
 		}
 	})
 
+	t.Run("Network Speed Range Validation", func(t *testing.T) {
+		testRates := []struct {
+			input string
+			valid bool
+			desc  string
+		}{
+			{"", true, "Empty (optional field)"},
+			{"1", true, "Minimum valid speed"},
+			{"10240", true, "Maximum valid speed (Proxmox limit)"},
+			{"0", false, "Below minimum"},
+			{"-1", false, "Negative value"},
+			{"10241", false, "Above Proxmox maximum"},
+			{"20000", false, "Well above maximum"},
+			{"100.5", true, "Decimal value within range"},
+			{"abc", false, "Non-numeric"},
+			{"1a", false, "Alphanumeric"},
+		}
+
+		for _, test := range testRates {
+			// Capture range variable
+			test := test
+			t.Run(test.desc, func(t *testing.T) {
+				if t != nil {
+					result := validateRateLimit(test.input)
+					if result != test.valid {
+						t.Errorf("validateRateLimit(%q) = %v; want %v", test.input, result, test.valid)
+					}
+				}
+			})
+		}
+	})
+
 	t.Run("Generated MACs are valid", func(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			generatedMAC := utils.GenerateRandomMACAddress()
