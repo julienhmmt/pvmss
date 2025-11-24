@@ -97,6 +97,17 @@ Les paramètres sont enregistrés dans un fichier au format JSON (chemin : `{"vm
 
 En haut de la page, une section **Configuration des cartes réseau** permet de définir le **nombre maximum de cartes réseau par VM** (`MaxNetworkCards`). Cette valeur contrôle le nombre de sections de carte réseau affichées sur la page *Créer une VM*. Elle est actuellement bornée entre 1 et 10.
 
+#### Vitesse des cartes réseau (Network Speed)
+
+Les utilisateurs peuvent, de façon optionnelle, spécifier une **vitesse réseau** pour chaque carte réseau virtuelle dans les formulaires *Créer une VM* et *Modifier les ressources*. Ce réglage est implémenté via le paramètre `rate` de Proxmox sur la carte (par exemple : `net0=virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000`).
+
+- Si le champ est **laissé vide**, PVMSS ne définit pas de `rate` et la carte réseau fonctionne à **vitesse illimitée** (comportement par défaut de Proxmox).
+- Si une valeur est fournie, elle est interprétée en **Mégaoctets par seconde (Mo/s)**.
+- La plage autorisée est **1-10240 Mo/s**.
+- **Important** : `10240 Mo/s` est une **limite dure imposée par Proxmox** pour le paramètre `rate`. PVMSS applique la même limite et il n'est pas possible de configurer une valeur supérieure depuis l'interface.
+
+Ce réglage permet de limiter légèrement la bande passante de certaines VMs, mais ne doit pas être considéré comme un mécanisme de QoS strict ou de limitation de débit multi‑locataires.
+
 #### Considérations pour la configuration VLAN
 
 **Important** : Les utilisateurs peuvent spécifier un tag VLAN (1-4096) lors de la création de VM. En tant qu'administrateur, soyez conscient des points suivants :

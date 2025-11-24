@@ -136,6 +136,7 @@ type networkCardTemplateData struct {
 	Model    string
 	MAC      string
 	VLAN     string
+	Rate     string
 	Exists   bool
 	Options  []string
 	LinkDown bool // true = disabled, false = enabled
@@ -143,7 +144,7 @@ type networkCardTemplateData struct {
 
 var networkModelKeys = []string{"virtio", "e1000", "e1000e", "rtl8139", "vmxnet3"}
 
-func parseNetworkConfig(raw string) (model, mac, bridge, vlan string, options []string, linkDown bool) {
+func parseNetworkConfig(raw string) (model, mac, bridge, vlan, rate string, options []string, linkDown bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return
@@ -167,6 +168,8 @@ func parseNetworkConfig(raw string) (model, mac, bridge, vlan string, options []
 				bridge = value
 			case key == "tag":
 				vlan = value
+			case key == "rate":
+				rate = value
 			case key == "link_down":
 				linkDown = (value == "1" || value == "true")
 			case containsString(networkModelKeys, key):
@@ -316,13 +319,14 @@ func buildNetworkCardsData(cfg map[string]interface{}, maxCards int) []networkCa
 				rawVal = netVal
 			}
 		}
-		model, mac, bridge, vlan, opts, linkDown := parseNetworkConfig(rawVal)
+		model, mac, bridge, vlan, rate, opts, linkDown := parseNetworkConfig(rawVal)
 		cards[i] = networkCardTemplateData{
 			Index:    key,
 			Bridge:   bridge,
 			Model:    model,
 			MAC:      mac,
 			VLAN:     vlan,
+			Rate:     rate,
 			Exists:   rawVal != "",
 			Options:  opts,
 			LinkDown: linkDown,

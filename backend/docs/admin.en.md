@@ -97,6 +97,17 @@ Parameters are saved in a JSON format file (path: `{"vmbrs": ["node-name:network
 
 At the top of the page, a **Network cards configuration** section lets you define the **maximum number of network cards per VM** (`MaxNetworkCards`). This value controls how many network card sections are displayed on the *Create VM* page. It is currently clamped between 1 and 10.
 
+#### Network card speed (Network Speed)
+
+End-users can optionally specify a **Network Speed** for each virtual network card on the *Create VM* and *Edit resources* pages. This setting is implemented using the Proxmox `rate` parameter on the NIC (for example: `net0=virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000`).
+
+- If the field is **left empty**, PVMSS does not set `rate` and the network card runs at **unlimited speed** (this is the Proxmox default).
+- If a value is provided, it is interpreted as **Megabytes per second (MB/s)**.
+- The allowed range is **1-10240 MB/s**.
+- **Important**: `10240 MB/s` is a **hard limit imposed by Proxmox** for the `rate` parameter. PVMSS enforces the same limit and it is not possible to configure a higher value from the UI.
+
+You can use this setting to gently cap the bandwidth of specific VMs, but it should not be considered a strict QoS or multi-tenant rate limiting mechanism.
+
 #### VLAN configuration considerations
 
 **Important**: Users can now specify VLAN tags (1-4096) when creating VMs. As an administrator, be aware of the following:

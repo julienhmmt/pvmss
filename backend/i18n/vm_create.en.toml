@@ -262,6 +262,12 @@ other = "Start VM immediately after creation"
 other = "Virtual network card model for the VM. Determines the type of virtual network card to use (VirtIO, E1000, E1000E, RTL8139, VMXNet3)."
 ["VM.Create.Tooltip.NetworkVLAN"]
 other = "VLAN tag for network segmentation (1-4096). Assigns the VM to a specific VLAN for network isolation. Leave empty if no VLAN needed. Ensure your network infrastructure supports the specified VLAN ID."
+["VM.Create.NetworkRateLimit"]
+other = "Network Speed (MB/s)"
+["VM.Create.NetworkRateLimitHelp"]
+other = "Limit the network card speed in Megabytes per second (MB/s). Optional. Default: unlimited (empty). Maximum: 10240 MB/s (Proxmox limit, cannot be exceeded)."
+["VM.Create.Tooltip.NetworkRateLimit"]
+other = "Network interface speed limit in Megabytes per second (MB/s). Leave empty for unlimited speed (Proxmox default). Accepted range: 1-10240 MB/s (Proxmox maximum). Example: 100 = 100 MB/s."
 ["VM.Create.Tooltip.DiskBusType"]
 other = "Disk controller type for the VM. Determines the type of disk controller to use (VirtIO, SCSI, SATA, IDE)."
 ["VM.Create.NetworkEnabled"]

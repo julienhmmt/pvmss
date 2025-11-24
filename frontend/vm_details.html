@@ -1048,6 +1048,11 @@
                                                     <i class="fas fa-tags" style="font-size: 0.7rem; margin-right: 3px;"></i>VLAN {{$iface.VLAN}}
                                                 </span>
                                                 {{end}}
+                                                {{if $iface.Rate}}
+                                                <span class="tag" style="background: rgb(236 72 153 / 12%); color: #db2777; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                                    <i class="fas fa-tachometer-alt" style="font-size: 0.7rem; margin-right: 3px;"></i>{{$iface.Rate}} MB/s
+                                                </span>
+                                                {{end}}
                                                 {{if $iface.LinkDown}}
                                                 <span class="tag" style="background: rgba(245,158,11,0.08); color: #d97706; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
                                                     <i class="fas fa-link-slash" style="font-size: 0.7rem;"></i> {{T "Status.Down"}}
@@ -1585,7 +1590,7 @@
                                     </div>
                                     <!-- VLAN field moved below MAC/Model fields -->
                                     <div class="columns mt-3">
-                                        <div class="column is-full">
+                                        <div class="column is-half">
                                             <label class="label is-size-7 has-text-grey" for="networkVLAN_{{$idx}}">{{T "VM.Create.NetworkVLAN"}}</label>
                                             <div class="control">
                                                 <input id="networkVLAN_{{$idx}}" 
@@ -1596,9 +1601,33 @@
                                                        pattern="[0-9]+"
                                                        value="{{$card.VLAN}}"
                                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                                       {{if $isRunning}}disabled{{end}}
                                                        data-field-validation>
                                                 <div class="field-validation-message is-hidden" data-validation-for="networkVLAN_{{$idx}}"></div>
                                                 <p class="help is-size-7">{{T "VM.Create.NetworkVLANHelp"}}</p>
+                                            </div>
+                                        </div>
+                                        <div class="column is-half">
+                                            <label class="label is-size-7 has-text-grey" for="networkRateLimit_{{$idx}}">
+                                                {{T "VM.Create.NetworkRateLimit"}}
+                                                <span class="icon is-small has-text-grey" title='{{T "VM.Create.Tooltip.NetworkRateLimit"}}'>
+                                                    <i class="fas fa-info-circle"></i>
+                                                </span>
+                                            </label>
+                                            <div class="control">
+                                                <input id="networkRateLimit_{{$idx}}" 
+                                                       type="number" 
+                                                       name="rate_limit_{{$idx}}" 
+                                                       class="input is-medium" 
+                                                       placeholder="1000"
+                                                       min="1"
+                                                       max="10240"
+                                                       step="0.1"
+                                                       value="{{$card.Rate}}"
+                                                       {{if $isRunning}}disabled{{end}}
+                                                       data-field-validation>
+                                                <div class="field-validation-message is-hidden" data-validation-for="networkRateLimit_{{$idx}}"></div>
+                                                <p class="help is-size-7">{{T "VM.Create.NetworkRateLimitHelp"}}</p>
                                             </div>
                                         </div>
                                     </div>
