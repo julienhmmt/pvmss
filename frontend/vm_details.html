@@ -2017,8 +2017,9 @@
         }
 
         if (diskName && incrementGB > 0) {
-            // Store reference to the form before creating modal
-            const formToSubmit = event.target.form;
+            // Store reference to the form - event.target IS the form in submit event
+            const formToSubmit = event.target;
+            console.log('Form to submit:', formToSubmit); // Debug
             
             // Create confirmation modal with i18n translations
             const modal = document.createElement('div');
@@ -2068,10 +2069,14 @@
             };
             
             modal.querySelector('#confirmResize').onclick = () => {
+                console.log('Confirm button clicked, submitting form'); // Debug
                 document.body.removeChild(modal);
                 // Submit the stored form reference
                 if (formToSubmit) {
+                    console.log('Submitting form:', formToSubmit.action); // Debug
                     formToSubmit.submit();
+                } else {
+                    console.error('Form reference is null!'); // Debug
                 }
             };
             
