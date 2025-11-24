@@ -400,6 +400,10 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 	socketsStr := strings.TrimSpace(r.FormValue("sockets"))
 	vmid := strings.TrimSpace(r.FormValue("vmid"))
 
+	// Disk resize parameters
+	diskResizeDisk := strings.TrimSpace(r.FormValue("disk_resize_disk"))
+	diskResizeGB := strings.TrimSpace(r.FormValue("disk_resize_gb"))
+
 	if vmid == "" || node == "" {
 		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
 		return
@@ -408,6 +412,13 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 	vmidInt, err := strconv.Atoi(vmid)
 	if err != nil {
 		ctx.HandleError(err, "Invalid VM ID", http.StatusBadRequest)
+		return
+	}
+
+	// Strict validation: Both fields must be present if either is provided
+	if (diskResizeDisk != "" && diskResizeGB == "") || (diskResizeDisk == "" && diskResizeGB != "") {
+		ctx.Log.Warn().Str("disk", diskResizeDisk).Str("gb", diskResizeGB).Msg("Incomplete disk resize parameters")
+		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
 		return
 	}
 
@@ -436,6 +447,23 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 		memoryMB = memory * 1024
 	} else {
 		memoryMB = memory
+	}
+
+	// Parse and validate disk resize parameters
+	var diskResizeGBInt int64
+	var performDiskResize bool
+	if diskResizeDisk != "" && diskResizeGB != "" {
+		performDiskResize = true
+		diskResizeGBInt, err = strconv.ParseInt(diskResizeGB, 10, 64)
+		if err != nil || diskResizeGBInt < 1 {
+			ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
+			return
+		}
+
+		ctx.Log.Info().
+			Str("disk", diskResizeDisk).
+			Int64("increment_gb", diskResizeGBInt).
+			Msg("Disk resize parameters parsed")
 	}
 
 	stateManager := getStateManager(r)
@@ -583,6 +611,51 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 	ctx.Log.Info().Str("vmid", vmid).Str("node", node).
 		Int("sockets", sockets).Int("cores", cores).Int64("memory", memory).
 		Int("network_cards", maxNetworkCards).Msg("VM resources updated successfully")
+
+	// Execute disk resize if requested
+	if performDiskResize {
+		ctx.Log.Info().Str("disk", diskResizeDisk).Int64("increment_gb", diskResizeGBInt).Msg("Executing disk resize")
+
+		// Format size as "+XG" for Proxmox API
+		sizeParam := fmt.Sprintf("+%dG", diskResizeGBInt)
+
+		if err := proxmox.ResizeVMDiskResty(r.Context(), restyClient, node, vmidInt, diskResizeDisk, sizeParam); err != nil {
+			ctx.Log.Error().Err(err).Str("disk", diskResizeDisk).Str("size", sizeParam).Msg("Disk resize failed")
+			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.DiskResize.Failed")
+			return
+		}
+
+		ctx.Log.Info().Str("disk", diskResizeDisk).Str("size", sizeParam).Msg("Disk resize completed successfully")
+
+		// Execute fstrim via QEMU agent if VM is running
+		vmStatus, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
+		if err == nil && vmStatus != nil && vmStatus.Status == "running" {
+			ctx.Log.Info().Str("vmid", vmid).Str("node", node).Msg("VM is running, checking QEMU agent availability")
+
+			// Check if QEMU agent is available before attempting fstrim
+			if getGuestAgentStatus(r, node, vmidInt) == agentStatusAvailable {
+				ctx.Log.Info().Msg("QEMU agent is available, executing fstrim")
+
+				fstrimCmd := []string{"fstrim", "-av"}
+				if _, err := proxmox.ExecuteQemuAgentCommandResty(r.Context(), restyClient, node, vmidInt, fstrimCmd); err != nil {
+					ctx.Log.Warn().Err(err).Msg("fstrim execution failed, but disk resize succeeded")
+					// Don't fail the operation, just log warning
+				} else {
+					ctx.Log.Info().Msg("fstrim executed successfully via QEMU agent")
+				}
+			} else {
+				ctx.Log.Info().Msg("QEMU agent is not available, skipping fstrim execution")
+			}
+		} else {
+			ctx.Log.Info().Msg("VM is not running, skipping fstrim execution")
+		}
+
+		// Invalidate guest agent cache since disk configuration changed
+		InvalidateGuestAgentCache(node, vmidInt)
+
+		ctx.RedirectWithSuccess(buildVMDetailsURL(vmid), "VMDetails.DiskResize.Success")
+		return
+	}
 
 	// Invalidate guest agent cache for this VM since network config changed
 	InvalidateGuestAgentCache(node, vmidInt)

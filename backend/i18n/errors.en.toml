@@ -51,3 +51,5 @@ other = "Missing required fields"
 other = "Failed to get node information"
 ["Error.FailedToGetResources"]
 other = "Failed to get resources"
+["Error.InvalidInput"]
+other = "Invalid input"

@@ -55,10 +55,10 @@ const (
 const (
 	// GuestAgentCacheTTL is how long to cache "guest agent unavailable" status
 	// This prevents repeated slow API calls to VMs without guest agent
-	GuestAgentCacheTTL = 5 * time.Minute
+	GuestAgentCacheTTL = 1 * time.Minute
 
 	// GuestAgentTimeout is the maximum time to wait for guest agent responses
-	GuestAgentTimeout = 1 * time.Second
+	GuestAgentTimeout = 3 * time.Second
 
 	// GuestAgentShutdownPollInterval is the delay between status checks after an agent-based shutdown
 	GuestAgentShutdownPollInterval = 3 * time.Second

@@ -197,3 +197,47 @@ other = "Indisponible"
 other = "Inconnu"
 ["VMDetails.Agent.Status.Offline"]
 other = "Hors ligne (PVMSS)"
+
+# Disk Resize functionality
+["VMDetails.DiskResize.Title"]
+other = "Redimensionnement de disque"
+["VMDetails.DiskResize.Help"]
+other = "Augmenter la taille du disque pour un stockage supplémentaire. Seules les augmentations sont autorisées (pas de réduction). Après redimensionnement, vous devrez peut-être étendre la partition dans votre système d'exploitation."
+["VMDetails.DiskResize.SelectDisk"]
+other = "Sélectionner un disque"
+["VMDetails.DiskResize.NoResize"]
+other = "Pas de redimensionnement"
+["VMDetails.DiskResize.IncrementGB"]
+other = "Taille d'augmentation"
+["VMDetails.DiskResize.IncrementHelp"]
+other = "Entrez le montant à ajouter au disque. Le disque sera augmenté de ce montant."
+["VMDetails.DiskResize.Success"]
+other = "Disque redimensionné avec succès ! Le disque a été correctement augmenté. Note : Vous devrez peut-être étendre la partition dans votre système d'exploitation pour utiliser le nouvel espace."
+["VMDetails.DiskResize.Failed"]
+other = "Échec du redimensionnement du disque : {{.Error}}"
+["VMDetails.DiskResize.FstrimExecuted"]
+other = "Système de fichiers nettoyé avec succès via l'agent QEMU"
+["VMDetails.DiskResize.FstrimSkipped"]
+other = "La VM n'est pas en cours d'exécution - fstrim ignoré. Vous pouvez exécuter fstrim manuellement dans la VM après le démarrage."
+["VMDetails.DiskResize.PreviewTitle"]
+other = "Aperçu du redimensionnement"
+["VMDetails.DiskResize.CurrentSize"]
+other = "Taille actuelle :"
+["VMDetails.DiskResize.Increment"]
+other = "Augmentation :"
+["VMDetails.DiskResize.NewSize"]
+other = "Nouvelle taille :"
+["VMDetails.DiskResize.UsageEstimate"]
+other = "Utilisation estimée après redimensionnement"
+["VMDetails.DiskResize.ConfirmTitle"]
+other = "Confirmer le redimensionnement"
+["VMDetails.DiskResize.ConfirmMessage"]
+other = "Vous êtes sur le point d'augmenter la taille du disque <strong>{disk}</strong> de <strong>{increment} Go</strong>."
+["VMDetails.DiskResize.ConfirmNote"]
+other = "<strong>Note importante :</strong> Après le redimensionnement, vous devrez probablement étendre la partition dans votre système d'exploitation pour utiliser le nouvel espace."
+["VMDetails.DiskResize.ConfirmQuestion"]
+other = "Voulez-vous continuer ?"
+["VMDetails.DiskResize.ConfirmButton"]
+other = "Oui, redimensionner"
+["VMDetails.DiskResize.CancelButton"]
+other = "Annuler"

@@ -51,3 +51,5 @@ other = "Champs requis manquants"
 other = "Échec de récupération des informations de nœud"
 ["Error.FailedToGetResources"]
 other = "Échec de récupération des ressources"
+["Error.InvalidInput"]
+other = "Entrée invalide"

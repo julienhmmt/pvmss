@@ -541,3 +541,61 @@ func GetNextVMIDResty(ctx context.Context, restyClient *RestyClient) (int, error
 	logger.Get().Info().Int("next_vmid", nextVMID).Msg("Calculated next VMID from online nodes (resty)")
 	return nextVMID, nil
 }
+
+// ResizeVMDiskResty resizes a VM disk using the Proxmox resize API.
+// This performs a PUT request to /nodes/{node}/qemu/{vmid}/resize
+// The size parameter should be in the format "+10G" for increment or "20G" for absolute size
+func ResizeVMDiskResty(ctx context.Context, restyClient *RestyClient, node string, vmid int, disk string, size string) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/resize", url.PathEscape(node), vmid)
+
+	// Build form data for the resize request
+	formData := url.Values{}
+	formData.Set("disk", disk)
+	formData.Set("size", size)
+
+	var response interface{}
+	if err := restyClient.Put(ctx, path, formData, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Str("disk", disk).Str("size", size).Msg("VM disk resize failed (resty)")
+		return fmt.Errorf("failed to resize disk %s for VM %d on node %s: %w", disk, vmid, node, err)
+	}
+
+	logger.Get().Info().Str("node", node).Int("vmid", vmid).Str("disk", disk).Str("size", size).Msg("VM disk resized successfully (resty)")
+	return nil
+}
+
+// QemuAgentCommand represents a command to execute via QEMU agent
+type QemuAgentCommand struct {
+	Command []string `json:"command"`
+}
+
+// QemuAgentExecResponse represents the response from QEMU agent exec command
+type QemuAgentExecResponse struct {
+	Data struct {
+		Pid      int    `json:"pid"`
+		Exitcode int    `json:"exitcode"`
+		OutData  string `json:"out-data"`
+		ErrData  string `json:"err-data"`
+	} `json:"data"`
+}
+
+// ExecuteQemuAgentCommandResty executes a command via QEMU agent
+// This performs a POST request to /nodes/{node}/qemu/{vmid}/agent/exec
+// Returns the PID of the executing command
+func ExecuteQemuAgentCommandResty(ctx context.Context, restyClient *RestyClient, node string, vmid int, command []string) (int, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/agent/exec", url.PathEscape(node), vmid)
+
+	// Build form data for the command
+	formData := url.Values{}
+	// Convert command array to JSON string for form data
+	commandJSON := fmt.Sprintf(`["%s"]`, strings.Join(command, `","`))
+	formData.Set("command", commandJSON)
+
+	var response QemuAgentExecResponse
+	if err := restyClient.Post(ctx, path, formData, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Strs("command", command).Msg("QEMU agent command execution failed (resty)")
+		return 0, fmt.Errorf("failed to execute QEMU agent command for VM %d on node %s: %w", vmid, node, err)
+	}
+
+	logger.Get().Info().Str("node", node).Int("vmid", vmid).Strs("command", command).Int("pid", response.Data.Pid).Msg("QEMU agent command executed successfully (resty)")
+	return response.Data.Pid, nil
+}
