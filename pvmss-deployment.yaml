@@ -16,7 +16,7 @@ metadata:
   name: pvmss-secrets
 type: Opaque
 data:
-  admin-password: changemebase64hash
+  admin-password-hash: changemebase64hash
   pve-api-token: changemebase64hash
   session-secret: changemebase64hash
 ---
