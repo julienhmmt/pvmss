@@ -33,9 +33,9 @@ build: ## Construit le binaire Go et le container docker
 	@echo "Building binary" && cd /Users/jh/git/pvmss && go clean -cache && go build -C backend -o ../pvmss
 	@echo "Binary built successfully"
 	@echo ""
-	@echo "Remove app logs"
-	@rm -f app.log
-	@echo ""
+	@echo "Remove old app logs and create new one"
+	@echo "" > app.log
+	@echo "Successfully cleaned app logs"
 	@echo "Building and running docker container"
 	docker compose -f docker-compose.dev.yml down
 	docker compose -f docker-compose.dev.yml build
