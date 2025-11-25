@@ -416,7 +416,11 @@ func RequireAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 
 			// If user is authenticated but not admin, show access denied
 			if IsAuthenticated(r) {
-				log.Warn().Msg("Authenticated user attempted to access admin area without privileges")
+				logger.SecurityEvent("admin_access_denied").
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Str("client_ip", r.RemoteAddr).
+					Msg("Authenticated user attempted to access admin area without privileges")
 				RenderErrorPage(w, r, http.StatusForbidden, "Access Denied: Admin privileges required")
 				return
 			}
@@ -570,21 +574,17 @@ func AdminAuditMiddleware(next httprouter.Handle) httprouter.Handle {
 			authMethod = "pve"
 		}
 
-		// Create audit log
-		log := CreateHandlerLogger("AdminAudit", r).With().
-			Str("action", "admin_access").
+		// Structured audit log for admin access (DEBUG level to avoid noise)
+		logger.Get().Debug().
+			Str("event_category", "admin").
+			Str("event_type", "admin_access").
 			Str("admin_username", username).
-			Str("proxmox_username", proxmoxUsername).
 			Str("auth_method", authMethod).
 			Bool("is_admin", isAdmin).
 			Str("client_ip", r.RemoteAddr).
-			Str("user_agent", r.Header.Get("User-Agent")).
 			Str("method", r.Method).
 			Str("path", r.URL.Path).
-			Time("access_time", time.Now()).
-			Logger()
-
-		log.Info().Msg("ADMIN ACTION AUDIT - Admin accessed admin endpoint")
+			Msg("Admin endpoint accessed")
 
 		// Continue with the request
 		next(w, r, ps)

@@ -37,7 +37,10 @@ func (h *AdminOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
 		return
 	}
 
-	log.Debug().Msg("Registering optimized admin routes")
+	log.Debug().
+		Str("component", "admin").
+		Str("operation", "register_routes").
+		Msg("Registering optimized admin routes")
 
 	// Admin main page
 	router.GET("/admin", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +91,12 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 			age = 0
 		}
 		nodeCacheAgeSeconds = age
-		log.Debug().Int("node_details_count", len(nodeDetails)).Int("cache_age_seconds", nodeCacheAgeSeconds).Msg("Serving node details from cache")
+		log.Debug().
+			Int("node_details_count", len(nodeDetails)).
+			Int("cache_age_seconds", nodeCacheAgeSeconds).
+			Str("component", "admin").
+			Str("operation", "serve_node_cache").
+			Msg("Serving node details from cache")
 	}
 
 	if len(nodeDetails) == 0 {
@@ -114,7 +122,12 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 					// Get node details with optimized batch processing
 					nodeDetails, err = h.getNodeDetailsOptimized(ctx, restyClient)
 					if err != nil {
-						log.Warn().Err(err).Msg("Unable to retrieve Proxmox node details (optimized)")
+						log.Warn().
+							Err(err).
+							Str("component", "admin_nodes").
+							Str("operation", "retrieve_node_details").
+							Str("method", "optimized").
+							Msg("Unable to retrieve Proxmox node details")
 						errMsg = "Failed to retrieve node details"
 					} else {
 						log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with optimization")
@@ -123,15 +136,29 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 					}
 				}
 			} else {
-				log.Warn().Msg("Proxmox credentials not configured")
+				log.Warn().
+					Str("component", "admin_nodes").
+					Str("operation", "retrieve_node_details").
+					Str("reason", "credentials_not_configured").
+					Msg("Proxmox credentials not configured")
 				errMsg = "Proxmox credentials missing"
 			}
 		} else {
-			log.Warn().Msg("Proxmox client is offline; using cached data if available")
+			log.Warn().
+				Str("component", "admin_nodes").
+				Str("operation", "retrieve_node_details").
+				Str("reason", "client_offline").
+				Str("fallback", "cached_data").
+				Msg("Proxmox client offline; using cached data")
 			errMsg = "Proxmox connection unavailable"
 		}
 	} else {
-		log.Debug().Int("node_details_count", len(nodeDetails)).Str("source", nodeDataSource).Msg("Rendering node details from cache")
+		log.Debug().
+			Int("node_details_count", len(nodeDetails)).
+			Str("source", nodeDataSource).
+			Str("component", "admin").
+			Str("operation", "render_node_cache").
+			Msg("Rendering node details from cache")
 	}
 
 	// Build template data with optimized builder pattern
@@ -157,7 +184,10 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 // AdminPageHandler renders the admin dashboard
 func (h *AdminOptimizedHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("AdminPageHandler", r)
-	log.Debug().Msg("Rendering admin dashboard")
+	log.Debug().
+		Str("component", "admin").
+		Str("operation", "render_dashboard").
+		Msg("Rendering admin dashboard")
 
 	data := NewTemplateDataWithOptions("",
 		WithAdminActive("dashboard"),
@@ -241,7 +271,12 @@ func (h *AdminOptimizedHandler) AppInfoPageHandler(w http.ResponseWriter, r *htt
 			}
 		} else {
 			// Fallback to the old method using cluster name from ticket
-			log.Warn().Err(err).Msg("Failed to get cluster status, falling back to cluster name detection")
+			log.Warn().
+				Err(err).
+				Str("component", "admin_nodes").
+				Str("operation", "get_cluster_status").
+				Str("fallback", "cluster_name_detection").
+				Msg("Failed to get cluster status, using fallback")
 			clusterName := client.GetClusterName()
 			if clusterName != "" {
 				clusterInfo["isCluster"] = true

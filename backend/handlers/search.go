@@ -42,7 +42,11 @@ func (h *SearchOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
 		return
 	}
 
-	log.Debug().Msg("Registering optimized search routes")
+	log.Debug().
+		Str("component", "search").
+		Str("operation", "register_routes").
+		Str("reason", "route_registration").
+		Msg("Registering optimized search routes")
 
 	router.GET("/search", RequireAuthHandle(h.SearchPageHandler))
 	router.POST("/search", SecureFormHandler("Search",
@@ -66,7 +70,11 @@ func (h *SearchOptimizedHandler) RegisterAJAXRoutes(router *httprouter.Router) {
 		return
 	}
 
-	log.Debug().Msg("Registering AJAX search routes")
+	log.Debug().
+		Str("component", "search").
+		Str("operation", "register_ajax_routes").
+		Str("reason", "ajax_route_registration").
+		Msg("Registering AJAX search routes")
 
 	router.GET("/api/search/vms", RequireAuthHandle(h.SearchAPIHandler))
 
@@ -277,7 +285,13 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 				// Get config to check tags
 				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
 				if err != nil {
-					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for tag filtering, skipping")
+					log.Debug().
+						Err(err).
+						Int("vmid", vm.VMID).
+						Str("component", "search").
+						Str("operation", "tag_filtering").
+						Str("reason", "vm_config_failed").
+						Msg("Failed to get VM config for tag filtering, skipping")
 					continue
 				}
 
@@ -305,7 +319,13 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 				// If no tag query, still require 'pvmss' tag
 				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
 				if err != nil {
-					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for pvmss tag check, skipping")
+					log.Debug().
+						Err(err).
+						Int("vmid", vm.VMID).
+						Str("component", "search").
+						Str("operation", "pvmss_tag_check").
+						Str("reason", "vm_config_failed").
+						Msg("Failed to get VM config for pvmss tag check, skipping")
 					continue
 				}
 
@@ -313,6 +333,9 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 					log.Debug().
 						Int("vmid", vm.VMID).
 						Str("name", vm.Name).
+						Str("component", "search").
+						Str("operation", "pvmss_tag_check").
+						Str("reason", "missing_pvmss_tag").
 						Msg("VM does not have pvmss tag, skipping")
 					continue
 				}
@@ -337,7 +360,13 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 			// No search criteria provided, still require 'pvmss' tag
 			cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
 			if err != nil {
-				log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for pvmss tag check, skipping")
+				log.Debug().
+					Err(err).
+					Int("vmid", vm.VMID).
+					Str("component", "search").
+					Str("operation", "pvmss_tag_check").
+					Str("reason", "vm_config_failed").
+					Msg("Failed to get VM config for pvmss tag check, skipping")
 				continue
 			}
 
@@ -379,14 +408,26 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 
 			vmidInt, err := strconv.Atoi(vmInfo.VMID)
 			if err != nil {
-				log.Debug().Err(err).Str("vmid", vmInfo.VMID).Msg("Invalid VMID, skipping")
+				log.Debug().
+					Err(err).
+					Str("vmid", vmInfo.VMID).
+					Str("component", "search").
+					Str("operation", "vmid_validation").
+					Str("reason", "invalid_vmid").
+					Msg("Invalid VMID, skipping")
 				return
 			}
 
 			// Get config (we may already have it from tag filtering, but get it again for consistency)
 			cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vmInfo.Node, vmidInt)
 			if err != nil {
-				log.Debug().Err(err).Int("vmid", vmidInt).Msg("Failed to get VM config, skipping")
+				log.Debug().
+					Err(err).
+					Int("vmid", vmidInt).
+					Str("component", "search").
+					Str("operation", "fetch_vm_config").
+					Str("reason", "config_fetch_failed").
+					Msg("Failed to get VM config, skipping")
 				return
 			}
 
@@ -395,6 +436,9 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 				log.Debug().
 					Int("vmid", vmidInt).
 					Str("name", vmInfo.Name).
+					Str("component", "search").
+					Str("operation", "final_pvmss_check").
+					Str("reason", "missing_pvmss_tag").
 					Msg("VM does not have pvmss tag in final check, skipping")
 				return
 			}
@@ -504,7 +548,12 @@ func (h *SearchOptimizedHandler) getPoolVMIDs(ctx context.Context, client proxmo
 	}
 
 	if err := client.GetJSON(ctx, "/pools/"+poolName, &poolResp); err != nil {
-		log.Warn().Err(err).Msg("Failed to fetch pool members")
+		log.Warn().
+			Err(err).
+			Str("component", "search").
+			Str("operation", "fetch_pool_members").
+			Str("reason", "pool_fetch_failed").
+			Msg("Failed to fetch pool members")
 		return vmids
 	}
 
@@ -517,7 +566,12 @@ func (h *SearchOptimizedHandler) getPoolVMIDs(ctx context.Context, client proxmo
 		}
 	}
 
-	log.Debug().Int("vm_count", len(vmids)).Msg("Pool members retrieved")
+	log.Debug().
+		Int("vm_count", len(vmids)).
+		Str("component", "search").
+		Str("operation", "fetch_pool_members").
+		Str("reason", "pool_retrieved").
+		Msg("Pool members retrieved")
 	return vmids
 }
 
@@ -708,7 +762,13 @@ func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxm
 		// Check 2: Get VM config and check for "pvmss" tag
 		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
 		if err != nil {
-			log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for AJAX search, skipping")
+			log.Debug().
+				Err(err).
+				Int("vmid", vm.VMID).
+				Str("component", "search").
+				Str("operation", "ajax_search").
+				Str("reason", "vm_config_failed").
+				Msg("Failed to get VM config for AJAX search, skipping")
 			continue
 		}
 
@@ -731,7 +791,13 @@ func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxm
 				// Get config to check tags
 				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
 				if err != nil {
-					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Failed to get VM config for tag filtering, skipping")
+					log.Debug().
+						Err(err).
+						Int("vmid", vm.VMID).
+						Str("component", "search").
+						Str("operation", "tag_filtering").
+						Str("reason", "vm_config_failed").
+						Msg("Failed to get VM config for tag filtering, skipping")
 					continue
 				}
 

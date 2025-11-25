@@ -91,7 +91,12 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	h.mu.RUnlock()
 
 	if found {
-		log.Debug().Str("cache_key", cacheKey).Msg("Serving cached documentation")
+		log.Debug().
+			Str("cache_key", cacheKey).
+			Str("component", "docs").
+			Str("operation", "serve_cached_docs").
+			Str("reason", "cache_hit").
+			Msg("Serving cached documentation")
 		titleKey := "Docs.User.Title"
 		switch docType {
 		case "admin":
@@ -160,7 +165,12 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 	}
 	h.mu.Unlock()
 
-	log.Debug().Str("cache_key", cacheKey).Msg("Documentation cached")
+	log.Debug().
+		Str("cache_key", cacheKey).
+		Str("component", "docs").
+		Str("operation", "cache_documentation").
+		Str("reason", "cache_updated").
+		Msg("Documentation cached")
 
 	titleKey := "Docs.User.Title"
 	switch docType {

@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"pvmss/i18n"
 	"pvmss/logger"
@@ -161,31 +160,17 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	log.Info().Str("tag", tagName).Msg("Tag added successfully")
-
-	// Audit log for admin tag creation
+	// Audit log for tag creation
+	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "tag_create").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Str("tag_name", tagName).
-				Str("client_ip", r.RemoteAddr).
-				Time("create_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - Tag created by admin")
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
 		}
 	}
+	logger.AdminEvent("tag_create", username).
+		Str("tag_name", tagName).
+		Str("client_ip", r.RemoteAddr).
+		Msg("Tag created")
 
 	localizer := i18n.GetLocalizerFromRequest(r)
 
@@ -229,31 +214,17 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	log.Info().Str("tag", tagName).Msg("Tag deleted successfully")
-
-	// Audit log for admin tag deletion
+	// Audit log for tag deletion
+	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "tag_delete").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Str("tag_name", tagName).
-				Str("client_ip", r.RemoteAddr).
-				Time("delete_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - Tag deleted by admin")
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
 		}
 	}
+	logger.AdminEvent("tag_delete", username).
+		Str("tag_name", tagName).
+		Str("client_ip", r.RemoteAddr).
+		Msg("Tag deleted")
 
 	http.Redirect(w, r, "/admin/tags?success=1&action=delete&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
 }
@@ -334,10 +305,19 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 				}
 			}
 		}
-		log.Debug().Int("vm_snapshot_count", len(snapshot.VMs)).Msg("Tag counts calculated from snapshot")
+		log.Debug().
+			Int("vm_snapshot_count", len(snapshot.VMs)).
+			Str("component", "tags").
+			Str("operation", "calculate_tag_counts").
+			Str("reason", "snapshot_calculated").
+			Msg("Tag counts calculated from snapshot")
 	} else {
 		if h.stateManager.IsOfflineMode() {
-			log.Debug().Msg("Offline mode enabled; skipping tag usage lookup")
+			log.Debug().
+				Str("component", "tags").
+				Str("operation", "tag_usage_lookup").
+				Str("reason", "offline_mode").
+				Msg("Offline mode enabled; skipping tag usage lookup")
 		} else if restyClient, err := getDefaultRestyClient(); err == nil {
 			if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
 				for i := range vms {
@@ -361,10 +341,20 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 					}
 				}
 			} else {
-				log.Debug().Err(err).Msg("Failed to retrieve VM list for tag usage lookup")
+				log.Debug().
+					Err(err).
+					Str("component", "tags").
+					Str("operation", "tag_usage_lookup").
+					Str("reason", "vm_list_failed").
+					Msg("Failed to retrieve VM list for tag usage lookup")
 			}
 		} else {
-			log.Debug().Err(err).Msg("Failed to create resty client for tag usage lookup")
+			log.Debug().
+				Err(err).
+				Str("component", "tags").
+				Str("operation", "tag_usage_lookup").
+				Str("reason", "resty_client_failed").
+				Msg("Failed to create resty client for tag usage lookup")
 		}
 	}
 

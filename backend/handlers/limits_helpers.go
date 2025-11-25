@@ -99,7 +99,14 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 		// Get VM config to check tags
 		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
-			log.Warn().Err(err).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Failed to get VM config")
+			log.Warn().
+				Err(err).
+				Str("component", "limits_helpers").
+				Str("operation", "fetch_vm_config").
+				Str("reason", "vm_config_failed").
+				Str("node", vm.Node).
+				Int("vmid", vm.VMID).
+				Msg("Failed to get VM config")
 			continue
 		}
 
@@ -429,7 +436,12 @@ func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.Clien
 
 	capacity, err := GetNodeCapacity(ctx, client, nodeName)
 	if err != nil {
-		log.Warn().Err(err).Msg("Could not retrieve node capacity, skipping validation")
+		log.Warn().
+			Err(err).
+			Str("component", "limits_helpers").
+			Str("operation", "validate_node_limits").
+			Str("reason", "node_capacity_failed").
+			Msg("Could not retrieve node capacity, skipping validation")
 		return nil // Don't block if we can't get capacity
 	}
 
@@ -474,7 +486,12 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.Cl
 
 	usageMap, err := CalculateNodeResourceUsage(ctxWithTimeout, client, sm)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to calculate node resource usage, skipping aggregate validation")
+		log.Warn().
+			Err(err).
+			Str("component", "limits_helpers").
+			Str("operation", "validate_vm_resources").
+			Str("reason", "usage_calculation_failed").
+			Msg("Failed to calculate node resource usage, skipping aggregate validation")
 		return nil // Don't block VM creation if we can't calculate usage
 	}
 

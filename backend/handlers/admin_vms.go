@@ -91,7 +91,11 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 		} else {
 			// errMsg here is an i18n key; localize it for display
 			localized := i18n.Localize(i18n.GetLocalizerFromRequest(r), retrievalErrKey)
-			log.Warn().Str("error", localized).Msg("Failed to retrieve VMs")
+			log.Warn().
+				Str("component", "admin_vms").
+				Str("operation", "retrieve_vms").
+				Str("error", localized).
+				Msg("Failed to retrieve VMs")
 			errMsg = localized
 		}
 	} else {
@@ -103,7 +107,11 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 			if proxmoxMsg != "" {
 				errMsg = proxmoxMsg
 			}
-			log.Warn().Msg("Proxmox client is not initialized")
+			log.Warn().
+				Str("component", "admin_vms").
+				Str("operation", "retrieve_vms").
+				Str("reason", "client_not_initialized").
+				Msg("Proxmox client is not initialized")
 		}
 	}
 
@@ -307,7 +315,12 @@ func (h *AdminVMsHandler) getVMsWithPVMSSTag(ctx context.Context) ([]AdminVMInfo
 	}
 
 	if err := g.Wait(); err != nil {
-		log.Warn().Err(err).Msg("Concurrent VM config fetch encountered errors")
+		log.Warn().
+			Err(err).
+			Str("component", "admin_vms").
+			Str("operation", "concurrent_fetch").
+			Int("vm_count", len(allVMs)).
+			Msg("Concurrent VM config fetch encountered errors")
 	}
 
 	sort.Slice(results, func(i, j int) bool {

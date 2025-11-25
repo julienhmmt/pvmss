@@ -19,6 +19,9 @@ services:
       # PVMSS settings
       ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
       LOG_LEVEL: "INFO"
+      LOG_OUTPUT: "file" # stdout / file / both
+      LOG_FILE_PATH: "/app/info.log" # If "file" or "both" on LOG_OUTPUT,
+      LOG_FORMAT: "console" # "console" or "json". If "json", the log will be in JSON format, used for SIEM.
       SESSION_SECRET: "changeMeWithSomethingElseUnique"
       PVMSS_ENV: "prod" # Environment: production/prod or development/dev/developpement
       PVMSS_OFFLINE: "false"
@@ -26,6 +29,7 @@ services:
       TZ: "Europe/Paris"
     volumes:
       - ./settings.json:/app/settings.json
+      - ./app.log:/app/info.log # If "file" or "both" on LOG_OUTPUT, you need to set this to a valid file path
     deploy:
       resources:
         limits:

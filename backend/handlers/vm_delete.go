@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 )
@@ -100,7 +101,13 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	vmid := r.FormValue("vmid")
 	node := r.FormValue("node")
 	if vmid == "" || node == "" {
-		log.Warn().Str("vmid", vmid).Str("node", node).Msg("missing required fields")
+		log.Warn().
+			Str("component", "vm_delete").
+			Str("operation", "validate_delete_request").
+			Str("reason", "missing_fields").
+			Str("vmid", vmid).
+			Str("node", node).
+			Msg("Missing required fields for VM deletion")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
@@ -144,7 +151,13 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	log.Info().Int("vmid", vmidInt).Str("node", node).Msg("checking VM status before deletion")
 	currentStatus, statusErr := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
 	if statusErr != nil {
-		log.Warn().Err(statusErr).Int("vmid", vmidInt).Msg("Could not get VM status, proceeding with deletion")
+		log.Warn().
+			Err(statusErr).
+			Str("component", "vm_delete").
+			Str("operation", "check_vm_status").
+			Str("reason", "status_check_failed").
+			Int("vmid", vmidInt).
+			Msg("Could not get VM status; proceeding with deletion")
 	} else if currentStatus != nil && currentStatus.Status == "running" {
 		// VM is running, need to stop it first
 		log.Info().Int("vmid", vmidInt).Str("node", node).Msg("VM is running, attempting shutdown")
@@ -152,7 +165,14 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		// Try graceful shutdown first
 		log.Info().Int("vmid", vmidInt).Str("node", node).Msg("Attempting graceful shutdown")
 		if taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, "shutdown"); err != nil {
-			log.Warn().Err(err).Int("vmid", vmidInt).Str("node", node).Msg("Failed to send shutdown command")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_delete").
+				Str("operation", "shutdown_vm").
+				Str("reason", "shutdown_command_failed").
+				Int("vmid", vmidInt).
+				Str("node", node).
+				Msg("Failed to send shutdown command")
 		} else if taskID != "" {
 			log.Info().Str("task_id", taskID).Int("vmid", vmidInt).Msg("Shutdown task started")
 		}
@@ -164,7 +184,12 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		// Check status again
 		checkStatus, checkErr := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
 		if checkErr == nil && checkStatus != nil && checkStatus.Status == "running" {
-			log.Warn().Int("vmid", vmidInt).Msg("Shutdown did not stop VM, sending stop command")
+			log.Warn().
+				Str("component", "vm_delete").
+				Str("operation", "shutdown_vm").
+				Str("reason", "graceful_shutdown_failed").
+				Int("vmid", vmidInt).
+				Msg("Shutdown did not stop VM; sending stop command")
 			// Send stop command
 			if taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, "stop"); err != nil {
 				log.Error().Err(err).Int("vmid", vmidInt).Str("node", node).Msg("Failed to send stop command")
@@ -198,48 +223,37 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		log.Info().Int("vmid", vmidInt).Msg("VM is already stopped, proceeding with deletion")
 	}
 
+	// Get username for audit before deletion
+	username := "unknown"
+	isAdmin := false
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
+		}
+	}
+
 	// Step 2: Delete the VM
-	log.Info().Int("vmid", vmidInt).Str("node", node).Msg("deleting VM")
+	log.Debug().Int("vmid", vmidInt).Str("node", node).Msg("Sending delete request to Proxmox")
 	if err := proxmox.DeleteVMResty(r.Context(), restyClient, node, vmidInt); err != nil {
-		log.Error().Err(err).Int("vmid", vmidInt).Msg("VM deletion failed")
+		logger.VMFailure("vm_delete", vmidInt, node, "proxmox_api_error").
+			Err(err).
+			Str("username", username).
+			Str("client_ip", r.RemoteAddr).
+			Msg("VM deletion failed")
 		ctx := NewHandlerContext(w, r, "VMDeleteHandler")
 		ctx.RedirectWithError("/vm/details/"+vmid, "VMDelete.Error")
 		return
 	}
 
-	log.Info().Int("vmid", vmidInt).Msg("VM deleted successfully")
-
-	// Get VM name for audit log (try to get it before deletion)
-	vmName := "unknown"
-	if vmDetails, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt); err == nil && vmDetails != nil {
-		vmName = vmDetails.Name
-	}
-
-	// Audit log for admin VM deletion
-	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "vm_delete").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Int("vmid", vmidInt).
-				Str("vm_name", vmName).
-				Str("node", node).
-				Str("client_ip", r.RemoteAddr).
-				Time("delete_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - VM deleted by admin")
-		}
-	}
+	// Log successful deletion with structured event
+	logger.VMEvent("vm_delete", vmidInt, node).
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Str("client_ip", r.RemoteAddr).
+		Msg("VM deleted successfully")
 
 	// Invalidate caches to ensure UI shows fresh data
 	// 1) User pool cache (profile page)

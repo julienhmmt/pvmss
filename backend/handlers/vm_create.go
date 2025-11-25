@@ -175,7 +175,12 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	log.Debug().Msg("Getting node information")
 	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), client, clusterSnapshot)
 	if err != nil {
-		log.Warn().Err(err).Msg("Proxmox node information unavailable, falling back to settings")
+		log.Warn().
+			Err(err).
+			Str("component", "vm_create").
+			Str("operation", "get_node_info").
+			Str("fallback", "settings").
+			Msg("Proxmox node information unavailable; using settings fallback")
 		nodes, disabledNodes, activeNode = deriveNodesFromSettings(settingsPtr)
 	}
 	log.Debug().Strs("nodes", nodes).Str("active_node", activeNode).Msg("Node information retrieved")
@@ -199,7 +204,12 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	log.Debug().Msg("Getting resources (storages and bridges)")
 	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settingsPtr, clusterSnapshot)
 	if err != nil {
-		log.Warn().Err(err).Msg("Proxmox resources unavailable, using settings fallback")
+		log.Warn().
+			Err(err).
+			Str("component", "vm_create").
+			Str("operation", "get_resources").
+			Str("fallback", "settings").
+			Msg("Proxmox resources unavailable; using settings fallback")
 		storages, storageNodes, bridgeDetails = buildResourcesFromSettings(settingsPtr)
 	}
 	if storages == nil {
@@ -670,7 +680,12 @@ func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, cli
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to create resty client for offline node check")
+		log.Warn().
+			Err(err).
+			Str("component", "vm_create").
+			Str("operation", "offline_node_check").
+			Str("reason", "resty_client_failed").
+			Msg("Failed to create resty client for offline node check")
 		return 0
 	}
 
@@ -680,14 +695,25 @@ func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, cli
 
 	allNodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to get all node names for offline check")
+		log.Warn().
+			Err(err).
+			Str("component", "vm_create").
+			Str("operation", "offline_node_check").
+			Str("reason", "all_nodes_failed").
+			Msg("Failed to get all node names for offline check")
 		return 0
 	}
 
 	// Get online nodes only
 	onlineNodes, err := proxmox.GetOnlineNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to get online node names for offline check")
+		log.Warn().
+			Err(err).
+			Str("component", "vm_create").
+			Str("operation", "offline_node_check").
+			Str("reason", "online_nodes_failed").
+			Int("total_nodes", len(allNodes)).
+			Msg("Failed to get online node names for offline check, assuming all nodes are offline")
 		return len(allNodes) // Assume all are offline if we can't get online list
 	}
 
@@ -743,9 +769,21 @@ func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, cl
 				log.Info().Msg("Served VM creation resources from cached Proxmox snapshot")
 				return storages, storageNodes, bridgeDetails, nil
 			}
-			log.Warn().Err(err).Msg("Bridge details unavailable in snapshot, falling back to live calls")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_create").
+				Str("operation", "get_optimized_resources").
+				Str("reason", "snapshot_bridges_failed").
+				Str("fallback", "live_calls").
+				Msg("Bridge details unavailable in snapshot; using live calls fallback")
 		} else {
-			log.Warn().Err(err).Msg("Storages unavailable in snapshot, falling back to live calls")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_create").
+				Str("operation", "get_optimized_resources").
+				Str("reason", "snapshot_storages_failed").
+				Str("fallback", "live_calls").
+				Msg("Storages unavailable in snapshot; using live calls fallback")
 		}
 	}
 
@@ -775,7 +813,12 @@ func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, cl
 		var err error
 		storages, storageNodes, err = h.getOptimizedStorages(ctx, restyClient, nodes, disabledNodes, settings)
 		if err != nil {
-			log.Warn().Err(err).Msg("Failed to retrieve storages")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_create").
+				Str("operation", "get_optimized_resources").
+				Str("reason", "storages_retrieval_failed").
+				Msg("Failed to retrieve storages")
 			return fmt.Errorf("failed to get storages: %w", err)
 		}
 		return nil
@@ -786,7 +829,12 @@ func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, cl
 		var err error
 		bridgeDetails, err = h.getOptimizedBridges(ctx, restyClient, nodes, disabledNodes, settings)
 		if err != nil {
-			log.Warn().Err(err).Msg("Failed to retrieve bridges")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_create").
+				Str("operation", "get_optimized_resources").
+				Str("reason", "bridges_retrieval_failed").
+				Msg("Failed to retrieve bridges")
 			return fmt.Errorf("failed to get bridges: %w", err)
 		}
 		return nil
@@ -885,7 +933,12 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 	// Get global storage list once
 	globalList, err := proxmox.GetStoragesResty(ctx, restyClient)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to fetch global storage list")
+		log.Warn().
+			Err(err).
+			Str("component", "vm_create").
+			Str("operation", "get_optimized_storages").
+			Str("reason", "global_storage_list_failed").
+			Msg("Failed to fetch global storage list; continuing without metadata")
 		// Continue without global metadata
 	} else {
 		log.Debug().Int("global_storages_count", len(globalList)).Msg("Retrieved global storage list")
@@ -932,7 +985,13 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 
 			storageList, err := proxmox.GetNodeStoragesResty(ctx, restyClient, nodeName)
 			if err != nil {
-				log.Warn().Err(err).Str("node", nodeName).Msg("Failed to retrieve storages for node")
+				log.Warn().
+					Err(err).
+					Str("component", "vm_create").
+					Str("operation", "get_optimized_storages").
+					Str("node", nodeName).
+					Str("reason", "node_storages_failed").
+					Msg("Failed to retrieve storages for node")
 				return
 			}
 
@@ -1371,7 +1430,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		cleanStr := strings.TrimSpace(str)
 		var value float64
 		if val, err := fmt.Sscanf(cleanStr, "%f", &value); err != nil || val != 1 {
-			log.Warn().Str("field", fieldName).Str("input", str).Str("unit", unit).Int("default", defaultValue).Msg("Invalid numeric value, using default")
+			log.Warn().
+				Str("component", "vm_create").
+				Str("operation", "validate_numeric_field").
+				Str("field", fieldName).
+				Str("input", str).
+				Str("unit", unit).
+				Int("default", defaultValue).
+				Msg("Invalid numeric value, using default")
 			return defaultValue
 		}
 
@@ -1385,7 +1451,17 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 		// Validate range
 		if mb < minVal || mb > maxVal {
-			log.Warn().Str("field", fieldName).Str("unit", unit).Float64("value", value).Int("mb", mb).Int("min", minVal).Int("max", maxVal).Int("default", defaultValue).Msg("Value out of range, using default")
+			log.Warn().
+				Str("component", "vm_create").
+				Str("operation", "validate_numeric_field").
+				Str("field", fieldName).
+				Str("unit", unit).
+				Float64("value", value).
+				Int("mb", mb).
+				Int("min", minVal).
+				Int("max", maxVal).
+				Int("default", defaultValue).
+				Msg("Value out of range, using default")
 			return defaultValue
 		}
 		return mb
@@ -1430,7 +1506,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		// Count current VMs in user's pool
 		currentVMCount, err := countVMsInPool(ctx, client, pool)
 		if err != nil {
-			log.Warn().Err(err).Str("pool", pool).Msg("Failed to count VMs in pool, skipping limit check")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_create").
+				Str("operation", "check_pool_limit").
+				Str("pool", pool).
+				Str("reason", "pool_count_failed").
+				Msg("Failed to count VMs in pool; skipping limit check")
+			// Continue without limit check
 		} else {
 			log.Info().
 				Str("pool", pool).
@@ -1440,7 +1523,10 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 			if currentVMCount >= maxVMPerUser {
 				log.Warn().
+					Str("component", "vm_create").
+					Str("operation", "check_pool_limit").
 					Str("pool", pool).
+					Str("reason", "max_vm_limit_reached").
 					Int("current_vms", currentVMCount).
 					Int("max_allowed", maxVMPerUser).
 					Msg("User has reached maximum VM limit")
@@ -1610,11 +1696,21 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			// contain the required metadata.
 			restyClient, err := getDefaultRestyClient()
 			if err != nil {
-				log.Warn().Err(err).Msg("Failed to create resty client for TPM storage check, skipping TPM")
+				log.Warn().
+					Err(err).
+					Str("component", "vm_create").
+					Str("operation", "validate_tpm_storage").
+					Str("reason", "resty_client_failed").
+					Msg("Failed to create resty client for TPM storage check; skipping TPM")
 			} else {
 				storageInfo, err := proxmox.GetStoragesResty(r.Context(), restyClient)
 				if err != nil {
-					log.Warn().Err(err).Msg("Failed to retrieve storage info for TPM, skipping TPM")
+					log.Warn().
+						Err(err).
+						Str("component", "vm_create").
+						Str("operation", "validate_tpm_storage").
+						Str("reason", "storage_info_failed").
+						Msg("Failed to retrieve storage info for TPM; skipping TPM")
 				} else {
 					var liveType string
 					for i := range storageInfo {
@@ -1626,7 +1722,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 					if liveType != "" {
 						configureTPM(liveType)
 					} else {
-						log.Warn().Str("storage", storage).Msg("Selected storage not found in storage list, skipping TPM")
+						log.Warn().
+							Str("component", "vm_create").
+							Str("operation", "validate_tpm_storage").
+							Str("reason", "storage_not_found").
+							Str("storage", storage).
+							Msg("Selected storage not found in storage list; skipping TPM")
 					}
 				}
 			}
@@ -1646,7 +1747,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			additionalDiskSizeMB := extractSize(diskSizeStr, diskSizeUnit, 0, 1024, 1048576, fmt.Sprintf("disk_size_%d", diskIdx))
 			if additionalDiskSizeMB <= 0 {
 				// Invalid size, skip
-				log.Warn().Int("disk_idx", diskIdx).Str("size", diskSizeStr).Str("unit", diskSizeUnit).Msg("Invalid additional disk size, skipping")
+				log.Warn().
+					Int("disk_idx", diskIdx).
+					Str("component", "vm_create").
+					Str("operation", "configure_additional_disks").
+					Str("reason", "invalid_disk_size").
+					Str("size", diskSizeStr).
+					Str("unit", diskSizeUnit).
+					Msg("Invalid additional disk size; skipping")
 				continue
 			}
 			// Create additional disk with same bus type (convert MB to GB for Proxmox)
@@ -1687,7 +1795,11 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		params.Set("net0", netConfig)
 		log.Info().Str("bridge", bridgeName).Str("model", networkModel).Str("mac", macAddress).Str("vlan", vlanTag).Str("rate", rateLimit).Str("mtu", mtu).Bool("enabled", networkEnabled).Str("netConfig", netConfig).Msg("Configured primary network card")
 	} else {
-		log.Warn().Msg("Bridge name is empty, skipping network card configuration")
+		log.Warn().
+			Str("component", "vm_create").
+			Str("operation", "configure_network_cards").
+			Str("reason", "bridge_name_empty").
+			Msg("Bridge name is empty; skipping network card configuration")
 	}
 
 	// Additional network cards (net1, net2, etc.) if configured
@@ -1788,7 +1900,13 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	// Validate against aggregate node limits before creating the VM
 	localizer := i18n.GetLocalizerFromRequest(r)
 	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB, localizer); err != nil {
-		log.Warn().Err(err).Str("node", node).Msg("VM resources exceed aggregate node limits")
+		log.Warn().
+			Err(err).
+			Str("component", "vm_create").
+			Str("operation", "validate_node_limits").
+			Str("node", node).
+			Str("reason", "resource_limits_exceeded").
+			Msg("VM resources exceed aggregate node limits")
 		data["ValidationError"] = err.Error()
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
@@ -1801,7 +1919,16 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	log.Info().Str("path", path).Str("params", params.Encode()).Msg("Sending VM creation request to Proxmox API")
 
 	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
-		log.Error().Err(err).Str("node", node).Str("params", params.Encode()).Msg("VM create API call failed")
+		logger.VMFailure("vm_create", vmid, node, "proxmox_api_error").
+			Err(err).
+			Str("vm_name", name).
+			Int("cpu_sockets", cpuSockets).
+			Int("cpu_cores", cpuCores).
+			Int("memory_mb", memoryMB).
+			Int("disk_gb", diskSizeMB/1024).
+			Str("storage", storage).
+			Str("client_ip", r.RemoteAddr).
+			Msg("VM creation failed")
 		data["ValidationError"] = fmt.Sprintf("Failed to create VM: %v", err)
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
@@ -1813,43 +1940,32 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		client.InvalidateCache("/pools/" + url.PathEscape(pool))
 	}
 
-	log.Info().
-		Int("vmid", vmid).
-		Str("name", name).
-		Str("node", node).
-		Msg("VM created successfully")
-
-	// Audit log for admin VM creation
+	// Get username for audit
+	username := ""
+	isAdmin := false
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "vm_create").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Int("vmid", vmid).
-				Str("vm_name", name).
-				Str("node", node).
-				Int("cpu_cores", cpuCores).
-				Int("cpu_sockets", cpuSockets).
-				Int("memory_mb", memoryMB).
-				Int("disk_size_gb", diskSizeMB/1024).
-				Str("storage", storage).
-				Str("network_model", networkModel).
-				Str("client_ip", r.RemoteAddr).
-				Time("create_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - VM created by admin")
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
 		}
 	}
+
+	// Log VM creation with structured event
+	logger.VMEvent("vm_create", vmid, node).
+		Str("vm_name", name).
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Int("cpu_sockets", cpuSockets).
+		Int("cpu_cores", cpuCores).
+		Int("memory_mb", memoryMB).
+		Int("disk_gb", diskSizeMB/1024).
+		Str("storage", storage).
+		Str("network_model", networkModel).
+		Str("pool", pool).
+		Str("client_ip", r.RemoteAddr).
+		Msg("VM created successfully")
 
 	// Redirect to VM details
 	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?created=1", vmid), http.StatusSeeOther)
