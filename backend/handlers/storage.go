@@ -13,6 +13,7 @@ import (
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/security"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -211,6 +212,20 @@ func (h *StorageHandler) ToggleStorageHandler(w http.ResponseWriter, r *http.Req
 			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 			return
 		}
+
+		// Audit log for storage toggle
+		username := ""
+		if sessionManager := security.GetSession(r); sessionManager != nil {
+			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+				username = user
+			}
+		}
+		logger.AdminEvent("storage_toggle", username).
+			Str("storage", storageName).
+			Str("node", node).
+			Str("action", action).
+			Str("client_ip", r.RemoteAddr).
+			Msg("Storage toggled")
 	}
 
 	// Redirect back to storage page with context for success banner

@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"pvmss/i18n"
 	"pvmss/logger"
@@ -161,31 +160,17 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	log.Info().Str("tag", tagName).Msg("Tag added successfully")
-
-	// Audit log for admin tag creation
+	// Audit log for tag creation
+	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "tag_create").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Str("tag_name", tagName).
-				Str("client_ip", r.RemoteAddr).
-				Time("create_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - Tag created by admin")
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
 		}
 	}
+	logger.AdminEvent("tag_create", username).
+		Str("tag_name", tagName).
+		Str("client_ip", r.RemoteAddr).
+		Msg("Tag created")
 
 	localizer := i18n.GetLocalizerFromRequest(r)
 
@@ -229,31 +214,17 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	log.Info().Str("tag", tagName).Msg("Tag deleted successfully")
-
-	// Audit log for admin tag deletion
+	// Audit log for tag deletion
+	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "tag_delete").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Str("tag_name", tagName).
-				Str("client_ip", r.RemoteAddr).
-				Time("delete_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - Tag deleted by admin")
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
 		}
 	}
+	logger.AdminEvent("tag_delete", username).
+		Str("tag_name", tagName).
+		Str("client_ip", r.RemoteAddr).
+		Msg("Tag deleted")
 
 	http.Redirect(w, r, "/admin/tags?success=1&action=delete&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
 }
