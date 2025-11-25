@@ -227,7 +227,14 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	node := r.FormValue("node")
 	action := r.FormValue("action")
 	if vmid == "" || node == "" || action == "" {
-		log.Warn().Str("vmid", vmid).Str("node", node).Str("action", action).Msg("missing required fields")
+		log.Warn().
+			Str("component", "vm_actions").
+			Str("operation", "validate_action_request").
+			Str("reason", "missing_fields").
+			Str("vmid", vmid).
+			Str("node", node).
+			Str("action", action).
+			Msg("Missing required fields for VM action")
 		RespondWithError(w, r, ErrBadRequest)
 		return
 	}
@@ -349,7 +356,12 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		vmStopped := false
 		for i := 0; i < constants.GuestAgentShutdownMaxAttempts; i++ {
 			if r.Context().Err() != nil {
-				log.Warn().Int("vmid", vmidInt).Msg("Shutdown polling cancelled by request context")
+				log.Warn().
+					Str("component", "vm_actions").
+					Str("operation", "shutdown_polling").
+					Str("reason", "context_cancelled").
+					Int("vmid", vmidInt).
+					Msg("Shutdown polling cancelled by request context")
 				break
 			}
 			if i > 0 {
@@ -358,8 +370,15 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 			currentStatus, statusErr := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
 			if statusErr != nil {
-				log.Warn().Err(statusErr).Int("vmid", vmidInt).Int("attempt", i+1).Msg("Failed to get VM status during shutdown polling")
-				break
+				log.Warn().
+					Err(statusErr).
+					Str("component", "vm_actions").
+					Str("operation", "shutdown_polling").
+					Str("reason", "status_check_failed").
+					Int("vmid", vmidInt).
+					Int("attempt", i+1).
+					Msg("Failed to get VM status during shutdown polling")
+				continue
 			}
 			if currentStatus != nil && currentStatus.Status != "running" {
 				vmStopped = true
@@ -431,7 +450,13 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 	// Strict validation: Both fields must be present if either is provided
 	if (diskResizeDisk != "" && diskResizeGB == "") || (diskResizeDisk == "" && diskResizeGB != "") {
-		ctx.Log.Warn().Str("disk", diskResizeDisk).Str("gb", diskResizeGB).Msg("Incomplete disk resize parameters")
+		ctx.Log.Warn().
+			Str("component", "vm_actions").
+			Str("operation", "validate_disk_resize").
+			Str("reason", "incomplete_parameters").
+			Str("disk", diskResizeDisk).
+			Str("gb", diskResizeGB).
+			Msg("Incomplete disk resize parameters")
 		ctx.RedirectWithError(fmt.Sprintf("/vm/details/%d?edit=resources", vmidInt), "Error.InvalidInput")
 		return
 	}
@@ -617,7 +642,13 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 			model = "virtio"
 		}
 		if !validModels[model] {
-			ctx.Log.Warn().Int("card_index", i).Str("network_model", model).Msg("Invalid network model, defaulting to virtio")
+			ctx.Log.Warn().
+				Str("component", "vm_actions").
+				Str("operation", "validate_network_model").
+				Str("reason", "invalid_model").
+				Int("card_index", i).
+				Str("network_model", model).
+				Msg("Invalid network model; defaulting to virtio")
 			model = "virtio"
 		}
 
@@ -696,7 +727,12 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 				fstrimCmd := []string{"fstrim", "-av"}
 				if _, err := proxmox.ExecuteQemuAgentCommandResty(r.Context(), restyClient, node, vmidInt, fstrimCmd); err != nil {
-					ctx.Log.Warn().Err(err).Msg("fstrim execution failed, but disk resize succeeded")
+					ctx.Log.Warn().
+						Err(err).
+						Str("component", "vm_actions").
+						Str("operation", "disk_resize").
+						Str("reason", "fstrim_failed").
+						Msg("fstrim execution failed, but disk resize succeeded")
 					// Don't fail the operation, just log warning
 				} else {
 					ctx.Log.Info().Msg("fstrim executed successfully via QEMU agent")
@@ -776,7 +812,13 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	if currentConfig == "" {
-		ctx.Log.Warn().Int("card_index", cardIndex).Str("vmid", vmidStr).Msg("Network interface not found")
+		ctx.Log.Warn().
+			Str("component", "vm_actions").
+			Str("operation", "network_interface_update").
+			Str("reason", "interface_not_found").
+			Int("card_index", cardIndex).
+			Str("vmid", vmidStr).
+			Msg("Network interface not found")
 		ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
 		return
 	}

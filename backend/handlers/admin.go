@@ -114,7 +114,12 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 					// Get node details with optimized batch processing
 					nodeDetails, err = h.getNodeDetailsOptimized(ctx, restyClient)
 					if err != nil {
-						log.Warn().Err(err).Msg("Unable to retrieve Proxmox node details (optimized)")
+						log.Warn().
+							Err(err).
+							Str("component", "admin_nodes").
+							Str("operation", "retrieve_node_details").
+							Str("method", "optimized").
+							Msg("Unable to retrieve Proxmox node details")
 						errMsg = "Failed to retrieve node details"
 					} else {
 						log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with optimization")
@@ -123,11 +128,20 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 					}
 				}
 			} else {
-				log.Warn().Msg("Proxmox credentials not configured")
+				log.Warn().
+					Str("component", "admin_nodes").
+					Str("operation", "retrieve_node_details").
+					Str("reason", "credentials_not_configured").
+					Msg("Proxmox credentials not configured")
 				errMsg = "Proxmox credentials missing"
 			}
 		} else {
-			log.Warn().Msg("Proxmox client is offline; using cached data if available")
+			log.Warn().
+				Str("component", "admin_nodes").
+				Str("operation", "retrieve_node_details").
+				Str("reason", "client_offline").
+				Str("fallback", "cached_data").
+				Msg("Proxmox client offline; using cached data")
 			errMsg = "Proxmox connection unavailable"
 		}
 	} else {
@@ -241,7 +255,12 @@ func (h *AdminOptimizedHandler) AppInfoPageHandler(w http.ResponseWriter, r *htt
 			}
 		} else {
 			// Fallback to the old method using cluster name from ticket
-			log.Warn().Err(err).Msg("Failed to get cluster status, falling back to cluster name detection")
+			log.Warn().
+				Err(err).
+				Str("component", "admin_nodes").
+				Str("operation", "get_cluster_status").
+				Str("fallback", "cluster_name_detection").
+				Msg("Failed to get cluster status, using fallback")
 			clusterName := client.GetClusterName()
 			if clusterName != "" {
 				clusterInfo["isCluster"] = true

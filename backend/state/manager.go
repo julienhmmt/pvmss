@@ -176,7 +176,12 @@ func (s *appState) refreshProxmoxSnapshot(trigger string) {
 
 	client, err := proxmox.NewRestyClientFromEnv(constants.ClusterCacheRequestTimeout)
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to create resty client for snapshot refresh")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "snapshot_refresh").
+			Str("reason", "client_creation_failed").
+			Msg("Unable to create resty client for snapshot refresh")
 		return
 	}
 
@@ -185,7 +190,12 @@ func (s *appState) refreshProxmoxSnapshot(trigger string) {
 
 	snapshot, err := buildProxmoxSnapshot(ctx, client)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to refresh Proxmox snapshot")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "snapshot_refresh").
+			Str("reason", "snapshot_build_failed").
+			Msg("Failed to refresh Proxmox snapshot")
 		return
 	}
 
@@ -257,7 +267,12 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 
 	restyClient, err := proxmox.NewRestyClientFromEnv(constants.NodeCacheRequestTimeout)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to create resty client for node cache refresh")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "node_cache_refresh").
+			Str("reason", "client_creation_failed").
+			Msg("Failed to create resty client for node cache refresh")
 		return
 	}
 
@@ -266,7 +281,12 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 
 	details, err := proxmox.FetchAllNodeDetailsResty(refreshCtx, restyClient)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to refresh node cache")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "node_cache_refresh").
+			Str("reason", "node_details_failed").
+			Msg("Failed to refresh node cache")
 		return
 	}
 

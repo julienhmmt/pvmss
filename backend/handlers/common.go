@@ -416,7 +416,11 @@ func RequireAdminAuth(next http.HandlerFunc) http.HandlerFunc {
 
 			// If user is authenticated but not admin, show access denied
 			if IsAuthenticated(r) {
-				log.Warn().Msg("Authenticated user attempted to access admin area without privileges")
+				logger.SecurityEvent("admin_access_denied").
+					Str("method", r.Method).
+					Str("path", r.URL.Path).
+					Str("client_ip", r.RemoteAddr).
+					Msg("Authenticated user attempted to access admin area without privileges")
 				RenderErrorPage(w, r, http.StatusForbidden, "Access Denied: Admin privileges required")
 				return
 			}

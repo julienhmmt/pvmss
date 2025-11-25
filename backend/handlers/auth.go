@@ -219,7 +219,7 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 
 // validateCSRF checks the CSRF token from the form against the one in the session.
 func validateCSRF(r *http.Request) error {
-	log := CreateHandlerLogger("validateCSRF", r)
+	// log := CreateHandlerLogger("validateCSRF", r)
 
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
@@ -228,18 +228,30 @@ func validateCSRF(r *http.Request) error {
 
 	formToken := r.FormValue("csrf_token")
 	if formToken == "" {
-		log.Warn().Msg("CSRF token is missing from form")
+		logger.SecurityEvent("csrf_form_missing").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Msg("CSRF token missing from form")
 		return fmt.Errorf("invalid request")
 	}
 
 	sessionToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
 	if !ok || sessionToken == "" {
-		log.Warn().Msg("No CSRF token found in session")
+		logger.SecurityEvent("csrf_session_missing").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Msg("No CSRF token found in session")
 		return fmt.Errorf("session expired")
 	}
 
 	if subtle.ConstantTimeCompare([]byte(formToken), []byte(sessionToken)) != 1 {
-		log.Warn().Msg("CSRF token validation failed")
+		logger.SecurityEvent("csrf_validation_failed").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Msg("CSRF token validation failed")
 		return fmt.Errorf("invalid request")
 	}
 
@@ -352,7 +364,12 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	password := r.FormValue("password")
 
 	if username == "" || password == "" {
-		log.Debug().Str("ip", r.RemoteAddr).Msg("User login attempt with empty username or password")
+		logger.SecurityEvent("login_empty_credentials").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Str("auth_type", "user").
+			Msg("Login attempt with empty username or password")
 		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
 		return
 	}
@@ -487,7 +504,12 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	password := r.FormValue("password")
 
 	if username == "" || password == "" {
-		log.Debug().Str("ip", r.RemoteAddr).Msg("Admin login attempt with empty username or password")
+		logger.SecurityEvent("login_empty_credentials").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Str("auth_type", "admin").
+			Msg("Admin login attempt with empty username or password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
 		return
 	}

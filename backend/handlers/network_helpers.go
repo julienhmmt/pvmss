@@ -61,20 +61,36 @@ func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]s
 
 	// Respect background connectivity monitor: short-circuit when offline
 	if connected, _ := sm.GetProxmoxStatus(); !connected {
-		log.Warn().Msg("Proxmox reported offline by background monitor; trying cache fallback")
+		log.Warn().
+			Str("component", "network_helpers").
+			Str("operation", "collect_vmb rs").
+			Str("reason", "proxmox_offline").
+			Str("fallback", "cache").
+			Msg("Proxmox offline; using cache fallback")
 		return collectVMBRsFromCache(), nil
 	}
 
 	client := sm.GetProxmoxClient()
 	if client == nil {
-		log.Warn().Msg("Proxmox client is not initialized; trying cache fallback")
+		log.Warn().
+			Str("component", "network_helpers").
+			Str("operation", "collect_vmb rs").
+			Str("reason", "client_not_initialized").
+			Str("fallback", "cache").
+			Msg("Proxmox client not initialized; using cache fallback")
 		return collectVMBRsFromCache(), nil
 	}
 
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to create resty client; trying cache fallback")
+		log.Warn().
+			Err(err).
+			Str("component", "network_helpers").
+			Str("operation", "collect_vmb rs").
+			Str("reason", "resty_client_failed").
+			Str("fallback", "cache").
+			Msg("Failed to create resty client; using cache fallback")
 		return collectVMBRsFromCache(), nil
 	}
 
@@ -84,7 +100,13 @@ func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]s
 
 	nodeNames, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes (resty); trying cache fallback")
+		log.Warn().
+			Err(err).
+			Str("component", "network_helpers").
+			Str("operation", "collect_vmb rs").
+			Str("reason", "nodes_retrieval_failed").
+			Str("fallback", "cache").
+			Msg("Unable to retrieve Proxmox nodes; using cache fallback")
 		return collectVMBRsFromCache(), nil
 	}
 	log.Info().Int("node_count", len(nodeNames)).Msg("Discovered Proxmox nodes")
@@ -111,7 +133,14 @@ func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]s
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
-				log.Warn().Err(err).Str("node", nodeName).Msg("Failed to get VMBRs from node; trying cache")
+				log.Warn().
+					Err(err).
+					Str("component", "network_helpers").
+					Str("operation", "collect_vmb rs").
+					Str("node", nodeName).
+					Str("reason", "node_vmb rs_failed").
+					Str("fallback", "cache").
+					Msg("Failed to get VMBRs from node; using cache fallback")
 				cachedVMBRs := getCachedVMBRsForNode(nodeName)
 				if len(cachedVMBRs) > 0 {
 					allVMBRs = append(allVMBRs, cachedVMBRs...)

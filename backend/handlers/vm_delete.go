@@ -101,7 +101,13 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	vmid := r.FormValue("vmid")
 	node := r.FormValue("node")
 	if vmid == "" || node == "" {
-		log.Warn().Str("vmid", vmid).Str("node", node).Msg("missing required fields")
+		log.Warn().
+			Str("component", "vm_delete").
+			Str("operation", "validate_delete_request").
+			Str("reason", "missing_fields").
+			Str("vmid", vmid).
+			Str("node", node).
+			Msg("Missing required fields for VM deletion")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusBadRequest)
 		return
@@ -145,7 +151,13 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	log.Info().Int("vmid", vmidInt).Str("node", node).Msg("checking VM status before deletion")
 	currentStatus, statusErr := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
 	if statusErr != nil {
-		log.Warn().Err(statusErr).Int("vmid", vmidInt).Msg("Could not get VM status, proceeding with deletion")
+		log.Warn().
+			Err(statusErr).
+			Str("component", "vm_delete").
+			Str("operation", "check_vm_status").
+			Str("reason", "status_check_failed").
+			Int("vmid", vmidInt).
+			Msg("Could not get VM status; proceeding with deletion")
 	} else if currentStatus != nil && currentStatus.Status == "running" {
 		// VM is running, need to stop it first
 		log.Info().Int("vmid", vmidInt).Str("node", node).Msg("VM is running, attempting shutdown")
@@ -153,7 +165,14 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		// Try graceful shutdown first
 		log.Info().Int("vmid", vmidInt).Str("node", node).Msg("Attempting graceful shutdown")
 		if taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, "shutdown"); err != nil {
-			log.Warn().Err(err).Int("vmid", vmidInt).Str("node", node).Msg("Failed to send shutdown command")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_delete").
+				Str("operation", "shutdown_vm").
+				Str("reason", "shutdown_command_failed").
+				Int("vmid", vmidInt).
+				Str("node", node).
+				Msg("Failed to send shutdown command")
 		} else if taskID != "" {
 			log.Info().Str("task_id", taskID).Int("vmid", vmidInt).Msg("Shutdown task started")
 		}
@@ -165,7 +184,12 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		// Check status again
 		checkStatus, checkErr := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt)
 		if checkErr == nil && checkStatus != nil && checkStatus.Status == "running" {
-			log.Warn().Int("vmid", vmidInt).Msg("Shutdown did not stop VM, sending stop command")
+			log.Warn().
+				Str("component", "vm_delete").
+				Str("operation", "shutdown_vm").
+				Str("reason", "graceful_shutdown_failed").
+				Int("vmid", vmidInt).
+				Msg("Shutdown did not stop VM; sending stop command")
 			// Send stop command
 			if taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, "stop"); err != nil {
 				log.Error().Err(err).Int("vmid", vmidInt).Str("node", node).Msg("Failed to send stop command")
