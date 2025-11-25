@@ -479,7 +479,12 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 				client.InvalidateCache("/nodes/" + n + "/qemu")
 			}
 		} else {
-			log.Warn().Err(err).Msg("Unable to get nodes while invalidating cache for refresh")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_details").
+				Str("operation", "invalidate_cache_refresh").
+				Str("reason", "nodes_fetch_failed").
+				Msg("Unable to get nodes while invalidating cache for refresh")
 		}
 	}
 
@@ -534,7 +539,12 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			}
 			_ = g.Wait()
 		} else {
-			log.Warn().Err(err).Msg("Unable to get nodes for VM fallback lookup")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_details").
+				Str("operation", "vm_fallback_lookup").
+				Str("reason", "nodes_fetch_failed").
+				Msg("Unable to get nodes for VM fallback lookup")
 		}
 
 		if vm == nil {
@@ -555,7 +565,14 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var hasCDROM bool
 	cfg, cfgErr := proxmox.GetVMConfigResty(r.Context(), restyClient, vm.Node, vm.VMID)
 	if cfgErr != nil {
-		log.Warn().Err(cfgErr).Str("node", vm.Node).Int("vmid", vm.VMID).Msg("Primary VM config fetch failed, attempting node discovery fallback")
+		log.Warn().
+			Err(cfgErr).
+			Str("component", "vm_details").
+			Str("operation", "fetch_vm_config").
+			Str("reason", "primary_fetch_failed").
+			Str("node", vm.Node).
+			Int("vmid", vm.VMID).
+			Msg("Primary VM config fetch failed, attempting node discovery fallback")
 		if nodes, nErr := proxmox.GetNodeNamesResty(r.Context(), restyClient); nErr == nil {
 			g, ctx := errgroup.WithContext(r.Context())
 			var mu2 sync.Mutex
@@ -579,7 +596,12 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 				log.Info().Str("resolved_node", vm.Node).Int("vmid", vm.VMID).Msg("Resolved VM node via fallback and fetched config")
 			}
 		} else {
-			log.Warn().Err(nErr).Msg("Unable to list nodes during VM config fallback")
+			log.Warn().
+				Err(nErr).
+				Str("component", "vm_details").
+				Str("operation", "vm_config_fallback").
+				Str("reason", "node_list_failed").
+				Msg("Unable to list nodes during VM config fallback")
 		}
 	}
 
@@ -639,22 +661,44 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		if vm.Status == "running" && len(networkInterfaces) > 0 && !isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
 			if cachedIfaces, found := getGuestAgentIPsFromCache(vm.Node, vm.VMID); found {
 				proxmox.EnrichNetworkInterfacesWithIPs(networkInterfaces, cachedIfaces)
-				log.Debug().Int("vmid", vm.VMID).Msg("Using cached guest agent network info")
+				log.Debug().
+					Int("vmid", vm.VMID).
+					Str("component", "vm_details").
+					Str("operation", "guest_agent_network").
+					Str("reason", "cache_hit").
+					Msg("Using cached guest agent network info")
 			} else {
 				guestCtx, cancel := context.WithTimeout(r.Context(), constants.GuestAgentTimeout)
 				defer cancel()
 				if guestIfaces, err := proxmox.GetGuestAgentNetworkInterfaces(guestCtx, client, vm.Node, vm.VMID); err == nil {
 					proxmox.EnrichNetworkInterfacesWithIPs(networkInterfaces, guestIfaces)
 					cacheGuestAgentIPs(vm.Node, vm.VMID, guestIfaces)
-					log.Debug().Int("vmid", vm.VMID).Msg("Fetched and cached guest agent network info")
+					log.Debug().
+						Int("vmid", vm.VMID).
+						Str("component", "vm_details").
+						Str("operation", "guest_agent_network").
+						Str("reason", "fetch_success").
+						Msg("Fetched and cached guest agent network info")
 				} else {
 					cacheGuestAgentUnavailable(vm.Node, vm.VMID)
-					log.Debug().Err(err).Int("vmid", vm.VMID).Msg("Guest agent network info not available (cached unavailability)")
+					log.Debug().
+						Err(err).
+						Int("vmid", vm.VMID).
+						Str("component", "vm_details").
+						Str("operation", "guest_agent_network").
+						Str("reason", "unavailable_cached").
+						Msg("Guest agent network info not available (cached unavailability)")
 				}
 			}
 		}
 	} else if cfgErr != nil {
-		log.Warn().Err(cfgErr).Int("vmid", vm.VMID).Msg("Unable to fetch VM config; description and tags may be empty")
+		log.Warn().
+			Err(cfgErr).
+			Str("component", "vm_details").
+			Str("operation", "fetch_vm_config").
+			Str("reason", "config_fetch_failed").
+			Int("vmid", vm.VMID).
+			Msg("Unable to fetch VM config; description and tags may be empty")
 	}
 
 	handlerCtx := NewHandlerContext(w, r, "VMDetailsHandler")
@@ -737,7 +781,13 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 				currentVMBR = availableVMBRs[0]
 			}
 		} else {
-			log.Warn().Err(err).Str("node", vm.Node).Msg("Failed to get VMBRs for resource editor")
+			log.Warn().
+				Err(err).
+				Str("component", "vm_details").
+				Str("operation", "fetch_vmbrs").
+				Str("reason", "vmbrs_fetch_failed").
+				Str("node", vm.Node).
+				Msg("Failed to get VMBRs for resource editor")
 		}
 	}
 
@@ -747,9 +797,18 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		if settings != nil {
 			// Use only ISOs approved by administrators from settings.json
 			availableISOs = settings.ISOs
-			log.Debug().Int("iso_count", len(availableISOs)).Msg("Using admin-approved ISOs from settings")
+			log.Debug().
+				Int("iso_count", len(availableISOs)).
+				Str("component", "vm_details").
+				Str("operation", "fetch_isos").
+				Str("reason", "admin_approved").
+				Msg("Using admin-approved ISOs from settings")
 		} else {
-			log.Warn().Msg("Settings not available, no ISOs will be shown")
+			log.Warn().
+				Str("component", "vm_details").
+				Str("operation", "fetch_isos").
+				Str("reason", "settings_unavailable").
+				Msg("Settings not available, no ISOs will be shown")
 		}
 	}
 
@@ -777,15 +836,34 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 				agentStatusClass = "is-warning is-light"
 			} else {
 				// No cached data, check guest agent status in real-time
-				log.Debug().Int("vmid", vm.VMID).Str("node", vm.Node).Msg("Performing real-time guest agent status check (no cached data)")
+				log.Debug().
+					Int("vmid", vm.VMID).
+					Str("node", vm.Node).
+					Str("component", "vm_details").
+					Str("operation", "guest_agent_status").
+					Str("reason", "realtime_check").
+					Msg("Performing real-time guest agent status check (no cached data)")
 				guestCtx, cancel := context.WithTimeout(r.Context(), constants.GuestAgentTimeout)
 				defer cancel()
 				if _, err := proxmox.GetGuestAgentNetworkInterfaces(guestCtx, client, vm.Node, vm.VMID); err == nil {
-					log.Debug().Int("vmid", vm.VMID).Str("node", vm.Node).Msg("Real-time guest agent check succeeded")
+					log.Debug().
+						Int("vmid", vm.VMID).
+						Str("node", vm.Node).
+						Str("component", "vm_details").
+						Str("operation", "guest_agent_status").
+						Str("reason", "realtime_success").
+						Msg("Real-time guest agent check succeeded")
 					agentStatusKey = "Available"
 					agentStatusClass = "is-success is-light"
 				} else {
-					log.Debug().Int("vmid", vm.VMID).Str("node", vm.Node).Err(err).Msg("Real-time guest agent check failed")
+					log.Debug().
+						Err(err).
+						Int("vmid", vm.VMID).
+						Str("node", vm.Node).
+						Str("component", "vm_details").
+						Str("operation", "guest_agent_status").
+						Str("reason", "realtime_failed").
+						Msg("Real-time guest agent check failed")
 					// Cache the unavailability to avoid repeated checks
 					cacheGuestAgentUnavailable(vm.Node, vm.VMID)
 					agentStatusKey = "Unavailable"
@@ -1016,7 +1094,15 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
-	log.Debug().Int("vmid", vmidInt).Str("status", vmCurrent.Status).Float64("cpu", vmCurrent.CPU).Int64("mem", vmCurrent.Mem).Msg("VM metrics served")
+	log.Debug().
+		Int("vmid", vmidInt).
+		Str("status", vmCurrent.Status).
+		Float64("cpu", vmCurrent.CPU).
+		Int64("mem", vmCurrent.Mem).
+		Str("component", "vm_details").
+		Str("operation", "serve_metrics").
+		Str("reason", "metrics_served").
+		Msg("VM metrics served")
 }
 
 // ValidationRequest represents a validation request payload

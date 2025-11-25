@@ -51,7 +51,11 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 		log.Error().Err(ctx.Err()).Msg("Incoming context is already cancelled before ISO fetch")
 		return nil, 0, nil, fmt.Errorf("incoming context cancelled: %w", ctx.Err())
 	}
-	log.Debug().Msg("Starting ISO fetch with valid context")
+	log.Debug().
+		Str("component", "settings_iso").
+		Str("operation", "fetch_isos").
+		Str("reason", "context_valid").
+		Msg("Starting ISO fetch with valid context")
 
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
@@ -316,7 +320,12 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		data["ISOGroupByNode"] = groups
 	}
 
-	log.Debug().Int("iso_count", len(isos)).Msg("ISO page rendered")
+	log.Debug().
+		Int("iso_count", len(isos)).
+		Str("component", "settings_iso").
+		Str("operation", "render_iso_page").
+		Str("reason", "page_rendered").
+		Msg("ISO page rendered")
 	renderTemplateInternal(w, r, "admin_iso", data)
 }
 
@@ -356,7 +365,13 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	log.Debug().Str("volid", volid).Bool("enabled", enabled).Msg("Toggling ISO")
+	log.Debug().
+		Str("volid", volid).
+		Bool("enabled", enabled).
+		Str("component", "settings_iso").
+		Str("operation", "toggle_iso").
+		Str("reason", "iso_toggle").
+		Msg("Toggling ISO")
 
 	// Update settings
 	settings := h.stateManager.GetSettings()

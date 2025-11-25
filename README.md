@@ -151,10 +151,44 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_ENV` | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` | ❌ | `production` |
 | `PVMSS_OFFLINE` | `true` disables all Proxmox calls (demo mode) | ❌ | `false` |
 | `PVMSS_SETTINGS_PATH` | Inside-container path to `settings.json` | ❌ | `/app/settings.json` |
-| `LOG_LEVEL` | `INFO` or `DEBUG` | ❌ | `INFO` |
+| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`) | ❌ | `INFO` |
+| `LOG_OUTPUT` | Log destination: `stdout`, `file`, or `both` | ❌ | `stdout` |
+| `LOG_FILE_PATH` | File path when `LOG_OUTPUT` is `file` or `both` | ❌ | — |
+| `LOG_FORMAT` | `console` (human readable) or `json` (machine/SIEM) | ❌ | `console` |
 | `TZ` | Container timezone | ❌ | `UTC` |
 
 > Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
+
+#### Logging configuration
+
+PVMSS uses structured logging with [zerolog](https://github.com/rs/zerolog). Typical setups:
+
+- Human-readable logs on stdout (development):
+
+  ```bash
+  LOG_LEVEL=DEBUG
+  LOG_OUTPUT=stdout
+  LOG_FORMAT=console
+  ```
+
+- JSON logs on stdout for log aggregation / SIEM:
+
+  ```bash
+  LOG_LEVEL=INFO
+  LOG_OUTPUT=stdout
+  LOG_FORMAT=json
+  ```
+
+- JSON logs on stdout **and** in a file inside the container:
+
+  ```bash
+  LOG_LEVEL=INFO
+  LOG_OUTPUT=both
+  LOG_FORMAT=json
+  LOG_FILE_PATH=/app/pvmss.log
+  ```
+
+The JSON format is line-delimited and includes fields such as `component`, `operation`, `reason`, and `event_category` (for auth, VM, admin, security, console, Proxmox events), making it easy to consume with Fluent Bit, Filebeat, or any SIEM.
 
 ## Deployment options
 
@@ -174,6 +208,8 @@ docker run -d \
   -v $(pwd)/settings.json:/app/settings.json \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
   -e LOG_LEVEL=INFO \
+  -e LOG_OUTPUT=stdout \
+  -e LOG_FORMAT=console \
   -e PROXMOX_API_TOKEN_NAME='tokenName@changeMe!value' \
   -e PROXMOX_API_TOKEN_VALUE="aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa" \
   -e PROXMOX_URL=https://ip-or-name:8006/api2/json \
@@ -184,6 +220,15 @@ docker run -d \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
   jhmmt/pvmss:0.2.1
+```
+
+To also write JSON logs to a file inside the container (and keep stdout), override:
+
+```bash
+-e LOG_OUTPUT=both \
+-e LOG_FORMAT=json \
+-e LOG_FILE_PATH=/app/pvmss.log \
+-v $(pwd)/pvmss.log:/app/pvmss.log \
 ```
 
 The application will be available at <http://localhost:50000>.
@@ -198,34 +243,47 @@ The application will be available at <http://localhost:50000>.
 
 2. **Create `docker-compose.yml`:**
 
-   ```yaml
-   services:
-     pvmss:
-       image: jhmmt/pvmss:0.2.1
-       container_name: pvmss
-       restart: unless-stopped
-       ports:
-         - "50000:50000/tcp"
-       environment:
-         PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
-         PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
-         PROXMOX_URL: "https://ip-or-name:8006/api2/json"
-         PROXMOX_VERIFY_SSL: "false"
-         ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
-         LOG_LEVEL: "INFO"
-         SESSION_SECRET: "changeMeWithSomethingElseUnique"
-         PVMSS_ENV: "production"
-         PVMSS_OFFLINE: "false"
-         PVMSS_SETTINGS_PATH: "/app/settings.json"
-         TZ: "Europe/Paris"
-       volumes:
-         - ./settings.json:/app/settings.json
-       deploy:
-         resources:
-           limits:
-             cpus: '1'
-             memory: 64M
-   ```
+```yaml
+services:
+  pvmss:
+    image: jhmmt/pvmss:0.2.1
+    container_name: pvmss
+    restart: unless-stopped
+    ports:
+      - "50000:50000/tcp"
+    environment:
+      PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
+      PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
+      PROXMOX_URL: "https://ip-or-name:8006/api2/json"
+      PROXMOX_VERIFY_SSL: "false"
+      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      LOG_LEVEL: "INFO"
+      LOG_OUTPUT: "stdout"
+      LOG_FORMAT: "console"
+      SESSION_SECRET: "changeMeWithSomethingElseUnique"
+      PVMSS_ENV: "production"
+      PVMSS_OFFLINE: "false"
+      PVMSS_SETTINGS_PATH: "/app/settings.json"
+      TZ: "Europe/Paris"
+    volumes:
+      - ./settings.json:/app/settings.json
+      # - ./pvmss.log:/app/pvmss.log # Uncomment to persist logs to a file inside the container
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 64M
+```
+
+To persist logs to a file inside the container, you can change the environment section to use JSON + file output, for example:
+
+```yaml
+LOG_OUTPUT: "both"
+LOG_FORMAT: "json"
+LOG_FILE_PATH: "/app/pvmss.log"
+# Add this volume to the volumes section
+- ./pvmss.log:/app/pvmss.log
+```
 
 3. **Start the stack:**
 
@@ -244,7 +302,7 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 
 ## Operations
 
-- **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces.
+- **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces. Use `LOG_FORMAT=json` and `LOG_OUTPUT=stdout` or `file` to emit JSON logs that can be shipped to a SIEM or log aggregator.
 - **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag, update the file `settings.json` if new fields appear, and restart the container.
 

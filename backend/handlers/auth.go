@@ -48,7 +48,26 @@ type AuthHandler struct {
 // For proper CSRF protection, clients should use POST, but we support GET for convenience.
 func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("AuthHandler.LogoutGet", r)
-	log.Info().Msg("User logging out via GET, performing logout")
+
+	// Get username before clearing session for audit
+	username := ""
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+	}
+
+	logger.AuthEvent("logout").
+		Str("username", username).
+		Str("client_ip", r.RemoteAddr).
+		Str("logout_method", "GET").
+		Msg("User logout")
+
+	log.Debug().
+		Str("component", "auth").
+		Str("operation", "logout").
+		Str("reason", "get_request").
+		Msg("Processing logout via GET")
 
 	// Get session manager
 	sessionManager := security.GetSession(r)
@@ -97,7 +116,11 @@ func (h *AuthHandler) RedirectIfAuthenticated(next httprouter.Handle) httprouter
 // ShowAdminLoginForm renders the admin login page.
 func (h *AuthHandler) ShowAdminLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("AuthHandler.ShowAdminLoginForm", r)
-	log.Debug().Msg("Displaying admin login form")
+	log.Debug().
+		Str("component", "auth").
+		Str("operation", "admin_login_form").
+		Str("reason", "form_display").
+		Msg("Displaying admin login form")
 	h.renderAdminLoginForm(w, r, "")
 }
 
@@ -120,7 +143,11 @@ func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 // ShowLoginForm renders the user login page.
 func (h *AuthHandler) ShowLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("AuthHandler.ShowLoginForm", r)
-	log.Debug().Msg("Displaying login form")
+	log.Debug().
+		Str("component", "auth").
+		Str("operation", "login_form").
+		Str("reason", "form_display").
+		Msg("Displaying login form")
 	h.renderLoginForm(w, r, "")
 }
 
@@ -141,7 +168,19 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 		sessionManager = h.stateManager.GetSessionManager()
 	}
 
-	log.Info().Msg("User logging out")
+	// Get username before clearing session for audit
+	username := ""
+	if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+		username = user
+	}
+
+	logger.AuthEvent("logout").
+		Str("username", username).
+		Str("client_ip", r.RemoteAddr).
+		Str("logout_method", "POST").
+		Msg("User logout")
+
+	log.Debug().Msg("Processing logout")
 
 	// Clear all session data
 	if err := sessionManager.Clear(r.Context()); err != nil {
@@ -166,7 +205,11 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
 	ctx := NewHandlerContext(w, r, "AuthHandler.renderAdminLoginForm")
-	ctx.Log.Debug().Msg("Rendering admin login form")
+	ctx.Log.Debug().
+		Str("component", "auth").
+		Str("operation", "render_admin_login_form").
+		Str("reason", "form_render").
+		Msg("Rendering admin login form")
 
 	if !ctx.ValidateSessionManager() {
 		return
@@ -192,7 +235,7 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 
 // validateCSRF checks the CSRF token from the form against the one in the session.
 func validateCSRF(r *http.Request) error {
-	log := CreateHandlerLogger("validateCSRF", r)
+	// log := CreateHandlerLogger("validateCSRF", r)
 
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
@@ -201,18 +244,30 @@ func validateCSRF(r *http.Request) error {
 
 	formToken := r.FormValue("csrf_token")
 	if formToken == "" {
-		log.Warn().Msg("CSRF token is missing from form")
+		logger.SecurityEvent("csrf_form_missing").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Msg("CSRF token missing from form")
 		return fmt.Errorf("invalid request")
 	}
 
 	sessionToken, ok := sessionManager.Get(r.Context(), "csrf_token").(string)
 	if !ok || sessionToken == "" {
-		log.Warn().Msg("No CSRF token found in session")
+		logger.SecurityEvent("csrf_session_missing").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Msg("No CSRF token found in session")
 		return fmt.Errorf("session expired")
 	}
 
 	if subtle.ConstantTimeCompare([]byte(formToken), []byte(sessionToken)) != 1 {
-		log.Warn().Msg("CSRF token validation failed")
+		logger.SecurityEvent("csrf_validation_failed").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Msg("CSRF token validation failed")
 		return fmt.Errorf("invalid request")
 	}
 
@@ -248,26 +303,42 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	// Get password from form
 	password := r.FormValue("password")
 	if password == "" {
-		ctx.Log.Debug().Msg("Admin login attempt with empty password")
+		ctx.Log.Debug().
+			Str("component", "auth").
+			Str("operation", "admin_login").
+			Str("reason", "empty_password").
+			Msg("Admin login attempt with empty password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.EmptyPassword"))
 		return
 	}
 
 	// Basic input validation
 	if len(password) > 200 {
-		ctx.Log.Warn().Int("password_length", len(password)).Msg("Admin login attempt with too long password")
+		ctx.Log.Warn().
+			Int("password_length", len(password)).
+			Str("component", "auth").
+			Str("operation", "admin_login").
+			Str("reason", "password_too_long").
+			Msg("Admin login attempt with too long password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(adminHash), []byte(password)); err != nil {
-		ctx.Log.Info().Err(err).Msg("Admin login failed - incorrect password")
+		logger.AuthFailure("admin_login", "invalid_password").
+			Str("auth_method", "password_hash").
+			Str("client_ip", r.RemoteAddr).
+			Msg("Admin login failed - incorrect password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
 		return
 	}
 
-	ctx.Log.Debug().Msg("Admin authentication successful, creating session")
+	ctx.Log.Debug().
+		Str("component", "auth").
+		Str("operation", "admin_login").
+		Str("reason", "auth_success").
+		Msg("Admin authentication successful, creating session")
 
 	if err := establishSession(w, r, true, ""); err != nil {
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
@@ -275,15 +346,14 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	}
 
 	// Log admin authentication success for audit trail
-	ctx.Log.Info().
-		Str("action", "admin_login").
+	logger.AuthEvent("admin_login_success").
 		Str("username", "admin").
 		Str("realm", "builtin").
 		Str("auth_method", "password_hash").
 		Str("client_ip", r.RemoteAddr).
 		Str("user_agent", r.Header.Get("User-Agent")).
-		Time("login_time", time.Now()).
-		Msg("ADMIN LOGIN SUCCESS - Built-in admin authenticated with password hash")
+		Bool("is_admin", true).
+		Msg("Admin login successful via password hash")
 
 	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/admin/nodes")
@@ -323,7 +393,12 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	password := r.FormValue("password")
 
 	if username == "" || password == "" {
-		log.Debug().Str("ip", r.RemoteAddr).Msg("User login attempt with empty username or password")
+		logger.SecurityEvent("login_empty_credentials").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Str("auth_type", "user").
+			Msg("Login attempt with empty username or password")
 		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
 		return
 	}
@@ -367,9 +442,11 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 		Realm: "pve",
 	})
 	if err != nil {
-		log.Info().Err(err).
-			Str("ip", r.RemoteAddr).
+		logger.AuthFailure("user_login", "proxmox_auth_failed").
+			Err(err).
 			Str("username", username).
+			Str("realm", "pve").
+			Str("client_ip", r.RemoteAddr).
 			Msg("User login failed - Proxmox authentication failed")
 		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
 		return
@@ -385,27 +462,25 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	// Check if user has PVEAdmin role to determine admin access
 	isAdmin := proxmox.HasRole(ticketResp.Cap, "PVEAdmin")
 	if isAdmin {
-		log.Info().
-			Str("action", "admin_login").
+		logger.AuthEvent("admin_login_success").
 			Str("username", username).
 			Str("proxmox_username", ticketResp.Username).
 			Str("realm", "pve").
+			Str("auth_method", "proxmox_ticket").
 			Str("client_ip", r.RemoteAddr).
 			Str("user_agent", r.Header.Get("User-Agent")).
-			Bool("has_pveadmin_role", true).
-			Time("login_time", time.Now()).
-			Msg("ADMIN LOGIN SUCCESS - User with PVEAdmin role authenticated")
+			Bool("is_admin", true).
+			Msg("Admin login successful via Proxmox")
 	} else {
-		log.Info().
-			Str("action", "user_login").
+		logger.AuthEvent("user_login_success").
 			Str("username", username).
 			Str("proxmox_username", ticketResp.Username).
 			Str("realm", "pve").
+			Str("auth_method", "proxmox_ticket").
 			Str("client_ip", r.RemoteAddr).
 			Str("user_agent", r.Header.Get("User-Agent")).
-			Bool("has_pveadmin_role", false).
-			Time("login_time", time.Now()).
-			Msg("USER LOGIN SUCCESS - Standard user authenticated")
+			Bool("is_admin", false).
+			Msg("User login successful via Proxmox")
 	}
 
 	// Establish session and store Proxmox ticket for later use (console access, API calls)
@@ -458,7 +533,12 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	password := r.FormValue("password")
 
 	if username == "" || password == "" {
-		log.Debug().Str("ip", r.RemoteAddr).Msg("Admin login attempt with empty username or password")
+		logger.SecurityEvent("login_empty_credentials").
+			Str("method", r.Method).
+			Str("path", r.URL.Path).
+			Str("client_ip", r.RemoteAddr).
+			Str("auth_type", "admin").
+			Msg("Admin login attempt with empty username or password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
 		return
 	}
@@ -676,7 +756,11 @@ func ensureLocalPath(url string) string {
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
 	ctx := NewHandlerContext(w, r, "AuthHandler.renderLoginForm")
-	ctx.Log.Debug().Msg("Rendering login form")
+	ctx.Log.Debug().
+		Str("component", "auth").
+		Str("operation", "render_login_form").
+		Str("reason", "form_render").
+		Msg("Rendering login form")
 
 	if !ctx.ValidateSessionManager() {
 		return

@@ -13,6 +13,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
@@ -287,55 +288,37 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Audit log for admin limits update
+	// Audit log for admin limits update with structured event
+	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			// Log different details based on entity type
-			switch entity {
-			case "vm":
-				log.Info().
-					Str("action", "limits_update").
-					Str("admin_username", username).
-					Str("proxmox_username", proxmoxUsername).
-					Str("entity_type", "vm").
-					Int("sockets_max", socketsMax).
-					Int("cores_max", coresMax).
-					Int("ram_min", ramMin).
-					Int("ram_max", ramMax).
-					Int("disk_min", diskMin).
-					Int("disk_max", diskMax).
-					Str("client_ip", r.RemoteAddr).
-					Time("update_time", time.Now()).
-					Msg("ADMIN ACTION AUDIT - VM limits updated by admin")
-			case "nodes":
-				nodeName := strings.TrimSpace(r.FormValue("nodeName"))
-				log.Info().
-					Str("action", "limits_update").
-					Str("admin_username", username).
-					Str("proxmox_username", proxmoxUsername).
-					Str("entity_type", "node").
-					Str("node_name", nodeName).
-					Int("sockets_max", socketsMax).
-					Int("cores_max", coresMax).
-					Int("ram_min", ramMin).
-					Int("ram_max", ramMax).
-					Int("disk_min", diskMin).
-					Int("disk_max", diskMax).
-					Str("client_ip", r.RemoteAddr).
-					Time("update_time", time.Now()).
-					Msg("ADMIN ACTION AUDIT - Node limits updated by admin")
-			}
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
 		}
+	}
+
+	switch entity {
+	case "vm":
+		logger.AdminEvent("limits_update_vm", username).
+			Int("sockets_max", socketsMax).
+			Int("cores_max", coresMax).
+			Int("ram_min", ramMin).
+			Int("ram_max", ramMax).
+			Int("disk_min", diskMin).
+			Int("disk_max", diskMax).
+			Str("client_ip", r.RemoteAddr).
+			Msg("VM limits updated")
+	case "nodes":
+		nodeName := strings.TrimSpace(r.FormValue("nodeName"))
+		logger.AdminEvent("limits_update_node", username).
+			Str("node_name", nodeName).
+			Int("sockets_max", socketsMax).
+			Int("cores_max", coresMax).
+			Int("ram_min", ramMin).
+			Int("ram_max", ramMax).
+			Int("disk_min", diskMin).
+			Int("disk_max", diskMax).
+			Str("client_ip", r.RemoteAddr).
+			Msg("Node limits updated")
 	}
 
 	// Redirect back to limits page with success banner and context
@@ -437,7 +420,17 @@ func (h *SettingsHandler) UpdateUserLimitsHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	log.Info().Int("max_vm_per_user", maxVMPerUser).Msg("User limits updated successfully")
+	// Audit log for user limits update
+	username := ""
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+	}
+	logger.AdminEvent("limits_update_user", username).
+		Int("max_vm_per_user", maxVMPerUser).
+		Str("client_ip", r.RemoteAddr).
+		Msg("User limits updated")
 
 	// Redirect back to limits page with success banner
 	redirect := "/admin/limits?success=1&entity=user"

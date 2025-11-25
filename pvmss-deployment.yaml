@@ -69,7 +69,21 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: ""  # Use default storage class
+  # storageClassName: ""  # Use default storage class, or uncomment to specify a custom storage class
+---
+# Optional, for logs persistence
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvmss-logs-pvc
+  namespace: pvmss
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  # storageClassName: ""  # Use default storage class, or uncomment to specify a custom storage class
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -117,6 +131,14 @@ spec:
                   key: admin-password
             - name: LOG_LEVEL
               value: "INFO"
+            - name: LOG_OUTPUT
+              value: "stdout"
+            - name: LOG_FORMAT
+              value: "json"
+            # To also write logs to a dedicated logs volume, you can change
+            # LOG_OUTPUT to "both" and add, for example:
+            # - name: LOG_FILE_PATH
+            #   value: "/data/logs/pvmss.log"
             - name: PROXMOX_API_TOKEN_NAME
               value: "changeme"
             - name: PROXMOX_API_TOKEN_VALUE
@@ -147,6 +169,9 @@ spec:
             - name: pvmss-settings
               mountPath: /data
               readOnly: false
+            - name: pvmss-logs
+              mountPath: /data/logs
+              readOnly: false
           resources:
             requests:
               memory: "64Mi"
@@ -166,6 +191,9 @@ spec:
             - name: pvmss-settings
               persistentVolumeClaim:
                 claimName: pvmss-settings-pvc
+            - name: pvmss-logs
+              persistentVolumeClaim:
+                claimName: pvmss-logs-pvc
 ---           
 apiVersion: v1
 kind: Service

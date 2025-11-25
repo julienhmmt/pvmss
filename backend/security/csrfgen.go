@@ -87,20 +87,32 @@ func CSRF(next http.Handler) http.Handler {
 		}
 
 		if requestToken == "" {
-			log.Warn().Str("method", r.Method).Str("path", r.URL.Path).Msg("Missing CSRF token in unsafe request")
+			logger.SecurityEvent("csrf_token_missing").
+				Str("method", r.Method).
+				Str("path", r.URL.Path).
+				Str("client_ip", r.RemoteAddr).
+				Msg("Missing CSRF token in unsafe request")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		sessionToken := sessionManager.GetString(r.Context(), csrfSessionKey)
 		if sessionToken == "" {
-			log.Warn().Str("method", r.Method).Str("path", r.URL.Path).Msg("Missing CSRF token in session for validation")
+			logger.SecurityEvent("csrf_session_missing").
+				Str("method", r.Method).
+				Str("path", r.URL.Path).
+				Str("client_ip", r.RemoteAddr).
+				Msg("Missing CSRF token in session")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 
 		if !CompareTokens(requestToken, sessionToken) {
-			log.Warn().Str("method", r.Method).Str("path", r.URL.Path).Msg("Invalid CSRF token")
+			logger.SecurityEvent("csrf_token_invalid").
+				Str("method", r.Method).
+				Str("path", r.URL.Path).
+				Str("client_ip", r.RemoteAddr).
+				Msg("Invalid CSRF token")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}

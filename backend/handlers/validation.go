@@ -4,24 +4,24 @@ import (
 	"fmt"
 	"net/http"
 	"pvmss/i18n"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
 
 	i18n_bundle "github.com/nicksnyder/go-i18n/v2/i18n"
-	"github.com/rs/zerolog"
 )
 
 // ValidationHelper provides common validation methods for handlers
 type ValidationHelper struct {
-	Log       zerolog.Logger
+	Log       logger.Logger
 	Writer    http.ResponseWriter
 	Request   *http.Request
 	Localizer *i18n_bundle.Localizer
 }
 
 // NewValidationHelper creates a new validation helper
-func NewValidationHelper(w http.ResponseWriter, r *http.Request, log zerolog.Logger) *ValidationHelper {
+func NewValidationHelper(w http.ResponseWriter, r *http.Request, log logger.Logger) *ValidationHelper {
 	return &ValidationHelper{
 		Log:       log,
 		Writer:    w,

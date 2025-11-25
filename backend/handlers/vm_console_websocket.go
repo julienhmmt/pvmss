@@ -12,13 +12,13 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rs/zerolog"
 
 	"pvmss/i18n"
+	"pvmss/logger"
 )
 
 // forwardWebSocketMessages reads from source and writes to destination
-func forwardWebSocketMessages(source, dest *websocket.Conn, direction string, errChan chan<- error, log *zerolog.Logger) {
+func forwardWebSocketMessages(source, dest *websocket.Conn, direction string, errChan chan<- error, log *logger.Logger) {
 	defer log.Debug().Str("direction", direction).Msg("Goroutine finished")
 	for {
 		messageType, message, err := source.ReadMessage()
@@ -53,7 +53,10 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 
 	// Validate authentication
 	if !IsAuthenticated(r) {
-		log.Warn().Msg("Unauthenticated WebSocket console access attempt")
+		logger.SecurityEvent("console_access_denied").
+			Str("reason", "unauthenticated").
+			Str("client_ip", r.RemoteAddr).
+			Msg("Unauthenticated WebSocket console access attempt")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Unauthorized"), http.StatusUnauthorized)
 		return
@@ -97,12 +100,19 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	log.Info().
-		Str("vmid", vmid).
-		Str("node", node).
+	// Get username for audit
+	username := ""
+	if sessionManager := getStateManager(r).GetSessionManager(); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+	}
+
+	vmidInt, _ := strconv.Atoi(vmid)
+	logger.ConsoleEvent("console_connect", vmidInt, node).
+		Str("username", username).
 		Int("port", port).
-		Int("vncticket_len", len(vncticket)).
-		Str("vncticket_prefix", vncticket[:min(20, len(vncticket))]).
+		Str("client_ip", r.RemoteAddr).
 		Msg("Establishing VNC WebSocket connection")
 
 	// Build Proxmox WebSocket URL
@@ -174,7 +184,7 @@ func buildProxmoxWebSocketURL(proxmoxURL, node, vmid string, port int, vncticket
 }
 
 // proxyVNCWebSocket handles the WebSocket proxying between client and Proxmox using gorilla/websocket
-func proxyVNCWebSocket(w http.ResponseWriter, r *http.Request, proxmoxWSURL, pveTicket string, log *zerolog.Logger) error {
+func proxyVNCWebSocket(w http.ResponseWriter, r *http.Request, proxmoxWSURL, pveTicket string, log *logger.Logger) error {
 	// Configure WebSocket upgrader for client connection
 	clientUpgrader := websocket.Upgrader{
 		ReadBufferSize:  4096,

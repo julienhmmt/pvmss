@@ -3,17 +3,17 @@ package utils
 import (
 	"fmt"
 
-	"github.com/rs/zerolog"
+	"pvmss/logger"
 )
 
 // ErrorWrapper provides contextual error wrapping with automatic logging
 type ErrorWrapper struct {
-	logger zerolog.Logger
+	log logger.Logger
 }
 
 // NewErrorWrapper creates a new ErrorWrapper with the given logger
-func NewErrorWrapper(logger zerolog.Logger) *ErrorWrapper {
-	return &ErrorWrapper{logger: logger}
+func NewErrorWrapper(l logger.Logger) *ErrorWrapper {
+	return &ErrorWrapper{log: l}
 }
 
 // Wrap wraps an error with context and logs it
@@ -30,7 +30,7 @@ func (e *ErrorWrapper) Wrap(err error, msg string, args ...interface{}) error {
 	wrapped := fmt.Errorf("%s: %w", contextMsg, err)
 
 	// Log the error with context
-	e.logger.Error().
+	e.log.Error().
 		Err(err).
 		Str("context", contextMsg).
 		Msg("Error occurred")
@@ -51,7 +51,7 @@ func (e *ErrorWrapper) WrapWithFields(err error, msg string, fields map[string]i
 	wrapped := fmt.Errorf("%s: %w", contextMsg, err)
 
 	// Log with structured fields
-	event := e.logger.Error().Err(err).Str("context", contextMsg)
+	event := e.log.Error().Err(err).Str("context", contextMsg)
 	for k, v := range fields {
 		event = event.Interface(k, v)
 	}

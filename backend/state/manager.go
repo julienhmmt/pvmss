@@ -176,7 +176,12 @@ func (s *appState) refreshProxmoxSnapshot(trigger string) {
 
 	client, err := proxmox.NewRestyClientFromEnv(constants.ClusterCacheRequestTimeout)
 	if err != nil {
-		log.Warn().Err(err).Msg("Unable to create resty client for snapshot refresh")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "snapshot_refresh").
+			Str("reason", "client_creation_failed").
+			Msg("Unable to create resty client for snapshot refresh")
 		return
 	}
 
@@ -185,7 +190,12 @@ func (s *appState) refreshProxmoxSnapshot(trigger string) {
 
 	snapshot, err := buildProxmoxSnapshot(ctx, client)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to refresh Proxmox snapshot")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "snapshot_refresh").
+			Str("reason", "snapshot_build_failed").
+			Msg("Failed to refresh Proxmox snapshot")
 		return
 	}
 
@@ -257,7 +267,12 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 
 	restyClient, err := proxmox.NewRestyClientFromEnv(constants.NodeCacheRequestTimeout)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to create resty client for node cache refresh")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "node_cache_refresh").
+			Str("reason", "client_creation_failed").
+			Msg("Failed to create resty client for node cache refresh")
 		return
 	}
 
@@ -266,7 +281,12 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 
 	details, err := proxmox.FetchAllNodeDetailsResty(refreshCtx, restyClient)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to refresh node cache")
+		log.Warn().
+			Err(err).
+			Str("component", "state_manager").
+			Str("operation", "node_cache_refresh").
+			Str("reason", "node_details_failed").
+			Msg("Failed to refresh node cache")
 		return
 	}
 
@@ -366,7 +386,8 @@ func (s *appState) SetOfflineMode() {
 
 	// Update status to reflect offline mode
 	s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxOfflineMode))
-	logger.Get().Info().Msg("Offline mode activated")
+	logger.ProxmoxEvent("offline_mode_activated").
+		Msg("Offline mode activated")
 }
 
 // IsOfflineMode returns true if offline mode is enabled
@@ -411,18 +432,23 @@ func (s *appState) CheckProxmoxConnection() bool {
 	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
 
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Proxmox connection check failed with error")
+		logger.ProxmoxFailure("connection_check", "api_error").
+			Err(err).
+			Msg("Proxmox connection check failed")
 		s.handleConnectionFailure()
 		return false
 	}
 
 	if len(nodes) == 0 {
-		logger.Get().Error().Msg("Proxmox connection check returned empty node list")
+		logger.ProxmoxFailure("connection_check", "empty_node_list").
+			Msg("Proxmox connection check returned empty node list")
 		s.handleConnectionFailure()
 		return false
 	}
 
-	logger.Get().Debug().Int("node_count", len(nodes)).Msg("Proxmox connection check successful")
+	logger.ProxmoxEvent("connection_check_success").
+		Int("node_count", len(nodes)).
+		Msg("Proxmox connection check successful")
 
 	// If we got here, the connection is good - attempt recovery
 	s.handleConnectionRecovery()

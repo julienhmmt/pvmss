@@ -13,7 +13,6 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rs/zerolog"
 )
 
 // ValidateMethodAndParseForm validates HTTP method and parses form data
@@ -32,7 +31,7 @@ func ValidateMethodAndParseForm(w http.ResponseWriter, r *http.Request, required
 }
 
 // CreateHandlerLogger creates a standardized logger for handlers
-func CreateHandlerLogger(handlerName string, r *http.Request) zerolog.Logger {
+func CreateHandlerLogger(handlerName string, r *http.Request) logger.Logger {
 	logContext := logger.Get().With().Str("handler", handlerName)
 
 	if r != nil {
@@ -140,7 +139,7 @@ func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message
 
 // HandlerContext provides common context for handlers
 type HandlerContext struct {
-	Log             zerolog.Logger
+	Log             logger.Logger
 	StateManager    state.StateManager
 	SessionManager  *scs.SessionManager
 	Request         *http.Request

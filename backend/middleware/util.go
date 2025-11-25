@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rs/zerolog"
 	"pvmss/logger"
 )
 
@@ -29,7 +28,7 @@ func clientIP(r *http.Request) string {
 }
 
 // NewMiddlewareLogger creates a new contextual logger for a middleware component.
-func NewMiddlewareLogger(name string) *zerolog.Logger {
+func NewMiddlewareLogger(name string) *logger.Logger {
 	log := logger.Get().With().Str("middleware", name).Logger()
 	return &log
 }

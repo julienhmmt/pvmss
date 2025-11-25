@@ -377,19 +377,31 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 
 	// Validate inputs
 	if currentPassword == "" || newPassword == "" || confirmPassword == "" {
-		log.Debug().Msg("Missing password fields")
+		log.Debug().
+			Str("component", "profile").
+			Str("operation", "change_password").
+			Str("reason", "missing_fields").
+			Msg("Missing password fields")
 		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.MissingFields")), http.StatusSeeOther)
 		return
 	}
 
 	if newPassword != confirmPassword {
-		log.Debug().Msg("New passwords do not match")
+		log.Debug().
+			Str("component", "profile").
+			Str("operation", "change_password").
+			Str("reason", "password_mismatch").
+			Msg("New passwords do not match")
 		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.Mismatch")), http.StatusSeeOther)
 		return
 	}
 
 	if len(newPassword) < 5 {
-		log.Debug().Msg("New password too short")
+		log.Debug().
+			Str("component", "profile").
+			Str("operation", "change_password").
+			Str("reason", "password_too_short").
+			Msg("New password too short")
 		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.TooShort")), http.StatusSeeOther)
 		return
 	}

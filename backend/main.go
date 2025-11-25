@@ -30,7 +30,20 @@ func main() {
 	stateManager := state.NewAppState()
 
 	initLogger()
-	logger.Get().Info().Msg("Starting PVMSS")
+
+	// Log startup with environment context
+	env := os.Getenv("PVMSS_ENV")
+	if env == "" {
+		env = "production"
+	}
+	offlineMode := strings.ToLower(os.Getenv("PVMSS_OFFLINE")) == "true"
+
+	logger.Get().Info().
+		Str("event_category", "system").
+		Str("event_type", "startup").
+		Str("environment", env).
+		Bool("offline_mode", offlineMode).
+		Msg("Starting PVMSS")
 
 	if err := godotenv.Load("../.env"); err != nil {
 		logger.Get().Warn().Msg("No .env file found, using environment variables")
@@ -75,7 +88,12 @@ func main() {
 	}
 
 	go func() {
-		logger.Get().Info().Str("port", port).Msg("Server starting...")
+		logger.Get().Info().
+			Str("event_category", "system").
+			Str("event_type", "server_start").
+			Str("port", port).
+			Str("address", ":"+port).
+			Msg("HTTP server starting")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Get().Fatal().Err(err).Msg("Server failed to start")
 		}
@@ -85,15 +103,25 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 
-	logger.Get().Info().Msg("Shutdown signal received")
+	logger.Get().Info().
+		Str("event_category", "system").
+		Str("event_type", "shutdown_signal").
+		Msg("Shutdown signal received")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		logger.Get().Error().Err(err).Msg("Server shutdown error")
+		logger.Get().Error().
+			Str("event_category", "system").
+			Str("event_type", "shutdown_error").
+			Err(err).
+			Msg("Server shutdown error")
 	} else {
-		logger.Get().Info().Msg("Server shutdown complete")
+		logger.Get().Info().
+			Str("event_category", "system").
+			Str("event_type", "shutdown_complete").
+			Msg("Server shutdown complete")
 	}
 }
 
