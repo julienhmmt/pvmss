@@ -130,3 +130,83 @@ func Get() *zerolog.Logger {
 func SetOutput(w io.Writer) {
 	log.Logger = log.Output(w)
 }
+
+// Event is an alias for zerolog.Event to allow building log entries without importing zerolog.
+type Event = zerolog.Event
+
+// --- Structured Event Helpers for SIEM-ready logging ---
+
+// AuthEvent logs authentication-related events with standardized fields.
+// Use for login success/failure, logout, session events.
+func AuthEvent(eventType string) *zerolog.Event {
+	return log.Info().
+		Str("event_category", "auth").
+		Str("event_type", eventType)
+}
+
+// AuthFailure logs authentication failures with standardized fields.
+func AuthFailure(eventType, reason string) *zerolog.Event {
+	return log.Warn().
+		Str("event_category", "auth").
+		Str("event_type", eventType).
+		Str("failure_reason", reason)
+}
+
+// VMEvent logs VM lifecycle events with standardized fields.
+// Use for create, delete, start, stop, reboot actions.
+func VMEvent(eventType string, vmid int, node string) *zerolog.Event {
+	return log.Info().
+		Str("event_category", "vm").
+		Str("event_type", eventType).
+		Int("vmid", vmid).
+		Str("node", node)
+}
+
+// VMFailure logs VM operation failures with standardized fields.
+func VMFailure(eventType string, vmid int, node, reason string) *zerolog.Event {
+	return log.Error().
+		Str("event_category", "vm").
+		Str("event_type", eventType).
+		Int("vmid", vmid).
+		Str("node", node).
+		Str("failure_reason", reason)
+}
+
+// AdminEvent logs admin actions for audit trail.
+func AdminEvent(eventType, username string) *zerolog.Event {
+	return log.Info().
+		Str("event_category", "admin").
+		Str("event_type", eventType).
+		Str("admin_username", username)
+}
+
+// SecurityEvent logs security-related events (CSRF failures, rate limiting, etc.).
+func SecurityEvent(eventType string) *zerolog.Event {
+	return log.Warn().
+		Str("event_category", "security").
+		Str("event_type", eventType)
+}
+
+// ConsoleEvent logs VM console access events.
+func ConsoleEvent(eventType string, vmid int, node string) *zerolog.Event {
+	return log.Info().
+		Str("event_category", "console").
+		Str("event_type", eventType).
+		Int("vmid", vmid).
+		Str("node", node)
+}
+
+// ProxmoxEvent logs Proxmox connectivity and API events.
+func ProxmoxEvent(eventType string) *zerolog.Event {
+	return log.Info().
+		Str("event_category", "proxmox").
+		Str("event_type", eventType)
+}
+
+// ProxmoxFailure logs Proxmox-related failures.
+func ProxmoxFailure(eventType, reason string) *zerolog.Event {
+	return log.Error().
+		Str("event_category", "proxmox").
+		Str("event_type", eventType).
+		Str("failure_reason", reason)
+}

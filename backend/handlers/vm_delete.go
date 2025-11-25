@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/i18n"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 )
@@ -198,48 +199,37 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		log.Info().Int("vmid", vmidInt).Msg("VM is already stopped, proceeding with deletion")
 	}
 
+	// Get username for audit before deletion
+	username := "unknown"
+	isAdmin := false
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
+		}
+	}
+
 	// Step 2: Delete the VM
-	log.Info().Int("vmid", vmidInt).Str("node", node).Msg("deleting VM")
+	log.Debug().Int("vmid", vmidInt).Str("node", node).Msg("Sending delete request to Proxmox")
 	if err := proxmox.DeleteVMResty(r.Context(), restyClient, node, vmidInt); err != nil {
-		log.Error().Err(err).Int("vmid", vmidInt).Msg("VM deletion failed")
+		logger.VMFailure("vm_delete", vmidInt, node, "proxmox_api_error").
+			Err(err).
+			Str("username", username).
+			Str("client_ip", r.RemoteAddr).
+			Msg("VM deletion failed")
 		ctx := NewHandlerContext(w, r, "VMDeleteHandler")
 		ctx.RedirectWithError("/vm/details/"+vmid, "VMDelete.Error")
 		return
 	}
 
-	log.Info().Int("vmid", vmidInt).Msg("VM deleted successfully")
-
-	// Get VM name for audit log (try to get it before deletion)
-	vmName := "unknown"
-	if vmDetails, err := proxmox.GetVMCurrentResty(r.Context(), restyClient, node, vmidInt); err == nil && vmDetails != nil {
-		vmName = vmDetails.Name
-	}
-
-	// Audit log for admin VM deletion
-	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "vm_delete").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Int("vmid", vmidInt).
-				Str("vm_name", vmName).
-				Str("node", node).
-				Str("client_ip", r.RemoteAddr).
-				Time("delete_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - VM deleted by admin")
-		}
-	}
+	// Log successful deletion with structured event
+	logger.VMEvent("vm_delete", vmidInt, node).
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Str("client_ip", r.RemoteAddr).
+		Msg("VM deleted successfully")
 
 	// Invalidate caches to ensure UI shows fresh data
 	// 1) User pool cache (profile page)

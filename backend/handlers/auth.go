@@ -48,7 +48,22 @@ type AuthHandler struct {
 // For proper CSRF protection, clients should use POST, but we support GET for convenience.
 func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("AuthHandler.LogoutGet", r)
-	log.Info().Msg("User logging out via GET, performing logout")
+
+	// Get username before clearing session for audit
+	username := ""
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+	}
+
+	logger.AuthEvent("logout").
+		Str("username", username).
+		Str("client_ip", r.RemoteAddr).
+		Str("logout_method", "GET").
+		Msg("User logout")
+
+	log.Debug().Msg("Processing logout via GET")
 
 	// Get session manager
 	sessionManager := security.GetSession(r)
@@ -141,7 +156,19 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 		sessionManager = h.stateManager.GetSessionManager()
 	}
 
-	log.Info().Msg("User logging out")
+	// Get username before clearing session for audit
+	username := ""
+	if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+		username = user
+	}
+
+	logger.AuthEvent("logout").
+		Str("username", username).
+		Str("client_ip", r.RemoteAddr).
+		Str("logout_method", "POST").
+		Msg("User logout")
+
+	log.Debug().Msg("Processing logout")
 
 	// Clear all session data
 	if err := sessionManager.Clear(r.Context()); err != nil {
@@ -262,7 +289,10 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(adminHash), []byte(password)); err != nil {
-		ctx.Log.Info().Err(err).Msg("Admin login failed - incorrect password")
+		logger.AuthFailure("admin_login", "invalid_password").
+			Str("auth_method", "password_hash").
+			Str("client_ip", r.RemoteAddr).
+			Msg("Admin login failed - incorrect password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
 		return
 	}
@@ -275,15 +305,14 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	}
 
 	// Log admin authentication success for audit trail
-	ctx.Log.Info().
-		Str("action", "admin_login").
+	logger.AuthEvent("admin_login_success").
 		Str("username", "admin").
 		Str("realm", "builtin").
 		Str("auth_method", "password_hash").
 		Str("client_ip", r.RemoteAddr).
 		Str("user_agent", r.Header.Get("User-Agent")).
-		Time("login_time", time.Now()).
-		Msg("ADMIN LOGIN SUCCESS - Built-in admin authenticated with password hash")
+		Bool("is_admin", true).
+		Msg("Admin login successful via password hash")
 
 	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/admin/nodes")
@@ -367,9 +396,11 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 		Realm: "pve",
 	})
 	if err != nil {
-		log.Info().Err(err).
-			Str("ip", r.RemoteAddr).
+		logger.AuthFailure("user_login", "proxmox_auth_failed").
+			Err(err).
 			Str("username", username).
+			Str("realm", "pve").
+			Str("client_ip", r.RemoteAddr).
 			Msg("User login failed - Proxmox authentication failed")
 		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
 		return
@@ -385,27 +416,25 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	// Check if user has PVEAdmin role to determine admin access
 	isAdmin := proxmox.HasRole(ticketResp.Cap, "PVEAdmin")
 	if isAdmin {
-		log.Info().
-			Str("action", "admin_login").
+		logger.AuthEvent("admin_login_success").
 			Str("username", username).
 			Str("proxmox_username", ticketResp.Username).
 			Str("realm", "pve").
+			Str("auth_method", "proxmox_ticket").
 			Str("client_ip", r.RemoteAddr).
 			Str("user_agent", r.Header.Get("User-Agent")).
-			Bool("has_pveadmin_role", true).
-			Time("login_time", time.Now()).
-			Msg("ADMIN LOGIN SUCCESS - User with PVEAdmin role authenticated")
+			Bool("is_admin", true).
+			Msg("Admin login successful via Proxmox")
 	} else {
-		log.Info().
-			Str("action", "user_login").
+		logger.AuthEvent("user_login_success").
 			Str("username", username).
 			Str("proxmox_username", ticketResp.Username).
 			Str("realm", "pve").
+			Str("auth_method", "proxmox_ticket").
 			Str("client_ip", r.RemoteAddr).
 			Str("user_agent", r.Header.Get("User-Agent")).
-			Bool("has_pveadmin_role", false).
-			Time("login_time", time.Now()).
-			Msg("USER LOGIN SUCCESS - Standard user authenticated")
+			Bool("is_admin", false).
+			Msg("User login successful via Proxmox")
 	}
 
 	// Establish session and store Proxmox ticket for later use (console access, API calls)

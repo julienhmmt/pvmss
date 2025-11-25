@@ -12,6 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/utils"
 )
@@ -311,9 +312,23 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		return
 	}
 
+	// Get username for audit
+	username := ""
+	if sessionManager := getStateManager(r).GetSessionManager(); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+	}
+
 	_, err = proxmox.VMActionResty(r.Context(), restyClient, node, vmid, action)
 	if err != nil {
-		log.Error().Err(err).Str("action", action).Int("vmid", vmidInt).Msg("VM action failed")
+		logger.VMFailure("vm_action", vmidInt, node, "proxmox_api_error").
+			Err(err).
+			Str("action", action).
+			Str("username", username).
+			Str("client_ip", r.RemoteAddr).
+			Int64("duration_ms", time.Since(start).Milliseconds()).
+			Msg("VM action failed")
 
 		// Special handling for QEMU Guest Agent timeout during shutdown
 		if action == "shutdown" && strings.Contains(strings.ToLower(err.Error()), "guest-ping") &&
@@ -369,11 +384,10 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		}
 	}
 
-	log.Info().
+	logger.VMEvent("vm_action", vmidInt, node).
 		Str("action", action).
-		Str("node", node).
-		Int("vmid", vmidInt).
-		Str("result", "success").
+		Str("username", username).
+		Str("client_ip", r.RemoteAddr).
 		Int64("duration_ms", time.Since(start).Milliseconds()).
 		Msg("VM action completed successfully")
 
