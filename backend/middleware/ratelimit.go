@@ -197,8 +197,8 @@ func RateLimitMiddleware(limiter *Limiter) func(http.Handler) http.Handler {
 			}
 
 			if !limiter.Allow(r.Method, r.URL.Path, ip) {
-				logger.Get().Warn().
-					Str("ip", ip).
+				logger.SecurityEvent("rate_limit_exceeded").
+					Str("client_ip", ip).
 					Str("method", r.Method).
 					Str("path", r.URL.Path).
 					Str("user_agent", r.UserAgent()).

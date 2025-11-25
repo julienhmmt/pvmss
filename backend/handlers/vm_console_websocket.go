@@ -53,7 +53,10 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 
 	// Validate authentication
 	if !IsAuthenticated(r) {
-		log.Warn().Msg("Unauthenticated WebSocket console access attempt")
+		logger.SecurityEvent("console_access_denied").
+			Str("reason", "unauthenticated").
+			Str("client_ip", r.RemoteAddr).
+			Msg("Unauthenticated WebSocket console access attempt")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Unauthorized"), http.StatusUnauthorized)
 		return
@@ -97,12 +100,19 @@ func (h *VMHandler) VMConsoleWebSocketHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	log.Info().
-		Str("vmid", vmid).
-		Str("node", node).
+	// Get username for audit
+	username := ""
+	if sessionManager := getStateManager(r).GetSessionManager(); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+	}
+
+	vmidInt, _ := strconv.Atoi(vmid)
+	logger.ConsoleEvent("console_connect", vmidInt, node).
+		Str("username", username).
 		Int("port", port).
-		Int("vncticket_len", len(vncticket)).
-		Str("vncticket_prefix", vncticket[:min(20, len(vncticket))]).
+		Str("client_ip", r.RemoteAddr).
 		Msg("Establishing VNC WebSocket connection")
 
 	// Build Proxmox WebSocket URL

@@ -1801,7 +1801,16 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	log.Info().Str("path", path).Str("params", params.Encode()).Msg("Sending VM creation request to Proxmox API")
 
 	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
-		log.Error().Err(err).Str("node", node).Str("params", params.Encode()).Msg("VM create API call failed")
+		logger.VMFailure("vm_create", vmid, node, "proxmox_api_error").
+			Err(err).
+			Str("vm_name", name).
+			Int("cpu_sockets", cpuSockets).
+			Int("cpu_cores", cpuCores).
+			Int("memory_mb", memoryMB).
+			Int("disk_gb", diskSizeMB/1024).
+			Str("storage", storage).
+			Str("client_ip", r.RemoteAddr).
+			Msg("VM creation failed")
 		data["ValidationError"] = fmt.Sprintf("Failed to create VM: %v", err)
 		renderTemplateInternal(w, r, "vm_create", data)
 		return
@@ -1813,43 +1822,32 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		client.InvalidateCache("/pools/" + url.PathEscape(pool))
 	}
 
-	log.Info().
-		Int("vmid", vmid).
-		Str("name", name).
-		Str("node", node).
-		Msg("VM created successfully")
-
-	// Audit log for admin VM creation
+	// Get username for audit
+	username := ""
+	isAdmin := false
 	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok && isAdmin {
-			username := "unknown"
-			proxmoxUsername := "unknown"
-
-			if user, ok := sessionManager.Get(r.Context(), "username").(string); ok && user != "" {
-				username = user
-			}
-			if pxUser, ok := sessionManager.Get(r.Context(), "pve_username").(string); ok && pxUser != "" {
-				proxmoxUsername = pxUser
-			}
-
-			log.Info().
-				Str("action", "vm_create").
-				Str("admin_username", username).
-				Str("proxmox_username", proxmoxUsername).
-				Int("vmid", vmid).
-				Str("vm_name", name).
-				Str("node", node).
-				Int("cpu_cores", cpuCores).
-				Int("cpu_sockets", cpuSockets).
-				Int("memory_mb", memoryMB).
-				Int("disk_size_gb", diskSizeMB/1024).
-				Str("storage", storage).
-				Str("network_model", networkModel).
-				Str("client_ip", r.RemoteAddr).
-				Time("create_time", time.Now()).
-				Msg("ADMIN ACTION AUDIT - VM created by admin")
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
 		}
 	}
+
+	// Log VM creation with structured event
+	logger.VMEvent("vm_create", vmid, node).
+		Str("vm_name", name).
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Int("cpu_sockets", cpuSockets).
+		Int("cpu_cores", cpuCores).
+		Int("memory_mb", memoryMB).
+		Int("disk_gb", diskSizeMB/1024).
+		Str("storage", storage).
+		Str("network_model", networkModel).
+		Str("pool", pool).
+		Str("client_ip", r.RemoteAddr).
+		Msg("VM created successfully")
 
 	// Redirect to VM details
 	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?created=1", vmid), http.StatusSeeOther)
