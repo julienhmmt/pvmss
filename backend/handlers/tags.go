@@ -305,10 +305,19 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 				}
 			}
 		}
-		log.Debug().Int("vm_snapshot_count", len(snapshot.VMs)).Msg("Tag counts calculated from snapshot")
+		log.Debug().
+			Int("vm_snapshot_count", len(snapshot.VMs)).
+			Str("component", "tags").
+			Str("operation", "calculate_tag_counts").
+			Str("reason", "snapshot_calculated").
+			Msg("Tag counts calculated from snapshot")
 	} else {
 		if h.stateManager.IsOfflineMode() {
-			log.Debug().Msg("Offline mode enabled; skipping tag usage lookup")
+			log.Debug().
+				Str("component", "tags").
+				Str("operation", "tag_usage_lookup").
+				Str("reason", "offline_mode").
+				Msg("Offline mode enabled; skipping tag usage lookup")
 		} else if restyClient, err := getDefaultRestyClient(); err == nil {
 			if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
 				for i := range vms {
@@ -332,10 +341,20 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 					}
 				}
 			} else {
-				log.Debug().Err(err).Msg("Failed to retrieve VM list for tag usage lookup")
+				log.Debug().
+					Err(err).
+					Str("component", "tags").
+					Str("operation", "tag_usage_lookup").
+					Str("reason", "vm_list_failed").
+					Msg("Failed to retrieve VM list for tag usage lookup")
 			}
 		} else {
-			log.Debug().Err(err).Msg("Failed to create resty client for tag usage lookup")
+			log.Debug().
+				Err(err).
+				Str("component", "tags").
+				Str("operation", "tag_usage_lookup").
+				Str("reason", "resty_client_failed").
+				Msg("Failed to create resty client for tag usage lookup")
 		}
 	}
 

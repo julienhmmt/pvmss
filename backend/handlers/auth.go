@@ -63,7 +63,11 @@ func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httpro
 		Str("logout_method", "GET").
 		Msg("User logout")
 
-	log.Debug().Msg("Processing logout via GET")
+	log.Debug().
+		Str("component", "auth").
+		Str("operation", "logout").
+		Str("reason", "get_request").
+		Msg("Processing logout via GET")
 
 	// Get session manager
 	sessionManager := security.GetSession(r)
@@ -112,7 +116,11 @@ func (h *AuthHandler) RedirectIfAuthenticated(next httprouter.Handle) httprouter
 // ShowAdminLoginForm renders the admin login page.
 func (h *AuthHandler) ShowAdminLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("AuthHandler.ShowAdminLoginForm", r)
-	log.Debug().Msg("Displaying admin login form")
+	log.Debug().
+		Str("component", "auth").
+		Str("operation", "admin_login_form").
+		Str("reason", "form_display").
+		Msg("Displaying admin login form")
 	h.renderAdminLoginForm(w, r, "")
 }
 
@@ -135,7 +143,11 @@ func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 // ShowLoginForm renders the user login page.
 func (h *AuthHandler) ShowLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("AuthHandler.ShowLoginForm", r)
-	log.Debug().Msg("Displaying login form")
+	log.Debug().
+		Str("component", "auth").
+		Str("operation", "login_form").
+		Str("reason", "form_display").
+		Msg("Displaying login form")
 	h.renderLoginForm(w, r, "")
 }
 
@@ -193,7 +205,11 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
 	ctx := NewHandlerContext(w, r, "AuthHandler.renderAdminLoginForm")
-	ctx.Log.Debug().Msg("Rendering admin login form")
+	ctx.Log.Debug().
+		Str("component", "auth").
+		Str("operation", "render_admin_login_form").
+		Str("reason", "form_render").
+		Msg("Rendering admin login form")
 
 	if !ctx.ValidateSessionManager() {
 		return
@@ -287,14 +303,23 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	// Get password from form
 	password := r.FormValue("password")
 	if password == "" {
-		ctx.Log.Debug().Msg("Admin login attempt with empty password")
+		ctx.Log.Debug().
+			Str("component", "auth").
+			Str("operation", "admin_login").
+			Str("reason", "empty_password").
+			Msg("Admin login attempt with empty password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.EmptyPassword"))
 		return
 	}
 
 	// Basic input validation
 	if len(password) > 200 {
-		ctx.Log.Warn().Int("password_length", len(password)).Msg("Admin login attempt with too long password")
+		ctx.Log.Warn().
+			Int("password_length", len(password)).
+			Str("component", "auth").
+			Str("operation", "admin_login").
+			Str("reason", "password_too_long").
+			Msg("Admin login attempt with too long password")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
 		return
 	}
@@ -309,7 +334,11 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	ctx.Log.Debug().Msg("Admin authentication successful, creating session")
+	ctx.Log.Debug().
+		Str("component", "auth").
+		Str("operation", "admin_login").
+		Str("reason", "auth_success").
+		Msg("Admin authentication successful, creating session")
 
 	if err := establishSession(w, r, true, ""); err != nil {
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
@@ -727,7 +756,11 @@ func ensureLocalPath(url string) string {
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
 	ctx := NewHandlerContext(w, r, "AuthHandler.renderLoginForm")
-	ctx.Log.Debug().Msg("Rendering login form")
+	ctx.Log.Debug().
+		Str("component", "auth").
+		Str("operation", "render_login_form").
+		Str("reason", "form_render").
+		Msg("Rendering login form")
 
 	if !ctx.ValidateSessionManager() {
 		return

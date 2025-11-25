@@ -273,6 +273,9 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	} else if client == nil || !proxmoxConnected {
 		log.Warn().
 			Bool("connected", proxmoxConnected).
+			Str("component", "storage").
+			Str("operation", "check_proxmox_availability").
+			Str("reason", "proxmox_unavailable").
 			Msg("Proxmox not available; rendering page with empty storage list")
 	} else {
 		// TODO Telmate migration: this fallback still uses Telmate-based node listing (GetNodeNames); replace it with a Resty-based node listing helper.
@@ -288,7 +291,13 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 			for _, nodeName := range nodeNames {
 				rawStorages, err := fetchRawStoragesFromNode(r.Context(), nodeName)
 				if err != nil {
-					log.Warn().Err(err).Str("node", nodeName).Msg("Failed to get raw storages from node")
+					log.Warn().
+						Err(err).
+						Str("component", "storage").
+						Str("operation", "fetch_node_storages").
+						Str("reason", "node_fetch_failed").
+						Str("node", nodeName).
+						Msg("Failed to get raw storages from node")
 					continue
 				}
 				for _, storage := range rawStorages {
@@ -417,7 +426,12 @@ func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface
 	// Get all available nodes
 	allNodes, err := proxmox.GetNodeNames(client)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to get node names")
+		log.Warn().
+			Err(err).
+			Str("component", "storage_utils").
+			Str("operation", "fetch_node_names").
+			Str("reason", "node_names_failed").
+			Msg("Failed to get node names")
 		return nil, map[string]bool{}, "", err
 	}
 
@@ -469,7 +483,13 @@ func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface
 		// Try to fetch fresh data from this node
 		storages, err := fetchStoragesFromNode(ctx, chosenNode, enabled)
 		if err != nil {
-			log.Warn().Err(err).Str("node", chosenNode).Msg("Failed to fetch storages from node")
+			log.Warn().
+				Err(err).
+				Str("component", "storage_utils").
+				Str("operation", "fetch_node_storages").
+				Str("reason", "node_storage_failed").
+				Str("node", chosenNode).
+				Msg("Failed to fetch storages from node")
 			lastError = err
 
 			// Try to use cached data as fallback for this node
@@ -515,7 +535,12 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 		var err error
 		globalStorages, err = proxmox.GetStoragesResty(ctx, restyClient)
 		if err != nil {
-			log.Warn().Err(err).Msg("Failed to fetch global storages")
+			log.Warn().
+				Err(err).
+				Str("component", "storage_utils").
+				Str("operation", "fetch_global_storages").
+				Str("reason", "global_storages_failed").
+				Msg("Failed to fetch global storages")
 			return fmt.Errorf("failed to get global storages: %w", err)
 		}
 		return nil
@@ -526,7 +551,13 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 		var err error
 		nodeStorages, err = proxmox.GetNodeStoragesResty(ctx, restyClient, node)
 		if err != nil {
-			log.Warn().Err(err).Str("node", node).Msg("Failed to fetch node storages")
+			log.Warn().
+				Err(err).
+				Str("component", "storage_utils").
+				Str("operation", "fetch_node_specific_storages").
+				Str("reason", "node_specific_storages_failed").
+				Str("node", node).
+				Msg("Failed to fetch node storages")
 			return fmt.Errorf("failed to get node storages: %w", err)
 		}
 		return nil
@@ -611,6 +642,9 @@ func fetchStoragesFromNode(ctx context.Context, node string, enabled []string) (
 			// Log warning when storage data is invalid
 			if totalRaw != "" || usedRaw != "" {
 				log.Warn().
+					Str("component", "storage_utils").
+					Str("operation", "validate_storage_data").
+					Str("reason", "invalid_usage_data").
 					Str("storage", st.Storage).
 					Str("used_raw", usedRaw).
 					Str("total_raw", totalRaw).

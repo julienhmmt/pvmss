@@ -196,7 +196,14 @@ func getVMBRsFromNode(ctx context.Context, node string, restyClient *proxmox.Res
 	vmbrCacheMu.Lock()
 	vmbrCache[node] = cachedVMBRs{items: result, expiresAt: time.Now().Add(vmbrCacheTTL)}
 	vmbrCacheMu.Unlock()
-	log.Debug().Str("node", node).Int("items", len(result)).Dur("ttl", vmbrCacheTTL).Msg("VMBR cache updated")
+	log.Debug().
+		Str("node", node).
+		Int("items", len(result)).
+		Dur("ttl", vmbrCacheTTL).
+		Str("component", "network_helpers").
+		Str("operation", "update_cache").
+		Str("reason", "cache_updated").
+		Msg("VMBR cache updated")
 
 	return result, nil
 }
