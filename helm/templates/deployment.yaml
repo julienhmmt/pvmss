@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pvmss.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "pvmss.labels" . | nindent 4 }}
+  {{- with $.Values.extraAnnotations }}
+  annotations: {{ include "pvmss.merge" . | toYaml | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.deployment.replicaCount }}
+  strategy:
+    type: {{ .Values.deployment.strategy }}
+  selector:
+    matchLabels:
+      {{- include "pvmss.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pvmss.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountToken }}
+      nodeSelector: {{ toJson .Values.nodeSelector | nindent 8 }}
+      tolerations: {{ toJson .Values.tolerations | nindent 8 }}
+      affinity: {{ toJson .Values.affinity | nindent 8 }}
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: pvmss
+          image: "{{ .Values.deployment.image.repository }}:{{ default .Chart.AppVersion .Values.deployment.image.tag }}"
+          imagePullPolicy: {{ .Values.deployment.image.pullPolicy }}
+          ports:
+            - name: backend
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            # Secrets
+            - name: ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pvmss.fullname" . }}-secrets
+                  key: {{ .Values.deployment.secretEnv.ADMIN_PASSWORD_HASH }}
+            - name: PROXMOX_API_TOKEN_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pvmss.fullname" . }}-secrets
+                  key: {{ .Values.deployment.secretEnv.PROXMOX_API_TOKEN_VALUE }}
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pvmss.fullname" . }}-secrets
+                  key: {{ .Values.deployment.secretEnv.SESSION_SECRET }}
+            # Variables simples
+            {{- range $k, $v := .Values.deployment.env }}
+            - name: {{ $k }}
+              value: "{{ $v }}"
+            {{- end }}
+          volumeMounts:
+            - name: pvmss-settings
+              mountPath: /data
+            - name: pvmss-logs
+              mountPath: /data/logs
+          resources:
+            requests:
+              cpu: {{ .Values.deployment.resources.requests.cpu }}
+              memory: {{ .Values.deployment.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.deployment.resources.limits.cpu }}
+              memory: {{ .Values.deployment.resources.limits.memory }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      volumes:
+        - name: pvmss-settings
+          persistentVolumeClaim:
+            claimName: {{ include "pvmss.fullname" . }}-settings-pvc
+        - name: pvmss-logs
+          persistentVolumeClaim:
+            claimName: {{ include "pvmss.fullname" . }}-logs-pvc

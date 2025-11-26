@@ -1,0 +1,12 @@
+{{- if .Values.createNamespace }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  {{- with .Values.extraAnnotations }}
+  annotations: {{ include "pvmss.merge" . | toYaml | nindent 4 }}
+  {{- end }}
+  {{- with .Values.extraLabels }}
+  labels: {{ include "pvmss.merge" . | toYaml | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: pvmss
+description: Helm chart for the pvmss application
+type: application
+version: 0.1.0
+appVersion: "0.2.1"
+home: https://github.com/julienhmmt/pvmss
+sources:
+  - https://github.com/julienhmmt/pvmss
+maintainers:
+  - name: Julien HOMMET
+    email: julien@hommet.net
+keywords:
+  - proxmox
+  - vm
+  - pvmss
