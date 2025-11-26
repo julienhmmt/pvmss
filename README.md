@@ -309,14 +309,13 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 ## Limitations & roadmap
 
 - Security hardening is ongoing; no formal penetration test yet.
-- Large clusters can make PVMSS slow or unresponsive, because of too many API calls and too many wait times.
+- App is not as dynamic as I'd like to. It is a work in progress.
 
 ### Next major features
 
 - Cloud-Init support.
 - OpenID Connect / SSO integration.
 - Migration of VMs between Proxmox nodes.
-- Advanced logging outputs (files, syslog shipping).
 
 Feedback and contributions are welcome through issues or pull requests. Next versions and features will be documented here: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 
