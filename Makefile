@@ -34,7 +34,8 @@ build: ## Construit le binaire Go et le container docker
 	@echo "Binary built successfully"
 	@echo ""
 	@echo "Remove old app logs and create new one"
-	@echo "" > app.log
+	@rm -f app.log
+	@touch app.log
 	@echo "Successfully cleaned app logs"
 	@echo "Building and running docker container"
 	docker compose -f docker-compose.dev.yml down
@@ -55,6 +56,7 @@ helm-package: ## Construit le package Helm
 	@helm package ./helm
 	@echo "Helm package built successfully"
 	@echo ""
+# need to push the package to a repository 
 
 helm-upgrade: ## Met à jour l'application avec Helm
 	@echo "Upgrading application with Helm..."
