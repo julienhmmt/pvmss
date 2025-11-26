@@ -1,4 +1,4 @@
-# Build stage
+# Build stage - Go
 FROM golang:1.25.3-alpine3.22 AS builder
 
 WORKDIR /app
@@ -28,7 +28,23 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Copy frontend files in a separate stage to keep builder image smaller
 FROM alpine:3.22 AS frontend
 WORKDIR /app
+
 COPY frontend/ /app/frontend/
+
+RUN set -eux; \
+    apk add --no-cache wget; \
+    mkdir -p /app/frontend/components/noVNC-1.6.0; \
+    wget -O /tmp/noVNC.tar.gz "https://github.com/novnc/noVNC/archive/refs/tags/v1.6.0.tar.gz"; \
+    tar -xzf /tmp/noVNC.tar.gz --strip-components=1 -C /app/frontend/components/noVNC-1.6.0; \
+    rm /tmp/noVNC.tar.gz; \
+    rm -rf /app/frontend/components/noVNC-1.6.0/tests \
+           /app/frontend/components/noVNC-1.6.0/docs \
+           /app/frontend/components/noVNC-1.6.0/po \
+           /app/frontend/components/noVNC-1.6.0/utils \
+           /app/frontend/components/noVNC-1.6.0/snap \
+           /app/frontend/components/noVNC-1.6.0/README.md; \
+    find /app/frontend/components/noVNC-1.6.0/app/locale -type f ! -name 'en.json' ! -name 'fr.json' -delete; \
+    apk del wget
 
 # Final stage - using distroless for minimal attack surface and size
 FROM gcr.io/distroless/static-debian13:nonroot

@@ -13,3 +13,6 @@ package-lock.json
 # binaries
 pvmss
 backend/pvmss
+
+# noVNC
+frontend/components/noVNC*
