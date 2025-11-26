@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sort"
 
 	"pvmss/logger"
 )
@@ -190,6 +191,9 @@ func GetNodeNamesResty(ctx context.Context, client *RestyClient) ([]string, erro
 		nodeNames = append(nodeNames, node.Node)
 	}
 
+	// Sort node names alphabetically for consistent ordering
+	sort.Strings(nodeNames)
+
 	logger.Get().Info().
 		Int("count", len(nodeNames)).
 		Strs("nodes", nodeNames).
@@ -220,6 +224,9 @@ func GetOnlineNodeNamesResty(ctx context.Context, client *RestyClient) ([]string
 				Msg("Skipping offline node for VM operations")
 		}
 	}
+
+	// Sort online node names alphabetically for consistent ordering
+	sort.Strings(onlineNodeNames)
 
 	logger.Get().Info().
 		Int("count", len(onlineNodeNames)).

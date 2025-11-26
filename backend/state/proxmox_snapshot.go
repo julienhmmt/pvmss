@@ -154,6 +154,10 @@ func buildProxmoxSnapshot(ctx context.Context, client *proxmox.RestyClient) (*Pr
 			vmSnapshots = append(vmSnapshots, vmSnapshot)
 		}
 		if len(vmSnapshots) > 0 {
+			// Sort VMs by VMID for consistent ordering across cache refreshes
+			sort.Slice(vmSnapshots, func(i, j int) bool {
+				return vmSnapshots[i].VMID < vmSnapshots[j].VMID
+			})
 			snapshot.VMs = vmSnapshots
 			log.Debug().Int("vms", len(vmSnapshots)).Msg("VM snapshot updated from VM list")
 		}

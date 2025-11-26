@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 
 	"pvmss/logger"
 )
@@ -48,6 +49,12 @@ func GetStoragesResty(ctx context.Context, restyClient *RestyClient) ([]Storage,
 	}
 
 	logger.Get().Info().Int("count", len(response.Data)).Msg("Successfully fetched storage list (resty)")
+
+	// Sort storages alphabetically by name for consistent ordering
+	sort.Slice(response.Data, func(i, j int) bool {
+		return response.Data[i].Storage < response.Data[j].Storage
+	})
+
 	return response.Data, nil
 }
 
@@ -76,5 +83,11 @@ func GetNodeStoragesResty(ctx context.Context, restyClient *RestyClient, node st
 	}
 
 	logger.Get().Info().Str("node", node).Int("count", len(response.Data)).Msg("Successfully fetched node storage list (resty)")
+
+	// Sort node storages alphabetically by name for consistent ordering
+	sort.Slice(response.Data, func(i, j int) bool {
+		return response.Data[i].Storage < response.Data[j].Storage
+	})
+
 	return response.Data, nil
 }
