@@ -1,0 +1,144 @@
+# GLOBAL SETTINGS
+namespace: pvmss
+createNamespace: true
+
+replicaCount: 1
+
+# SERVICE ACCOUNT
+serviceAccount:
+  create: true
+  name: "pvmss-sa"
+  automountToken: true
+  annotations: {}
+
+# SECRETS (à encoder en base64 ou injecter via --set-file)
+secrets:
+  adminPasswordHash: changemebase64hash
+  pveApiToken: changemebase64hash
+  sessionSecret: changemebase64hash
+
+# CONFIGMAP
+config:
+  settingsJson: |
+    {
+        "tags": [
+            "pvmss"
+        ],
+        "isos": [],
+        "vmbrs": [],
+        "max_network_cards": 1,
+        "max_disk_per_vm": 1,
+        "enabled_storages": [],
+        "limits": {
+            "nodes": {},
+            "vm": {
+                "cores": {
+                    "min": 1,
+                    "max": 4
+                },
+                "disk": {
+                    "min": 6,
+                    "max": 12
+                },
+                "ram": {
+                    "min": 1,
+                    "max": 4
+                },
+                "sockets": {
+                    "min": 1,
+                    "max": 1
+                }
+            }
+        }
+    }
+
+# PERSISTENCE (PVCs)
+persistence:
+  settings:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+  logs:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+
+# DEPLOYMENT
+deployment:
+  replicaCount: 1
+  strategy: Recreate
+  image:
+    repository: jhmmt/pvmss
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "25m"
+      memory: "64Mi"
+    limits:
+      cpu: "50m"
+      memory: "128Mi"
+  env:
+    LOG_LEVEL: "INFO"
+    LOG_OUTPUT: "stdout"
+    LOG_FORMAT: "json"
+    PROXMOX_API_TOKEN_NAME: "changeme"
+    PROXMOX_VERIFY_SSL: "false"
+    PROXMOX_URL: "https://changeme:8006/api2/json"
+    PVMSS_ENV: "production"
+    PVMSS_OFFLINE: "false"
+    PVMSS_SETTINGS_PATH: "/data/settings.json"
+    CSRF_TOKEN_TTL: "2h"
+    TZ: "Europe/Paris"
+  secretEnv:
+    ADMIN_PASSWORD_HASH: admin-password-hash
+    PROXMOX_API_TOKEN_VALUE: pve-api-token
+    SESSION_SECRET: session-secret
+
+# SERVICE
+service:
+  type: ClusterIP
+  port: 50000
+  targetPort: 50000
+  # utilisé uniquement si type=NodePort
+  #nodePort: null
+
+# GATEWAY-API
+httpRoute:
+  # HTTPRoute enabled.
+  enabled: false
+  # HTTPRoute annotations.
+  annotations: {}
+  # Which Gateways this Route is attached to.
+  parentRefs:
+  - name: gateway
+    sectionName: http
+    namespace: gateway-system
+  # Hostnames matching HTTP header.
+  hostnames:
+  - pvmss.example.com
+  # List of rules and filters applied.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+
+# OPTIONAL CUSTOMISATIONS
+extraAnnotations: {}
+extraLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000

@@ -50,6 +50,17 @@ docker-build: ## Construit les images docker (arm64 et amd64) et push sur Docker
 	@echo "Docker images built successfully"
 	@echo ""
 
+helm-package: ## Construit le package Helm
+	@echo "Building Helm package..."
+	@helm package ./helm
+	@echo "Helm package built successfully"
+	@echo ""
+
+helm-upgrade: ## Met à jour l'application avec Helm
+	@echo "Upgrading application with Helm..."
+	@helm upgrade --install pvmss ./helm
+	@echo ""
+
 up:
 	@docker compose -f docker-compose.dev.yml up -d
 	@echo ""
