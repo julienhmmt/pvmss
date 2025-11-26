@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sort"
 
 	"pvmss/logger"
 )
@@ -56,6 +57,11 @@ func GetVMBRsResty(ctx context.Context, restyClient *RestyClient, node string) (
 		Int("bridge_interfaces", len(bridges)).
 		Msg("Successfully fetched network interfaces (resty)")
 
+	// Sort bridges alphabetically by interface name for consistent ordering
+	sort.Slice(bridges, func(i, j int) bool {
+		return bridges[i].Iface < bridges[j].Iface
+	})
+
 	return bridges, nil
 }
 
@@ -81,6 +87,11 @@ func GetAllNetworkInterfacesResty(ctx context.Context, restyClient *RestyClient,
 		Str("node", node).
 		Int("total_interfaces", len(response.Data)).
 		Msg("Successfully fetched all network interfaces (resty)")
+
+	// Sort all network interfaces alphabetically by interface name for consistent ordering
+	sort.Slice(response.Data, func(i, j int) bool {
+		return response.Data[i].Iface < response.Data[j].Iface
+	})
 
 	return response.Data, nil
 }
