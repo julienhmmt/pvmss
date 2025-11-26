@@ -309,21 +309,18 @@ Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votr
 - **Santé** : les logs de démarrage détaillent la connectivité Proxmox, l'état du mode hors-ligne et les métriques runtime. La page admin "Informations de l'application" affiche des métriques, des variables d'environnement et le statut du cluster Proxmox.
 - **Mises à jour** : récupérez l'image souhaitée (le tag), mettez le fichier `settings.json` à jour si nécessaire, et redémarrez le conteneur.
 
-## Limites & feuille de route
+## Limites connues & feuille de route
 
 - Pas encore d'audit de sécurité complet.
-- Les clusters volumineux peuvent ralentir PVMSS ou le rendre irresponsive, en raison de trop de requêtes API et de trop de temps d'attente.
+- L'application n'est pas encore dynamique, le travail est en cours pour optimiser les interactions.
 
 ### Prochaines évolutions majeures
 
 - Support de Cloud-Init;
 - Intégration OpenID Connect / SSO ;
 - Migration de VM entre les nœuds Proxmox ;
-- Export avancé des logs (fichiers, syslog distant).
 
-Toute suggestion et contribution sont les bienvenues via issues ou pull requests.
-
-Les prochaines versions et ajouts de fonctionnalités seront documentés ici : <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
+Toute suggestion et contribution sont les bienvenues via issues ou pull requests. Les prochaines versions et ajouts de fonctionnalités seront documentés ici : <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
 
 ## Licence
 
