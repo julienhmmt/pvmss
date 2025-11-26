@@ -132,22 +132,6 @@
                     <button class="delete" id="error-close"></button>
                     <span id="error-message"></span>
                 </div>
-
-                <!-- Results Summary -->
-                <div id="results-summary" class="is-hidden mb-3">
-                    <div class="level">
-                        <div class="level-left">
-                            <div class="level-item">
-                                <span class="has-text-weight-semibold" id="results-text"></span>
-                            </div>
-                        </div>
-                        <div class="level-right">
-                            <div class="level-item">
-                                <span class="has-text-grey is-size-7" id="search-time"></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -188,9 +172,6 @@
     const searchError = document.getElementById('search-error');
     const errorMessage = document.getElementById('error-message');
     const errorClose = document.getElementById('error-close');
-    const resultsSummary = document.getElementById('results-summary');
-    const resultsText = document.getElementById('results-text');
-    const searchTime = document.getElementById('search-time');
     const searchResults = document.getElementById('search-results');
     const resultsContainer = document.getElementById('results-container');
 
@@ -247,22 +228,6 @@
 
     function hideResults() {
         searchResults.classList.add('is-hidden');
-    }
-
-    function updateResultsSummary(count, searchTimeMs) {
-        if (count === 0) {
-            resultsText.textContent = translations.noResults;
-        } else if (count === 1) {
-            resultsText.textContent = translations.resultFound.replace('{count}', count);
-        } else {
-            resultsText.textContent = translations.resultsFound.replace('{count}', count);
-        }
-        searchTime.textContent = searchTimeMs + 'ms';
-        resultsSummary.classList.remove('is-hidden');
-    }
-
-    function hideResultsSummary() {
-        resultsSummary.classList.add('is-hidden');
     }
 
     function getStatusBadgeClass(status) {
@@ -380,7 +345,6 @@
         const startTime = Date.now();
         showLoading();
         hideError();
-        hideResultsSummary();
 
         try {
             const response = await fetch(`/api/search/vms?${params}`, {
@@ -400,7 +364,6 @@
 
             if (data.success) {
                 renderResults(data.results);
-                updateResultsSummary(data.count, searchTimeMs);
                 showResults();
             } else {
                 showError(data.error || translations.searchError);
@@ -426,7 +389,6 @@
         tagsFilter.value = '';
         limitSelect.value = '50';
         hideResults();
-        hideResultsSummary();
         hideError();
     }
 
