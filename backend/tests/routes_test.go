@@ -14,42 +14,292 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// TestStaticPathDetection tests the isStaticPath function logic
-func TestStaticPathDetection(t *testing.T) {
-	tests := []struct {
-		path     string
-		expected bool
+// getTestBaseURL returns the base URL for testing
+func getTestBaseURL() string {
+	if url := os.Getenv("TEST_BASE_URL"); url != "" {
+		return url
+	}
+	// Default to localhost for manual testing, but integration tests should use httptest.NewServer
+	return "http://localhost:50001"
+}
+
+// Note: User pool route tests are covered by integration_test.go which uses httptest.NewServer
+// Route tests here require a running server at localhost:50001 for manual testing only
+
+// TestUserPoolSelfCreationRoute tests the /userpool/create-self endpoint
+func TestUserPoolSelfCreationRoute(t *testing.T) {
+	baseURL := getTestBaseURL()
+
+	// First, login as admin
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+
+	client := &http.Client{
+		Jar:     jar,
+		Timeout: 10 * time.Second,
+	}
+
+	// Perform admin login
+	loginURL := baseURL + "/admin/login"
+	loginData := url.Values{
+		"username": {"admin"},
+		"password": {"admin123"},
+	}
+
+	resp, err := client.PostForm(loginURL, loginData)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+	func() { _ = resp.Body.Close() }()
+
+	// Test cases for the self-creation endpoint
+	testCases := []struct {
+		name           string
+		method         string
+		expectedStatus int
+		expectedBody   string
+		description    string
 	}{
-		{"/css/base.css", true},
-		{"/js/main.js", true},
-		{"/webfonts/font.woff2", true},
-		{"/components/novnc/core.js", true},
-		{"/", false},
-		{"/login", false},
-		{"/admin", false},
-		{"/api/health", false},
+		{
+			name:           "POST to create-self endpoint",
+			method:         "POST",
+			expectedStatus: http.StatusSeeOther,
+			expectedBody:   "",
+			description:    "Should redirect after processing pool creation request",
+		},
+		{
+			name:           "GET method not allowed",
+			method:         "GET",
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedBody:   "Method Not Allowed",
+			description:    "GET should return 405 Method Not Allowed",
+		},
+		{
+			name:           "PUT method not allowed",
+			method:         "PUT",
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedBody:   "Method Not Allowed",
+			description:    "PUT should return 405 Method Not Allowed",
+		},
+		{
+			name:           "DELETE method not allowed",
+			method:         "DELETE",
+			expectedStatus: http.StatusMethodNotAllowed,
+			expectedBody:   "Method Not Allowed",
+			description:    "DELETE should return 405 Method Not Allowed",
+		},
 	}
 
-	// Replicate isStaticPath logic for testing
-	isStaticPath := func(p string) bool {
-		for _, prefix := range []string{"/css/", "/js/", "/webfonts/", "/components/"} {
-			if strings.HasPrefix(p, prefix) {
-				return true
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create request
+			req, err := http.NewRequest(tc.method, baseURL+"/userpool/create-self", nil)
+			require.NoError(t, err)
+
+			// Add CSRF token for POST requests
+			if tc.method == "POST" {
+				// Get a page to extract CSRF token
+				pageResp, err := client.Get(baseURL + "/admin/userpool")
+				require.NoError(t, err)
+				defer func() { _ = pageResp.Body.Close() }()
+
+				// Extract CSRF token from page
+				body, err := io.ReadAll(pageResp.Body)
+				require.NoError(t, err)
+
+				// Find CSRF token in page
+				csrfRegex := regexp.MustCompile(`name="csrf_token" value="([^"]+)"`)
+				matches := csrfRegex.FindSubmatch(body)
+				require.True(t, len(matches) > 1, "CSRF token not found in page")
+
+				csrfToken := string(matches[1])
+
+				// Add CSRF token to POST request
+				req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				req.Body = io.NopCloser(strings.NewReader("csrf_token=" + url.QueryEscape(csrfToken)))
 			}
-		}
-		return false
-	}
 
-	for _, tt := range tests {
-		t.Run(tt.path, func(t *testing.T) {
-			result := isStaticPath(tt.path)
-			assert.Equal(t, tt.expected, result,
-				"Expected isStaticPath(%s) to be %v, got %v",
-				tt.path, tt.expected, result)
+			// Send request
+			resp, err := client.Do(req)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+
+			// Check status
+			assert.Equal(t, tc.expectedStatus, resp.StatusCode,
+				"Expected status %d for %s, got %d. %s",
+				tc.expectedStatus, tc.method, resp.StatusCode, tc.description)
+
+			// Check body for non-redirect responses
+			if tc.expectedBody != "" {
+				body, err := io.ReadAll(resp.Body)
+				require.NoError(t, err)
+				assert.Contains(t, string(body), tc.expectedBody,
+					"Response body should contain '%s'", tc.expectedBody)
+			}
 		})
 	}
+}
+
+// TestUserPoolSelfCreationWithAuth tests authentication requirements
+func TestUserPoolSelfCreationWithAuth(t *testing.T) {
+	baseURL := getTestBaseURL()
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	// Test without authentication
+	t.Run("Without Authentication", func(t *testing.T) {
+		req, err := http.NewRequest("POST", baseURL+"/userpool/create-self", nil)
+		require.NoError(t, err)
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Should redirect to login
+		assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+
+		location := resp.Header.Get("Location")
+		assert.Contains(t, location, "/admin/login", "Should redirect to login page")
+	})
+
+	// Test with regular user (non-admin) authentication
+	t.Run("Regular User Authentication", func(t *testing.T) {
+		jar, err := cookiejar.New(nil)
+		require.NoError(t, err)
+
+		userClient := &http.Client{
+			Jar:     jar,
+			Timeout: 10 * time.Second,
+		}
+
+		// Login as regular user
+		loginURL := baseURL + "/login"
+		loginData := url.Values{
+			"username": {"testuser"},
+			"password": {"testpass"},
+		}
+
+		resp, err := userClient.PostForm(loginURL, loginData)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+		func() { _ = resp.Body.Close() }()
+
+		// Try to access admin endpoint
+		req, err := http.NewRequest("POST", baseURL+"/userpool/create-self", nil)
+		require.NoError(t, err)
+
+		resp, err = userClient.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Should redirect to admin login
+		assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+
+		location := resp.Header.Get("Location")
+		assert.Contains(t, location, "/admin/login", "Should redirect to admin login page")
+	})
+}
+
+// TestUserPoolPageWithCurrentUserPoolStatus tests that the user pool page shows current user's pool status
+func TestUserPoolPageWithCurrentUserPoolStatus(t *testing.T) {
+	baseURL := getTestBaseURL()
+
+	// Login as admin
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+
+	client := &http.Client{
+		Jar:     jar,
+		Timeout: 10 * time.Second,
+	}
+
+	// Perform admin login
+	loginURL := baseURL + "/admin/login"
+	loginData := url.Values{
+		"username": {"admin"},
+		"password": {"admin123"},
+	}
+
+	resp, err := client.PostForm(loginURL, loginData)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+	func() { _ = resp.Body.Close() }()
+
+	// Get user pool page
+	resp, err = client.Get(baseURL + "/admin/userpool")
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	// Read response body
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	bodyStr := string(body)
+
+	// Should contain current user pool status section
+	assert.Contains(t, bodyStr, "Your Pool Status", "Page should show current user pool status")
+	assert.Contains(t, bodyStr, "Pool Status", "Page should contain pool status information")
+}
+
+// TestUserPoolSelfCreationCSRFProtection tests CSRF protection on the endpoint
+func TestUserPoolSelfCreationCSRFProtection(t *testing.T) {
+	baseURL := getTestBaseURL()
+
+	// Login as admin
+	jar, err := cookiejar.New(nil)
+	require.NoError(t, err)
+
+	client := &http.Client{
+		Jar:     jar,
+		Timeout: 10 * time.Second,
+	}
+
+	// Perform admin login
+	loginURL := baseURL + "/admin/login"
+	loginData := url.Values{
+		"username": {"admin"},
+		"password": {"admin123"},
+	}
+
+	resp, err := client.PostForm(loginURL, loginData)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+	func() { _ = resp.Body.Close() }()
+
+	// Test without CSRF token
+	t.Run("Without CSRF Token", func(t *testing.T) {
+		req, err := http.NewRequest("POST", baseURL+"/userpool/create-self", nil)
+		require.NoError(t, err)
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Should return forbidden or bad request due to missing CSRF
+		assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusBadRequest,
+			"Should return 403 or 400 for missing CSRF token, got %d", resp.StatusCode)
+	})
+
+	// Test with invalid CSRF token
+	t.Run("With Invalid CSRF Token", func(t *testing.T) {
+		req, err := http.NewRequest("POST", baseURL+"/userpool/create-self",
+			strings.NewReader("csrf_token=invalid-token"))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Should return forbidden or bad request due to invalid CSRF
+		assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusBadRequest,
+			"Should return 403 or 400 for invalid CSRF token, got %d", resp.StatusCode)
+	})
 }
 
 // TestMaskSensitiveValue tests sensitive data masking logic
