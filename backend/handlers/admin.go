@@ -76,6 +76,8 @@ func (h *AdminOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
 func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("NodesPageHandlerOptimized", r)
 
+	refreshNode := strings.TrimSpace(r.URL.Query().Get("refreshNode"))
+
 	// Proxmox connection status from background monitor
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	var nodeDetails []*proxmox.NodeDetails
@@ -159,6 +161,51 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 			Str("component", "admin").
 			Str("operation", "render_node_cache").
 			Msg("Rendering node details from cache")
+	}
+
+	// Optional per-node refresh: when a refreshNode query parameter is provided,
+	// try to re-fetch only that node from Proxmox to update its metrics without
+	// waiting for the background cache worker.
+	if refreshNode != "" && proxmoxConnected {
+		restyClient, err := proxmox.NewRestyClientFromEnv(constants.ShortContextTimeout)
+		if err != nil {
+			log.Warn().
+				Err(err).
+				Str("component", "admin_nodes").
+				Str("operation", "refresh_single_node").
+				Str("node", refreshNode).
+				Str("reason", "client_creation_failed").
+				Msg("Failed to create resty client for single node refresh")
+		} else {
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			defer cancel()
+
+			detail, detailErr := proxmox.GetNodeDetailsResty(ctx, restyClient, refreshNode)
+			if detailErr != nil {
+				log.Warn().
+					Err(detailErr).
+					Str("component", "admin_nodes").
+					Str("operation", "refresh_single_node").
+					Str("node", refreshNode).
+					Msg("Failed to refresh single node details; keeping cached data")
+			} else if detail != nil {
+				updated := false
+				for i, existing := range nodeDetails {
+					if existing != nil && existing.Node == refreshNode {
+						nodeDetails[i] = detail
+						updated = true
+						break
+					}
+				}
+				if !updated {
+					nodeDetails = append(nodeDetails, detail)
+				}
+				// Mark data source as live for this request so that future debugging
+				// clearly indicates that fresh data was fetched.
+				nodeDataSource = "live"
+				nodeCacheAgeSeconds = 0
+			}
+		}
 	}
 
 	// Build template data with optimized builder pattern

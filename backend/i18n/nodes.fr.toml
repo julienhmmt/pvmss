@@ -25,3 +25,5 @@ other = "Ce nœud est actuellement inaccessible. La page s'actualisera automatiq
 other = "Aucun nœud trouvé"
 ["Nodes.LastKnownMetrics"]
 other = "Dernières valeurs connues (nœud actuellement hors ligne)"
+["Nodes.RefreshNode"]
+other = "Rafraîchir les métriques du nœud"
