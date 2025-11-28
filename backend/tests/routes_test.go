@@ -32,6 +32,9 @@ func getTestBaseURL() string {
 // TestUserPoolSelfCreationRoute tests the /userpool/create-self endpoint
 func TestUserPoolSelfCreationRoute(t *testing.T) {
 	baseURL := getTestBaseURL()
+	if !waitForServer(baseURL, 5*time.Second) {
+		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolSelfCreationRoute (manual test)", baseURL)
+	}
 
 	// First, login as admin
 	jar, err := cookiejar.New(nil)
@@ -145,6 +148,9 @@ func TestUserPoolSelfCreationRoute(t *testing.T) {
 // TestUserPoolSelfCreationWithAuth tests authentication requirements
 func TestUserPoolSelfCreationWithAuth(t *testing.T) {
 	baseURL := getTestBaseURL()
+	if !waitForServer(baseURL, 5*time.Second) {
+		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolSelfCreationWithAuth (manual test)", baseURL)
+	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -207,6 +213,9 @@ func TestUserPoolSelfCreationWithAuth(t *testing.T) {
 // TestUserPoolPageWithCurrentUserPoolStatus tests that the user pool page shows current user's pool status
 func TestUserPoolPageWithCurrentUserPoolStatus(t *testing.T) {
 	baseURL := getTestBaseURL()
+	if !waitForServer(baseURL, 5*time.Second) {
+		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolPageWithCurrentUserPoolStatus (manual test)", baseURL)
+	}
 
 	// Login as admin
 	jar, err := cookiejar.New(nil)
@@ -249,6 +258,9 @@ func TestUserPoolPageWithCurrentUserPoolStatus(t *testing.T) {
 // TestUserPoolSelfCreationCSRFProtection tests CSRF protection on the endpoint
 func TestUserPoolSelfCreationCSRFProtection(t *testing.T) {
 	baseURL := getTestBaseURL()
+	if !waitForServer(baseURL, 5*time.Second) {
+		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolSelfCreationCSRFProtection (manual test)", baseURL)
+	}
 
 	// Login as admin
 	jar, err := cookiejar.New(nil)

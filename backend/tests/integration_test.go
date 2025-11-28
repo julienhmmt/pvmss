@@ -30,12 +30,17 @@ func TestUserPoolSelfCreationIntegration(t *testing.T) {
 
 	// Test the complete flow: login -> check pool status -> create pool
 	t.Run("Complete Pool Self-Creation Flow", func(t *testing.T) {
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 		// Step 1: Admin login
 		loginData := url.Values{
 			"username": {"admin"},
 			"password": {"admin123"},
 		}
-		loginResp, err := http.PostForm(ts.URL+"/admin/login", loginData)
+		loginResp, err := client.PostForm(ts.URL+"/admin/login", loginData)
 		require.NoError(t, err)
 		defer func() { _ = loginResp.Body.Close() }()
 		assert.Equal(t, http.StatusSeeOther, loginResp.StatusCode)
@@ -53,7 +58,7 @@ func TestUserPoolSelfCreationIntegration(t *testing.T) {
 			req.AddCookie(cookie)
 		}
 
-		poolPageResp, err := http.DefaultClient.Do(req)
+		poolPageResp, err := client.Do(req)
 		require.NoError(t, err)
 		defer func() { _ = poolPageResp.Body.Close() }()
 		assert.Equal(t, http.StatusOK, poolPageResp.StatusCode)
@@ -85,7 +90,7 @@ func TestUserPoolSelfCreationIntegration(t *testing.T) {
 			createReq.AddCookie(cookie)
 		}
 
-		createResp, err := http.DefaultClient.Do(createReq)
+		createResp, err := client.Do(createReq)
 		require.NoError(t, err)
 		defer func() { _ = createResp.Body.Close() }()
 
@@ -100,8 +105,13 @@ func TestUserPoolSelfCreationIntegration(t *testing.T) {
 
 	// Test authentication requirements
 	t.Run("Authentication Requirements", func(t *testing.T) {
+		client := &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 		// Test without authentication
-		resp, err := http.Post(ts.URL+"/userpool/create-self", "application/x-www-form-urlencoded",
+		resp, err := client.Post(ts.URL+"/userpool/create-self", "application/x-www-form-urlencoded",
 			strings.NewReader("csrf_token=fake"))
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
@@ -136,13 +146,20 @@ func TestUserPoolStatusDetectionIntegration(t *testing.T) {
 	ts := httptest.NewServer(testApp.Router)
 	defer ts.Close()
 
+	// Create client that doesn't follow redirects
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
 	t.Run("Pool Status Detection for Authenticated Admin", func(t *testing.T) {
 		// Admin login
 		loginData := url.Values{
 			"username": {"admin"},
 			"password": {"admin123"},
 		}
-		loginResp, err := http.PostForm(ts.URL+"/admin/login", loginData)
+		loginResp, err := client.PostForm(ts.URL+"/admin/login", loginData)
 		require.NoError(t, err)
 		defer func() { _ = loginResp.Body.Close() }()
 		assert.Equal(t, http.StatusSeeOther, loginResp.StatusCode)
@@ -160,7 +177,7 @@ func TestUserPoolStatusDetectionIntegration(t *testing.T) {
 			req.AddCookie(cookie)
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -191,13 +208,18 @@ func TestUserPoolSelfCreationCSRFIntegration(t *testing.T) {
 	ts := httptest.NewServer(testApp.Router)
 	defer ts.Close()
 
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
 	t.Run("CSRF Protection", func(t *testing.T) {
-		// Admin login
 		loginData := url.Values{
 			"username": {"admin"},
 			"password": {"admin123"},
 		}
-		loginResp, err := http.PostForm(ts.URL+"/admin/login", loginData)
+		loginResp, err := client.PostForm(ts.URL+"/admin/login", loginData)
 		require.NoError(t, err)
 		defer func() { _ = loginResp.Body.Close() }()
 
@@ -205,7 +227,6 @@ func TestUserPoolSelfCreationCSRFIntegration(t *testing.T) {
 		cookies := loginResp.Cookies()
 		require.NotEmpty(t, cookies)
 
-		// Test without CSRF token
 		req, err := http.NewRequest("POST", ts.URL+"/userpool/create-self",
 			strings.NewReader(""))
 		require.NoError(t, err)
@@ -216,7 +237,7 @@ func TestUserPoolSelfCreationCSRFIntegration(t *testing.T) {
 			req.AddCookie(cookie)
 		}
 
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()
 
@@ -224,7 +245,6 @@ func TestUserPoolSelfCreationCSRFIntegration(t *testing.T) {
 		assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusBadRequest,
 			"Should return 403 or 400 for missing CSRF token, got %d", resp.StatusCode)
 
-		// Test with invalid CSRF token
 		req2, err := http.NewRequest("POST", ts.URL+"/userpool/create-self",
 			strings.NewReader("csrf_token=invalid-token"))
 		require.NoError(t, err)
@@ -235,7 +255,7 @@ func TestUserPoolSelfCreationCSRFIntegration(t *testing.T) {
 			req2.AddCookie(cookie)
 		}
 
-		resp2, err := http.DefaultClient.Do(req2)
+		resp2, err := client.Do(req2)
 		require.NoError(t, err)
 		defer func() { _ = resp2.Body.Close() }()
 
