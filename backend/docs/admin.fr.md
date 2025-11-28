@@ -42,6 +42,13 @@ Cette rubrique (accessible via `/admin/appinfo`) fournit une vue d'ensemble en l
 - **Statut du cluster Proxmox** : indication si PVMSS est connecté à un serveur unique ou à un cluster Proxmox, avec le nom du cluster et le nombre de nœuds lorsque ces informations sont disponibles.
 - **Variables d'environnement (sous-ensemble sûr)** : configuration non sensible telle que `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV`, `PVMSS_OFFLINE`, `PVMSS_SETTINGS_PATH`.
 
+#### Fuseau horaire (TZ)
+
+PVMSS utilise la variable d'environnement `TZ` pour déterminer le **fuseau horaire** utilisé lors de l'affichage des dates et heures dans l'interface (par exemple la date de dernière mise à jour des ressources des nœuds dans `/admin/nodes`).
+
+- Si `TZ` est définie et correspond à un fuseau valide (par exemple `Europe/Paris`), toutes les dates générées par PVMSS sont converties dans ce fuseau.
+- Si `TZ` est absente ou invalide, PVMSS utilise le fuseau horaire local du serveur.
+
 Utilisez cette page pour vérifier rapidement que l'instance fonctionne avec la configuration attendue et est connectée au bon environnement Proxmox.
 
 #### Exemple de workflow : diagnostiquer la connexion Proxmox et le mode hors‑ligne
@@ -59,7 +66,13 @@ Utilisez cette page pour vérifier rapidement que l'instance fonctionne avec la 
 
 Cette rubrique affiche la liste de tous les hôtes Proxmox VE, avec un affichage présentant la consommation actuelle du CPU et de la mémoire vive. Le statut du serveur (En ligne, hors ligne) est également affiché.
 
-Les informations de nœuds sont rafraîchies par un worker en tâche de fond toutes les 30 secondes (valeur définie par `NodeCacheRefreshInterval`). Les pages d'administration lisent uniquement ce cache local : l'affichage est donc instantané même sur de gros clusters Proxmox, et un nœud lent n'impacte plus la navigation. Les données restent disponibles hors‑ligne tant que la dernière actualisation n'est pas trop ancienne.
+Les informations de nœuds sont rafraîchies par un worker en tâche de fond toutes les **30 secondes** (valeur définie par `NodeCacheRefreshInterval`). Les pages d'administration lisent uniquement ce cache local : l'affichage est donc instantané même sur de gros clusters Proxmox, et un nœud lent n'impacte plus la navigation. Les données restent disponibles hors‑ligne tant que la dernière actualisation n'est pas trop ancienne.
+
+En complément de ce rafraîchissement automatique :
+
+- Chaque carte de nœud dans `/admin/nodes` affiche un **bouton de rafraîchissement** dédié qui permet de mettre à jour immédiatement les métriques d'un nœud particulier sans attendre le worker.
+- La carte de chaque nœud affiche également la **date/heure de dernière mise à jour des ressources**, formatée selon le fuseau horaire déterminé par `TZ`.
+- Lorsque Proxmox signale un nœud comme **hors ligne**, PVMSS continue d'afficher les **dernières valeurs de ressources connues** (CPU, RAM, disque) pour ce nœud tant qu'une mesure a déjà été collectée, tout en indiquant clairement l'état *Hors ligne*.
 
 ### Gestion des tags
 

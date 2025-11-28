@@ -10,6 +10,7 @@ import (
 
 	"pvmss/constants"
 	"pvmss/i18n"
+	"pvmss/utils"
 )
 
 // stringsPkg provides namespace-style access to string functions in templates
@@ -139,9 +140,9 @@ func GetBaseFuncMap() template.FuncMap {
 		"appVersion": func() string { return constants.AppVersion },
 
 		// Time functions
-		"now": func() time.Time { return time.Now() },
+		"now": func() time.Time { return time.Now().In(utils.GetAppLocation()) },
 		"date": func(format string) string {
-			return time.Now().Format(format)
+			return time.Now().In(utils.GetAppLocation()).Format(format)
 		},
 		"currentPath": func() string { return "/" },
 

@@ -85,6 +85,20 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 	nodeDataSource := "live"
 	nodeCacheAgeSeconds := 0
 	nodeLastUpdate := make(map[string]string)
+	const nodeTimeLayout = "2006-01-02 15:04:05"
+	nodeLocation := time.Local
+	if tz := os.Getenv("TZ"); tz != "" {
+		if loc, err := time.LoadLocation(tz); err == nil {
+			nodeLocation = loc
+		} else {
+			log.Warn().
+				Str("component", "admin_nodes").
+				Str("operation", "resolve_timezone").
+				Str("tz", tz).
+				Err(err).
+				Msg("Failed to load TZ location, falling back to server local time")
+		}
+	}
 
 	if cachedDetails, cacheTimestamp := h.stateManager.GetNodeCache(); len(cachedDetails) > 0 {
 		nodeDetails = cachedDetails
@@ -94,12 +108,11 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 			age = 0
 		}
 		nodeCacheAgeSeconds = age
-		const nodeTimeLayout = "2006-01-02 15:04:05"
 		for _, d := range cachedDetails {
 			if d == nil || d.Node == "" {
 				continue
 			}
-			nodeLastUpdate[d.Node] = cacheTimestamp.Format(nodeTimeLayout)
+			nodeLastUpdate[d.Node] = cacheTimestamp.In(nodeLocation).Format(nodeTimeLayout)
 		}
 		log.Debug().
 			Int("node_details_count", len(nodeDetails)).
@@ -143,8 +156,7 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 						log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with optimization")
 						nodeDataSource = "live"
 						nodeCacheAgeSeconds = 0
-						const nodeTimeLayout = "2006-01-02 15:04:05"
-						now := time.Now()
+						now := time.Now().In(nodeLocation)
 						for _, d := range nodeDetails {
 							if d == nil || d.Node == "" {
 								continue
@@ -220,8 +232,7 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 				// clearly indicates that fresh data was fetched.
 				nodeDataSource = "live"
 				nodeCacheAgeSeconds = 0
-				const nodeTimeLayout = "2006-01-02 15:04:05"
-				nodeLastUpdate[refreshNode] = time.Now().Format(nodeTimeLayout)
+				nodeLastUpdate[refreshNode] = time.Now().In(nodeLocation).Format(nodeTimeLayout)
 			}
 		}
 	}

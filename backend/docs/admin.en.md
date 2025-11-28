@@ -42,6 +42,13 @@ This section (accessible at `/admin/appinfo`) provides a read-only overview of t
 - **Proxmox cluster status**: whether PVMSS is connected to a single node or to a Proxmox cluster, cluster name, and number of nodes when available.
 - **Environment variables (safe subset)**: non-sensitive configuration such as `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV`, `PVMSS_OFFLINE`, `PVMSS_SETTINGS_PATH`.
 
+#### Timezone (TZ)
+
+PVMSS uses the `TZ` environment variable to determine the **timezone** used when rendering dates and times in the UI (for example the last resource update timestamp for nodes on `/admin/nodes`).
+
+- If `TZ` is set to a valid timezone (for example `Europe/Paris`), all dates produced by PVMSS are converted to that timezone.
+- If `TZ` is missing or invalid, PVMSS falls back to the server's local timezone.
+
 Use this page to quickly validate that the instance is running with the expected configuration and connected to the correct Proxmox environment.
 
 #### Example workflow: diagnose Proxmox connection and offline mode
@@ -59,7 +66,13 @@ Use this page to quickly validate that the instance is running with the expected
 
 This section displays the list of all Proxmox VE hosts, with a display showing current CPU and memory consumption. Server status (Online, offline) is also displayed.
 
-Node information is refreshed by a background worker every 30 seconds (value defined by `NodeCacheRefreshInterval`). The administration pages only read this local cache: the display is therefore instantaneous even on large Proxmox clusters, and a slow node no longer impacts navigation. The data remains available offline as long as the last update is not too old.
+Node information is refreshed by a background worker every **30 seconds** (value defined by `NodeCacheRefreshInterval`). The administration pages only read this local cache: the display is therefore instantaneous even on large Proxmox clusters, and a slow node no longer impacts navigation. The data remains available offline as long as the last update is not too old.
+
+In addition to this automatic refresh:
+
+- Each node card on `/admin/nodes` exposes a **per-node refresh button** that lets you immediately refresh metrics for a specific node without waiting for the background worker.
+- Each node card also shows the **last resource update date/time** for that node, formatted according to the timezone derived from `TZ`.
+- When Proxmox reports a node as **offline**, PVMSS keeps displaying the **last known resource values** (CPU, RAM, disk) for that node as long as at least one measurement was previously collected, while clearly indicating the *Offline* status.
 
 ### Tag management
 
