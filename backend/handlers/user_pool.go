@@ -563,7 +563,6 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	if role == "" {
 		role = "PVMSSUser" // Use our custom role with VM management permissions
 	}
-	propagate := r.FormValue("propagate") == "true" || r.FormValue("propagate") == "1" || strings.EqualFold(r.FormValue("propagate"), "on")
 
 	// Auto-detect if creating pool for current admin user
 	var isSelfCreation bool
@@ -692,7 +691,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 		Msg("About to assign pool ACL permissions")
 
 	// Assign pool permissions to user
-	propagate = r.FormValue("propagate") == "true" || r.FormValue("propagate") == "1" || strings.EqualFold(r.FormValue("propagate"), "on")
+	propagate := r.FormValue("propagate") == "true" || r.FormValue("propagate") == "1" || strings.EqualFold(r.FormValue("propagate"), "on")
 	if err := proxmox.EnsurePoolACL(ctx, client, userID, poolID, finalRole, propagate); err != nil {
 		log.Error().Err(err).
 			Str("user_id", userID).
