@@ -71,7 +71,7 @@
             <div class="control">
               <div class="help has-text-grey">
                 <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
-                This will create pool "{{.CurrentUserPoolStatus.PoolName}}" and grant you VM management permissions.
+                {{printf (T "Admin.UserPool.CreatePoolHelp") .CurrentUserPoolStatus.PoolName}}
               </div>
             </div>
           </div>

@@ -80,10 +80,12 @@ other = "Aucun utilisateur authentifié trouvé dans la session."
 ["Admin.UserPool.DeleteWarningDetails"]
 other = "Toutes les VMs dans le pool, le pool et l'utilisateur seront supprimés. Cette action est irréversible."
 ["Admin.UserPool.CurrentUserPoolStatus"]
-other = "Statut de Votre Pool"
+other = "Statut de votre pool"
 ["Admin.UserPool.PoolExists"]
-other = "Votre pool personnel '{0}' existe et est prêt à l'utilisation."
+other = "Votre pool personnel '%s' existe et est prêt à l'utilisation."
 ["Admin.UserPool.PoolMissing"]
-other = "Votre pool personnel '{0}' n'existe pas. Vous ne pouvez pas créer de VMs sans pool."
+other = "Votre pool personnel '%s' n'existe pas. Vous ne pouvez pas créer de VMs sans pool."
 ["Admin.UserPool.CreatePoolButton"]
-other = "Créer Votre Pool"
+other = "Créer votre pool"
+["Admin.UserPool.CreatePoolHelp"]
+other = "Cela créera le pool \"%s\" et vous accordera les permissions de gestion des VMs."
