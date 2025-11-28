@@ -71,7 +71,8 @@
           </header>
           
           <div class="card-content">
-            {{if eq .Status "offline"}}
+            {{$offline_no_metrics := and (eq .Status "offline") (eq .MaxCPU 0) (eq .MaxMemory 0.0) (eq .MaxDisk 0.0)}}
+            {{if $offline_no_metrics}}
             <!-- Offline node message -->
             <div class="notification is-warning is-light">
               <span class="icon">
@@ -98,6 +99,13 @@
               {{$used_cores := mul $cpu_usage .MaxCPU}}
               {{$max_cores := .MaxCPU}}
               
+              {{if eq .Status "offline"}}
+              <p class="is-size-7 has-text-grey mb-2">
+                <span class="icon is-small"><i class="fas fa-history"></i></span>
+                <span>{{T "Nodes.LastKnownMetrics"}}</span>
+              </p>
+              {{end}}
+
               <div class="control">
                 <progress class="progress is-small {{if lt $cpu_percent 70.0}}is-success{{else if lt $cpu_percent 90.0}}is-warning{{else}}is-danger{{end}}" 
                   value="{{printf "%.0f" $cpu_percent}}" max="100" 

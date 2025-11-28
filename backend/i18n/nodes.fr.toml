@@ -23,3 +23,5 @@ other = "Le nœud est hors ligne - informations d'utilisation des ressources ind
 other = "Ce nœud est actuellement inaccessible. La page s'actualisera automatiquement lorsque le nœud sera de nouveau en ligne."
 ["Nodes.NoNodes"]
 other = "Aucun nœud trouvé"
+["Nodes.LastKnownMetrics"]
+other = "Dernières valeurs connues (nœud actuellement hors ligne)"
