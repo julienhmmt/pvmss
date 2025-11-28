@@ -224,6 +224,73 @@
                                                     </label>
                                                     <p class="help has-text-grey is-size-7 mt-2">{{T "VM.Create.StartVMHelp"}}</p>
                                                 </div>
+
+                                                <!-- Proxmox Node -->
+                                                <div class="field">
+                                                    <label for="node" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-server"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ProxmoxNode"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Node"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="node-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Node"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <div class="select is-fullwidth is-medium">
+                                                            <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
+                                                                <option value="">-- {{T "VM.Create.SelectNode"}} --</option>
+                                                                {{if .NodeOptions}}
+                                                                {{range .NodeOptions}}
+                                                                {{/* Lookup per-node limits for this option */}}
+                                                                {{$optNode := .value}}
+                                                                {{$nodeLimit := index $nodesLimits $optNode}}
+                                                                <option value="{{.value}}"
+                                                                        data-cores-max="{{with $nodeLimit}}{{with index . "cores"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
+                                                                        data-ram-max-gb="{{with $nodeLimit}}{{with index . "ram"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
+                                                                        {{if $.FormData.node}}{{if eq .value $.FormData.node}}selected{{end}}{{else if eq .value $.ActiveNode}}selected{{end}} {{if .disabled}}disabled title="{{.reason}}" class="has-text-grey-light"{{end}}>
+                                                                    {{.text}}{{if .disabled}} — {{.reason}}{{end}}
+                                                                </option>
+                                                                {{end}}
+                                                                {{else}}
+                                                                {{range .Nodes}}
+                                                                <option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>
+                                                                {{end}}
+                                                                {{end}}
+                                                                {{if not .Nodes}}
+                                                                <option disabled>{{T "VM.Create.NoNodesAvailable"}}</option>
+                                                                {{end}}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <p class="help is-size-7 has-text-grey-light mt-2">{{T "VM.Create.ProxmoxNodeHelp"}}</p>
+                                                </div>
+
+                                                <!-- Resource Pool -->
+                                                <div class="field">
+                                                    <label for="pool" class="form-label">
+                                                        <span class="form-label-icon">
+                                                            <span class="icon"><i class="fas fa-layer-group"></i></span>
+                                                        </span>
+                                                        <span class="form-label-text">{{T "VM.Create.ResourcePool"}}</span>
+                                                        <span class="form-tooltip">
+                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Pool"}}">
+                                                                <i class="fas fa-info"></i>
+                                                            </button>
+                                                            <div id="pool-help" class="form-tooltip-content" role="tooltip">
+                                                                {{T "VM.Create.Tooltip.Pool"}}
+                                                            </div>
+                                                        </span>
+                                                    </label>
+                                                    <div class="control">
+                                                        <input id="pool" class="input is-medium" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -672,69 +739,7 @@
                                                 </p>
                                             </header>
                                             <div class="card-content form-vertical">
-                                                <!-- Node, Pool, ISO, Bridge fields... -->
-                                                <div class="field">
-                                                    <label for="node" class="form-label">
-                                                        <span class="form-label-icon">
-                                                            <span class="icon"><i class="fas fa-server"></i></span>
-                                                        </span>
-                                                        <span class="form-label-text">{{T "VM.Create.ProxmoxNode"}}</span>
-                                                        <span class="form-tooltip">
-                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Node"}}">
-                                                                <i class="fas fa-info"></i>
-                                                            </button>
-                                                            <div id="node-help" class="form-tooltip-content" role="tooltip">
-                                                                {{T "VM.Create.Tooltip.Node"}}
-                                                            </div>
-                                                        </span>
-                                                    </label>
-                                                    <div class="control">
-                                                        <div class="select is-fullwidth is-medium">
-                                                            <select id="node" name="node" required aria-required="true" aria-describedby="node-help">
-                                                                {{if .NodeOptions}}
-                                                                {{range .NodeOptions}}
-                                                                {{/* Lookup per-node limits for this option */}}
-                                                                {{$optNode := .value}}
-                                                                {{$nodeLimit := index $nodesLimits $optNode}}
-                                                                <option value="{{.value}}"
-                                                                        data-cores-max="{{with $nodeLimit}}{{with index . "cores"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
-                                                                        data-ram-max-gb="{{with $nodeLimit}}{{with index . "ram"}}{{index . "max"}}{{else}}0{{end}}{{else}}0{{end}}"
-                                                                        {{if $.FormData.node}}{{if eq .value $.FormData.node}}selected{{end}}{{else if eq .value $.ActiveNode}}selected{{end}} {{if .disabled}}disabled title="{{.reason}}" class="has-text-grey-light"{{end}}>
-                                                                    {{.text}}{{if .disabled}} — {{.reason}}{{end}}
-                                                                </option>
-                                                                {{end}}
-                                                                {{else}}
-                                                                {{range .Nodes}}
-                                                                <option value="{{.}}" {{if $.FormData.node}}{{if eq . $.FormData.node}}selected{{end}}{{else if eq . $.ActiveNode}}selected{{end}}>{{.}}</option>
-                                                                {{end}}
-                                                                {{end}}
-                                                                {{if not .Nodes}}
-                                                                <option disabled>{{T "VM.Create.NoNodesAvailable"}}</option>
-                                                                {{end}}
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <p class="help is-size-7 has-text-grey-light mt-2">{{T "VM.Create.ProxmoxNodeHelp"}}</p>
-                                                </div>
-                                                <div class="field">
-                                                    <label for="pool" class="form-label">
-                                                        <span class="form-label-icon">
-                                                            <span class="icon"><i class="fas fa-layer-group"></i></span>
-                                                        </span>
-                                                        <span class="form-label-text">{{T "VM.Create.ResourcePool"}}</span>
-                                                        <span class="form-tooltip">
-                                                            <button type="button" class="form-tooltip-trigger" aria-label="{{T "VM.Create.Tooltip.Pool"}}">
-                                                                <i class="fas fa-info"></i>
-                                                            </button>
-                                                            <div id="pool-help" class="form-tooltip-content" role="tooltip">
-                                                                {{T "VM.Create.Tooltip.Pool"}}
-                                                            </div>
-                                                        </span>
-                                                    </label>
-                                                    <div class="control">
-                                                        <input id="pool" class="input is-medium" type="text" name="pool" value="{{if .FormData.pool}}{{.FormData.pool}}{{else}}{{.DefaultPool}}{{end}}" placeholder="pvmss_<user>" readonly aria-readonly="true">
-                                                    </div>
-                                                </div>
+                                                <!-- ISO, Bridge fields... -->
                                                 <div class="field">
                                                     <label for="isoImage" class="form-label">
                                                         <span class="form-label-icon">
