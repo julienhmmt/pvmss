@@ -194,6 +194,12 @@ func TestFunctionalErrorHandling(t *testing.T) {
 		t.Skipf("PVMSS server not reachable at %s", cfg.BaseURL)
 	}
 
+	// Skip if in offline mode - error handling tests need a running server
+	isOfflineMode := strings.EqualFold(os.Getenv("PVMSS_OFFLINE"), "true") || os.Getenv("CI") != ""
+	if isOfflineMode {
+		t.Skip("Skipping functional error handling test: offline mode")
+	}
+
 	t.Run("Authentication error scenarios", func(t *testing.T) {
 		client := createHTTPClient()
 
