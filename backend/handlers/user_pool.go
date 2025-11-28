@@ -715,9 +715,9 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 	localizer := i18n.GetLocalizerFromRequest(r)
 	var successMsg string
 	if isSelfCreation {
-		successMsg = i18n.Localize(localizer, "Admin.UserPool.Success.CreatedSelf")
+		successMsg = fmt.Sprintf(i18n.Localize(localizer, "Admin.UserPool.Success.CreatedSelf"), poolID)
 	} else {
-		successMsg = i18n.Localize(localizer, "Admin.UserPool.Success.Created")
+		successMsg = fmt.Sprintf(i18n.Localize(localizer, "Admin.UserPool.Success.Created"), poolID)
 	}
 	u, _ := url.Parse("/admin/userpool")
 	q := u.Query()
@@ -871,7 +871,7 @@ func (h *UserPoolHandler) CreateUserPoolSelf(w http.ResponseWriter, r *http.Requ
 
 	// Redirect with success (localized)
 	localizer := i18n.GetLocalizerFromRequest(r)
-	successMsg := i18n.Localize(localizer, "Admin.UserPool.Success.CreatedSelf")
+	successMsg := fmt.Sprintf(i18n.Localize(localizer, "Admin.UserPool.Success.CreatedSelf"), poolID)
 	u, _ := url.Parse("/admin/userpool")
 	q := u.Query()
 	q.Set("success", "1")
