@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"golang.org/x/sync/errgroup"
 
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
@@ -41,7 +40,8 @@ type NodeISOGroup struct {
 // from blocking or cancelling the entire ISO listing.
 const isoPerStorageTimeout = 15 * time.Second
 
-// fetchAllISOs retrieves all ISOs from all nodes and storages using errgroup for concurrent API calls.
+// fetchAllISOs retrieves all ISOs from all nodes and storages using sequential processing.
+// This prevents slow storages like cephfs from cancelling the entire operation.
 // It also returns the number of storages that failed to list their ISO content and a list of failed storage details.
 func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) ([]ISOEntry, int, []string, error) {
 	log := logger.Get().With().Str("function", "fetchAllISOs").Logger()
@@ -63,35 +63,19 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 		return nil, 0, nil, fmt.Errorf("failed to create resty client for ISO retrieval: %w", err)
 	}
 
-	// Use errgroup for concurrent API calls
-	g, ctx := errgroup.WithContext(ctx)
+	// Process storages sequentially to prevent cephfs and other slow storages
+	// from cancelling the entire operation with context cancellation
+	// This ensures that even if one storage is slow/fails, others will still be processed
 
-	var nodes []string
-	var storages []proxmox.Storage
+	// Fetch nodes and storages sequentially first
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
+	if err != nil {
+		return nil, 0, nil, fmt.Errorf("failed to get nodes: %w", err)
+	}
 
-	// Fetch nodes concurrently
-	g.Go(func() error {
-		var err error
-		nodes, err = proxmox.GetNodeNamesResty(ctx, restyClient)
-		if err != nil {
-			return fmt.Errorf("failed to get nodes: %w", err)
-		}
-		return nil
-	})
-
-	// Fetch storages concurrently
-	g.Go(func() error {
-		var err error
-		storages, err = proxmox.GetStoragesResty(ctx, restyClient)
-		if err != nil {
-			return fmt.Errorf("failed to get storages: %w", err)
-		}
-		return nil
-	})
-
-	// Wait for all goroutines to complete
-	if err := g.Wait(); err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to fetch nodes/storages for ISO retrieval: %w", err)
+	storages, err := proxmox.GetStoragesResty(ctx, restyClient)
+	if err != nil {
+		return nil, 0, nil, fmt.Errorf("failed to get storages: %w", err)
 	}
 
 	enabledSet := make(map[string]struct{})
@@ -107,36 +91,103 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 	failedStorages := 0
 	failedStorageDetails := make([]string, 0)
 
-	// For each node, get ISOs from each compatible storage
+	// Process each storage sequentially with individual timeouts
+	// This prevents a single slow cephfs storage from blocking the entire operation
 	for _, nodeName := range nodes {
 		for _, storage := range storages {
 			// Check if storage is available on this node and supports ISO
-			isNodeInStorage := storage.Nodes == "" || strings.Contains(storage.Nodes, nodeName)
-			if !isNodeInStorage || !containsISO(storage.Content) {
+			// Fix: Properly parse the Nodes field which can be comma-separated
+			isNodeInStorage := storage.Nodes == "" || isStorageAvailableOnNode(storage.Nodes, nodeName)
+			supportsISO := containsISO(storage.Content)
+
+			logger.Get().Debug().
+				Str("node", nodeName).
+				Str("storage", storage.Storage).
+				Str("storage_type", storage.Type).
+				Str("nodes_field", storage.Nodes).
+				Bool("is_node_in_storage", isNodeInStorage).
+				Bool("supports_iso", supportsISO).
+				Str("content_field", storage.Content).
+				Msg("Checking storage availability and ISO support")
+
+			if !isNodeInStorage || !supportsISO {
+				logger.Get().Debug().
+					Str("node", nodeName).
+					Str("storage", storage.Storage).
+					Str("reason", "storage_not_available_or_no_iso_support").
+					Msg("Skipping storage - not available on node or doesn't support ISO")
 				continue
 			}
 
 			// Create a fresh context for each storage to avoid context cancellation issues
 			// Use background context with timeout instead of inheriting from parent
 			storageCtx, storageCancel := context.WithTimeout(context.Background(), isoPerStorageTimeout)
+
+			logger.Get().Debug().
+				Str("node", nodeName).
+				Str("storage", storage.Storage).
+				Str("storage_type", storage.Type).
+				Dur("timeout", isoPerStorageTimeout).
+				Msg("Fetching ISO list from storage")
+
 			isoList, err := proxmox.GetISOListResty(storageCtx, restyClient, nodeName, storage.Storage)
 			storageCancel()
+
 			if err != nil {
 				failedStorages++
 				// Collect failed storage details
 				detail := fmt.Sprintf("%s (%s)", storage.Storage, nodeName)
 				failedStorageDetails = append(failedStorageDetails, detail)
 
-				logger.Get().Warn().Err(err).
+				// Check if this is a context cancellation (likely timeout for cephfs)
+				if ctxErr := storageCtx.Err(); ctxErr != nil {
+					logger.Get().Warn().
+						Err(err).
+						Str("node", nodeName).
+						Str("storage", storage.Storage).
+						Str("storage_type", storage.Type).
+						Str("content", storage.Content).
+						Bool("is_context_cancelled", true).
+						Dur("timeout", isoPerStorageTimeout).
+						Msg("Storage ISO fetch timed out (likely cephfs or slow storage), skipping but continuing with other storages")
+				} else {
+					logger.Get().Warn().
+						Err(err).
+						Str("node", nodeName).
+						Str("storage", storage.Storage).
+						Str("storage_type", storage.Type).
+						Str("content", storage.Content).
+						Bool("is_context_cancelled", false).
+						Msg("Failed to get ISO list for storage, skipping but continuing with other storages")
+				}
+				continue
+			}
+
+			logger.Get().Info().
+				Str("node", nodeName).
+				Str("storage", storage.Storage).
+				Int("iso_count", len(isoList)).
+				Msg("Successfully fetched ISO list from storage")
+
+			// Validate ISO list before processing
+			if len(isoList) == 0 {
+				logger.Get().Debug().
 					Str("node", nodeName).
 					Str("storage", storage.Storage).
-					Str("storage_type", storage.Type).
-					Str("content", storage.Content).
-					Msg("Failed to get ISO list for storage, skipping")
+					Msg("Storage returned empty ISO list - this is normal if no ISOs are present")
 				continue
 			}
 
 			for _, iso := range isoList {
+				// Validate ISO entry before adding
+				if iso.VolID == "" {
+					logger.Get().Warn().
+						Str("node", nodeName).
+						Str("storage", storage.Storage).
+						Msg("Skipping ISO entry with empty VolID")
+					continue
+				}
+
 				entry := ISOEntry{
 					Node:    nodeName,
 					Storage: storage.Storage,
@@ -150,9 +201,25 @@ func (h *SettingsHandler) fetchAllISOs(ctx context.Context, checkEnabled bool) (
 				}
 
 				allISOs = append(allISOs, entry)
+
+				logger.Get().Debug().
+					Str("node", nodeName).
+					Str("storage", storage.Storage).
+					Str("volid", iso.VolID).
+					Int64("size", iso.Size).
+					Str("format", iso.Format).
+					Bool("enabled", entry.Enabled).
+					Msg("Added ISO entry to list")
 			}
 		}
 	}
+
+	// Log summary of storage processing
+	logger.Get().Info().
+		Int("total_storages_processed", len(nodes)*len(storages)).
+		Int("failed_storages", failedStorages).
+		Int("successful_isos", len(allISOs)).
+		Msg("ISO fetch completed - slow storages (like cephfs) handled gracefully")
 
 	return allISOs, failedStorages, failedStorageDetails, nil
 }
@@ -302,22 +369,43 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		return nodeI < nodeJ
 	})
 
+	// Validate final ISO list before passing to template
+	logger.Get().Info().
+		Int("total_isos_before_sort", len(isos)).
+		Int("total_isos_after_sort", len(isos)).
+		Msg("ISO list sorted and validated")
+
 	data["AllISOs"] = isos
 
 	if len(isos) > 0 {
 		groups := make([]NodeISOGroup, 0)
 		currentNode := isos[0].Node
 		currentGroup := NodeISOGroup{Node: currentNode, ISOs: []ISOEntry{}}
+
+		logger.Get().Debug().
+			Str("first_node", currentNode).
+			Msg("Starting ISO grouping by node")
+
 		for _, iso := range isos {
 			if iso.Node != currentNode {
 				groups = append(groups, currentGroup)
 				currentNode = iso.Node
 				currentGroup = NodeISOGroup{Node: currentNode, ISOs: []ISOEntry{}}
+				logger.Get().Debug().
+					Str("new_node", currentNode).
+					Msg("Created new node group")
 			}
 			currentGroup.ISOs = append(currentGroup.ISOs, iso)
 		}
 		groups = append(groups, currentGroup)
 		data["ISOGroupByNode"] = groups
+
+		logger.Get().Info().
+			Int("node_groups", len(groups)).
+			Msg("ISOs grouped by node for template rendering")
+	} else {
+		logger.Get().Warn().
+			Msg("No ISOs found to display - template will show empty state")
 	}
 
 	log.Debug().
@@ -445,5 +533,24 @@ func containsISO(content string) bool {
 			return true
 		}
 	}
+	return false
+}
+
+// isStorageAvailableOnNode checks if a storage is available on a specific node
+// The Nodes field can be comma-separated (e.g., "node1,node2,node3") or empty for shared storages
+func isStorageAvailableOnNode(nodesField, nodeName string) bool {
+	if nodesField == "" {
+		// Empty nodes field means storage is available on all nodes (shared storage)
+		return true
+	}
+
+	// Split the nodes field by comma and check each node
+	nodes := strings.Split(nodesField, ",")
+	for _, node := range nodes {
+		if strings.TrimSpace(node) == nodeName {
+			return true
+		}
+	}
+
 	return false
 }
