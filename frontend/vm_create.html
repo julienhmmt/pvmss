@@ -559,7 +559,7 @@
                                                                 <option value="">-- {{T "VM.Create.SelectStorage"}} --</option>
                                                                 {{range .Storages}}
                                                                 {{$storageNode := index $.StorageNodes .}}
-                                                                <option value="{{.}}" {{if eq . $.FormData.storage}}selected{{end}}>{{.}}{{if $storageNode}} ({{$storageNode}}){{end}}</option>
+                                                                <option value="{{.}}" {{if eq . $.FormData.storage}}selected{{end}}>{{.}}{{if $storageNode}} ({{$storageNode}}){{else}} ({{T "VM.Create.Shared"}}){{end}}</option>
                                                                 {{else}}
                                                                 <option disabled>{{T "VM.Create.NoStoragesAvailable"}}</option>
                                                                 {{end}}

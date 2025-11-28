@@ -167,6 +167,8 @@ other = "VM ID (Optional)"
 other = "Select a storage"
 ["VM.Create.NoStoragesAvailable"]
 other = "No storage available"
+["VM.Create.Shared"]
+other = "Shared"
 ["VM.Create.ProxmoxNode"]
 other = "Proxmox node"
 ["VM.Create.ProxmoxNodeHelp"]
