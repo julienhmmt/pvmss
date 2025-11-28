@@ -84,6 +84,7 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 	var errMsg string
 	nodeDataSource := "live"
 	nodeCacheAgeSeconds := 0
+	nodeLastUpdate := make(map[string]string)
 
 	if cachedDetails, cacheTimestamp := h.stateManager.GetNodeCache(); len(cachedDetails) > 0 {
 		nodeDetails = cachedDetails
@@ -93,6 +94,13 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 			age = 0
 		}
 		nodeCacheAgeSeconds = age
+		const nodeTimeLayout = "2006-01-02 15:04:05"
+		for _, d := range cachedDetails {
+			if d == nil || d.Node == "" {
+				continue
+			}
+			nodeLastUpdate[d.Node] = cacheTimestamp.Format(nodeTimeLayout)
+		}
 		log.Debug().
 			Int("node_details_count", len(nodeDetails)).
 			Int("cache_age_seconds", nodeCacheAgeSeconds).
@@ -135,6 +143,14 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 						log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with optimization")
 						nodeDataSource = "live"
 						nodeCacheAgeSeconds = 0
+						const nodeTimeLayout = "2006-01-02 15:04:05"
+						now := time.Now()
+						for _, d := range nodeDetails {
+							if d == nil || d.Node == "" {
+								continue
+							}
+							nodeLastUpdate[d.Node] = now.Format(nodeTimeLayout)
+						}
 					}
 				}
 			} else {
@@ -204,6 +220,8 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 				// clearly indicates that fresh data was fetched.
 				nodeDataSource = "live"
 				nodeCacheAgeSeconds = 0
+				const nodeTimeLayout = "2006-01-02 15:04:05"
+				nodeLastUpdate[refreshNode] = time.Now().Format(nodeTimeLayout)
 			}
 		}
 	}
@@ -215,6 +233,7 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 		WithProxmoxStatus(h.stateManager),
 		WithMessages(r),
 		WithData("NodeDetails", nodeDetails),
+		WithData("NodeLastUpdate", nodeLastUpdate),
 		WithData("Error", errMsg),
 		WithData("NodeDataSource", nodeDataSource),
 		WithData("NodeCacheAgeSeconds", nodeCacheAgeSeconds),

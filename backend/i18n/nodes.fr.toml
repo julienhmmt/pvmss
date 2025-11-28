@@ -27,3 +27,7 @@ other = "Aucun nœud trouvé"
 other = "Dernières valeurs connues (nœud actuellement hors ligne)"
 ["Nodes.RefreshNode"]
 other = "Rafraîchir les métriques du nœud"
+["Nodes.DataAgePrefix"]
+other = "Données de ressources mises à jour il y a"
+["Nodes.NodeLastUpdatePrefix"]
+other = "Ressources de ce nœud mises à jour le"
