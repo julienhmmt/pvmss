@@ -313,10 +313,11 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 		}
 
 		if prev, ok := previousByName[current.Node]; ok {
-			// If the node is now reported as offline but we previously had an online
-			// snapshot with resource metrics, preserve those metrics so we can still
-			// display "last known" values in the UI.
-			if current.Status == "offline" && prev.Status == "online" {
+			// If the node is now reported as offline but we previously had a snapshot
+			// with real resource metrics (online or already-offline with data),
+			// preserve those metrics so we can still display "last known" values in
+			// the UI, even across multiple refresh cycles.
+			if current.Status == "offline" && (prev.MaxCPU != 0 || prev.MaxMemory != 0 || prev.MaxDisk != 0) {
 				log.Debug().
 					Str("node", current.Node).
 					Str("component", "state_manager").
