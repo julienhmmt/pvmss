@@ -25,3 +25,5 @@ other = "This node is currently unreachable. The page will automatically refresh
 other = "No nodes found"
 ["Nodes.LastKnownMetrics"]
 other = "Last known values (node currently offline)"
+["Nodes.RefreshNode"]
+other = "Refresh node metrics"

@@ -67,6 +67,12 @@
                 <span class="ml-1">{{.Status}}</span>
               </span>
               {{end}}
+              <form method="GET" action="/admin/nodes" class="ml-2">
+                <input type="hidden" name="refreshNode" value="{{.Node}}">
+                <button class="button is-small is-light" type="submit" title="{{T "Nodes.RefreshNode"}}">
+                  <span class="icon is-small"><i class="fas fa-sync-alt"></i></span>
+                </button>
+              </form>
             </div>
           </header>
           
