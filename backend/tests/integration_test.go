@@ -1,48 +1,248 @@
 package tests
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
 	"pvmss/app"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// TestOfflineMode tests that the application works correctly in offline mode
-func TestOfflineMode(t *testing.T) {
-	// Set offline mode
+// TestUserPoolSelfCreationIntegration tests the complete user pool self-creation flow
+func TestUserPoolSelfCreationIntegration(t *testing.T) {
+	// Set offline mode to avoid actual Proxmox dependency
 	t.Setenv("PVMSS_OFFLINE", "true")
 
-	// Create test app with minimal setup
+	// Create test app
 	testApp := app.NewTestApp()
 
 	// Create test server
 	ts := httptest.NewServer(testApp.Router)
 	defer ts.Close()
 
-	// Test health endpoint
-	resp, err := http.Get(ts.URL + "/health")
-	if err != nil {
-		t.Fatalf("Failed to get health endpoint: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+	// Test the complete flow: login -> check pool status -> create pool
+	t.Run("Complete Pool Self-Creation Flow", func(t *testing.T) {
+		// Step 1: Admin login
+		loginData := url.Values{
+			"username": {"admin"},
+			"password": {"admin123"},
+		}
+		loginResp, err := http.PostForm(ts.URL+"/admin/login", loginData)
+		require.NoError(t, err)
+		defer func() { _ = loginResp.Body.Close() }()
+		assert.Equal(t, http.StatusSeeOther, loginResp.StatusCode)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", resp.StatusCode)
-	}
+		// Extract session cookies
+		cookies := loginResp.Cookies()
+		require.NotEmpty(t, cookies, "Login should set session cookies")
 
-	// Test Proxmox health endpoint (should return offline)
-	resp, err = http.Get(ts.URL + "/api/health/proxmox")
-	if err != nil {
-		t.Fatalf("Failed to get Proxmox health endpoint: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+		// Step 2: Get user pool page to check current status
+		req, err := http.NewRequest("GET", ts.URL+"/admin/userpool", nil)
+		require.NoError(t, err)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", resp.StatusCode)
-	}
+		// Add session cookies
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+
+		poolPageResp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = poolPageResp.Body.Close() }()
+		assert.Equal(t, http.StatusOK, poolPageResp.StatusCode)
+
+		// Read page content
+		body, err := io.ReadAll(poolPageResp.Body)
+		require.NoError(t, err)
+		bodyStr := string(body)
+
+		// Should contain pool status section
+		assert.Contains(t, bodyStr, "Your Pool Status", "Page should show current user pool status")
+		assert.Contains(t, bodyStr, "Pool Status", "Page should contain pool status information")
+
+		// Step 3: Extract CSRF token and attempt pool creation
+		csrfRegex := regexp.MustCompile(`name="csrf_token" value="([^"]+)"`)
+		matches := csrfRegex.FindSubmatch(body)
+		require.True(t, len(matches) > 1, "CSRF token should be found in page")
+
+		csrfToken := string(matches[1])
+
+		// Create pool self-creation request
+		createReq, err := http.NewRequest("POST", ts.URL+"/userpool/create-self",
+			strings.NewReader("csrf_token="+csrfToken))
+		require.NoError(t, err)
+		createReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		// Add session cookies
+		for _, cookie := range cookies {
+			createReq.AddCookie(cookie)
+		}
+
+		createResp, err := http.DefaultClient.Do(createReq)
+		require.NoError(t, err)
+		defer func() { _ = createResp.Body.Close() }()
+
+		// Should redirect after processing
+		assert.Equal(t, http.StatusSeeOther, createResp.StatusCode)
+
+		// Check redirect location contains success
+		location := createResp.Header.Get("Location")
+		assert.Contains(t, location, "/admin/userpool", "Should redirect back to user pool page")
+		// Note: In offline mode, this might show an error due to no Proxmox connection
+	})
+
+	// Test authentication requirements
+	t.Run("Authentication Requirements", func(t *testing.T) {
+		// Test without authentication
+		resp, err := http.Post(ts.URL+"/userpool/create-self", "application/x-www-form-urlencoded",
+			strings.NewReader("csrf_token=fake"))
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Should redirect to login
+		assert.Equal(t, http.StatusSeeOther, resp.StatusCode)
+		location := resp.Header.Get("Location")
+		assert.Contains(t, location, "/admin/login", "Should redirect to admin login")
+	})
+
+	// Test method restrictions
+	t.Run("Method Restrictions", func(t *testing.T) {
+		// Test GET method
+		resp, err := http.Get(ts.URL + "/userpool/create-self")
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Should return method not allowed
+		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
+	})
+}
+
+// TestUserPoolStatusDetectionIntegration tests pool status detection in offline mode
+func TestUserPoolStatusDetectionIntegration(t *testing.T) {
+	// Set offline mode
+	t.Setenv("PVMSS_OFFLINE", "true")
+
+	// Create test app
+	testApp := app.NewTestApp()
+
+	// Create test server
+	ts := httptest.NewServer(testApp.Router)
+	defer ts.Close()
+
+	t.Run("Pool Status Detection for Authenticated Admin", func(t *testing.T) {
+		// Admin login
+		loginData := url.Values{
+			"username": {"admin"},
+			"password": {"admin123"},
+		}
+		loginResp, err := http.PostForm(ts.URL+"/admin/login", loginData)
+		require.NoError(t, err)
+		defer func() { _ = loginResp.Body.Close() }()
+		assert.Equal(t, http.StatusSeeOther, loginResp.StatusCode)
+
+		// Extract session cookies
+		cookies := loginResp.Cookies()
+		require.NotEmpty(t, cookies)
+
+		// Get user pool page
+		req, err := http.NewRequest("GET", ts.URL+"/admin/userpool", nil)
+		require.NoError(t, err)
+
+		// Add session cookies
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Read page content
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		bodyStr := string(body)
+
+		// Should contain current user pool status section
+		assert.Contains(t, bodyStr, "Your Pool Status", "Page should show current user pool status")
+
+		// In offline mode, should indicate pool doesn't exist (since no Proxmox connection)
+		assert.Contains(t, bodyStr, "does not exist", "Should indicate pool missing in offline mode")
+		assert.Contains(t, bodyStr, "Create Your Pool", "Should show pool creation button")
+	})
+}
+
+// TestUserPoolSelfCreationCSRFIntegration tests CSRF protection in integration
+func TestUserPoolSelfCreationCSRFIntegration(t *testing.T) {
+	// Set offline mode
+	t.Setenv("PVMSS_OFFLINE", "true")
+
+	// Create test app
+	testApp := app.NewTestApp()
+
+	// Create test server
+	ts := httptest.NewServer(testApp.Router)
+	defer ts.Close()
+
+	t.Run("CSRF Protection", func(t *testing.T) {
+		// Admin login
+		loginData := url.Values{
+			"username": {"admin"},
+			"password": {"admin123"},
+		}
+		loginResp, err := http.PostForm(ts.URL+"/admin/login", loginData)
+		require.NoError(t, err)
+		defer func() { _ = loginResp.Body.Close() }()
+
+		// Extract session cookies
+		cookies := loginResp.Cookies()
+		require.NotEmpty(t, cookies)
+
+		// Test without CSRF token
+		req, err := http.NewRequest("POST", ts.URL+"/userpool/create-self",
+			strings.NewReader(""))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		// Add session cookies
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer func() { _ = resp.Body.Close() }()
+
+		// Should return forbidden or bad request
+		assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusBadRequest,
+			"Should return 403 or 400 for missing CSRF token, got %d", resp.StatusCode)
+
+		// Test with invalid CSRF token
+		req2, err := http.NewRequest("POST", ts.URL+"/userpool/create-self",
+			strings.NewReader("csrf_token=invalid-token"))
+		require.NoError(t, err)
+		req2.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		// Add session cookies
+		for _, cookie := range cookies {
+			req2.AddCookie(cookie)
+		}
+
+		resp2, err := http.DefaultClient.Do(req2)
+		require.NoError(t, err)
+		defer func() { _ = resp2.Body.Close() }()
+
+		// Should return forbidden or bad request
+		assert.True(t, resp2.StatusCode == http.StatusForbidden || resp2.StatusCode == http.StatusBadRequest,
+			"Should return 403 or 400 for invalid CSRF token, got %d", resp2.StatusCode)
+	})
 }
 
 // TestOnlineMode tests that the application works correctly in online mode

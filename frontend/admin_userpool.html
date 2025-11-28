@@ -39,6 +39,48 @@
       )}}
     {{end}}
 
+    {{/* Current user's pool status section */}}
+    {{if .CurrentUserPoolStatus}}
+    <div class="box admin-box mb-5">
+      <h2 class="title is-5 mb-4">
+        <span class="icon"><i class="fas fa-user-shield"></i></span>
+        <span>{{T "Admin.UserPool.CurrentUserPoolStatus"}}</span>
+      </h2>
+      
+      {{if .CurrentUserPoolStatus.HasPool}}
+        <div class="notification is-success is-light">
+          <span class="icon"><i class="fas fa-check-circle"></i></span>
+          <span>{{printf (T "Admin.UserPool.PoolExists") .CurrentUserPoolStatus.PoolName}}</span>
+        </div>
+      {{else}}
+        <div class="notification is-warning is-light">
+          <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+          <span>{{printf (T "Admin.UserPool.PoolMissing") .CurrentUserPoolStatus.PoolName}}</span>
+        </div>
+        
+        {{if .CurrentUserPoolStatus.CanCreate}}
+        <form method="POST" action="/userpool/create-self" class="mt-4">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <div class="field is-grouped">
+            <div class="control">
+              <button class="button is-primary is-medium" type="submit">
+                <span class="icon is-small"><i class="fas fa-plus"></i></span>
+                <span>{{T "Admin.UserPool.CreatePoolButton"}}</span>
+              </button>
+            </div>
+            <div class="control">
+              <div class="help has-text-grey">
+                <span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+                This will create pool "{{.CurrentUserPoolStatus.PoolName}}" and grant you VM management permissions.
+              </div>
+            </div>
+          </div>
+        </form>
+        {{end}}
+      {{end}}
+    </div>
+    {{end}}
+
     <form method="POST" action="/userpool/create" class="box admin-box">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <div class="columns is-multiline">

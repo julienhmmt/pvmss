@@ -69,7 +69,21 @@ other = "Failed to create or update the pool."
 other = "Failed to grant pool permissions to the user."
 ["Admin.UserPool.Success.Created"]
 other = "User and pool created successfully."
+["Admin.UserPool.Success.SelfCreated"]
+other = "Your personal pool has been created successfully. You can now create VMs."
 ["Admin.UserPool.Success.Deleted"]
 other = "Pool and user deleted successfully."
+["Admin.UserPool.Error.SessionUnavailable"]
+other = "Session manager not available. Please log in again."
+["Admin.UserPool.Error.NoAuthenticatedUser"]
+other = "No authenticated user found in session."
 ["Admin.UserPool.DeleteWarningDetails"]
 other = "VMs in pool, pool and user will be deleted. This cannot be undone."
+["Admin.UserPool.CurrentUserPoolStatus"]
+other = "Your Pool Status"
+["Admin.UserPool.PoolExists"]
+other = "Your personal pool '{0}' exists and is ready to use."
+["Admin.UserPool.PoolMissing"]
+other = "Your personal pool '{0}' does not exist. You cannot create VMs without a pool."
+["Admin.UserPool.CreatePoolButton"]
+other = "Create Your Pool"

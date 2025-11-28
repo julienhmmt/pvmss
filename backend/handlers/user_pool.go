@@ -329,6 +329,26 @@ func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
 		})),
 	))
 
+	// Admin user pool self-creation with CSRF protection (without lang prefix)
+	router.POST("/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
+
+	// Also register with lang prefixes for compatibility
+	router.POST("/en/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
+
+	router.POST("/fr/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
+
 	router.POST("/en/userpool/delete", SecureFormHandler("DeleteUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
@@ -465,6 +485,48 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 
 			wg.Wait()
 
+			// Get current authenticated user and check their pool status
+			currentUserPoolStatus := struct {
+				HasPool   bool
+				Username  string
+				PoolName  string
+				CanCreate bool
+			}{}
+
+			if sessionManager := h.stateManager.GetSessionManager(); sessionManager != nil {
+				if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
+					// Sanitize username to match pool naming convention
+					sanitizedUsername := sanitizeID(username)
+					expectedPoolName := "pvmss_" + sanitizedUsername
+
+					// Migration fallback: also check for old pool naming with @pve suffix
+					var fallbackPoolName string
+					if strings.Contains(username, "@") {
+						// For users with @pve suffix, also check the old naming convention
+						fallbackPoolName = "pvmss_" + username
+					}
+
+					currentUserPoolStatus.Username = username
+					currentUserPoolStatus.PoolName = expectedPoolName
+					currentUserPoolStatus.CanCreate = true // Admin users can create their own pool
+
+					// Check if user's pool exists in the fetched pools (with migration fallback)
+					for _, row := range rows {
+						if row.Pool == expectedPoolName {
+							currentUserPoolStatus.HasPool = true
+							currentUserPoolStatus.PoolName = row.Pool // Use actual pool name found
+							break
+						}
+						// Fallback: check old naming convention for migration compatibility
+						if fallbackPoolName != "" && row.Pool == fallbackPoolName {
+							currentUserPoolStatus.HasPool = true
+							currentUserPoolStatus.PoolName = row.Pool // Use actual pool name found
+							break
+						}
+					}
+				}
+			}
+
 			if len(rows) > 0 {
 				sort.Slice(rows, func(i, j int) bool {
 					left := strings.ToLower(rows[i].User)
@@ -476,6 +538,9 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 				})
 				data["UserPools"] = rows
 			}
+
+			// Add current user's pool status to template data
+			data["CurrentUserPoolStatus"] = currentUserPoolStatus
 		}
 	}
 
@@ -614,9 +679,142 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 }
 
 func sanitizeID(s string) string {
-	// very basic: lowercase and replace spaces with underscore; Proxmox poolid allows [A-Za-z0-9\-_.]+
+	// Basic sanitization for Proxmox pool IDs: lowercase, replace spaces with underscore
+	// Also strip realm suffixes (like @pve) for pool naming
 	s = strings.TrimSpace(s)
+
+	// Strip realm suffix (everything after @) for pool ID generation
+	if atIndex := strings.Index(s, "@"); atIndex != -1 {
+		s = s[:atIndex]
+	}
+
 	s = strings.ToLower(s)
 	s = strings.ReplaceAll(s, " ", "_")
 	return s
+}
+
+// CreateUserPoolSelf handles POST to create pool and ACL for the currently authenticated admin user
+func (h *UserPoolHandler) CreateUserPoolSelf(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("CreateUserPoolSelf", r)
+
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	// Get current authenticated user from session
+	sessionManager := h.stateManager.GetSessionManager()
+	if sessionManager == nil {
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.SessionUnavailable")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		return
+	}
+
+	username, ok := sessionManager.Get(r.Context(), "username").(string)
+	if !ok || username == "" {
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.NoAuthenticatedUser")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		return
+	}
+
+	client := h.stateManager.GetProxmoxClient()
+	if client == nil {
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ClientUnavailable")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	// Use standard role and propagate settings for self-created pools
+	role := "PVMSSUser"
+	propagate := true
+	comment := "Auto-created pool for admin user " + username
+
+	// Ensure pool
+	poolID := "pvmss_" + sanitizeID(username)
+	if err := proxmox.EnsurePool(ctx, client, poolID, comment); err != nil {
+		log.Error().Err(err).Str("pool", poolID).Msg("EnsurePool failed for self-created pool")
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsurePool")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		return
+	}
+
+	// Ensure custom role with VM management permissions exists
+	roleID := "PVMSSUser"
+	privileges := []string{
+		"VM.Audit",        // View VM status and configuration
+		"VM.PowerMgmt",    // Start, stop, reset VMs
+		"VM.Console",      // Access VM console (required for noVNC)
+		"VM.Config.CDROM", // Mount ISO files
+		"Datastore.Audit", // View datastore status
+		"Pool.Audit",      // View pool contents
+	}
+	if err := proxmox.EnsureRole(ctx, client, roleID, privileges); err != nil {
+		log.Error().Err(err).Str("role", roleID).Msg("EnsureRole failed for self-created pool")
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureRole")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		return
+	}
+
+	// Grant ACL on pool to user (user already exists in Proxmox as they're authenticated)
+	userID := username
+	if !strings.Contains(userID, "@") {
+		userID = userID + "@pve"
+	}
+	if err := proxmox.EnsurePoolACL(ctx, client, userID, poolID, role, propagate); err != nil {
+		log.Error().Err(err).Str("user", userID).Str("pool", poolID).Str("role", role).Msg("EnsurePoolACL failed for self-created pool")
+		localizer := i18n.GetLocalizerFromRequest(r)
+		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureACL")
+		u, _ := url.Parse("/admin/userpool")
+		q := u.Query()
+		q.Set("error", "1")
+		q.Set("error_msg", errMsg)
+		u.RawQuery = q.Encode()
+		http.Redirect(w, r, u.String(), http.StatusSeeOther)
+		return
+	}
+
+	// Redirect with success (localized)
+	localizer := i18n.GetLocalizerFromRequest(r)
+	successMsg := i18n.Localize(localizer, "Admin.UserPool.Success.SelfCreated")
+	u, _ := url.Parse("/admin/userpool")
+	q := u.Query()
+	q.Set("success", "1")
+	q.Set("success_msg", successMsg)
+	q.Set("action", "create_self")
+	q.Set("user", userID)
+	q.Set("pool", poolID)
+	u.RawQuery = q.Encode()
+	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
