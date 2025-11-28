@@ -27,3 +27,7 @@ other = "No nodes found"
 other = "Last known values (node currently offline)"
 ["Nodes.RefreshNode"]
 other = "Refresh node metrics"
+["Nodes.DataAgePrefix"]
+other = "Resource data last updated"
+["Nodes.NodeLastUpdatePrefix"]
+other = "Node metrics last updated on"
