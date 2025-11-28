@@ -46,6 +46,7 @@ func registerTestRoutes(router *http.ServeMux, hc *handlers.TestHandlerCollectio
 	router.HandleFunc("/search", hc.SearchHandler)
 	router.HandleFunc("/profile", hc.ProfileHandler)
 	router.HandleFunc("/vm/create", hc.VMCreateHandler)
+	router.HandleFunc("/userpool/create-self", hc.UserPoolSelfCreateHandler)
 
 	// Admin endpoints
 	router.HandleFunc("/admin", hc.AdminPageHandler)

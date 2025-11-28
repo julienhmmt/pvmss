@@ -8,6 +8,22 @@ import (
 // TestHandlerCollection provides minimal handlers for testing
 type TestHandlerCollection struct{}
 
+func setTestAdminSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:  "admin_session",
+		Value: "admin",
+		Path:  "/",
+	})
+}
+
+func isTestAdminAuthenticated(r *http.Request) bool {
+	cookie, err := r.Cookie("admin_session")
+	if err != nil {
+		return false
+	}
+	return cookie.Value != ""
+}
+
 // HealthHandler returns a simple health check response
 func (hc *TestHandlerCollection) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -62,7 +78,7 @@ func (hc *TestHandlerCollection) AdminLoginHandler(w http.ResponseWriter, r *htt
 		_, _ = w.Write([]byte("<html><body>Admin Login Page</body></html>"))
 		return
 	}
-	// POST login logic would go here
+	setTestAdminSessionCookie(w)
 	w.Header().Set("Location", "/admin")
 	w.WriteHeader(http.StatusSeeOther)
 }
@@ -136,7 +152,42 @@ func (hc *TestHandlerCollection) LimitsPageHandler(w http.ResponseWriter, r *htt
 
 // UserPoolPageHandler handles admin user pool page
 func (hc *TestHandlerCollection) UserPoolPageHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+	if !isTestAdminAuthenticated(r) {
+		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`<html><body>
+<h1>Your Pool Status</h1>
+<p>Pool Status: does not exist</p>
+<button>Create Your Pool</button>
+<form method="POST" action="/userpool/create-self">
+<input type="hidden" name="csrf_token" value="test-csrf-token">
+</form>
+</body></html>`))
+}
+
+// UserPoolSelfCreateHandler handles the self-creation endpoint for the current admin user
+func (hc *TestHandlerCollection) UserPoolSelfCreateHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_, _ = w.Write([]byte("Method Not Allowed"))
+		return
+	}
+	if !isTestAdminAuthenticated(r) {
+		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	token := r.PostFormValue("csrf_token")
+	if token != "test-csrf-token" {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+	http.Redirect(w, r, "/admin/userpool", http.StatusSeeOther)
 }
 
 // AppInfoPageHandler handles admin app info page
