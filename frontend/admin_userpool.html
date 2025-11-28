@@ -59,8 +59,12 @@
         </div>
         
         {{if .CurrentUserPoolStatus.CanCreate}}
-        <form method="POST" action="/userpool/create-self" class="mt-4">
+        <!-- Formulaire de création de pool personnel pour admin -->
+        <form method="POST" action="/userpool/create" class="mt-4">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <input type="hidden" name="username" value="{{.CurrentUserPoolStatus.Username}}">
+          <input type="hidden" name="role" value="PVMSSUser">
+          <input type="hidden" name="propagate" value="true">
           <div class="field is-grouped">
             <div class="control">
               <button class="button is-primary is-medium" type="submit">

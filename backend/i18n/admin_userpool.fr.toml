@@ -68,9 +68,9 @@ other = "Échec de la création ou mise à jour du pool."
 ["Admin.UserPool.Error.EnsureACL"]
 other = "Échec de l'attribution des permissions sur le pool à l'utilisateur."
 ["Admin.UserPool.Success.Created"]
-other = "Utilisateur et pool créés avec succès."
-["Admin.UserPool.Success.SelfCreated"]
-other = "Votre pool personnel a été créé avec succès. Vous pouvez maintenant créer des VMs."
+other = "Pool utilisateur créé avec succès pour l'utilisateur '%s'"
+["Admin.UserPool.Success.CreatedSelf"]
+other = "Votre pool personnel '%s' a été créé avec succès avec toutes les permissions nécessaires"
 ["Admin.UserPool.Success.Deleted"]
 other = "Pool et utilisateur supprimés avec succès."
 ["Admin.UserPool.Error.SessionUnavailable"]
