@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"pvmss/utils"
 )
 
 const (
@@ -140,20 +142,22 @@ func humanizeRelative(d time.Duration) string {
 
 // dateFormat formats a time.Time with the provided layout (Go time layout strings)
 func dateFormat(t time.Time, layout string) string {
-	return t.Format(layout)
+	return t.In(utils.GetAppLocation()).Format(layout)
 }
 
-// dateRFC3339 formats a time.Time as RFC3339.
-func dateRFC3339(t time.Time) string { return t.Format(time.RFC3339) }
+// dateRFC3339 formats a time.Time as RFC3339 using the application timezone.
+func dateRFC3339(t time.Time) string { return t.In(utils.GetAppLocation()).Format(time.RFC3339) }
 
-// dateISO8601 is an alias of RFC3339 formatting.
-func dateISO8601(t time.Time) string { return t.Format(time.RFC3339) }
+// dateISO8601 is an alias of RFC3339 formatting using the application timezone.
+func dateISO8601(t time.Time) string { return t.In(utils.GetAppLocation()).Format(time.RFC3339) }
 
-// dateShort returns a short date like 2006-01-02
-func dateShort(t time.Time) string { return t.Format("2006-01-02") }
+// dateShort returns a short date like 2006-01-02 in the application timezone.
+func dateShort(t time.Time) string { return t.In(utils.GetAppLocation()).Format("2006-01-02") }
 
-// dateTimeShort returns a short datetime like 2006-01-02 15:04
-func dateTimeShort(t time.Time) string { return t.Format("2006-01-02 15:04") }
+// dateTimeShort returns a short datetime like 2006-01-02 15:04 in the application timezone.
+func dateTimeShort(t time.Time) string {
+	return t.In(utils.GetAppLocation()).Format("2006-01-02 15:04")
+}
 
 // toJSON marshals a value to a JSON string; returns "" on error
 func toJSON(v interface{}) string {
