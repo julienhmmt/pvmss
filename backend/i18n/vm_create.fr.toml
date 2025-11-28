@@ -161,6 +161,8 @@ other = "Auto-attribué si vide"
 other = "Sélectionnez un stockage"
 ["VM.Create.NoStoragesAvailable"]
 other = "Aucun stockage disponible"
+["VM.Create.Shared"]
+other = "Partagé"
 ["VM.Create.ProxmoxNode"]
 other = "Noeud Proxmox"
 ["VM.Create.ProxmoxNodeHelp"]

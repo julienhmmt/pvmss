@@ -906,7 +906,12 @@ func (h *VMCreateOptimizedHandler) getOptimizedStoragesFromSnapshot(snapshot *st
 
 			if isEnabledStorage && storage.Enabled == 1 && supportsVMDisk {
 				if _, exists := storageMap[storage.Storage]; !exists {
-					storageMap[storage.Storage] = nodeName
+					// For shared storage types like RBD, don't associate with a specific node
+					if storageType == "rbd" {
+						storageMap[storage.Storage] = "" // Empty string indicates shared storage
+					} else {
+						storageMap[storage.Storage] = nodeName // Local storage
+					}
 				}
 			}
 		}
@@ -1038,11 +1043,20 @@ func (h *VMCreateOptimizedHandler) getOptimizedStorages(ctx context.Context, res
 					mu.Lock()
 					// Only add if not already present (avoid duplicates across nodes)
 					if _, exists := storageMap[storage.Storage]; !exists {
-						storageMap[storage.Storage] = nodeName
-						log.Debug().
-							Str("storage", storage.Storage).
-							Str("node", nodeName).
-							Msg("Storage accepted and added to available list")
+						// For shared storage types like RBD, don't associate with a specific node
+						if storageType == "rbd" {
+							storageMap[storage.Storage] = "" // Empty string indicates shared storage
+							log.Debug().
+								Str("storage", storage.Storage).
+								Str("storage_type", storageType).
+								Msg("Shared RBD storage accepted (available on all cluster nodes)")
+						} else {
+							storageMap[storage.Storage] = nodeName // Local storage
+							log.Debug().
+								Str("storage", storage.Storage).
+								Str("node", nodeName).
+								Msg("Local storage accepted and added to available list")
+						}
 					} else {
 						log.Debug().
 							Str("storage", storage.Storage).
