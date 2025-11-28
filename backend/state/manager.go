@@ -279,6 +279,7 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 	refreshCtx, cancel := context.WithTimeout(ctx, constants.NodeCacheRequestTimeout)
 	defer cancel()
 
+	// Fetch latest node details using the shared Resty-based aggregator.
 	details, err := proxmox.FetchAllNodeDetailsResty(refreshCtx, restyClient)
 	if err != nil {
 		log.Warn().
@@ -290,12 +291,55 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 		return
 	}
 
+	// Merge the freshly fetched details with the existing cache so that when a node
+	// becomes offline we still keep the last known resource metrics instead of
+	// wiping them out. This makes the admin nodes page more informative for
+	// temporarily unreachable nodes.
 	s.nodeCacheMu.Lock()
-	s.nodeCache = cloneNodeDetails(details)
-	s.nodeCacheUpdate = time.Now()
-	s.nodeCacheMu.Unlock()
+	defer s.nodeCacheMu.Unlock()
 
-	log.Debug().Int("nodes", len(details)).Msg("Node cache refreshed")
+	previousByName := make(map[string]*proxmox.NodeDetails, len(s.nodeCache))
+	for _, existing := range s.nodeCache {
+		if existing == nil || existing.Node == "" {
+			continue
+		}
+		previousByName[existing.Node] = existing
+	}
+
+	merged := make([]*proxmox.NodeDetails, 0, len(details))
+	for _, current := range details {
+		if current == nil || current.Node == "" {
+			continue
+		}
+
+		if prev, ok := previousByName[current.Node]; ok {
+			// If the node is now reported as offline but we previously had an online
+			// snapshot with resource metrics, preserve those metrics so we can still
+			// display "last known" values in the UI.
+			if current.Status == "offline" && prev.Status == "online" {
+				log.Debug().
+					Str("node", current.Node).
+					Str("component", "state_manager").
+					Str("operation", "node_cache_refresh").
+					Msg("Preserving last known metrics for offline node in cache")
+				current.CPU = prev.CPU
+				current.MaxCPU = prev.MaxCPU
+				current.Sockets = prev.Sockets
+				current.Memory = prev.Memory
+				current.MaxMemory = prev.MaxMemory
+				current.Disk = prev.Disk
+				current.MaxDisk = prev.MaxDisk
+				current.Uptime = prev.Uptime
+			}
+		}
+
+		merged = append(merged, current)
+	}
+
+	s.nodeCache = cloneNodeDetails(merged)
+	s.nodeCacheUpdate = time.Now()
+
+	log.Debug().Int("nodes", len(merged)).Msg("Node cache refreshed")
 }
 
 // SetGuestAgentCleanupFunc registers a cleanup function for guest agent caches
