@@ -325,14 +325,6 @@ fieldset[disabled]::after {
   letter-spacing: 0.05em;
 }
 
-.table td>.progress+span {
-  display: inline-block;
-  margin-left: 0.5rem;
-  vertical-align: middle;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
 .navbar-burger span:nth-child(1) {
   top: calc(50% - 6px);
 }
@@ -343,6 +335,14 @@ fieldset[disabled]::after {
 
 .navbar-burger span:nth-child(3) {
   top: calc(50% + 4px);
+}
+
+.table td>.progress+span {
+  display: inline-block;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 #nav-toggle:checked + nav .navbar-burger span:nth-child(1) {
@@ -1146,18 +1146,6 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   font-weight: 600;
   height: auto;
   padding: 0.75rem 1.5rem;
-}
-
-.divider-with-text {
-  margin: 2.5rem 0 2rem;
-  position: relative;
-  text-align: center;
-}
-
-.divider-with-text hr {
-  border: none;
-  border-top: 1px solid #e5e7eb;
-  margin: 0;
 }
 
 .label {
