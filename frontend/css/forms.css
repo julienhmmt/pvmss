@@ -100,8 +100,8 @@
     top: calc(100% + 0.5rem);
     left: 50%;
     transform: translateX(-50%) translateY(8px);
-    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--gray-800) 0%, var(--gray-700) 100%);
+    color: var(--white);
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
     box-shadow: 0 15px 35px rgb(15 23 42 / 25%);
@@ -143,7 +143,7 @@
 .form-footer {
     margin-top: 3rem;
     padding-top: 2rem;
-    border-top: 1px solid #e5e7eb;
+    border-top: 1px solid var(--gray-200);
     display: flex;
     justify-content: flex-end;
 }
@@ -158,8 +158,8 @@
 }
 
 .form-footer .button.is-light {
-    background: #fff;
-    border-color: #e5e7eb;
+    background: var(--white);
+    border-color: var(--gray-200);
 }
 
 .form-footer .button.is-primary {
@@ -187,7 +187,7 @@
 /* Input Enhancements */
 .input-lg {
     border-radius: 10px;
-    border: 2px solid #e5e7eb;
+    border: 2px solid var(--gray-200);
     padding: 0.75rem 1rem;
     font-size: 1rem;
     height: auto;
@@ -206,8 +206,8 @@ input[type="number"] {
     padding: 0 1rem;
     font-size: 1rem;
     border-radius: 10px;
-    border: 2px solid #e5e7eb;
-    background: #f9f9f9;
+    border: 2px solid var(--gray-200);
+    background: var(--gray-50);
     color: var(--text-light);
     font-weight: 600;
 }
@@ -224,19 +224,37 @@ input[type="number"] {
     gap: 0.5rem;
 }
 
-/* Base column before inline variant */
-.column {
+/* Form-specific overflow fixes - scoped to form contexts only */
+.form-inline-fields .column {
     overflow: visible !important;
 }
 
-.form-inline-fields .column {
-    display: flex;
-    flex-direction: column;
+.form-vertical .field {
+    overflow: visible !important;
+}
+
+.form-vertical {
+    overflow: visible !important;
+}
+
+/* Form component overflow fixes - scoped to form contexts */
+.form .card,
+.form .card-header,
+.form .card-content,
+.form .columns,
+.form .section,
+.form .container,
+.form fieldset {
+    overflow: visible !important;
+}
+
+.form .form-label {
+    overflow: visible !important;
 }
 
 /* Base field before form-vertical variant */
 .field {
-    overflow: visible !important;
+    margin-bottom: 1.25rem;
 }
 
 .field:not(:last-child) {
@@ -245,26 +263,6 @@ input[type="number"] {
 
 .form-vertical .field+.field {
     margin-top: 1.25rem;
-}
-
-.form-vertical {
-    overflow: visible !important;
-}
-
-/* Keep overflow visibles but avoid late duplicates that break specificity ordering */
-.card,
-.card-header,
-.card-content,
-.columns,
-.section,
-.container,
-fieldset {
-    overflow: visible !important;
-}
-
-.select select option:disabled {
-    color: var(--muted-light);
-    font-style: italic;
 }
 
 /* Tag Selection */
@@ -284,10 +282,6 @@ fieldset {
 }
 
 /* Disabled State */
-fieldset[disabled] .card {
-    filter: grayscale(0.3);
-}
-
 fieldset[disabled] {
     opacity: 0.7;
     position: relative;

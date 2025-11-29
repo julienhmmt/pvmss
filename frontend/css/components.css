@@ -28,7 +28,7 @@
 }
 
 .card .button.is-primary {
-  color: #fff;
+  color: var(--white);
 }
 
 fieldset[disabled] {
@@ -145,7 +145,7 @@ fieldset[disabled]::after {
 
 /* Generic navbar item styles should precede brand-specific variants */
 .navbar-item {
-  color: #4b5563;
+  color: var(--text-light);
   padding: 0.5rem 1rem;
   font-weight: 500;
   font-size: 0.9375rem;
@@ -223,7 +223,7 @@ fieldset[disabled]::after {
 }
 
 .navbar-item.is-disabled {
-  color: #9ca3af;
+  color: var(--muted-light);
   pointer-events: none;
   opacity: 0.6;
 }
@@ -297,16 +297,30 @@ fieldset[disabled]::after {
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
+.divider-with-text {
+  position: relative;
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.divider-with-text hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--border) 20%, var(--border) 80%, transparent 100%);
+  position: relative;
+  z-index: 1;
+}
+
 .divider-with-text span {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: white;
+  background: var(--card-bg);
   padding: 0 1.5rem;
-  color: #6b7280;
   font-size: 0.875rem;
-  font-weight: 600;
+  color: var(--muted);
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -469,7 +483,7 @@ fieldset[disabled]::after {
   top: calc(100% + 0.5rem);
   right: 0;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 8px;
   box-shadow: 0 10px 32px rgb(0 0 0 / 12%);
   min-width: 200px;
@@ -533,7 +547,7 @@ fieldset[disabled]::after {
   gap: 0;
   margin-left: 0;
   margin-right: 0;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
   border-radius: 6px; /* match button radius */
   overflow: hidden;
   align-self: center; /* center within navbar-actions */
@@ -682,7 +696,7 @@ fieldset[disabled]::after {
 .navbar-dropdown-divider {
   margin: 0.5rem 0;
   border: none;
-  border-top: 1px solid #f3f4f6;
+  border-top: 1px solid var(--gray-100);
 }
 
 .navbar .buttons .button.is-primary {
@@ -726,12 +740,12 @@ fieldset[disabled]::after {
 .navbar .buttons .button.is-ghost {
   background: transparent;
   color: var(--text);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gray-200);
 }
 
 .navbar .buttons .button.is-ghost:hover {
   background: #f9fafb;
-  border-color: #d1d5db;
+  border-color: var(--gray-300);
 }
 
 /* Hover lift parity for selected (primary-like) segment */
@@ -740,7 +754,7 @@ fieldset[disabled]::after {
 }
 
 .language-buttons .button:not(.is-selected) {
-  background: #fff;
+  background: var(--white);
   color: #6b7280;
 }
 
@@ -894,7 +908,7 @@ fieldset[disabled]::after {
     transform: none;
     box-shadow: none;
     border: none;
-    border-top: 1px solid #f3f4f6;
+    border-top: 1px solid var(--gray-100);
     border-radius: 0;
     margin-top: 0.5rem;
     min-width: auto;
@@ -1014,22 +1028,22 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 
 .progress.is-success::-webkit-progress-value,
 .progress.is-success::-moz-progress-bar {
-  background-color: #22c55e;
+  background-color: var(--success);
 }
 
 .progress.is-info::-webkit-progress-value,
 .progress.is-info::-moz-progress-bar {
-  background-color: #38bdf8;
+  background-color: var(--info-alt);
 }
 
 .progress.is-warning::-webkit-progress-value,
 .progress.is-warning::-moz-progress-bar {
-  background-color: #f59e0b;
+  background-color: var(--warning);
 }
 
 .progress.is-danger::-webkit-progress-value,
 .progress.is-danger::-moz-progress-bar {
-  background-color: #ef4444;
+  background-color: var(--danger);
 }
 
 .message {
@@ -1061,19 +1075,19 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 .message.is-info .message-body {
-  border-left: 3px solid #38bdf8;
+  border-left: 3px solid var(--info-alt);
 }
 
 .message.is-success .message-body {
-  border-left: 3px solid #22c55e;
+  border-left: 3px solid var(--success);
 }
 
 .message.is-warning .message-body {
-  border-left: 3px solid #f59e0b;
+  border-left: 3px solid var(--warning);
 }
 
 .message.is-danger .message-body {
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid var(--danger);
 }
 
 .admin-card {
@@ -1127,8 +1141,8 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 .login-alt-button {
   border-radius: 10px;
   border: 2px solid #e5e7eb;
-  background: #fff;
-  color: #374151;
+  background: var(--white);
+  color: var(--gray-700);
   font-weight: 600;
   height: auto;
   padding: 0.75rem 1.5rem;
@@ -1148,7 +1162,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 
 .label {
   font-weight: 600;
-  color: #374151;
+  color: var(--gray-700);
   margin-bottom: 0.75rem;
   font-size: 0.95rem;
 }
