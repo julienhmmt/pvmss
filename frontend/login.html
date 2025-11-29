@@ -51,8 +51,11 @@
 
               <!-- Username Field -->
               <div class="field">
-                <label class="label" for="username">
-                  {{T "Login.UsernameLabel"}}
+                <label class="form-label" for="username">
+                  <span class="form-label-icon">
+                    <span class="icon"><i class="fas fa-user"></i></span>
+                  </span>
+                  <span class="form-label-text">{{T "Login.UsernameLabel"}}</span>
                 </label>
                 <div class="control">
                   <input class="input is-large input-lg" type="text" id="username" name="username" required autofocus autocomplete="username" aria-required="true" aria-describedby="username-help" minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" placeholder="{{T "Login.UsernameLabel"}}" />
@@ -61,8 +64,11 @@
 
               <!-- Password Field -->
               <div class="field">
-                <label class="label" for="password">
-                  {{T "Login.PasswordLabel"}}
+                <label class="form-label" for="password">
+                  <span class="form-label-icon">
+                    <span class="icon"><i class="fas fa-lock"></i></span>
+                  </span>
+                  <span class="form-label-text">{{T "Login.PasswordLabel"}}</span>
                 </label>
                 <div class="control">
                   <input class="input is-large input-lg" type="password" id="password" name="password" required autocomplete="current-password" aria-required="true" aria-describedby="password-help" minlength="6" maxlength="128" placeholder="{{T "Login.PasswordLabel"}}" />
