@@ -28,25 +28,25 @@
 }
 
 .admin-box {
-    background-color: #fff;
-    border-radius: 12px;
-    border: 1px solid rgb(0 0 0 / 6%);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 4%);
+    background-color: var(--surface, #fff);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
     padding: 2rem;
 }
 
 .node-card {
     height: 100%;
-    border-radius: 12px;
-    border: 1px solid rgb(0 0 0 / 6%);
-    box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-slow);
     overflow: hidden;
 }
 
 .node-card .card-header {
-    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
-    border-bottom: 1px solid rgb(0 0 0 / 6%);
+    background: linear-gradient(135deg, var(--bg) 0%, var(--surface, #fff) 100%);
+    border-bottom: 1px solid var(--border);
     padding: 1rem 1.25rem;
     display: flex;
     align-items: center;
@@ -86,7 +86,7 @@
 
 .node-card .label {
     font-weight: 500;
-    color: #6b7280;
+    color: var(--muted);
     font-size: 0.875rem;
     letter-spacing: 0.01em;
 }
@@ -94,11 +94,11 @@
 .admin-menu {
     position: sticky;
     top: 3.25rem;
-    background: #fff;
-    border-radius: 12px;
-    border: 1px solid rgb(0 0 0 / 6%);
+    background: var(--surface, #fff);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
     padding: 1.25rem;
-    box-shadow: 0 1px 3px rgb(0 0 0 / 4%);
+    box-shadow: var(--shadow);
 }
 
 #proxmox-status-banner~#main-content .admin-menu {
@@ -119,8 +119,8 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
-    border-radius: 8px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
     font-weight: 500;
     font-size: 0.95rem;
     margin-bottom: 0.25rem;
@@ -147,11 +147,11 @@
 }
 
 .table.modern {
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     overflow: hidden;
-    background: #fff;
-    border: 1px solid rgb(0 0 0 / 6%);
-    box-shadow: 0 1px 3px rgb(0 0 0 / 4%);
+    background: var(--surface, #fff);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
 }
 
 [data-theme="dark"] .table.modern {
@@ -166,8 +166,8 @@
 }
 
 .table.modern thead th {
-    background: #f8f9fa !important;
-    color: #374151;
+    background: var(--bg, #f8f9fa) !important;
+    color: var(--text);
     border: none;
     font-weight: 600;
     font-size: 0.875rem;
@@ -196,9 +196,9 @@
 
 .admin-box .field .input,
 .admin-box .field .select select {
-    border-radius: 8px;
-    border-color: rgb(0 0 0 / 15%);
-    transition: all 0.2s ease;
+    border-radius: var(--radius-sm);
+    border-color: var(--border);
+    transition: all var(--transition-fast);
 }
 
 .admin-box .field .input:focus,
@@ -209,25 +209,25 @@
 
 .admin-box .field .label {
     font-weight: 600;
-    color: #374151;
+    color: var(--text);
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
 }
 
 .admin-box .button {
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     font-weight: 500;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow);
 }
 
 .admin-box .button.is-primary {
-  background: linear-gradient(135deg, #f80 0%, #e67700 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   border: none;
 }
 
 .admin-box .button.is-primary:hover {
-  background: linear-gradient(135deg, #e67700 0%, #c60 100%);
+  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-dark) 100%);
 }
 
 .admin-box .toolbar {
