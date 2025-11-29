@@ -1,0 +1,78 @@
+/**
+ * SKELETON.CSS - Loading Skeleton States
+ * ======================================
+ * Reusable skeleton loading placeholders for async content.
+ * Use these classes to show loading states while fetching data.
+ * 
+ * Usage:
+ *   <div class="skeleton skeleton-text"></div>
+ *   <div class="skeleton skeleton-title"></div>
+ *   <span class="skeleton skeleton-circle"></span>
+ *   <div class="skeleton skeleton-button"></div>
+ */
+
+/* Base skeleton with shimmer animation */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg, #f0f0f0) 25%, #e0e0e0 50%, var(--bg, #f0f0f0) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--radius-sm, 4px);
+}
+
+/* Skeleton animation */
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Skeleton variants */
+.skeleton-text {
+  height: 1em;
+  margin: 0.5em 0;
+}
+
+.skeleton-title {
+  height: 1.5em;
+  width: 60%;
+  margin-bottom: 1rem;
+}
+
+.skeleton-button {
+  height: 2.5em;
+  width: 120px;
+  border-radius: var(--radius-sm, 6px);
+}
+
+.skeleton-circle {
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.skeleton-avatar {
+  border-radius: 50%;
+  width: 3rem;
+  height: 3rem;
+}
+
+.skeleton-card {
+  height: 150px;
+  border-radius: var(--radius-md, 12px);
+}
+
+.skeleton-row {
+  height: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--bg, #f0f0f0);
+  }
+}
