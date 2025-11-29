@@ -50,22 +50,24 @@
     formData.append('card_index', String(cardIndex));
     formData.append('enabled', enabled ? '1' : '0');
 
-    fetch('/vm/toggle/network', {
+    // Use VMUtils fetchJson with enhanced error handling
+    VMUtils.fetchJson('/vm/toggle/network', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded'
       },
       body: formData
+    }, {
+      showNotification: true,
+      onRetry: function() {
+        // Retry the specific network toggle operation
+        return toggleNetworkCard(cardIndex, enabled, csrfToken, vmidArg, nodeArg);
+      }
     })
-      .then((response) => {
-        if (response.redirected) {
-          window.location.href = response.url;
-          return;
-        }
-
+      .then((result) => {
         toggleContainer.classList.remove('loading');
 
-        if (response.ok) {
+        if (result.success) {
           // Add success animation
           toggleContainer.classList.add('success');
           setTimeout(() => toggleContainer.classList.remove('success'), 600);
@@ -91,8 +93,8 @@
           toggleLabel.innerHTML = originalLabel;
           toggleInput.disabled = false;
 
-          console.error('Network toggle failed');
-          showError(msgActionFailed);
+          console.error('Network toggle failed:', result.errorDetail);
+          // Error notification is already shown by fetchJson
         }
       })
       .catch((error) => {
@@ -107,8 +109,8 @@
         toggleLabel.innerHTML = originalLabel;
         toggleInput.disabled = false;
 
-        console.error('Error:', error);
-        showError(msgActionFailed);
+        console.error('Network toggle error:', error);
+        // Error notification is already shown by fetchJson
       });
   }
 

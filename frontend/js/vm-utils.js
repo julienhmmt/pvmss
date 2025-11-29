@@ -7,6 +7,107 @@ const VMUtils = (function() {
   'use strict';
 
   /**
+   * Error handling configuration
+   */
+  const ERROR_MESSAGES = {
+    network: 'Network connection failed. Please check your connection and try again.',
+    timeout: 'Request timed out. The server may be busy. Please try again.',
+    forbidden: 'Access denied. You may not have permission to perform this action.',
+    notFound: 'The requested resource was not found.',
+    serverError: 'Server error occurred. Please try again later.',
+    unknown: 'An unexpected error occurred. Please try again.'
+  };
+
+  /**
+   * Initialize global error handlers
+   */
+  function initGlobalErrorHandling() {
+    // Handle unhandled promise rejections
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('Unhandled promise rejection:', event.reason);
+      showErrorNotification(getErrorMessage(event.reason));
+      event.preventDefault(); // Prevent default browser behavior
+    });
+
+    // Handle global JavaScript errors
+    window.addEventListener('error', function(event) {
+      console.error('Global error:', event.error);
+      // Only show user-friendly errors for critical failures
+      if (event.error && event.error.name !== 'ChunkLoadError') {
+        showErrorNotification('A technical error occurred. Please refresh the page.');
+      }
+    });
+  }
+
+  /**
+   * Get user-friendly error message from error object
+   * @param {Error|string} error - Error object or message
+   * @returns {string} User-friendly error message
+   */
+  function getErrorMessage(error) {
+    if (!error) return ERROR_MESSAGES.unknown;
+    
+    if (typeof error === 'string') {
+      return error;
+    }
+
+    // Handle fetch/network errors
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      return ERROR_MESSAGES.network;
+    }
+
+    // Handle timeout errors
+    if (error.name === 'AbortError' || error.message.includes('timeout')) {
+      return ERROR_MESSAGES.timeout;
+    }
+
+    // Handle HTTP status errors
+    if (error.status) {
+      switch (error.status) {
+        case 403:
+          return ERROR_MESSAGES.forbidden;
+        case 404:
+          return ERROR_MESSAGES.notFound;
+        case 500:
+        case 502:
+        case 503:
+        case 504:
+          return ERROR_MESSAGES.serverError;
+        default:
+          return error.message || ERROR_MESSAGES.unknown;
+      }
+    }
+
+    // Return error message if available, otherwise default
+    return error.message || ERROR_MESSAGES.unknown;
+  }
+
+  /**
+   * Show error notification to user
+   * @param {string} message - Error message to display
+   * @param {Object} options - Additional options
+   */
+  function showErrorNotification(message, options = {}) {
+    if (typeof window.showNotification === 'function') {
+      window.showNotification(message, 'danger', {
+        duration: 5000,
+        actions: options.actions || [
+          {
+            label: 'Retry',
+            action: options.onRetry || function() {
+              window.location.reload();
+            }
+          }
+        ]
+      });
+    } else {
+      // Fallback to alert if notification system not available
+      console.error('Error:', message);
+      alert(message);
+    }
+  }
+
+  /**
    * Status configuration with CSS classes and icons
    */
   const STATUS_CONFIG = {
@@ -221,12 +322,13 @@ const VMUtils = (function() {
   }
 
   /**
-   * Fetch JSON with error handling and CSRF support
+   * Fetch JSON with enhanced error handling and CSRF support
    * @param {string} url - URL to fetch
    * @param {Object} options - Fetch options
+   * @param {Object} errorOptions - Error handling options
    * @returns {Promise<Object>} Response with success, data, and error properties
    */
-  async function fetchJson(url, options = {}) {
+  async function fetchJson(url, options = {}, errorOptions = {}) {
     const defaultOptions = {
       method: 'GET',
       headers: {
@@ -259,9 +361,27 @@ const VMUtils = (function() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`fetchJson error: ${response.status} ${response.statusText}`, errorText);
+        
+        // Create enhanced error object
+        const error = new Error(getErrorMessage({ status: response.status, message: response.statusText }));
+        error.status = response.status;
+        error.statusText = response.statusText;
+        error.url = url;
+        
+        // Show user-friendly notification if enabled
+        if (errorOptions.showNotification !== false) {
+          showErrorNotification(error.message, {
+            onRetry: errorOptions.onRetry || function() {
+              // Retry the request once
+              return fetchJson(url, options, { ...errorOptions, showNotification: false });
+            }
+          });
+        }
+        
         return {
           success: false,
-          error: `HTTP ${response.status}: ${response.statusText}`,
+          error: error.message,
+          errorDetail: error,
           data: null
         };
       }
@@ -274,9 +394,25 @@ const VMUtils = (function() {
       };
     } catch (error) {
       console.error('fetchJson network error:', error);
+      
+      // Enhance network errors
+      const enhancedError = new Error(getErrorMessage(error));
+      enhancedError.originalError = error;
+      enhancedError.url = url;
+      
+      // Show user-friendly notification for network errors
+      if (errorOptions.showNotification !== false) {
+        showErrorNotification(enhancedError.message, {
+          onRetry: errorOptions.onRetry || function() {
+            window.location.reload();
+          }
+        });
+      }
+      
       return {
         success: false,
-        error: error.message || 'Network error',
+        error: enhancedError.message,
+        errorDetail: enhancedError,
         data: null
       };
     }
@@ -312,7 +448,11 @@ const VMUtils = (function() {
     createTagElements,
     debounce,
     fetchJson,
-    getCSRFToken
+    getCSRFToken,
+    // Error handling utilities
+    initGlobalErrorHandling,
+    getErrorMessage,
+    showErrorNotification
   };
 })();
 
@@ -320,3 +460,6 @@ const VMUtils = (function() {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = VMUtils;
 }
+
+// Initialize global error handling automatically
+VMUtils.initGlobalErrorHandling();
