@@ -59,7 +59,7 @@
     {{if .NeedsBrandIcons}}<link rel="preload" href="/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin="anonymous">{{end}}
   </head>
 
-<body class="app-body">
+<body class="app-body {{if .IsAdminPage}}admin-page{{end}}">
     {{template "navbar" .}}
 
     {{/* Proxmox Connection Status Banner - Server-side rendered */}}

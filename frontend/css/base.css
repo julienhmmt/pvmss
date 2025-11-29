@@ -60,12 +60,17 @@ body.app-body main {
   min-height: auto;
 }
 
+/* Structural base for .box - visual glass effects in glass.css */
 .box {
-  background-color: var(--surface);
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border);
+  /* Structural properties */
   border-radius: var(--radius-lg);
   margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  
+  /* Fallback visual properties (overridden by glass.css) */
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
   transition: transform var(--transition-base), box-shadow var(--transition-base);
 }
 
@@ -78,13 +83,122 @@ body.app-body main {
   border-bottom: 2px solid var(--border);
 }
 
-.card {
-  background-color: var(--card-bg);
-  box-shadow: var(--shadow-md);
+/* Structural base for .navbar - visual glass effects in glass.css */
+.navbar {
+  /* Structural properties */
+  min-height: var(--navbar-height);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  
+  /* Fallback visual properties (overridden by glass.css) */
+  background-color: white;
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.navbar-brand {
+  min-height: 3.5rem;
+  padding: 0;
+}
+
+.navbar>.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  gap: 1rem;
+}
+
+/* Structural navbar item styles - visual enhancements in glass.css */
+.navbar-item {
+  /* Structural properties */
+  color: var(--text-light);
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  
+  /* Fallback visual properties (enhanced by glass.css) */
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.navbar-item:hover,
+.navbar-item:focus {
+  background-color: rgb(255 136 0 / 8%);
+  color: var(--text);
+}
+
+.navbar-item.is-active {
+  background-color: rgb(255 136 0 / 12%);
+  color: var(--primary);
+  font-weight: 600;
+  position: relative;
+}
+.notification {
+  /* Structural properties */
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  
+  /* Fallback visual properties (overridden by glass.css) */
+  background-color: var(--surface);
   border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.notification.is-success {
+  background-color: var(--success);
+  color: white;
+}
+
+.notification.is-success.is-light {
+  background-color: var(--success-bg);
+  color: var(--success-dark) !important;
+}
+
+.notification.is-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.notification.is-danger.is-light {
+  background-color: var(--danger-bg);
+  color: var(--danger-dark) !important;
+}
+
+.notification.is-warning {
+  background-color: var(--warning);
+  color: var(--text);
+}
+
+.notification.is-warning.is-light {
+  background-color: var(--warning-bg);
+  color: var(--warning-dark) !important;
+}
+
+.notification.is-info {
+  background-color: var(--info);
+  color: white;
+}
+
+.notification.is-info.is-light {
+  background-color: var(--info-light);
+  color: var(--primary-dark) !important;
+}
+.card {
+  /* Structural properties */
   border-radius: var(--radius-lg);
   height: 100%;
   overflow: visible;
+  padding: 0;
+  
+  /* Fallback visual properties (overridden by glass.css) */
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
   transition: transform var(--transition-slow), box-shadow var(--transition-slow);
 }
 
@@ -187,16 +301,16 @@ body.app-body main {
 }
 
 .button.is-light:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+  background-color: var(--gray-50);
+  border-color: var(--gray-300);
 }
 
 .button.is-light:active {
-  background-color: #f3f4f6;
+  background-color: var(--gray-100);
 }
 
 .button.is-primary {
-  color: #fff;
+  color: var(--white);
 }
 
 .table {
@@ -213,14 +327,18 @@ body.app-body main {
   background-color: var(--surface-2);
 }
 
+/* Structural base for .table-container - visual glass effects in glass.css */
 .table-container {
-  border: 1px solid var(--border);
+  /* Structural properties */
   border-radius: var(--radius-lg);
   overflow: hidden;
+  
+  /* Fallback visual properties (overridden by glass.css) */
+  border: 1px solid var(--border);
 }
 
 .table.is-striped tbody tr:nth-child(even) {
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
 }
 
 :where(a, button, input, select, textarea, .button):focus-visible {

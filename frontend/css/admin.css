@@ -132,14 +132,14 @@
 }
 
 .admin-menu .menu-list a:focus {
-    box-shadow: 0 0 0 3px rgb(255 136 0 / 1%);
+    box-shadow: 0 0 0 3px var(--primary);
 }
 
 .admin-menu .menu-list a.is-active {
-    background: linear-gradient(135deg, #f80 0%, #e67700 100%);
-    color: #fff;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: var(--white);
     font-weight: 600;
-    box-shadow: 0 2px 8px rgb(255 136 0 / 3%);
+    box-shadow: 0 2px 8px var(--primary);
 }
 
 .admin-menu .menu-list a.is-active .icon {
@@ -253,37 +253,37 @@
    affecting the global theme. These selectors outrank generic
    .button.is-light styles defined elsewhere. */
 .section.admin-section .button.is-success.is-light {
-  background-color: #d1fae5;
-  border-color: #10b981;
-  color: #065f46;
+  background-color: var(--success-bg);
+  border-color: var(--success);
+  color: var(--success-dark);
   font-weight: 600;
 }
 
 .section.admin-section .button.is-success.is-light:hover {
-  background-color: #a7f3d0;
-  border-color: #059669;
-  color: #064e3b;
+  background-color: var(--success-light);
+  border-color: var(--success-dark);
+  color: var(--success-dark);
 }
 
 .section.admin-section .button.is-success.is-light .icon {
-  color: #10b981;
+  color: var(--success);
 }
 
 .section.admin-section .button.is-danger.is-light {
-  background-color: #fee2e2;
-  border-color: #ef4444;
-  color: #991b1b;
+  background-color: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger-dark);
   font-weight: 600;
 }
 
 .section.admin-section .button.is-danger.is-light:hover {
-  background-color: #fecaca;
-  border-color: #dc2626;
-  color: #7f1d1d;
+  background-color: var(--danger-light);
+  border-color: var(--danger-dark);
+  color: var(--danger-dark);
 }
 
 .section.admin-section .button.is-danger.is-light .icon {
-  color: #ef4444;
+  color: var(--danger);
 }
 
 /* Admin login toggle buttons (radio button group) */
@@ -349,13 +349,13 @@
 /* Distinct active states per variant */
 .admin-login-toggle input[type="radio"]:checked + label.admin-toggle-primary {
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%) !important;
-  color: #fff !important;
+  color: var(--white) !important;
   box-shadow: var(--shadow-lg);
 }
 
 .admin-login-toggle input[type="radio"]:checked + label.admin-toggle-danger {
-  background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%) !important;
-  color: #fff !important;
+  background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%) !important;
+  color: var(--white) !important;
   box-shadow: var(--shadow-lg);
 }
 
@@ -380,37 +380,6 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-/* Divider with text styling */
-.divider-with-text {
-  position: relative;
-  text-align: center;
-  margin: 2rem 0;
-}
-
-.divider-with-text hr {
-  border: none;
-  height: 2px;
-  background: linear-gradient(90deg, transparent 0%, var(--border) 20%, var(--border) 80%, transparent 100%);
-  position: relative;
-  z-index: 1;
-}
-
-.divider-with-text span {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--card-bg);
-  padding: 0 1.5rem;
-  font-size: 0.875rem;
-  color: var(--muted);
-  font-weight: 500;
-  letter-spacing: 0.025em;
-  z-index: 2;
-  backdrop-filter: blur(8px);
-  border-radius: var(--radius-sm);
 }
 
 /* Admin login buttons with premium effects */

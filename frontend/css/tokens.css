@@ -66,12 +66,35 @@
   /* Status colors with alpha */
   --success: #10b981;
   --success-light: rgb(209 250 229 / 90%);
+  --success-dark: #059669;
+  --success-bg: #d1fae5;
   --info: var(--primary);
   --info-light: rgb(255 136 0 / 12%);
+  --info-alt: #38bdf8;
   --warning: #f59e0b;
   --warning-light: rgb(254 243 199 / 90%);
+  --warning-bg: #fef3c7;
+  --warning-dark: #d97706;
   --danger: #ef4444;
   --danger-light: rgb(254 226 226 / 90%);
+  --danger-dark: #dc2626;
+  --danger-bg: #fee2e2;
+
+  /* Gray scale tokens - for backgrounds and borders */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* White variants */
+  --white: #ffffff;
+  --white-soft: #f8f9fa;
 
   /* Blur values */
   --blur-sm: blur(10px);
