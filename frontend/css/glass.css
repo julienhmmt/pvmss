@@ -39,21 +39,20 @@ body::before {
   z-index: 0;
 }
 
-/* Visual glass effects for .navbar - excluded from admin contexts */
-body:not(.admin-page) .navbar {
-  /* Visual properties only - glassmorphism effects */
-  background: var(--glass-opacity-normal);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
-  backdrop-filter: var(--blur-md) saturate(180%);
-  border-bottom: 1px solid rgb(255 255 255 / 30%);
-  box-shadow: var(--shadow-md);
-}
-
 /* Admin context navbar uses solid styling */
 .admin-section .navbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
+}
+
+/* Visual glass effects for .navbar - excluded from admin contexts */
+body:not(.admin-page) .navbar {
+  /* Visual properties only - glassmorphism effects */
+  background: var(--glass-opacity-normal);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  border-bottom: 1px solid rgb(255 255 255 / 30%);
+  box-shadow: var(--shadow-md);
 }
 
 /* Visual enhancements for navbar items - structural properties in base.css */
@@ -80,18 +79,6 @@ body:not(.admin-page) .navbar {
   border-radius: 3px 3px 0 0;
 }
 
-/* Visual glass effects for .box - excluded from admin contexts */
-section:not(.admin-section) .box,
-section:not(.admin-section) .admin-box {
-  /* Visual properties only - glassmorphism effects */
-  background: var(--glass-opacity-light);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
-  backdrop-filter: var(--blur-md) saturate(180%);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-lg), var(--shadow-inner);
-  transition: all var(--transition-slow);
-}
-
 /* Admin context boxes use solid styling */
 .admin-section .box,
 .admin-section .admin-box {
@@ -100,21 +87,20 @@ section:not(.admin-section) .admin-box {
   box-shadow: var(--shadow-sm);
 }
 
-section:not(.admin-section) .box:hover {
-  box-shadow: var(--shadow-xl), var(--shadow-inner);
-  border-color: rgb(255 255 255 / 50%);
-}
-
-/* Visual glass effects for .card - excluded from admin contexts */
-section:not(.admin-section) .card,
-section:not(.admin-section) .admin-card,
-section:not(.admin-section) .node-card {
+/* Visual glass effects for .box - excluded from admin contexts */
+section:not(.admin-section) .box,
+section:not(.admin-section) .admin-box {
   /* Visual properties only - glassmorphism effects */
-  background: var(--glass-opacity-normal);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  background: var(--glass-opacity-light);
   backdrop-filter: var(--blur-md) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-lg), var(--shadow-inner);
+  transition: all var(--transition-slow);
+}
+
+section:not(.admin-section) .box:hover {
+  box-shadow: var(--shadow-xl), var(--shadow-inner);
+  border-color: rgb(255 255 255 / 50%);
 }
 
 /* Admin context cards use solid styling */
@@ -126,14 +112,26 @@ section:not(.admin-section) .node-card {
   box-shadow: var(--shadow-md);
 }
 
-/* Visual glass effects for .notification - excluded from admin contexts */
-section:not(.admin-section) .notification {
+/* Visual glass effects for .card - excluded from admin contexts */
+section:not(.admin-section) .card,
+section:not(.admin-section) .admin-card,
+section:not(.admin-section) .node-card {
   /* Visual properties only - glassmorphism effects */
-  background: var(--glass-opacity-light);
-  -webkit-backdrop-filter: var(--blur-sm) saturate(180%);
-  backdrop-filter: var(--blur-sm) saturate(180%);
+  background: var(--glass-opacity-normal);
+  backdrop-filter: var(--blur-md) saturate(180%);
   border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-md), var(--shadow-inner);
+  box-shadow: var(--shadow-lg), var(--shadow-inner);
+}
+
+/* Base notification glass styling */
+.notification {
+  background: var(--glass-opacity-solid);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 50%);
+  box-shadow:
+    0 6px 24px rgb(0 0 0 / 6%),
+    0 2px 8px rgb(0 0 0 / 3%),
+    inset 0 1px 0 rgb(255 255 255 / 70%);
 }
 
 /* Admin context notifications use solid styling */
@@ -143,14 +141,23 @@ section:not(.admin-section) .notification {
   box-shadow: var(--shadow-sm);
 }
 
-/* Visual glass effects for .table-container - excluded from admin contexts */
-section:not(.admin-section) .table-container {
+/* Visual glass effects for .notification - excluded from admin contexts */
+section:not(.admin-section) .notification {
   /* Visual properties only - glassmorphism effects */
   background: var(--glass-opacity-light);
-  -webkit-backdrop-filter: var(--blur-sm) saturate(180%);
   backdrop-filter: var(--blur-sm) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-md), var(--shadow-inner);
+}
+
+/* Base table-container glass styling */
+.table-container {
+  background: var(--glass-opacity-normal);
+  backdrop-filter: var(--blur-md) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-lg), var(--shadow-inner);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 /* Admin context table containers use solid styling */
@@ -159,6 +166,16 @@ section:not(.admin-section) .table-container {
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
+
+/* Visual glass effects for .table-container - excluded from admin contexts */
+section:not(.admin-section) .table-container {
+  /* Visual properties only - glassmorphism effects */
+  background: var(--glass-opacity-light);
+  backdrop-filter: var(--blur-sm) saturate(180%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-md), var(--shadow-inner);
+}
+
 .card.no-hover {
   overflow: visible;
   position: relative;
@@ -172,7 +189,6 @@ section:not(.admin-section) .table-container {
 .card-header,
 .card-header.brand-header {
   background: rgb(255 255 255 / 50%);
-  -webkit-backdrop-filter: var(--blur-sm);
   backdrop-filter: var(--blur-sm);
   border-bottom: 1px solid rgb(255 255 255 / 30%);
   position: relative;
@@ -200,7 +216,6 @@ section:not(.admin-section) .table-container {
 
 .welcome-block {
   background: var(--glass-opacity-strong);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgb(255 255 255 / 60%);
   box-shadow: var(--shadow-xl), var(--shadow-inner);
@@ -313,7 +328,6 @@ section:not(.admin-section) .table-container {
 .button.is-light,
 .button.is-ghost {
   background: var(--glass-opacity-medium);
-  -webkit-backdrop-filter: var(--blur-sm);
   backdrop-filter: var(--blur-sm);
   border: 1px solid rgb(0 0 0 / 8%);
   box-shadow:
@@ -329,7 +343,6 @@ section:not(.admin-section) .table-container {
 
 .admin-menu {
   background: var(--glass-opacity-normal);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
   backdrop-filter: var(--blur-md) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-lg), var(--shadow-inner);
@@ -353,16 +366,6 @@ section:not(.admin-section) .table-container {
     inset 0 1px 0 rgb(255 255 255 / 30%);
 }
 
-.table-container {
-  background: var(--glass-opacity-normal);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
-  backdrop-filter: var(--blur-md) saturate(180%);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-lg), var(--shadow-inner);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
 .table.modern {
   background: transparent;
   border: none;
@@ -370,7 +373,6 @@ section:not(.admin-section) .table-container {
 
 .table.modern thead th {
   background: rgb(248 249 250 / 80%);
-  -webkit-backdrop-filter: var(--blur-sm);
   backdrop-filter: var(--blur-sm);
 }
 
@@ -384,7 +386,6 @@ section:not(.admin-section) .table-container {
 }
 
 .tag {
-  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border: 1px solid rgb(255 255 255 / 30%);
   box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
@@ -437,7 +438,6 @@ section:not(.admin-section) .table-container {
 
 .progress::-webkit-progress-bar {
   background: rgb(0 0 0 / 6%);
-  -webkit-backdrop-filter: blur(5px);
   backdrop-filter: blur(5px);
   box-shadow: inset 0 1px 2px rgb(0 0 0 / 10%);
 }
@@ -445,17 +445,6 @@ section:not(.admin-section) .table-container {
 .progress::-webkit-progress-value {
   box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
   position: relative;
-}
-
-.notification {
-  background: var(--glass-opacity-solid);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
-  backdrop-filter: var(--blur-md) saturate(180%);
-  border: 1px solid rgb(255 255 255 / 50%);
-  box-shadow:
-    0 6px 24px rgb(0 0 0 / 6%),
-    0 2px 8px rgb(0 0 0 / 3%),
-    inset 0 1px 0 rgb(255 255 255 / 70%);
 }
 
 .notification.is-danger {
@@ -479,7 +468,6 @@ section:not(.admin-section) .table-container {
 }
 
 .modal-background {
-  -webkit-backdrop-filter: blur(8px) saturate(120%);
   backdrop-filter: blur(8px) saturate(120%);
   background: rgb(0 0 0 / 40%);
 }
@@ -487,7 +475,6 @@ section:not(.admin-section) .table-container {
 .modal-card,
 .modal-content {
   background: rgb(255 255 255 / 95%);
-  -webkit-backdrop-filter: var(--blur-lg) saturate(180%);
   backdrop-filter: var(--blur-lg) saturate(180%);
   border: 1px solid rgb(255 255 255 / 50%);
   box-shadow:
@@ -497,23 +484,13 @@ section:not(.admin-section) .table-container {
 
 .modal-card-head,
 .modal-card-foot {
-  background: rgb(248 249 250 / 80%);
-  -webkit-backdrop-filter: var(--blur-sm);
-  backdrop-filter: var(--blur-sm);
-  border-color: rgb(255 255 255 / 30%);
-}
-
-.modal-card-head,
-.modal-card-foot {
   background: var(--glass-opacity-medium);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
   backdrop-filter: var(--blur-md) saturate(180%);
   border-color: rgb(255 255 255 / 30%);
 }
 
 .modal-card {
   background: var(--glass-opacity-solid);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
   backdrop-filter: var(--blur-md) saturate(180%);
   border: 1px solid rgb(255 255 255 / 50%);
   box-shadow: 0 -2px 12px rgb(0 0 0 / 3%);
@@ -521,7 +498,6 @@ section:not(.admin-section) .table-container {
 
 .footer {
   background: var(--glass-opacity-light);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
   backdrop-filter: var(--blur-md) saturate(180%);
   border-top: 1px solid rgb(255 255 255 / 50%);
   box-shadow: 0 -2px 12px rgb(0 0 0 / 3%);

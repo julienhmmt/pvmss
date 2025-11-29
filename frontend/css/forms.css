@@ -229,11 +229,32 @@ input[type="number"] {
     overflow: visible !important;
 }
 
+/* Base field before form-vertical variant */
+.field {
+    margin-bottom: 1.25rem;
+}
+
+.field:not(:last-child) {
+    margin-bottom: 1.25rem;
+}
+
 .form-vertical .field {
     overflow: visible !important;
 }
 
 .form-vertical {
+    overflow: visible !important;
+}
+
+/* Overflow Management for Tooltips */
+.card-header,
+.card-content,
+.columns,
+.section,
+.container,
+fieldset,
+.form-vertical,
+.form-label {
     overflow: visible !important;
 }
 
@@ -250,15 +271,6 @@ input[type="number"] {
 
 .form .form-label {
     overflow: visible !important;
-}
-
-/* Base field before form-vertical variant */
-.field {
-    margin-bottom: 1.25rem;
-}
-
-.field:not(:last-child) {
-    margin-bottom: 1.25rem;
 }
 
 .form-vertical .field+.field {
@@ -294,18 +306,6 @@ fieldset[disabled]::after {
     background: rgb(255 255 255 / 50%);
     z-index: 10;
     border-radius: 6px;
-}
-
-/* Overflow Management for Tooltips */
-.card-header,
-.card-content,
-.columns,
-.section,
-.container,
-fieldset,
-.form-vertical,
-.form-label {
-    overflow: visible !important;
 }
 
 /* Responsive */

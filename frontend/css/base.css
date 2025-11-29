@@ -137,6 +137,7 @@ body.app-body main {
   font-weight: 600;
   position: relative;
 }
+
 .notification {
   /* Structural properties */
   border-radius: var(--radius-md);
@@ -188,6 +189,7 @@ body.app-body main {
   background-color: var(--info-light);
   color: var(--primary-dark) !important;
 }
+
 .card {
   /* Structural properties */
   border-radius: var(--radius-lg);

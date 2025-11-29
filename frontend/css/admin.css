@@ -35,6 +35,13 @@
     padding: 2rem;
 }
 
+.admin-box .button {
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow);
+}
+
 .node-card {
     height: 100%;
     border-radius: var(--radius-md);
@@ -212,13 +219,6 @@
     color: var(--text);
     margin-bottom: 0.5rem;
     font-size: 0.875rem;
-}
-
-.admin-box .button {
-    border-radius: var(--radius-sm);
-    font-weight: 500;
-    transition: all var(--transition-fast);
-    box-shadow: var(--shadow);
 }
 
 .admin-box .button.is-primary {
