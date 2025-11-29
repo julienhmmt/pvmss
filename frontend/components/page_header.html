@@ -57,7 +57,7 @@
     {{range .Actions.Right}}
     <div class="level-item">
       {{if .Link}}
-      <a href="{{.Link}}" class="button is-{{or .Type "light"}}{{if .IsOutlined}} is-outlined{{end}}">
+      <a href="{{.Link}}" class="button is-{{or .Type "light"}}{{if .IsOutlined}} is-outlined{{end}}"{{if .ID}} id="{{.ID}}"{{end}}{{if .DataAttrs}} {{.DataAttrs}}{{end}}>
         {{if .Icon}}<span class="icon"><i class="{{.Icon}}"></i></span>{{end}}
         <span>{{.Text}}</span>
       </a>
