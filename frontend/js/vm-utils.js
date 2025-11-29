@@ -283,10 +283,14 @@ const VMUtils = (function() {
   }
 
   /**
-   * Get CSRF token from meta tag
+   * Get CSRF token from meta tag or global helper
    * @returns {string|null} CSRF token or null if not found
    */
   function getCSRFToken() {
+    // Prefer centralized helper when available
+    if (window.PVMSS && window.PVMSS.security && typeof window.PVMSS.security.getCSRFTokenFromMeta === 'function') {
+      return window.PVMSS.security.getCSRFTokenFromMeta();
+    }
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : null;
   }
