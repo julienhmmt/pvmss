@@ -1,7 +1,12 @@
 {{define "form_field"}}
 {{/* 
-  Reusable form field component
-  Usage: {{template "form_field" (dict "Type" "text" "Name" "username" "Label" "Username" "Required" true "Placeholder" "Enter username" "Value" .Username "Help" "Enter your username")}}
+  DEPRECATED: This component uses Bulma-basic styling and is not used in the application.
+  For new forms, use the canonical patterns from forms.css with:
+  - Pattern A (Full): .form-label + .form-label-icon + .form-tooltip + .form-help
+  - Pattern B (Compact): .form-label + .form-label-icon only
+  See FRONTEND_GUIDE.md for details.
+  
+  Legacy Usage: {{template "form_field" (dict "Type" "text" "Name" "username" "Label" "Username" "Required" true "Placeholder" "Enter username" "Value" .Username "Help" "Enter your username")}}
 */}}
 <div class="field">
   {{if .Label}}

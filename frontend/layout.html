@@ -1,7 +1,7 @@
 {{define "layout"}}
 <!DOCTYPE html>
 
-<html lang="{{.Lang}}" data-theme="light">
+<html lang="{{.Lang}}" data-theme="light"{{if .PageTitle}} data-page-title="{{.PageTitle}}" data-base-title="{{T "Title"}}"{{end}}>
 
 <head>
     <meta charset="UTF-8">

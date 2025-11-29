@@ -1,3 +1,23 @@
+/**
+ * GLASS.CSS - Glassmorphism Layer
+ * ================================
+ * This file INTENTIONALLY re-declares selectors from base.css and components.css
+ * to add glassmorphism visual effects (backdrop-filter, translucent backgrounds).
+ * 
+ * Load Order (required for proper cascade):
+ *   1. tokens.css    - Design tokens
+ *   2. base.css      - Core layout & resets
+ *   3. components.css - UI components
+ *   4. forms.css     - Form system
+ *   5. glass.css     - THIS FILE (glassmorphism overlay)
+ *   6. admin.css     - Admin overrides (flat surfaces)
+ *   7. utilities.css - Utility classes
+ * 
+ * Selectors like .card, .box, .table-container, .notification are defined here
+ * to ADD glass effects on top of their base styling. This is not duplication
+ * but intentional layered enhancement.
+ */
+
 body {
   background: var(--bg-gradient);
   background-attachment: fixed;

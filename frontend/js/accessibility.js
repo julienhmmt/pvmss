@@ -442,6 +442,18 @@
         }
     };
 
+    // Title management
+    const titleManager = {
+        init() {
+            const pageTitle = document.documentElement.dataset.pageTitle;
+            const baseTitle = document.documentElement.dataset.baseTitle || document.title;
+            
+            if (pageTitle && document.title === baseTitle) {
+                document.title = pageTitle + ' - ' + baseTitle;
+            }
+        }
+    };
+
     // Initialize everything when DOM is ready
     function init() {
         if (document.readyState === 'loading') {
@@ -452,6 +464,7 @@
     }
 
     function initApp() {
+        titleManager.init();
         formValidation.init();
         eventHandlers.init();
         progressiveEnhancement.init();
