@@ -31,6 +31,14 @@
         }
     };
 
+    // Security helpers
+    const security = {
+        getCSRFTokenFromMeta() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : null;
+        }
+    };
+
     const notifications = {
         storagePrefix: 'pvmss.notification.',
         timers: new WeakMap(),
@@ -470,6 +478,15 @@
         progressiveEnhancement.init();
         errorHandler.init();
         notifications.init();
+
+        // Expose security helpers globally for other modules
+        if (!window.PVMSS) {
+            window.PVMSS = {};
+        }
+        if (!window.PVMSS.security) {
+            window.PVMSS.security = {};
+        }
+        window.PVMSS.security.getCSRFTokenFromMeta = security.getCSRFTokenFromMeta;
 
         // Add class to indicate JS is available
         document.documentElement.classList.add('js');
