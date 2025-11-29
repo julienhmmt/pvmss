@@ -131,7 +131,7 @@
 
 {{if $enhancedLoading}}
 <script>
-// Enhanced loading indicators for VM action buttons
+// Enhanced loading indicators for VM action buttons with global progress
 (function() {
     'use strict';
 
@@ -152,6 +152,30 @@
         'delete': '{{T "VMDetails.Action.Deleting"}}'
     };
 
+    // Action icons for global progress
+    const actionIcons = {
+        'start': 'fas fa-play',
+        'stop': 'fas fa-stop',
+        'reboot': 'fas fa-redo',
+        'shutdown': 'fas fa-power-off',
+        'reset': 'fas fa-bolt',
+        'console': 'fas fa-terminal',
+        'refresh': 'fas fa-sync-alt',
+        'delete': 'fas fa-trash-alt'
+    };
+
+    // Action types for progress styling
+    const actionTypes = {
+        'start': 'success',
+        'stop': 'warning',
+        'reboot': 'info',
+        'shutdown': 'danger',
+        'reset': 'warning',
+        'console': 'info',
+        'refresh': 'info',
+        'delete': 'danger'
+    };
+
     function showLoading(button, action) {
         if (!button) return;
 
@@ -164,6 +188,20 @@
             button.disabled = true;
             button.classList.add('is-loading');
         }
+
+        // Show global progress if ProgressManager is available
+        if (typeof showProgress === 'function') {
+            const progressId = showProgress({
+                id: 'vm-action-' + action,
+                title: loadingTexts[action] || 'Processing...',
+                message: '{{T "VMDetails.Action.Processing"}}',
+                icon: 'fas fa-spinner fa-spin',
+                type: actionTypes[action] || 'info',
+                showDetails: false,
+                showClose: false
+            });
+            button.dataset.progressId = progressId;
+        }
     }
 
     function hideLoading(button) {
@@ -173,10 +211,14 @@
         const loadingSpan = button.querySelector('.button-loading');
 
         if (textSpan && loadingSpan) {
-            // Restore original text (this would need to be stored or use data attributes)
             loadingSpan.classList.add('is-hidden');
             button.disabled = false;
             button.classList.remove('is-loading');
+        }
+
+        // Hide global progress
+        if (typeof hideProgress === 'function' && button.dataset.progressId) {
+            hideProgress(button.dataset.progressId);
         }
     }
 
@@ -206,7 +248,7 @@
         consoleButton.addEventListener('click', function() {
             showLoading(this, 'console');
 
-            // Simulate opening console (in reality this would open a new window)
+            // Console opening is handled elsewhere, hide loading after timeout
             setTimeout(() => {
                 hideLoading(this);
             }, 2000);
