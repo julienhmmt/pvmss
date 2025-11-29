@@ -247,30 +247,50 @@
     showLoading();
     hideError();
 
-    const result = await VMUtils.fetchJson(`/api/search/vms?${params}`, {
+    try {
+      const result = await VMUtils.fetchJson(`/api/search/vms?${params}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache'
         }
       });
-      
+
       if (!result.success) {
         throw new Error(result.error);
       }
-      
+
       const data = result.data;
 
       if (data.success) {
         renderResults(data.results);
         showResults();
       } else {
-        showError(data.error || translations.searchError);
+        const message = data.error || translations.searchError;
+        showError(message);
         hideResults();
+        if (window.showNotification) {
+          window.showNotification({
+            type: 'danger',
+            title: translations.searchError,
+            message: message,
+            icon: 'fas fa-exclamation-circle',
+            duration: 5000
+          });
+        }
       }
     } catch (error) {
       console.error('Search error:', error);
       showError(translations.loadError);
       hideResults();
+      if (window.showNotification) {
+        window.showNotification({
+          type: 'danger',
+          title: translations.searchError,
+          message: translations.loadError,
+          icon: 'fas fa-exclamation-circle',
+          duration: 5000
+        });
+      }
     } finally {
       hideLoading();
     }

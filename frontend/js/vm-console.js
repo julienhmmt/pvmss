@@ -70,11 +70,16 @@ export function initConsoleManager(config) {
         try {
             updateStatus('Requesting console access...', 'connecting');
             
+            // Resolve CSRF token from config or global helper
+            const resolvedCsrfToken = csrfToken || (window.PVMSS && window.PVMSS.security && typeof window.PVMSS.security.getCSRFTokenFromMeta === 'function'
+                ? window.PVMSS.security.getCSRFTokenFromMeta()
+                : null);
+
             // Get VNC ticket from backend
             const response = await fetch(`/api/vm/vnc-ticket?vmid=${vmid}&node=${node}`, {
                 method: 'POST',
                 headers: {
-                    'X-CSRF-Token': csrfToken,
+                    'X-CSRF-Token': resolvedCsrfToken || '',
                     'Content-Type': 'application/json'
                 },
                 credentials: 'same-origin'
