@@ -65,10 +65,11 @@
 </div>
 {{end}}
 
-{{define "empty_state"}}
+{{define "empty_state_centered"}}
 {{/*
-  Empty state component
-  Usage: {{template "empty_state" (dict "Message" "No items found" "Icon" "fas fa-inbox" "Action" .Action)}}
+  Centered empty state component - more visual, for prominent empty states
+  Usage: {{template "empty_state_centered" (dict "Message" "No items found" "Icon" "fas fa-inbox" "Action" .Action)}}
+  Note: For notification-style empty states, use {{template "empty_state" ...}} from components/empty_state.html
 */}}
 <div class="has-text-centered py-6">
   <span class="icon is-large has-text-grey">
