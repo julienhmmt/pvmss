@@ -239,15 +239,11 @@
       setLoading(true);
     }
     try {
-      const response = await fetch('/api/profile/vms', {
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      const result = await VMUtils.fetchJson('/api/profile/vms');
+      if (!result.success) {
+        throw new Error(result.error);
       }
-      const data = await response.json();
+      const data = result.data;
       if (data && data.status === 'success') {
         updateUI(data);
       }

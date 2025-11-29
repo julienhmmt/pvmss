@@ -346,7 +346,7 @@
                                                     </label>
                                                     <div class="field has-addons">
                                                         <div class="control is-expanded">
-                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{.VMRamMinMB}}" max="{{.VMRamMaxMB}}" step="256" value="{{.VMRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., {{.VMRamMinMB}}">
+                                                            <input id="memory" class="input is-medium" type="number" name="memory" min="{{.VMRamMinMB}}" max="{{.VMRamMaxMB}}" step="256" value="{{.VMRamMinMB}}" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder="e.g., {{.VMRamMinMB}}" data-min-mb="{{.VMRamMinMB}}" data-max-mb="{{.VMRamMaxMB}}">
                                                         </div>
                                                         <div class="control">
                                                             <div class="select is-medium">
@@ -359,68 +359,13 @@
                                                     </div>
                                                     <p class="help has-text-grey is-size-7 mt-2">
                                                         <span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
-                                                        <span id="memory-display">{{T "Common.Selected"}}: {{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB ({{.VMRamMinMB}} MB)</span>
+                                                        <span id="memory-display" data-selected-label="{{T "Common.Selected"}}">{{T "Common.Selected"}}: {{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB ({{.VMRamMinMB}} MB)</span>
                                                         <span class="ml-2">• {{T "Common.Min"}}: {{.VMRamMinMB}} MB ({{printf "%.1f" (div (float64 .VMRamMinMB) 1024)}} GB)</span>
                                                         <span class="ml-2">• {{T "Common.Max"}}: {{.VMRamMaxMB}} MB ({{printf "%.0f" (div (float64 .VMRamMaxMB) 1024)}} GB)</span>
                                                     </p>
                                                 </div>
-                                                <script>
-                                                    // Real-time memory display conversion
-                                                    const memoryInput = document.getElementById('memory');
-                                                    const memoryUnit = document.getElementById('memory-unit');
-                                                    const memoryDisplay = document.getElementById('memory-display');
-                                                    const memorySelectedLabel = '{{T "Common.Selected"}}';
-                                                    
-                                                    function updateMemoryDisplay() {
-                                                        const value = parseFloat(memoryInput.value.replace(',', '.')) || 0;
-                                                        const unit = memoryUnit.value;
-                                                        let mb, gb;
-                                                        
-                                                        if (unit === 'GB') {
-                                                            mb = Math.round(value * 1024);
-                                                            gb = value;
-                                                        } else {
-                                                            mb = Math.round(value);
-                                                            gb = (value / 1024).toFixed(1);
-                                                        }
-                                                        
-                                                        memoryDisplay.textContent = memorySelectedLabel + ': ' + gb + ' GB (' + mb + ' MB)';
-                                                        
-                                                        // Update input min/max based on unit
-                                                        const minMB = {{.VMRamMinMB}};
-                                                        const maxMB = {{.VMRamMaxMB}};
-                                                        if (unit === 'GB') {
-                                                            memoryInput.min = (minMB / 1024).toFixed(1);
-                                                            memoryInput.max = (maxMB / 1024).toFixed(0);
-                                                            memoryInput.step = '0.5';
-                                                        } else {
-                                                            memoryInput.min = String(minMB);
-                                                            memoryInput.max = String(maxMB);
-                                                            memoryInput.step = '256';
-                                                        }
-                                                    }
-                                                    
-                                                    memoryInput.addEventListener('input', updateMemoryDisplay);
-                                                    memoryInput.addEventListener('change', updateMemoryDisplay);
-                                                    memoryUnit.addEventListener('change', function() {
-                                                        // Convert current value when unit changes
-                                                        const currentValue = parseFloat(memoryInput.value.replace(',', '.')) || 0;
-                                                        if (this.value === 'GB' && memoryInput.dataset.lastUnit === 'MB') {
-                                                            // Convert MB to GB, use decimal point
-                                                            const gbValue = currentValue / 1024;
-                                                            memoryInput.value = gbValue.toFixed(1);
-                                                        } else if (this.value === 'MB' && memoryInput.dataset.lastUnit === 'GB') {
-                                                            // Convert GB to MB, round to integer
-                                                            memoryInput.value = Math.round(currentValue * 1024);
-                                                        }
-                                                        memoryInput.dataset.lastUnit = this.value;
-                                                        updateMemoryDisplay();
-                                                    });
-                                                    
-                                                    // Initialize
-                                                    memoryInput.dataset.lastUnit = 'MB';
-                                                    updateMemoryDisplay();
-                                                </script>
+                                                <script src="/js/vm-utils.js" defer></script>
+                                                <script src="/js/vm-create.js" defer></script>
                                                 <!-- Disk Bus Type Selection -->
                                                 <div class="field">
                                                     <label for="diskBusType" class="form-label">
