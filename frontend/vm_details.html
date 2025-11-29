@@ -2,606 +2,49 @@
 <script>
   // Add celebration banner animations
   const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideInBounce {
-      0% {
-        opacity: 0;
-        transform: translateY(-20px) scale(0.95);
-      }
-      50% {
-        opacity: 0.8;
-        transform: translateY(5px) scale(1.02);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-    
-    @keyframes slideOut {
-      0% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-      100% {
-        opacity: 0;
-        transform: translateY(-10px) scale(0.95);
-      }
-    }
-    
-    #vm-celebration-banner {
-      box-shadow: 0 8px 25px rgba(72, 199, 116, 0.2);
-      border-radius: 12px;
-    }
-    
-    #vm-celebration-banner .button {
-      transition: all 0.2s ease;
-    }
-    
-    #vm-celebration-banner .button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    /* Card hover effects */
-    .stat-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-    }
-    
-    .network-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-    }
-    
-    .security-feature-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-    }
-    
-    .network-interface-card:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-    }
-    
-    .disk-item:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-    }
-    
-    .cdrom-item:hover {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-    }
-  `;
+  style.textContent = '@keyframes slideInBounce{0%{opacity:0;transform:translateY(-20px) scale(0.95)}50%{opacity:0.8;transform:translateY(5px) scale(1.02)}100%{opacity:1;transform:translateY(0) scale(1)}}@keyframes slideOut{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-10px) scale(0.95)}}#vm-celebration-banner{box-shadow:0 8px 25px rgba(72,199,116,0.2);border-radius:12px}#vm-celebration-banner .button{transition:all 0.2s ease}#vm-celebration-banner .button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}.stat-card:hover,.network-card:hover,.security-feature-card:hover,.network-interface-card:hover,.disk-item:hover,.cdrom-item:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08)!important}';
   document.head.appendChild(style);
-
-  
-  // Network card toggle function - Enhanced for instant feedback
-  function toggleNetworkCard(cardIndex, enabled, csrfToken, vmid, node) {
-    const toggleContainer = document.querySelector(`#network-toggle-${cardIndex}`);
-    const toggleLabel = document.querySelector(`#network-toggle-${cardIndex} .network-toggle-label`);
-    const toggleInput = document.querySelector(`#network-toggle-${cardIndex} input[type="checkbox"]`);
-    const toggleSlider = document.querySelector(`#network-toggle-${cardIndex} .network-toggle-slider`);
-    
-    // Show loading state immediately
-    const originalLabel = toggleLabel.innerHTML;
-    toggleContainer.classList.add('loading');
-    toggleLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> {{T "Common.Processing"}}...';
-    toggleInput.disabled = true;
-    
-    const formData = new URLSearchParams();
-    formData.append('csrf_token', csrfToken);
-    formData.append('vmid', vmid);
-    formData.append('node', node);
-    formData.append('card_index', cardIndex);
-    formData.append('enabled', enabled ? '1' : '0');
-    
-    fetch('/vm/toggle/network', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData
-    })
-    .then(response => {
-      if (response.redirected) {
-        window.location.href = response.url;
-        return;
-      }
-      
-      toggleContainer.classList.remove('loading');
-      
-      if (response.ok) {
-        // Add success animation
-        toggleContainer.classList.add('success');
-        setTimeout(() => toggleContainer.classList.remove('success'), 600);
-        
-        // Update UI immediately for instant feedback
-        updateNetworkCardUI(cardIndex, enabled);
-        
-        // Show success notification
-        const successMsg = enabled ? '{{T "Message.NetworkCardEnabled"}}' : '{{T "Message.NetworkCardDisabled"}}';
-        showSuccess(successMsg);
-        
-        // Optional: Refresh data in background after a short delay
-        setTimeout(() => {
-          refreshNetworkData();
-        }, 1000);
-        
-      } else {
-        // Add error animation
-        toggleContainer.classList.add('error');
-        setTimeout(() => toggleContainer.classList.remove('error'), 500);
-        
-        // Revert UI on failure
-        toggleInput.checked = !enabled;
-        toggleLabel.innerHTML = originalLabel;
-        toggleInput.disabled = false;
-        
-        console.error('Network toggle failed');
-        showError('{{T "Message.ActionFailed"}}');
-      }
-    })
-    .catch(error => {
-      toggleContainer.classList.remove('loading');
-      
-      // Add error animation
-      toggleContainer.classList.add('error');
-      setTimeout(() => toggleContainer.classList.remove('error'), 500);
-      
-      // Revert UI on error
-      toggleInput.checked = !enabled;
-      toggleLabel.innerHTML = originalLabel;
-      toggleInput.disabled = false;
-      
-      console.error('Error:', error);
-      showError('{{T "Message.ActionFailed"}}');
-    });
-  }
-  
-  // Update network card UI instantly
-  function updateNetworkCardUI(cardIndex, enabled) {
-    const toggleLabel = document.querySelector(`#network-toggle-${cardIndex} .network-toggle-label`);
-    const toggleInput = document.querySelector(`#network-toggle-${cardIndex} input[type="checkbox"]`);
-    const toggleContainer = document.querySelector(`#network-toggle-${cardIndex}`);
-    
-    // Update checkbox state and ARIA
-    toggleInput.checked = enabled;
-    toggleInput.setAttribute('aria-checked', enabled ? 'true' : 'false');
-    
-    // Update label with smooth transition
-    toggleLabel.style.opacity = '0';
-    setTimeout(() => {
-      if (enabled) {
-        toggleLabel.innerHTML = '<i class="fas fa-plug-circle-check has-text-success"></i> {{T "Common.Enabled"}}';
-      } else {
-        toggleLabel.innerHTML = '<i class="fas fa-plug-circle-xmark has-text-grey"></i> {{T "Common.Disabled"}}';
-      }
-      toggleLabel.style.opacity = '1';
-    }, 100);
-    
-    // Re-enable controls
-    toggleInput.disabled = false;
-    
-    // Update tooltip
-    const action = enabled ? '{{T "Common.Disable"}}' : '{{T "Common.Enable"}}';
-    toggleContainer.title = `${action} {{T "VM.Create.Network"}} #${parseInt(cardIndex) + 1}`;
-  }
-  
-  // Refresh network data in background (optional)
-  function refreshNetworkData() {
-    // This could refresh network interface data without full page reload
-    // For now, we'll skip it to keep the experience fast
-    console.log('Network data refreshed');
-  }
-
-  // Auto-refresh VM metrics with visibility optimization
-  let autoRefreshInterval;
-  let isAutoRefreshEnabled = true;
-  let isPageVisible = true;
-  const vmid = '{{.VM.VMID}}';
-  const node = '{{.VM.Node}}';
-
-  // Visibility API to pause auto-refresh when page is not visible
-  function handleVisibilityChange() {
-    isPageVisible = !document.hidden;
-    if (isPageVisible) {
-      console.log('Page became visible, resuming auto-refresh');
-      startAutoRefresh();
-    } else {
-      console.log('Page became hidden, pausing auto-refresh');
-      if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
-      }
-    }
-  }
-
-  // Add visibility change listener
-  if (typeof document.hidden !== 'undefined') {
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-  }
-
-  function startAutoRefresh() {
-    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    
-    // Only start if page is visible and auto-refresh is enabled
-    if (!isPageVisible || !isAutoRefreshEnabled) {
-      console.log('Auto-refresh not started: page not visible or disabled');
-      return;
-    }
-    
-    autoRefreshInterval = setInterval(() => {
-      if (!isAutoRefreshEnabled || !isPageVisible) return;
-      
-      fetch(`/api/vm/${vmid}/metrics`)
-        .then(response => {
-          if (!response.ok) throw new Error('Failed to fetch metrics');
-          return response.json();
-        })
-        .then(data => {
-          updateVMMetrics(data);
-        })
-        .catch(error => {
-          console.log('Auto-refresh paused:', error.message);
-          // Don't show error to user, just pause refresh temporarily
-          setTimeout(() => {
-            if (isPageVisible && isAutoRefreshEnabled) {
-              startAutoRefresh(); // Try to restart
-            }
-          }, 10000); // Retry in 10 seconds
-        });
-    }, 30000); // Refresh every 30 seconds
-  }
-
-  // Skeleton loading management
-  function showSkeleton(cardId) {
-    const card = document.getElementById(cardId);
-    if (!card) return;
-    
-    const content = card.querySelector('.card-content');
-    if (!content) return;
-    
-    // Add skeleton class and hide real content
-    card.classList.add('is-loading');
-    const realContent = content.innerHTML;
-    content.setAttribute('data-original-content', realContent);
-    
-    // Create skeleton content
-    content.innerHTML = `
-      <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
-        <div class="is-flex is-align-items-center">
-          <span class="icon skeleton skeleton-circle mr-3"></span>
-          <div>
-            <div class="skeleton skeleton-title"></div>
-            <div class="skeleton skeleton-text" style="width: 80%;"></div>
-          </div>
-        </div>
-        <div class="has-text-right">
-          <div class="skeleton skeleton-title" style="width: 50px;"></div>
-          <div class="skeleton skeleton-text" style="width: 60px;"></div>
-        </div>
-      </div>
-      <div style="margin-top: 1.5rem;">
-        <div class="skeleton skeleton-text" style="width: 90%;"></div>
-        <div class="skeleton skeleton-text" style="width: 70%; margin-top: 0.5rem;"></div>
-        <div style="margin-top: 0.75rem;">
-          <div class="skeleton" style="height: 6px; border-radius: 3px;"></div>
-        </div>
-      </div>
-    `;
-  }
-
-  function hideSkeleton(cardId) {
-    const card = document.getElementById(cardId);
-    if (!card) return;
-    
-    const content = card.querySelector('.card-content');
-    if (!content) return;
-    
-    // Restore original content with fade-in
-    const originalContent = content.getAttribute('data-original-content');
-    if (originalContent) {
-      content.innerHTML = originalContent;
-      card.classList.remove('is-loading');
-      card.classList.add('fade-in');
-      
-      // Remove fade-in class after animation
-      setTimeout(() => {
-        card.classList.remove('fade-in');
-      }, 300);
-    }
-  }
-
-  function updateMetrics(data) {
-    const status = data.status;
-    const cpuPercent = data.cpu ? Math.round(data.cpu * 100) : 0;
-    const memUsed = data.mem || 0;
-    const memTotal = data.maxmem || 1;
-    const memPercent = Math.round((memUsed / memTotal) * 100);
-
-    // Update status if changed
-    if (status !== lastStatus) {
-      updateStatusBadge(status);
-      lastStatus = status;
-      
-      // Hide/show progress bars based on running status
-      const isRunning = status === 'running';
-      if (cpuProgress) cpuProgress.style.display = isRunning ? '' : 'none';
-      if (ramProgress) ramProgress.style.display = isRunning ? '' : 'none';
-      
-      // Update CPU/RAM displays
-      if (cpuMetric) {
-        cpuMetric.textContent = isRunning ? `${cpuPercent}%` : '--';
-      }
-      if (ramMetric) {
-        ramMetric.textContent = isRunning ? '{{FormatMemoryGB .VM.Mem true}}' : '--';
-      }
-    }
-
-    // Update metrics only if VM is running
-    if (status === 'running') {
-      // Update CPU
-      if (cpuMetric) cpuMetric.textContent = `${cpuPercent}%`;
-      if (cpuProgress) cpuProgress.value = cpuPercent;
-
-      // Update RAM
-      if (ramMetric) ramMetric.textContent = '{{FormatMemoryGB .VM.Mem true}}';
-      if (ramProgress) ramProgress.value = memUsed;
-      ramProgress.max = memTotal;
-    }
-
-    // Update uptime (if available in data)
-    if (data.uptime !== undefined && uptimeDisplay) {
-      uptimeDisplay.textContent = formatUptime(data.uptime);
-    }
-  }
-
-  function formatBytes(bytes) {
-    const gb = bytes / (1024 * 1024 * 1024);
-    if (gb >= 1) {
-      return gb.toFixed(1) + ' GB';
-    }
-    const mb = bytes / (1024 * 1024);
-    return mb.toFixed(0) + ' MB';
-  }
-
-  function formatUptime(seconds) {
-    if (seconds < 60) return seconds + 's';
-    if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
-    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
-    return Math.floor(seconds / 86400) + 'd';
-  }
-
-  function showNotification(message, type = 'info', autoDismiss = true) {
-    // Enhanced notification system with auto-dismissal and stacking
-    const notificationId = 'notification-' + Date.now();
-    const notification = document.createElement('div');
-    notification.id = notificationId;
-    notification.className = `notification is-${type} is-light`;
-    notification.style.cssText = `
-      position: fixed; 
-      top: 20px; 
-      right: 20px; 
-      z-index: 9999; 
-      max-width: 350px;
-      min-width: 250px;
-      opacity: 0;
-      transform: translateX(100%);
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    `;
-    
-    // Add icon based on type
-    let icon = 'fas fa-info-circle';
-    if (type === 'success') icon = 'fas fa-check-circle';
-    if (type === 'warning') icon = 'fas fa-exclamation-triangle';
-    if (type === 'danger') icon = 'fas fa-times-circle';
-    
-    notification.innerHTML = `
-      <button class="delete" onclick="dismissNotification('${notificationId}')"></button>
-      <div class="media">
-        <div class="media-left">
-          <span class="icon has-text-${type}">
-            <i class="${icon}"></i>
-          </span>
-        </div>
-        <div class="media-content">
-          <p>${message}</p>
-        </div>
-      </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Position notification with stacking
-    positionNotification(notification);
-    
-    // Animate in
-    setTimeout(() => {
-      notification.style.opacity = '1';
-      notification.style.transform = 'translateX(0)';
-    }, 50);
-    
-    // Auto-dismiss after specified time
-    if (autoDismiss) {
-      const dismissTime = type === 'success' ? 3000 : type === 'danger' ? 8000 : 5000;
-      setTimeout(() => {
-        dismissNotification(notificationId);
-      }, dismissTime);
-    }
-    
-    return notificationId;
-  }
-
-  function dismissNotification(notificationId) {
-    const notification = document.getElementById(notificationId);
-    if (!notification) return;
-    
-    // Animate out
-    notification.style.opacity = '0';
-    notification.style.transform = 'translateX(100%)';
-    
-    // Remove after animation
-    setTimeout(() => {
-      if (notification.parentElement) {
-        notification.remove();
-        // Reposition remaining notifications
-        repositionAllNotifications();
-      }
-    }, 300);
-  }
-
-  function positionNotification(notification) {
-    const existingNotifications = document.querySelectorAll('.notification[id^="notification-"]:not([id="' + notification.id + '"])');
-    const topOffset = 20 + (existingNotifications.length * 80);
-    notification.style.top = topOffset + 'px';
-  }
-
-  function repositionAllNotifications() {
-    const notifications = document.querySelectorAll('.notification[id^="notification-"]');
-    notifications.forEach((notif, index) => {
-      const topOffset = 20 + (index * 80);
-      notif.style.top = topOffset + 'px';
-    });
-  }
-
-  // Global notification shortcuts
-  window.showSuccess = (message) => showNotification(message, 'success');
-  window.showError = (message) => showNotification(message, 'danger');
-  window.showWarning = (message) => showNotification(message, 'warning');
-  window.showInfo = (message) => showNotification(message, 'info');
-
-  // Celebration banner functions
-  function dismissCelebration() {
-    const banner = document.getElementById('vm-celebration-banner');
-    if (banner) {
-      banner.style.animation = 'slideOut 0.3s ease-in forwards';
-      setTimeout(() => {
-        banner.remove();
-      }, 300);
-    }
-  }
-
-  function startVM() {
-    const startBtn = document.querySelector('form[action="/vm/action"] input[value="start"]');
-    if (startBtn) {
-      startBtn.closest('form').submit();
-    } else {
-      showError('Bouton de démarrage non trouvé');
-    }
-  }
-
-  function openConsole() {
-    const consoleBtn = document.querySelector('a[href*="console"]');
-    if (consoleBtn) {
-      window.open(consoleBtn.href, '_blank');
-    } else {
-      showError('Lien console non trouvé');
-    }
-  }
-
-  function editResources() {
-    const editBtn = document.querySelector('a[href*="edit=resources"]');
-    if (editBtn) {
-      window.location.href = editBtn.href;
-    } else {
-      showError('Lien modification ressources non trouvé');
-    }
-  }
-
-  // Pause auto-refresh when user is interacting
-  function pauseAutoRefresh() {
-    isAutoRefreshEnabled = false;
-    setTimeout(() => {
-      isAutoRefreshEnabled = true;
-    }, 60000); // Resume after 1 minute of inactivity
-  }
-
-  // Loading indicators for VM actions
-  function showLoadingOnButton(button, loadingText) {
-    if (!button) return;
-    
-    // Store original content
-    const originalContent = button.innerHTML;
-    button.setAttribute('data-original-content', originalContent);
-    
-    // Show loading state
-    button.innerHTML = `
-      <span class="icon">
-        <i class="fas fa-spinner fa-spin"></i>
-      </span>
-      <span>${loadingText}</span>
-    `;
-    button.disabled = true;
-    button.classList.add('is-loading');
-  }
-
-  function restoreButton(button) {
-    if (!button) return;
-    
-    const originalContent = button.getAttribute('data-original-content');
-    if (originalContent) {
-      button.innerHTML = originalContent;
-      button.removeAttribute('data-original-content');
-    }
-    button.disabled = false;
-    button.classList.remove('is-loading');
-  }
-
-  // Enhanced form submission with loading indicators
-  function enhanceVMActionForms() {
-    const actionForms = document.querySelectorAll('form[action="/vm/action"]');
-    
-    actionForms.forEach(form => {
-      form.addEventListener('submit', function(e) {
-        const submitButton = form.querySelector('button[type="submit"]');
-        const action = form.querySelector('input[name="action"]').value;
-        
-        let loadingText = 'Processing...';
-        switch(action) {
-          case 'start': loadingText = 'Starting...'; break;
-          case 'stop': loadingText = 'Stopping...'; break;
-          case 'reboot': loadingText = 'Rebooting...'; break;
-          case 'shutdown': loadingText = 'Shutting down...'; break;
-          case 'reset': loadingText = 'Resetting...'; break;
-        }
-        
-        showLoadingOnButton(submitButton, loadingText);
-        
-        // Disable all other action buttons during operation
-        const allActionButtons = document.querySelectorAll('form[action="/vm/action"] button');
-        allActionButtons.forEach(btn => {
-          if (btn !== submitButton) {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-          }
-        });
-      });
-    });
-  }
-
-  // Initialize auto-refresh
-  document.addEventListener('DOMContentLoaded', function() {
-    // Only start auto-refresh for running VMs
-    const statusBadge = document.getElementById('vm-status-badge');
-    if (statusBadge && statusBadge.textContent.includes('Running')) {
-      startAutoRefresh();
-    }
-
-    // Pause refresh on user interaction
-    document.addEventListener('click', pauseAutoRefresh);
-    document.addEventListener('keypress', pauseAutoRefresh);
-    
-    // Show refresh indicator
-    const refreshBtn = document.querySelector('a[href*="refresh=1"]');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        window.location.href = this.href;
-      });
-    }
-
-    // Enhance VM action forms with loading indicators
-    enhanceVMActionForms();
-  });
 </script>
-<section class="section">
+
+<div id="vm-details-config" class="is-hidden" aria-hidden="true"
+     data-processing-label="{{T "Common.Processing"}}"
+     data-msg-network-enabled="{{T "Message.NetworkCardEnabled"}}"
+     data-msg-network-disabled="{{T "Message.NetworkCardDisabled"}}"
+     data-msg-action-failed="{{T "Message.ActionFailed"}}"
+     data-label-enabled="{{T "Common.Enabled"}}"
+     data-label-disabled="{{T "Common.Disabled"}}"
+     data-label-enable="{{T "Common.Enable"}}"
+     data-label-disable="{{T "Common.Disable"}}"
+     data-network-label="{{T "VM.Create.Network"}}"
+     data-vmid="{{.VM.VMID}}"
+     data-node="{{.VM.Node}}"></div>
+
+<script src="/js/vm-details.js" defer></script>
+
+<script>
+// Generate random MAC address function
+function generateRandomMAC(inputId) {
+    // Generate a random locally-administered MAC address
+    // Use Proxmox-style prefix: BC:24:11 (locally administered, unicast)
+    const prefix = 'BC:24:11';
+    
+    // Generate 3 random bytes
+    const randomBytes = [];
+    for (let i = 0; i < 3; i++) {
+        randomBytes.push(Math.floor(Math.random() * 256).toString(16).padStart(2, '0').toUpperCase());
+    }
+    
+    const randomMAC = `${prefix}:${randomBytes.join(':')}`;
+    
+    // Set the input field value
+    const input = document.getElementById(inputId);
+    if (input) {
+        input.value = randomMAC;
+        // Trigger input event to update any validation
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+</script>
     <div class="container max-w-1200">
         {{/* Standard notifications */}}
         {{if .Success}}
@@ -1465,8 +908,12 @@
                                         role="switch"
                                         aria-label="{{T "VM.Create.Network"}} #{{addInt $idx 1}}"
                                         {{if not $card.LinkDown}}checked aria-checked="true"{{else}}aria-checked="false"{{end}}
-                                        onchange="toggleNetworkCard({{$idx}}, this.checked, '{{$.CSRFToken}}', '{{$.VM.VMID}}', '{{$.VM.Node}}')"
-                                      />
+                                        data-network-index="{{$idx}}"
+                                        data-csrf-token="{{$.CSRFToken}}"
+                                        data-vmid="{{$.VM.VMID}}"
+                                        data-node="{{$.VM.Node}}"
+                                        class="network-toggle-input"
+                                        />
                                       <span class="network-toggle-slider" aria-hidden="true"></span>
                                       <span class="network-toggle-label">
                                         {{if $card.LinkDown}}
@@ -2323,7 +1770,9 @@
         window.addEventListener('beforeunload', stopAutoRefresh);
     }
 })();
-
+*/
+</script>
+<script>
 // Generate random MAC address function
 function generateRandomMAC(inputId) {
     // Generate a random locally-administered MAC address
