@@ -54,6 +54,10 @@
     searchError: t.searchError || 'Search error',
     searching: t.searching || 'Searching...',
     status: t.status || 'Status',
+    statusRunning: t.statusRunning || 'Running',
+    statusStopped: t.statusStopped || 'Stopped',
+    statusPaused: t.statusPaused || 'Paused',
+    statusUnknown: t.statusUnknown || 'Unknown',
     tags: t.tags || 'Tags',
     vmid: t.vmid || 'VMID'
   };
@@ -112,6 +116,22 @@
   const escapeHtml = VMUtils.escapeHtml;
   const getStatusBadgeClass = VMUtils.getStatusBadgeClass;
   const getStatusIcon = VMUtils.getStatusIcon;
+
+  /**
+   * Get translated status label
+   * @param {string} status - VM status
+   * @returns {string} Translated status label
+   */
+  function getStatusLabel(status) {
+    const normalized = (status || '').toLowerCase();
+    switch (normalized) {
+      case 'running': return translations.statusRunning;
+      case 'stopped': return translations.statusStopped;
+      case 'paused':
+      case 'suspended': return translations.statusPaused;
+      default: return translations.statusUnknown;
+    }
+  }
 
   /**
    * Render search results
@@ -188,7 +208,7 @@
           <td class="has-text-centered">
             <span class="tag ${statusClass} is-medium">
               <span class="icon is-small"><i class="fas ${statusIcon}"></i></span>
-              <span>${escapeHtml(vm.status)}</span>
+              <span>${escapeHtml(getStatusLabel(vm.status))}</span>
             </span>
           </td>
           <td class="has-text-centered">

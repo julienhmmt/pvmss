@@ -245,3 +245,15 @@ other = "Do you want to continue?"
 other = "Yes, resize"
 ["VMDetails.DiskResize.CancelButton"]
 other = "Cancel"
+
+# Celebration Banner (new VM created)
+["VMDetails.Celebration.Title"]
+other = "VM created successfully!"
+["VMDetails.Celebration.Message"]
+other = "Your new virtual machine <strong>{{.Name}}</strong> (ID: {{.VMID}}) is now ready to use."
+["VMDetails.Celebration.StartNow"]
+other = "Start now"
+["VMDetails.Celebration.OpenConsole"]
+other = "Open console"
+["VMDetails.Celebration.EditResources"]
+other = "Edit resources"

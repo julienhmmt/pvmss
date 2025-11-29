@@ -1,3 +1,15 @@
+/**
+ * ADMIN.CSS - Admin UI Overrides
+ * ===============================
+ * This file provides admin-specific styling that overrides glass.css effects.
+ * Admin UI uses flat white surfaces instead of glassmorphism for clarity.
+ * 
+ * All selectors are scoped with .admin-* prefixes to avoid conflicts with
+ * the main user-facing UI.
+ * 
+ * Load Order: This file loads AFTER glass.css to override glass effects.
+ */
+
 .section-anchor {
     scroll-margin-top: 4.5rem;
 }

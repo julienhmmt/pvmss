@@ -721,23 +721,23 @@
                 <div class="media-content">
                     <p class="has-text-weight-semibold mb-2" style="color: #2d5a3d;">
                         <i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>
-                        VM créée avec succès !
+                        {{T "VMDetails.Celebration.Title"}}
                     </p>
                     <p style="color: #2d5a3d; margin-bottom: 0.5rem;">
-                        Votre nouvelle machine virtuelle <strong>{{.VM.Name}}</strong> (ID: {{.VM.VMID}}) est maintenant prête à être utilisée.
+                        {{T "VMDetails.Celebration.Message" .VM.Name .VM.VMID}}
                     </p>
                     <div class="buttons" style="margin-top: 0.75rem;">
                         <button class="button is-small is-success" onclick="startVM()">
                             <span class="icon is-small"><i class="fas fa-play"></i></span>
-                            <span>Démarrer maintenant</span>
+                            <span>{{T "VMDetails.Celebration.StartNow"}}</span>
                         </button>
                         <button class="button is-small is-info" onclick="openConsole()">
                             <span class="icon is-small"><i class="fas fa-terminal"></i></span>
-                            <span>Ouvrir la console</span>
+                            <span>{{T "VMDetails.Celebration.OpenConsole"}}</span>
                         </button>
                         <button class="button is-small is-primary" onclick="editResources()">
                             <span class="icon is-small"><i class="fas fa-sliders"></i></span>
-                            <span>Modifier les ressources</span>
+                            <span>{{T "VMDetails.Celebration.EditResources"}}</span>
                         </button>
                     </div>
                 </div>
