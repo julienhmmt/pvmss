@@ -220,6 +220,77 @@ const VMUtils = (function() {
     };
   }
 
+  /**
+   * Fetch JSON with error handling and CSRF support
+   * @param {string} url - URL to fetch
+   * @param {Object} options - Fetch options
+   * @returns {Promise<Object>} Response with success, data, and error properties
+   */
+  async function fetchJson(url, options = {}) {
+    const defaultOptions = {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      credentials: 'same-origin'
+    };
+
+    // Add CSRF token for non-GET requests
+    if (options.method && options.method.toUpperCase() !== 'GET') {
+      const csrfToken = getCSRFToken();
+      if (csrfToken) {
+        defaultOptions.headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+
+    const finalOptions = {
+      ...defaultOptions,
+      ...options,
+      headers: {
+        ...defaultOptions.headers,
+        ...options.headers
+      }
+    };
+
+    try {
+      const response = await fetch(url, finalOptions);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`fetchJson error: ${response.status} ${response.statusText}`, errorText);
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText}`,
+          data: null
+        };
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        error: null,
+        data: data
+      };
+    } catch (error) {
+      console.error('fetchJson network error:', error);
+      return {
+        success: false,
+        error: error.message || 'Network error',
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Get CSRF token from meta tag
+   * @returns {string|null} CSRF token or null if not found
+   */
+  function getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : null;
+  }
+
   // Public API
   return {
     STATUS_CONFIG,
@@ -235,7 +306,9 @@ const VMUtils = (function() {
     formatUptime,
     parseTags,
     createTagElements,
-    debounce
+    debounce,
+    fetchJson,
+    getCSRFToken
   };
 })();
 

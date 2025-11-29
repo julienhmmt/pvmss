@@ -247,20 +247,18 @@
     showLoading();
     hideError();
 
-    try {
-      const response = await fetch(`/api/search/vms?${params}`, {
+    const result = await VMUtils.fetchJson(`/api/search/vms?${params}`, {
         method: 'GET',
         headers: {
-          'Accept': 'application/json',
           'Cache-Control': 'no-cache'
         }
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      
+      if (!result.success) {
+        throw new Error(result.error);
       }
-
-      const data = await response.json();
+      
+      const data = result.data;
 
       if (data.success) {
         renderResults(data.results);
