@@ -1,10 +1,17 @@
 /**
  * Search Page JavaScript Module
  * Handles AJAX-powered VM search functionality
+ * Requires: vm-utils.js
  */
 
 (function() {
   'use strict';
+
+  // Ensure VMUtils is available
+  if (typeof VMUtils === 'undefined') {
+    console.error('VMUtils not loaded. Ensure vm-utils.js is included before search-page.js');
+    return;
+  }
 
   // DOM elements
   const vmidSearch = document.getElementById('vmid-search');
@@ -101,46 +108,10 @@
     searchResults.classList.add('is-hidden');
   }
 
-  /**
-   * Get CSS class for status badge
-   * @param {string} status - VM status
-   * @returns {string} CSS class
-   */
-  function getStatusBadgeClass(status) {
-    switch (status) {
-      case 'running': return 'is-success';
-      case 'stopped': return 'is-danger';
-      case 'paused':
-      case 'suspended': return 'is-warning';
-      default: return 'is-light';
-    }
-  }
-
-  /**
-   * Get icon class for status
-   * @param {string} status - VM status
-   * @returns {string} Icon class
-   */
-  function getStatusIcon(status) {
-    switch (status) {
-      case 'running': return 'fa-circle-play';
-      case 'stopped': return 'fa-circle-stop';
-      case 'paused':
-      case 'suspended': return 'fa-circle-pause';
-      default: return 'fa-question-circle';
-    }
-  }
-
-  /**
-   * Escape HTML to prevent XSS
-   * @param {string} text - Text to escape
-   * @returns {string} Escaped text
-   */
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+  // Use shared utilities from VMUtils
+  const escapeHtml = VMUtils.escapeHtml;
+  const getStatusBadgeClass = VMUtils.getStatusBadgeClass;
+  const getStatusIcon = VMUtils.getStatusIcon;
 
   /**
    * Render search results

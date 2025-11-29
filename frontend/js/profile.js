@@ -1,10 +1,17 @@
 /**
  * Profile Page JavaScript Module
  * Handles VM list auto-refresh, stats updates, and table rendering
+ * Requires: vm-utils.js
  */
 
 (function () {
   'use strict';
+
+  // Ensure VMUtils is available
+  if (typeof VMUtils === 'undefined') {
+    console.error('VMUtils not loaded. Ensure vm-utils.js is included before profile.js');
+    return;
+  }
 
   const card = document.getElementById('profile-vms-card');
   if (!card || card.dataset.hasError === '1') {
@@ -14,14 +21,6 @@
   const refreshBtn = document.querySelector('[data-profile-refresh]');
   const translationsEl = document.getElementById('profile-translations');
   const labels = translationsEl ? translationsEl.dataset : {};
-
-  const statusConfig = {
-    running: { className: 'is-success', icon: 'fa-circle-play', label: labels.statusRunning || 'Running' },
-    stopped: { className: 'is-danger', icon: 'fa-circle-stop', label: labels.statusStopped || 'Stopped' },
-    paused: { className: 'is-warning', icon: 'fa-circle-pause', label: labels.statusPaused || 'Paused' },
-    suspended: { className: 'is-warning', icon: 'fa-circle-pause', label: labels.statusPaused || 'Paused' },
-    unknown: { className: 'is-warning', icon: 'fa-circle-question', label: labels.statusUnknown || 'Unknown' }
-  };
 
   const statsColumns = document.getElementById('profile-stats-columns');
   const statsEmpty = document.getElementById('profile-stats-empty');
@@ -46,16 +45,6 @@
   let isFetching = false;
 
   /**
-   * Toggle hidden class on an element
-   * @param {HTMLElement} element - Target element
-   * @param {boolean} hide - Whether to hide the element
-   */
-  function toggleHidden(element, hide) {
-    if (!element) return;
-    element.classList.toggle('is-hidden', !!hide);
-  }
-
-  /**
    * Set loading state on refresh button
    * @param {boolean} isLoading - Loading state
    */
@@ -63,39 +52,6 @@
     if (!refreshBtn) return;
     refreshBtn.classList.toggle('is-loading', isLoading);
     refreshBtn.disabled = isLoading;
-  }
-
-  /**
-   * Create a Font Awesome icon element
-   * @param {string} iconClass - Icon class (without 'fas' prefix)
-   * @returns {HTMLElement} Icon element
-   */
-  function createIcon(iconClass) {
-    const icon = document.createElement('i');
-    icon.className = `fas ${iconClass}`;
-    return icon;
-  }
-
-  /**
-   * Create a status badge element
-   * @param {string} status - VM status (running, stopped, paused, etc.)
-   * @returns {HTMLElement} Status badge element
-   */
-  function createStatusBadge(status) {
-    const normalized = (status || '').toLowerCase();
-    const config = statusConfig[normalized] || statusConfig.unknown;
-    const badge = document.createElement('span');
-    badge.className = `tag ${config.className}`;
-
-    const iconSpan = document.createElement('span');
-    iconSpan.className = 'icon';
-    iconSpan.appendChild(createIcon(config.icon));
-
-    const textSpan = document.createElement('span');
-    textSpan.textContent = config.label;
-
-    badge.append(iconSpan, textSpan);
-    return badge;
   }
 
   /**
@@ -113,25 +69,13 @@
 
     const iconSpan = document.createElement('span');
     iconSpan.className = 'icon';
-    iconSpan.appendChild(createIcon(iconClass));
+    iconSpan.appendChild(VMUtils.createIcon(iconClass));
 
     const textSpan = document.createElement('span');
     textSpan.textContent = text;
 
     anchor.append(iconSpan, textSpan);
     return anchor;
-  }
-
-  /**
-   * Create a placeholder element for empty values
-   * @param {string} text - Placeholder text
-   * @returns {HTMLElement} Placeholder element
-   */
-  function createPlaceholder(text) {
-    const placeholder = document.createElement('em');
-    placeholder.className = 'has-text-grey-light';
-    placeholder.textContent = text;
-    return placeholder;
   }
 
   /**
@@ -163,7 +107,7 @@
     if (nameValue) {
       nameSpan.textContent = nameValue;
     } else {
-      nameSpan.appendChild(createPlaceholder(labels.noName || ''));
+      nameSpan.appendChild(VMUtils.createPlaceholder(labels.noName || ''));
     }
     nameWrapper.appendChild(nameSpan);
     nameCell.appendChild(nameWrapper);
@@ -178,7 +122,7 @@
     if (descValue) {
       descSpan.textContent = descValue;
     } else {
-      descSpan.appendChild(createPlaceholder(labels.noDescription || ''));
+      descSpan.appendChild(VMUtils.createPlaceholder(labels.noDescription || ''));
     }
     descCell.appendChild(descSpan);
     tr.appendChild(descCell);
@@ -195,7 +139,7 @@
     // Status cell
     const statusCell = document.createElement('td');
     statusCell.className = 'has-text-centered is-vcentered';
-    statusCell.appendChild(createStatusBadge(vm.status));
+    statusCell.appendChild(VMUtils.createStatusBadge(vm.status, labels));
     tr.appendChild(statusCell);
 
     // Actions cell
@@ -268,10 +212,10 @@
 
     updateStats(summary);
 
-    toggleHidden(statsColumns, !hasVMs);
-    toggleHidden(statsEmpty, hasVMs);
-    toggleHidden(tableContainer, !hasVMs);
-    toggleHidden(emptyState, hasVMs);
+    VMUtils.toggleHidden(statsColumns, !hasVMs);
+    VMUtils.toggleHidden(statsEmpty, hasVMs);
+    VMUtils.toggleHidden(tableContainer, !hasVMs);
+    VMUtils.toggleHidden(emptyState, hasVMs);
 
     if (hasVMs) {
       updateTable(vms);
