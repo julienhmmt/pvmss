@@ -10,6 +10,7 @@
 /* Components */
 @import url('components.css');
 @import url('network-toggle.css');
+@import url('skeleton.css');
 
 /* Forms & Tooltips (consolidated) */
 @import url('forms.css');
