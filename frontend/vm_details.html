@@ -1,25 +1,5 @@
 {{define "vm_details"}}
 <script>
-  (function(){
-    var base = '{{T "Title"}}';
-    if (document.title === base) {
-      var name = '{{.VM.Name}}';
-      var vmid = '{{.VM.VMID}}';
-      var title = '';
-      var idLabel = '{{T "Common.ID"}}';
-      if (name && name !== '' && vmid && vmid !== '0') {
-        title = name + ' (' + idLabel + ' ' + vmid + ')';
-      } else if (vmid && vmid !== '0') {
-        title = idLabel + ' ' + vmid;
-      } else if (name && name !== '') {
-        title = name;
-      } else {
-        title = '{{T "VMDetails.EditResourcesTitle"}}';
-      }
-      document.title = title + ' - ' + base;
-    }
-  })();
-  
   // Add celebration banner animations
   const style = document.createElement('style');
   style.textContent = `
