@@ -39,8 +39,8 @@
       )}}
     {{end}}
 
-    {{/* Current user's pool status section */}}
-    {{if .CurrentUserPoolStatus}}
+    {{/* Current user's pool status section (only when username is set, i.e. non-local admin) */}}
+    {{if and .CurrentUserPoolStatus .CurrentUserPoolStatus.Username}}
     <div class="box admin-box mb-5">
       <h2 class="title is-5 mb-4">
         <span class="icon"><i class="fas fa-user-shield"></i></span>
