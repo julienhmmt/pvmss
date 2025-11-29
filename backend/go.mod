@@ -4,9 +4,9 @@ go 1.24.4
 
 require (
 	github.com/BurntSushi/toml v1.5.0
-	github.com/Telmate/proxmox-api-go v0.0.0-20251117200735-263bd20da9bf
+	github.com/Telmate/proxmox-api-go v0.0.0-20251124001151-81c14ce502d8
 	github.com/alexedwards/scs/v2 v2.9.0
-	github.com/go-resty/resty/v2 v2.16.5
+	github.com/go-resty/resty/v2 v2.17.0
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
