@@ -252,15 +252,24 @@
             const formField = field.closest('.field');
             if (!formField) return;
 
-            // Remove existing error
+            // Check if there's already a server-rendered error (without data-js-error)
+            const existingServerError = formField.querySelector('.help.is-danger:not([data-js-error])');
+            if (existingServerError) {
+                // Server error exists, don't add JS error (avoid double messages)
+                field.classList.add('is-danger');
+                return;
+            }
+
+            // Remove existing JS-generated error
             this.clearFieldError(field);
 
             // Add error styling
             field.classList.add('is-danger');
             
-            // Create error message
+            // Create error message (marked as JS-generated)
             const errorDiv = document.createElement('p');
             errorDiv.className = 'help is-danger';
+            errorDiv.setAttribute('data-js-error', 'true');
             errorDiv.textContent = message;
             errorDiv.setAttribute('role', 'alert');
             errorDiv.setAttribute('aria-live', 'polite');
@@ -273,9 +282,10 @@
             if (!formField) return;
 
             field.classList.remove('is-danger');
-            const errorDiv = formField.querySelector('.help.is-danger');
-            if (errorDiv) {
-                errorDiv.remove();
+            // Only remove JS-generated errors, preserve server-side errors
+            const jsErrorDiv = formField.querySelector('.help.is-danger[data-js-error]');
+            if (jsErrorDiv) {
+                jsErrorDiv.remove();
             }
         },
 
