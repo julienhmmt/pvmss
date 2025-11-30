@@ -99,7 +99,7 @@
                   <div class="buttons are-small is-right">
                     {{if .Enabled}}
                     <form action="/admin/cloudinit/toggle" method="POST" class="is-inline">
-                      {{csrfField}}
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                       <input type="hidden" name="id" value="{{.ID}}">
                       <input type="hidden" name="action" value="disable">
                       <button type="submit" class="button is-warning is-light is-small" title="{{T "Common.Disable"}}">
@@ -108,7 +108,7 @@
                     </form>
                     {{else}}
                     <form action="/admin/cloudinit/toggle" method="POST" class="is-inline">
-                      {{csrfField}}
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                       <input type="hidden" name="id" value="{{.ID}}">
                       <input type="hidden" name="action" value="enable">
                       <button type="submit" class="button is-success is-light is-small" title="{{T "Common.Enable"}}">
@@ -123,7 +123,7 @@
                     </button>
                     <form action="/admin/cloudinit/delete" method="POST" class="is-inline" 
                           onsubmit="return confirm('{{T "Admin.CloudInit.ConfirmDelete"}}');">
-                      {{csrfField}}
+                      <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                       <input type="hidden" name="id" value="{{.ID}}">
                       <button type="submit" class="button is-danger is-light is-small" title="{{T "Common.Delete"}}">
                         <span class="icon"><i class="fas fa-trash"></i></span>
@@ -164,7 +164,7 @@
         </h2>
 
         <form id="template-form" action="/admin/cloudinit/create" method="POST">
-          {{csrfField}}
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <input type="hidden" name="id" id="edit-id" value="">
 
           <div class="field">

@@ -1,50 +1,78 @@
 # Cloud-init Admin Translations (French)
 
-[Admin.CloudInit]
-Title = "Modèles Cloud-init"
-Description = "Gérer les modèles de configuration cloud-init pour l'initialisation des VM"
+["Admin.CloudInit.Title"]
+other = "Modèles Cloud-init"
+["Admin.CloudInit.Description"]
+other = "Gérer les modèles de configuration cloud-init pour l'initialisation des VM"
 
 # Page sections
-TemplatesList = "Modèles"
-CreateTemplate = "Créer un modèle"
-EditTemplate = "Modifier le modèle"
+["Admin.CloudInit.TemplatesList"]
+other = "Modèles"
+["Admin.CloudInit.CreateTemplate"]
+other = "Créer un modèle"
+["Admin.CloudInit.EditTemplate"]
+other = "Modifier le modèle"
 
 # Form labels and placeholders
-NamePlaceholder = "ex: Configuration Ubuntu de base"
-DescriptionPlaceholder = "Brève description pour les utilisateurs"
-DescriptionHelp = "Cette description sera affichée aux utilisateurs lors de la sélection d'un modèle"
-SnippetsStorage = "Stockage des snippets"
-SelectStorage = "Sélectionner un stockage..."
-YAMLContent = "Configuration YAML"
-YAMLHelp = "Entrez votre configuration cloud-init au format YAML. Commencez par #cloud-config"
-ValidateAndSave = "Valider et enregistrer"
+["Admin.CloudInit.NamePlaceholder"]
+other = "ex: Configuration Ubuntu de base"
+["Admin.CloudInit.DescriptionPlaceholder"]
+other = "Brève description pour les utilisateurs"
+["Admin.CloudInit.DescriptionHelp"]
+other = "Cette description sera affichée aux utilisateurs lors de la sélection d'un modèle"
+["Admin.CloudInit.SnippetsStorage"]
+other = "Stockage des snippets"
+["Admin.CloudInit.SelectStorage"]
+other = "Sélectionner un stockage..."
+["Admin.CloudInit.YAMLContent"]
+other = "Configuration YAML"
+["Admin.CloudInit.YAMLHelp"]
+other = "Entrez votre configuration cloud-init au format YAML. Commencez par #cloud-config"
+["Admin.CloudInit.ValidateAndSave"]
+other = "Valider et enregistrer"
 
 # Empty states
-NoTemplates = "Aucun modèle cloud-init configuré"
-CreateFirst = "Créer votre premier modèle"
-NoSnippetStorages = "Aucun stockage avec support snippets trouvé. Veuillez d'abord configurer un stockage snippets dans Proxmox."
+["Admin.CloudInit.NoTemplates"]
+other = "Aucun modèle cloud-init configuré"
+["Admin.CloudInit.CreateFirst"]
+other = "Créer votre premier modèle"
+["Admin.CloudInit.NoSnippetStorages"]
+other = "Aucun stockage avec support snippets trouvé. Veuillez d'abord configurer un stockage snippets dans Proxmox."
 
 # Confirmation dialogs
-ConfirmDelete = "Êtes-vous sûr de vouloir supprimer ce modèle ? Cette action est irréversible."
+["Admin.CloudInit.ConfirmDelete"]
+other = "Êtes-vous sûr de vouloir supprimer ce modèle ? Cette action est irréversible."
 
 # Status messages
-ProxmoxOffline = "Proxmox n'est pas connecté. La gestion des modèles est limitée."
-SecurityNote = "Les scripts cloud-init s'exécutent avec les privilèges root à l'intérieur de la VM au premier démarrage. Vérifiez attentivement les modèles avant de les activer."
+["Admin.CloudInit.ProxmoxOffline"]
+other = "Proxmox n'est pas connecté. La gestion des modèles est limitée."
+["Admin.CloudInit.SecurityNote"]
+other = "Les scripts cloud-init s'exécutent avec les privilèges root à l'intérieur de la VM au premier démarrage. Vérifiez attentivement les modèles avant de les activer."
 
 # Success messages
-[Admin.CloudInit.Success]
-Create = "Modèle '%s' créé avec succès"
-Edit = "Modèle '%s' mis à jour avec succès"
-Delete = "Modèle '%s' supprimé avec succès"
-Enable = "Modèle '%s' activé"
-Disable = "Modèle '%s' désactivé"
-Default = "Paramètres du modèle mis à jour avec succès"
+["Admin.CloudInit.Success.Create"]
+other = "Modèle '%s' créé avec succès"
+["Admin.CloudInit.Success.Edit"]
+other = "Modèle '%s' mis à jour avec succès"
+["Admin.CloudInit.Success.Delete"]
+other = "Modèle '%s' supprimé avec succès"
+["Admin.CloudInit.Success.Enable"]
+other = "Modèle '%s' activé"
+["Admin.CloudInit.Success.Disable"]
+other = "Modèle '%s' désactivé"
+["Admin.CloudInit.Success.Default"]
+other = "Paramètres du modèle mis à jour avec succès"
 
 # Error messages
-[Admin.CloudInit.Error]
-RequiredFields = "Veuillez remplir tous les champs obligatoires"
-InvalidYAML = "Syntaxe YAML invalide. Veuillez vérifier votre configuration."
-AlreadyExists = "Un modèle avec ce nom existe déjà"
-NotFound = "Modèle non trouvé"
-DeleteFailed = "Échec de la suppression du modèle"
-UploadFailed = "Échec du téléversement du modèle vers le stockage"
+["Admin.CloudInit.Error.RequiredFields"]
+other = "Veuillez remplir tous les champs obligatoires"
+["Admin.CloudInit.Error.InvalidYAML"]
+other = "Syntaxe YAML invalide. Veuillez vérifier votre configuration."
+["Admin.CloudInit.Error.AlreadyExists"]
+other = "Un modèle avec ce nom existe déjà"
+["Admin.CloudInit.Error.NotFound"]
+other = "Modèle non trouvé"
+["Admin.CloudInit.Error.DeleteFailed"]
+other = "Échec de la suppression du modèle"
+["Admin.CloudInit.Error.UploadFailed"]
+other = "Échec du téléversement du modèle vers le stockage"
