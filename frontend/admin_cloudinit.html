@@ -29,16 +29,6 @@
     <p class="subtitle is-6 has-text-grey">{{T "Admin.CloudInit.Description"}}</p>
   </div>
 
-  {{if .Success}}
-  {{template "notification" (dict 
-    "Type" "success" 
-    "Title" (T "Common.Success") 
-    "Message" .Success 
-    "Icon" "fas fa-check-circle" 
-    "Dismissible" true 
-    "Light" true)}}
-  {{end}}
-
   {{if not .ProxmoxConnected}}
   {{template "notification" (dict 
     "Type" "warning" 
@@ -56,9 +46,17 @@
     </div>
   </article>
 
+  <!-- Quick link to create form -->
+  <div class="mb-4">
+    <a href="#create-form" class="button is-primary is-small">
+      <span class="icon"><i class="fas fa-plus"></i></span>
+      <span>{{T "Admin.CloudInit.CreateTemplate"}}</span>
+    </a>
+  </div>
+
   <div class="columns">
-    <!-- Templates List (Left) -->
-    <div class="column is-7">
+    <!-- Templates List (Top, full width) -->
+    <div class="column is-12">
       <div class="box admin-box">
         <h2 class="title is-5 mb-4">
           <span class="icon"><i class="fas fa-list"></i></span>
@@ -102,7 +100,7 @@
                       <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                       <input type="hidden" name="id" value="{{.ID}}">
                       <input type="hidden" name="action" value="disable">
-                      <button type="submit" class="button is-warning is-light is-small" title="{{T "Common.Disable"}}">
+                      <button type="submit" class="button is-success is-light is-small" title="{{T "Common.Disable"}}">
                         <span class="icon"><i class="fas fa-toggle-on"></i></span>
                       </button>
                     </form>
@@ -111,7 +109,7 @@
                       <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                       <input type="hidden" name="id" value="{{.ID}}">
                       <input type="hidden" name="action" value="enable">
-                      <button type="submit" class="button is-success is-light is-small" title="{{T "Common.Enable"}}">
+                      <button type="submit" class="button is-ghost is-small" title="{{T "Common.Enable"}}">
                         <span class="icon"><i class="fas fa-toggle-off"></i></span>
                       </button>
                     </form>
@@ -155,8 +153,12 @@
       </div>
     </div>
 
-    <!-- Create/Edit Form (Right) -->
-    <div class="column is-5">
+  </div>
+  </div>
+
+  <!-- Create/Edit Form (Below, full width) -->
+  <div class="columns">
+    <div class="column is-12">
       <div class="box admin-box" id="create-form">
         <h2 class="title is-5 mb-4" id="form-title">
           <span class="icon"><i class="fas fa-plus-circle"></i></span>
