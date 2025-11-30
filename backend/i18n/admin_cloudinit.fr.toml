@@ -12,6 +12,8 @@ other = "Modèles"
 other = "Créer un modèle"
 ["Admin.CloudInit.EditTemplate"]
 other = "Modifier le modèle"
+["Admin.CloudInit.ViewYAML"]
+other = "Voir le YAML"
 
 # Form labels and placeholders
 ["Admin.CloudInit.NamePlaceholder"]

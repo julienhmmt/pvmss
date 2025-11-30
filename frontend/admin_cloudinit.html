@@ -114,6 +114,11 @@
                       </button>
                     </form>
                     {{end}}
+                    <button type="button" class="button is-link is-light is-small" 
+                            onclick="viewTemplate('{{.ID}}')"
+                            title="{{T "Admin.CloudInit.ViewYAML"}}">
+                      <span class="icon"><i class="fas fa-eye"></i></span>
+                    </button>
                     <button type="button" class="button is-info is-light is-small" 
                             onclick="editTemplate('{{.ID}}', '{{.Name}}', '{{.Description}}')"
                             title="{{T "Common.Edit"}}">
@@ -245,6 +250,27 @@
   </div>
 
   {{end}}
+
+  <!-- YAML View Modal -->
+  <div class="modal" id="yaml-modal">
+    <div class="modal-background" onclick="closeYamlModal()"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">
+          <span class="icon"><i class="fas fa-file-code"></i></span>
+          <span id="yaml-modal-title">{{T "Admin.CloudInit.ViewYAML"}}</span>
+        </p>
+        <button class="delete" aria-label="close" onclick="closeYamlModal()"></button>
+      </header>
+      <section class="modal-card-body">
+        <pre class="has-background-black-bis has-text-white-bis p-3 is-size-7" style="max-height: 400px; overflow: auto;" id="yaml-modal-content"></pre>
+      </section>
+      <footer class="modal-card-foot is-justify-content-flex-end">
+        <button class="button" type="button" onclick="closeYamlModal()">{{T "Common.Close"}}</button>
+      </footer>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -312,6 +338,41 @@ async function editTemplate(id, name, description) {
   }
   
   document.getElementById('name').focus();
+}
+
+async function viewTemplate(id) {
+  try {
+    const response = await fetch(`/admin/cloudinit/template/${id}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch template data');
+    }
+    const templateData = await response.json();
+
+    const titleEl = document.getElementById('yaml-modal-title');
+    if (titleEl && templateData.name) {
+      titleEl.textContent = templateData.name;
+    }
+
+    const contentEl = document.getElementById('yaml-modal-content');
+    if (contentEl) {
+      contentEl.textContent = templateData.content || '';
+    }
+
+    const modal = document.getElementById('yaml-modal');
+    if (modal) {
+      modal.classList.add('is-active');
+    }
+  } catch (error) {
+    console.error('Error fetching template data for view:', error);
+    showNotification('danger', '{{T "Admin.CloudInit.Error.FetchTemplate"}}');
+  }
+}
+
+function closeYamlModal() {
+  const modal = document.getElementById('yaml-modal');
+  if (modal) {
+    modal.classList.remove('is-active');
+  }
 }
 
 function resetForm() {

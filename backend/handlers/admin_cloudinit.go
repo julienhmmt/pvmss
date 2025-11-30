@@ -404,7 +404,13 @@ func (h *CloudInitHandler) DeleteTemplateHandler(w http.ResponseWriter, r *http.
 func (h *CloudInitHandler) GetTemplateHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := CreateHandlerLogger("GetTemplateHandler", r)
 
+	// Prefer explicit route params, but fall back to params stored in context
 	id := ps.ByName("id")
+	if id == "" {
+		if ctxParams, ok := r.Context().Value(ParamsKey).(httprouter.Params); ok {
+			id = ctxParams.ByName("id")
+		}
+	}
 	if id == "" {
 		http.Error(w, "Template ID is required", http.StatusBadRequest)
 		return

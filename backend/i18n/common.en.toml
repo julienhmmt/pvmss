@@ -12,6 +12,8 @@ other = "Back to search"
 other = "CPU"
 ["Common.Cancel"]
 other = "Cancel"
+["Common.Close"]
+other = "Close"
 ["Common.Confirm"]
 other = "Confirm"
 ["Common.Create"]

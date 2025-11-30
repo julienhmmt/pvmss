@@ -12,6 +12,8 @@ other = "Templates"
 other = "Create Template"
 ["Admin.CloudInit.EditTemplate"]
 other = "Edit Template"
+["Admin.CloudInit.ViewYAML"]
+other = "View YAML"
 
 # Form labels and placeholders
 ["Admin.CloudInit.NamePlaceholder"]
