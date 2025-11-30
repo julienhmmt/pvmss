@@ -72,6 +72,8 @@ other = "Syntaxe YAML invalide. Veuillez vérifier votre configuration."
 other = "Un modèle avec ce nom existe déjà"
 ["Admin.CloudInit.Error.NotFound"]
 other = "Modèle non trouvé"
+["Admin.CloudInit.Error.FetchTemplate"]
+other = "Échec de la récupération des données du modèle depuis le serveur"
 ["Admin.CloudInit.Error.DeleteFailed"]
 other = "Échec de la suppression du modèle"
 ["Admin.CloudInit.Error.UploadFailed"]

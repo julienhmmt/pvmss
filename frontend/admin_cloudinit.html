@@ -120,7 +120,7 @@
                       <span class="icon"><i class="fas fa-edit"></i></span>
                     </button>
                     <form action="/admin/cloudinit/delete" method="POST" class="is-inline" 
-                          onsubmit="return confirm('{{T "Admin.CloudInit.ConfirmDelete"}}');">
+                          onsubmit="return confirm(confirmDeleteMessage);">
                       <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                       <input type="hidden" name="id" value="{{.ID}}">
                       <button type="submit" class="button is-danger is-light is-small" title="{{T "Common.Delete"}}">
@@ -248,15 +248,69 @@
 </div>
 
 <script>
-function editTemplate(id, name, description) {
+var proxmoxConnected = {{.ProxmoxConnected}};
+var confirmDeleteMessage = '{{T "Admin.CloudInit.ConfirmDelete"}}';
+function showNotification(type, message) {
+
+  const notification = document.createElement('div');
+  notification.className = `notification is-${type}`;
+  notification.innerHTML = `
+    <button class="delete" onclick="this.parentElement.remove()"></button>
+    ${message}
+  `;
+  
+  // Insert at the top of the content area
+  const content = document.querySelector('.section .container');
+  if (content) {
+    content.insertBefore(notification, content.firstChild);
+  }
+  
+  // Auto-dismiss after 5 seconds for success messages
+  if (type === 'success') {
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove();
+      }
+    }, 5000);
+  }
+}
+
+async function editTemplate(id, name, description) {
   document.getElementById('edit-id').value = id;
   document.getElementById('name').value = name;
   document.getElementById('description').value = description;
   document.getElementById('template-form').action = '/admin/cloudinit/edit';
   document.getElementById('form-title').innerHTML = '<span class="icon"><i class="fas fa-edit"></i></span><span>{{T "Admin.CloudInit.EditTemplate"}}</span>';
   document.getElementById('submit-text').textContent = '{{T "Common.Save"}}';
-  document.getElementById('storage').disabled = true;
-  document.getElementById('yaml_content').required = false;
+  
+  // Fetch the complete template data including storage and content
+  try {
+    const response = await fetch(`/admin/cloudinit/template/${id}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch template data');
+    }
+    const templateData = await response.json();
+    
+    // Populate storage field (read-only during edit)
+    if (templateData.storage) {
+      document.getElementById('storage').value = templateData.storage;
+    }
+    
+    // Populate YAML content
+    if (templateData.content) {
+      document.getElementById('yaml_content').value = templateData.content;
+    }
+    
+    // Disable storage field during edit (storage location cannot be changed after creation)
+    document.getElementById('storage').disabled = true;
+    document.getElementById('yaml_content').required = true;
+    
+  } catch (error) {
+    console.error('Error fetching template data:', error);
+    // Show error notification
+    showNotification('danger', '{{T "Admin.CloudInit.Error.FetchTemplate"}}');
+  }
+  
   document.getElementById('name').focus();
 }
 
@@ -266,7 +320,7 @@ function resetForm() {
   document.getElementById('template-form').action = '/admin/cloudinit/create';
   document.getElementById('form-title').innerHTML = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>{{T "Admin.CloudInit.CreateTemplate"}}</span>';
   document.getElementById('submit-text').textContent = '{{T "Admin.CloudInit.ValidateAndSave"}}';
-  document.getElementById('storage').disabled = {{if not .ProxmoxConnected}}true{{else}}false{{end}};
+  document.getElementById('storage').disabled = !proxmoxConnected;
   document.getElementById('yaml_content').required = true;
 }
 </script>

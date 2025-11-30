@@ -71,6 +71,8 @@ other = "Invalid YAML syntax. Please check your configuration."
 other = "A template with this name already exists"
 ["Admin.CloudInit.Error.NotFound"]
 other = "Template not found"
+["Admin.CloudInit.Error.FetchTemplate"]
+other = "Failed to fetch template data from server"
 ["Admin.CloudInit.Error.DeleteFailed"]
 other = "Failed to delete template"
 ["Admin.CloudInit.Error.UploadFailed"]

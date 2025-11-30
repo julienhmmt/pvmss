@@ -53,3 +53,5 @@ other = "Failed to get node information"
 other = "Failed to get resources"
 ["Error.InvalidInput"]
 other = "Invalid input"
+["Error.ProxmoxUploadFailed"]
+other = "Failed to upload file to Proxmox storage"

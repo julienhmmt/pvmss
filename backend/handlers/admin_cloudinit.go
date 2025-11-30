@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -38,31 +40,32 @@ func (h *CloudInitHandler) RegisterRoutes(router *httprouter.Router) {
 
 	// Create template
 	router.POST("/admin/cloudinit/create", SecureFormHandler("CloudInitCreate",
-		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.CreateTemplateHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
+		func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+			h.CreateTemplateHandler(w, r, ps)
+		}))
 
 	// Edit template
 	router.POST("/admin/cloudinit/edit", SecureFormHandler("CloudInitEdit",
-		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.EditTemplateHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
+		func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+			h.EditTemplateHandler(w, r, ps)
+		}))
 
 	// Delete template
 	router.POST("/admin/cloudinit/delete", SecureFormHandler("CloudInitDelete",
-		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.DeleteTemplateHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
+		func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+			h.DeleteTemplateHandler(w, r, ps)
+		}))
 
 	// Toggle template enabled state
 	router.POST("/admin/cloudinit/toggle", SecureFormHandler("CloudInitToggle",
-		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.ToggleTemplateHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
+		func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+			h.ToggleTemplateHandler(w, r, ps)
+		}))
+
+	// Get single template with content
+	router.GET("/admin/cloudinit/template/:id", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+		h.GetTemplateHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+	})))
 
 	log.Info().Msg("Cloud-init admin routes registered")
 }
@@ -178,9 +181,30 @@ func (h *CloudInitHandler) CreateTemplateHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// TODO: Upload snippet file to Proxmox storage
-	// For now, we just save the metadata locally
-	// In production, this would use proxmox.UploadSnippetFileResty
+	// Upload snippet file to Proxmox storage
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create Resty client")
+		h.redirectWithError(w, r, "Error.ProxmoxUploadFailed")
+		return
+	}
+
+	// Get the first available online node
+	var node string
+	if nodes, err := proxmox.GetOnlineNodeNamesResty(r.Context(), restyClient); err == nil && len(nodes) > 0 {
+		node = nodes[0] // Use first online node
+	} else {
+		log.Warn().Err(err).Msg("Failed to get online nodes, using localhost fallback")
+		node = "localhost"
+	}
+
+	// Upload the YAML content to Proxmox storage
+	if err := proxmox.UploadSnippetFileResty(r.Context(), restyClient, node, storage, filename, yamlContent); err != nil {
+		log.Error().Err(err).Str("storage", storage).Str("filename", filename).Msg("Failed to upload snippet file to Proxmox")
+		h.redirectWithError(w, r, "Error.ProxmoxUploadFailed")
+		return
+	}
+	log.Info().Str("storage", storage).Str("filename", filename).Str("node", node).Msg("Successfully uploaded snippet file to Proxmox")
 
 	// Add template to settings
 	template := state.CloudInitTemplate{
@@ -245,6 +269,33 @@ func (h *CloudInitHandler) EditTemplateHandler(w http.ResponseWriter, r *http.Re
 		}
 	}
 
+	// Upload updated YAML content to Proxmox storage if provided
+	if yamlContent != "" {
+		restyClient, err := getDefaultRestyClient()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create Resty client")
+			h.redirectWithError(w, r, "Error.ProxmoxUploadFailed")
+			return
+		}
+
+		// Get the first available online node
+		var node string
+		if nodes, err := proxmox.GetOnlineNodeNamesResty(r.Context(), restyClient); err == nil && len(nodes) > 0 {
+			node = nodes[0] // Use first online node
+		} else {
+			log.Warn().Err(err).Msg("Failed to get online nodes, using localhost fallback")
+			node = "localhost"
+		}
+
+		// Upload the updated YAML content to Proxmox storage
+		if err := proxmox.UploadSnippetFileResty(r.Context(), restyClient, node, template.Storage, template.Filename, yamlContent); err != nil {
+			log.Error().Err(err).Str("storage", template.Storage).Str("filename", template.Filename).Msg("Failed to upload updated snippet file to Proxmox")
+			h.redirectWithError(w, r, "Error.ProxmoxUploadFailed")
+			return
+		}
+		log.Info().Str("storage", template.Storage).Str("filename", template.Filename).Str("node", node).Msg("Successfully uploaded updated snippet file to Proxmox")
+	}
+
 	// Update template metadata
 	template.Name = name
 	template.Description = description
@@ -268,51 +319,162 @@ func (h *CloudInitHandler) EditTemplateHandler(w http.ResponseWriter, r *http.Re
 }
 
 // DeleteTemplateHandler handles deleting a cloud-init template.
-func (h *CloudInitHandler) DeleteTemplateHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (h *CloudInitHandler) DeleteTemplateHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := CreateHandlerLogger("DeleteTemplateHandler", r)
 
-	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
-		return
-	}
-
-	id := strings.TrimSpace(r.FormValue("id"))
+	id := ps.ByName("id")
 	if id == "" {
-		h.redirectWithError(w, r, "Admin.CloudInit.Error.RequiredFields")
+		http.Error(w, "Template ID is required", http.StatusBadRequest)
 		return
 	}
 
+	// Get settings to find template
 	settings := h.stateManager.GetSettings()
-	template := settings.GetCloudInitTemplateByID(id)
-	if template == nil {
-		h.redirectWithError(w, r, "Admin.CloudInit.Error.NotFound")
+
+	// Find template by ID
+	var templateToDelete *state.CloudInitTemplate
+	for i := range settings.CloudInitTemplates {
+		if settings.CloudInitTemplates[i].ID == id {
+			templateToDelete = &settings.CloudInitTemplates[i]
+			break
+		}
+	}
+
+	if templateToDelete == nil {
+		http.Error(w, "Template not found", http.StatusNotFound)
 		return
 	}
 
-	templateName := template.Name
+	// Delete from Proxmox if connected
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	if proxmoxConnected {
+		restyClient, err := getDefaultRestyClient()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create resty client")
+			http.Error(w, "Failed to connect to Proxmox", http.StatusInternalServerError)
+			return
+		}
 
-	// TODO: Delete snippet file from Proxmox storage
-	// For now, we just remove the metadata locally
+		// Get node information to find an active node
+		snapshot := h.stateManager.GetProxmoxSnapshot()
+		if snapshot == nil || len(snapshot.NodeDetails) == 0 {
+			http.Error(w, "No node information available", http.StatusInternalServerError)
+			return
+		}
+		activeNode := snapshot.NodeDetails[0].Node
+		if activeNode == "" {
+			http.Error(w, "No active node available", http.StatusInternalServerError)
+			return
+		}
 
-	if !settings.RemoveCloudInitTemplate(id) {
-		h.redirectWithError(w, r, "Admin.CloudInit.Error.DeleteFailed")
-		return
+		// Delete file from Proxmox snippets storage
+		volid := fmt.Sprintf("%s:snippets/%s", templateToDelete.Storage, templateToDelete.Filename)
+		err = proxmox.DeleteSnippetFileResty(r.Context(), restyClient, activeNode, templateToDelete.Storage, volid)
+		if err != nil {
+			log.Error().Err(err).
+				Str("storage", templateToDelete.Storage).
+				Str("filename", templateToDelete.Filename).
+				Msg("Failed to delete template file from Proxmox")
+			http.Error(w, "Failed to delete template file from Proxmox", http.StatusInternalServerError)
+			return
+		}
 	}
 
+	// Remove from settings
+	newTemplates := make([]state.CloudInitTemplate, 0, len(settings.CloudInitTemplates))
+	for _, tmpl := range settings.CloudInitTemplates {
+		if tmpl.ID != id {
+			newTemplates = append(newTemplates, tmpl)
+		}
+	}
+	settings.CloudInitTemplates = newTemplates
+
+	// Save settings
 	if err := h.stateManager.SetSettings(settings); err != nil {
-		log.Error().Err(err).Str("id", id).Msg("Failed to save settings")
-		h.redirectWithError(w, r, "Error.InternalServer")
+		log.Error().Err(err).Msg("Failed to save settings")
+		http.Error(w, "Failed to save settings", http.StatusInternalServerError)
 		return
 	}
 
-	// Audit log
-	username := h.getUsername(r)
-	logger.AdminEvent("cloudinit_template_delete", username).
-		Str("template_id", id).
-		Str("template_name", templateName).
-		Str("client_ip", r.RemoteAddr).
-		Msg("Cloud-init template deleted")
+	// Redirect with success message
+	http.Redirect(w, r, fmt.Sprintf("/admin/cloudinit?success=1&action=delete&name=%s", url.QueryEscape(templateToDelete.Name)), http.StatusSeeOther)
+}
 
-	http.Redirect(w, r, "/admin/cloudinit?success=1&action=delete&name="+url.QueryEscape(templateName), http.StatusSeeOther)
+// GetTemplateHandler returns a single template with its YAML content
+func (h *CloudInitHandler) GetTemplateHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	log := CreateHandlerLogger("GetTemplateHandler", r)
+
+	id := ps.ByName("id")
+	if id == "" {
+		http.Error(w, "Template ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Get settings to find template
+	settings := h.stateManager.GetSettings()
+
+	// Find template by ID
+	var template *state.CloudInitTemplate
+	for i := range settings.CloudInitTemplates {
+		if settings.CloudInitTemplates[i].ID == id {
+			template = &settings.CloudInitTemplates[i]
+			break
+		}
+	}
+
+	if template == nil {
+		http.Error(w, "Template not found", http.StatusNotFound)
+		return
+	}
+
+	// Prepare response
+	response := map[string]interface{}{
+		"id":          template.ID,
+		"name":        template.Name,
+		"description": template.Description,
+		"storage":     template.Storage,
+		"content":     "", // Will be populated if Proxmox is connected
+	}
+
+	// Fetch YAML content from Proxmox if connected
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	if proxmoxConnected {
+		restyClient, err := getDefaultRestyClient()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create resty client")
+			// Continue without content - template metadata is still useful
+		} else {
+			// Get node information to find an active node
+			snapshot := h.stateManager.GetProxmoxSnapshot()
+			if snapshot != nil && len(snapshot.NodeDetails) > 0 {
+				// Use first available node
+				activeNode := snapshot.NodeDetails[0].Node
+				// Download file content from Proxmox snippets storage
+				volid := fmt.Sprintf("%s:snippets/%s", template.Storage, template.Filename)
+				content, err := proxmox.DownloadSnippetFileResty(r.Context(), restyClient, activeNode, template.Storage, volid)
+				if err != nil {
+					log.Error().Err(err).
+						Str("storage", template.Storage).
+						Str("filename", template.Filename).
+						Msg("Failed to fetch template content from Proxmox")
+					// Continue without content - template metadata is still useful
+				} else {
+					response["content"] = content
+				}
+			} else {
+				log.Error().Msg("No node information available")
+				// Continue without content
+			}
+		}
+	}
+
+	// Return JSON response
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Error().Err(err).Msg("Failed to encode response")
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // ToggleTemplateHandler handles enabling/disabling a cloud-init template.
