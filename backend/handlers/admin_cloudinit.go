@@ -450,26 +450,27 @@ func (h *CloudInitHandler) GetTemplateHandler(w http.ResponseWriter, r *http.Req
 			log.Error().Err(err).Msg("Failed to create resty client")
 			// Continue without content - template metadata is still useful
 		} else {
-			// Get node information to find an active node
-			snapshot := h.stateManager.GetProxmoxSnapshot()
-			if snapshot != nil && len(snapshot.NodeDetails) > 0 {
-				// Use first available node
-				activeNode := snapshot.NodeDetails[0].Node
-				// Download file content from Proxmox snippets storage
-				volid := fmt.Sprintf("%s:snippets/%s", template.Storage, template.Filename)
-				content, err := proxmox.DownloadSnippetFileResty(r.Context(), restyClient, activeNode, template.Storage, volid)
-				if err != nil {
-					log.Error().Err(err).
-						Str("storage", template.Storage).
-						Str("filename", template.Filename).
-						Msg("Failed to fetch template content from Proxmox")
-					// Continue without content - template metadata is still useful
-				} else {
-					response["content"] = content
-				}
+			// Use the same node selection strategy as for upload (first online node with fallback)
+			var node string
+			if nodes, err := proxmox.GetOnlineNodeNamesResty(r.Context(), restyClient); err == nil && len(nodes) > 0 {
+				node = nodes[0]
 			} else {
-				log.Error().Msg("No node information available")
-				// Continue without content
+				log.Warn().Err(err).Msg("Failed to get online nodes for download, using localhost fallback")
+				node = "localhost"
+			}
+
+			// Download file content from Proxmox snippets storage
+			volid := fmt.Sprintf("%s:snippets/%s", template.Storage, template.Filename)
+			content, err := proxmox.DownloadSnippetFileResty(r.Context(), restyClient, node, template.Storage, volid)
+			if err != nil {
+				log.Error().Err(err).
+					Str("storage", template.Storage).
+					Str("filename", template.Filename).
+					Str("node", node).
+					Msg("Failed to fetch template content from Proxmox")
+				// Continue without content - template metadata is still useful
+			} else {
+				response["content"] = content
 			}
 		}
 	}

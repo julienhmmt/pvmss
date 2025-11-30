@@ -311,7 +311,17 @@ async function editTemplate(id, name, description) {
   
   // Fetch the complete template data including storage and content
   try {
-    const response = await fetch(`/admin/cloudinit/template/${id}`);
+    const response = await fetch(`/admin/cloudinit/template/${id}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) {
+      window.location.href = response.url;
+      return;
+    }
     if (!response.ok) {
       throw new Error('Failed to fetch template data');
     }
@@ -342,7 +352,17 @@ async function editTemplate(id, name, description) {
 
 async function viewTemplate(id) {
   try {
-    const response = await fetch(`/admin/cloudinit/template/${id}`);
+    const response = await fetch(`/admin/cloudinit/template/${id}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) {
+      window.location.href = response.url;
+      return;
+    }
     if (!response.ok) {
       throw new Error('Failed to fetch template data');
     }
