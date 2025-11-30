@@ -1,0 +1,50 @@
+# Cloud-init Admin Translations (English)
+
+[Admin.CloudInit]
+Title = "Cloud-init Templates"
+Description = "Manage cloud-init configuration templates for VM initialization"
+
+# Page sections
+TemplatesList = "Templates"
+CreateTemplate = "Create Template"
+EditTemplate = "Edit Template"
+
+# Form labels and placeholders
+NamePlaceholder = "e.g., Ubuntu Base Setup"
+DescriptionPlaceholder = "Brief description for users"
+DescriptionHelp = "This description will be shown to users when selecting a template"
+SnippetsStorage = "Snippets Storage"
+SelectStorage = "Select a storage..."
+YAMLContent = "YAML Configuration"
+YAMLHelp = "Enter your cloud-init configuration in YAML format. Start with #cloud-config"
+ValidateAndSave = "Validate & Save"
+
+# Empty states
+NoTemplates = "No cloud-init templates configured yet"
+CreateFirst = "Create your first template"
+NoSnippetStorages = "No storage with snippets support found. Please configure a snippets storage in Proxmox first."
+
+# Confirmation dialogs
+ConfirmDelete = "Are you sure you want to delete this template? This action cannot be undone."
+
+# Status messages
+ProxmoxOffline = "Proxmox is not connected. Template management is limited."
+SecurityNote = "Cloud-init scripts run with root privileges inside the VM at first boot. Review templates carefully before enabling them."
+
+# Success messages
+[Admin.CloudInit.Success]
+Create = "Template '%s' created successfully"
+Edit = "Template '%s' updated successfully"
+Delete = "Template '%s' deleted successfully"
+Enable = "Template '%s' enabled"
+Disable = "Template '%s' disabled"
+Default = "Template settings updated successfully"
+
+# Error messages
+[Admin.CloudInit.Error]
+RequiredFields = "Please fill in all required fields"
+InvalidYAML = "Invalid YAML syntax. Please check your configuration."
+AlreadyExists = "A template with this name already exists"
+NotFound = "Template not found"
+DeleteFailed = "Failed to delete template"
+UploadFailed = "Failed to upload template to storage"

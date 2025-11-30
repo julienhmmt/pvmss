@@ -71,6 +71,16 @@ const (
 	DefaultVMPerUser = 5              // Default VMs per user
 )
 
+// CloudInitTemplate represents metadata for a cloud-init template stored in Proxmox snippets.
+type CloudInitTemplate struct {
+	ID          string `json:"id"`          // Unique identifier (filename without prefix)
+	Name        string `json:"name"`        // Human-readable name
+	Description string `json:"description"` // Short description shown to users
+	Storage     string `json:"storage"`     // Proxmox snippets storage ID
+	Filename    string `json:"filename"`    // Full filename on Proxmox (e.g., pvmss-mytemplate.yaml)
+	Enabled     bool   `json:"enabled"`     // Whether visible to users
+}
+
 // defaultSettings returns the default application settings
 func defaultSettings() *AppSettings {
 	return &AppSettings{
@@ -85,25 +95,29 @@ func defaultSettings() *AppSettings {
 			},
 			Nodes: make(map[string]NodeResourceLimits),
 		},
-		MaxNetworkCards: MinNetworkCards,
-		MaxDiskPerVM:    MinDiskPerVM,
-		MaxVMPerUser:    DefaultVMPerUser,
-		Tags:            []string{"pvmss"},
-		VMBRs:           []string{},
+		MaxNetworkCards:    MinNetworkCards,
+		MaxDiskPerVM:       MinDiskPerVM,
+		MaxVMPerUser:       DefaultVMPerUser,
+		Tags:               []string{"pvmss"},
+		VMBRs:              []string{},
+		CloudInitTemplates: []CloudInitTemplate{},
+		AllowCustomYAML:    true, // Allow custom YAML by default
 	}
 }
 
 var settingsMutex = &sync.Mutex{}
 
 type AppSettings struct {
-	EnabledStorages []string     `json:"enabled_storages"`
-	ISOs            []string     `json:"isos"`
-	Limits          LimitsConfig `json:"limits"`
-	MaxNetworkCards int          `json:"max_network_cards,omitempty"`
-	MaxDiskPerVM    int          `json:"max_disk_per_vm,omitempty"`
-	MaxVMPerUser    int          `json:"max_vm_per_user,omitempty"`
-	Tags            []string     `json:"tags"`
-	VMBRs           []string     `json:"vmbrs"`
+	EnabledStorages    []string            `json:"enabled_storages"`
+	ISOs               []string            `json:"isos"`
+	Limits             LimitsConfig        `json:"limits"`
+	MaxNetworkCards    int                 `json:"max_network_cards,omitempty"`
+	MaxDiskPerVM       int                 `json:"max_disk_per_vm,omitempty"`
+	MaxVMPerUser       int                 `json:"max_vm_per_user,omitempty"`
+	Tags               []string            `json:"tags"`
+	VMBRs              []string            `json:"vmbrs"`
+	CloudInitTemplates []CloudInitTemplate `json:"cloudinit_templates,omitempty"`
+	AllowCustomYAML    bool                `json:"allow_custom_yaml,omitempty"` // Allow users to provide custom YAML (default: true)
 }
 
 // getSettingsFilePath returns the absolute path to the settings file.
@@ -287,4 +301,61 @@ func GetMaxDisksForBus(busType string) int {
 		// Default to VirtIO (most common and highest limit)
 		return MaxDisksVirtIO
 	}
+}
+
+// CloudInitTemplatePrefix is the required prefix for PVMSS-managed cloud-init templates.
+const CloudInitTemplatePrefix = "pvmss-"
+
+// GetCloudInitTemplateByID finds a template by its ID.
+func (s *AppSettings) GetCloudInitTemplateByID(id string) *CloudInitTemplate {
+	for i := range s.CloudInitTemplates {
+		if s.CloudInitTemplates[i].ID == id {
+			return &s.CloudInitTemplates[i]
+		}
+	}
+	return nil
+}
+
+// GetEnabledCloudInitTemplates returns only enabled templates.
+func (s *AppSettings) GetEnabledCloudInitTemplates() []CloudInitTemplate {
+	var enabled []CloudInitTemplate
+	for _, t := range s.CloudInitTemplates {
+		if t.Enabled {
+			enabled = append(enabled, t)
+		}
+	}
+	return enabled
+}
+
+// AddOrUpdateCloudInitTemplate adds a new template or updates an existing one.
+func (s *AppSettings) AddOrUpdateCloudInitTemplate(template CloudInitTemplate) {
+	for i, t := range s.CloudInitTemplates {
+		if t.ID == template.ID {
+			s.CloudInitTemplates[i] = template
+			return
+		}
+	}
+	s.CloudInitTemplates = append(s.CloudInitTemplates, template)
+}
+
+// RemoveCloudInitTemplate removes a template by ID.
+func (s *AppSettings) RemoveCloudInitTemplate(id string) bool {
+	for i, t := range s.CloudInitTemplates {
+		if t.ID == id {
+			s.CloudInitTemplates = append(s.CloudInitTemplates[:i], s.CloudInitTemplates[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// SetCloudInitTemplateEnabled sets the enabled state for a template.
+func (s *AppSettings) SetCloudInitTemplateEnabled(id string, enabled bool) bool {
+	for i := range s.CloudInitTemplates {
+		if s.CloudInitTemplates[i].ID == id {
+			s.CloudInitTemplates[i].Enabled = enabled
+			return true
+		}
+	}
+	return false
 }

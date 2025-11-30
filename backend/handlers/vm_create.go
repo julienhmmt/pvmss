@@ -227,26 +227,34 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Prepare form data
 	formData := map[string]string{
-		"bridge_0":          "",
-		"cores":             "1",
-		"sockets":           "1",
-		"description":       "",
-		"disk_bus_type":     "virtio",
-		"disk_size_0":       "12",
-		"enable_efi":        "1",
-		"enable_tpm":        "",
-		"iso":               "",
-		"memory":            "1024",
-		"name":              "",
-		"network_enabled_0": "1", // First network card enabled by default
-		"network_model_0":   "virtio",
-		"mac_address_0":     "",
-		"vlan_tag_0":        "", // VLAN tag for first network card (optional)
-		"node":              activeNode,
-		"pool":              fmt.Sprintf("pvmss_%s", username),
-		"storage":           "",
-		"tags":              "",
-		"vmid":              "",
+		"bridge_0":           "",
+		"cores":              "1",
+		"sockets":            "1",
+		"description":        "",
+		"disk_bus_type":      "virtio",
+		"disk_size_0":        "12",
+		"enable_efi":         "1",
+		"enable_tpm":         "",
+		"iso":                "",
+		"memory":             "1024",
+		"name":               "",
+		"network_enabled_0":  "1", // First network card enabled by default
+		"network_model_0":    "virtio",
+		"mac_address_0":      "",
+		"vlan_tag_0":         "", // VLAN tag for first network card (optional)
+		"node":               activeNode,
+		"pool":               fmt.Sprintf("pvmss_%s", username),
+		"storage":            "",
+		"tags":               "",
+		"vmid":               "",
+		"cloudinit_enable":   "",
+		"cloudinit_template": "",
+		"cloudinit_user":     "",
+		"cloudinit_sshkeys":  "",
+		"cloudinit_ipconfig": "dhcp",
+		"cloudinit_ip":       "",
+		"cloudinit_gateway":  "",
+		"cloudinit_dns":      "",
 	}
 
 	// Override with session data if available (for form repopulation after validation errors)
@@ -300,26 +308,31 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		maxNetworkCards = 1
 	}
 
+	// Get enabled cloud-init templates
+	cloudInitTemplates := settings.GetEnabledCloudInitTemplates()
+
 	data := map[string]interface{}{
-		"BridgeDetails":    bridgeDetails,
-		"FormData":         formData,
-		"ISOs":             isos,
-		"IsAdmin":          isAdmin,
-		"IsAuthenticated":  true,
-		"Lang":             i18n.GetLanguage(r),
-		"Limits":           limits,
-		"MaxDiskPerVM":     maxDiskPerVM,
-		"MaxNetworkCards":  maxNetworkCards,
-		"NetworkModels":    getNetworkModels(),
-		"NodeOptions":      nodeOptions,
-		"Nodes":            nodes,
-		"NodesLimits":      getNodeLimits(settingsPtr),
-		"ProxmoxConnected": proxmoxConnected,
-		"Storages":         storages,
-		"StorageNodes":     storageNodes,
-		"Success":          "",
-		"SuccessMessage":   "",
-		"Username":         username,
+		"BridgeDetails":      bridgeDetails,
+		"CloudInitTemplates": cloudInitTemplates,
+		"AllowCustomYAML":    settings.AllowCustomYAML,
+		"FormData":           formData,
+		"ISOs":               isos,
+		"IsAdmin":            isAdmin,
+		"IsAuthenticated":    true,
+		"Lang":               i18n.GetLanguage(r),
+		"Limits":             limits,
+		"MaxDiskPerVM":       maxDiskPerVM,
+		"MaxNetworkCards":    maxNetworkCards,
+		"NetworkModels":      getNetworkModels(),
+		"NodeOptions":        nodeOptions,
+		"Nodes":              nodes,
+		"NodesLimits":        getNodeLimits(settingsPtr),
+		"ProxmoxConnected":   proxmoxConnected,
+		"Storages":           storages,
+		"StorageNodes":       storageNodes,
+		"Success":            "",
+		"SuccessMessage":     "",
+		"Username":           username,
 	}
 
 	// Check for offline nodes and create notification
@@ -1954,6 +1967,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		client.InvalidateCache("/pools/" + url.PathEscape(pool))
 	}
 
+	// Apply cloud-init configuration if enabled
+	cloudInitEnabled := r.FormValue("cloudinit_enable") == "1"
+	if cloudInitEnabled {
+		h.applyCloudInitConfig(ctx, r, node, vmid, storage)
+	}
+
 	// Get username for audit
 	username := ""
 	isAdmin := false
@@ -1994,4 +2013,88 @@ func countDisabledNodes(disabledNodes map[string]bool) int {
 		}
 	}
 	return count
+}
+
+// applyCloudInitConfig applies cloud-init configuration to a newly created VM.
+func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *http.Request, node string, vmid int, storage string) {
+	log := CreateHandlerLogger("applyCloudInitConfig", r)
+
+	// Extract cloud-init form values
+	ciUser := strings.TrimSpace(r.FormValue("cloudinit_user"))
+	ciPassword := r.FormValue("cloudinit_password") // Don't trim password
+	ciSSHKeys := strings.TrimSpace(r.FormValue("cloudinit_sshkeys"))
+	ciIPConfig := strings.TrimSpace(r.FormValue("cloudinit_ipconfig"))
+	ciIP := strings.TrimSpace(r.FormValue("cloudinit_ip"))
+	ciGateway := strings.TrimSpace(r.FormValue("cloudinit_gateway"))
+	ciDNS := strings.TrimSpace(r.FormValue("cloudinit_dns"))
+
+	// Build cloud-init parameters
+	ciParams := proxmox.CloudInitParams{
+		CIUser:    ciUser,
+		CIStorage: storage,
+		CIDrive:   "ide2", // Default cloud-init drive
+	}
+
+	// Only set password if provided (never log it)
+	if ciPassword != "" {
+		ciParams.CIPassword = ciPassword
+	}
+
+	// URL-encode SSH keys (Proxmox requires URL-encoded keys)
+	if ciSSHKeys != "" {
+		ciParams.SSHKeys = url.QueryEscape(ciSSHKeys)
+	}
+
+	// Build IP configuration
+	if ciIPConfig == "static" && ciIP != "" {
+		ipConfig := "ip=" + ciIP
+		if ciGateway != "" {
+			ipConfig += ",gw=" + ciGateway
+		}
+		ciParams.IPConfig0 = ipConfig
+	} else {
+		// DHCP mode
+		ciParams.IPConfig0 = "ip=dhcp"
+	}
+
+	// Set DNS server if provided
+	if ciDNS != "" {
+		ciParams.Nameserver = ciDNS
+	}
+
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client for cloud-init")
+		return
+	}
+
+	// First, ensure cloud-init drive exists
+	if err := proxmox.EnsureCloudInitDriveResty(ctx, restyClient, node, vmid, storage); err != nil {
+		log.Warn().
+			Err(err).
+			Str("node", node).
+			Int("vmid", vmid).
+			Str("storage", storage).
+			Msg("Failed to ensure cloud-init drive, continuing with config")
+	}
+
+	// Apply cloud-init configuration
+	if err := proxmox.UpdateVMCloudInitConfigResty(ctx, restyClient, node, vmid, ciParams); err != nil {
+		log.Error().
+			Err(err).
+			Str("node", node).
+			Int("vmid", vmid).
+			Msg("Failed to apply cloud-init configuration")
+		return
+	}
+
+	log.Info().
+		Str("node", node).
+		Int("vmid", vmid).
+		Str("ci_user", ciUser).
+		Bool("has_ssh_keys", ciSSHKeys != "").
+		Bool("has_password", ciPassword != "").
+		Str("ip_config", ciParams.IPConfig0).
+		Msg("Cloud-init configuration applied successfully")
 }

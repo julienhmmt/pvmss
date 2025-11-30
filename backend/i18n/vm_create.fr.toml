@@ -289,3 +289,79 @@ other = "ID VM (Optionnel)"
 other = "Un nom unique pour votre machine virtuelle"
 ["VM.Create.PlaceholderVMName"]
 other = "ex. ma-vm-01"
+
+# Cloud-init Section
+["VM.Create.CloudInit"]
+other = "Configuration Cloud-init"
+["VM.Create.CloudInit.Description"]
+other = "Configurer l'initialisation automatique de la VM avec cloud-init"
+["VM.Create.CloudInit.Enable"]
+other = "Activer Cloud-init"
+["VM.Create.CloudInit.EnableHelp"]
+other = "Cloud-init s'exécutera au premier démarrage pour configurer la VM automatiquement"
+["VM.Create.CloudInit.Template"]
+other = "Modèle Cloud-init"
+["VM.Create.CloudInit.SelectTemplate"]
+other = "Sélectionner un modèle..."
+["VM.Create.CloudInit.NoTemplate"]
+other = "Pas de modèle (configurer manuellement)"
+["VM.Create.CloudInit.Username"]
+other = "Nom d'utilisateur par défaut"
+["VM.Create.CloudInit.UsernamePlaceholder"]
+other = "ex: admin"
+["VM.Create.CloudInit.UsernameHelp"]
+other = "Nom d'utilisateur pour le compte par défaut"
+["VM.Create.CloudInit.Password"]
+other = "Mot de passe par défaut"
+["VM.Create.CloudInit.PasswordPlaceholder"]
+other = "Laisser vide si pas de mot de passe"
+["VM.Create.CloudInit.PasswordHelp"]
+other = "Mot de passe pour l'utilisateur par défaut. Laissez vide si vous utilisez uniquement des clés SSH."
+["VM.Create.CloudInit.SSHKeys"]
+other = "Clés publiques SSH"
+["VM.Create.CloudInit.SSHKeysPlaceholder"]
+other = "Collez les clés publiques SSH ici (une par ligne)"
+["VM.Create.CloudInit.SSHKeysHelp"]
+other = "Clés publiques SSH pour l'authentification sans mot de passe"
+["VM.Create.CloudInit.IPConfig"]
+other = "Configuration réseau"
+["VM.Create.CloudInit.DHCP"]
+other = "DHCP (automatique)"
+["VM.Create.CloudInit.Static"]
+other = "IP statique"
+["VM.Create.CloudInit.StaticIP"]
+other = "Adresse IP statique"
+["VM.Create.CloudInit.StaticIPPlaceholder"]
+other = "ex: 192.168.1.100/24"
+["VM.Create.CloudInit.Gateway"]
+other = "Passerelle"
+["VM.Create.CloudInit.GatewayPlaceholder"]
+other = "ex: 192.168.1.1"
+["VM.Create.CloudInit.Nameserver"]
+other = "Serveur DNS"
+["VM.Create.CloudInit.NameserverPlaceholder"]
+other = "ex: 8.8.8.8"
+["VM.Create.CloudInit.Searchdomain"]
+other = "Domaine de recherche"
+["VM.Create.CloudInit.SearchdomainPlaceholder"]
+other = "ex: example.com"
+["VM.Create.CloudInit.Advanced"]
+other = "Configuration avancée"
+["VM.Create.CloudInit.AdvancedHelp"]
+other = "Fournir une configuration YAML cloud-init personnalisée (remplace le modèle)"
+["VM.Create.CloudInit.CustomYAML"]
+other = "YAML personnalisé"
+["VM.Create.CloudInit.CustomYAMLPlaceholder"]
+other = "#cloud-config\n# Votre configuration personnalisée ici"
+["VM.Create.CloudInit.CustomYAMLHelp"]
+other = "Configuration YAML cloud-init personnalisée. Elle sera utilisée à la place du modèle."
+["VM.Create.CloudInit.NoTemplatesAvailable"]
+other = "Aucun modèle cloud-init disponible. Contactez votre administrateur pour créer des modèles."
+["VM.Create.Tooltip.CloudInit"]
+other = "Cloud-init est un outil d'initialisation automatique de VM. Il peut configurer les utilisateurs, les clés SSH, les paquets et exécuter des scripts personnalisés au premier démarrage."
+["VM.Create.Tooltip.CloudInit.Username"]
+other = "Le nom d'utilisateur du compte par défaut que cloud-init va créer."
+["VM.Create.Tooltip.CloudInit.SSHKeys"]
+other = "Les clés publiques SSH qui seront ajoutées au fichier authorized_keys de l'utilisateur par défaut pour l'authentification sans mot de passe."
+["VM.Create.Tooltip.CloudInit.Network"]
+other = "Configuration réseau de la VM. DHCP demandera une IP automatiquement. L'IP statique nécessite une configuration manuelle."

@@ -1,0 +1,271 @@
+{{define "admin_cloudinit"}}
+  {{template "admin_base" .}}
+{{end}}
+
+{{define "admin_cloudinit_section"}}
+<div class="container mt-4">
+
+  {{if .Error}}
+  {{template "notification" (dict 
+    "Type" "danger" 
+    "Title" (T "Common.Error") 
+    "Message" .Error 
+    "Icon" "fas fa-exclamation-triangle" 
+    "Dismissible" true 
+    "Light" false 
+    "Action" (dict 
+      "Link" "/admin/cloudinit" 
+      "Text" (T "Common.TryAgain") 
+      "Icon" "fas fa-rotate-right" 
+      "Type" "light")
+  )}}
+  {{else}}
+
+  <div class="content mb-5">
+    <h1 class="title is-4">
+      <span class="icon"><i class="fas fa-cloud"></i></span>
+      <span>{{T "Admin.CloudInit.Title"}}</span>
+    </h1>
+    <p class="subtitle is-6 has-text-grey">{{T "Admin.CloudInit.Description"}}</p>
+  </div>
+
+  {{if .Success}}
+  {{template "notification" (dict 
+    "Type" "success" 
+    "Title" (T "Common.Success") 
+    "Message" .Success 
+    "Icon" "fas fa-check-circle" 
+    "Dismissible" true 
+    "Light" true)}}
+  {{end}}
+
+  {{if not .ProxmoxConnected}}
+  {{template "notification" (dict 
+    "Type" "warning" 
+    "Title" (T "Common.Warning") 
+    "Message" (T "Admin.CloudInit.ProxmoxOffline") 
+    "Icon" "fas fa-exclamation-triangle" 
+    "Light" true)}}
+  {{end}}
+
+  <!-- Safety warning -->
+  <article class="message is-info mb-5">
+    <div class="message-body">
+      <span class="icon"><i class="fas fa-shield-alt"></i></span>
+      <span>{{T "Admin.CloudInit.SecurityNote"}}</span>
+    </div>
+  </article>
+
+  <div class="columns">
+    <!-- Templates List (Left) -->
+    <div class="column is-7">
+      <div class="box admin-box">
+        <h2 class="title is-5 mb-4">
+          <span class="icon"><i class="fas fa-list"></i></span>
+          <span>{{T "Admin.CloudInit.TemplatesList"}}</span>
+        </h2>
+
+        {{if .Templates}}
+        <div class="table-container">
+          <table class="table modern is-fullwidth">
+            <thead>
+              <tr>
+                <th>{{T "Common.Name"}}</th>
+                <th>{{T "Admin.Storage.Title"}}</th>
+                <th>{{T "Common.Status"}}</th>
+                <th class="has-text-right">{{T "Common.Actions"}}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{range .Templates}}
+              <tr>
+                <td>
+                  <span class="has-text-weight-semibold">{{.Name}}</span>
+                  {{if .Description}}
+                  <br><small class="has-text-grey">{{.Description}}</small>
+                  {{end}}
+                </td>
+                <td>
+                  <span class="tag is-light">{{.Storage}}</span>
+                </td>
+                <td>
+                  {{if .Enabled}}
+                  <span class="tag is-success is-light">{{T "Common.Enabled"}}</span>
+                  {{else}}
+                  <span class="tag is-grey is-light">{{T "Common.Disabled"}}</span>
+                  {{end}}
+                </td>
+                <td class="has-text-right">
+                  <div class="buttons are-small is-right">
+                    {{if .Enabled}}
+                    <form action="/admin/cloudinit/toggle" method="POST" class="is-inline">
+                      {{csrfField}}
+                      <input type="hidden" name="id" value="{{.ID}}">
+                      <input type="hidden" name="action" value="disable">
+                      <button type="submit" class="button is-warning is-light is-small" title="{{T "Common.Disable"}}">
+                        <span class="icon"><i class="fas fa-toggle-on"></i></span>
+                      </button>
+                    </form>
+                    {{else}}
+                    <form action="/admin/cloudinit/toggle" method="POST" class="is-inline">
+                      {{csrfField}}
+                      <input type="hidden" name="id" value="{{.ID}}">
+                      <input type="hidden" name="action" value="enable">
+                      <button type="submit" class="button is-success is-light is-small" title="{{T "Common.Enable"}}">
+                        <span class="icon"><i class="fas fa-toggle-off"></i></span>
+                      </button>
+                    </form>
+                    {{end}}
+                    <button type="button" class="button is-info is-light is-small" 
+                            onclick="editTemplate('{{.ID}}', '{{.Name}}', '{{.Description}}')"
+                            title="{{T "Common.Edit"}}">
+                      <span class="icon"><i class="fas fa-edit"></i></span>
+                    </button>
+                    <form action="/admin/cloudinit/delete" method="POST" class="is-inline" 
+                          onsubmit="return confirm('{{T "Admin.CloudInit.ConfirmDelete"}}');">
+                      {{csrfField}}
+                      <input type="hidden" name="id" value="{{.ID}}">
+                      <button type="submit" class="button is-danger is-light is-small" title="{{T "Common.Delete"}}">
+                        <span class="icon"><i class="fas fa-trash"></i></span>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {{end}}
+            </tbody>
+          </table>
+        </div>
+        {{else}}
+        <div class="notification is-light">
+          <div class="has-text-centered py-4">
+            <span class="icon is-large has-text-grey-light">
+              <i class="fas fa-cloud fa-3x"></i>
+            </span>
+            <p class="mt-3 has-text-grey">{{T "Admin.CloudInit.NoTemplates"}}</p>
+            <p class="mt-2">
+              <a href="#create-form" class="button is-primary is-small" onclick="document.getElementById('name').focus();">
+                <span class="icon"><i class="fas fa-plus"></i></span>
+                <span>{{T "Admin.CloudInit.CreateFirst"}}</span>
+              </a>
+            </p>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    </div>
+
+    <!-- Create/Edit Form (Right) -->
+    <div class="column is-5">
+      <div class="box admin-box" id="create-form">
+        <h2 class="title is-5 mb-4" id="form-title">
+          <span class="icon"><i class="fas fa-plus-circle"></i></span>
+          <span>{{T "Admin.CloudInit.CreateTemplate"}}</span>
+        </h2>
+
+        <form id="template-form" action="/admin/cloudinit/create" method="POST">
+          {{csrfField}}
+          <input type="hidden" name="id" id="edit-id" value="">
+
+          <div class="field">
+            <label class="label" for="name">
+              <span class="icon is-small"><i class="fas fa-tag"></i></span>
+              {{T "Common.Name"}} <span class="has-text-danger">*</span>
+            </label>
+            <div class="control">
+              <input class="input" type="text" name="name" id="name" required 
+                     placeholder="{{T "Admin.CloudInit.NamePlaceholder"}}">
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="description">
+              <span class="icon is-small"><i class="fas fa-align-left"></i></span>
+              {{T "Common.Description"}}
+            </label>
+            <div class="control">
+              <input class="input" type="text" name="description" id="description" 
+                     placeholder="{{T "Admin.CloudInit.DescriptionPlaceholder"}}">
+            </div>
+            <p class="help">{{T "Admin.CloudInit.DescriptionHelp"}}</p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="storage">
+              <span class="icon is-small"><i class="fas fa-hdd"></i></span>
+              {{T "Admin.CloudInit.SnippetsStorage"}} <span class="has-text-danger">*</span>
+            </label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select name="storage" id="storage" required {{if not .ProxmoxConnected}}disabled{{end}}>
+                  <option value="">{{T "Admin.CloudInit.SelectStorage"}}</option>
+                  {{range .SnippetStorages}}
+                  <option value="{{.Storage}}">{{.Storage}} ({{.Type}})</option>
+                  {{end}}
+                </select>
+              </div>
+            </div>
+            {{if not .SnippetStorages}}
+            <p class="help has-text-warning">{{T "Admin.CloudInit.NoSnippetStorages"}}</p>
+            {{end}}
+          </div>
+
+          <div class="field">
+            <label class="label" for="yaml_content">
+              <span class="icon is-small"><i class="fas fa-code"></i></span>
+              {{T "Admin.CloudInit.YAMLContent"}} <span class="has-text-danger">*</span>
+            </label>
+            <div class="control">
+              <textarea class="textarea is-family-monospace" name="yaml_content" id="yaml_content" 
+                        rows="12" required placeholder="#cloud-config&#10;# Your cloud-init configuration here"></textarea>
+            </div>
+            <p class="help">{{T "Admin.CloudInit.YAMLHelp"}}</p>
+          </div>
+
+          <div class="field is-grouped is-grouped-right">
+            <div class="control">
+              <button type="button" class="button is-light" onclick="resetForm()">
+                <span class="icon"><i class="fas fa-times"></i></span>
+                <span>{{T "Common.Cancel"}}</span>
+              </button>
+            </div>
+            <div class="control">
+              <button type="submit" class="button is-primary" id="submit-btn" 
+                      {{if not .ProxmoxConnected}}disabled{{end}}>
+                <span class="icon"><i class="fas fa-save"></i></span>
+                <span id="submit-text">{{T "Admin.CloudInit.ValidateAndSave"}}</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {{end}}
+</div>
+
+<script>
+function editTemplate(id, name, description) {
+  document.getElementById('edit-id').value = id;
+  document.getElementById('name').value = name;
+  document.getElementById('description').value = description;
+  document.getElementById('template-form').action = '/admin/cloudinit/edit';
+  document.getElementById('form-title').innerHTML = '<span class="icon"><i class="fas fa-edit"></i></span><span>{{T "Admin.CloudInit.EditTemplate"}}</span>';
+  document.getElementById('submit-text').textContent = '{{T "Common.Save"}}';
+  document.getElementById('storage').disabled = true;
+  document.getElementById('yaml_content').required = false;
+  document.getElementById('name').focus();
+}
+
+function resetForm() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('template-form').reset();
+  document.getElementById('template-form').action = '/admin/cloudinit/create';
+  document.getElementById('form-title').innerHTML = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>{{T "Admin.CloudInit.CreateTemplate"}}</span>';
+  document.getElementById('submit-text').textContent = '{{T "Admin.CloudInit.ValidateAndSave"}}';
+  document.getElementById('storage').disabled = {{if not .ProxmoxConnected}}true{{else}}false{{end}};
+  document.getElementById('yaml_content').required = true;
+}
+</script>
+{{end}}

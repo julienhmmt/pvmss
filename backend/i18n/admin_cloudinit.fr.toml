@@ -1,0 +1,50 @@
+# Cloud-init Admin Translations (French)
+
+[Admin.CloudInit]
+Title = "Modèles Cloud-init"
+Description = "Gérer les modèles de configuration cloud-init pour l'initialisation des VM"
+
+# Page sections
+TemplatesList = "Modèles"
+CreateTemplate = "Créer un modèle"
+EditTemplate = "Modifier le modèle"
+
+# Form labels and placeholders
+NamePlaceholder = "ex: Configuration Ubuntu de base"
+DescriptionPlaceholder = "Brève description pour les utilisateurs"
+DescriptionHelp = "Cette description sera affichée aux utilisateurs lors de la sélection d'un modèle"
+SnippetsStorage = "Stockage des snippets"
+SelectStorage = "Sélectionner un stockage..."
+YAMLContent = "Configuration YAML"
+YAMLHelp = "Entrez votre configuration cloud-init au format YAML. Commencez par #cloud-config"
+ValidateAndSave = "Valider et enregistrer"
+
+# Empty states
+NoTemplates = "Aucun modèle cloud-init configuré"
+CreateFirst = "Créer votre premier modèle"
+NoSnippetStorages = "Aucun stockage avec support snippets trouvé. Veuillez d'abord configurer un stockage snippets dans Proxmox."
+
+# Confirmation dialogs
+ConfirmDelete = "Êtes-vous sûr de vouloir supprimer ce modèle ? Cette action est irréversible."
+
+# Status messages
+ProxmoxOffline = "Proxmox n'est pas connecté. La gestion des modèles est limitée."
+SecurityNote = "Les scripts cloud-init s'exécutent avec les privilèges root à l'intérieur de la VM au premier démarrage. Vérifiez attentivement les modèles avant de les activer."
+
+# Success messages
+[Admin.CloudInit.Success]
+Create = "Modèle '%s' créé avec succès"
+Edit = "Modèle '%s' mis à jour avec succès"
+Delete = "Modèle '%s' supprimé avec succès"
+Enable = "Modèle '%s' activé"
+Disable = "Modèle '%s' désactivé"
+Default = "Paramètres du modèle mis à jour avec succès"
+
+# Error messages
+[Admin.CloudInit.Error]
+RequiredFields = "Veuillez remplir tous les champs obligatoires"
+InvalidYAML = "Syntaxe YAML invalide. Veuillez vérifier votre configuration."
+AlreadyExists = "Un modèle avec ce nom existe déjà"
+NotFound = "Modèle non trouvé"
+DeleteFailed = "Échec de la suppression du modèle"
+UploadFailed = "Échec du téléversement du modèle vers le stockage"
