@@ -268,10 +268,10 @@
 var proxmoxConnected = {{.ProxmoxConnected}};
 var hasProxmoxSession = {{.HasProxmoxSession}};
 var confirmDeleteMessage = '{{T "Admin.CloudInit.ConfirmDelete"}}';
-function showNotification(type, message) {
+function showInlineNotification(type, message) {
 
   const notification = document.createElement('div');
-  notification.className = `notification is-${type}`;
+  notification.className = `notification is-${type} has-text-black`;
   notification.innerHTML = `
     <button class="delete" onclick="this.parentElement.remove()"></button>
     ${message}
@@ -329,7 +329,7 @@ async function editTemplate(id, name, description) {
   } catch (error) {
     console.error('Error fetching template data:', error);
     // Show error notification
-    showNotification('danger', '{{T "Admin.CloudInit.Error.FetchTemplate"}}');
+    showInlineNotification('danger', '{{T "Admin.CloudInit.Error.FetchTemplate"}}');
   }
   
   document.getElementById('name').focus();
@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (form) {
     form.addEventListener('submit', function(event) {
       if (!document.getElementById('yaml_content').value) {
-        showNotification('danger', '{{T "Admin.CloudInit.Error.RequiredFields"}}');
+        showInlineNotification('danger', '{{T "Admin.CloudInit.Error.RequiredFields"}}');
         document.getElementById('yaml_content').focus();
         event.preventDefault();
         return false;
