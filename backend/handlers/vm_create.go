@@ -2020,17 +2020,19 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 	log := CreateHandlerLogger("applyCloudInitConfig", r)
 
 	// Extract cloud-init form values
-	ciUser := strings.TrimSpace(r.FormValue("cloudinit_user"))
+	ciDNS := strings.TrimSpace(r.FormValue("cloudinit_dns"))
+	ciGateway := strings.TrimSpace(r.FormValue("cloudinit_gateway"))
+	ciIP := strings.TrimSpace(r.FormValue("cloudinit_ip"))
+	ciIPConfig := strings.TrimSpace(r.FormValue("cloudinit_ipconfig"))
 	ciPassword := r.FormValue("cloudinit_password") // Don't trim password
 	ciSSHKeys := strings.TrimSpace(r.FormValue("cloudinit_sshkeys"))
-	ciIPConfig := strings.TrimSpace(r.FormValue("cloudinit_ipconfig"))
-	ciIP := strings.TrimSpace(r.FormValue("cloudinit_ip"))
-	ciGateway := strings.TrimSpace(r.FormValue("cloudinit_gateway"))
-	ciDNS := strings.TrimSpace(r.FormValue("cloudinit_dns"))
+	ciUser := strings.TrimSpace(r.FormValue("cloudinit_user"))
+	templateID := strings.TrimSpace(r.FormValue("cloudinit_template"))
 
 	// Build cloud-init parameters. The cloud-init drive itself (ide2=<storage>:cloudinit)
 	// is managed separately by EnsureCloudInitDriveResty; here we only set logical
-	// cloud-init settings like user, password, SSH keys and IP config.
+	// cloud-init settings like user, password, SSH keys and IP config. The cicustom
+	// option is set only when a template is selected.
 	ciParams := proxmox.CloudInitParams{
 		CIUser: ciUser,
 	}
@@ -2069,6 +2071,10 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 		return
 	}
 
+	if templateID != "" {
+		h.applyCloudInitTemplate(ctx, restyClient, node, vmid, &ciParams, templateID)
+	}
+
 	// First, ensure cloud-init drive exists
 	if err := proxmox.EnsureCloudInitDriveResty(ctx, restyClient, node, vmid, storage); err != nil {
 		log.Warn().
@@ -2097,4 +2103,107 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 		Bool("has_password", ciPassword != "").
 		Str("ip_config", ciParams.IPConfig0).
 		Msg("Cloud-init configuration applied successfully")
+}
+
+func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, restyClient *proxmox.RestyClient, node string, vmid int, ciParams *proxmox.CloudInitParams, templateID string) {
+	log := CreateHandlerLogger("applyCloudInitTemplate", nil)
+
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		log.Warn().Msg("Settings not available, skipping cloud-init template")
+		return
+	}
+
+	template := settings.GetCloudInitTemplateByID(templateID)
+	if template == nil {
+		log.Warn().Str("template_id", templateID).Msg("Cloud-init template not found, skipping")
+		return
+	}
+
+	if strings.TrimSpace(template.YAMLContent) == "" {
+		log.Warn().Str("template_id", templateID).Msg("Cloud-init template has empty YAML content, skipping")
+		return
+	}
+
+	snippetStorage, err := h.selectSnippetStorageForNode(ctx, restyClient, node, template.Storage)
+	if err != nil {
+		log.Warn().
+			Err(err).
+			Str("template_id", templateID).
+			Str("node", node).
+			Msg("No suitable snippets storage found for cloud-init template, skipping")
+		return
+	}
+
+	filename := template.Filename
+	if filename == "" {
+		filename = state.CloudInitTemplatePrefix + template.ID + ".yml"
+	}
+
+	if err := proxmox.UploadSnippetFileResty(ctx, restyClient, node, snippetStorage, filename, template.YAMLContent); err != nil {
+		log.Warn().
+			Err(err).
+			Str("template_id", templateID).
+			Str("storage", snippetStorage).
+			Str("filename", filename).
+			Msg("Failed to upload cloud-init template snippet, skipping cicustom")
+		return
+	}
+
+	ciParams.CICustom = fmt.Sprintf("user=%s:snippets/%s", snippetStorage, filename)
+
+	log.Info().
+		Str("template_id", templateID).
+		Str("storage", snippetStorage).
+		Str("filename", filename).
+		Str("node", node).
+		Int("vmid", vmid).
+		Msg("Cloud-init template snippet uploaded and cicustom configured")
+}
+
+func (h *VMCreateOptimizedHandler) selectSnippetStorageForNode(ctx context.Context, restyClient *proxmox.RestyClient, node string, preferredStorage string) (string, error) {
+	storages, err := proxmox.GetSnippetsStoragesResty(ctx, restyClient)
+	if err != nil {
+		return "", err
+	}
+
+	var fallback string
+
+	for _, s := range storages {
+		if s.Enabled != 1 {
+			continue
+		}
+		if !storageAvailableOnNode(s, node) {
+			continue
+		}
+		if preferredStorage != "" && s.Storage == preferredStorage {
+			return s.Storage, nil
+		}
+		if fallback == "" {
+			fallback = s.Storage
+		}
+	}
+
+	if fallback == "" {
+		if preferredStorage != "" {
+			return "", fmt.Errorf("no snippets storage matching preferred %s for node %s", preferredStorage, node)
+		}
+		return "", fmt.Errorf("no snippets storage available for node %s", node)
+	}
+
+	return fallback, nil
+}
+
+func storageAvailableOnNode(storage proxmox.Storage, node string) bool {
+	if storage.Nodes == "" {
+		return true
+	}
+
+	for _, n := range strings.Split(storage.Nodes, ",") {
+		if strings.TrimSpace(n) == node {
+			return true
+		}
+	}
+
+	return false
 }
