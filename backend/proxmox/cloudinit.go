@@ -7,7 +7,13 @@ import (
 	"io"
 	"mime/multipart"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/pkg/sftp"
+	"golang.org/x/crypto/ssh"
 
 	"pvmss/logger"
 )
@@ -46,6 +52,16 @@ type CloudInitParams struct {
 	CICustom     string
 	CIDrive      string // e.g., "ide2" or "scsi1"
 	CIStorage    string // storage for cloud-init drive
+}
+
+// CloudInitSFTPConfig defines SSH/SFTP configuration for cloud-init snippet uploads
+type CloudInitSFTPConfig struct {
+	Enabled        bool   `json:"enabled"`        // Whether SFTP upload is enabled
+	Host           string `json:"host"`           // Proxmox node hostname or IP
+	Port           int    `json:"port"`           // SSH port (default: 22)
+	Username       string `json:"username"`       // SSH username (PAM account)
+	PrivateKeyPath string `json:"privateKeyPath"` // Path to private SSH key file
+	SnippetBaseDir string `json:"snippetBaseDir"` // Base directory for snippets (e.g., /var/lib/vz/snippets)
 }
 
 // GetVMCloudInitConfigResty fetches cloud-init configuration for a VM.
@@ -380,4 +396,96 @@ func GetSnippetsStoragesResty(ctx context.Context, restyClient *RestyClient) ([]
 	}
 
 	return snippetStorages, nil
+}
+
+// UploadSnippetFileSFTP uploads a snippet file using SFTP instead of HTTP API.
+// This works around Proxmox API limitations with content=snippets uploads.
+func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, filename, content string) error {
+	if !config.Enabled {
+		return fmt.Errorf("SFTP upload is disabled in configuration")
+	}
+
+	log := logger.Get()
+	log.Info().
+		Str("host", config.Host).
+		Str("username", config.Username).
+		Str("filename", filename).
+		Msg("Uploading cloud-init snippet via SFTP")
+
+	// Read private key
+	keyBytes, err := os.ReadFile(config.PrivateKeyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read private key file %s: %w", config.PrivateKeyPath, err)
+	}
+
+	// Parse private key
+	signer, err := ssh.ParsePrivateKey(keyBytes)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Create SSH client config
+	sshConfig := &ssh.ClientConfig{
+		User: config.Username,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // TODO: Consider making this configurable
+		Timeout:         30 * time.Second,
+	}
+
+	// Connect to SSH server
+	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
+	sshClient, err := ssh.Dial("tcp", addr, sshConfig)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SSH server %s: %w", addr, err)
+	}
+	defer func() {
+		if closeErr := sshClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SSH client")
+		}
+	}()
+
+	// Create SFTP client
+	sftpClient, err := sftp.NewClient(sshClient)
+	if err != nil {
+		return fmt.Errorf("failed to create SFTP client: %w", err)
+	}
+	defer func() {
+		if closeErr := sftpClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SFTP client")
+		}
+	}()
+
+	// Ensure target directory exists
+	targetDir := config.SnippetBaseDir
+	if err := sftpClient.MkdirAll(targetDir); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
+	}
+
+	// Create target file path
+	targetPath := filepath.Join(targetDir, filename)
+
+	// Create file on remote server
+	remoteFile, err := sftpClient.Create(targetPath)
+	if err != nil {
+		return fmt.Errorf("failed to create remote file %s: %w", targetPath, err)
+	}
+	defer func() {
+		if closeErr := remoteFile.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close remote file")
+		}
+	}()
+
+	// Write content
+	if _, err := remoteFile.Write([]byte(content)); err != nil {
+		return fmt.Errorf("failed to write content to remote file %s: %w", targetPath, err)
+	}
+
+	log.Info().
+		Str("host", config.Host).
+		Str("path", targetPath).
+		Msg("Cloud-init snippet uploaded successfully via SFTP")
+
+	return nil
 }

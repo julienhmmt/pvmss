@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"pvmss/logger"
+	"pvmss/proxmox"
 )
 
 // ResourceRange defines min/max values for a resource
@@ -105,22 +106,31 @@ func defaultSettings() *AppSettings {
 		VMBRs:              []string{},
 		CloudInitTemplates: []CloudInitTemplate{},
 		AllowCustomYAML:    true, // Allow custom YAML by default
+		CloudInitSFTP: proxmox.CloudInitSFTPConfig{
+			Enabled:        false, // Disabled by default
+			Host:           "",
+			Port:           22,
+			Username:       "pvmss-snippets",
+			PrivateKeyPath: "/etc/pvmss/keys/pvmss_snippets_ed25519",
+			SnippetBaseDir: "/var/lib/vz/snippets",
+		},
 	}
 }
 
 var settingsMutex = &sync.Mutex{}
 
 type AppSettings struct {
-	EnabledStorages    []string            `json:"enabled_storages"`
-	ISOs               []string            `json:"isos"`
-	Limits             LimitsConfig        `json:"limits"`
-	MaxNetworkCards    int                 `json:"max_network_cards,omitempty"`
-	MaxDiskPerVM       int                 `json:"max_disk_per_vm,omitempty"`
-	MaxVMPerUser       int                 `json:"max_vm_per_user,omitempty"`
-	Tags               []string            `json:"tags"`
-	VMBRs              []string            `json:"vmbrs"`
-	CloudInitTemplates []CloudInitTemplate `json:"cloudinit_templates,omitempty"`
-	AllowCustomYAML    bool                `json:"allow_custom_yaml,omitempty"` // Allow users to provide custom YAML (default: true)
+	EnabledStorages    []string                    `json:"enabled_storages"`
+	ISOs               []string                    `json:"isos"`
+	Limits             LimitsConfig                `json:"limits"`
+	MaxNetworkCards    int                         `json:"max_network_cards,omitempty"`
+	MaxDiskPerVM       int                         `json:"max_disk_per_vm,omitempty"`
+	MaxVMPerUser       int                         `json:"max_vm_per_user,omitempty"`
+	Tags               []string                    `json:"tags"`
+	VMBRs              []string                    `json:"vmbrs"`
+	CloudInitTemplates []CloudInitTemplate         `json:"cloudinit_templates,omitempty"`
+	AllowCustomYAML    bool                        `json:"allow_custom_yaml,omitempty"` // Allow users to provide custom YAML (default: true)
+	CloudInitSFTP      proxmox.CloudInitSFTPConfig `json:"cloudinit_sftp,omitempty"`    // SSH/SFTP configuration for snippet uploads
 }
 
 // getSettingsFilePath returns the absolute path to the settings file.
@@ -234,6 +244,33 @@ func LoadSettings() (*AppSettings, bool, error) {
 	if settings.MaxVMPerUser < MinVMPerUser || settings.MaxVMPerUser > MaxVMPerUser {
 		modified = true
 		settings.MaxVMPerUser = DefaultVMPerUser
+	}
+
+	// Validate SFTP configuration if enabled
+	if settings.CloudInitSFTP.Enabled {
+		log.Info().Msg("Validating SFTP configuration for cloud-init snippet uploads")
+
+		// Check if private key file exists and is readable
+		if _, err := os.Stat(settings.CloudInitSFTP.PrivateKeyPath); os.IsNotExist(err) {
+			log.Error().
+				Str("private_key_path", settings.CloudInitSFTP.PrivateKeyPath).
+				Msg("SFTP private key file not found, disabling SFTP upload")
+			settings.CloudInitSFTP.Enabled = false
+			modified = true
+		} else if err != nil {
+			log.Error().
+				Err(err).
+				Str("private_key_path", settings.CloudInitSFTP.PrivateKeyPath).
+				Msg("Cannot access SFTP private key file, disabling SFTP upload")
+			settings.CloudInitSFTP.Enabled = false
+			modified = true
+		} else {
+			log.Info().
+				Str("host", settings.CloudInitSFTP.Host).
+				Str("username", settings.CloudInitSFTP.Username).
+				Str("private_key_path", settings.CloudInitSFTP.PrivateKeyPath).
+				Msg("SFTP configuration validated and enabled")
+		}
 	}
 
 	log.Info().

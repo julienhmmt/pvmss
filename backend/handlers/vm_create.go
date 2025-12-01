@@ -2125,6 +2125,7 @@ func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, r
 		return
 	}
 
+	// Determine snippet storage (for cicustom parameter)
 	snippetStorage, err := h.selectSnippetStorageForNode(ctx, restyClient, node, template.Storage)
 	if err != nil {
 		log.Warn().
@@ -2140,16 +2141,48 @@ func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, r
 		filename = state.CloudInitTemplatePrefix + template.ID + ".yml"
 	}
 
-	if err := proxmox.UploadSnippetFileResty(ctx, restyClient, node, snippetStorage, filename, template.YAMLContent); err != nil {
-		log.Warn().
-			Err(err).
-			Str("template_id", templateID).
-			Str("storage", snippetStorage).
-			Str("filename", filename).
-			Msg("Failed to upload cloud-init template snippet, skipping cicustom")
-		return
+	// Try SFTP upload first if enabled
+	uploadSuccess := false
+	if settings.CloudInitSFTP.Enabled {
+		log.Info().Msg("Attempting cloud-init snippet upload via SFTP")
+		if err := proxmox.UploadSnippetFileSFTP(ctx, settings.CloudInitSFTP, filename, template.YAMLContent); err != nil {
+			log.Warn().
+				Err(err).
+				Str("template_id", templateID).
+				Str("sftp_host", settings.CloudInitSFTP.Host).
+				Str("filename", filename).
+				Msg("Failed to upload cloud-init template snippet via SFTP, falling back to HTTP API")
+		} else {
+			uploadSuccess = true
+			log.Info().
+				Str("template_id", templateID).
+				Str("sftp_host", settings.CloudInitSFTP.Host).
+				Str("filename", filename).
+				Msg("Cloud-init template snippet uploaded successfully via SFTP")
+		}
 	}
 
+	// Fall back to HTTP API if SFTP failed or is disabled
+	if !uploadSuccess {
+		log.Info().Msg("Attempting cloud-init snippet upload via HTTP API")
+		if err := proxmox.UploadSnippetFileResty(ctx, restyClient, node, snippetStorage, filename, template.YAMLContent); err != nil {
+			log.Warn().
+				Err(err).
+				Str("template_id", templateID).
+				Str("storage", snippetStorage).
+				Str("filename", filename).
+				Msg("Failed to upload cloud-init template snippet via both SFTP and HTTP API, skipping cicustom")
+			return
+		} else {
+			log.Info().
+				Str("template_id", templateID).
+				Str("storage", snippetStorage).
+				Str("filename", filename).
+				Msg("Cloud-init template snippet uploaded successfully via HTTP API")
+		}
+	}
+
+	// Set cicustom parameter to reference the uploaded snippet
 	ciParams.CICustom = fmt.Sprintf("user=%s:snippets/%s", snippetStorage, filename)
 
 	log.Info().
