@@ -250,7 +250,7 @@ other = "Annuler"
 ["VMDetails.Celebration.Title"]
 other = "VM créée avec succès !"
 ["VMDetails.Celebration.Message"]
-other = "Votre nouvelle machine virtuelle <strong>{{.Name}}</strong> (ID: {{.VMID}}) est maintenant prête à être utilisée."
+other = "Votre nouvelle machine virtuelle est maintenant prête à être utilisée."
 ["VMDetails.Celebration.StartNow"]
 other = "Démarrer maintenant"
 ["VMDetails.Celebration.OpenConsole"]

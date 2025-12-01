@@ -2028,11 +2028,11 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 	ciGateway := strings.TrimSpace(r.FormValue("cloudinit_gateway"))
 	ciDNS := strings.TrimSpace(r.FormValue("cloudinit_dns"))
 
-	// Build cloud-init parameters
+	// Build cloud-init parameters. The cloud-init drive itself (ide2=<storage>:cloudinit)
+	// is managed separately by EnsureCloudInitDriveResty; here we only set logical
+	// cloud-init settings like user, password, SSH keys and IP config.
 	ciParams := proxmox.CloudInitParams{
-		CIUser:    ciUser,
-		CIStorage: storage,
-		CIDrive:   "ide2", // Default cloud-init drive
+		CIUser: ciUser,
 	}
 
 	// Only set password if provided (never log it)
