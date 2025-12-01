@@ -81,3 +81,15 @@ other = "Failed to delete template"
 other = "Failed to upload template to storage"
 ["Admin.CloudInit.Error.NoProxmoxSession"]
 other = "You must be logged in with a Proxmox account to manage cloud-init templates. Local administrators cannot create, edit, or delete templates."
+
+# Warning messages
+["Admin.CloudInit.Warning.ProxmoxUploadFailed"]
+other = "Template '%s' was created and saved locally, but could not be uploaded to Proxmox storage. The template can still be used - the YAML content will be applied directly to VMs during creation."
+["Admin.CloudInit.Warning.Default"]
+other = "The operation completed with warnings."
+
+# Sync status indicators
+["Admin.CloudInit.SyncedToProxmox"]
+other = "Synced to Proxmox storage"
+["Admin.CloudInit.LocalOnly"]
+other = "Stored locally only (not synced to Proxmox)"

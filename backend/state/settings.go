@@ -71,14 +71,16 @@ const (
 	DefaultVMPerUser = 5              // Default VMs per user
 )
 
-// CloudInitTemplate represents metadata for a cloud-init template stored in Proxmox snippets.
+// CloudInitTemplate represents metadata for a cloud-init template managed by PVMSS.
+// Templates are stored locally in settings.json; Storage and Filename are kept as
+// optional metadata about the intended Proxmox storage and filename.
 type CloudInitTemplate struct {
 	ID          string `json:"id"`           // Unique identifier (filename without prefix)
 	Name        string `json:"name"`         // Human-readable name
 	Description string `json:"description"`  // Short description shown to users
-	Storage     string `json:"storage"`      // Proxmox snippets storage ID
-	Filename    string `json:"filename"`     // Full filename on Proxmox (e.g., pvmss-mytemplate.yml)
-	YAMLContent string `json:"yaml_content"` // YAML content stored locally (fallback if Proxmox upload fails)
+	Storage     string `json:"storage"`      // Intended Proxmox storage ID (metadata only)
+	Filename    string `json:"filename"`     // Intended filename (e.g., pvmss-mytemplate.yml)
+	YAMLContent string `json:"yaml_content"` // YAML content stored locally and applied to VMs
 	Enabled     bool   `json:"enabled"`      // Whether visible to users
 }
 

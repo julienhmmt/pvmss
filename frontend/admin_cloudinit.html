@@ -5,11 +5,11 @@
 {{define "admin_cloudinit_section"}}
 <div class="container mt-4">
 
-  {{if .Error}}
+  {{if .ErrorMessage}}
   {{template "notification" (dict 
     "Type" "danger" 
     "Title" (T "Common.Error") 
-    "Message" .Error 
+    "Message" .ErrorMessage 
     "Icon" "fas fa-exclamation-triangle" 
     "Dismissible" true 
     "Light" false 
@@ -19,7 +19,7 @@
       "Icon" "fas fa-rotate-right" 
       "Type" "light")
   )}}
-  {{else}}
+  {{end}}
 
   <div class="content mb-5">
     <h1 class="title is-4">
@@ -78,7 +78,6 @@
             <thead>
               <tr>
                 <th>{{T "Common.Name"}}</th>
-                <th>{{T "Admin.Storage.Title"}}</th>
                 <th>{{T "Common.Status"}}</th>
                 <th class="has-text-right">{{T "Common.Actions"}}</th>
               </tr>
@@ -91,9 +90,6 @@
                   {{if .Description}}
                   <br><small class="has-text-grey">{{.Description}}</small>
                   {{end}}
-                </td>
-                <td>
-                  <span class="tag is-light">{{.Storage}}</span>
                 </td>
                 <td>
                   {{if .Enabled}}
@@ -211,25 +207,7 @@
             <p class="help">{{T "Admin.CloudInit.DescriptionHelp"}}</p>
           </div>
 
-          <div class="field">
-            <label class="label" for="storage">
-              <span class="icon is-small"><i class="fas fa-hdd"></i></span>
-              {{T "Admin.CloudInit.SnippetsStorage"}} <span class="has-text-danger">*</span>
-            </label>
-            <div class="control">
-              <div class="select is-fullwidth">
-                <select name="storage" id="storage" required {{if not .ProxmoxConnected}}disabled{{end}}>
-                  <option value="">{{T "Admin.CloudInit.SelectStorage"}}</option>
-                  {{range .SnippetStorages}}
-                  <option value="{{.Storage}}">{{.Storage}} ({{.Type}})</option>
-                  {{end}}
-                </select>
-              </div>
-            </div>
-            {{if not .SnippetStorages}}
-            <p class="help has-text-warning">{{T "Admin.CloudInit.NoSnippetStorages"}}</p>
-            {{end}}
-          </div>
+          
 
           <div class="field">
             <label class="label" for="yaml_content">
@@ -262,8 +240,6 @@
       </div>
     </div>
   </div>
-  {{end}}
-
   {{end}}
 
   <!-- YAML View Modal -->
@@ -343,18 +319,11 @@ async function editTemplate(id, name, description) {
     }
     const templateData = await response.json();
     
-    // Populate storage field (read-only during edit)
-    if (templateData.storage) {
-      document.getElementById('storage').value = templateData.storage;
-    }
-    
     // Populate YAML content
     if (templateData.content) {
       document.getElementById('yaml_content').value = templateData.content;
     }
     
-    // Disable storage field during edit (storage location cannot be changed after creation)
-    document.getElementById('storage').disabled = true;
     document.getElementById('yaml_content').required = true;
     
   } catch (error) {
@@ -417,22 +386,7 @@ function resetForm() {
   document.getElementById('template-form').action = '/admin/cloudinit/create';
   document.getElementById('form-title').innerHTML = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>{{T "Admin.CloudInit.CreateTemplate"}}</span>';
   document.getElementById('submit-text').textContent = '{{T "Admin.CloudInit.ValidateAndSave"}}';
-  document.getElementById('storage').disabled = !proxmoxConnected;
   document.getElementById('yaml_content').required = true;
-}
-
-// Validate storage selection before form submission
-function validateStorageSelection() {
-  const storageSelect = document.getElementById('storage');
-  const selectedValue = storageSelect.value;
-  
-  if (selectedValue === '') {
-    showNotification('danger', '{{T "Admin.CloudInit.Error.RequiredFields"}}');
-    storageSelect.focus();
-    return false;
-  }
-  
-  return true;
 }
 
 // Add form submission validation
@@ -440,7 +394,9 @@ document.addEventListener('DOMContentLoaded', function() {
   const form = document.getElementById('template-form');
   if (form) {
     form.addEventListener('submit', function(event) {
-      if (!validateStorageSelection()) {
+      if (!document.getElementById('yaml_content').value) {
+        showNotification('danger', '{{T "Admin.CloudInit.Error.RequiredFields"}}');
+        document.getElementById('yaml_content').focus();
         event.preventDefault();
         return false;
       }

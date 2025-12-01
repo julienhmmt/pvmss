@@ -82,3 +82,15 @@ other = "Échec de la suppression du modèle"
 other = "Échec du téléversement du modèle vers le stockage"
 ["Admin.CloudInit.Error.NoProxmoxSession"]
 other = "Vous devez être connecté avec un compte Proxmox pour gérer les modèles cloud-init. Les administrateurs locaux ne peuvent pas créer, modifier ou supprimer de modèles."
+
+# Messages d'avertissement
+["Admin.CloudInit.Warning.ProxmoxUploadFailed"]
+other = "Le modèle '%s' a été créé et sauvegardé localement, mais n'a pas pu être téléversé vers le stockage Proxmox. Le modèle peut toujours être utilisé - le contenu YAML sera appliqué directement aux VMs lors de leur création."
+["Admin.CloudInit.Warning.Default"]
+other = "L'opération s'est terminée avec des avertissements."
+
+# Indicateurs de synchronisation
+["Admin.CloudInit.SyncedToProxmox"]
+other = "Synchronisé avec le stockage Proxmox"
+["Admin.CloudInit.LocalOnly"]
+other = "Stocké localement uniquement (non synchronisé avec Proxmox)"
