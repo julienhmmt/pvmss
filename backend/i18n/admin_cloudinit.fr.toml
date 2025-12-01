@@ -80,3 +80,5 @@ other = "Échec de la récupération des données du modèle depuis le serveur"
 other = "Échec de la suppression du modèle"
 ["Admin.CloudInit.Error.UploadFailed"]
 other = "Échec du téléversement du modèle vers le stockage"
+["Admin.CloudInit.Error.NoProxmoxSession"]
+other = "Vous devez être connecté avec un compte Proxmox pour gérer les modèles cloud-init. Les administrateurs locaux ne peuvent pas créer, modifier ou supprimer de modèles."

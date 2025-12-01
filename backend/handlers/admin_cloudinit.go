@@ -77,6 +77,14 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	settings := h.stateManager.GetSettings()
 
+	// Check if user has a valid Proxmox session (can create/edit/delete templates)
+	// Local admins (authenticated via password hash) don't have a Proxmox session
+	hasProxmoxSession := h.hasProxmoxSession(r)
+	log.Debug().
+		Bool("proxmox_connected", proxmoxConnected).
+		Bool("has_proxmox_session", hasProxmoxSession).
+		Msg("Checking user's Proxmox session status for cloud-init page")
+
 	var snippetStorages []proxmox.Storage
 	var errMsg string
 
@@ -114,6 +122,7 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 		WithData("SnippetStorages", snippetStorages),
 		WithData("AllowCustomYAML", settings.AllowCustomYAML),
 		WithData("ProxmoxConnected", proxmoxConnected),
+		WithData("HasProxmoxSession", hasProxmoxSession),
 	}
 
 	if errMsg != "" {
@@ -156,6 +165,15 @@ func (h *CloudInitHandler) CreateTemplateHandler(w http.ResponseWriter, r *http.
 	log := CreateHandlerLogger("CreateTemplateHandler", r)
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	// Check if user has a valid Proxmox session
+	// Local admins (authenticated via password hash) cannot create cloud-init templates
+	// because they don't have Proxmox credentials to upload files
+	if !h.hasProxmoxSession(r) {
+		log.Warn().Msg("User attempted to create cloud-init template without valid Proxmox session")
+		h.redirectWithError(w, r, "Admin.CloudInit.Error.NoProxmoxSession")
 		return
 	}
 
@@ -266,6 +284,13 @@ func (h *CloudInitHandler) EditTemplateHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// Check if user has a valid Proxmox session for uploading updated content
+	if !h.hasProxmoxSession(r) {
+		log.Warn().Msg("User attempted to edit cloud-init template without valid Proxmox session")
+		h.redirectWithError(w, r, "Admin.CloudInit.Error.NoProxmoxSession")
+		return
+	}
+
 	id := strings.TrimSpace(r.FormValue("id"))
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := strings.TrimSpace(r.FormValue("description"))
@@ -342,12 +367,24 @@ func (h *CloudInitHandler) EditTemplateHandler(w http.ResponseWriter, r *http.Re
 }
 
 // DeleteTemplateHandler handles deleting a cloud-init template.
-func (h *CloudInitHandler) DeleteTemplateHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (h *CloudInitHandler) DeleteTemplateHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("DeleteTemplateHandler", r)
 
-	id := ps.ByName("id")
+	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
+		return
+	}
+
+	// Check if user has a valid Proxmox session for deleting files
+	if !h.hasProxmoxSession(r) {
+		log.Warn().Msg("User attempted to delete cloud-init template without valid Proxmox session")
+		h.redirectWithError(w, r, "Admin.CloudInit.Error.NoProxmoxSession")
+		return
+	}
+
+	// Get ID from form data (not URL params)
+	id := strings.TrimSpace(r.FormValue("id"))
 	if id == "" {
-		http.Error(w, "Template ID is required", http.StatusBadRequest)
+		h.redirectWithError(w, r, "Admin.CloudInit.Error.RequiredFields")
 		return
 	}
 
@@ -582,6 +619,20 @@ func (h *CloudInitHandler) getUsername(r *http.Request) string {
 		}
 	}
 	return ""
+}
+
+// hasProxmoxSession checks if the current user has a valid Proxmox session.
+// Local admins (who authenticate via password hash) do NOT have a Proxmox session
+// and therefore cannot create/edit/delete cloud-init templates on Proxmox storage.
+func (h *CloudInitHandler) hasProxmoxSession(r *http.Request) bool {
+	// Check if Proxmox is connected at all
+	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
+	if !proxmoxConnected {
+		return false
+	}
+
+	// Check if user has a valid Proxmox ticket in their session
+	return IsProxmoxTicketValid(r)
 }
 
 // generateSafeID generates a safe ID from a name (lowercase, alphanumeric, hyphens).

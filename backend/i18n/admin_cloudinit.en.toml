@@ -79,3 +79,5 @@ other = "Failed to fetch template data from server"
 other = "Failed to delete template"
 ["Admin.CloudInit.Error.UploadFailed"]
 other = "Failed to upload template to storage"
+["Admin.CloudInit.Error.NoProxmoxSession"]
+other = "You must be logged in with a Proxmox account to manage cloud-init templates. Local administrators cannot create, edit, or delete templates."
