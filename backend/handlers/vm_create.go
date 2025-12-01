@@ -2170,9 +2170,6 @@ func (h *VMCreateOptimizedHandler) selectSnippetStorageForNode(ctx context.Conte
 	var fallback string
 
 	for _, s := range storages {
-		if s.Enabled != 1 {
-			continue
-		}
 		if !storageAvailableOnNode(s, node) {
 			continue
 		}
