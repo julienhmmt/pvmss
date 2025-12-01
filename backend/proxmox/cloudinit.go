@@ -1,8 +1,11 @@
 package proxmox
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/url"
 	"strings"
 
@@ -240,22 +243,55 @@ func DownloadSnippetFileResty(ctx context.Context, restyClient *RestyClient, nod
 }
 
 // UploadSnippetFileResty uploads a new snippet file to storage.
-// POST /nodes/{node}/storage/{storage}/content
+// POST /nodes/{node}/storage/{storage}/upload
 // For snippets, this uses the content upload endpoint with content=snippets
 func UploadSnippetFileResty(ctx context.Context, restyClient *RestyClient, node, storage, filename, content string) error {
 	path := fmt.Sprintf("/nodes/%s/storage/%s/upload",
 		url.PathEscape(node), url.PathEscape(storage))
 
-	// Note: Uploading snippets requires multipart form data
-	// The filename should include the proper extension (.yaml or .cfg)
-	values := url.Values{}
-	values.Set("content", "snippets")
-	values.Set("filename", filename)
+	// Create multipart form body following telmate/proxmox-api-go approach
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
 
-	// For text content, we need to use the file upload mechanism
-	// This is a simplified approach - in production, proper multipart upload is needed
+	// Add content field first
+	if err := writer.WriteField("content", "snippets"); err != nil {
+		return fmt.Errorf("failed to write content field: %w", err)
+	}
+
+	// Create file part with proper headers
+	part, err := writer.CreateFormFile("filename", filename)
+	if err != nil {
+		return fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	// Write the content
+	if _, err := io.Copy(part, strings.NewReader(content)); err != nil {
+		return fmt.Errorf("failed to write file content: %w", err)
+	}
+
+	// Close the writer to set the final boundary
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	// Create request with proper multipart content type
+	req := restyClient.client.R().
+		SetContext(ctx).
+		SetHeader("Content-Type", writer.FormDataContentType()).
+		SetBody(&buf)
+
+	// Debug: Log the exact multipart body being sent
+	logger.Get().Debug().
+		Str("contentType", writer.FormDataContentType()).
+		Str("body", buf.String()).
+		Str("node", node).
+		Str("storage", storage).
+		Str("filename", filename).
+		Msg("Sending multipart request to Proxmox")
+
 	var response interface{}
-	if err := restyClient.Post(ctx, path, values, &response); err != nil {
+	resp, err := req.SetResult(&response).Post(path)
+	if err != nil {
 		logger.Get().Error().
 			Err(err).
 			Str("node", node).
@@ -263,6 +299,17 @@ func UploadSnippetFileResty(ctx context.Context, restyClient *RestyClient, node,
 			Str("filename", filename).
 			Msg("Failed to upload snippet file (resty)")
 		return fmt.Errorf("failed to upload snippet %s to %s on node %s: %w", filename, storage, node, err)
+	}
+
+	if resp.IsError() {
+		logger.Get().Error().
+			Int("status", resp.StatusCode()).
+			Str("response", resp.String()).
+			Str("node", node).
+			Str("storage", storage).
+			Str("filename", filename).
+			Msg("Snippet upload returned error status (resty)")
+		return fmt.Errorf("failed to upload snippet %s to %s on node %s: status %d", filename, storage, node, resp.StatusCode())
 	}
 
 	logger.Get().Info().
@@ -307,18 +354,30 @@ func GetSnippetsStoragesResty(ctx context.Context, restyClient *RestyClient) ([]
 		return nil, err
 	}
 
+	logger.Get().Debug().Int("total_storages", len(storages)).Msg("Retrieved all storages, filtering for snippets support")
+
 	// Filter to only storages that support snippets
 	var snippetStorages []Storage
 	for _, s := range storages {
+		logger.Get().Debug().
+			Str("storage", s.Storage).
+			Str("content", s.Content).
+			Str("type", s.Type).
+			Bool("supports_snippets", strings.Contains(s.Content, "snippets")).
+			Msg("Evaluating storage for snippets support")
 		if strings.Contains(s.Content, "snippets") {
 			snippetStorages = append(snippetStorages, s)
 		}
 	}
 
-	logger.Get().Debug().
+	logger.Get().Info().
 		Int("total_storages", len(storages)).
 		Int("snippet_storages", len(snippetStorages)).
 		Msg("Filtered storages supporting snippets")
+
+	if len(snippetStorages) == 0 {
+		logger.Get().Warn().Msg("No storages found that support snippets content - cloud-init template creation will fail")
+	}
 
 	return snippetStorages, nil
 }

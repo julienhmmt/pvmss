@@ -73,12 +73,13 @@ const (
 
 // CloudInitTemplate represents metadata for a cloud-init template stored in Proxmox snippets.
 type CloudInitTemplate struct {
-	ID          string `json:"id"`          // Unique identifier (filename without prefix)
-	Name        string `json:"name"`        // Human-readable name
-	Description string `json:"description"` // Short description shown to users
-	Storage     string `json:"storage"`     // Proxmox snippets storage ID
-	Filename    string `json:"filename"`    // Full filename on Proxmox (e.g., pvmss-mytemplate.yaml)
-	Enabled     bool   `json:"enabled"`     // Whether visible to users
+	ID          string `json:"id"`           // Unique identifier (filename without prefix)
+	Name        string `json:"name"`         // Human-readable name
+	Description string `json:"description"`  // Short description shown to users
+	Storage     string `json:"storage"`      // Proxmox snippets storage ID
+	Filename    string `json:"filename"`     // Full filename on Proxmox (e.g., pvmss-mytemplate.yml)
+	YAMLContent string `json:"yaml_content"` // YAML content stored locally (fallback if Proxmox upload fails)
+	Enabled     bool   `json:"enabled"`      // Whether visible to users
 }
 
 // defaultSettings returns the default application settings

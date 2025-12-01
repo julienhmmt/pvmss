@@ -81,6 +81,7 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 	var errMsg string
 
 	if proxmoxConnected {
+		log.Debug().Msg("Proxmox is connected, fetching snippet storages")
 		restyClient, err := getDefaultRestyClient()
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to create resty client")
@@ -91,9 +92,15 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 				log.Error().Err(err).Msg("Failed to get snippets storages")
 				errMsg = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.FetchStorages")
 			} else {
+				log.Info().Int("count", len(storages)).Msg("Successfully retrieved snippet storages")
+				for _, storage := range storages {
+					log.Debug().Str("storage", storage.Storage).Str("type", storage.Type).Msg("Available snippet storage")
+				}
 				snippetStorages = storages
 			}
 		}
+	} else {
+		log.Warn().Msg("Proxmox is not connected, no snippet storages available")
 	}
 
 	// Build template data using functional options pattern
@@ -172,7 +179,7 @@ func (h *CloudInitHandler) CreateTemplateHandler(w http.ResponseWriter, r *http.
 
 	// Generate safe ID from name
 	id := generateSafeID(name)
-	filename := state.CloudInitTemplatePrefix + id + ".yaml"
+	filename := state.CloudInitTemplatePrefix + id + ".yml"
 
 	// Check if template already exists
 	settings := h.stateManager.GetSettings()
@@ -199,27 +206,36 @@ func (h *CloudInitHandler) CreateTemplateHandler(w http.ResponseWriter, r *http.
 	}
 
 	// Upload the YAML content to Proxmox storage
+	uploadSuccess := true
 	if err := proxmox.UploadSnippetFileResty(r.Context(), restyClient, node, storage, filename, yamlContent); err != nil {
-		log.Error().Err(err).Str("storage", storage).Str("filename", filename).Msg("Failed to upload snippet file to Proxmox")
-		h.redirectWithError(w, r, "Error.ProxmoxUploadFailed")
-		return
+		logger.Get().Warn().
+			Err(err).
+			Str("storage", storage).
+			Str("filename", filename).
+			Msg("Proxmox snippet upload failed, storing YAML locally as fallback")
+		uploadSuccess = false
+		// Don't return error - we'll store YAML locally and continue
 	}
-	log.Info().Str("storage", storage).Str("filename", filename).Str("node", node).Msg("Successfully uploaded snippet file to Proxmox")
 
-	// Add template to settings
+	// Add template to settings with YAML content (always store locally)
 	template := state.CloudInitTemplate{
 		ID:          id,
 		Name:        name,
 		Description: description,
 		Storage:     storage,
 		Filename:    filename,
-		Enabled:     true, // Enabled by default
+		YAMLContent: yamlContent, // Always store YAML content locally
+		Enabled:     true,        // Enabled by default
 	}
 	settings.AddOrUpdateCloudInitTemplate(template)
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Str("name", name).Msg("Failed to save settings")
-		h.redirectWithError(w, r, "Error.InternalServer")
+		if uploadSuccess {
+			h.redirectWithError(w, r, "Error.InternalServer")
+		} else {
+			h.redirectWithError(w, r, "Error.ProxmoxUploadFailed")
+		}
 		return
 	}
 
@@ -229,10 +245,17 @@ func (h *CloudInitHandler) CreateTemplateHandler(w http.ResponseWriter, r *http.
 		Str("template_id", id).
 		Str("template_name", name).
 		Str("storage", storage).
+		Bool("proxmox_upload_success", uploadSuccess).
 		Str("client_ip", r.RemoteAddr).
 		Msg("Cloud-init template created")
 
-	http.Redirect(w, r, "/admin/cloudinit?success=1&action=create&name="+url.QueryEscape(name), http.StatusSeeOther)
+	// Redirect with appropriate message
+	if uploadSuccess {
+		http.Redirect(w, r, "/admin/cloudinit?success=1&action=create&name="+url.QueryEscape(name), http.StatusSeeOther)
+	} else {
+		// Show warning but template was created with local YAML storage
+		http.Redirect(w, r, "/admin/cloudinit?warning=ProxmoxUploadFailed&action=create&name="+url.QueryEscape(name), http.StatusSeeOther)
+	}
 }
 
 // EditTemplateHandler handles editing an existing cloud-init template.
@@ -467,11 +490,26 @@ func (h *CloudInitHandler) GetTemplateHandler(w http.ResponseWriter, r *http.Req
 					Str("storage", template.Storage).
 					Str("filename", template.Filename).
 					Str("node", node).
-					Msg("Failed to fetch template content from Proxmox")
-				// Continue without content - template metadata is still useful
+					Msg("Failed to fetch template content from Proxmox, using local YAML fallback")
+				// Use local YAML content as fallback
+				if template.YAMLContent != "" {
+					response["content"] = template.YAMLContent
+					response["source"] = "local"
+				} else {
+					response["source"] = "none"
+				}
 			} else {
 				response["content"] = content
+				response["source"] = "proxmox"
 			}
+		}
+	} else {
+		// Proxmox not connected, use local YAML content if available
+		if template.YAMLContent != "" {
+			response["content"] = template.YAMLContent
+			response["source"] = "local"
+		} else {
+			response["source"] = "none"
 		}
 	}
 

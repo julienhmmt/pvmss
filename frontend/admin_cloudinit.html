@@ -404,5 +404,32 @@ function resetForm() {
   document.getElementById('storage').disabled = !proxmoxConnected;
   document.getElementById('yaml_content').required = true;
 }
+
+// Validate storage selection before form submission
+function validateStorageSelection() {
+  const storageSelect = document.getElementById('storage');
+  const selectedValue = storageSelect.value;
+  
+  if (selectedValue === '') {
+    showNotification('danger', '{{T "Admin.CloudInit.Error.RequiredFields"}}');
+    storageSelect.focus();
+    return false;
+  }
+  
+  return true;
+}
+
+// Add form submission validation
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('template-form');
+  if (form) {
+    form.addEventListener('submit', function(event) {
+      if (!validateStorageSelection()) {
+        event.preventDefault();
+        return false;
+      }
+    });
+  }
+});
 </script>
 {{end}}
