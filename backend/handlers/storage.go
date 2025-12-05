@@ -131,11 +131,12 @@ func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[
 	projected := make([]map[string]interface{}, 0, len(base))
 
 		for _, item := range base {
-			allocSize := len(item) + 1
-			if allocSize > maxStorageItemKeys {
-				logger.Get().Warn().Int("size", allocSize).Msg("projectEnabledFlags: storage item map too large, capping allocation")
-				allocSize = maxStorageItemKeys
+			itemLen := len(item)
+			if itemLen > maxStorageItemKeys {
+				logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: storage item map too large, capping allocation")
+				itemLen = maxStorageItemKeys
 			}
+			allocSize := itemLen + 1
 			cpy := make(map[string]interface{}, allocSize)
 			for k, v := range item {
 				cpy[k] = v
