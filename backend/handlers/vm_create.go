@@ -1573,7 +1573,9 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	// Get or generate VMID
 	vmid := 0
 	if vmidStr != "" {
-		if val, err := fmt.Sscanf(vmidStr, "%d", &vmid); err != nil || val != 1 {
+		if parsed, err := strconv.Atoi(vmidStr); err == nil && parsed > 0 {
+			vmid = parsed
+		} else {
 			vmid = 0
 		}
 	}
