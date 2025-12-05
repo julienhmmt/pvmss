@@ -743,13 +743,17 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /
+// ensureLocalPath ensures the URL is a local path starting with /, but not // or /\
 func ensureLocalPath(url string) string {
 	if url == "" {
 		return "/"
 	}
+	// Must start with "/" but not "//" or "/\"
 	if url[0] != '/' {
 		return "/" + url
+	}
+	if len(url) > 1 && (url[1] == '/' || url[1] == '\\') {
+		return "/"
 	}
 	return url
 }
