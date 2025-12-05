@@ -194,15 +194,24 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 func (h *DocsHandler) findDocFile(docType, lang string) (string, string) {
 	// Try requested language first
 	docFile := filepath.Join(h.docsDir, fmt.Sprintf("%s.%s.md", docType, lang))
-	if _, err := os.Stat(docFile); err == nil {
-		return docFile, lang
+	absDocsDir, err := filepath.Abs(h.docsDir)
+	if err == nil {
+		absDocFile, err := filepath.Abs(docFile)
+		if err == nil && strings.HasPrefix(absDocFile, absDocsDir) {
+			if _, err := os.Stat(absDocFile); err == nil {
+				return absDocFile, lang
+			}
+		}
 	}
 
 	// Fallback to English
 	if lang != "en" {
 		docFile = filepath.Join(h.docsDir, fmt.Sprintf("%s.en.md", docType))
-		if _, err := os.Stat(docFile); err == nil {
-			return docFile, "en"
+		absDocFile, err := filepath.Abs(docFile)
+		if err == nil && strings.HasPrefix(absDocFile, absDocsDir) {
+			if _, err := os.Stat(absDocFile); err == nil {
+				return absDocFile, "en"
+			}
 		}
 	}
 
