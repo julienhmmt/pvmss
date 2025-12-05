@@ -98,13 +98,7 @@
         <div class="container">
             {{/* Optional Breadcrumbs slot (override with a template defining "breadcrumbs") */}}
             {{block "breadcrumbs" .}}{{end}}
-            {{if .Content}}
-                {{.Content}}
-            {{else}}
-                {{/* Default content if no content template is defined */}}
-                <h1 class="title">{{T "UI.Header"}}</h1>
-                <p>{{T "UI.NoContent"}}</p>
-            {{end}}
+            {{template "content_slot" .}}
         </div>
     </main>
 

@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
+	"fmt"
 	"html"
 	"html/template"
 	"net/http"
@@ -220,16 +220,13 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	// Merge in request-aware functions (currentPath, urlWithLang, withLang, etc.)
 	instance.Funcs(templates.GetFuncMap(r))
 
-	// Render the main content template to a buffer.
-	var buf bytes.Buffer
-	if err := instance.ExecuteTemplate(&buf, name, data); err != nil {
-		log.Error().Err(err).Str("template", name).Msg("Error executing content template")
+	// Define a per-request content slot that renders the requested template.
+	contentWrapper := fmt.Sprintf(`{{define "content_slot"}}{{template "%s" .}}{{end}}`, name)
+	if _, err := instance.Parse(contentWrapper); err != nil {
+		log.Error().Err(err).Msg("Failed to parse content slot template")
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
-
-	// Inject the rendered content into the main data map for the layout.
-	data["Content"] = template.HTML(buf.String()) // #nosec G203 - Content is produced by Go templates (already sanitized by template engine)
 
 	// Execute the layout template with the combined data.
 	if err := instance.ExecuteTemplate(w, "layout", data); err != nil {
