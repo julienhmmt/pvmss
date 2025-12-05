@@ -126,14 +126,20 @@ func buildStoragesFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) []map[str
 
 // projectEnabledFlags adds Enabled field to storage items
 func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[string]interface{} {
+	const maxStorageItemKeys = 100
 	enabledMap := buildEnabledMap(enabled)
 	projected := make([]map[string]interface{}, 0, len(base))
 
-	for _, item := range base {
-		cpy := make(map[string]interface{}, len(item)+1)
-		for k, v := range item {
-			cpy[k] = v
-		}
+		for _, item := range base {
+			allocSize := len(item) + 1
+			if allocSize > maxStorageItemKeys {
+				logger.Get().Warn().Int("size", allocSize).Msg("projectEnabledFlags: storage item map too large, capping allocation")
+				allocSize = maxStorageItemKeys
+			}
+			cpy := make(map[string]interface{}, allocSize)
+			for k, v := range item {
+				cpy[k] = v
+			}
 		name, _ := cpy["Storage"].(string)
 		node, _ := cpy["Node"].(string)
 
