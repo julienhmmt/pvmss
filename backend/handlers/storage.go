@@ -141,6 +141,10 @@ func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[
 				itemLen = maxStorageItemKeys
 			}
 			allocSize := itemLen + 1
+			if allocSize < 0 || allocSize > maxStorageItemKeys+1 {
+				logger.Get().Warn().Int("allocSize", allocSize).Msg("projectEnabledFlags: allocSize overflow detected, capping allocation")
+				allocSize = maxStorageItemKeys + 1
+			}
 			cpy := make(map[string]interface{}, allocSize)
 			for k, v := range item {
 				cpy[k] = v
