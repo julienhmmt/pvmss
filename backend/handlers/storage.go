@@ -291,8 +291,14 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	} else {
 		// TODO Telmate migration: this fallback still uses Telmate-based node listing (GetNodeNames); replace it with a Resty-based node listing helper.
 		nodeNames, err := proxmox.GetNodeNames(client)
+		const MaxNodeCount = 1000
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting node names")
+		} else if len(nodeNames) > MaxNodeCount {
+			log.Error().Int("node_names_count", len(nodeNames)).Msg("Refusing to allocate storages: node count exceeds safe bound")
+			// Return or continue with empty lists
+			allNodes = []string{}
+			allStorages = []map[string]interface{}{}
 		} else {
 			sort.Strings(nodeNames)
 			allNodes = nodeNames
