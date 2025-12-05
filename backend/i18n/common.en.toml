@@ -144,3 +144,5 @@ other = "Show all"
 other = "Page"
 ["Common.Range"]
 other = "Min - Max"
+["Common.Warning"]
+other = "Warning"

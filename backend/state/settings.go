@@ -111,7 +111,7 @@ func defaultSettings() *AppSettings {
 			Host:           "",
 			Port:           22,
 			Username:       "pvmss-snippets",
-			PrivateKeyPath: "/etc/pvmss/keys/pvmss_snippets_ed25519",
+			PrivateKeyPath: "/app/pvmss_snippets_ed25519",
 			SnippetBaseDir: "/var/lib/vz/snippets",
 		},
 	}
