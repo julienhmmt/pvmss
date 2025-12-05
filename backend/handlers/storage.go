@@ -130,25 +130,25 @@ func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[
 	enabledMap := buildEnabledMap(enabled)
 	projected := make([]map[string]interface{}, 0, len(base))
 
-		for _, item := range base {
-			itemLen := len(item)
-			if itemLen < 0 {
-				logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: negative item map size, resetting to 0")
-				itemLen = 0
-			}
-			if itemLen > maxStorageItemKeys {
-				logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: storage item map too large, capping allocation")
-				itemLen = maxStorageItemKeys
-			}
-			allocSize := itemLen + 1
+	for _, item := range base {
+		itemLen := len(item)
+		if itemLen < 0 {
+			logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: negative item map size, resetting to 0")
+			itemLen = 0
+		}
+		if itemLen > maxStorageItemKeys {
+			logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: storage item map too large, capping allocation")
+			itemLen = maxStorageItemKeys
+		}
+		allocSize := itemLen + 1
 			if allocSize < 0 || allocSize > maxStorageItemKeys+1 {
 				logger.Get().Warn().Int("allocSize", allocSize).Msg("projectEnabledFlags: allocSize overflow detected, capping allocation")
 				allocSize = maxStorageItemKeys + 1
 			}
-			cpy := make(map[string]interface{}, allocSize)
-			for k, v := range item {
-				cpy[k] = v
-			}
+		cpy := make(map[string]interface{}, allocSize)
+		for k, v := range item {
+			cpy[k] = v
+		}
 		name, _ := cpy["Storage"].(string)
 		node, _ := cpy["Node"].(string)
 

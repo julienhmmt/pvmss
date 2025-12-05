@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"html"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -205,15 +204,12 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	// Add the translation function and request-aware helpers to the template instance for this request.
 	localizer := i18n.GetLocalizerFromRequest(r)
 	instance.Funcs(template.FuncMap{
-		"T": func(messageID string, args ...interface{}) template.HTML {
-			// Use pvmss/i18n.Localize wrapper instead of direct bundle call
+		"T": func(messageID string, args ...interface{}) string {
 			localized := i18n.Localize(localizer, messageID)
 			if localized == "" {
-				// messageID is a translation key (safe), not user input
-				return template.HTML(html.EscapeString(messageID)) // #nosec G203 - Escaped translation key wrapped as HTML for template usage
+				return messageID
 			}
-			// localized comes from i18n bundle (safe), not user input
-			return template.HTML(html.EscapeString(localized)) // #nosec G203 - Escaped i18n string wrapped as HTML for template usage
+			return localized
 		},
 	})
 
