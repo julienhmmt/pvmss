@@ -686,17 +686,17 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		if cicustom, ok := cfg["cicustom"].(string); ok && cicustom != "" {
 			cloudInitData["cicustom"] = cicustom
 			cloudInitEnabled = true
-			// Try to extract template ID from cicustom (format: user=<storage>:snippets/pvmss-<id>.yml)
-			// and find the matching template to get YAML content
-			if strings.Contains(cicustom, "pvmss-") {
-				// Extract template ID from path like "user=local:snippets/pvmss-mytemplate.yml"
-				parts := strings.Split(cicustom, "pvmss-")
-				if len(parts) > 1 {
-					templateID := strings.TrimSuffix(parts[1], ".yml")
-					templateID = strings.TrimSuffix(templateID, ".yaml")
-					if template := stateManager.GetSettings().GetCloudInitTemplateByID(templateID); template != nil {
+			// Try to find matching template from cicustom
+			// New format: user=<storage>:snippets/pvmss-<vm_name>-<template_id>.yml
+			// Old format: user=<storage>:snippets/pvmss-<template_id>.yml
+			if strings.Contains(cicustom, "pvmss-") && stateManager.GetSettings() != nil {
+				templates := stateManager.GetSettings().CloudInitTemplates
+				for _, template := range templates {
+					// Check if the cicustom path ends with the template ID
+					if strings.Contains(cicustom, "-"+template.ID+".yml") || strings.Contains(cicustom, "-"+template.ID+".yaml") {
 						cloudInitData["templateName"] = template.Name
 						cloudInitData["templateYAML"] = template.YAMLContent
+						break
 					}
 				}
 			}
