@@ -216,6 +216,10 @@
     }, 30000);
   }
 
+
+  // Store original card contents as DOM nodes, not innerHTML strings
+  const realContentMap = new WeakMap();
+
   function showSkeleton(cardId) {
     const card = document.getElementById(cardId);
     if (!card) return;
@@ -224,9 +228,18 @@
     if (!content) return;
 
     card.classList.add('is-loading');
-    const realContent = content.innerHTML;
-    content.setAttribute('data-original-content', realContent);
 
+    // Save the current DOM children as a DocumentFragment, if not already saved
+    if (!realContentMap.has(content)) {
+      const frag = document.createDocumentFragment();
+      // Move all children to fragment (removes from DOM)
+      while (content.firstChild) {
+        frag.appendChild(content.firstChild);
+      }
+      realContentMap.set(content, frag);
+    }
+
+    // Set the skeleton content
     content.innerHTML = `
       <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
         <div class="is-flex is-align-items-center">
@@ -258,9 +271,13 @@
     const content = card.querySelector('.card-content');
     if (!content) return;
 
-    const originalContent = content.getAttribute('data-original-content');
-    if (originalContent) {
-      content.innerHTML = originalContent;
+    if (realContentMap.has(content)) {
+      // Remove skeleton
+      content.innerHTML = '';
+      // Restore saved DOM nodes
+      const frag = realContentMap.get(content);
+      content.appendChild(frag);
+      realContentMap.delete(content);
       card.classList.remove('is-loading');
       card.classList.add('fade-in');
       setTimeout(() => {

@@ -1,9 +1,8 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
-	"html"
+	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -205,31 +204,25 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	// Add the translation function and request-aware helpers to the template instance for this request.
 	localizer := i18n.GetLocalizerFromRequest(r)
 	instance.Funcs(template.FuncMap{
-		"T": func(messageID string, args ...interface{}) template.HTML {
-			// Use pvmss/i18n.Localize wrapper instead of direct bundle call
+		"T": func(messageID string, args ...interface{}) string {
 			localized := i18n.Localize(localizer, messageID)
 			if localized == "" {
-				// messageID is a translation key (safe), not user input
-				return template.HTML(html.EscapeString(messageID)) // #nosec G203 - Escaped translation key wrapped as HTML for template usage
+				return messageID
 			}
-			// localized comes from i18n bundle (safe), not user input
-			return template.HTML(html.EscapeString(localized)) // #nosec G203 - Escaped i18n string wrapped as HTML for template usage
+			return localized
 		},
 	})
 
 	// Merge in request-aware functions (currentPath, urlWithLang, withLang, etc.)
 	instance.Funcs(templates.GetFuncMap(r))
 
-	// Render the main content template to a buffer.
-	var buf bytes.Buffer
-	if err := instance.ExecuteTemplate(&buf, name, data); err != nil {
-		log.Error().Err(err).Str("template", name).Msg("Error executing content template")
+	// Define a per-request content slot that renders the requested template.
+	contentWrapper := fmt.Sprintf(`{{define "content_slot"}}{{template "%s" .}}{{end}}`, name)
+	if _, err := instance.Parse(contentWrapper); err != nil {
+		log.Error().Err(err).Msg("Failed to parse content slot template")
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
-
-	// Inject the rendered content into the main data map for the layout.
-	data["Content"] = template.HTML(buf.String()) // #nosec G203 - Content is produced by Go templates (already sanitized by template engine)
 
 	// Execute the layout template with the combined data.
 	if err := instance.ExecuteTemplate(w, "layout", data); err != nil {

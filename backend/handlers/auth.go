@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -743,15 +744,33 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /
-func ensureLocalPath(url string) string {
-	if url == "" {
+// ensureLocalPath ensures the URL is a local path starting with /, but not // or /\
+func ensureLocalPath(urlStr string) string {
+	if urlStr == "" {
 		return "/"
 	}
-	if url[0] != '/' {
-		return "/" + url
+	// Replace backslashes with forward slashes to avoid confusion:
+	urlStr = strings.ReplaceAll(urlStr, "\\", "/")
+
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		// Malformed, default to safe path
+		return "/"
 	}
-	return url
+	// Allow only *relative* paths (no scheme/host allowed)
+	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
+		return "/"
+	}
+	// Forbid dangerous things like "//evil" or empty path
+	path := parsed.Path
+	if path == "" || (len(path) > 1 && (path[1] == '/' || path[1] == '\\')) {
+		return "/"
+	}
+	// Always start with a single /
+	if path[0] != '/' {
+		path = "/" + path
+	}
+	return path
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {

@@ -126,11 +126,26 @@ func buildStoragesFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) []map[str
 
 // projectEnabledFlags adds Enabled field to storage items
 func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[string]interface{} {
+	const maxStorageItemKeys = 100
 	enabledMap := buildEnabledMap(enabled)
 	projected := make([]map[string]interface{}, 0, len(base))
 
 	for _, item := range base {
-		cpy := make(map[string]interface{}, len(item)+1)
+		itemLen := len(item)
+		if itemLen < 0 {
+			logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: negative item map size, resetting to 0")
+			itemLen = 0
+		}
+		if itemLen > maxStorageItemKeys {
+			logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: storage item map too large, capping allocation")
+			itemLen = maxStorageItemKeys
+		}
+		allocSize := itemLen + 1
+		if allocSize < 0 || allocSize > maxStorageItemKeys+1 {
+			logger.Get().Warn().Int("allocSize", allocSize).Msg("projectEnabledFlags: allocSize overflow detected, capping allocation")
+			allocSize = maxStorageItemKeys + 1
+		}
+		cpy := make(map[string]interface{}, allocSize)
 		for k, v := range item {
 			cpy[k] = v
 		}
@@ -280,8 +295,14 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	} else {
 		// TODO Telmate migration: this fallback still uses Telmate-based node listing (GetNodeNames); replace it with a Resty-based node listing helper.
 		nodeNames, err := proxmox.GetNodeNames(client)
+		const MaxNodeCount = 1000
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting node names")
+		} else if len(nodeNames) > MaxNodeCount {
+			log.Error().Int("node_names_count", len(nodeNames)).Msg("Refusing to allocate storages: node count exceeds safe bound")
+			// Return or continue with empty lists
+			allNodes = []string{}
+			allStorages = []map[string]interface{}{}
 		} else {
 			sort.Strings(nodeNames)
 			allNodes = nodeNames
