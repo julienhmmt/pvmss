@@ -2018,11 +2018,23 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		Msg("VM created successfully")
 
 	// Redirect to VM details with optional cloud-init warning
+	// Build redirect URL with hardcoded local path (vmid is validated integer)
 	redirectURL := fmt.Sprintf("/vm/details/%d?created=1", vmid)
 	if cloudInitWarning != "" {
 		redirectURL += "&ci_warning=" + url.QueryEscape(cloudInitWarning)
 	}
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+
+	// Validate redirect URL is local to prevent open redirect vulnerabilities
+	// Replace backslashes with forward slashes (browser compatibility)
+	redirectURL = strings.ReplaceAll(redirectURL, "\\", "/")
+	parsedURL, err := url.Parse(redirectURL)
+	if err != nil || parsedURL.Hostname() != "" {
+		// Fallback to safe default if URL parsing fails or contains external host
+		log.Warn().Str("redirect_url", redirectURL).Msg("Invalid redirect URL, falling back to profile")
+		http.Redirect(w, r, "/profile", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, parsedURL.String(), http.StatusSeeOther)
 }
 
 // Helper functions
