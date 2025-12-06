@@ -1967,10 +1967,27 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		client.InvalidateCache("/pools/" + url.PathEscape(pool))
 	}
 
-	// Apply cloud-init configuration if enabled
+	// Apply cloud-init configuration if enabled (BEFORE starting VM)
 	cloudInitEnabled := r.FormValue("cloudinit_enable") == "1"
+	cloudInitWarning := ""
 	if cloudInitEnabled {
-		h.applyCloudInitConfig(ctx, r, node, vmid, storage)
+		cloudInitWarning = h.applyCloudInitConfig(ctx, r, node, vmid, storage)
+	}
+
+	// Start VM if requested (AFTER cloud-init is configured)
+	startVM := r.FormValue("start_vm") == "1"
+	if startVM {
+		log.Info().Int("vmid", vmid).Str("node", node).Msg("Starting VM after creation")
+		if err := h.startVM(ctx, client, node, vmid); err != nil {
+			log.Warn().
+				Err(err).
+				Int("vmid", vmid).
+				Str("node", node).
+				Msg("Failed to start VM after creation")
+			// Don't fail the creation, just log the error
+		} else {
+			log.Info().Int("vmid", vmid).Str("node", node).Msg("VM started successfully")
+		}
 	}
 
 	// Get username for audit
@@ -2000,8 +2017,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		Str("client_ip", r.RemoteAddr).
 		Msg("VM created successfully")
 
-	// Redirect to VM details
-	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?created=1", vmid), http.StatusSeeOther)
+	// Redirect to VM details with optional cloud-init warning
+	redirectURL := fmt.Sprintf("/vm/details/%d?created=1", vmid)
+	if cloudInitWarning != "" {
+		redirectURL += "&ci_warning=" + url.QueryEscape(cloudInitWarning)
+	}
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
 // Helper functions
@@ -2015,9 +2036,18 @@ func countDisabledNodes(disabledNodes map[string]bool) int {
 	return count
 }
 
+// startVM starts a VM after creation.
+func (h *VMCreateOptimizedHandler) startVM(ctx context.Context, client proxmox.ClientInterface, node string, vmid int) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/start", url.PathEscape(node), vmid)
+	_, err := client.PostFormWithContext(ctx, path, nil)
+	return err
+}
+
 // applyCloudInitConfig applies cloud-init configuration to a newly created VM.
-func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *http.Request, node string, vmid int, storage string) {
+// Returns a warning message if the cloud-init template upload failed.
+func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *http.Request, node string, vmid int, storage string) string {
 	log := CreateHandlerLogger("applyCloudInitConfig", r)
+	warning := "" // Track any warnings to report back to user
 
 	// Extract cloud-init form values
 	ciDNS := strings.TrimSpace(r.FormValue("cloudinit_dns"))
@@ -2042,9 +2072,10 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 		ciParams.CIPassword = ciPassword
 	}
 
-	// URL-encode SSH keys (Proxmox requires URL-encoded keys)
+	// Set SSH keys WITHOUT pre-encoding - the HTTP client handles URL encoding
+	// Proxmox expects the raw SSH key, not double-encoded
 	if ciSSHKeys != "" {
-		ciParams.SSHKeys = url.QueryEscape(ciSSHKeys)
+		ciParams.SSHKeys = ciSSHKeys
 	}
 
 	// Build IP configuration
@@ -2068,11 +2099,15 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client for cloud-init")
-		return
+		return "resty-client-failed"
 	}
 
+	// Apply cloud-init template if selected
 	if templateID != "" {
-		h.applyCloudInitTemplate(ctx, restyClient, node, vmid, &ciParams, templateID)
+		templateWarning := h.applyCloudInitTemplate(ctx, restyClient, node, vmid, &ciParams, templateID)
+		if templateWarning != "" {
+			warning = templateWarning
+		}
 	}
 
 	// First, ensure cloud-init drive exists
@@ -2092,7 +2127,7 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 			Str("node", node).
 			Int("vmid", vmid).
 			Msg("Failed to apply cloud-init configuration")
-		return
+		return "cloud-init-config-failed"
 	}
 
 	log.Info().
@@ -2102,27 +2137,32 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 		Bool("has_ssh_keys", ciSSHKeys != "").
 		Bool("has_password", ciPassword != "").
 		Str("ip_config", ciParams.IPConfig0).
+		Str("cicustom", ciParams.CICustom).
 		Msg("Cloud-init configuration applied successfully")
+
+	return warning
 }
 
-func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, restyClient *proxmox.RestyClient, node string, vmid int, ciParams *proxmox.CloudInitParams, templateID string) {
+// applyCloudInitTemplate uploads a cloud-init template to Proxmox storage and configures cicustom.
+// Returns a warning message if the upload failed, empty string on success.
+func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, restyClient *proxmox.RestyClient, node string, vmid int, ciParams *proxmox.CloudInitParams, templateID string) string {
 	log := CreateHandlerLogger("applyCloudInitTemplate", nil)
 
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
 		log.Warn().Msg("Settings not available, skipping cloud-init template")
-		return
+		return "settings-unavailable"
 	}
 
 	template := settings.GetCloudInitTemplateByID(templateID)
 	if template == nil {
 		log.Warn().Str("template_id", templateID).Msg("Cloud-init template not found, skipping")
-		return
+		return "template-not-found"
 	}
 
 	if strings.TrimSpace(template.YAMLContent) == "" {
 		log.Warn().Str("template_id", templateID).Msg("Cloud-init template has empty YAML content, skipping")
-		return
+		return "template-empty"
 	}
 
 	// Determine snippet storage (for cicustom parameter)
@@ -2133,7 +2173,7 @@ func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, r
 			Str("template_id", templateID).
 			Str("node", node).
 			Msg("No suitable snippets storage found for cloud-init template, skipping")
-		return
+		return "no-snippets-storage"
 	}
 
 	filename := template.Filename
@@ -2172,14 +2212,13 @@ func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, r
 				Str("storage", snippetStorage).
 				Str("filename", filename).
 				Msg("Failed to upload cloud-init template snippet via both SFTP and HTTP API, skipping cicustom")
-			return
-		} else {
-			log.Info().
-				Str("template_id", templateID).
-				Str("storage", snippetStorage).
-				Str("filename", filename).
-				Msg("Cloud-init template snippet uploaded successfully via HTTP API")
+			return "upload-failed"
 		}
+		log.Info().
+			Str("template_id", templateID).
+			Str("storage", snippetStorage).
+			Str("filename", filename).
+			Msg("Cloud-init template snippet uploaded successfully via HTTP API")
 	}
 
 	// Set cicustom parameter to reference the uploaded snippet
@@ -2192,6 +2231,8 @@ func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, r
 		Str("node", node).
 		Int("vmid", vmid).
 		Msg("Cloud-init template snippet uploaded and cicustom configured")
+
+	return "" // Success - no warning
 }
 
 func (h *VMCreateOptimizedHandler) selectSnippetStorageForNode(ctx context.Context, restyClient *proxmox.RestyClient, node string, preferredStorage string) (string, error) {

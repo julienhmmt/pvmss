@@ -563,6 +563,14 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var tpmEnabled bool
 	var currentISO string
 	var hasCDROM bool
+	cloudInitData := map[string]string{
+		"user":       "",
+		"sshKeys":    "",
+		"ipConfig":   "",
+		"nameserver": "",
+		"cicustom":   "",
+	}
+	cloudInitEnabled := false
 	cfg, cfgErr := proxmox.GetVMConfigResty(r.Context(), restyClient, vm.Node, vm.VMID)
 	if cfgErr != nil {
 		log.Warn().
@@ -656,6 +664,50 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		} else {
 			// No ide2 config means VM has empty CD-ROM drive
 			hasCDROM = true
+		}
+
+		// Extract cloud-init configuration from main VM config
+		if ciuser, ok := cfg["ciuser"].(string); ok && ciuser != "" {
+			cloudInitData["user"] = ciuser
+			cloudInitEnabled = true
+		}
+		if sshkeys, ok := cfg["sshkeys"].(string); ok && sshkeys != "" {
+			cloudInitData["sshKeys"] = sshkeys
+			cloudInitEnabled = true
+		}
+		if ipconfig0, ok := cfg["ipconfig0"].(string); ok && ipconfig0 != "" {
+			cloudInitData["ipConfig"] = ipconfig0
+			cloudInitEnabled = true
+		}
+		if nameserver, ok := cfg["nameserver"].(string); ok && nameserver != "" {
+			cloudInitData["nameserver"] = nameserver
+			cloudInitEnabled = true
+		}
+		if cicustom, ok := cfg["cicustom"].(string); ok && cicustom != "" {
+			cloudInitData["cicustom"] = cicustom
+			cloudInitEnabled = true
+			// Try to extract template ID from cicustom (format: user=<storage>:snippets/pvmss-<id>.yml)
+			// and find the matching template to get YAML content
+			if strings.Contains(cicustom, "pvmss-") {
+				// Extract template ID from path like "user=local:snippets/pvmss-mytemplate.yml"
+				parts := strings.Split(cicustom, "pvmss-")
+				if len(parts) > 1 {
+					templateID := strings.TrimSuffix(parts[1], ".yml")
+					templateID = strings.TrimSuffix(templateID, ".yaml")
+					if template := stateManager.GetSettings().GetCloudInitTemplateByID(templateID); template != nil {
+						cloudInitData["templateName"] = template.Name
+						cloudInitData["templateYAML"] = template.YAMLContent
+					}
+				}
+			}
+		}
+		// Check for cloud-init drive (ide2=<storage>:cloudinit or similar)
+		for key, val := range cfg {
+			if strVal, ok := val.(string); ok && strings.Contains(strVal, ":cloudinit") {
+				cloudInitEnabled = true
+				log.Debug().Str("drive", key).Str("value", strVal).Msg("Cloud-init drive detected")
+				break
+			}
 		}
 
 		if vm.Status == "running" && len(networkInterfaces) > 0 && !isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
@@ -932,6 +984,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"AvailableVMBRs":        availableVMBRs,
 		"AvailableISOs":         availableISOs,
 		"CSRFToken":             csrfToken,
+		"CloudInitEnabled":      cloudInitEnabled,
+		"CloudInitData":         cloudInitData,
 		"CurrentCores":          currentCores,
 		"CurrentISO":            currentISO,
 		"CurrentMemory":         currentMemoryMB,

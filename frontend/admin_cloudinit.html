@@ -53,6 +53,51 @@
     </div>
   </article>
 
+  <!-- SFTP Configuration Status -->
+  {{if .SFTPStatus}}
+  <article class="message is-{{.SFTPStatus.StatusType}} mb-5">
+    <div class="message-header">
+      <p>
+        <span class="icon"><i class="fas fa-server"></i></span>
+        <span>{{T "Admin.CloudInit.SFTPStatus"}}</span>
+      </p>
+    </div>
+    <div class="message-body">
+      {{if .SFTPStatus.Enabled}}
+      <div class="columns is-multiline">
+        <div class="column is-6">
+          <strong>{{T "Common.Host"}}:</strong> {{.SFTPStatus.Host}}
+        </div>
+        <div class="column is-6">
+          <strong>{{T "Common.Username"}}:</strong> {{.SFTPStatus.Username}}
+        </div>
+        <div class="column is-12">
+          <strong>{{T "Common.Status"}}:</strong> 
+          {{if eq .SFTPStatus.StatusType "success"}}
+          <span class="tag is-success">{{.SFTPStatus.StatusText}}</span>
+          {{else if eq .SFTPStatus.StatusType "warning"}}
+          <span class="tag is-warning">{{.SFTPStatus.StatusText}}</span>
+          {{else}}
+          <span class="tag is-danger">{{.SFTPStatus.StatusText}}</span>
+          {{end}}
+        </div>
+      </div>
+      {{else}}
+      <p>
+        <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+        <span>{{T "Admin.CloudInit.SFTPDisabled"}}</span>
+      </p>
+      <p class="mt-2">
+        <a href="/docs/cloud-init" target="_blank" class="has-text-link">
+          <span class="icon"><i class="fas fa-book"></i></span>
+          <span>{{T "Admin.CloudInit.SFTPDocsLink"}}</span>
+        </a>
+      </p>
+      {{end}}
+    </div>
+  </article>
+  {{end}}
+
   <!-- Quick link to create form -->
   {{if .HasProxmoxSession}}
   <div class="mb-4">

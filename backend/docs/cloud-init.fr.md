@@ -1,8 +1,15 @@
-# Support cloud-init dans PVMSS
+# Support Cloud-Init dans PVMSS
 
 ## Vue d'ensemble
 
-PVMSS fournit un support cloud-init pour les VMs Proxmox, permettant aux utilisateurs d'appliquer des configurations cloud-init avancées lors de la création de VM. Cette fonctionnalité est optionnelle et nécessite une configuration supplémentaire en raison des limitations de l'API Proxmox.
+PVMSS fournit un support cloud-init pour les VMs Proxmox, permettant aux utilisateurs d'appliquer des configurations cloud-init avancées lors de la création de VM. Cette fonctionnalité permet le provisionnement automatisé des VMs avec :
+
+- **Utilisateurs personnalisés et clés SSH**
+- **Configuration réseau** (DHCP ou IP statique)
+- **Scripts et paquets personnalisés** via des templates YAML
+- **Configurations cloud-init avancées** via le paramètre `cicustom`
+
+Cette fonctionnalité est optionnelle et nécessite une configuration supplémentaire en raison des limitations de l'API Proxmox.
 
 ## Pourquoi cloud-init est optionnel et nécessite une configuration
 
@@ -74,13 +81,49 @@ chmod 600 /home/pvmss-snippets/.ssh/authorized_keys
 chown pvmss-snippets:pvmss-snippets /home/pvmss-snippets/.ssh/authorized_keys
 ```
 
-### Étape 4 : Définir les permissions pour le répertoire snippets
+### Étape 4 : Configurer le serveur SSH pour l'accès SFTP uniquement
+
+Puisque l'utilisateur a `/usr/sbin/nologin` comme shell, vous devez configurer SSH pour utiliser le sous-système `internal-sftp` :
+
+```bash
+# Éditer la configuration du serveur SSH
+nano /etc/ssh/sshd_config
+```
+
+Ajouter à la fin du fichier :
+
+```ini
+# Accès SFTP uniquement pour PVMSS cloud-init snippets
+Match User pvmss-snippets
+    ForceCommand internal-sftp
+    ChrootDirectory /var/lib/vz
+    AllowTcpForwarding no
+    X11Forwarding no
+```
+
+Redémarrer SSH :
+
+```bash
+systemctl restart sshd
+```
+
+> **Important** : Avec `ChrootDirectory /var/lib/vz`, l'utilisateur SFTP voit `/var/lib/vz` comme racine (`/`). Le chemin dans les paramètres PVMSS devient `/snippets` au lieu de `/var/lib/vz/snippets`.
+
+### Étape 5 : Définir les permissions pour le répertoire snippets
 
 ```bash
 # Installer les outils ACL si pas déjà installés
 apt install acl
 
-# Pour le stockage 'local', les snippets sont typiquement dans /var/lib/vz/snippets
+# Le répertoire chroot doit appartenir à root
+chown root:root /var/lib/vz
+chmod 755 /var/lib/vz
+
+# Le répertoire snippets doit être accessible en écriture par l'utilisateur
+chown pvmss-snippets:pvmss-snippets /var/lib/vz/snippets
+chmod 755 /var/lib/vz/snippets
+
+# Alternativement, utiliser les ACLs pour des permissions fines
 setfacl -m u:pvmss-snippets:rwx /var/lib/vz/snippets
 setfacl -R -m u:pvmss-snippets:rwX /var/lib/vz/snippets
 
@@ -89,7 +132,7 @@ sudo -u pvmss-snippets ls -la /var/lib/vz/snippets
 sudo -u pvmss-snippets touch /var/lib/vz/snippets/test-pvmss && rm /var/lib/vz/snippets/test-pvmss && echo "OK"
 ```
 
-### Étape 5 : Monter la clé privée dans le conteneur PVMSS
+### Étape 6 : Monter la clé privée dans le conteneur PVMSS
 
 Ajouter un montage de volume dans votre Docker Compose ou commande Docker run :
 
@@ -109,7 +152,7 @@ Ou avec `docker run` :
 docker run -v /etc/pvmss/keys:/etc/pvmss/keys:ro ... pvmss:latest
 ```
 
-### Étape 6 : Configurer les paramètres PVMSS
+### Étape 7 : Configurer les paramètres PVMSS
 
 Dans votre `settings.json`, activer SFTP et configurer la connexion :
 
@@ -120,18 +163,44 @@ Dans votre `settings.json`, activer SFTP et configurer la connexion :
     "host": "VOTRE_IP_OU_HOSTNAME_DU_NODE_PROXMOX",
     "port": 22,
     "username": "pvmss-snippets",
-    "privateKeyPath": "/etc/pvmss/keys/pvmss_snippets_ed25519",
-    "snippetBaseDir": "/var/lib/vz/snippets"
+    "privateKeyPath": "/app/pvmss_snippets_ed25519",
+    "snippetBaseDir": "/snippets"
   }
 }
 ```
 
+> **Note** : Si vous avez configuré `ChrootDirectory /var/lib/vz` à l'étape 4, utilisez `/snippets` comme `snippetBaseDir`. Si vous n'avez PAS utilisé chroot, utilisez le chemin complet `/var/lib/vz/snippets`.
+
+### Options de configuration
+
+| Option | Description | Exemple |
+|--------|-------------|---------|
+| `enabled` | Activer/désactiver les uploads SFTP | `true` |
+| `host` | IP ou hostname du nœud Proxmox | `"192.168.1.100"` |
+| `port` | Port SSH | `22` |
+| `username` | Utilisateur PAM pour SFTP | `"pvmss-snippets"` |
+| `privateKeyPath` | Chemin vers la clé privée dans le conteneur | `"/app/pvmss_snippets_ed25519"` |
+| `snippetBaseDir` | Répertoire des snippets (relatif au chroot si utilisé) | `"/snippets"` |
+
 ## Fonctionnement
 
-1. **Sélection de modèle** : l'utilisateur sélectionne un modèle cloud-init dans le formulaire de création de VM
-2. **Téléchargement du snippet** : PVMSS télécharge le contenu YAML via SFTP vers le nœud Proxmox
-3. **Configuration de la VM** : PVMSS définit le paramètre `cicustom` pour référencer le snippet téléversé
-4. **Processus de démarrage** : Proxmox crée un disque cloud-init avec la configuration personnalisée
+### Gestion des templates (Admin)
+
+1. **Créer des templates** : les admins créent des templates cloud-init dans le panneau d'administration (`/admin/cloudinit`)
+2. **Validation YAML** : les templates doivent commencer par `#cloud-config` et contenir du YAML valide
+3. **Activer/désactiver** : les templates peuvent être activés ou désactivés sans suppression
+4. **Stockage local** : les templates sont stockés dans `settings.json` (pas sur le stockage Proxmox)
+
+### Création de VM (Utilisateur)
+
+1. **Sélection de template** : l'utilisateur sélectionne un template cloud-init dans le formulaire de création de VM
+2. **Upload du snippet** : PVMSS télécharge le contenu YAML via SFTP vers le répertoire snippets du nœud Proxmox
+3. **Configuration de la VM** : PVMSS crée la VM avec les paramètres cloud-init :
+   - `ciuser`, `cipassword`, `sshkeys` pour la configuration utilisateur
+   - `ipconfig0` pour la configuration réseau
+   - `cicustom` pointant vers le snippet uploadé (ex: `user=local:snippets/pvmss-template.yml`)
+4. **Lecteur cloud-init** : Proxmox crée une ISO contenant la configuration cloud-init
+5. **Processus de démarrage** : la VM démarre et cloud-init applique la configuration
 
 ## Considérations de sécurité
 
@@ -151,7 +220,33 @@ Dans votre `settings.json`, activer SFTP et configurer la connexion :
 ## Limitations
 
 - **Connexion SSH requise** : nécessite un accès SSH aux nœuds Proxmox pour le téléchargement des snippets
-- **Nœud unique** : supporte actuellement le téléchargement de snippets vers un seul nœud Proxmox
+- **Nœud unique** : supporte actuellement le téléchargement de snippets vers un seul nœud Proxmox (support cluster multi-nœud limité)
+- **Validation des templates** : seule la syntaxe YAML est validée, pas la sémantique cloud-init
+- **Pas de variables de template** : les templates sont statiques ; les valeurs spécifiques à l'utilisateur doivent être définies via les champs cloud-init basiques (utilisateur, mot de passe, clés SSH)
+
+### Échec de l'upload SFTP
+
+1. **Vérifier le statut SFTP** : allez sur `/admin/cloudinit` pour voir le statut de la configuration SFTP
+2. **Vérifier la clé privée** : assurez-vous que le fichier de clé existe et a les bonnes permissions (600)
+3. **Tester la connexion SFTP manuellement** :
+
+   ```bash
+   # Tester la connexion SFTP (pas SSH - l'utilisateur n'a pas de shell)
+   sftp -i /chemin/vers/pvmss_snippets_ed25519 pvmss-snippets@VOTRE_HOST_PROXMOX
+   ```
+
+4. **Vérifier les permissions du répertoire snippets** : l'utilisateur doit avoir un accès en écriture à `/var/lib/vz/snippets`
+
+5. **Erreur "packet too long"** : Cette erreur survient quand le serveur SSH envoie des données inattendues avant la négociation SFTP. Assurez-vous que le bloc `Match User` avec `ForceCommand internal-sftp` est correctement configuré dans `/etc/ssh/sshd_config`.
+
+6. **Vérifier la config SSH** : Assurez-vous que le bloc `Match User` est à la **fin** du fichier `sshd_config`.
+
+### Cloud-init non appliqué
+
+1. **Vérifier le contenu du template** : les templates doivent commencer par `#cloud-config`
+2. **Vérifier le lecteur cloud-init de la VM** : la VM doit avoir `ide2` configuré comme cloudinit
+3. **Consulter les logs Proxmox** : `/var/log/pve/tasks/` contient les logs des tâches
+4. **Console VM** : vérifiez `/var/log/cloud-init.log` à l'intérieur de la VM
 
 ## Approches alternatives
 
@@ -160,3 +255,39 @@ Si vous ne pouvez pas utiliser l'approche SSH :
 1. **Snippets manuels** : créez manuellement les snippets sur les nœuds Proxmox et référencez-les dans PVMSS (ajoutez le chemin vers le snippet dans le paramètre cicustom, par exemple `user=local:snippets/mon-modele.yaml`)
 2. **Cloud-init de base** : utilisez uniquement les paramètres cloud-init de base (ciuser, cipassword, ipconfig0)
 3. **Configuration externe** : utilisez des outils de gestion de configuration externes comme Ansible
+
+## Exemples de Templates
+
+### Configuration utilisateur basique
+
+```yaml
+#cloud-config
+users:
+  - name: admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3... utilisateur@exemple.com
+```
+
+### Installation de paquets
+
+```yaml
+#cloud-config
+package_update: true
+package_upgrade: true
+packages:
+  - vim
+  - htop
+  - curl
+  - git
+```
+
+### Exécution de scripts personnalisés
+
+```yaml
+#cloud-config
+runcmd:
+  - echo "Bonjour depuis cloud-init" > /tmp/bonjour.txt
+  - systemctl enable --now docker
+```

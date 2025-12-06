@@ -123,8 +123,14 @@ func UpdateVMCloudInitConfigResty(ctx context.Context, restyClient *RestyClient,
 		values.Set("cipassword", params.CIPassword)
 	}
 	if params.SSHKeys != "" {
-		// SSH keys need URL encoding
-		values.Set("sshkeys", params.SSHKeys)
+		// SSH keys need full URL encoding for Proxmox:
+		// - spaces must be %20 (not +)
+		// - @ must be %40
+		// - newlines must be %0A
+		// url.QueryEscape encodes @ as %40 but uses + for spaces
+		// So we use QueryEscape and replace + with %20
+		encoded := strings.ReplaceAll(url.QueryEscape(strings.TrimSpace(params.SSHKeys)), "+", "%20")
+		values.Set("sshkeys", encoded)
 	}
 	if params.IPConfig0 != "" {
 		values.Set("ipconfig0", params.IPConfig0)

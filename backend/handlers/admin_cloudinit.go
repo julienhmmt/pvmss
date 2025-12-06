@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 
@@ -114,6 +115,9 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 		log.Warn().Msg("Proxmox is not connected, no snippet storages available")
 	}
 
+	// Check SFTP configuration status
+	sftpStatus := h.getSFTPStatus(settings)
+
 	// Build template data using functional options pattern
 	opts := []TemplateOption{
 		WithAdminActive("cloudinit"),
@@ -126,6 +130,7 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 		WithData("AllowCustomYAML", settings.AllowCustomYAML),
 		WithData("ProxmoxConnected", proxmoxConnected),
 		WithData("HasProxmoxSession", hasProxmoxSession),
+		WithData("SFTPStatus", sftpStatus),
 	}
 
 	if errMsg != "" {
@@ -209,8 +214,8 @@ func (h *CloudInitHandler) CreateTemplateHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Validate YAML
-	if err := cloudinit.ValidateCloudInitYAML(yamlContent); err != nil {
+	// Validate YAML with strict cloud-init rules (requires #cloud-config header)
+	if err := cloudinit.ValidateCloudInitYAMLStrict(yamlContent); err != nil {
 		log.Warn().Err(err).Str("name", name).Msg("Invalid YAML content")
 		h.redirectWithError(w, r, "Admin.CloudInit.Error.InvalidYAML")
 		return
@@ -290,9 +295,9 @@ func (h *CloudInitHandler) EditTemplateHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Validate YAML if provided
+	// Validate YAML if provided (use strict validation requiring #cloud-config header)
 	if yamlContent != "" {
-		if err := cloudinit.ValidateCloudInitYAML(yamlContent); err != nil {
+		if err := cloudinit.ValidateCloudInitYAMLStrict(yamlContent); err != nil {
 			log.Warn().Err(err).Str("id", id).Msg("Invalid YAML content")
 			h.redirectWithError(w, r, "Admin.CloudInit.Error.InvalidYAML")
 			return
@@ -516,6 +521,64 @@ func (h *CloudInitHandler) hasProxmoxSession(r *http.Request) bool {
 
 	// Check if user has a valid Proxmox ticket in their session
 	return IsProxmoxTicketValid(r)
+}
+
+// SFTPStatus represents the status of SFTP configuration for cloud-init uploads.
+type SFTPStatus struct {
+	Enabled    bool   `json:"enabled"`
+	Host       string `json:"host"`
+	Username   string `json:"username"`
+	KeyExists  bool   `json:"key_exists"`
+	StatusText string `json:"status_text"`
+	StatusType string `json:"status_type"` // "success", "warning", "danger"
+}
+
+// getSFTPStatus checks the SFTP configuration and returns status information.
+func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings) SFTPStatus {
+	if settings == nil {
+		return SFTPStatus{
+			Enabled:    false,
+			StatusText: "Settings not available",
+			StatusType: "danger",
+		}
+	}
+
+	cfg := settings.CloudInitSFTP
+	if !cfg.Enabled {
+		return SFTPStatus{
+			Enabled:    false,
+			StatusText: "SFTP upload disabled",
+			StatusType: "warning",
+		}
+	}
+
+	// Check if private key file exists
+	keyExists := false
+	if cfg.PrivateKeyPath != "" {
+		if _, err := os.Stat(cfg.PrivateKeyPath); err == nil {
+			keyExists = true
+		}
+	}
+
+	status := SFTPStatus{
+		Enabled:   true,
+		Host:      cfg.Host,
+		Username:  cfg.Username,
+		KeyExists: keyExists,
+	}
+
+	if !keyExists {
+		status.StatusText = "Private key file not found"
+		status.StatusType = "danger"
+	} else if cfg.Host == "" {
+		status.StatusText = "SFTP host not configured"
+		status.StatusType = "danger"
+	} else {
+		status.StatusText = "SFTP configured and ready"
+		status.StatusType = "success"
+	}
+
+	return status
 }
 
 // generateSafeID generates a safe ID from a name (lowercase, alphanumeric, hyphens).

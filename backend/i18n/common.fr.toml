@@ -146,3 +146,7 @@ other = "Page"
 other = "Min - Max"
 ["Common.Warning"]
 other = "Avertissement"
+["Common.Host"]
+other = "Hôte"
+["Common.Username"]
+other = "Nom d'utilisateur"
