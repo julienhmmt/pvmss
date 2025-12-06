@@ -56,12 +56,14 @@ type CloudInitParams struct {
 
 // CloudInitSFTPConfig defines SSH/SFTP configuration for cloud-init snippet uploads
 type CloudInitSFTPConfig struct {
-	Enabled        bool   `json:"enabled"`        // Whether SFTP upload is enabled
-	Host           string `json:"host"`           // Proxmox node hostname or IP
-	Port           int    `json:"port"`           // SSH port (default: 22)
-	Username       string `json:"username"`       // SSH username (PAM account)
-	PrivateKeyPath string `json:"privateKeyPath"` // Path to private SSH key file
-	SnippetBaseDir string `json:"snippetBaseDir"` // Base directory for snippets (e.g., /var/lib/vz/snippets)
+	Enabled                   bool   `json:"enabled"`                   // Whether SFTP upload is enabled
+	Host                      string `json:"host"`                      // Proxmox node hostname or IP
+	HostKeyPath               string `json:"hostKeyPath"`               // Path to known host public key file for secure verification
+	InsecureSkipHostKeyVerify bool   `json:"insecureSkipHostKeyVerify"` // Explicitly skip host key verification (NOT recommended)
+	Port                      int    `json:"port"`                      // SSH port (default: 22)
+	PrivateKeyPath            string `json:"privateKeyPath"`            // Path to private SSH key file
+	SnippetBaseDir            string `json:"snippetBaseDir"`            // Base directory for snippets (e.g., /var/lib/vz/snippets)
+	Username                  string `json:"username"`                  // SSH username (PAM account)
 }
 
 // GetVMCloudInitConfigResty fetches cloud-init configuration for a VM.
@@ -404,6 +406,48 @@ func GetSnippetsStoragesResty(ctx context.Context, restyClient *RestyClient) ([]
 	return snippetStorages, nil
 }
 
+// buildHostKeyCallback creates a secure SSH host key callback.
+// If hostKeyPath is provided, it uses FixedHostKey for strict verification.
+// If hostKeyPath is empty, it falls back to InsecureIgnoreHostKey with a warning.
+func buildHostKeyCallback(hostKeyPath string, insecureSkip bool, host string) (ssh.HostKeyCallback, error) {
+	log := logger.Get()
+
+	// If explicit insecure mode is enabled
+	if insecureSkip {
+		log.Warn().
+			Str("host", host).
+			Str("component", "sftp").
+			Str("security", "warning").
+			Msg("Host key verification explicitly disabled (insecureSkipHostKeyVerify=true). This is NOT recommended for production.")
+		return ssh.InsecureIgnoreHostKey(), nil
+	}
+
+	// If no host key path provided and insecure mode not explicitly enabled, return error
+	if hostKeyPath == "" {
+		return nil, fmt.Errorf("host key verification required: configure hostKeyPath with the server's public key, or set insecureSkipHostKeyVerify=true to disable (not recommended)")
+	}
+
+	// Read the known host public key
+	hostKeyBytes, err := os.ReadFile(hostKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read host key file %s: %w", hostKeyPath, err)
+	}
+
+	// Parse the public key
+	hostKey, _, _, _, err := ssh.ParseAuthorizedKey(hostKeyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse host public key from %s: %w", hostKeyPath, err)
+	}
+
+	log.Debug().
+		Str("host", host).
+		Str("hostKeyPath", hostKeyPath).
+		Str("keyType", hostKey.Type()).
+		Msg("Using secure host key verification for SFTP connection")
+
+	return ssh.FixedHostKey(hostKey), nil
+}
+
 // UploadSnippetFileSFTP uploads a snippet file using SFTP instead of HTTP API.
 // This works around Proxmox API limitations with content=snippets uploads.
 func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, filename, content string) error {
@@ -430,13 +474,19 @@ func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, file
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
+	// Build host key callback
+	hostKeyCallback, err := buildHostKeyCallback(config.HostKeyPath, config.InsecureSkipHostKeyVerify, config.Host)
+	if err != nil {
+		return fmt.Errorf("failed to configure host key verification: %w", err)
+	}
+
 	// Create SSH client config
 	sshConfig := &ssh.ClientConfig{
 		User: config.Username,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // TODO: Consider making this configurable
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         30 * time.Second,
 	}
 

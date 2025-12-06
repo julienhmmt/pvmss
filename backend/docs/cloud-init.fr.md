@@ -132,27 +132,45 @@ sudo -u pvmss-snippets ls -la /var/lib/vz/snippets
 sudo -u pvmss-snippets touch /var/lib/vz/snippets/test-pvmss && rm /var/lib/vz/snippets/test-pvmss && echo "OK"
 ```
 
-### Étape 6 : Monter la clé privée dans le conteneur PVMSS
+### Étape 6 : Exporter la clé publique du serveur pour vérification (recommandé)
 
-Ajouter un montage de volume dans votre Docker Compose ou commande Docker run :
+Pour des connexions SFTP sécurisées, PVMSS peut vérifier l'identité du serveur Proxmox en utilisant sa clé publique d'hôte. Cela prévient les attaques Man-in-the-Middle (MitM).
+
+```bash
+# Copier la clé publique d'hôte du serveur (Ed25519 recommandé)
+cp /etc/ssh/ssh_host_ed25519_key.pub /etc/pvmss/keys/proxmox_host_key.pub
+chmod 644 /etc/pvmss/keys/proxmox_host_key.pub
+```
+
+> **Note** : La clé d'hôte est la clé publique du serveur, PAS la clé du client. Elle sert à vérifier l'identité du serveur lors de la connexion.
+
+### Étape 7 : Monter les clés dans le conteneur PVMSS
+
+⚠️ Information sensible : Le fichier de clé privée contient des identifiants qui doivent rester sécurisés.
+
+Montez à la fois la clé privée et la clé publique d'hôte dans le conteneur :
 
 ```yaml
 # docker-compose.yml
 services:
   pvmss:
-    image: pvmss:latest
+    image: jhmmt/pvmss:1.0
     volumes:
-      - ./:/etc/pvmss/keys:ro
+      - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
+      - ./proxmox_host_key.pub:/app/proxmox_host_key.pub:ro
     # ... autre configuration
 ```
 
 Ou avec `docker run` :
 
 ```bash
-docker run -v /etc/pvmss/keys:/etc/pvmss/keys:ro ... pvmss:latest
+docker run \
+  -v ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro \
+  -v ./proxmox_host_key.pub:/app/proxmox_host_key.pub:ro \
+  jhmmt/pvmss:1.0
 ```
 
-### Étape 7 : Configurer les paramètres PVMSS
+### Étape 8 : Configurer les paramètres PVMSS
 
 Dans votre `settings.json`, activer SFTP et configurer la connexion :
 
@@ -164,6 +182,7 @@ Dans votre `settings.json`, activer SFTP et configurer la connexion :
     "port": 22,
     "username": "pvmss-snippets",
     "privateKeyPath": "/app/pvmss_snippets_ed25519",
+    "hostKeyPath": "/app/proxmox_host_key.pub",
     "snippetBaseDir": "/snippets"
   }
 }
@@ -180,7 +199,53 @@ Dans votre `settings.json`, activer SFTP et configurer la connexion :
 | `port` | Port SSH | `22` |
 | `username` | Utilisateur PAM pour SFTP | `"pvmss-snippets"` |
 | `privateKeyPath` | Chemin vers la clé privée dans le conteneur | `"/app/pvmss_snippets_ed25519"` |
+| `hostKeyPath` | Chemin vers la clé publique du serveur pour vérification | `"/app/proxmox_host_key.pub"` |
+| `insecureSkipHostKeyVerify` | Désactiver la vérification de clé d'hôte (NON recommandé) | `false` |
 | `snippetBaseDir` | Répertoire des snippets (relatif au chroot si utilisé) | `"/snippets"` |
+
+### Options de vérification de clé d'hôte
+
+PVMSS requiert la vérification de clé d'hôte pour prévenir les attaques Man-in-the-Middle. Vous avez trois options :
+
+#### Option 1 : Vérification sécurisée avec clé d'hôte (recommandé)
+
+Fournissez la clé publique du serveur via `hostKeyPath`. C'est l'option la plus sécurisée.
+
+```json
+{
+  "cloudinit_sftp": {
+    "hostKeyPath": "/app/proxmox_host_key.pub"
+  }
+}
+```
+
+#### Option 2 : Désactiver la vérification (NON recommandé)
+
+Si vous ne pouvez pas obtenir la clé d'hôte (ex: environnements dynamiques, tests), vous pouvez explicitement désactiver la vérification :
+
+```json
+{
+  "cloudinit_sftp": {
+    "insecureSkipHostKeyVerify": true
+  }
+}
+```
+
+> ⚠️ **Attention** : Cela désactive la protection contre les attaques Man-in-the-Middle. N'utilisez cela que dans des réseaux de confiance ou pour les tests.
+
+#### Option 3 : Pas de SFTP (cloud-init basique uniquement)
+
+Si vous ne pouvez pas configurer SFTP de manière sécurisée, désactivez-le et utilisez uniquement les paramètres cloud-init basiques :
+
+```json
+{
+  "cloudinit_sftp": {
+    "enabled": false
+  }
+}
+```
+
+Avec cette configuration, vous pouvez toujours utiliser `ciuser`, `cipassword`, `sshkeys`, et `ipconfig0`, mais pas les templates YAML personnalisés.
 
 ## Fonctionnement
 
@@ -207,6 +272,20 @@ Dans votre `settings.json`, activer SFTP et configurer la connexion :
 - **Compte dédié** : le compte `pvmss-snippets` n'a pas d'accès shell et est restreint à SFTP
 - **Permissions minimales** : le compte n'a qu'un accès en écriture au répertoire des snippets
 - **Authentification par clé SSH** : aucun mot de passe n'est stocké ou transmis
+- **Vérification de clé d'hôte** : PVMSS vérifie l'identité du serveur en utilisant sa clé publique, prévenant les attaques Man-in-the-Middle
+
+### Vérification de clé d'hôte
+
+Par défaut, PVMSS requiert la vérification de clé d'hôte pour les connexions SFTP. Cela protège contre :
+
+- **Attaques Man-in-the-Middle (MitM)** : un attaquant ne peut pas usurper l'identité du serveur Proxmox
+- **Usurpation DNS** : même si le DNS est compromis, la connexion échouera si la clé d'hôte ne correspond pas
+- **Détournement réseau** : les connexions redirigées seront détectées et rejetées
+
+Si vous voyez des erreurs concernant la vérification de clé d'hôte, vous devez soit :
+
+1. Configurer `hostKeyPath` avec la clé publique du serveur (recommandé)
+2. Définir explicitement `insecureSkipHostKeyVerify: true` (non recommandé pour la production)
 
 ## Dépannage
 
