@@ -9,6 +9,8 @@ coverage.out
 node_modules/
 package-lock.json
 *.log
+pvmss_snippets_ed25519
+proxmox_host_key.pub
 
 # binaries
 pvmss

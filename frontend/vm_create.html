@@ -813,17 +813,22 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <div class="column is-6">
-                                                                <div class="field">
-                                                                    <label class="label is-small" for="cloudinit_dns">{{T "VM.Create.CloudInit.Nameserver"}}</label>
-                                                                    <div class="control">
-                                                                        <input class="input" type="text" name="cloudinit_dns" id="cloudinit_dns"
-                                                                            value="{{.FormData.cloudinit_dns}}"
-                                                                            placeholder="{{T "VM.Create.CloudInit.NameserverPlaceholder"}}">
-                                                                    </div>
-                                                                </div>
-                                                            </div>
                                                         </div>
+                                                    </div>
+
+                                                    <div class="field">
+                                                        <label class="form-label" for="cloudinit_dns">
+                                                            <span class="form-label-icon">
+                                                                <span class="icon"><i class="fas fa-server"></i></span>
+                                                            </span>
+                                                            <span class="form-label-text">{{T "VM.Create.CloudInit.DNS"}}</span>
+                                                        </label>
+                                                        <div class="control">
+                                                            <input class="input" type="text" name="cloudinit_dns" id="cloudinit_dns"
+                                                                value="{{.FormData.cloudinit_dns}}"
+                                                                placeholder="{{T "VM.Create.CloudInit.DNSPlaceholder"}}">
+                                                        </div>
+                                                        <p class="help">{{T "VM.Create.CloudInit.DNSHelp"}}</p>
                                                     </div>
                                                 </div>
                                             </div>

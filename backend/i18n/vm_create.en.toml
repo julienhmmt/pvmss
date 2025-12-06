@@ -339,7 +339,13 @@ other = "e.g., 192.168.1.1"
 ["VM.Create.CloudInit.Nameserver"]
 other = "DNS Server"
 ["VM.Create.CloudInit.NameserverPlaceholder"]
-other = "e.g., 8.8.8.8"
+other = "e.g., 9.9.9.9"
+["VM.Create.CloudInit.DNS"]
+other = "DNS Server"
+["VM.Create.CloudInit.DNSPlaceholder"]
+other = "e.g., 9.9.9.9 or 1.1.1.1"
+["VM.Create.CloudInit.DNSHelp"]
+other = "Custom DNS server (works with both DHCP and static IP)"
 ["VM.Create.CloudInit.Searchdomain"]
 other = "Search Domain"
 ["VM.Create.CloudInit.SearchdomainPlaceholder"]
