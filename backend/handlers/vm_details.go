@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -672,7 +673,13 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			cloudInitEnabled = true
 		}
 		if sshkeys, ok := cfg["sshkeys"].(string); ok && sshkeys != "" {
-			cloudInitData["sshKeys"] = sshkeys
+			// Decode URL-encoded SSH keys (Proxmox stores them URL-encoded)
+			decodedKeys, err := url.QueryUnescape(sshkeys)
+			if err != nil {
+				// If decoding fails, use the original value
+				decodedKeys = sshkeys
+			}
+			cloudInitData["sshKeys"] = decodedKeys
 			cloudInitEnabled = true
 		}
 		if ipconfig0, ok := cfg["ipconfig0"].(string); ok && ipconfig0 != "" {
