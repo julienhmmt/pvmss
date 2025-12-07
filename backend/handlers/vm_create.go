@@ -1382,7 +1382,25 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	// Normalize MAC address to Proxmox format
 	macAddress = utils.NormalizeMACAddress(macAddress)
 	diskBus := strings.TrimSpace(r.FormValue("disk_bus_type"))
-	tags := strings.TrimSpace(r.FormValue("tags"))
+
+	// Get all selected tags (multiple values with same name)
+	selectedTags := r.Form["tags"]
+	var tags string
+	if len(selectedTags) > 0 {
+		// Clean and join tags with semicolon (Proxmox format)
+		cleanedTags := make([]string, 0, len(selectedTags))
+		for _, tag := range selectedTags {
+			if cleaned := strings.TrimSpace(tag); cleaned != "" {
+				cleanedTags = append(cleanedTags, cleaned)
+			}
+		}
+		tags = strings.Join(cleanedTags, ";")
+		log.Debug().
+			Strs("selected_tags", selectedTags).
+			Str("tags_joined", tags).
+			Msg("Tags extracted from form")
+	}
+
 	enableEFI := r.FormValue("enable_efi")
 	enableTPM := r.FormValue("enable_tpm")
 
