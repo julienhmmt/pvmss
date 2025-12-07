@@ -2203,7 +2203,7 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 
 // applyCloudInitTemplate uploads a cloud-init template to Proxmox storage and configures cicustom.
 // Returns a warning message if the upload failed, empty string on success.
-func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, restyClient *proxmox.RestyClient, node string, vmid int, ciParams *proxmox.CloudInitParams, templateID string, vmName string) string {
+func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, restyClient *proxmox.RestyClient, node string, vmid int, ciParams *proxmox.CloudInitParams, templateID string) string {
 	log := CreateHandlerLogger("applyCloudInitTemplate", nil)
 
 	settings := h.stateManager.GetSettings()
