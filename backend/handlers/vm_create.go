@@ -227,26 +227,34 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Prepare form data
 	formData := map[string]string{
-		"bridge_0":          "",
-		"cores":             "1",
-		"sockets":           "1",
-		"description":       "",
-		"disk_bus_type":     "virtio",
-		"disk_size_0":       "12",
-		"enable_efi":        "1",
-		"enable_tpm":        "",
-		"iso":               "",
-		"memory":            "1024",
-		"name":              "",
-		"network_enabled_0": "1", // First network card enabled by default
-		"network_model_0":   "virtio",
-		"mac_address_0":     "",
-		"vlan_tag_0":        "", // VLAN tag for first network card (optional)
-		"node":              activeNode,
-		"pool":              fmt.Sprintf("pvmss_%s", username),
-		"storage":           "",
-		"tags":              "",
-		"vmid":              "",
+		"bridge_0":           "",
+		"cores":              "1",
+		"sockets":            "1",
+		"description":        "",
+		"disk_bus_type":      "virtio",
+		"disk_size_0":        "12",
+		"enable_efi":         "1",
+		"enable_tpm":         "",
+		"iso":                "",
+		"memory":             "1024",
+		"name":               "",
+		"network_enabled_0":  "1", // First network card enabled by default
+		"network_model_0":    "virtio",
+		"mac_address_0":      "",
+		"vlan_tag_0":         "", // VLAN tag for first network card (optional)
+		"node":               activeNode,
+		"pool":               fmt.Sprintf("pvmss_%s", username),
+		"storage":            "",
+		"tags":               "",
+		"vmid":               "",
+		"cloudinit_enable":   "",
+		"cloudinit_template": "",
+		"cloudinit_user":     "",
+		"cloudinit_sshkeys":  "",
+		"cloudinit_ipconfig": "dhcp",
+		"cloudinit_ip":       "",
+		"cloudinit_gateway":  "",
+		"cloudinit_dns":      "",
 	}
 
 	// Override with session data if available (for form repopulation after validation errors)
@@ -300,26 +308,31 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		maxNetworkCards = 1
 	}
 
+	// Get enabled cloud-init templates
+	cloudInitTemplates := settings.GetEnabledCloudInitTemplates()
+
 	data := map[string]interface{}{
-		"BridgeDetails":    bridgeDetails,
-		"FormData":         formData,
-		"ISOs":             isos,
-		"IsAdmin":          isAdmin,
-		"IsAuthenticated":  true,
-		"Lang":             i18n.GetLanguage(r),
-		"Limits":           limits,
-		"MaxDiskPerVM":     maxDiskPerVM,
-		"MaxNetworkCards":  maxNetworkCards,
-		"NetworkModels":    getNetworkModels(),
-		"NodeOptions":      nodeOptions,
-		"Nodes":            nodes,
-		"NodesLimits":      getNodeLimits(settingsPtr),
-		"ProxmoxConnected": proxmoxConnected,
-		"Storages":         storages,
-		"StorageNodes":     storageNodes,
-		"Success":          "",
-		"SuccessMessage":   "",
-		"Username":         username,
+		"BridgeDetails":      bridgeDetails,
+		"CloudInitTemplates": cloudInitTemplates,
+		"AllowCustomYAML":    settings.AllowCustomYAML,
+		"FormData":           formData,
+		"ISOs":               isos,
+		"IsAdmin":            isAdmin,
+		"IsAuthenticated":    true,
+		"Lang":               i18n.GetLanguage(r),
+		"Limits":             limits,
+		"MaxDiskPerVM":       maxDiskPerVM,
+		"MaxNetworkCards":    maxNetworkCards,
+		"NetworkModels":      getNetworkModels(),
+		"NodeOptions":        nodeOptions,
+		"Nodes":              nodes,
+		"NodesLimits":        getNodeLimits(settingsPtr),
+		"ProxmoxConnected":   proxmoxConnected,
+		"Storages":           storages,
+		"StorageNodes":       storageNodes,
+		"Success":            "",
+		"SuccessMessage":     "",
+		"Username":           username,
 	}
 
 	// Check for offline nodes and create notification
@@ -1956,6 +1969,29 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		client.InvalidateCache("/pools/" + url.PathEscape(pool))
 	}
 
+	// Apply cloud-init configuration if enabled (BEFORE starting VM)
+	cloudInitEnabled := r.FormValue("cloudinit_enable") == "1"
+	cloudInitWarning := ""
+	if cloudInitEnabled {
+		cloudInitWarning = h.applyCloudInitConfig(ctx, r, node, vmid, storage, name)
+	}
+
+	// Start VM if requested (AFTER cloud-init is configured)
+	startVM := r.FormValue("start_vm") == "1"
+	if startVM {
+		log.Info().Int("vmid", vmid).Str("node", node).Msg("Starting VM after creation")
+		if err := h.startVM(ctx, client, node, vmid); err != nil {
+			log.Warn().
+				Err(err).
+				Int("vmid", vmid).
+				Str("node", node).
+				Msg("Failed to start VM after creation")
+			// Don't fail the creation, just log the error
+		} else {
+			log.Info().Int("vmid", vmid).Str("node", node).Msg("VM started successfully")
+		}
+	}
+
 	// Get username for audit
 	username := ""
 	isAdmin := false
@@ -1983,8 +2019,24 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		Str("client_ip", r.RemoteAddr).
 		Msg("VM created successfully")
 
-	// Redirect to VM details
-	http.Redirect(w, r, fmt.Sprintf("/vm/details/%d?created=1", vmid), http.StatusSeeOther)
+	// Redirect to VM details with optional cloud-init warning
+	// Build redirect URL with hardcoded local path (vmid is validated integer)
+	redirectURL := fmt.Sprintf("/vm/details/%d?created=1", vmid)
+	if cloudInitWarning != "" {
+		redirectURL += "&ci_warning=" + url.QueryEscape(cloudInitWarning)
+	}
+
+	// Validate redirect URL is local to prevent open redirect vulnerabilities
+	// Replace backslashes with forward slashes (browser compatibility)
+	redirectURL = strings.ReplaceAll(redirectURL, "\\", "/")
+	parsedURL, err := url.Parse(redirectURL)
+	if err != nil || parsedURL.Hostname() != "" {
+		// Fallback to safe default if URL parsing fails or contains external host
+		log.Warn().Str("redirect_url", redirectURL).Msg("Invalid redirect URL, falling back to profile")
+		http.Redirect(w, r, "/profile", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, parsedURL.String(), http.StatusSeeOther)
 }
 
 // Helper functions
@@ -1996,4 +2048,246 @@ func countDisabledNodes(disabledNodes map[string]bool) int {
 		}
 	}
 	return count
+}
+
+// startVM starts a VM after creation.
+func (h *VMCreateOptimizedHandler) startVM(ctx context.Context, client proxmox.ClientInterface, node string, vmid int) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/start", url.PathEscape(node), vmid)
+	_, err := client.PostFormWithContext(ctx, path, nil)
+	return err
+}
+
+// applyCloudInitConfig applies cloud-init configuration to a newly created VM.
+// Returns a warning message if the cloud-init template upload failed.
+func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *http.Request, node string, vmid int, storage string, vmName string) string {
+	log := CreateHandlerLogger("applyCloudInitConfig", r)
+	warning := "" // Track any warnings to report back to user
+
+	// Extract cloud-init form values
+	ciDNS := strings.TrimSpace(r.FormValue("cloudinit_dns"))
+	ciGateway := strings.TrimSpace(r.FormValue("cloudinit_gateway"))
+	ciIP := strings.TrimSpace(r.FormValue("cloudinit_ip"))
+	ciIPConfig := strings.TrimSpace(r.FormValue("cloudinit_ipconfig"))
+	ciPassword := r.FormValue("cloudinit_password") // Don't trim password
+	ciSSHKeys := strings.TrimSpace(r.FormValue("cloudinit_sshkeys"))
+	ciUser := strings.TrimSpace(r.FormValue("cloudinit_user"))
+	templateID := strings.TrimSpace(r.FormValue("cloudinit_template"))
+
+	// Build cloud-init parameters. The cloud-init drive itself (ide2=<storage>:cloudinit)
+	// is managed separately by EnsureCloudInitDriveResty; here we only set logical
+	// cloud-init settings like user, password, SSH keys and IP config. The cicustom
+	// option is set only when a template is selected.
+	ciParams := proxmox.CloudInitParams{
+		CIUser: ciUser,
+	}
+
+	// Only set password if provided (never log it)
+	if ciPassword != "" {
+		ciParams.CIPassword = ciPassword
+	}
+
+	// Set SSH keys WITHOUT pre-encoding - the HTTP client handles URL encoding
+	// Proxmox expects the raw SSH key, not double-encoded
+	if ciSSHKeys != "" {
+		ciParams.SSHKeys = ciSSHKeys
+	}
+
+	// Build IP configuration
+	if ciIPConfig == "static" && ciIP != "" {
+		ipConfig := "ip=" + ciIP
+		if ciGateway != "" {
+			ipConfig += ",gw=" + ciGateway
+		}
+		ciParams.IPConfig0 = ipConfig
+	} else {
+		// DHCP mode
+		ciParams.IPConfig0 = "ip=dhcp"
+	}
+
+	// Set DNS server if provided
+	if ciDNS != "" {
+		ciParams.Nameserver = ciDNS
+	}
+
+	// Create resty client
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client for cloud-init")
+		return "resty-client-failed"
+	}
+
+	// Apply cloud-init template if selected
+	if templateID != "" {
+		templateWarning := h.applyCloudInitTemplate(ctx, restyClient, node, vmid, &ciParams, templateID, vmName)
+		if templateWarning != "" {
+			warning = templateWarning
+		}
+	}
+
+	// First, ensure cloud-init drive exists
+	if err := proxmox.EnsureCloudInitDriveResty(ctx, restyClient, node, vmid, storage); err != nil {
+		log.Warn().
+			Err(err).
+			Str("node", node).
+			Int("vmid", vmid).
+			Str("storage", storage).
+			Msg("Failed to ensure cloud-init drive, continuing with config")
+	}
+
+	// Apply cloud-init configuration
+	if err := proxmox.UpdateVMCloudInitConfigResty(ctx, restyClient, node, vmid, ciParams); err != nil {
+		log.Error().
+			Err(err).
+			Str("node", node).
+			Int("vmid", vmid).
+			Msg("Failed to apply cloud-init configuration")
+		return "cloud-init-config-failed"
+	}
+
+	log.Info().
+		Str("node", node).
+		Int("vmid", vmid).
+		Str("ci_user", ciUser).
+		Bool("has_ssh_keys", ciSSHKeys != "").
+		Bool("has_password", ciPassword != "").
+		Str("ip_config", ciParams.IPConfig0).
+		Str("cicustom", ciParams.CICustom).
+		Msg("Cloud-init configuration applied successfully")
+
+	return warning
+}
+
+// applyCloudInitTemplate uploads a cloud-init template to Proxmox storage and configures cicustom.
+// Returns a warning message if the upload failed, empty string on success.
+func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, restyClient *proxmox.RestyClient, node string, vmid int, ciParams *proxmox.CloudInitParams, templateID string, vmName string) string {
+	log := CreateHandlerLogger("applyCloudInitTemplate", nil)
+
+	settings := h.stateManager.GetSettings()
+	if settings == nil {
+		log.Warn().Msg("Settings not available, skipping cloud-init template")
+		return "settings-unavailable"
+	}
+
+	template := settings.GetCloudInitTemplateByID(templateID)
+	if template == nil {
+		log.Warn().Str("template_id", templateID).Msg("Cloud-init template not found, skipping")
+		return "template-not-found"
+	}
+
+	if strings.TrimSpace(template.YAMLContent) == "" {
+		log.Warn().Str("template_id", templateID).Msg("Cloud-init template has empty YAML content, skipping")
+		return "template-empty"
+	}
+
+	// Determine snippet storage (for cicustom parameter)
+	snippetStorage, err := h.selectSnippetStorageForNode(ctx, restyClient, node, template.Storage)
+	if err != nil {
+		log.Warn().
+			Err(err).
+			Str("template_id", templateID).
+			Str("node", node).
+			Msg("No suitable snippets storage found for cloud-init template, skipping")
+		return "no-snippets-storage"
+	}
+
+	// Generate filename: pvmss-<vmid>.yml
+	// Using VMID ensures we can find and delete the snippet when the VM is deleted
+	filename := fmt.Sprintf("%s%d.yml", state.CloudInitTemplatePrefix, vmid)
+
+	// Try SFTP upload first if enabled
+	uploadSuccess := false
+	if settings.CloudInitSFTP.Enabled {
+		log.Info().Msg("Attempting cloud-init snippet upload via SFTP")
+		if err := proxmox.UploadSnippetFileSFTP(ctx, settings.CloudInitSFTP, filename, template.YAMLContent); err != nil {
+			log.Warn().
+				Err(err).
+				Str("template_id", templateID).
+				Str("sftp_host", settings.CloudInitSFTP.Host).
+				Str("filename", filename).
+				Msg("Failed to upload cloud-init template snippet via SFTP, falling back to HTTP API")
+		} else {
+			uploadSuccess = true
+			log.Info().
+				Str("template_id", templateID).
+				Str("sftp_host", settings.CloudInitSFTP.Host).
+				Str("filename", filename).
+				Msg("Cloud-init template snippet uploaded successfully via SFTP")
+		}
+	}
+
+	// Fall back to HTTP API if SFTP failed or is disabled
+	if !uploadSuccess {
+		log.Info().Msg("Attempting cloud-init snippet upload via HTTP API")
+		if err := proxmox.UploadSnippetFileResty(ctx, restyClient, node, snippetStorage, filename, template.YAMLContent); err != nil {
+			log.Warn().
+				Err(err).
+				Str("template_id", templateID).
+				Str("storage", snippetStorage).
+				Str("filename", filename).
+				Msg("Failed to upload cloud-init template snippet via both SFTP and HTTP API, skipping cicustom")
+			return "upload-failed"
+		}
+		log.Info().
+			Str("template_id", templateID).
+			Str("storage", snippetStorage).
+			Str("filename", filename).
+			Msg("Cloud-init template snippet uploaded successfully via HTTP API")
+	}
+
+	// Set cicustom parameter to reference the uploaded snippet
+	ciParams.CICustom = fmt.Sprintf("user=%s:snippets/%s", snippetStorage, filename)
+
+	log.Info().
+		Str("template_id", templateID).
+		Str("storage", snippetStorage).
+		Str("filename", filename).
+		Str("node", node).
+		Int("vmid", vmid).
+		Msg("Cloud-init template snippet uploaded and cicustom configured")
+
+	return "" // Success - no warning
+}
+
+func (h *VMCreateOptimizedHandler) selectSnippetStorageForNode(ctx context.Context, restyClient *proxmox.RestyClient, node string, preferredStorage string) (string, error) {
+	storages, err := proxmox.GetSnippetsStoragesResty(ctx, restyClient)
+	if err != nil {
+		return "", err
+	}
+
+	var fallback string
+
+	for _, s := range storages {
+		if !storageAvailableOnNode(s, node) {
+			continue
+		}
+		if preferredStorage != "" && s.Storage == preferredStorage {
+			return s.Storage, nil
+		}
+		if fallback == "" {
+			fallback = s.Storage
+		}
+	}
+
+	if fallback == "" {
+		if preferredStorage != "" {
+			return "", fmt.Errorf("no snippets storage matching preferred %s for node %s", preferredStorage, node)
+		}
+		return "", fmt.Errorf("no snippets storage available for node %s", node)
+	}
+
+	return fallback, nil
+}
+
+func storageAvailableOnNode(storage proxmox.Storage, node string) bool {
+	if storage.Nodes == "" {
+		return true
+	}
+
+	for _, n := range strings.Split(storage.Nodes, ",") {
+		if strings.TrimSpace(n) == node {
+			return true
+		}
+	}
+
+	return false
 }

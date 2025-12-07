@@ -19,7 +19,7 @@ Version anglaise : [README.md](README.md)
 7. [Démarrer avec Docker compose](#démarrer-avec-docker-compose)
 8. [Démarrer avec Kubernetes](#démarrer-avec-kubernetes)
 9. [Exploitation](#exploitation)
-10. [Limites & feuille de route](#limites--feuille-de-route)
+10. [Limites connues](#limites-connues)
 11. [Licence](#licence)
 
 ---
@@ -32,7 +32,7 @@ PVMSS est une application stateless (backend Go + frontend HTML/CSS) qui s'appui
 - **Simplicité d'exploitation** : image conteneur prête à l'emploi, limites de ressources configurables, sélection de stockage compatible cluster.
 - **Centrée utilisateur** : formulaires clairs et guidés, documentation intégrée.
 
-> ⚠️ Le projet reste en développement actif. Consultez la section [Limites & feuille de route](#limites--feuille-de-route) avant un déploiement en production.
+> ⚠️ Le projet reste en développement actif. Consultez la section [Limites connues](#limites-connues) avant un déploiement en production.
 
 ## Fonctionnalités
 
@@ -309,14 +309,13 @@ Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votr
 - **Santé** : les logs de démarrage détaillent la connectivité Proxmox, l'état du mode hors-ligne et les métriques runtime. La page admin "Informations de l'application" affiche des métriques, des variables d'environnement et le statut du cluster Proxmox.
 - **Mises à jour** : récupérez l'image souhaitée (le tag), mettez le fichier `settings.json` à jour si nécessaire, et redémarrez le conteneur.
 
-## Limites connues & feuille de route
+## Limites connues
 
 - Pas encore d'audit de sécurité complet.
 - L'application n'est pas encore dynamique, le travail est en cours pour optimiser les interactions.
 
 ### Prochaines évolutions majeures
 
-- Support de Cloud-Init;
 - Intégration OpenID Connect / SSO ;
 - Migration de VM entre les nœuds Proxmox ;
 

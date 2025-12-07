@@ -12,6 +12,8 @@ other = "Back to search"
 other = "CPU"
 ["Common.Cancel"]
 other = "Cancel"
+["Common.Close"]
+other = "Close"
 ["Common.Confirm"]
 other = "Confirm"
 ["Common.Create"]
@@ -142,3 +144,9 @@ other = "Show all"
 other = "Page"
 ["Common.Range"]
 other = "Min - Max"
+["Common.Warning"]
+other = "Warning"
+["Common.Host"]
+other = "Host"
+["Common.Username"]
+other = "Username"

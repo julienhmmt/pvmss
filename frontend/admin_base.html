@@ -58,6 +58,7 @@
               (dict "key" "storage" "path" "/admin/storage" "icon" "fas fa-hdd" "title" (T "Admin.Storage.Title"))
               (dict "key" "iso" "path" "/admin/iso" "icon" "fas fa-compact-disc" "title" (T "Admin.ISO.Title"))
               (dict "key" "vmbr" "path" "/admin/vmbr" "icon" "fas fa-network-wired" "title" (T "Admin.VMBR.Title"))
+              (dict "key" "cloudinit" "path" "/admin/cloudinit" "icon" "fas fa-cloud" "title" (T "Admin.CloudInit.Title"))
               (dict "key" "limits" "path" "/admin/limits" "icon" "fas fa-sliders-h" "title" (T "Admin.Limits.Title"))
               (dict "key" "userpool" "path" "/admin/userpool" "icon" "fas fa-user-shield" "title" (T "Admin.UserPool.Title"))
             }}
@@ -91,6 +92,8 @@
             {{template "admin_vmbr_section" .}}
           {{else if eq .AdminActive "limits"}}
             {{template "admin_limits_section" .}}
+          {{else if eq .AdminActive "cloudinit"}}
+            {{template "admin_cloudinit_section" .}}
           {{else if eq .AdminActive "userpool"}}
             {{template "admin_userpool_section" .}}
           {{else if eq .AdminActive "userpool_delete"}}
