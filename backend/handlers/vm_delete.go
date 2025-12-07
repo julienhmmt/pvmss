@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -254,6 +255,24 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 		Bool("is_admin", isAdmin).
 		Str("client_ip", r.RemoteAddr).
 		Msg("VM deleted successfully")
+
+	// Delete associated cloud-init snippet if SFTP is enabled
+	settings := stateManager.GetSettings()
+	if settings != nil && settings.CloudInitSFTP.Enabled {
+		snippetFilename := fmt.Sprintf("pvmss-%d.yml", vmidInt)
+		if err := proxmox.DeleteSnippetFileSFTP(settings.CloudInitSFTP, snippetFilename); err != nil {
+			log.Warn().
+				Err(err).
+				Str("snippet", snippetFilename).
+				Int("vmid", vmidInt).
+				Msg("Failed to delete cloud-init snippet (VM already deleted)")
+		} else {
+			log.Info().
+				Str("snippet", snippetFilename).
+				Int("vmid", vmidInt).
+				Msg("Cloud-init snippet deleted successfully")
+		}
+	}
 
 	// Invalidate caches to ensure UI shows fresh data
 	// 1) User pool cache (profile page)

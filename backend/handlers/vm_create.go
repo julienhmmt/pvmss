@@ -2190,12 +2190,9 @@ func (h *VMCreateOptimizedHandler) applyCloudInitTemplate(ctx context.Context, r
 		return "no-snippets-storage"
 	}
 
-	// Generate filename: pvmss-<vm_name>-<template_id>.yml
-	// Sanitize VM name to remove special characters that could cause issues
-	sanitizedName := strings.ReplaceAll(vmName, " ", "-")
-	sanitizedName = strings.ReplaceAll(sanitizedName, "/", "-")
-	sanitizedName = strings.ReplaceAll(sanitizedName, "\\", "-")
-	filename := fmt.Sprintf("%s%s-%s.yml", state.CloudInitTemplatePrefix, sanitizedName, template.ID)
+	// Generate filename: pvmss-<vmid>.yml
+	// Using VMID ensures we can find and delete the snippet when the VM is deleted
+	filename := fmt.Sprintf("%s%d.yml", state.CloudInitTemplatePrefix, vmid)
 
 	// Try SFTP upload first if enabled
 	uploadSuccess := false

@@ -313,7 +313,6 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 
 ### Next major features
 
-- Cloud-Init support.
 - OpenID Connect / SSO integration.
 - Migration of VMs between Proxmox nodes.
 

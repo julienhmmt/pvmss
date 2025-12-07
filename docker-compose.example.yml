@@ -30,9 +30,8 @@ services:
     volumes:
       - ./settings.json:/app/settings.json
       - ./app.log:/app/info.log # If "file" or "both" on LOG_OUTPUT, you need to set this to a valid file path
-      # Cloud-init SFTP upload (optional - for secure snippet uploads)
+      # Cloud-init SFTP upload (optional - mount private key for snippet uploads)
       - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
-      - ./proxmox_host_key.pub:/app/proxmox_host_key.pub:ro # Get with: ssh-keyscan -t ed25519 YOUR_PROXMOX_IP | grep ed25519 | cut -d' ' -f2,3 > proxmox_host_key.pub
     deploy:
       resources:
         limits:

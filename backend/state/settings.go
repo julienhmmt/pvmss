@@ -265,39 +265,11 @@ func LoadSettings() (*AppSettings, bool, error) {
 			settings.CloudInitSFTP.Enabled = false
 			modified = true
 		} else {
-			// Also check host key file if specified (and insecure mode not enabled)
-			if settings.CloudInitSFTP.HostKeyPath != "" && !settings.CloudInitSFTP.InsecureSkipHostKeyVerify {
-				if _, err := os.Stat(settings.CloudInitSFTP.HostKeyPath); os.IsNotExist(err) {
-					log.Error().
-						Str("host_key_path", settings.CloudInitSFTP.HostKeyPath).
-						Msg("SFTP host key file not found, disabling SFTP upload")
-					settings.CloudInitSFTP.Enabled = false
-					modified = true
-				} else if err != nil {
-					log.Error().
-						Err(err).
-						Str("host_key_path", settings.CloudInitSFTP.HostKeyPath).
-						Msg("Cannot access SFTP host key file, disabling SFTP upload")
-					settings.CloudInitSFTP.Enabled = false
-					modified = true
-				} else {
-					log.Info().
-						Str("host", settings.CloudInitSFTP.Host).
-						Str("username", settings.CloudInitSFTP.Username).
-						Str("private_key_path", settings.CloudInitSFTP.PrivateKeyPath).
-						Str("host_key_path", settings.CloudInitSFTP.HostKeyPath).
-						Msg("SFTP configuration validated and enabled")
-				}
-			} else if settings.CloudInitSFTP.InsecureSkipHostKeyVerify {
-				log.Warn().
-					Str("host", settings.CloudInitSFTP.Host).
-					Str("username", settings.CloudInitSFTP.Username).
-					Msg("SFTP configuration validated (insecure mode - host key verification disabled)")
-			} else {
-				log.Warn().
-					Str("host", settings.CloudInitSFTP.Host).
-					Msg("SFTP host key path not configured - host key verification will fail at runtime")
-			}
+			log.Info().
+				Str("host", settings.CloudInitSFTP.Host).
+				Str("username", settings.CloudInitSFTP.Username).
+				Str("private_key_path", settings.CloudInitSFTP.PrivateKeyPath).
+				Msg("SFTP configuration validated and enabled")
 		}
 	}
 

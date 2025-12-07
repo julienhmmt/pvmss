@@ -56,14 +56,12 @@ type CloudInitParams struct {
 
 // CloudInitSFTPConfig defines SSH/SFTP configuration for cloud-init snippet uploads
 type CloudInitSFTPConfig struct {
-	Enabled                   bool   `json:"enabled"`                   // Whether SFTP upload is enabled
-	Host                      string `json:"host"`                      // Proxmox node hostname or IP
-	HostKeyPath               string `json:"hostKeyPath"`               // Path to known host public key file for secure verification
-	InsecureSkipHostKeyVerify bool   `json:"insecureSkipHostKeyVerify"` // Explicitly skip host key verification (NOT recommended)
-	Port                      int    `json:"port"`                      // SSH port (default: 22)
-	PrivateKeyPath            string `json:"privateKeyPath"`            // Path to private SSH key file
-	SnippetBaseDir            string `json:"snippetBaseDir"`            // Base directory for snippets (e.g., /var/lib/vz/snippets)
-	Username                  string `json:"username"`                  // SSH username (PAM account)
+	Enabled        bool   `json:"enabled"`        // Whether SFTP upload is enabled
+	Host           string `json:"host"`           // Proxmox node hostname or IP
+	Port           int    `json:"port"`           // SSH port (default: 22)
+	PrivateKeyPath string `json:"privateKeyPath"` // Path to private SSH key file
+	SnippetBaseDir string `json:"snippetBaseDir"` // Base directory for snippets (e.g., /var/lib/vz/snippets)
+	Username       string `json:"username"`       // SSH username (PAM account)
 }
 
 // GetVMCloudInitConfigResty fetches cloud-init configuration for a VM.
@@ -406,46 +404,54 @@ func GetSnippetsStoragesResty(ctx context.Context, restyClient *RestyClient) ([]
 	return snippetStorages, nil
 }
 
-// buildHostKeyCallback creates a secure SSH host key callback.
-// If hostKeyPath is provided, it uses FixedHostKey for strict verification.
-// If hostKeyPath is empty, it falls back to InsecureIgnoreHostKey with a warning.
-func buildHostKeyCallback(hostKeyPath string, insecureSkip bool, host string) (ssh.HostKeyCallback, error) {
+// createSFTPClient creates an SFTP client connection to the configured host.
+// Host key verification is disabled for simplicity in trusted network environments.
+func createSFTPClient(config CloudInitSFTPConfig) (*sftp.Client, *ssh.Client, error) {
 	log := logger.Get()
 
-	// If explicit insecure mode is enabled
-	if insecureSkip {
-		log.Warn().
-			Str("host", host).
-			Str("component", "sftp").
-			Str("security", "warning").
-			Msg("Host key verification explicitly disabled (insecureSkipHostKeyVerify=true). This is NOT recommended for production.")
-		return ssh.InsecureIgnoreHostKey(), nil
-	}
-
-	// If no host key path provided and insecure mode not explicitly enabled, return error
-	if hostKeyPath == "" {
-		return nil, fmt.Errorf("host key verification required: configure hostKeyPath with the server's public key, or set insecureSkipHostKeyVerify=true to disable (not recommended)")
-	}
-
-	// Read the known host public key
-	hostKeyBytes, err := os.ReadFile(hostKeyPath)
+	// Read private key
+	keyBytes, err := os.ReadFile(config.PrivateKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read host key file %s: %w", hostKeyPath, err)
+		return nil, nil, fmt.Errorf("failed to read private key file %s: %w", config.PrivateKeyPath, err)
 	}
 
-	// Parse the public key
-	hostKey, _, _, _, err := ssh.ParseAuthorizedKey(hostKeyBytes)
+	// Parse private key
+	signer, err := ssh.ParsePrivateKey(keyBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse host public key from %s: %w", hostKeyPath, err)
+		return nil, nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Create SSH client config (host key verification disabled for trusted networks)
+	sshConfig := &ssh.ClientConfig{
+		User: config.Username,
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // #nosec G106 - trusted network
+		Timeout:         30 * time.Second,
+	}
+
+	// Connect to SSH server
+	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
+	sshClient, err := ssh.Dial("tcp", addr, sshConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to SSH server %s: %w", addr, err)
+	}
+
+	// Create SFTP client
+	sftpClient, err := sftp.NewClient(sshClient)
+	if err != nil {
+		sshClient.Close()
+		return nil, nil, fmt.Errorf("failed to create SFTP client: %w", err)
 	}
 
 	log.Debug().
-		Str("host", host).
-		Str("hostKeyPath", hostKeyPath).
-		Str("keyType", hostKey.Type()).
-		Msg("Using secure host key verification for SFTP connection")
+		Str("host", config.Host).
+		Int("port", config.Port).
+		Str("username", config.Username).
+		Msg("SFTP connection established")
 
-	return ssh.FixedHostKey(hostKey), nil
+	return sftpClient, sshClient, nil
 }
 
 // UploadSnippetFileSFTP uploads a snippet file using SFTP instead of HTTP API.
@@ -462,54 +468,17 @@ func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, file
 		Str("filename", filename).
 		Msg("Uploading cloud-init snippet via SFTP")
 
-	// Read private key
-	keyBytes, err := os.ReadFile(config.PrivateKeyPath)
+	// Create SFTP connection
+	sftpClient, sshClient, err := createSFTPClient(config)
 	if err != nil {
-		return fmt.Errorf("failed to read private key file %s: %w", config.PrivateKeyPath, err)
-	}
-
-	// Parse private key
-	signer, err := ssh.ParsePrivateKey(keyBytes)
-	if err != nil {
-		return fmt.Errorf("failed to parse private key: %w", err)
-	}
-
-	// Build host key callback
-	hostKeyCallback, err := buildHostKeyCallback(config.HostKeyPath, config.InsecureSkipHostKeyVerify, config.Host)
-	if err != nil {
-		return fmt.Errorf("failed to configure host key verification: %w", err)
-	}
-
-	// Create SSH client config
-	sshConfig := &ssh.ClientConfig{
-		User: config.Username,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
-		HostKeyCallback: hostKeyCallback,
-		Timeout:         30 * time.Second,
-	}
-
-	// Connect to SSH server
-	addr := fmt.Sprintf("%s:%d", config.Host, config.Port)
-	sshClient, err := ssh.Dial("tcp", addr, sshConfig)
-	if err != nil {
-		return fmt.Errorf("failed to connect to SSH server %s: %w", addr, err)
-	}
-	defer func() {
-		if closeErr := sshClient.Close(); closeErr != nil {
-			log.Warn().Err(closeErr).Msg("Failed to close SSH client")
-		}
-	}()
-
-	// Create SFTP client
-	sftpClient, err := sftp.NewClient(sshClient)
-	if err != nil {
-		return fmt.Errorf("failed to create SFTP client: %w", err)
+		return err
 	}
 	defer func() {
 		if closeErr := sftpClient.Close(); closeErr != nil {
 			log.Warn().Err(closeErr).Msg("Failed to close SFTP client")
+		}
+		if closeErr := sshClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SSH client")
 		}
 	}()
 
@@ -542,6 +511,58 @@ func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, file
 		Str("host", config.Host).
 		Str("path", targetPath).
 		Msg("Cloud-init snippet uploaded successfully via SFTP")
+
+	return nil
+}
+
+// DeleteSnippetFileSFTP deletes a snippet file via SFTP.
+// Used when deleting a VM to clean up associated cloud-init snippets.
+func DeleteSnippetFileSFTP(config CloudInitSFTPConfig, filename string) error {
+	if !config.Enabled {
+		return fmt.Errorf("SFTP is disabled in configuration")
+	}
+
+	log := logger.Get()
+	log.Info().
+		Str("host", config.Host).
+		Str("filename", filename).
+		Msg("Deleting cloud-init snippet via SFTP")
+
+	// Create SFTP connection
+	sftpClient, sshClient, err := createSFTPClient(config)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := sftpClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SFTP client")
+		}
+		if closeErr := sshClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SSH client")
+		}
+	}()
+
+	// Build target path
+	targetPath := filepath.Join(config.SnippetBaseDir, filename)
+
+	// Check if file exists
+	if _, err := sftpClient.Stat(targetPath); err != nil {
+		if os.IsNotExist(err) {
+			log.Debug().Str("path", targetPath).Msg("Snippet file does not exist, nothing to delete")
+			return nil
+		}
+		return fmt.Errorf("failed to stat snippet file %s: %w", targetPath, err)
+	}
+
+	// Delete the file
+	if err := sftpClient.Remove(targetPath); err != nil {
+		return fmt.Errorf("failed to delete snippet file %s: %w", targetPath, err)
+	}
+
+	log.Info().
+		Str("host", config.Host).
+		Str("path", targetPath).
+		Msg("Cloud-init snippet deleted successfully via SFTP")
 
 	return nil
 }

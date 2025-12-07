@@ -316,7 +316,6 @@ Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votr
 
 ### Prochaines évolutions majeures
 
-- Support de Cloud-Init;
 - Intégration OpenID Connect / SSO ;
 - Migration de VM entre les nœuds Proxmox ;
 
