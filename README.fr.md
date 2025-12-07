@@ -117,6 +117,14 @@ Le fichier `settings.json` fait office de source de vérité pour les options di
   "tags": ["pvmss"],
   "isos": [],
   "vmbrs": [],
+  "cloudinit_sftp": {
+    "enabled": true,
+    "host": "your-proxmox-ip-or-hostname",
+    "port": 22,
+    "username": "pvmss-snippets",
+    "privateKeyPath": "/app/pvmss_snippets_ed25519",
+    "snippetBaseDir": "/snippets"
+  },
   "enabled_storages": [],
   "max_network_cards": 1,
   "max_disk_per_vm": 1,
