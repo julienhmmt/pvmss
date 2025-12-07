@@ -441,7 +441,9 @@ func createSFTPClient(config CloudInitSFTPConfig) (*sftp.Client, *ssh.Client, er
 	// Create SFTP client
 	sftpClient, err := sftp.NewClient(sshClient)
 	if err != nil {
-		sshClient.Close()
+		if closeErr := sshClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SSH client after SFTP client creation error")
+		}
 		return nil, nil, fmt.Errorf("failed to create SFTP client: %w", err)
 	}
 
