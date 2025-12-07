@@ -1991,7 +1991,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	cloudInitEnabled := r.FormValue("cloudinit_enable") == "1"
 	cloudInitWarning := ""
 	if cloudInitEnabled {
-		cloudInitWarning = h.applyCloudInitConfig(ctx, r, node, vmid, storage, name)
+		cloudInitWarning = h.applyCloudInitConfig(ctx, r, node, vmid, storage)
 	}
 
 	// Start VM if requested (AFTER cloud-init is configured)
@@ -2103,7 +2103,7 @@ func (h *VMCreateOptimizedHandler) startVM(ctx context.Context, client proxmox.C
 
 // applyCloudInitConfig applies cloud-init configuration to a newly created VM.
 // Returns a warning message if the cloud-init template upload failed.
-func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *http.Request, node string, vmid int, storage string, vmName string) string {
+func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *http.Request, node string, vmid int, storage string) string {
 	log := CreateHandlerLogger("applyCloudInitConfig", r)
 	warning := "" // Track any warnings to report back to user
 
@@ -2162,7 +2162,7 @@ func (h *VMCreateOptimizedHandler) applyCloudInitConfig(ctx context.Context, r *
 
 	// Apply cloud-init template if selected
 	if templateID != "" {
-		templateWarning := h.applyCloudInitTemplate(ctx, restyClient, node, vmid, &ciParams, templateID, vmName)
+		templateWarning := h.applyCloudInitTemplate(ctx, restyClient, node, vmid, &ciParams, templateID)
 		if templateWarning != "" {
 			warning = templateWarning
 		}
