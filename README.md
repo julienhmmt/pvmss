@@ -19,7 +19,7 @@ French version: [README.fr.md](README.fr.md)
 7. [Start with Docker compose](#start-with-docker-compose)
 8. [Start with Kubernetes](#start-with-kubernetes)
 9. [Operations](#operations)
-10. [Limitations & roadmap](#limitations--roadmap)
+10. [Limitations](#limitations)
 11. [License](#license)
 
 ---
@@ -32,7 +32,7 @@ PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and r
 - **Operations-friendly**: ready-to-use container image, configurable resource limits, cluster-aware storage selection.
 - **User-centric**: clear and guided VM forms, built-in documentation.
 
-> ⚠️ The project is still under active development. Review the [Limitations & roadmap](#limitations--roadmap) section before deploying to production.
+> ⚠️ The project is still under active development. Review the [Limitations](#limitations) section before deploying to production.
 
 ## Feature highlights
 
@@ -306,7 +306,7 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 - **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag, update the file `settings.json` if new fields appear, and restart the container.
 
-## Limitations & roadmap
+## Limitations
 
 - Security hardening is ongoing; no formal penetration test yet.
 - App is not as dynamic as I'd like to. It is a work in progress.
