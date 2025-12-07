@@ -2037,9 +2037,35 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		Str("client_ip", r.RemoteAddr).
 		Msg("VM created successfully")
 
+	// Wait briefly for Proxmox to finalize VM configuration
+	// This ensures network interfaces, disks, and other resources are fully initialized
+	// before redirecting to the details page
+	time.Sleep(2 * time.Second)
+
+	// Invalidate caches to force fresh data fetch on details page
+	proxmoxClient := h.stateManager.GetProxmoxClient()
+	if proxmoxClient != nil {
+		// Invalidate pool cache if user has a pool
+		if sessionManager := security.GetSession(r); sessionManager != nil {
+			if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
+				poolName := "pvmss_" + username
+				proxmoxClient.InvalidateCache("/pools/" + poolName)
+				log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM creation")
+			}
+		}
+
+		// Invalidate nodes and VM lists to ensure fresh data
+		proxmoxClient.InvalidateCache("/nodes")
+		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu")
+		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu/" + strconv.Itoa(vmid))
+		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu/" + strconv.Itoa(vmid) + "/status/current")
+		log.Info().Str("node", node).Int("vmid", vmid).Msg("Invalidated node and VM caches after creation")
+	}
+
 	// Redirect to VM details with optional cloud-init warning
 	// Build redirect URL with hardcoded local path (vmid is validated integer)
-	redirectURL := fmt.Sprintf("/vm/details/%d?created=1", vmid)
+	// Add refresh=1 to force additional cache invalidation on details page
+	redirectURL := fmt.Sprintf("/vm/details/%d?created=1&refresh=1", vmid)
 	if cloudInitWarning != "" {
 		redirectURL += "&ci_warning=" + url.QueryEscape(cloudInitWarning)
 	}
