@@ -248,10 +248,23 @@
         consoleButton.addEventListener('click', function() {
             showLoading(this, 'console');
 
-            // Console opening is handled elsewhere, hide loading after timeout
+            // Open console in new window with VM details
+            const vmid = '{{$vmid}}';
+            const node = '{{$node}}';
+            const consoleUrl = `/vm/console?vmid=${vmid}&node=${node}`;
+            
+            // Open in new window
+            const consoleWindow = window.open(consoleUrl, '_blank', 'width=1024,height=768,resizable=yes,scrollbars=yes');
+            
+            // Hide loading after a short delay
             setTimeout(() => {
                 hideLoading(this);
-            }, 2000);
+            }, 1000);
+            
+            // Focus the new window if it opened successfully
+            if (consoleWindow) {
+                consoleWindow.focus();
+            }
         });
     }
 

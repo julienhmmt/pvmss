@@ -24,6 +24,9 @@
   const labelEnable = cfg.labelEnable || 'Enable';
   const labelDisable = cfg.labelDisable || 'Disable';
   const networkLabel = cfg.networkLabel || 'Network';
+  const consoleMustBeRunning = cfg.consoleMustBeRunning || 'VM must be running to open console. Please start the VM first.';
+  const consoleUnavailable = cfg.consoleUnavailable || 'Console is temporarily unavailable. Please try again in a moment.';
+  const consoleNotFound = cfg.consoleNotFound || 'Console button not found';
   const vmid = cfg.vmid || '';
   const node = cfg.node || '';
 
@@ -492,11 +495,23 @@
   }
 
   function openConsoleShortcut() {
-    const consoleBtn = document.querySelector('a[href*="console"]');
-    if (consoleBtn) {
-      window.open(consoleBtn.href, '_blank');
+    // Try to find console button by ID first (from action_buttons component)
+    const consoleBtn = document.getElementById('console-button');
+    if (consoleBtn && !consoleBtn.disabled) {
+      // Trigger click on console button to open console
+      consoleBtn.click();
+    } else if (consoleBtn && consoleBtn.disabled) {
+      // Show helpful message explaining why console is not available
+      const statusBadge = document.getElementById('vm-status-badge');
+      const status = statusBadge ? statusBadge.dataset.status || 'stopped' : 'stopped';
+      
+      if (status !== 'running') {
+        showError(consoleMustBeRunning);
+      } else {
+        showError(consoleUnavailable);
+      }
     } else {
-      showError('Console link not found');
+      showError(consoleNotFound);
     }
   }
 
