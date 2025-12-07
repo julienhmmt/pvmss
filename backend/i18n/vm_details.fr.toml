@@ -281,3 +281,11 @@ other = "Démarrer maintenant"
 other = "Ouvrir la console"
 ["VMDetails.Celebration.EditResources"]
 other = "Modifier les ressources"
+
+# Console Errors
+["VMDetails.Console.MustBeRunning"]
+other = "La VM doit être démarrée pour ouvrir la console. Veuillez d'abord démarrer la VM."
+["VMDetails.Console.TemporarilyUnavailable"]
+other = "La console est temporairement indisponible. Veuillez réessayer dans un instant."
+["VMDetails.Console.ButtonNotFound"]
+other = "Bouton de console introuvable"
