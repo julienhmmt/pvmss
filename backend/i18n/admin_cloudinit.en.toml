@@ -1,0 +1,95 @@
+# Cloud-init Admin Translations (English)
+
+["Admin.CloudInit.Title"]
+other = "Cloud-init Templates"
+["Admin.CloudInit.Description"]
+other = "Manage cloud-init configuration templates for VM initialization"
+
+# Page sections
+["Admin.CloudInit.TemplatesList"]
+other = "Templates"
+["Admin.CloudInit.CreateTemplate"]
+other = "Create Template"
+["Admin.CloudInit.EditTemplate"]
+other = "Edit Template"
+["Admin.CloudInit.ViewYAML"]
+other = "View YAML"
+
+# Form labels and placeholders
+["Admin.CloudInit.NamePlaceholder"]
+other = "e.g., Ubuntu Base Setup"
+["Admin.CloudInit.DescriptionPlaceholder"]
+other = "Brief description for users"
+["Admin.CloudInit.DescriptionHelp"]
+other = "This description will be shown to users when selecting a template"
+["Admin.CloudInit.SnippetsStorage"]
+other = "Snippets Storage"
+["Admin.CloudInit.SelectStorage"]
+other = "Select a storage..."
+["Admin.CloudInit.YAMLContent"]
+other = "YAML Configuration"
+["Admin.CloudInit.YAMLHelp"]
+other = "Enter your cloud-init configuration in YAML format. Start with #cloud-config"
+["Admin.CloudInit.ValidateAndSave"]
+other = "Validate & Save"
+
+# Empty states
+["Admin.CloudInit.NoTemplates"]
+other = "No cloud-init templates configured yet"
+["Admin.CloudInit.CreateFirst"]
+other = "Create your first template"
+["Admin.CloudInit.NoSnippetStorages"]
+other = "No storage with snippets support found. Please configure a snippets storage in Proxmox first."
+
+# Confirmation dialogs
+["Admin.CloudInit.ConfirmDelete"]
+other = "Are you sure you want to delete this template? This action cannot be undone."
+# Status messages
+["Admin.CloudInit.ProxmoxOffline"]
+other = "Proxmox is not connected. Template management is limited."
+["Admin.CloudInit.SecurityNote"]
+other = "Cloud-init scripts run with root privileges inside the VM at first boot. Review templates carefully before enabling them."
+
+# Success messages
+["Admin.CloudInit.Success.Create"]
+other = "Template '%s' created successfully"
+["Admin.CloudInit.Success.Edit"]
+other = "Template '%s' updated successfully"
+["Admin.CloudInit.Success.Delete"]
+other = "Template '%s' deleted successfully"
+["Admin.CloudInit.Success.Enable"]
+other = "Template '%s' enabled"
+["Admin.CloudInit.Success.Disable"]
+other = "Template '%s' disabled"
+["Admin.CloudInit.Success.Default"]
+other = "Template settings updated successfully"
+
+# Error messages
+["Admin.CloudInit.Error.RequiredFields"]
+other = "Please fill in all required fields"
+["Admin.CloudInit.Error.InvalidYAML"]
+other = "Invalid YAML syntax. Please check your configuration."
+["Admin.CloudInit.Error.AlreadyExists"]
+other = "A template with this name already exists"
+["Admin.CloudInit.Error.NotFound"]
+other = "Template not found"
+["Admin.CloudInit.Error.FetchTemplate"]
+other = "Failed to fetch template data from server"
+["Admin.CloudInit.Error.DeleteFailed"]
+other = "Failed to delete template"
+["Admin.CloudInit.Error.UploadFailed"]
+other = "Failed to upload template to storage"
+["Admin.CloudInit.Error.NoProxmoxSession"]
+other = "You must be logged in with a Proxmox account to manage cloud-init templates. Local administrators cannot create, edit, or delete templates."
+
+# Warning messages
+["Admin.CloudInit.Warning.ProxmoxUploadFailed"]
+other = "Template '%s' was created and saved locally, but could not be uploaded to Proxmox storage. The template can still be used - the YAML content will be applied directly to VMs during creation."
+["Admin.CloudInit.Warning.Default"]
+other = "The operation completed with warnings."
+
+# Sync status indicators
+["Admin.CloudInit.SyncedToProxmox"]
+other = "Synced to Proxmox storage"
+["Admin.CloudInit.LocalOnly"]
+other = "Stored locally only (not synced to Proxmox)"

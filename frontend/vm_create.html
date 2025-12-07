@@ -657,6 +657,185 @@
                                         </div>
                                     </div>
 
+                                    <!-- Cloud-init Configuration Card -->
+                                    {{if or .CloudInitTemplates .AllowCustomYAML}}
+                                    <div class="column is-12-tablet is-6-desktop">
+                                        <div class="card no-hover mb-5 mt-5">
+                                            <header class="card-header brand-header is-align-items-center">
+                                                <p class="card-header-title">
+                                                    <span class="icon"><i class="fas fa-cloud"></i></span>&nbsp;{{T "VM.Create.CloudInit"}}
+                                                </p>
+                                            </header>
+                                            <div class="card-content form-vertical">
+                                                <!-- Enable Cloud-init -->
+                                                <div class="field">
+                                                    <label class="checkbox">
+                                                        <input type="checkbox" name="cloudinit_enable" id="cloudinit_enable" value="1"
+                                                            {{if eq .FormData.cloudinit_enable "1"}}checked{{end}}
+                                                            onchange="toggleCloudInitSection(this.checked)">
+                                                        <strong>{{T "VM.Create.CloudInit.Enable"}}</strong>
+                                                    </label>
+                                                    <p class="help has-text-grey is-size-7">{{T "VM.Create.CloudInit.EnableHelp"}}</p>
+                                                </div>
+
+                                                <!-- Cloud-init Options (hidden by default) -->
+                                                <div id="cloudinit-options" style="display: {{if eq .FormData.cloudinit_enable "1"}}block{{else}}none{{end}};">
+                                                    {{if .CloudInitTemplates}}
+                                                    <!-- Template Selection -->
+                                                    <div class="field">
+                                                        <label class="form-label" for="cloudinit_template">
+                                                            <span class="form-label-icon">
+                                                                <span class="icon"><i class="fas fa-file-code"></i></span>
+                                                            </span>
+                                                            <span class="form-label-text">{{T "VM.Create.CloudInit.Template"}}</span>
+                                                        </label>
+                                                        <div class="control">
+                                                        <div class="select is-fullwidth">
+                                                                <nobr></nobr><select name="cloudinit_template" id="cloudinit_template">
+                                                                    <option value="">{{T "VM.Create.CloudInit.NoTemplate"}}</option>
+                                                                    {{range .CloudInitTemplates}}
+                                                                    <option value="{{.ID}}" {{if eq $.FormData.cloudinit_template .ID}}selected{{end}}>
+                                                                        {{.Name}}{{if .Description}} - {{.Description}}{{end}}
+                                                                    </option>
+                                                                    {{end}}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="field is-grouped is-grouped-right mt-2">
+                                                        <div class="control">
+                                                            <button type="button" class="button is-small is-link is-light" id="cloudinit-view-template-btn" onclick="viewCloudInitTemplate()" disabled>
+                                                                <span class="icon"><i class="fas fa-eye"></i></span>
+                                                                <span>{{T "Admin.CloudInit.ViewYAML"}}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {{end}}
+
+                                                    <hr class="my-4">
+
+                                                    <!-- Simple Mode: User/SSH -->
+                                                    <div class="columns is-multiline">
+                                                        <div class="column is-6">
+                                                            <div class="field">
+                                                                <label class="form-label" for="cloudinit_user">
+                                                                    <span class="form-label-icon">
+                                                                        <span class="icon"><i class="fas fa-user"></i></span>
+                                                                    </span>
+                                                                    <span class="form-label-text">{{T "VM.Create.CloudInit.Username"}}</span>
+                                                                </label>
+                                                                <div class="control">
+                                                                    <input class="input" type="text" name="cloudinit_user" id="cloudinit_user"
+                                                                        value="{{.FormData.cloudinit_user}}"
+                                                                        placeholder="{{T "VM.Create.CloudInit.UsernamePlaceholder"}}">
+                                                                </div>
+                                                                <p class="help">{{T "VM.Create.CloudInit.UsernameHelp"}}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="column is-6">
+                                                            <div class="field">
+                                                                <label class="form-label" for="cloudinit_password">
+                                                                    <span class="form-label-icon">
+                                                                        <span class="icon"><i class="fas fa-key"></i></span>
+                                                                    </span>
+                                                                    <span class="form-label-text">{{T "VM.Create.CloudInit.Password"}}</span>
+                                                                </label>
+                                                                <div class="control">
+                                                                    <input class="input" type="password" name="cloudinit_password" id="cloudinit_password"
+                                                                        placeholder="{{T "VM.Create.CloudInit.PasswordPlaceholder"}}">
+                                                                </div>
+                                                                <p class="help">{{T "VM.Create.CloudInit.PasswordHelp"}}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- SSH Keys -->
+                                                    <div class="field">
+                                                        <label class="form-label" for="cloudinit_sshkeys">
+                                                            <span class="form-label-icon">
+                                                                <span class="icon"><i class="fas fa-key"></i></span>
+                                                            </span>
+                                                            <span class="form-label-text">{{T "VM.Create.CloudInit.SSHKeys"}}</span>
+                                                        </label>
+                                                        <div class="control">
+                                                            <textarea class="textarea is-family-monospace" name="cloudinit_sshkeys" id="cloudinit_sshkeys"
+                                                                rows="3" placeholder="{{T "VM.Create.CloudInit.SSHKeysPlaceholder"}}">{{.FormData.cloudinit_sshkeys}}</textarea>
+                                                        </div>
+                                                        <p class="help">{{T "VM.Create.CloudInit.SSHKeysHelp"}}</p>
+                                                    </div>
+
+                                                    <hr class="my-4">
+
+                                                    <!-- Network Configuration -->
+                                                    <div class="field">
+                                                        <label class="form-label">
+                                                            <span class="form-label-icon">
+                                                                <span class="icon"><i class="fas fa-network-wired"></i></span>
+                                                            </span>
+                                                            <span class="form-label-text">{{T "VM.Create.CloudInit.IPConfig"}}</span>
+                                                        </label>
+                                                        <div class="control">
+                                                            <label class="radio">
+                                                                <input type="radio" name="cloudinit_ipconfig" value="dhcp"
+                                                                    {{if or (eq .FormData.cloudinit_ipconfig "dhcp") (eq .FormData.cloudinit_ipconfig "")}}checked{{end}}
+                                                                    onchange="toggleStaticIP(false)">
+                                                                {{T "VM.Create.CloudInit.DHCP"}}
+                                                            </label>
+                                                            <label class="radio ml-4">
+                                                                <input type="radio" name="cloudinit_ipconfig" value="static"
+                                                                    {{if eq .FormData.cloudinit_ipconfig "static"}}checked{{end}}
+                                                                    onchange="toggleStaticIP(true)">
+                                                                {{T "VM.Create.CloudInit.Static"}}
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Static IP Fields -->
+                                                    <div id="static-ip-fields" style="display: {{if eq .FormData.cloudinit_ipconfig "static"}}block{{else}}none{{end}};">
+                                                        <div class="columns is-multiline">
+                                                            <div class="column is-6">
+                                                                <div class="field">
+                                                                    <label class="label is-small" for="cloudinit_ip">{{T "VM.Create.CloudInit.StaticIP"}}</label>
+                                                                    <div class="control">
+                                                                        <input class="input" type="text" name="cloudinit_ip" id="cloudinit_ip"
+                                                                            value="{{.FormData.cloudinit_ip}}"
+                                                                            placeholder="{{T "VM.Create.CloudInit.StaticIPPlaceholder"}}">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="column is-6">
+                                                                <div class="field">
+                                                                    <label class="label is-small" for="cloudinit_gateway">{{T "VM.Create.CloudInit.Gateway"}}</label>
+                                                                    <div class="control">
+                                                                        <input class="input" type="text" name="cloudinit_gateway" id="cloudinit_gateway"
+                                                                            value="{{.FormData.cloudinit_gateway}}"
+                                                                            placeholder="{{T "VM.Create.CloudInit.GatewayPlaceholder"}}">
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="field">
+                                                        <label class="form-label" for="cloudinit_dns">
+                                                            <span class="form-label-icon">
+                                                                <span class="icon"><i class="fas fa-server"></i></span>
+                                                            </span>
+                                                            <span class="form-label-text">{{T "VM.Create.CloudInit.DNS"}}</span>
+                                                        </label>
+                                                        <div class="control">
+                                                            <input class="input" type="text" name="cloudinit_dns" id="cloudinit_dns"
+                                                                value="{{.FormData.cloudinit_dns}}"
+                                                                placeholder="{{T "VM.Create.CloudInit.DNSPlaceholder"}}">
+                                                        </div>
+                                                        <p class="help">{{T "VM.Create.CloudInit.DNSHelp"}}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{end}}
+
                                     <!-- Media & Network Configuration -->
                                     <div class="column is-12-tablet is-6-desktop">
                                         <div class="card no-hover mb-5 mt-5">
@@ -982,6 +1161,7 @@
                                             </div>
                                         </div>
                                     </div>
+
                                     <!-- Tags Section -->
                                     <div class="column is-12-tablet is-6-desktop">
                                         <div class="card no-hover mb-5 mt-5">
@@ -1044,6 +1224,25 @@
                 </div>
     </div>
 </section>
+
+<div class="modal" id="cloudinit-template-modal">
+    <div class="modal-background" onclick="closeCloudInitTemplateModal()"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">
+                <span class="icon"><i class="fas fa-file-code"></i></span>
+                <span id="cloudinit-template-modal-title">{{T "VM.Create.CloudInit.Template"}}</span>
+            </p>
+            <button class="delete" type="button" aria-label="close" onclick="closeCloudInitTemplateModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            <pre class="has-background-black-bis has-text-white-bis p-3 is-size-7" style="max-height: 400px; overflow: auto;" id="cloudinit-template-modal-content"></pre>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+            <button class="button" type="button" onclick="closeCloudInitTemplateModal()">{{T "Common.Close"}}</button>
+        </footer>
+    </div>
+</div>
 
 <!-- Real-time Form Validation -->
 <script>
@@ -1271,6 +1470,90 @@ function generateRandomMAC(inputId) {
         input.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }
+
+// Cloud-init section toggle
+function toggleCloudInitSection(enabled) {
+    const optionsDiv = document.getElementById('cloudinit-options');
+    if (optionsDiv) {
+        optionsDiv.style.display = enabled ? 'block' : 'none';
+    }
+}
+
+// Toggle static IP fields
+function toggleStaticIP(showStatic) {
+    const staticFields = document.getElementById('static-ip-fields');
+    if (staticFields) {
+        staticFields.style.display = showStatic ? 'block' : 'none';
+    }
+}
+
+async function viewCloudInitTemplate() {
+    const select = document.getElementById('cloudinit_template');
+    if (!select || !select.value) {
+        return;
+    }
+    const id = encodeURIComponent(select.value);
+    try {
+        const response = await fetch('/api/cloudinit/template/' + id, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        if (response.redirected && response.url && response.url.indexOf('/login') !== -1) {
+            window.location.href = response.url;
+            return;
+        }
+        if (!response.ok) {
+            throw new Error('Failed to fetch template data');
+        }
+        const data = await response.json();
+        openCloudInitTemplateModal(data.name || '', data.content || '');
+    } catch (error) {
+        console.error('Error fetching cloud-init template for VM create:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification({
+                type: 'danger',
+                title: '',
+                message: '{{T "Admin.CloudInit.Error.FetchTemplate"}}',
+                duration: 5000
+            });
+        }
+    }
+}
+
+function openCloudInitTemplateModal(title, content) {
+    const modal = document.getElementById('cloudinit-template-modal');
+    const titleEl = document.getElementById('cloudinit-template-modal-title');
+    const contentEl = document.getElementById('cloudinit-template-modal-content');
+    if (!modal || !titleEl || !contentEl) {
+        return;
+    }
+    titleEl.textContent = title;
+    contentEl.textContent = content;
+    modal.classList.add('is-active');
+}
+
+function closeCloudInitTemplateModal() {
+    const modal = document.getElementById('cloudinit-template-modal');
+    if (modal) {
+        modal.classList.remove('is-active');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const templateSelect = document.getElementById('cloudinit_template');
+    const viewButton = document.getElementById('cloudinit-view-template-btn');
+    if (!templateSelect || !viewButton) {
+        return;
+    }
+    function updateViewButtonState() {
+        viewButton.disabled = !templateSelect.value;
+    }
+    templateSelect.addEventListener('change', updateViewButtonState);
+    updateViewButtonState();
+});
 </script>
 
 {{end}}

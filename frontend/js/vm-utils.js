@@ -89,12 +89,14 @@ const VMUtils = (function() {
    */
   function showErrorNotification(message, options = {}) {
     if (typeof window.showNotification === 'function') {
-      window.showNotification(message, 'danger', {
+      window.showNotification({
+        type: 'danger',
+        message: message,
         duration: 5000,
         actions: options.actions || [
           {
             label: 'Retry',
-            action: options.onRetry || function() {
+            callback: options.onRetry || function() {
               window.location.reload();
             }
           }

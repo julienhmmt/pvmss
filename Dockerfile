@@ -3,11 +3,11 @@ FROM golang:1.25.3-alpine3.22 AS builder
 
 WORKDIR /app
 
-# Install build dependencies and create necessary directories in one layer
+# Install build dependencies and create necessary directories
+# Keep gcc/musl-dev present for the static build; remove later if needed.
 RUN set -eux; \
-    apk add --no-cache --virtual .build-deps gcc musl-dev ; \
-    mkdir -p /app/backend /app/frontend /app/backend/i18n /app/backend/docs ; \
-    apk del .build-deps
+    apk add --no-cache gcc musl-dev; \
+    mkdir -p /app/backend /app/frontend /app/backend/i18n /app/backend/docs
 
 # Copy dependency files first for better layer caching
 COPY backend/go.mod backend/go.sum ./
@@ -18,12 +18,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy backend source code
 COPY backend/ ./backend/
 
-# Build the application
+# Build the application (static, no external libc dependency)
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     cd backend && \
-    CGO_ENABLED=1 GOOS=linux \
-    go build -a -trimpath -ldflags='-w -s -extldflags "-static"' -tags netgo -installsuffix netgo -o ../pvmss-backend .
+    CGO_ENABLED=0 GOOS=linux \
+    go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
 # Copy frontend files in a separate stage to keep builder image smaller
 FROM alpine:3.22 AS frontend

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -563,6 +564,14 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var tpmEnabled bool
 	var currentISO string
 	var hasCDROM bool
+	cloudInitData := map[string]string{
+		"user":       "",
+		"sshKeys":    "",
+		"ipConfig":   "",
+		"nameserver": "",
+		"cicustom":   "",
+	}
+	cloudInitEnabled := false
 	cfg, cfgErr := proxmox.GetVMConfigResty(r.Context(), restyClient, vm.Node, vm.VMID)
 	if cfgErr != nil {
 		log.Warn().
@@ -656,6 +665,56 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		} else {
 			// No ide2 config means VM has empty CD-ROM drive
 			hasCDROM = true
+		}
+
+		// Extract cloud-init configuration from main VM config
+		if ciuser, ok := cfg["ciuser"].(string); ok && ciuser != "" {
+			cloudInitData["user"] = ciuser
+			cloudInitEnabled = true
+		}
+		if sshkeys, ok := cfg["sshkeys"].(string); ok && sshkeys != "" {
+			// Decode URL-encoded SSH keys (Proxmox stores them URL-encoded)
+			decodedKeys, err := url.QueryUnescape(sshkeys)
+			if err != nil {
+				// If decoding fails, use the original value
+				decodedKeys = sshkeys
+			}
+			cloudInitData["sshKeys"] = decodedKeys
+			cloudInitEnabled = true
+		}
+		if ipconfig0, ok := cfg["ipconfig0"].(string); ok && ipconfig0 != "" {
+			cloudInitData["ipConfig"] = ipconfig0
+			cloudInitEnabled = true
+		}
+		if nameserver, ok := cfg["nameserver"].(string); ok && nameserver != "" {
+			cloudInitData["nameserver"] = nameserver
+			cloudInitEnabled = true
+		}
+		if cicustom, ok := cfg["cicustom"].(string); ok && cicustom != "" {
+			cloudInitData["cicustom"] = cicustom
+			cloudInitEnabled = true
+			// Try to find matching template from cicustom
+			// New format: user=<storage>:snippets/pvmss-<vm_name>-<template_id>.yml
+			// Old format: user=<storage>:snippets/pvmss-<template_id>.yml
+			if strings.Contains(cicustom, "pvmss-") && stateManager.GetSettings() != nil {
+				templates := stateManager.GetSettings().CloudInitTemplates
+				for _, template := range templates {
+					// Check if the cicustom path ends with the template ID
+					if strings.Contains(cicustom, "-"+template.ID+".yml") || strings.Contains(cicustom, "-"+template.ID+".yaml") {
+						cloudInitData["templateName"] = template.Name
+						cloudInitData["templateYAML"] = template.YAMLContent
+						break
+					}
+				}
+			}
+		}
+		// Check for cloud-init drive (ide2=<storage>:cloudinit or similar)
+		for key, val := range cfg {
+			if strVal, ok := val.(string); ok && strings.Contains(strVal, ":cloudinit") {
+				cloudInitEnabled = true
+				log.Debug().Str("drive", key).Str("value", strVal).Msg("Cloud-init drive detected")
+				break
+			}
 		}
 
 		if vm.Status == "running" && len(networkInterfaces) > 0 && !isGuestAgentUnavailableCached(vm.Node, vm.VMID) {
@@ -932,6 +991,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"AvailableVMBRs":        availableVMBRs,
 		"AvailableISOs":         availableISOs,
 		"CSRFToken":             csrfToken,
+		"CloudInitEnabled":      cloudInitEnabled,
+		"CloudInitData":         cloudInitData,
 		"CurrentCores":          currentCores,
 		"CurrentISO":            currentISO,
 		"CurrentMemory":         currentMemoryMB,

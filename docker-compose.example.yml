@@ -30,6 +30,8 @@ services:
     volumes:
       - ./settings.json:/app/settings.json
       - ./app.log:/app/info.log # If "file" or "both" on LOG_OUTPUT, you need to set this to a valid file path
+      # Cloud-init SFTP upload (optional - mount private key for snippet uploads)
+      - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
     deploy:
       resources:
         limits:

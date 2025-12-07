@@ -53,3 +53,5 @@ other = "Échec de récupération des informations de nœud"
 other = "Échec de récupération des ressources"
 ["Error.InvalidInput"]
 other = "Entrée invalide"
+["Error.ProxmoxUploadFailed"]
+other = "Échec du téléchargement du fichier vers le stockage Proxmox"

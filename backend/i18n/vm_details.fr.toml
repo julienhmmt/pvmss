@@ -202,6 +202,30 @@ other = "Inconnu"
 ["VMDetails.Agent.Status.Offline"]
 other = "Hors ligne (PVMSS)"
 
+# Cloud-Init
+["VMDetails.CloudInit.Title"]
+other = "Cloud-Init"
+["VMDetails.CloudInit.Description"]
+other = "Configuration appliquée lors de la création de la VM."
+["VMDetails.CloudInit.User"]
+other = "Utilisateur"
+["VMDetails.CloudInit.Nameserver"]
+other = "Serveur DNS"
+["VMDetails.CloudInit.IPConfig"]
+other = "Configuration IP"
+["VMDetails.CloudInit.Snippet"]
+other = "Snippet (cicustom)"
+["VMDetails.CloudInit.SSHKeys"]
+other = "Clés SSH"
+["VMDetails.CloudInit.DisabledTitle"]
+other = "Cloud-Init est désactivé pour cette VM"
+["VMDetails.CloudInit.DisabledSubtitle"]
+other = "Aucune configuration cloud-init n'a été appliquée lors de la création."
+["VMDetails.CloudInit.ViewYAML"]
+other = "Voir le YAML"
+["VMDetails.CloudInit.YAMLContent"]
+other = "Contenu YAML Cloud-Init"
+
 # Disk Resize functionality
 ["VMDetails.DiskResize.Title"]
 other = "Redimensionnement de disque"
@@ -250,7 +274,7 @@ other = "Annuler"
 ["VMDetails.Celebration.Title"]
 other = "VM créée avec succès !"
 ["VMDetails.Celebration.Message"]
-other = "Votre nouvelle machine virtuelle <strong>{{.Name}}</strong> (ID: {{.VMID}}) est maintenant prête à être utilisée."
+other = "Votre nouvelle machine virtuelle est maintenant prête à être utilisée."
 ["VMDetails.Celebration.StartNow"]
 other = "Démarrer maintenant"
 ["VMDetails.Celebration.OpenConsole"]

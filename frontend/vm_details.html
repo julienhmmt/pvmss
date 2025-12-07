@@ -2,7 +2,7 @@
 <script>
   // Add celebration banner animations
   const style = document.createElement('style');
-  style.textContent = '@keyframes slideInBounce{0%{opacity:0;transform:translateY(-20px) scale(0.95)}50%{opacity:0.8;transform:translateY(5px) scale(1.02)}100%{opacity:1;transform:translateY(0) scale(1)} } @keyframes slideOut{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-10px) scale(0.95)} } #vm-celebration-banner{box-shadow:0 8px 25px rgba(72,199,116,0.2);border-radius:12px}#vm-celebration-banner .button{transition:all 0.2s ease}#vm-celebration-banner .button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}.stat-card:hover,.network-card:hover,.security-feature-card:hover,.network-interface-card:hover,.disk-item:hover,.cdrom-item:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08)!important}';
+  style.textContent = '@keyframes slideInBounce{0%{opacity:0;transform:translateY(-20px) scale(0.95)}50%{opacity:0.8;transform:translateY(5px) scale(1.02)}100%{opacity:1;transform:translateY(0) scale(1)} }@keyframes slideOut{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-10px) scale(0.95)} }#vm-celebration-banner{box-shadow:0 8px 25px rgba(72,199,116,0.2);border-radius:12px}#vm-celebration-banner .button{transition:all 0.2s ease}#vm-celebration-banner .button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15)}.stat-card:hover,.network-card:hover,.security-feature-card:hover,.network-interface-card:hover,.disk-item:hover,.cdrom-item:hover{box-shadow:0 4px 12px rgba(0,0,0,0.08)!important}';
   document.head.appendChild(style);
 </script>
 
@@ -107,7 +107,7 @@ function generateRandomMAC(inputId) {
                         {{T "VMDetails.Celebration.Title"}}
                     </p>
                     <p style="color: #2d5a3d; margin-bottom: 0.5rem;">
-                        {{T "VMDetails.Celebration.Message" .VM.Name .VM.VMID}}
+                        {{T "VMDetails.Celebration.Message"}}
                     </p>
                     <div class="buttons" style="margin-top: 0.75rem;">
                         <button class="button is-small is-success" onclick="startVM()">
@@ -549,8 +549,133 @@ function generateRandomMAC(inputId) {
                             </div>
                         </div>
                     </div>
+                    <!-- Cloud-Init -->
+                    <div class="column is-full-tablet is-full-mobile">
+                        <div class="cloudinit-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); height: 100%; transition: all 0.15s ease;">
+                            <!-- Header -->
+                            <div class="is-flex is-align-items-center is-justify-content-space-between mb-4">
+                                <div class="is-flex is-align-items-center">
+                                    <span class="icon has-text-grey mr-3" style="font-size: 1.25rem;">
+                                        <i class="fas fa-cloud"></i>
+                                    </span>
+                                    <div>
+                                        <div class="has-text-grey-dark is-size-6" style="font-weight: 600;">{{T "VMDetails.CloudInit.Title"}}</div>
+                                        <div class="has-text-grey is-size-7" style="margin-top: 2px;">{{T "VMDetails.CloudInit.Description"}}</div>
+                                    </div>
+                                </div>
+                                {{if .CloudInitEnabled}}
+                                <span class="tag" style="background: rgba(34,197,94,0.08); color: #16a34a; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                    {{T "Common.Enabled"}}
+                                </span>
+                                {{else}}
+                                <span class="tag" style="background: rgba(156,163,175,0.08); color: #6b7280; border: none; font-size: 0.75rem; padding: 0.25rem 0.5rem; line-height: 1.4;">
+                                    {{T "Common.Disabled"}}
+                                </span>
+                                {{end}}
+                            </div>
+                            
+                            {{if .CloudInitEnabled}}
+                            <!-- Cloud-Init Details -->
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                                <div class="cloudinit-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;">
+                                    <div class="has-text-grey is-size-7 mb-1">{{T "VMDetails.CloudInit.User"}}</div>
+                                    <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                        {{if .CloudInitData.user}}{{.CloudInitData.user}}{{else}}<span class="has-text-grey-light">—</span>{{end}}
+                                    </div>
+                                </div>
+                                <div class="cloudinit-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;">
+                                    <div class="has-text-grey is-size-7 mb-1">{{T "VMDetails.CloudInit.IPConfig"}}</div>
+                                    <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                        {{if .CloudInitData.ipConfig}}{{.CloudInitData.ipConfig}}{{else}}<span class="has-text-grey-light">—</span>{{end}}
+                                    </div>
+                                </div>
+                                <div class="cloudinit-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; flex: 1; min-width: 200px; transition: all 0.15s ease;">
+                                    <div class="has-text-grey is-size-7 mb-1">{{T "VMDetails.CloudInit.Nameserver"}}</div>
+                                    <div class="has-text-grey-dark" style="font-size: 0.9rem; font-weight: 500;">
+                                        {{if .CloudInitData.nameserver}}{{.CloudInitData.nameserver}}{{else}}<span class="has-text-grey-light">—</span>{{end}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{if .CloudInitData.cicustom}}
+                            <div style="margin-top: 0.75rem;">
+                                <div class="cloudinit-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; transition: all 0.15s ease;">
+                                    <div class="is-flex is-justify-content-space-between is-align-items-start">
+                                        <div style="flex: 1;">
+                                            <div class="has-text-grey is-size-7 mb-1">{{T "VMDetails.CloudInit.Snippet"}}{{if .CloudInitData.templateName}} — {{.CloudInitData.templateName}}{{end}}</div>
+                                            <div class="has-text-grey-dark" style="font-size: 0.85rem; font-weight: 500; word-break: break-all;">
+                                                {{.CloudInitData.cicustom}}
+                                            </div>
+                                        </div>
+                                        {{if .CloudInitData.templateYAML}}
+                                        <button type="button" class="button is-small is-light ml-3" onclick="showCloudInitYAML()" style="flex-shrink: 0;">
+                                            <span class="icon is-small"><i class="fas fa-code"></i></span>
+                                            <span>{{T "VMDetails.CloudInit.ViewYAML"}}</span>
+                                        </button>
+                                        {{end}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                            {{if .CloudInitData.sshKeys}}
+                            <div style="margin-top: 0.75rem;">
+                                <div class="cloudinit-item" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; transition: all 0.15s ease;">
+                                    <div class="has-text-grey is-size-7 mb-1">{{T "VMDetails.CloudInit.SSHKeys"}}</div>
+                                    <div class="has-text-grey-dark" style="font-size: 0.85rem; font-weight: 400; word-break: break-all; font-family: monospace;">
+                                        {{.CloudInitData.sshKeys}}
+                                    </div>
+                                </div>
+                            </div>
+                            {{end}}
+                            {{else}}
+                            <!-- Cloud-Init Disabled State -->
+                            <div class="has-text-centered" style="padding: 1rem 0;">
+                                <div class="has-text-grey-light" style="font-size: 2rem; margin-bottom: 0.75rem;">
+                                    <i class="fas fa-cloud"></i>
+                                </div>
+                                <div class="has-text-grey" style="font-size: 0.9rem; font-weight: 500;">
+                                    {{T "VMDetails.CloudInit.DisabledTitle"}}
+                                </div>
+                                <div class="has-text-grey-light" style="font-size: 0.85rem; margin-top: 0.25rem;">
+                                    {{T "VMDetails.CloudInit.DisabledSubtitle"}}
+                                </div>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Cloud-Init YAML Modal -->
+            {{if .CloudInitData.templateYAML}}
+            <div id="cloudinit-yaml-modal" class="modal">
+                <div class="modal-background" onclick="closeCloudInitYAML()"></div>
+                <div class="modal-card" style="max-width: 800px; width: 90%;">
+                    <header class="modal-card-head">
+                        <p class="modal-card-title">
+                            <span class="icon mr-2"><i class="fas fa-code"></i></span>
+                            {{T "VMDetails.CloudInit.YAMLContent"}}{{if .CloudInitData.templateName}} — {{.CloudInitData.templateName}}{{end}}
+                        </p>
+                        <button class="delete" aria-label="close" onclick="closeCloudInitYAML()"></button>
+                    </header>
+                    <section class="modal-card-body" style="padding: 0;">
+                        <pre style="margin: 0; padding: 1.25rem; background: #1e293b; color: #e2e8f0; border-radius: 0; overflow-x: auto; font-size: 0.85rem; line-height: 1.5;"><code>{{.CloudInitData.templateYAML}}</code></pre>
+                    </section>
+                    <footer class="modal-card-foot is-justify-content-flex-end">
+                        <button class="button" onclick="closeCloudInitYAML()">{{T "Common.Close"}}</button>
+                    </footer>
+                </div>
+            </div>
+            <script>
+            function showCloudInitYAML() {
+                document.getElementById('cloudinit-yaml-modal').classList.add('is-active');
+                document.documentElement.classList.add('is-clipped');
+            }
+            function closeCloudInitYAML() {
+                document.getElementById('cloudinit-yaml-modal').classList.remove('is-active');
+                document.documentElement.classList.remove('is-clipped');
+            }
+            </script>
+            {{end}}
 
             <!-- Quick Actions -->
             <div class="card-content pt-0 pb-4 px-4" style="border-top: 1px solid rgb(0,0,0,6%);">
