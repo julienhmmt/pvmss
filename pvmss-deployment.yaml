@@ -32,6 +32,14 @@ data:
         ],
         "isos": [],
         "vmbrs": [],
+        "cloudinit_sftp": {
+          "enabled": true,
+          "host": "your-proxmox-ip-or-hostname",
+          "port": 22,
+          "username": "pvmss-snippets",
+          "privateKeyPath": "/app/pvmss_snippets_ed25519",
+          "snippetBaseDir": "/snippets"
+        },
         "max_network_cards": 1,
         "max_disk_per_vm": 1,
         "enabled_storages": [],
@@ -90,10 +98,10 @@ kind: Deployment
 metadata:
   name: pvmss
   namespace: pvmss
-labels:
-  app.kubernetes.io/name: pvmss
-  app.kubernetes.io/instance: pvmss
-  app.kubernetes.io/version: 0.2.1
+  labels:
+    app.kubernetes.io/name: pvmss
+    app.kubernetes.io/instance: pvmss
+    app.kubernetes.io/version: "0.3.0"
 spec:
   replicas: 1
   strategy:
@@ -117,7 +125,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: pvmss
-          image: jhmmt/pvmss:0.2.1
+          image: jhmmt/pvmss:0.3.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: backend
@@ -128,7 +136,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: pvmss-secrets
-                  key: admin-password
+                  key: admin-password-hash
             - name: LOG_LEVEL
               value: "INFO"
             - name: LOG_OUTPUT
@@ -187,13 +195,13 @@ spec:
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
-          volumes:
-            - name: pvmss-settings
-              persistentVolumeClaim:
-                claimName: pvmss-settings-pvc
-            - name: pvmss-logs
-              persistentVolumeClaim:
-                claimName: pvmss-logs-pvc
+      volumes:
+        - name: pvmss-settings
+          persistentVolumeClaim:
+            claimName: pvmss-settings-pvc
+        - name: pvmss-logs
+          persistentVolumeClaim:
+            claimName: pvmss-logs-pvc
 ---           
 apiVersion: v1
 kind: Service
@@ -204,7 +212,7 @@ spec:
   selector:
     app.kubernetes.io/name: pvmss
     app.kubernetes.io/instance: pvmss
-    app.kubernetes.io/version: 0.2.1
+    app.kubernetes.io/version: "0.3.0"
   ports:
     - name: backend
       protocol: TCP
