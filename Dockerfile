@@ -1,5 +1,5 @@
 # Build stage - Go
-FROM golang:1.25.3-alpine3.22 AS builder
+FROM golang:1.25.5-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
 # Copy frontend files in a separate stage to keep builder image smaller
-FROM alpine:3.22 AS frontend
+FROM alpine:3.23 AS frontend
 WORKDIR /app
 
 COPY frontend/ /app/frontend/
