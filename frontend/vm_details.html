@@ -1593,7 +1593,7 @@ function generateRandomMAC(inputId) {
                                         <div class="level-item">
                                             <div class="buttons are-small">
                                                 <!-- Edit Description -->
-                                                <button class="button is-info is-outlined snapshot-edit-btn" 
+                                                <button class="button is-primary snapshot-edit-btn" 
                                                         data-snapshot-name="{{$snap.Name}}"
                                                         data-snapshot-desc="{{$snap.Description}}"
                                                         title="{{T "VMDetails.Snapshots.EditDescription"}}"
@@ -1608,7 +1608,7 @@ function generateRandomMAC(inputId) {
                                                     <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
                                                     <input type="hidden" name="node" value="{{$.VM.Node}}">
                                                     <input type="hidden" name="snapshot_name" value="{{$snap.Name}}">
-                                                    <button type="submit" class="button is-warning is-outlined" 
+                                                    <button type="submit" class="button is-warning is-light" 
                                                             title="{{T "VMDetails.Snapshots.Rollback"}}"
                                                             {{if not $.ProxmoxConnected}}disabled{{end}}>
                                                         <span class="icon is-small"><i class="fas fa-undo"></i></span>
@@ -1622,7 +1622,7 @@ function generateRandomMAC(inputId) {
                                                     <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
                                                     <input type="hidden" name="node" value="{{$.VM.Node}}">
                                                     <input type="hidden" name="snapshot_name" value="{{$snap.Name}}">
-                                                    <button type="submit" class="button is-danger is-outlined" 
+                                                    <button type="submit" class="button is-danger is-light" 
                                                             title="{{T "Common.Delete"}}"
                                                             {{if not $.ProxmoxConnected}}disabled{{end}}>
                                                         <span class="icon is-small"><i class="fas fa-trash"></i></span>
