@@ -117,7 +117,10 @@ func TestHandlersStructure(t *testing.T) {
 		"vm_details_info.go",
 		"vm_details_metrics.go",
 		"vm_details_validation.go",
-		"vm_actions.go",
+		"vm_actions_helpers.go",
+		"vm_actions_lifecycle.go",
+		"vm_actions_misc.go",
+		"vm_actions_resources.go",
 		"auth.go",
 		"helpers.go",
 	}
