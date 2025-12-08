@@ -75,7 +75,7 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	// Get settings to check max snapshots limit
+	// Get settings to check max snapshots limit (from limits.max_snapshots)
 	settings, _, err := state.LoadSettings()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load settings")
@@ -83,10 +83,15 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 		return
 	}
 
-	if len(snapshots) >= settings.MaxSnapshotsPerVM {
+	maxSnapshots := settings.Limits.MaxSnapshots
+	if maxSnapshots < 0 {
+		maxSnapshots = 0
+	}
+
+	if len(snapshots) >= maxSnapshots {
 		log.Error().
 			Int("current_count", len(snapshots)).
-			Int("max_allowed", settings.MaxSnapshotsPerVM).
+			Int("max_allowed", maxSnapshots).
 			Msg("Maximum snapshot limit reached")
 		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=max_snapshots_reached", http.StatusFound)
 		return

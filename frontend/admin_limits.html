@@ -422,7 +422,7 @@
         <div class="control">
           <input id="max-snapshots-per-vm" class="input is-medium" type="number" name="max_snapshots_per_vm" 
                 aria-describedby="max-snapshots-per-vm-help" aria-labelledby="label-max-snapshots-per-vm"
-                value="{{if .Settings}}{{.Settings.MaxSnapshotsPerVM}}{{else}}8{{end}}"
+                value="{{if .Settings}}{{.Settings.Limits.MaxSnapshots}}{{else}}8{{end}}"
                 min="0" max="32" step="1" placeholder="{{T "Admin.Limits.MaxSnapshotsPerVMPlaceholder"}}" required>
         </div>
         <p id="max-snapshots-per-vm-help" class="help">{{T "Admin.Limits.MaxSnapshotsPerVMHelp"}}</p>

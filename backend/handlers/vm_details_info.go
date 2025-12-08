@@ -601,7 +601,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"Tags":                  strings.Join(tags, ", "),
 		"VM":                    vm,
 		"Snapshots":             snapshots,
-		"MaxSnapshotsPerVM":     settings.MaxSnapshotsPerVM,
+		"MaxSnapshotsPerVM":     settings.Limits.MaxSnapshots,
 	}
 
 	title := ""

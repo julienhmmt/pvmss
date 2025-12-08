@@ -38,6 +38,8 @@ type NodeResourceLimits struct {
 type LimitsConfig struct {
 	VM    VMResourceLimits              `json:"vm"`
 	Nodes map[string]NodeResourceLimits `json:"nodes,omitempty"`
+	// MaxSnapshots defines the maximum number of snapshots allowed per VM.
+	MaxSnapshots int `json:"max_snapshots,omitempty"`
 }
 
 // Disk bus types and their maximum device counts
@@ -94,6 +96,7 @@ func defaultSettings() *AppSettings {
 		EnabledStorages: []string{},
 		ISOs:            []string{},
 		Limits: LimitsConfig{
+			MaxSnapshots: DefaultSnapshotsPerVM,
 			VM: VMResourceLimits{
 				Sockets: ResourceRange{Min: 1, Max: 1},
 				Cores:   ResourceRange{Min: 1, Max: 2},
@@ -105,7 +108,6 @@ func defaultSettings() *AppSettings {
 		MaxNetworkCards:    MinNetworkCards,
 		MaxDiskPerVM:       MinDiskPerVM,
 		MaxVMPerUser:       DefaultVMPerUser,
-		MaxSnapshotsPerVM:  DefaultSnapshotsPerVM,
 		Tags:               []string{"pvmss"},
 		VMBRs:              []string{},
 		CloudInitTemplates: []CloudInitTemplate{},
@@ -130,7 +132,6 @@ type AppSettings struct {
 	MaxNetworkCards    int                         `json:"max_network_cards,omitempty"`
 	MaxDiskPerVM       int                         `json:"max_disk_per_vm,omitempty"`
 	MaxVMPerUser       int                         `json:"max_vm_per_user,omitempty"`
-	MaxSnapshotsPerVM  int                         `json:"max_snapshots_per_vm,omitempty"`
 	Tags               []string                    `json:"tags"`
 	VMBRs              []string                    `json:"vmbrs"`
 	CloudInitTemplates []CloudInitTemplate         `json:"cloudinit_templates,omitempty"`
@@ -250,10 +251,10 @@ func LoadSettings() (*AppSettings, bool, error) {
 		modified = true
 		settings.MaxVMPerUser = DefaultVMPerUser
 	}
-	// Ensure MaxSnapshotsPerVM has a valid default value
-	if settings.MaxSnapshotsPerVM < MinSnapshotsPerVM || settings.MaxSnapshotsPerVM > MaxSnapshotsPerVM {
+	// Ensure MaxSnapshots has a valid default value under limits
+	if settings.Limits.MaxSnapshots < MinSnapshotsPerVM || settings.Limits.MaxSnapshots > MaxSnapshotsPerVM {
 		modified = true
-		settings.MaxSnapshotsPerVM = DefaultSnapshotsPerVM
+		settings.Limits.MaxSnapshots = DefaultSnapshotsPerVM
 	}
 
 	// Validate SFTP configuration if enabled
