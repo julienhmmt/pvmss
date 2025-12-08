@@ -752,6 +752,15 @@ func ensureLocalPath(urlStr string) string {
 	// Replace backslashes with forward slashes to avoid confusion:
 	urlStr = strings.ReplaceAll(urlStr, "\\", "/")
 
+	// Reject both raw and encoded double slashes, encoded colon, etc
+	lower := strings.ToLower(urlStr)
+	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
+		strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || // encoded slashes
+		strings.Contains(lower, "%3a") || // encoded colon
+		strings.Contains(lower, "://") {  // possible start of scheme
+		return "/"
+	}
+
 	parsed, err := url.Parse(urlStr)
 	if err != nil {
 		// Malformed, default to safe path
@@ -761,8 +770,8 @@ func ensureLocalPath(urlStr string) string {
 	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
 		return "/"
 	}
-	// Forbid dangerous things like "//evil" or empty path
 	path := parsed.Path
+	// Forbid dangerous things like "//evil" or empty path
 	if path == "" || (len(path) > 1 && (path[1] == '/' || path[1] == '\\')) {
 		return "/"
 	}
