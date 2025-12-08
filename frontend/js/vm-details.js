@@ -29,6 +29,37 @@
   const consoleNotFound = cfg.consoleNotFound || 'Console button not found';
   const vmid = cfg.vmid || '';
   const node = cfg.node || '';
+  const flashError = (cfg.errorMessage || '').trim();
+  const flashSuccess = (cfg.successMessage || '').trim();
+  const flashWarning = (cfg.warningMessage || '').trim();
+
+  function readQueryParam(name) {
+    const params = new URLSearchParams(window.location.search);
+    const value = params.get(name);
+    return value ? value.trim() : '';
+  }
+
+  // Display server-provided flash messages as floating notifications
+  function showFlashMessages() {
+    const errorMsg = flashError || readQueryParam('error_msg');
+    const warningMsg = flashWarning || readQueryParam('warning_msg');
+    const successMsg = flashSuccess || readQueryParam('success_msg');
+
+    // The template already renders banner notifications for these flags.
+    // We just clear the query params after first render to avoid duplicate toasts.
+    if (errorMsg || warningMsg || successMsg) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('error');
+      params.delete('error_msg');
+      params.delete('warning');
+      params.delete('warning_msg');
+      params.delete('success');
+      params.delete('success_msg');
+      const cleanSearch = params.toString();
+      const newUrl = cleanSearch ? `${window.location.pathname}?${cleanSearch}` : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }
 
   // Network card toggle function - Enhanced for instant feedback
   function toggleNetworkCard(cardIndex, enabled, csrfToken, vmidArg, nodeArg) {
@@ -176,6 +207,13 @@
 
   if (typeof document.hidden !== 'undefined') {
     document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+
+  // Initialize flash messages once DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', showFlashMessages, { once: true });
+  } else {
+    showFlashMessages();
   }
 
   const statusBadge = document.getElementById('vm-status-badge');

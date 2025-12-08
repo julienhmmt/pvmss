@@ -81,7 +81,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 			username = user
 		}
 	}
-	_, err = proxmox.VMActionResty(r.Context(), restyClient, node, vmid, action)
+	upid, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, action)
 	if err != nil {
 		logger.VMFailure("vm_action", vmidInt, node, "proxmox_api_error").Err(err).Str("action", action).Str("username", username).Str("client_ip", r.RemoteAddr).Int64("duration_ms", time.Since(start).Milliseconds()).Msg("VM action failed")
 		if action == "shutdown" && strings.Contains(strings.ToLower(err.Error()), "guest-ping") && (strings.Contains(strings.ToLower(err.Error()), "timeout") || strings.Contains(strings.ToLower(err.Error()), "failed")) {
@@ -90,8 +90,30 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 			return
 		}
 		ctx := NewHandlerContext(w, r, "VMActionHandler")
-		ctx.RedirectWithError(buildVMDetailsURL(vmid), "Message.ActionFailed")
+		userMsg := ctx.Translate("Message.ActionFailed")
+		if detail := formatProxmoxDetail(extractProxmoxTaskError(err)); detail != "" {
+			userMsg = userMsg + ": " + detail
+		}
+		ctx.RedirectWithParams(buildVMDetailsURL(vmid), map[string]string{
+			"warning":     "1",
+			"warning_msg": userMsg,
+		})
 		return
+	}
+	// If Proxmox accepted the action but returns a UPID, check task exit status for user-facing errors.
+	if upid != "" {
+		if exitStatus, failed := checkTaskFailure(r.Context(), restyClient, node, upid); failed {
+			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			userMsg := ctx.Translate("Message.ActionFailed")
+			if exitStatus != "" {
+				userMsg = userMsg + ": " + formatProxmoxDetail(exitStatus)
+			}
+			ctx.RedirectWithParams(buildVMDetailsURL(vmid), map[string]string{
+				"warning":     "1",
+				"warning_msg": userMsg,
+			})
+			return
+		}
 	}
 	if action == "shutdown" {
 		log.Info().Int("vmid", vmidInt).Msg("Waiting for VM to shutdown after guest agent request")
