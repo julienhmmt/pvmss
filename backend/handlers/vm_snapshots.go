@@ -139,7 +139,7 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
 	}
 
-	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_created&refresh=1", http.StatusSeeOther)
+	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_created&refresh=1&ts="+strconv.FormatInt(time.Now().Unix(), 10), http.StatusSeeOther)
 }
 
 // UpdateVMSnapshotHandler handles updating a snapshot description
@@ -236,7 +236,7 @@ func (h *VMSnapshotsHandler) DeleteVMSnapshotHandler(w http.ResponseWriter, r *h
 		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
 	}
 
-	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_deleted&refresh=1", http.StatusSeeOther)
+	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_deleted&refresh=1&ts="+strconv.FormatInt(time.Now().Unix(), 10), http.StatusSeeOther)
 }
 
 // RollbackVMSnapshotHandler handles rolling back a VM to a snapshot
