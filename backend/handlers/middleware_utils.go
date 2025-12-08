@@ -1,0 +1,262 @@
+package handlers
+
+import (
+	"bufio"
+	"context"
+	"encoding/base64"
+	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"strings"
+
+	"pvmss/constants"
+	"pvmss/logger"
+	"pvmss/middleware"
+	"pvmss/security"
+	securityMiddleware "pvmss/security/middleware"
+	"pvmss/state"
+)
+
+// maxBodySizeMiddleware limits the size of request bodies globally.
+func maxBodySizeMiddleware(next http.Handler, maxSize int64) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Body != nil {
+			r.Body = http.MaxBytesReader(w, r.Body, maxSize)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// recoverMiddleware ensures the server returns 500 instead of crashing on unexpected panics.
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logger.Get().Error().Interface("panic", rec).Str("path", r.URL.Path).Msg("Unhandled panic recovered")
+				RenderErrorPageWithI18n(w, r, http.StatusInternalServerError, "Error.InternalServer", "Internal server error")
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// trailingSlashRedirectMiddleware redirects "/path/" to "/path" (excluding root and static assets).
+func trailingSlashRedirectMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+		if len(p) > 1 && p[len(p)-1] == '/' {
+			if isStaticPath(p) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if r.Method == http.MethodGet || r.Method == http.MethodHead {
+				http.Redirect(w, r, p[:len(p)-1], http.StatusSeeOther)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// stateManagerContextMiddleware adds the provided state manager to each request context.
+func stateManagerContextMiddleware(sm state.StateManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if sm != nil {
+				ctx := context.WithValue(r.Context(), StateManagerKey, sm)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// snapshotRefreshMiddleware triggers an asynchronous Proxmox snapshot refresh on page navigation.
+func snapshotRefreshMiddleware(sm state.StateManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if sm != nil && r.Method == http.MethodGet {
+				sm.RequestSnapshotRefresh()
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// sessionDebugMiddleware is a debug middleware for sessions (enabled via DEBUG_SESSIONS=true).
+func sessionDebugMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("DEBUG_SESSIONS") != "true" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		log := CreateHandlerLogger("sessionDebugMiddleware", r).With().
+			Str("remote_addr", r.RemoteAddr).
+			Logger()
+
+		sensitiveHeaders := map[string]bool{
+			"authorization": true,
+			"cookie":        true,
+			"x-csrf-token":  true,
+		}
+
+		headers := make(map[string]string)
+		for name, values := range r.Header {
+			nameLower := strings.ToLower(name)
+			if sensitiveHeaders[nameLower] {
+				headers[name] = maskSensitiveValue(values[0])
+			} else {
+				headers[name] = values[0]
+			}
+		}
+
+		cookieCount := len(r.Cookies())
+		for _, cookie := range r.Cookies() {
+			log.Debug().
+				Str("cookie_name", cookie.Name).
+				Str("value_preview", maskSensitiveValue(cookie.Value)).
+				Str("path", cookie.Path).
+				Str("domain", cookie.Domain).
+				Bool("secure", cookie.Secure).
+				Bool("http_only", cookie.HttpOnly).
+				Msg("Cookie received in request")
+		}
+
+		log.Debug().
+			Int("header_count", len(headers)).
+			Int("cookie_count", cookieCount).
+			Msg("Request received - before processing")
+
+		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket" ||
+			strings.ToLower(r.Header.Get("Connection")) == "upgrade"
+		if isWebSocket {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		ww := &responseWriterWrapper{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(ww, r)
+
+		log.Debug().
+			Int("status_code", ww.status).
+			Interface("response_headers", ww.Header()).
+			Msg("Response sent")
+
+		for _, cookie := range ww.Header()["Set-Cookie"] {
+			log.Debug().Str("set_cookie", cookie).Msg("Cookie set in response")
+		}
+	})
+}
+
+// responseWriterWrapper captures status code for logging.
+type responseWriterWrapper struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *responseWriterWrapper) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+// Hijack implements http.Hijacker interface for WebSocket support.
+func (w *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, fmt.Errorf("underlying ResponseWriter does not support hijacking")
+}
+
+// maskSensitiveValue masks sensitive data for logging (shows only first 8 chars).
+func maskSensitiveValue(value string) string {
+	if len(value) <= 8 {
+		return "***"
+	}
+	return value[:8] + "..." + fmt.Sprintf("[%d chars]", len(value))
+}
+
+// buildAppMiddleware assembles the middleware stack for the main app.
+func buildAppMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, isTestEnv bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		var handler http.Handler = next
+		handler = stateManagerContextMiddleware(sm)(handler)
+		handler = snapshotRefreshMiddleware(sm)(handler)
+
+		sessionManager := sm.GetSessionManager()
+		if sessionManager != nil {
+			handler = security.CSRF(handler)
+			handler = securityMiddleware.Headers(handler)
+			handler = securityMiddleware.SessionMiddleware(sessionManager)(handler)
+			handler = sessionDebugMiddleware(handler)
+			handler = sessionManager.LoadAndSave(handler)
+		}
+		handler = middleware.ProxmoxStatusMiddlewareWithState(sm)(handler)
+		if !isTestEnv {
+			handler = middleware.RateLimitMiddleware(rateLimiter)(handler)
+		}
+		handler = trailingSlashRedirectMiddleware(handler)
+		handler = maxBodySizeMiddleware(handler, int64(constants.MaxFormSize))
+		handler = recoverMiddleware(handler)
+		return handler
+	}
+}
+
+// buildPublicMiddleware assembles the middleware stack for public/static routes.
+func buildPublicMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		handler := recoverMiddleware(next)
+		return handler
+	}
+}
+
+// withStaticCaching wraps a static file handler to add strong caching headers.
+func withStaticCaching(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if w.Header().Get("Cache-Control") == "" {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// isStaticPath returns true when the request is for a static asset we serve directly.
+func isStaticPath(p string) bool {
+	if p == "/favicon.ico" {
+		return true
+	}
+	for _, prefix := range []string{"/css/", "/js/", "/webfonts/", "/components/"} {
+		if strings.HasPrefix(p, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// serveFavicon serves a tiny transparent PNG at /favicon.ico.
+func serveFavicon(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.Header().Set("Content-Type", "image/png")
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	const b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YfP2dQAAAAASUVORK5CYII="
+	data, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
+// getFrontendPath returns the frontend path from the state manager.
+func getFrontendPath(sm state.StateManager) string {
+	if sm == nil {
+		return ""
+	}
+	return sm.GetFrontendPath()
+}
