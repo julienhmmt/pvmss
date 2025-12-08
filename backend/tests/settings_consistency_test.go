@@ -11,13 +11,17 @@ import (
 // TestNoHardcodedDefaults verifies that there are NO hardcoded defaults in vm_create.go
 // ALL values MUST come from settings.json
 func TestNoHardcodedDefaults(t *testing.T) {
-	// Read vm_create.go source code
-	sourceCode, err := os.ReadFile("../handlers/vm_create.go")
+	// Read VM create sources (page handler + POST handler)
+	vmCreatePage, err := os.ReadFile("../handlers/vm_create.go")
 	if err != nil {
 		t.Fatal("Could not read vm_create.go")
 	}
+	vmCreateHandler, err := os.ReadFile("../handlers/vm_create_handler.go")
+	if err != nil {
+		t.Fatal("Could not read vm_create_handler.go")
+	}
 
-	code := string(sourceCode)
+	code := string(vmCreatePage) + "\n" + string(vmCreateHandler)
 
 	// These patterns should NOT exist (hardcoded defaults)
 	forbiddenPatterns := []struct {
