@@ -357,3 +357,7 @@ other = "Failed to delete snapshot"
 other = "Failed to rollback to snapshot"
 ["VMDetails.Snapshots.InvalidName"]
 other = "Invalid snapshot name. Only letters, numbers, hyphens, and underscores allowed."
+["VMDetails.Snapshots.SnapshotTree"]
+other = "Snapshot tree"
+["VMDetails.Snapshots.InitialState"]
+other = "Initial state (no snapshots)"

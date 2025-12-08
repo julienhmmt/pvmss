@@ -357,3 +357,7 @@ other = "Échec de la suppression du snapshot"
 other = "Échec de la restauration au snapshot"
 ["VMDetails.Snapshots.InvalidName"]
 other = "Nom de snapshot invalide. Seules les lettres, chiffres, tirets et traits de soulignement sont autorisés."
+["VMDetails.Snapshots.SnapshotTree"]
+other = "Arborescence des snapshots"
+["VMDetails.Snapshots.InitialState"]
+other = "État initial (aucun snapshot)"

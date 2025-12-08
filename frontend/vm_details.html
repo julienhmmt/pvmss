@@ -1369,149 +1369,212 @@ function generateRandomMAC(inputId) {
             </header>
             <div class="card-content">
                 <!-- Create Snapshot Form -->
-                <form action="/vm/snapshot/create" method="POST" class="mb-5">
+                <form action="/vm/snapshot/create" method="POST" class="mb-6">
                     <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
                     <input type="hidden" name="vmid" value="{{.VM.VMID}}">
                     <input type="hidden" name="node" value="{{.VM.Node}}">
                     
-                    <div class="field">
-                        <label class="label">{{T "VMDetails.Snapshots.CreateSnapshot"}}</label>
-                        <div class="field has-addons mb-3">
-                            <div class="control is-expanded">
-                                <input name="snapshot_name" type="text" class="input" 
-                                       placeholder="{{T "VMDetails.Snapshots.NamePlaceholder"}}" 
-                                       pattern="^[a-zA-Z0-9_-]+$" maxlength="40" required
-                                       {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
-                            </div>
-                            <div class="control">
-                                <input name="description" type="text" class="input" 
-                                       placeholder="{{T "VMDetails.Snapshots.DescriptionPlaceholder"}}" 
-                                       maxlength="255"
-                                       {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
-                            </div>
-                            <div class="control">
-                                <button type="submit" class="button is-primary" 
-                                        {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
-                                    <span class="icon"><i class="fas fa-plus"></i></span>
-                                    <span>{{T "VMDetails.Snapshots.Create"}}</span>
-                                </button>
+                    <div class="box" style="background-color: #fafafa; border-left: 4px solid var(--primary);">
+                        <div class="level is-mobile mb-4">
+                            <div class="level-left">
+                                <div class="level-item">
+                                    <h5 class="title is-5 mb-0">
+                                        <span class="icon-text">
+                                            <span class="icon"><i class="fas fa-plus-circle"></i></span>
+                                            <span>{{T "VMDetails.Snapshots.CreateSnapshot"}}</span>
+                                        </span>
+                                    </h5>
+                                </div>
                             </div>
                         </div>
-                        
-                        <!-- VM State Checkbox -->
-                        <div class="field mb-3">
-                            <div class="control">
-                                <label class="checkbox">
-                                    <input type="checkbox" name="vmstate" value="true"
-                                           {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
-                                    {{T "VMDetails.Snapshots.IncludeRAM"}}
-                                </label>
+
+                        <div class="columns is-multiline">
+                            <!-- Snapshot Name -->
+                            <div class="column is-8-desktop is-12-tablet">
+                                <div class="field">
+                                    <label class="label is-small">{{T "VMDetails.Snapshots.Name"}}</label>
+                                    <div class="control has-icons-right">
+                                        <input name="snapshot_name" type="text" class="input" 
+                                               placeholder="{{T "VMDetails.Snapshots.NamePlaceholder"}}" 
+                                               pattern="^[a-zA-Z0-9_-]+$" maxlength="40" required
+                                               {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
+                                        <span class="icon is-right is-small has-text-grey-light">
+                                            <i class="fas fa-camera"></i>
+                                        </span>
+                                    </div>
+                                    <p class="help is-size-7">{{T "VMDetails.Snapshots.NameHelp"}}</p>
+                                </div>
                             </div>
-                            <p class="help">{{T "VMDetails.Snapshots.IncludeRAMHelp"}}</p>
+
+                            <!-- Include RAM Checkbox -->
+                            <div class="column is-4-desktop is-12-tablet">
+                                <div class="field">
+                                    <label class="label is-small">&nbsp;</label>
+                                    <div class="control">
+                                        <label class="checkbox">
+                                            <input type="checkbox" name="vmstate" value="true"
+                                                   {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
+                                            <span class="ml-2">{{T "VMDetails.Snapshots.IncludeRAM"}}</span>
+                                        </label>
+                                    </div>
+                                    <p class="help is-size-7">{{T "VMDetails.Snapshots.IncludeRAMHelp"}}</p>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="column is-12">
+                                <div class="field">
+                                    <label class="label is-small">{{T "VMDetails.Snapshots.Description"}}</label>
+                                    <div class="control has-icons-right">
+                                        <textarea name="description" class="textarea" 
+                                                  placeholder="{{T "VMDetails.Snapshots.DescriptionPlaceholder"}}" 
+                                                  maxlength="255" rows="2"
+                                                  {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}></textarea>
+                                        <span class="icon is-right is-small has-text-grey-light" style="top: 10px;">
+                                            <i class="fas fa-align-left"></i>
+                                        </span>
+                                    </div>
+                                    <p class="help is-size-7">{{T "Common.Optional"}}</p>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="column is-12">
+                                <div class="field is-grouped">
+                                    <div class="control">
+                                        <button type="submit" class="button is-primary" 
+                                                {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
+                                            <span class="icon"><i class="fas fa-plus"></i></span>
+                                            <span>{{T "VMDetails.Snapshots.Create"}}</span>
+                                        </button>
+                                    </div>
+                                    {{if ge (len .Snapshots) .MaxSnapshotsPerVM}}
+                                    <div class="control">
+                                        <p class="help is-warning mt-2">
+                                            <span class="icon is-small"><i class="fas fa-exclamation-triangle"></i></span>
+                                            <span>{{T "VMDetails.Snapshots.LimitReached"}}</span>
+                                        </p>
+                                    </div>
+                                    {{end}}
+                                </div>
+                            </div>
                         </div>
-                        
-                        <p class="help">{{T "VMDetails.Snapshots.NameHelp"}}</p>
-                        {{if ge (len .Snapshots) .MaxSnapshotsPerVM}}
-                        <p class="help is-warning">{{T "VMDetails.Snapshots.LimitReached"}}</p>
-                        {{end}}
                     </div>
                 </form>
 
-                <!-- Snapshots List -->
+                <!-- Snapshots Tree View -->
                 {{if .Snapshots}}
-                <div class="table-container">
-                    <table class="table is-fullwidth is-hoverable">
-                        <thead>
-                            <tr>
-                                <th style="width: 30%;">{{T "VMDetails.Snapshots.Name"}}</th>
-                                <th style="width: 35%;">{{T "VMDetails.Snapshots.Description"}}</th>
-                                <th style="width: 15%;">{{T "VMDetails.Snapshots.Created"}}</th>
-                                <th style="width: 20%;">{{T "VMDetails.Snapshots.State"}}</th>
-                                <th class="has-text-right">{{T "Common.Actions"}}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{range .Snapshots}}
-                            <tr>
-                                <td>
-                                    <span class="icon-text">
-                                        {{if eq .Name "NOW"}}
-                                        <span class="icon has-text-success"><i class="fas fa-star"></i></span>
-                                        <span class="has-text-weight-semibold has-text-success">{{T "VMDetails.Snapshots.CurrentState"}}</span>
-                                        {{else}}
-                                        <span class="icon"><i class="fas fa-camera"></i></span>
-                                        <span class="has-text-weight-semibold">{{.Name}}</span>
-                                        {{end}}
-                                    </span>
-                                </td>
-                                <td>
-                                    {{if .Description}}
-                                        {{.Description}}
-                                    {{else}}
-                                        <span class="has-text-grey is-italic">{{T "VMDetails.Snapshots.NoDescription"}}</span>
-                                    {{end}}
-                                </td>
-                                <td>
-                                    <span class="is-size-7 has-text-grey">
-                                        {{if .Snaptime}}
-                                            {{formatTime .Snaptime}}
-                                        {{else}}
-                                            {{T "VMDetails.Snapshots.UnknownTime"}}
-                                        {{end}}
-                                    </span>
-                                </td>
-                                <td>
-                                    {{if eq .Vmstate 1}}
-                                        <span class="tag is-success is-light">{{T "VMDetails.Snapshots.WithRAM"}}</span>
-                                    {{else}}
-                                        <span class="tag is-warning is-light">{{T "VMDetails.Snapshots.DiskOnly"}}</span>
-                                    {{end}}
-                                </td>
-                                <td class="has-text-right">
-                                    <div class="buttons is-right">
-                                        <!-- Edit Description -->
-                                        <button class="button is-small is-info snapshot-edit-btn" 
-                                                data-snapshot-name="{{.Name}}"
-                                                data-snapshot-desc="{{.Description}}"
-                                                title="{{T "VMDetails.Snapshots.EditDescription"}}"
-                                                {{if not $.ProxmoxConnected}}disabled{{end}}>
-                                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                                            <span>{{T "Common.Edit"}}</span>
-                                        </button>
-                                        
-                                        <!-- Rollback -->
-                                        <form action="/vm/snapshot/rollback" method="POST" class="is-inline snapshot-rollback-form">
-                                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                                            <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
-                                            <input type="hidden" name="node" value="{{$.VM.Node}}">
-                                            <input type="hidden" name="snapshot_name" value="{{.Name}}">
-                                            <button type="submit" class="button is-small is-warning" 
-                                                    title="{{T "VMDetails.Snapshots.Rollback"}}"
-                                                    {{if not $.ProxmoxConnected}}disabled{{end}}>
-                                                <span class="icon is-small"><i class="fas fa-undo"></i></span>
-                                                <span>{{T "VMDetails.Snapshots.Rollback"}}</span>
-                                            </button>
-                                        </form>
-                                        
-                                        <!-- Delete -->
-                                        <form action="/vm/snapshot/delete" method="POST" class="is-inline snapshot-delete-form">
-                                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                                            <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
-                                            <input type="hidden" name="node" value="{{$.VM.Node}}">
-                                            <input type="hidden" name="snapshot_name" value="{{.Name}}">
-                                            <button type="submit" class="button is-small is-danger" 
-                                                    title="{{T "Common.Delete"}}"
-                                                    {{if not $.ProxmoxConnected}}disabled{{end}}>
-                                                <span class="icon is-small"><i class="fas fa-trash"></i></span>
-                                                <span>{{T "Common.Delete"}}</span>
-                                            </button>
-                                        </form>
+                <div style="margin-top: 2rem;">
+                    <h6 class="title is-6 mb-4">
+                        <span class="icon-text">
+                            <span class="icon"><i class="fas fa-sitemap"></i></span>
+                            <span>{{T "VMDetails.Snapshots.SnapshotTree"}}</span>
+                        </span>
+                    </h6>
+                    <div style="background-color: #fafafa; border-radius: 4px; padding: 1.5rem; border: 1px solid #e8e8e8;">
+                        {{range .Snapshots}}
+                        <div class="snapshot-tree-item mb-3" style="padding: 1rem; background-color: white; border-radius: 4px; border-left: 3px solid var(--primary); position: relative;">
+                            <!-- Snapshot Header -->
+                            <div class="level is-mobile mb-2">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            {{if eq .Name "NOW"}}
+                                            <span class="icon has-text-success" style="font-size: 1.25rem;">
+                                                <i class="fas fa-star"></i>
+                                            </span>
+                                            <div>
+                                                <p class="has-text-weight-semibold has-text-success">{{T "VMDetails.Snapshots.CurrentState"}}</p>
+                                                <p class="is-size-7 has-text-grey">{{T "VMDetails.Snapshots.InitialState"}}</p>
+                                            </div>
+                                            {{else}}
+                                            <span class="icon" style="font-size: 1.25rem;">
+                                                <i class="fas fa-camera"></i>
+                                            </span>
+                                            <div>
+                                                <p class="has-text-weight-semibold">{{.Name}}</p>
+                                                <p class="is-size-7 has-text-grey">
+                                                    {{if .Snaptime}}
+                                                        {{formatTime .Snaptime}}
+                                                    {{else}}
+                                                        {{T "VMDetails.Snapshots.UnknownTime"}}
+                                                    {{end}}
+                                                </p>
+                                            </div>
+                                            {{end}}
+                                        </div>
                                     </div>
-                                </td>
-                            </tr>
+                                </div>
+                                <div class="level-right">
+                                    <div class="level-item">
+                                        {{if eq .Vmstate 1}}
+                                        <span class="tag is-success is-light is-small">{{T "VMDetails.Snapshots.WithRAM"}}</span>
+                                        {{else}}
+                                        <span class="tag is-warning is-light is-small">{{T "VMDetails.Snapshots.DiskOnly"}}</span>
+                                        {{end}}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            {{if .Description}}
+                            <div class="mb-2" style="padding-left: 2.25rem; color: #555;">
+                                <p class="is-size-7">
+                                    <span class="icon is-small"><i class="fas fa-align-left"></i></span>
+                                    {{.Description}}
+                                </p>
+                            </div>
                             {{end}}
-                        </tbody>
-                    </table>
+
+                            <!-- Actions -->
+                            <div class="level is-mobile" style="padding-left: 2.25rem;">
+                                <div class="level-left">
+                                    <div class="level-item">
+                                        <div class="buttons are-small">
+                                            <!-- Edit Description -->
+                                            <button class="button is-info is-outlined snapshot-edit-btn" 
+                                                    data-snapshot-name="{{.Name}}"
+                                                    data-snapshot-desc="{{.Description}}"
+                                                    title="{{T "VMDetails.Snapshots.EditDescription"}}"
+                                                    {{if not $.ProxmoxConnected}}disabled{{end}}>
+                                                <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                                                <span>{{T "Common.Edit"}}</span>
+                                            </button>
+                                            
+                                            <!-- Rollback -->
+                                            <form action="/vm/snapshot/rollback" method="POST" class="is-inline snapshot-rollback-form">
+                                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                                <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
+                                                <input type="hidden" name="node" value="{{$.VM.Node}}">
+                                                <input type="hidden" name="snapshot_name" value="{{.Name}}">
+                                                <button type="submit" class="button is-warning is-outlined" 
+                                                        title="{{T "VMDetails.Snapshots.Rollback"}}"
+                                                        {{if not $.ProxmoxConnected}}disabled{{end}}>
+                                                    <span class="icon is-small"><i class="fas fa-undo"></i></span>
+                                                    <span>{{T "VMDetails.Snapshots.Rollback"}}</span>
+                                                </button>
+                                            </form>
+                                            
+                                            <!-- Delete -->
+                                            <form action="/vm/snapshot/delete" method="POST" class="is-inline snapshot-delete-form">
+                                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                                <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
+                                                <input type="hidden" name="node" value="{{$.VM.Node}}">
+                                                <input type="hidden" name="snapshot_name" value="{{.Name}}">
+                                                <button type="submit" class="button is-danger is-outlined" 
+                                                        title="{{T "Common.Delete"}}"
+                                                        {{if not $.ProxmoxConnected}}disabled{{end}}>
+                                                    <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                                                    <span>{{T "Common.Delete"}}</span>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {{end}}
+                    </div>
                 </div>
                 {{else}}
                 <div class="content has-text-centered has-text-grey">
