@@ -112,6 +112,7 @@ func TestHandlersStructure(t *testing.T) {
 		"admin.go",
 		"profile.go",
 		"vm_create.go",
+		"vm_create_helpers.go",
 		"vm_details_base.go",
 		"vm_details_helpers.go",
 		"vm_details_info.go",
