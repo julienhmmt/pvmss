@@ -281,7 +281,7 @@ PVMSS est une interface self‑service ciblée construite au‑dessus de Proxmox
 | Créer une VM KVM/QEMU | Oui (self‑service, contraintes par les limites et presets définis par les admins) | Oui (toutes les options de configuration) |
 | Créer un conteneur LXC | Non | Oui |
 | Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options) |
-| Gérer les snapshots | Non | Oui |
+| Gérer les snapshots | Oui (créer, éditer, supprimer, restaurer) | Oui (gestion complète des snapshots) |
 | Lancer des sauvegardes / restaurations | Non | Oui |
 | Migrer des VMs entre nœuds (migration à chaud) | Non | Oui |
 | Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.) | Partiellement (choix du pont et du modèle de carte uniquement) | Oui (pile réseau complète) |
@@ -290,6 +290,63 @@ PVMSS est une interface self‑service ciblée construite au‑dessus de Proxmox
 | Gérer les utilisateurs et permissions | Oui (création/suppression d'utilisateurs PVMSS et de pools ; s'appuie sur les rôles Proxmox) | Oui (RBAC complet, royaumes, rôles, ACLs) |
 
 Ce comparatif n'est pas exhaustif mais met en avant le fait que PVMSS expose volontairement un sous‑ensemble sécurisé des fonctionnalités Proxmox pour les utilisateurs finaux.
+
+## Snapshots de machines virtuelles
+
+PVMSS fournit aux utilisateurs une interface simplifiée pour gérer les snapshots de VM. Les snapshots permettent aux utilisateurs de sauvegarder l'état complet d'une VM à un moment précis et de le restaurer ultérieurement, ce qui est utile pour les tests, les sauvegardes et les scénarios de récupération.
+
+### Fonctionnalités et limitations des snapshots
+
+**Opérations supportées :**
+
+- **Créer des snapshots** : Les utilisateurs peuvent créer des snapshots avec des descriptions optionnelles et choisir d'inclure ou non l'état RAM.
+- **Éditer les descriptions des snapshots** : Les utilisateurs peuvent mettre à jour les descriptions des snapshots après leur création.
+- **Restaurer à des snapshots** : Les utilisateurs peuvent restaurer une VM à un état de snapshot précédent.
+- **Supprimer des snapshots** : Les utilisateurs peuvent supprimer des snapshots pour libérer de l'espace de stockage.
+
+**Limites des snapshots :**
+
+- Les administrateurs peuvent configurer le **nombre maximal de snapshots par VM** dans la section **Limites** de l'interface d'administration (`settings.Limits.MaxSnapshots`).
+- Quand un utilisateur atteint cette limite, il doit supprimer les snapshots existants avant d'en créer de nouveaux.
+- La limite s'applique globalement à toutes les VMs et tous les utilisateurs.
+
+### Considérations de stockage des snapshots
+
+Les snapshots consomment de l'espace de stockage sur le même backend de stockage que les disques de la VM. Lors de la planification de la capacité de stockage :
+
+- Les **snapshots disque uniquement** (sans état RAM) sont plus petits et plus rapides à créer.
+- Les **snapshots avec état RAM** incluent le contenu de la mémoire de la VM, les rendant plus volumineux mais permettant une restauration plus rapide vers un état en cours d'exécution.
+- Surveillez l'utilisation du stockage sur vos nœuds Proxmox et alertez les utilisateurs quand le stockage approche de sa capacité.
+- Encouragez les utilisateurs à supprimer les anciens snapshots ou inutiles pour libérer de l'espace.
+
+### Bonnes pratiques des snapshots pour les administrateurs
+
+1. **Définir des limites raisonnables** : Configurez `MaxSnapshots` pour équilibrer la flexibilité des utilisateurs avec les contraintes de stockage. Une valeur typique est 5-10 snapshots par VM.
+2. **Surveiller le stockage** : Vérifiez régulièrement l'utilisation du stockage et alertez les utilisateurs si les snapshots consomment trop d'espace.
+3. **Éduquer les utilisateurs** : Fournissez une documentation claire (disponible dans le guide utilisateur) sur les bonnes pratiques des snapshots, les conventions de nommage et les implications de stockage.
+4. **Stratégie de sauvegarde** : Les snapshots ne sont **pas** un remplacement des sauvegardes. Les snapshots sont stockés sur le même stockage que la VM et sont vulnérables aux défaillances de stockage. Implémentez des stratégies de sauvegarde séparées pour les VMs critiques.
+5. **Politique de nettoyage** : Envisagez d'implémenter une politique où les anciens snapshots sont périodiquement supprimés pour éviter l'accumulation de stockage.
+
+### Dépannage des problèmes de snapshots
+
+#### Les utilisateurs ne peuvent pas créer de snapshots
+
+- Vérifiez si l'utilisateur a atteint la limite `MaxSnapshots` configurée. Demandez-lui de supprimer les anciens snapshots.
+- Vérifiez que le backend de stockage dispose d'un espace libre suffisant.
+- Vérifiez les journaux PVMSS pour les erreurs d'API Proxmox liées à la création de snapshots.
+
+#### La restauration de snapshot échoue
+
+- Assurez-vous que la VM est arrêtée ou dans un état où la restauration est autorisée.
+- Vérifiez que le snapshot existe toujours (il peut avoir été supprimé par un autre utilisateur).
+- Vérifiez les journaux PVMSS et Proxmox pour les messages d'erreur détaillés.
+- Assurez-vous que le backend de stockage est accessible et dispose d'un espace libre suffisant.
+
+#### Les snapshots consomment trop de stockage
+
+- Examinez la liste des snapshots avec l'utilisateur et identifiez les anciens snapshots ou inutiles.
+- Recommandez de supprimer les snapshots avec état RAM si les snapshots disque uniquement sont suffisants.
+- Éduquez l'utilisateur sur les bonnes pratiques des snapshots et les implications de stockage.
 
 ## Journalisation et diagnostic
 

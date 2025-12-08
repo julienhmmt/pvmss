@@ -141,3 +141,21 @@ other = "Ce champ est obligatoire"
 other = "La valeur doit être un nombre positif"
 ["Admin.Limits.Success.User"]
 other = "Limites de création de VM par utilisateur mises à jour avec succès"
+["Admin.Limits.MaxSnapshotsPerVM"]
+other = "Max snapshots par VM"
+["Admin.Limits.MaxSnapshotsPerVMPlaceholder"]
+other = "Entrez le nombre maximum de snapshots par VM"
+["Admin.Limits.MaxSnapshotsPerVMHelp"]
+other = "Entrez le nombre maximum de snapshots autorisés par VM (0-32)"
+["Admin.Limits.MaxSnapshotsPerVMDefault"]
+other = "Par défaut : 8"
+["Admin.Limits.MaxSnapshotsPerVMMin"]
+other = "Minimum : 0"
+["Admin.Limits.MaxSnapshotsPerVMMax"]
+other = "Maximum : 32"
+["Admin.Limits.MaxSnapshotsPerVMStep"]
+other = "Étape : 1"
+["Admin.Limits.MaxSnapshotsPerVMRequired"]
+other = "Ce champ est obligatoire"
+["Admin.Limits.MaxSnapshotsPerVMPositive"]
+other = "La valeur doit être un nombre positif"

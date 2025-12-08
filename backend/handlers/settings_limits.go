@@ -400,6 +400,26 @@ func (h *SettingsHandler) UpdateUserLimitsHandler(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Parse max_snapshots_per_vm value
+	maxSnapshotsPerVMStr := r.FormValue("max_snapshots_per_vm")
+	if maxSnapshotsPerVMStr == "" {
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.MissingMaxSnapshotsPerVM"))
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return
+	}
+
+	maxSnapshotsPerVM, err := strconv.Atoi(maxSnapshotsPerVMStr)
+	if err != nil || maxSnapshotsPerVM < state.MinSnapshotsPerVM || maxSnapshotsPerVM > state.MaxSnapshotsPerVM {
+		log.Warn().
+			Str("value", maxSnapshotsPerVMStr).
+			Int("min", state.MinSnapshotsPerVM).
+			Int("max", state.MaxSnapshotsPerVM).
+			Msg("Invalid max_snapshots_per_vm value")
+		redirect := "/admin/limits?error=1&errorMsg=" + url.QueryEscape(i18n.Localize(localizer, "Admin.Limits.Error.InvalidMaxSnapshotsPerVM"))
+		http.Redirect(w, r, redirect, http.StatusSeeOther)
+		return
+	}
+
 	// Load settings
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
@@ -410,6 +430,8 @@ func (h *SettingsHandler) UpdateUserLimitsHandler(w http.ResponseWriter, r *http
 
 	// Update max_vm_per_user
 	settings.MaxVMPerUser = maxVMPerUser
+	// Update max_snapshots_per_vm (save to limits.max_snapshots)
+	settings.Limits.MaxSnapshots = maxSnapshotsPerVM
 
 	// Save settings
 	if err := h.stateManager.SetSettings(settings); err != nil {

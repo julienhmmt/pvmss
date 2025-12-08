@@ -413,6 +413,21 @@
         <p id="max-vm-per-user-help" class="help">{{T "Admin.Limits.MaxVMPerUserHelp"}}</p>
       </div>
 
+      <!-- Max Snapshots per VM -->
+      <div class="field mb-5">
+        <label class="label" id="label-max-snapshots-per-vm">
+          <span class="icon"><i class="fas fa-camera"></i></span>
+          <span>{{T "Admin.Limits.MaxSnapshotsPerVM"}}</span>
+        </label>
+        <div class="control">
+          <input id="max-snapshots-per-vm" class="input is-medium" type="number" name="max_snapshots_per_vm" 
+                aria-describedby="max-snapshots-per-vm-help" aria-labelledby="label-max-snapshots-per-vm"
+                value="{{if .Settings}}{{.Settings.Limits.MaxSnapshots}}{{else}}8{{end}}"
+                min="0" max="32" step="1" placeholder="{{T "Admin.Limits.MaxSnapshotsPerVMPlaceholder"}}" required>
+        </div>
+        <p id="max-snapshots-per-vm-help" class="help">{{T "Admin.Limits.MaxSnapshotsPerVMHelp"}}</p>
+      </div>
+
       <div class="card mt-6">
         <div class="card-content">
           <div class="buttons is-right">

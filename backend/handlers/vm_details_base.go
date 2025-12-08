@@ -48,6 +48,23 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/toggle/network", SecureFormHandler("ToggleNetworkCard",
 		RequireAuthHandle(h.ToggleNetworkCardHandler),
 	))
+
+	// Snapshot routes
+	snapshotHandler := NewVMSnapshotsHandler(h.stateManager)
+	router.POST("/vm/snapshot/create", SecureFormHandler("CreateVMSnapshot",
+		RequireAuthHandle(snapshotHandler.CreateVMSnapshotHandler),
+	))
+	router.POST("/vm/snapshot/update", SecureFormHandler("UpdateVMSnapshot",
+		RequireAuthHandle(snapshotHandler.UpdateVMSnapshotHandler),
+	))
+	router.POST("/vm/snapshot/delete", SecureFormHandler("DeleteVMSnapshot",
+		RequireAuthHandle(snapshotHandler.DeleteVMSnapshotHandler),
+	))
+	router.POST("/vm/snapshot/rollback", SecureFormHandler("RollbackVMSnapshot",
+		RequireAuthHandle(snapshotHandler.RollbackVMSnapshotHandler),
+	))
+	router.GET("/api/vm-snapshots", RequireAuthHandle(snapshotHandler.GetVMSnapshotsHandler))
+
 	router.POST("/vm/action", SecureFormHandler("VMAction",
 		RequireAuthHandle(h.VMActionHandler),
 	))

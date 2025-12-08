@@ -136,11 +136,77 @@ En plus de la description et des tags, vous pouvez modifier certaines ressources
   - Adresse MAC de chaque carte (optionnelle)
 - **CD-ROM / ISO** : Image ISO chargée dans le lecteur CD-ROM virtuel, ou éjection de l'ISO actuelle
 
-Certaines opérations restent restreintes et peuvent nécessiter la création d'une nouvelle VM puis la copie des données manuellement, par exemple :
+Certaines opérations restent limitées et peuvent nécessiter la création d'une nouvelle VM en copiant les données manuellement, par exemple :
 
-- Modifier la taille des disques ou le nombre de disques au-delà de ce que les administrateurs autorisent
-- Migrer vers un autre stockage lorsque ce n'est pas pris en charge automatiquement par Proxmox
-- Effectuer des changements structurels qui ne sont pas exposés dans l'interface PVMSS
+- Modifier la taille d'un disque ou le nombre de disques au-delà de ce que les administrateurs autorisent
+- Migrer vers un autre backend de stockage quand ce n'est pas supporté par Proxmox
+- Modifications structurelles non exposées dans l'interface PVMSS
+
+### Gestion des snapshots de machine virtuelle
+
+Les snapshots vous permettent de sauvegarder l'état complet de votre VM à un moment précis et de le restaurer ultérieurement. C'est utile pour les tests, les sauvegardes ou les scénarios de récupération.
+
+#### Création d'un snapshot
+
+1. Ouvrez la page des détails de la VM.
+2. Faites défiler jusqu'à la section **"Snapshots de VM"**.
+3. Entrez un **nom de snapshot** (caractères alphanumériques, tirets et underscores uniquement ; maximum 40 caractères).
+4. Ajoutez optionnellement une **description** pour documenter le but du snapshot (par exemple, "Avant mise à jour OS" ou "Configuration fonctionnelle").
+5. Cochez optionnellement **"Inclure l'état RAM"** pour sauvegarder l'état mémoire de la VM avec l'état disque. Cela permet une restauration plus rapide mais nécessite plus d'espace de stockage.
+6. Cliquez sur le bouton **"Créer"**.
+
+**Notes importantes :**
+
+- Votre administrateur peut avoir défini une limite sur le nombre maximal de snapshots par VM. Si vous atteignez cette limite, vous devez supprimer certains snapshots avant d'en créer de nouveaux.
+- Les snapshots consomment de l'espace de stockage. Surveillez votre utilisation du stockage et supprimez les anciens snapshots quand ils ne sont plus nécessaires.
+- L'entrée **"État actuel (initial)"** dans la liste des snapshots représente l'état actuel de la VM avant la création de tout snapshot.
+
+#### Affichage des snapshots
+
+La liste des snapshots sur la page des détails de la VM affiche :
+
+- **Nom du snapshot** : Le nom que vous avez donné au snapshot
+- **Description** : Notes optionnelles sur le snapshot
+- **Date de création** : Quand le snapshot a été créé
+- **État** : Si le snapshot inclut l'état RAM ("Avec RAM") ou est disque uniquement ("Disque seul")
+- **Indicateur d'état actuel** : Une icône en forme d'étoile marque l'état actuel de la VM
+
+#### Édition de la description d'un snapshot
+
+1. Localisez le snapshot dans la liste.
+2. Cliquez sur le bouton **"Éditer"** (icône crayon) sur le côté droit de la ligne du snapshot.
+3. Une boîte de dialogue s'ouvrira avec la description actuelle.
+4. Mettez à jour la description selon vos besoins.
+5. Cliquez sur **"Enregistrer"** pour confirmer les modifications.
+
+#### Restauration à un snapshot
+
+La restauration ramène votre VM à l'état exact dans lequel elle était au moment de la création du snapshot, y compris toutes les modifications disque et (si inclus) l'état RAM.
+
+1. Localisez le snapshot dans la liste.
+2. Cliquez sur le bouton **"Restaurer"** (icône annuler) sur le côté droit de la ligne du snapshot.
+3. Une boîte de dialogue de confirmation s'affichera. Confirmez que vous souhaitez restaurer la VM à ce snapshot.
+4. La VM sera restaurée à l'état du snapshot. Si la VM était en cours d'exécution, elle sera arrêtée pendant la restauration et vous devrez peut-être la redémarrer.
+
+**Important :** La restauration est destructrice. Tous les changements apportés à la VM après la création du snapshot seront perdus.
+
+#### Suppression d'un snapshot
+
+1. Localisez le snapshot dans la liste.
+2. Cliquez sur le bouton **"Supprimer"** (icône corbeille) sur le côté droit de la ligne du snapshot.
+3. Une boîte de dialogue de confirmation s'affichera. Confirmez que vous souhaitez supprimer le snapshot.
+4. Le snapshot sera définitivement supprimé et ne peut pas être récupéré.
+
+**Important :** La suppression d'un snapshot libère de l'espace de stockage mais ne peut pas être annulée.
+
+#### Bonnes pratiques pour les snapshots
+
+- **Noms et descriptions explicites** : Utilisez des noms clairs comme `avant-mise-a-jour`, `etat-fonctionnel` ou `sauvegarde-2025-01-15` pour identifier facilement les snapshots ultérieurement.
+- **Nettoyage régulier** : Supprimez les anciens snapshots ou inutiles pour libérer de l'espace de stockage et garder la liste des snapshots gérable.
+- **Test avant production** : Testez toujours les modifications dans un snapshot avant de les appliquer à votre VM de production.
+- **Documentation des états importants** : Créez des snapshots avant les changements majeurs (mises à jour, modifications de configuration, etc.) afin de pouvoir revenir rapidement en cas de problème.
+- **Respect des limites de stockage** : N'oubliez pas que les snapshots consomment du stockage. Ne créez pas de snapshots excessifs.
+- **Considérations sur l'état RAM** : N'incluez l'état RAM que si vous avez besoin de préserver l'état exact en cours d'exécution. Les snapshots disque uniquement sont plus rapides et consomment moins de stockage.
 
 ### Accès à la console
 
@@ -214,7 +280,7 @@ PVMSS fournit une interface self‑service simplifiée au‑dessus de Proxmox VE
 | Créer une VM KVM/QEMU | Oui (création self‑service dans les limites définies par les administrateurs) | Oui (toutes les options de configuration) |
 | Créer un conteneur LXC | Non | Oui |
 | Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options) |
-| Gérer les snapshots | Non | Oui |
+| Gérer les snapshots | Oui (créer, éditer, supprimer, restaurer) | Oui (gestion complète des snapshots) |
 | Lancer des sauvegardes / restaurations | Non | Oui |
 | Migrer des VMs entre nœuds (migration à chaud) | Non | Oui |
 | Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.) | Partiellement (choix du pont et du modèle de carte uniquement) | Oui (pile réseau complète) |
@@ -228,19 +294,19 @@ Si vous avez besoin d'une fonctionnalité disponible uniquement dans Proxmox VE,
 
 L'application PVMSS ne prend actuellement pas en charge :
 
-- **Reconfiguration complète des ressources** : Même si vous pouvez modifier le CPU, la mémoire, les cartes réseau et l'ISO d'une VM arrêtée, certaines opérations restent indisponibles (par exemple l'agrandissement des disques, le changement du nombre de disques au-delà des limites définies par l'administrateur, ou la modification de certains paramètres bas-niveau Proxmox).
-- **Conteneurs LXC** : Seules les machines virtuelles KVM/QEMU sont prises en charge. La création de conteneurs LXC n'est pas disponible.
-- **Snapshots** : La création et la gestion de snapshots de VM ne sont pas disponibles via PVMSS.
-- **Sauvegardes** : Les opérations de sauvegarde et de restauration de VM doivent être effectuées par les administrateurs directement via Proxmox.
-- **Migration en direct** : Le déplacement de VMs entre nœuds n'est pas disponible via PVMSS.
-- **Mise en réseau avancée** : Les fonctionnalités de mise en réseau avancées (VLANs, règles de pare-feu, etc.) doivent être configurées par les administrateurs, même si PVMSS supporte plusieurs cartes réseau et plusieurs modèles de cartes.
-- **Accès direct à Proxmox** : PVMSS est conçu comme une interface simplifiée et ne fournit pas l'accès à toutes les fonctionnalités de Proxmox.
+- **Reconfiguration complète des ressources** : Bien que vous puissiez modifier le CPU, la mémoire, les cartes réseau et l'ISO d'une VM arrêtée, certaines opérations restent indisponibles (par exemple, augmenter la taille des disques, modifier le nombre de disques au-delà des limites de l'administrateur, ou modifier certaines options Proxmox de bas niveau).
+- **Conteneurs LXC** : Seules les VMs KVM/QEMU sont supportées. La création de conteneurs LXC n'est pas disponible.
+- **Sauvegardes** : Les opérations de sauvegarde et de restauration de VM doivent être gérées directement par les administrateurs dans Proxmox.
+- **Migration en direct** : Le déplacement des VMs entre nœuds n'est pas disponible via PVMSS.
+- **Mise en réseau avancée** : Les fonctionnalités avancées de mise en réseau (VLANs, règles de pare-feu, etc.) doivent être configurées par les administrateurs, bien que plusieurs cartes réseau et modèles de cartes soient supportés dans PVMSS.
+- **Accès direct à Proxmox** : PVMSS est conçu comme une interface simplifiée et ne fournit pas accès à toutes les fonctionnalités de Proxmox.
+
+**Note :** La gestion des snapshots de VM est maintenant entièrement supportée dans PVMSS. Vous pouvez créer, éditer, supprimer et restaurer des snapshots directement depuis la page des détails de la VM.
 
 ## Sécurité et confidentialité
 
 - Les sessions console sont authentifiées et basées sur les sessions.
 - Chaque utilisateur ne peut voir et gérer que ses propres machines virtuelles.
-- L'accès administrateur est séparé de l'accès utilisateur avec une authentification supplémentaire.
 
 ## Astuces et conseils
 
