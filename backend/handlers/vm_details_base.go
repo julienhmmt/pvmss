@@ -63,7 +63,7 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.POST("/vm/snapshot/rollback", SecureFormHandler("RollbackVMSnapshot",
 		RequireAuthHandle(snapshotHandler.RollbackVMSnapshotHandler),
 	))
-	router.GET("/api/vm/snapshots", RequireAuthHandle(snapshotHandler.GetVMSnapshotsHandler))
+	router.GET("/api/vm-snapshots", RequireAuthHandle(snapshotHandler.GetVMSnapshotsHandler))
 
 	router.POST("/vm/action", SecureFormHandler("VMAction",
 		RequireAuthHandle(h.VMActionHandler),

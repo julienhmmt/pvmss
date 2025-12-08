@@ -141,3 +141,21 @@ other = "This field is required"
 other = "Value must be a positive number"
 ["Admin.Limits.Success.User"]
 other = "User VM creation limits successfully updated"
+["Admin.Limits.MaxSnapshotsPerVM"]
+other = "Max snapshots per VM"
+["Admin.Limits.MaxSnapshotsPerVMPlaceholder"]
+other = "Enter the maximum number of snapshots per VM"
+["Admin.Limits.MaxSnapshotsPerVMHelp"]
+other = "Enter the maximum number of snapshots allowed per VM (0-32)"
+["Admin.Limits.MaxSnapshotsPerVMDefault"]
+other = "Default: 8"
+["Admin.Limits.MaxSnapshotsPerVMMin"]
+other = "Minimum: 0"
+["Admin.Limits.MaxSnapshotsPerVMMax"]
+other = "Maximum: 32"
+["Admin.Limits.MaxSnapshotsPerVMStep"]
+other = "Step: 1"
+["Admin.Limits.MaxSnapshotsPerVMRequired"]
+other = "This field is required"
+["Admin.Limits.MaxSnapshotsPerVMPositive"]
+other = "Value must be a positive number"

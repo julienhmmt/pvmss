@@ -289,3 +289,51 @@ other = "La VM doit être démarrée pour ouvrir la console. Veuillez d'abord d�
 other = "La console est temporairement indisponible. Veuillez réessayer dans un instant."
 ["VMDetails.Console.ButtonNotFound"]
 other = "Bouton de console introuvable"
+
+# Snapshots
+["VMDetails.Snapshots.Title"]
+other = "Snapshots VM"
+["VMDetails.Snapshots.CreateSnapshot"]
+other = "Créer un snapshot"
+["VMDetails.Snapshots.NamePlaceholder"]
+other = "Nom du snapshot"
+["VMDetails.Snapshots.DescriptionPlaceholder"]
+other = "Description (optionnel)"
+["VMDetails.Snapshots.NameHelp"]
+other = "Seuls les lettres, chiffres, tirets et underscores autorisés (max 40 caractères)"
+["VMDetails.Snapshots.IncludeRAM"]
+other = "Inclure l'état RAM"
+["VMDetails.Snapshots.IncludeRAMHelp"]
+other = "Inclure l'état RAM de la VM pour une restauration complète (plus lent et plus volumineux)"
+["VMDetails.Snapshots.Create"]
+other = "Créer"
+["VMDetails.Snapshots.LimitReached"]
+other = "Nombre maximum de snapshots atteint pour cette VM"
+["VMDetails.Snapshots.Name"]
+other = "Nom"
+["VMDetails.Snapshots.Description"]
+other = "Description"
+["VMDetails.Snapshots.Created"]
+other = "Créé"
+["VMDetails.Snapshots.State"]
+other = "État"
+["VMDetails.Snapshots.NoDescription"]
+other = "Aucune description"
+["VMDetails.Snapshots.UnknownTime"]
+other = "Inconnu"
+["VMDetails.Snapshots.WithRAM"]
+other = "Avec RAM"
+["VMDetails.Snapshots.DiskOnly"]
+other = "Disque seul"
+["VMDetails.Snapshots.EditDescription"]
+other = "Modifier la description"
+["VMDetails.Snapshots.Rollback"]
+other = "Restaurer"
+["VMDetails.Snapshots.RollbackConfirm"]
+other = "Êtes-vous sûr de vouloir restaurer cette VM à ce snapshot ? Cela remplacera l'état actuel de la VM."
+["VMDetails.Snapshots.DeleteConfirm"]
+other = "Êtes-vous sûr de vouloir supprimer ce snapshot ? Cette action ne peut pas être annulée."
+["VMDetails.Snapshots.NoSnapshots"]
+other = "Aucun snapshot disponible"
+["VMDetails.Snapshots.CreateFirst"]
+other = "Créez votre premier snapshot pour sauvegarder l'état actuel de la VM"
