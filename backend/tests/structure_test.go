@@ -173,7 +173,8 @@ func TestProxmoxStructure(t *testing.T) {
 
 	// Check for key proxmox files
 	keyFiles := []string{
-		"client.go",
+		"resty_client.go",
+		"telmate_client.go",
 		"interfaces.go",
 	}
 
