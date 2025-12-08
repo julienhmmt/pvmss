@@ -1529,16 +1529,6 @@ function generateRandomMAC(inputId) {
                             <div class="tree-branch" aria-hidden="true"></div>
 
                             <div style="padding: 1rem; background-color: white; border-radius: 4px; border-left: 3px solid var(--primary); position: relative; {{if eq $snap.Name $.CurrentSnapshotName}}background-color: #f0f7ff;{{end}}">
-                                <!-- Current VM State Indicator -->
-                                {{if eq $snap.Name $.CurrentSnapshotName}}
-                                <div style="position: absolute; top: 0.5rem; right: 0.5rem;">
-                                    <span class="tag is-info is-light is-small">
-                                        <span class="icon is-small"><i class="fas fa-server"></i></span>
-                                        <span>VM HERE</span>
-                                    </span>
-                                </div>
-                                {{end}}
-
                                 <!-- Snapshot Header -->
                                 <div class="level is-mobile mb-2">
                                     <div class="level-left">
@@ -1566,6 +1556,12 @@ function generateRandomMAC(inputId) {
                                                         {{end}}
                                                     </p>
                                                 </div>
+                                                {{end}}
+                                                {{if eq $snap.Name $.CurrentSnapshotName}}
+                                                <span class="tag is-info is-light is-small" style="margin-left: 0.5rem;">
+                                                    <span class="icon is-small"><i class="fas fa-server"></i></span>
+                                                    <span>{{T "VMDetails.Snapshots.CurrentVMPosition"}}</span>
+                                                </span>
                                                 {{end}}
                                             </div>
                                         </div>
@@ -1637,13 +1633,6 @@ function generateRandomMAC(inputId) {
                                         </div>
                                     </div>
                                 </div>
-
-                                {{if eq $snap.Name $.CurrentSnapshotName}}
-                                <div class="vm-state-chip">
-                                    <span class="icon"><i class="fas fa-server"></i></span>
-                                    <span>{{T "VMDetails.Snapshots.CurrentVMPosition"}}</span>
-                                </div>
-                                {{end}}
                             </div>
                         </div>
                         {{end}}
