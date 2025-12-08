@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -183,7 +184,7 @@ func (h *VMSnapshotsHandler) UpdateVMSnapshotHandler(w http.ResponseWriter, r *h
 		Str("snapshot_name", snapshotName).
 		Msg("VM snapshot updated successfully")
 
-	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_updated&refresh=1", http.StatusSeeOther)
+	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_updated&refresh=1&ts="+strconv.FormatInt(time.Now().Unix(), 10), http.StatusSeeOther)
 }
 
 // DeleteVMSnapshotHandler handles deleting a VM snapshot

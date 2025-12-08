@@ -118,10 +118,9 @@ func DeleteVMSnapshotResty(ctx context.Context, client *RestyClient, node, vmid,
 func RollbackVMSnapshotResty(ctx context.Context, client *RestyClient, node, vmid, snapname string) error {
 	path := fmt.Sprintf("/nodes/%s/qemu/%s/snapshot/%s/rollback", node, vmid, snapname)
 
-	// Use empty values for rollback POST request
-	values := url.Values{}
+	// Use PostEmpty for rollback (no parameters needed)
 	var response interface{}
-	err := client.Post(ctx, path, values, &response)
+	err := client.PostEmpty(ctx, path, &response)
 
 	if err != nil {
 		return fmt.Errorf("failed to rollback VM snapshot: %w", err)

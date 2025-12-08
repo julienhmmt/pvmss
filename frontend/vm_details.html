@@ -1459,18 +1459,14 @@ function generateRandomMAC(inputId) {
                                 <td class="has-text-right">
                                     <div class="buttons is-right">
                                         <!-- Edit Description -->
-                                        <form action="/vm/snapshot/update" method="POST" class="is-inline">
-                                            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                                            <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
-                                            <input type="hidden" name="node" value="{{$.VM.Node}}">
-                                            <input type="hidden" name="snapshot_name" value="{{.Name}}">
-                                            <input type="hidden" name="description" value="{{.Description}}">
-                                            <button type="submit" class="button is-small is-outlined is-info" 
-                                                    title="{{T "VMDetails.Snapshots.EditDescription"}}"
-                                                    {{if not $.ProxmoxConnected}}disabled{{end}}>
-                                                <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                                            </button>
-                                        </form>
+                                        <button class="button is-small is-info snapshot-edit-btn" 
+                                                data-snapshot-name="{{.Name}}"
+                                                data-snapshot-desc="{{.Description}}"
+                                                title="{{T "VMDetails.Snapshots.EditDescription"}}"
+                                                {{if not $.ProxmoxConnected}}disabled{{end}}>
+                                            <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                                            <span>{{T "Common.Edit"}}</span>
+                                        </button>
                                         
                                         <!-- Rollback -->
                                         <form action="/vm/snapshot/rollback" method="POST" class="is-inline snapshot-rollback-form">
@@ -1478,10 +1474,11 @@ function generateRandomMAC(inputId) {
                                             <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
                                             <input type="hidden" name="node" value="{{$.VM.Node}}">
                                             <input type="hidden" name="snapshot_name" value="{{.Name}}">
-                                            <button type="submit" class="button is-small is-outlined is-warning" 
+                                            <button type="submit" class="button is-small is-warning" 
                                                     title="{{T "VMDetails.Snapshots.Rollback"}}"
                                                     {{if not $.ProxmoxConnected}}disabled{{end}}>
                                                 <span class="icon is-small"><i class="fas fa-undo"></i></span>
+                                                <span>{{T "VMDetails.Snapshots.Rollback"}}</span>
                                             </button>
                                         </form>
                                         
@@ -1491,10 +1488,11 @@ function generateRandomMAC(inputId) {
                                             <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
                                             <input type="hidden" name="node" value="{{$.VM.Node}}">
                                             <input type="hidden" name="snapshot_name" value="{{.Name}}">
-                                            <button type="submit" class="button is-small is-outlined is-danger" 
+                                            <button type="submit" class="button is-small is-danger" 
                                                     title="{{T "Common.Delete"}}"
                                                     {{if not $.ProxmoxConnected}}disabled{{end}}>
                                                 <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                                                <span>{{T "Common.Delete"}}</span>
                                             </button>
                                         </form>
                                     </div>
@@ -2092,9 +2090,74 @@ function generateRandomMAC(inputId) {
 }
 </script>
 
+<!-- Snapshot Edit Modal -->
+<div id="snapshot-edit-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+        <header class="modal-card-head">
+            <p class="modal-card-title">{{T "VMDetails.Snapshots.EditDescription"}}</p>
+            <button class="delete" aria-label="close"></button>
+        </header>
+        <section class="modal-card-body">
+            <div class="field">
+                <label class="label">{{T "VMDetails.Snapshots.Description"}}</label>
+                <div class="control">
+                    <textarea id="snapshot-desc-input" class="textarea" placeholder="{{T "VMDetails.Snapshots.DescriptionPlaceholder"}}" maxlength="255"></textarea>
+                </div>
+            </div>
+        </section>
+        <footer class="modal-card-foot">
+            <button class="button" id="snapshot-edit-cancel">{{T "Common.Cancel"}}</button>
+            <button class="button is-info" id="snapshot-edit-submit">{{T "Common.Save"}}</button>
+        </footer>
+    </div>
+</div>
+
 <!-- Snapshot Confirmation JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Handle snapshot edit modal
+    const editModal = document.getElementById('snapshot-edit-modal');
+    const editButtons = document.querySelectorAll('.snapshot-edit-btn');
+    const descInput = document.getElementById('snapshot-desc-input');
+    const cancelBtn = document.getElementById('snapshot-edit-cancel');
+    const submitBtn = document.getElementById('snapshot-edit-submit');
+    const closeBtn = editModal.querySelector('.delete');
+    
+    let currentSnapshotName = '';
+    
+    editButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentSnapshotName = this.dataset.snapshotName;
+            descInput.value = this.dataset.snapshotDesc || '';
+            editModal.classList.add('is-active');
+        });
+    });
+    
+    function closeModal() {
+        editModal.classList.remove('is-active');
+    }
+    
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    
+    submitBtn.addEventListener('click', function() {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/vm/snapshot/update';
+        
+        form.innerHTML = `
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
+            <input type="hidden" name="node" value="{{$.VM.Node}}">
+            <input type="hidden" name="snapshot_name" value="${currentSnapshotName}">
+            <input type="hidden" name="description" value="${descInput.value}">
+        `;
+        
+        document.body.appendChild(form);
+        form.submit();
+    });
+    
     // Handle snapshot rollback confirmations
     const rollbackForms = document.querySelectorAll('.snapshot-rollback-form');
     rollbackForms.forEach(form => {
