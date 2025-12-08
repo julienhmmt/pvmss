@@ -141,6 +141,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	var tpmEnabled bool
 	var currentISO string
 	var hasCDROM bool
+	var snapshots []proxmox.VMSnapshot
 	cloudInitData := map[string]string{
 		"user":       "",
 		"sshKeys":    "",
@@ -192,6 +193,20 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	}
 
 	if cfgErr == nil && cfg != nil {
+		// Fetch snapshots after config is successfully retrieved
+		if snapshotsData, snapErr := proxmox.GetVMSnapshotsResty(r.Context(), restyClient, vm.Node, strconv.Itoa(vm.VMID)); snapErr == nil {
+			snapshots = snapshotsData
+		} else {
+			log.Warn().
+				Err(snapErr).
+				Str("component", "vm_details").
+				Str("operation", "fetch_snapshots").
+				Str("reason", "snapshot_fetch_failed").
+				Str("node", vm.Node).
+				Int("vmid", vm.VMID).
+				Msg("Failed to fetch VM snapshots")
+		}
+
 		if tagsStr, ok := cfg["tags"].(string); ok && tagsStr != "" {
 			parts := strings.Split(tagsStr, ";")
 			for _, p := range parts {
@@ -585,6 +600,8 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"TPMEnabled":            tpmEnabled,
 		"Tags":                  strings.Join(tags, ", "),
 		"VM":                    vm,
+		"Snapshots":             snapshots,
+		"MaxSnapshotsPerVM":     settings.MaxSnapshotsPerVM,
 	}
 
 	title := ""

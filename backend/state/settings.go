@@ -63,13 +63,16 @@ const (
 // MaxDiskPerVM is set to the highest limit (VirtIO Block: 16 disks)
 // Individual bus limits are enforced per bus type
 const (
-	MinNetworkCards  = 1
-	MaxNetworkCards  = 32 // Maximum network cards (net0-net31)
-	MinDiskPerVM     = 1
-	MaxDiskPerVM     = MaxDisksVirtIO // Maximum disks overall (VirtIO Block limit)
-	MinVMPerUser     = 0              // Minimum VMs per user (0 = no VMs allowed)
-	MaxVMPerUser     = 100            // Maximum VMs per user (reasonable upper limit)
-	DefaultVMPerUser = 5              // Default VMs per user
+	MinNetworkCards       = 1
+	MaxNetworkCards       = 32 // Maximum network cards (net0-net31)
+	MinDiskPerVM          = 1
+	MaxDiskPerVM          = MaxDisksVirtIO // Maximum disks overall (VirtIO Block limit)
+	MinVMPerUser          = 0              // Minimum VMs per user (0 = no VMs allowed)
+	MaxVMPerUser          = 100            // Maximum VMs per user (reasonable upper limit)
+	DefaultVMPerUser      = 5              // Default VMs per user
+	MinSnapshotsPerVM     = 0              // Minimum snapshots per VM (0 = no snapshots allowed)
+	MaxSnapshotsPerVM     = 32             // Maximum snapshots per VM (reasonable upper limit)
+	DefaultSnapshotsPerVM = 8              // Default snapshots per VM
 )
 
 // CloudInitTemplate represents metadata for a cloud-init template managed by PVMSS.
@@ -102,6 +105,7 @@ func defaultSettings() *AppSettings {
 		MaxNetworkCards:    MinNetworkCards,
 		MaxDiskPerVM:       MinDiskPerVM,
 		MaxVMPerUser:       DefaultVMPerUser,
+		MaxSnapshotsPerVM:  DefaultSnapshotsPerVM,
 		Tags:               []string{"pvmss"},
 		VMBRs:              []string{},
 		CloudInitTemplates: []CloudInitTemplate{},
@@ -126,6 +130,7 @@ type AppSettings struct {
 	MaxNetworkCards    int                         `json:"max_network_cards,omitempty"`
 	MaxDiskPerVM       int                         `json:"max_disk_per_vm,omitempty"`
 	MaxVMPerUser       int                         `json:"max_vm_per_user,omitempty"`
+	MaxSnapshotsPerVM  int                         `json:"max_snapshots_per_vm,omitempty"`
 	Tags               []string                    `json:"tags"`
 	VMBRs              []string                    `json:"vmbrs"`
 	CloudInitTemplates []CloudInitTemplate         `json:"cloudinit_templates,omitempty"`
@@ -244,6 +249,11 @@ func LoadSettings() (*AppSettings, bool, error) {
 	if settings.MaxVMPerUser < MinVMPerUser || settings.MaxVMPerUser > MaxVMPerUser {
 		modified = true
 		settings.MaxVMPerUser = DefaultVMPerUser
+	}
+	// Ensure MaxSnapshotsPerVM has a valid default value
+	if settings.MaxSnapshotsPerVM < MinSnapshotsPerVM || settings.MaxSnapshotsPerVM > MaxSnapshotsPerVM {
+		modified = true
+		settings.MaxSnapshotsPerVM = DefaultSnapshotsPerVM
 	}
 
 	// Validate SFTP configuration if enabled
