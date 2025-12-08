@@ -17,7 +17,6 @@ import (
 
 	"pvmss/constants"
 	"pvmss/i18n"
-	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -104,30 +103,6 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	// VM console routes
 	router.POST("/api/vm/vnc-ticket", RequireAuthHandle(h.GetVNCTicketHandler))
 	router.GET("/vm/console/websocket", RequireAuthHandle(h.VMConsoleWebSocketHandler))
-}
-
-// guestAgentCache stores VMs without guest agent to avoid repeated slow API calls
-var (
-	guestAgentUnavailableCache      = make(map[string]time.Time)
-	guestAgentUnavailableCacheMutex sync.RWMutex
-	guestAgentIPCache               = make(map[string]guestAgentCacheEntry)
-	guestAgentIPCacheMutex          sync.RWMutex
-)
-
-// guestAgentCacheEntry stores cached guest agent network information
-type guestAgentCacheEntry struct {
-	interfaces []proxmox.GuestAgentNetworkInterface
-	expiry     time.Time
-}
-
-// containsString checks if target exists in items
-func containsString(items []string, target string) bool {
-	for _, it := range items {
-		if it == target {
-			return true
-		}
-	}
-	return false
 }
 
 // Network cards display helpers
@@ -295,21 +270,6 @@ func buildDisksData(cfg map[string]interface{}) []diskTemplateData {
 	return disks
 }
 
-// isGuestAgentUnavailableCached checks if a VM is cached as having no guest agent
-func isGuestAgentUnavailableCached(node string, vmid int) bool {
-	key := node + ":" + strconv.Itoa(vmid)
-	guestAgentUnavailableCacheMutex.RLock()
-	defer guestAgentUnavailableCacheMutex.RUnlock()
-
-	if expiry, found := guestAgentUnavailableCache[key]; found {
-		if time.Now().Before(expiry) {
-			return true
-		}
-		// Entry expired, will be removed later
-	}
-	return false
-}
-
 func buildNetworkCardsData(cfg map[string]interface{}, maxCards int) []networkCardTemplateData {
 	if maxCards <= 0 {
 		maxCards = 1
@@ -338,100 +298,6 @@ func buildNetworkCardsData(cfg map[string]interface{}, maxCards int) []networkCa
 		}
 	}
 	return cards
-}
-
-// cacheGuestAgentUnavailable marks a VM as having no guest agent
-func cacheGuestAgentUnavailable(node string, vmid int) {
-	key := node + ":" + strconv.Itoa(vmid)
-	guestAgentUnavailableCacheMutex.Lock()
-	defer guestAgentUnavailableCacheMutex.Unlock()
-	guestAgentUnavailableCache[key] = time.Now().Add(constants.GuestAgentCacheTTL)
-}
-
-// getGuestAgentIPsFromCache retrieves cached guest agent network interfaces
-func getGuestAgentIPsFromCache(node string, vmid int) ([]proxmox.GuestAgentNetworkInterface, bool) {
-	key := node + ":" + strconv.Itoa(vmid)
-	guestAgentIPCacheMutex.RLock()
-	defer guestAgentIPCacheMutex.RUnlock()
-
-	if entry, found := guestAgentIPCache[key]; found {
-		if time.Now().Before(entry.expiry) {
-			return entry.interfaces, true
-		}
-		// Entry expired, will be removed later
-	}
-	return nil, false
-}
-
-// cacheGuestAgentIPs stores guest agent network interfaces in cache
-func cacheGuestAgentIPs(node string, vmid int, interfaces []proxmox.GuestAgentNetworkInterface) {
-	key := node + ":" + strconv.Itoa(vmid)
-	guestAgentIPCacheMutex.Lock()
-	defer guestAgentIPCacheMutex.Unlock()
-
-	guestAgentIPCache[key] = guestAgentCacheEntry{
-		interfaces: interfaces,
-		expiry:     time.Now().Add(constants.GuestAgentCacheTTL),
-	}
-}
-
-// InvalidateGuestAgentCache removes a specific VM's guest agent cache entries
-// This should be called when VM configuration changes (e.g., network model update)
-func InvalidateGuestAgentCache(node string, vmid int) {
-	key := node + ":" + strconv.Itoa(vmid)
-
-	// Remove from unavailable cache
-	guestAgentUnavailableCacheMutex.Lock()
-	delete(guestAgentUnavailableCache, key)
-	guestAgentUnavailableCacheMutex.Unlock()
-
-	// Remove from IP cache
-	guestAgentIPCacheMutex.Lock()
-	delete(guestAgentIPCache, key)
-	guestAgentIPCacheMutex.Unlock()
-
-	logger.Get().Debug().Str("node", node).Int("vmid", vmid).Msg("Guest agent cache invalidated for VM")
-}
-
-// CleanExpiredGuestAgentCache removes expired entries from both guest agent caches.
-// This function is called periodically by the state manager to prevent cache growth.
-func CleanExpiredGuestAgentCache() {
-	now := time.Now()
-
-	unavailableCount := 0
-	ipCount := 0
-
-	// Clean unavailable cache
-	guestAgentUnavailableCacheMutex.Lock()
-	for key, expiry := range guestAgentUnavailableCache {
-		if now.After(expiry) {
-			delete(guestAgentUnavailableCache, key)
-			unavailableCount++
-		}
-	}
-	unavailableSize := len(guestAgentUnavailableCache)
-	guestAgentUnavailableCacheMutex.Unlock()
-
-	// Clean IP cache
-	guestAgentIPCacheMutex.Lock()
-	for key, entry := range guestAgentIPCache {
-		if now.After(entry.expiry) {
-			delete(guestAgentIPCache, key)
-			ipCount++
-		}
-	}
-	ipSize := len(guestAgentIPCache)
-	guestAgentIPCacheMutex.Unlock()
-
-	// Log cleanup results if any entries were removed
-	if unavailableCount > 0 || ipCount > 0 {
-		logger.Get().Debug().
-			Int("unavailable_expired", unavailableCount).
-			Int("unavailable_remaining", unavailableSize).
-			Int("ip_expired", ipCount).
-			Int("ip_remaining", ipSize).
-			Msg("Guest agent cache cleanup completed")
-	}
 }
 
 // VMStateManager defines the minimal state contract needed by VM details.
