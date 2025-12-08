@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -233,146 +232,6 @@ func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string,
 	log.Info().Msg("Page rendered successfully")
 }
 
-// IsAuthenticated checks if the user is authenticated
-// This function is exported for use by other packages
-func IsAuthenticated(r *http.Request) bool {
-	log := CreateHandlerLogger("IsAuthenticated", r).With().
-		Str("remote_addr", r.RemoteAddr).
-		Logger()
-
-	stateManager := getStateManager(r)
-	sessionManager := stateManager.GetSessionManager()
-
-	// Check if the session manager is available
-	if sessionManager == nil {
-		log.Error().Msg("Session manager not available in IsAuthenticated")
-		return false
-	}
-
-	// Log the session token to help diagnose issues
-	sessionToken := sessionManager.Token(r.Context())
-	log.Debug().
-		Str("session_token", sessionToken).
-		Msg("Session token in IsAuthenticated")
-
-	// Check if the session contains the authentication flag
-	authenticated, ok := sessionManager.Get(r.Context(), "authenticated").(bool)
-
-	// Log detailed session data for debugging
-	sessionData := map[string]interface{}{
-		"authenticated_found": ok,
-		"authenticated_value": authenticated,
-	}
-
-	// Try to get other session values for diagnostic purposes
-	if username, ok := sessionManager.Get(r.Context(), "username").(string); ok {
-		sessionData["username"] = username
-	}
-
-	if isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
-		sessionData["is_admin"] = isAdmin
-	}
-
-	if !ok || !authenticated {
-		log.Debug().
-			Bool("authenticated", false).
-			Interface("session_data", sessionData).
-			Str("session_id", sessionToken).
-			Msg("Access denied: user not authenticated")
-		return false
-	}
-
-	log.Debug().
-		Bool("authenticated", true).
-		Interface("session_data", sessionData).
-		Str("session_id", sessionToken).
-		Msg("Access granted: user authenticated")
-
-	return true
-}
-
-// RequireAuth is a middleware that enforces authentication for protected routes
-// This function is exported for use by other packages
-func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log := CreateHandlerLogger("RequireAuth", r).With().
-			Str("remote_addr", r.RemoteAddr).
-			Logger()
-
-		if !IsAuthenticated(r) {
-			log.Info().Msg("Authentication required, redirecting to login")
-
-			// Store the original URL for redirection after login
-			returnURL := r.URL.Path
-			if r.URL.RawQuery != "" {
-				returnURL = returnURL + "?" + r.URL.RawQuery
-			}
-
-			// Special-case POST actions that should return to a GET page after login
-			if r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/vm/update/description") {
-				// Try to parse form to extract vmid for a better redirect target
-				if err := r.ParseForm(); err == nil {
-					if vmid := r.FormValue("vmid"); vmid != "" {
-						returnURL = "/vm/details/" + vmid + "?edit=description"
-					} else {
-						// Fallback to VM list/create page if vmid isn't available
-						returnURL = "/vm/create"
-					}
-				} else {
-					// If form can't be parsed, still avoid redirecting back to a POST-only endpoint
-					returnURL = "/vm/create"
-				}
-			}
-
-			setNoCacheHeaders(w)
-
-			// Build login redirect with return URL
-			loginURL := "/login?return=" + url.QueryEscape(returnURL)
-			// If user was trying to update a VM (e.g., description), add a friendly warning/context
-			if strings.HasPrefix(r.URL.Path, "/vm/update/description") {
-				loginURL += "&warning=login_required&context=update_description"
-			}
-			// Redirect to login page with enriched context
-			http.Redirect(w, r, loginURL, http.StatusSeeOther)
-			return
-		}
-
-		// Set security headers for authenticated routes
-		setSecurityHeaders(w, r)
-
-		next.ServeHTTP(w, r)
-	}
-}
-
-// IsAdmin checks if the current user is an admin
-func IsAdmin(r *http.Request) bool {
-	log := CreateHandlerLogger("IsAdmin", r)
-
-	stateManager := getStateManager(r)
-	if stateManager == nil {
-		return false
-	}
-	sessionManager := stateManager.GetSessionManager()
-	if sessionManager == nil {
-		return false
-	}
-
-	isAdmin, ok := sessionManager.Get(r.Context(), "is_admin").(bool)
-	if !ok || !isAdmin {
-		log.Debug().
-			Bool("is_admin", false).
-			Msg("User is authenticated but not admin")
-		return false
-	}
-
-	log.Debug().
-		Bool("is_admin", true).
-		Str("session_id", sessionManager.Token(r.Context())).
-		Msg("Admin access verified")
-
-	return true
-}
-
 // setNoCacheHeaders sets headers to prevent client-side caching.
 func setNoCacheHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -382,94 +241,11 @@ func setNoCacheHeaders(w http.ResponseWriter) {
 
 // setSecurityHeaders sets security-related headers for authenticated routes.
 func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
-	// Prevent content sniffing
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	// Enable XSS filter
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
-
-	// Set no-cache headers for dynamic content
 	setNoCacheHeaders(w)
-
-	// Add CSRF token to the response headers for AJAX requests
 	if token, ok := security.CSRFTokenFromContext(r.Context()); ok {
 		w.Header().Set("X-CSRF-Token", token)
-	}
-}
-
-// RequireAdminAuth is a middleware that enforces admin authentication for admin routes
-// This function is exported for use by other packages
-func RequireAdminAuth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		log := CreateHandlerLogger("RequireAdminAuth", r).With().
-			Str("remote_addr", r.RemoteAddr).
-			Logger()
-
-		if !IsAdmin(r) {
-			log.Info().Msg("Admin authentication required")
-
-			// If user is authenticated but not admin, show access denied
-			if IsAuthenticated(r) {
-				logger.SecurityEvent("admin_access_denied").
-					Str("method", r.Method).
-					Str("path", r.URL.Path).
-					Str("client_ip", r.RemoteAddr).
-					Msg("Authenticated user attempted to access admin area without privileges")
-				RenderErrorPage(w, r, http.StatusForbidden, "Access Denied: Admin privileges required")
-				return
-			}
-
-			// Store the original URL for redirection after admin login
-			returnURL := r.URL.Path
-			if r.URL.RawQuery != "" {
-				returnURL = returnURL + "?" + r.URL.RawQuery
-			}
-
-			setNoCacheHeaders(w)
-
-			// Redirect to admin login page with return URL
-			http.Redirect(w, r, "/admin/login?return="+url.QueryEscape(returnURL), http.StatusSeeOther)
-			return
-		}
-
-		// Set security headers for admin routes
-		setSecurityHeaders(w, r)
-
-		next.ServeHTTP(w, r)
-	}
-}
-
-// RequireAuthHandleWS wraps a handler with session-based authentication check, suitable for WebSockets.
-// It checks for an authenticated session and returns a 401 Unauthorized error if the check fails.
-// This avoids redirects which are not suitable for WebSocket upgrade requests.
-func RequireAuthHandleWS(h httprouter.Handle) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		stateManager := getStateManager(r)
-		if stateManager == nil {
-			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
-			return
-		}
-		sessionManager := stateManager.GetSessionManager()
-		if sessionManager == nil || !sessionManager.GetBool(r.Context(), "authenticated") {
-			log := CreateHandlerLogger("RequireAuthHandleWS", r)
-			log.Warn().Msg("WebSocket connection rejected: not authenticated")
-			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Unauthorized"), http.StatusUnauthorized)
-			return
-		}
-		h(w, r, ps)
-	}
-}
-
-// RequireAuthHandle adapts a httprouter.Handle with the RequireAuth middleware.
-// It allows protecting router handlers that use the params form.
-func RequireAuthHandle(h func(http.ResponseWriter, *http.Request, httprouter.Params)) httprouter.Handle {
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		// Wrap the original handler into an http.HandlerFunc for RequireAuth
-		wrapped := func(w http.ResponseWriter, r *http.Request) {
-			// Also inject params in context for any downstream helper needing it
-			ctx := context.WithValue(r.Context(), ParamsKey, ps)
-			h(w, r.WithContext(ctx), ps)
-		}
-		RequireAuth(wrapped)(w, r)
 	}
 }
 
