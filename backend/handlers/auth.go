@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"path"
 
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
@@ -766,11 +767,22 @@ func ensureLocalPath(urlStr string) string {
 	if path == "" || (len(path) > 1 && (path[1] == '/' || path[1] == '\\')) {
 		return "/"
 	}
-	// Always start with a single /
+	// Canonicalize the path and ensure no directory traversal
+	cleanPath := path
 	if path[0] != '/' {
-		path = "/" + path
+		cleanPath = "/" + path
 	}
-	return path
+	cleanPath = "/" + strings.TrimLeft(strings.TrimPrefix(url.PathEscape(cleanPath), "/"), "/") // prevent double leading slashes
+	cleanPath = path.Clean(cleanPath) // collapse any sneaky traversal
+	// Prevent directory traversal
+	if strings.Contains(cleanPath, "..") {
+		return "/"
+	}
+	// Prevent redirecting to a double-slash (which browsers may interpret as external schema)
+	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
+		return "/"
+	}
+	return cleanPath
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
