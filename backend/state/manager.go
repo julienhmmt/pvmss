@@ -268,19 +268,4 @@ func (s *appState) GetStorages() []string {
 	return s.settings.EnabledStorages
 }
 
-// Frontend Configuration Methods
-
-// GetFrontendPath returns the frontend path for static file serving
-func (s *appState) GetFrontendPath() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.frontendPath
-}
-
-// SetFrontendPath sets the frontend path for static file serving
-func (s *appState) SetFrontendPath(path string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.frontendPath = path
-	logger.Get().Debug().Str("path", path).Msg("Frontend path configured")
-}
+// Frontend configuration methods moved to manager_frontend.go
