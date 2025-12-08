@@ -1901,6 +1901,14 @@ function generateRandomMAC(inputId) {
     }
     
     // Enhanced form submission with confirmation
+    function escapeHTML(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
     function confirmDiskResize(event) {
         const diskSelect = document.getElementById('diskResizeDisk');
         const incrementInput = document.getElementById('diskResizeGB');
@@ -1926,6 +1934,9 @@ function generateRandomMAC(inputId) {
             // Create confirmation modal with i18n translations
             const modal = document.createElement('div');
             modal.className = 'modal is-active';
+            // Use escaped diskName and incrementGB for interpolation
+            const safeDiskName = escapeHTML(diskName);
+            const safeIncrementGB = escapeHTML(incrementGB);
             modal.innerHTML = `
                 <div class="modal-background"></div>
                 <div class="modal-card">
@@ -1940,7 +1951,7 @@ function generateRandomMAC(inputId) {
                     </header>
                     <section class="modal-card-body">
                         <div class="content">
-                            <p>${translations.confirmMessage.replace('{disk}', '<strong>' + diskName + '</strong>').replace('{increment}', '<strong>' + incrementGB + '</strong>')}</p>
+                            <p>${translations.confirmMessage.replace('{disk}', '<strong>' + safeDiskName + '</strong>').replace('{increment}', '<strong>' + safeIncrementGB + '</strong>')}</p>
                             <div class="notification is-info is-light">
                                 ${translations.confirmNote}
                             </div>
