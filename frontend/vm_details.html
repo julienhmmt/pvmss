@@ -11,6 +11,9 @@
      data-msg-network-enabled="{{T "Message.NetworkCardEnabled"}}"
      data-msg-network-disabled="{{T "Message.NetworkCardDisabled"}}"
      data-msg-action-failed="{{T "Message.ActionFailed"}}"
+     data-error-message="{{.ErrorMessage}}"
+     data-success-message="{{.SuccessMessage}}"
+     data-warning-message="{{.WarningMessage}}"
      data-label-enabled="{{T "Common.Enabled"}}"
      data-label-disabled="{{T "Common.Disabled"}}"
      data-label-enable="{{T "Common.Enable"}}"
@@ -1485,10 +1488,10 @@ function generateRandomMAC(inputId) {
     'use strict';
 
     // Configuration from template
-    const VMID = {{.VM.VMID}};
+    const VMID_METRICS = Number('{{.VM.VMID}}') || 0;
     const METRICS_REFRESH_MS = 15000; // 15 seconds
     const STATUS_CHECK_MS = 30000; // 30 seconds for status changes
-    const API_ENDPOINT = `/api/vm/${VMID}/metrics`;
+    const API_ENDPOINT = `/api/vm/${VMID_METRICS}/metrics`;
 
     // Disk resize preview functionality
     function updateDiskResizePreview() {
@@ -1895,7 +1898,6 @@ function generateRandomMAC(inputId) {
         startAutoRefresh();
     }
 })();
-*/
 </script>
 <script>
 // Generate random MAC address function
