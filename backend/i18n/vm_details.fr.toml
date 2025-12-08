@@ -337,3 +337,21 @@ other = "Êtes-vous sûr de vouloir supprimer ce snapshot ? Cette action ne peut
 other = "Aucun snapshot disponible"
 ["VMDetails.Snapshots.CreateFirst"]
 other = "Créez votre premier snapshot pour sauvegarder l'état actuel de la VM"
+["VMDetails.Snapshots.CreatedSuccess"]
+other = "Snapshot créé avec succès"
+["VMDetails.Snapshots.UpdatedSuccess"]
+other = "Snapshot mis à jour avec succès"
+["VMDetails.Snapshots.DeletedSuccess"]
+other = "Snapshot supprimé avec succès"
+["VMDetails.Snapshots.RollbackSuccess"]
+other = "VM restaurée au snapshot avec succès"
+["VMDetails.Snapshots.CreateFailed"]
+other = "Échec de la création du snapshot. Veuillez vérifier vos permissions et réessayer."
+["VMDetails.Snapshots.UpdateFailed"]
+other = "Échec de la mise à jour du snapshot"
+["VMDetails.Snapshots.DeleteFailed"]
+other = "Échec de la suppression du snapshot"
+["VMDetails.Snapshots.RollbackFailed"]
+other = "Échec de la restauration au snapshot"
+["VMDetails.Snapshots.InvalidName"]
+other = "Nom de snapshot invalide. Seules les lettres, chiffres, tirets et traits de soulignement sont autorisés."

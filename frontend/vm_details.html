@@ -1375,17 +1375,17 @@ function generateRandomMAC(inputId) {
                                 <input name="snapshot_name" type="text" class="input" 
                                        placeholder="{{T "VMDetails.Snapshots.NamePlaceholder"}}" 
                                        pattern="^[a-zA-Z0-9_-]+$" maxlength="40" required
-                                       {{if or (not .ProxmoxConnected) (eq (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
+                                       {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
                             </div>
                             <div class="control">
                                 <input name="description" type="text" class="input" 
                                        placeholder="{{T "VMDetails.Snapshots.DescriptionPlaceholder"}}" 
                                        maxlength="255"
-                                       {{if or (not .ProxmoxConnected) (eq (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
+                                       {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
                             </div>
                             <div class="control">
                                 <button type="submit" class="button is-primary" 
-                                        {{if or (not .ProxmoxConnected) (eq (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
+                                        {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
                                     <span class="icon"><i class="fas fa-plus"></i></span>
                                     <span>{{T "VMDetails.Snapshots.Create"}}</span>
                                 </button>
@@ -1397,7 +1397,7 @@ function generateRandomMAC(inputId) {
                             <div class="control">
                                 <label class="checkbox">
                                     <input type="checkbox" name="vmstate" value="true"
-                                           {{if or (not .ProxmoxConnected) (eq (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
+                                           {{if or (not .ProxmoxConnected) (ge (len .Snapshots) .MaxSnapshotsPerVM)}}disabled{{end}}>
                                     {{T "VMDetails.Snapshots.IncludeRAM"}}
                                 </label>
                             </div>
@@ -1405,7 +1405,7 @@ function generateRandomMAC(inputId) {
                         </div>
                         
                         <p class="help">{{T "VMDetails.Snapshots.NameHelp"}}</p>
-                        {{if eq (len .Snapshots) .MaxSnapshotsPerVM}}
+                        {{if ge (len .Snapshots) .MaxSnapshotsPerVM}}
                         <p class="help is-warning">{{T "VMDetails.Snapshots.LimitReached"}}</p>
                         {{end}}
                     </div>

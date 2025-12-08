@@ -38,24 +38,28 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 	node := r.FormValue("node")
 	snapshotName := r.FormValue("snapshot_name")
 	description := r.FormValue("description")
+	vmstateStr := r.FormValue("vmstate")
+
+	// Parse vmstate checkbox (checked = "true", unchecked = empty)
+	includeVMState := vmstateStr == "true" || vmstateStr == "1" || vmstateStr == "on"
 
 	if vmidStr == "" || node == "" || snapshotName == "" {
 		log.Error().Msg("Missing required parameters for snapshot creation")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=missing_parameters", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=missing_parameters", http.StatusSeeOther)
 		return
 	}
 
 	vmidInt, err := strconv.Atoi(vmidStr)
 	if err != nil {
 		log.Error().Err(err).Msg("Invalid VM ID")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=invalid_vmid", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=invalid_vmid", http.StatusSeeOther)
 		return
 	}
 
 	// Validate snapshot name
 	if !proxmox.IsValidSnapshotName(snapshotName) {
 		log.Error().Str("snapshot_name", snapshotName).Msg("Invalid snapshot name")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=invalid_snapshot_name", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=invalid_snapshot_name", http.StatusSeeOther)
 		return
 	}
 
@@ -63,7 +67,7 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get Proxmox client")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=client_error", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=client_error", http.StatusSeeOther)
 		return
 	}
 
@@ -71,7 +75,7 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 	snapshots, err := proxmox.GetVMSnapshotsResty(r.Context(), restyClient, node, vmidStr)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get current snapshots")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=fetch_snapshots", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=fetch_snapshots", http.StatusSeeOther)
 		return
 	}
 
@@ -79,7 +83,7 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 	settings, _, err := state.LoadSettings()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load settings")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=settings_error", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=settings_error", http.StatusSeeOther)
 		return
 	}
 
@@ -88,12 +92,20 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 		maxSnapshots = 0
 	}
 
-	if len(snapshots) >= maxSnapshots {
+	// Filter out "current" pseudo-snapshot from count
+	actualSnapshots := 0
+	for _, snap := range snapshots {
+		if snap.Name != "current" {
+			actualSnapshots++
+		}
+	}
+
+	if actualSnapshots >= maxSnapshots {
 		log.Error().
-			Int("current_count", len(snapshots)).
+			Int("current_count", actualSnapshots).
 			Int("max_allowed", maxSnapshots).
 			Msg("Maximum snapshot limit reached")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=max_snapshots_reached", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=max_snapshots_reached", http.StatusSeeOther)
 		return
 	}
 
@@ -101,13 +113,13 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 	snapshotConfig := proxmox.VMSnapshotConfig{
 		Name:        snapshotName,
 		Description: description,
-		Vmstate:     true, // Include VM state for rollback
+		Vmstate:     includeVMState,
 	}
 
 	err = proxmox.CreateVMSnapshotResty(r.Context(), restyClient, node, vmidStr, snapshotConfig)
 	if err != nil {
 		log.Error().Err(err).Str("snapshot_name", snapshotName).Msg("Failed to create snapshot")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=create_failed", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=create_failed", http.StatusSeeOther)
 		return
 	}
 
@@ -115,6 +127,7 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 		Int("vmid", vmidInt).
 		Str("node", node).
 		Str("snapshot_name", snapshotName).
+		Bool("vmstate", includeVMState).
 		Msg("VM snapshot created successfully")
 
 	// Force refresh VM cache using the Proxmox client
@@ -125,7 +138,7 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
 	}
 
-	http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&success=snapshot_created", http.StatusFound)
+	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_created&refresh=1", http.StatusSeeOther)
 }
 
 // UpdateVMSnapshotHandler handles updating a snapshot description
@@ -144,7 +157,7 @@ func (h *VMSnapshotsHandler) UpdateVMSnapshotHandler(w http.ResponseWriter, r *h
 
 	if vmidStr == "" || node == "" || snapshotName == "" {
 		log.Error().Msg("Missing required parameters for snapshot update")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=missing_parameters", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=missing_parameters", http.StatusSeeOther)
 		return
 	}
 
@@ -152,7 +165,7 @@ func (h *VMSnapshotsHandler) UpdateVMSnapshotHandler(w http.ResponseWriter, r *h
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get Proxmox client")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=client_error", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=client_error", http.StatusSeeOther)
 		return
 	}
 
@@ -160,7 +173,7 @@ func (h *VMSnapshotsHandler) UpdateVMSnapshotHandler(w http.ResponseWriter, r *h
 	err = proxmox.UpdateVMSnapshotResty(r.Context(), restyClient, node, vmidStr, snapshotName, description)
 	if err != nil {
 		log.Error().Err(err).Str("snapshot_name", snapshotName).Msg("Failed to update snapshot")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=update_failed", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=update_failed", http.StatusSeeOther)
 		return
 	}
 
@@ -170,7 +183,7 @@ func (h *VMSnapshotsHandler) UpdateVMSnapshotHandler(w http.ResponseWriter, r *h
 		Str("snapshot_name", snapshotName).
 		Msg("VM snapshot updated successfully")
 
-	http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&success=snapshot_updated", http.StatusFound)
+	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_updated&refresh=1", http.StatusSeeOther)
 }
 
 // DeleteVMSnapshotHandler handles deleting a VM snapshot
@@ -188,7 +201,7 @@ func (h *VMSnapshotsHandler) DeleteVMSnapshotHandler(w http.ResponseWriter, r *h
 
 	if vmidStr == "" || node == "" || snapshotName == "" {
 		log.Error().Msg("Missing required parameters for snapshot deletion")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=missing_parameters", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=missing_parameters", http.StatusSeeOther)
 		return
 	}
 
@@ -196,7 +209,7 @@ func (h *VMSnapshotsHandler) DeleteVMSnapshotHandler(w http.ResponseWriter, r *h
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get Proxmox client")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=client_error", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=client_error", http.StatusSeeOther)
 		return
 	}
 
@@ -204,7 +217,7 @@ func (h *VMSnapshotsHandler) DeleteVMSnapshotHandler(w http.ResponseWriter, r *h
 	err = proxmox.DeleteVMSnapshotResty(r.Context(), restyClient, node, vmidStr, snapshotName)
 	if err != nil {
 		log.Error().Err(err).Str("snapshot_name", snapshotName).Msg("Failed to delete snapshot")
-		http.Redirect(w, r, "/vm/details?vmid="+node+"&vmid="+vmidStr+"&error=delete_failed", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=delete_failed", http.StatusSeeOther)
 		return
 	}
 
@@ -222,7 +235,7 @@ func (h *VMSnapshotsHandler) DeleteVMSnapshotHandler(w http.ResponseWriter, r *h
 		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
 	}
 
-	http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&success=snapshot_deleted", http.StatusFound)
+	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_deleted&refresh=1", http.StatusSeeOther)
 }
 
 // RollbackVMSnapshotHandler handles rolling back a VM to a snapshot
@@ -240,7 +253,7 @@ func (h *VMSnapshotsHandler) RollbackVMSnapshotHandler(w http.ResponseWriter, r 
 
 	if vmidStr == "" || node == "" || snapshotName == "" {
 		log.Error().Msg("Missing required parameters for snapshot rollback")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=missing_parameters", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=missing_parameters", http.StatusSeeOther)
 		return
 	}
 
@@ -248,7 +261,7 @@ func (h *VMSnapshotsHandler) RollbackVMSnapshotHandler(w http.ResponseWriter, r 
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get Proxmox client")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=client_error", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=client_error", http.StatusSeeOther)
 		return
 	}
 
@@ -256,7 +269,7 @@ func (h *VMSnapshotsHandler) RollbackVMSnapshotHandler(w http.ResponseWriter, r 
 	err = proxmox.RollbackVMSnapshotResty(r.Context(), restyClient, node, vmidStr, snapshotName)
 	if err != nil {
 		log.Error().Err(err).Str("snapshot_name", snapshotName).Msg("Failed to rollback snapshot")
-		http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&error=rollback_failed", http.StatusFound)
+		http.Redirect(w, r, "/vm/details/"+vmidStr+"?error=rollback_failed", http.StatusSeeOther)
 		return
 	}
 
@@ -274,7 +287,7 @@ func (h *VMSnapshotsHandler) RollbackVMSnapshotHandler(w http.ResponseWriter, r 
 		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
 	}
 
-	http.Redirect(w, r, "/vm/details?vmid="+vmidStr+"&node="+node+"&success=snapshot_rollback", http.StatusFound)
+	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_rollback&refresh=1", http.StatusSeeOther)
 }
 
 // GetVMSnapshotsHandler returns VM snapshots as JSON for AJAX requests

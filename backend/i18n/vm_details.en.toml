@@ -337,3 +337,21 @@ other = "Are you sure you want to delete this snapshot? This action cannot be un
 other = "No snapshots available"
 ["VMDetails.Snapshots.CreateFirst"]
 other = "Create your first snapshot to save the current VM state"
+["VMDetails.Snapshots.CreatedSuccess"]
+other = "Snapshot created successfully"
+["VMDetails.Snapshots.UpdatedSuccess"]
+other = "Snapshot updated successfully"
+["VMDetails.Snapshots.DeletedSuccess"]
+other = "Snapshot deleted successfully"
+["VMDetails.Snapshots.RollbackSuccess"]
+other = "VM rolled back to snapshot successfully"
+["VMDetails.Snapshots.CreateFailed"]
+other = "Failed to create snapshot. Please check your permissions and try again."
+["VMDetails.Snapshots.UpdateFailed"]
+other = "Failed to update snapshot"
+["VMDetails.Snapshots.DeleteFailed"]
+other = "Failed to delete snapshot"
+["VMDetails.Snapshots.RollbackFailed"]
+other = "Failed to rollback to snapshot"
+["VMDetails.Snapshots.InvalidName"]
+other = "Invalid snapshot name. Only letters, numbers, hyphens, and underscores allowed."

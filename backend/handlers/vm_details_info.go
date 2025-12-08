@@ -195,7 +195,12 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	if cfgErr == nil && cfg != nil {
 		// Fetch snapshots after config is successfully retrieved
 		if snapshotsData, snapErr := proxmox.GetVMSnapshotsResty(r.Context(), restyClient, vm.Node, strconv.Itoa(vm.VMID)); snapErr == nil {
-			snapshots = snapshotsData
+			// Filter out the "current" pseudo-snapshot which represents the current VM state
+			for _, snap := range snapshotsData {
+				if snap.Name != "current" {
+					snapshots = append(snapshots, snap)
+				}
+			}
 		} else {
 			log.Warn().
 				Err(snapErr).
@@ -553,7 +558,51 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
+	// Handle success/error messages from query parameters
+	localizer := i18n.GetLocalizerFromRequest(r)
+	success := false
+	successMessage := ""
+	errorMessage := ""
+
+	if successParam := r.URL.Query().Get("success"); successParam != "" {
+		success = true
+		switch successParam {
+		case "snapshot_created":
+			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.CreatedSuccess")
+		case "snapshot_updated":
+			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.UpdatedSuccess")
+		case "snapshot_deleted":
+			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.DeletedSuccess")
+		case "snapshot_rollback":
+			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.RollbackSuccess")
+		}
+	}
+
+	if errorParam := r.URL.Query().Get("error"); errorParam != "" {
+		switch errorParam {
+		case "create_failed":
+			errorMessage = i18n.Localize(localizer, "VMDetails.Snapshots.CreateFailed")
+		case "update_failed":
+			errorMessage = i18n.Localize(localizer, "VMDetails.Snapshots.UpdateFailed")
+		case "delete_failed":
+			errorMessage = i18n.Localize(localizer, "VMDetails.Snapshots.DeleteFailed")
+		case "rollback_failed":
+			errorMessage = i18n.Localize(localizer, "VMDetails.Snapshots.RollbackFailed")
+		case "max_snapshots_reached":
+			errorMessage = i18n.Localize(localizer, "VMDetails.Snapshots.LimitReached")
+		case "invalid_snapshot_name":
+			errorMessage = i18n.Localize(localizer, "VMDetails.Snapshots.InvalidName")
+		case "missing_parameters":
+			errorMessage = i18n.Localize(localizer, "Error.MissingRequiredFields")
+		case "client_error":
+			errorMessage = i18n.Localize(localizer, "Error.ServerConfigError")
+		}
+	}
+
 	custom := map[string]interface{}{
+		"Success":               success,
+		"SuccessMessage":        successMessage,
+		"ErrorMessage":          errorMessage,
 		"AllTags":               allTags,
 		"AvailableVMBRs":        availableVMBRs,
 		"AvailableISOs":         availableISOs,
