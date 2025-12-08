@@ -1473,22 +1473,20 @@ function generateRandomMAC(inputId) {
                                         </form>
                                         
                                         <!-- Rollback -->
-                                        <form action="/vm/snapshot/rollback" method="POST" class="is-inline" 
-                                              onsubmit="return confirm('{{T "VMDetails.Snapshots.RollbackConfirm"}}')">
+                                        <form action="/vm/snapshot/rollback" method="POST" class="is-inline snapshot-rollback-form">
                                             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                                             <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
                                             <input type="hidden" name="node" value="{{$.VM.Node}}">
                                             <input type="hidden" name="snapshot_name" value="{{.Name}}">
                                             <button type="submit" class="button is-small is-outlined is-warning" 
                                                     title="{{T "VMDetails.Snapshots.Rollback"}}"
-                                                    {{if or (not $.ProxmoxConnected) $.IsRunning}}disabled{{end}}>
+                                                    {{if not $.ProxmoxConnected}}disabled{{end}}>
                                                 <span class="icon is-small"><i class="fas fa-undo"></i></span>
                                             </button>
                                         </form>
                                         
                                         <!-- Delete -->
-                                        <form action="/vm/snapshot/delete" method="POST" class="is-inline" 
-                                              onsubmit="return confirm('{{T "VMDetails.Snapshots.DeleteConfirm"}}')">
+                                        <form action="/vm/snapshot/delete" method="POST" class="is-inline snapshot-delete-form">
                                             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
                                             <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
                                             <input type="hidden" name="node" value="{{$.VM.Node}}">
@@ -2092,6 +2090,35 @@ function generateRandomMAC(inputId) {
         input.dispatchEvent(new Event('input', { bubbles: true }));
     }
 }
+</script>
+
+<!-- Snapshot Confirmation JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle snapshot rollback confirmations
+    const rollbackForms = document.querySelectorAll('.snapshot-rollback-form');
+    rollbackForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const rollbackConfirm = '{{T "VMDetails.Snapshots.RollbackConfirm"}}';
+            if (!confirm(rollbackConfirm)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+    
+    // Handle snapshot delete confirmations
+    const deleteForms = document.querySelectorAll('.snapshot-delete-form');
+    deleteForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const deleteConfirm = '{{T "VMDetails.Snapshots.DeleteConfirm"}}';
+            if (!confirm(deleteConfirm)) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+});
 </script>
 
 {{end}}

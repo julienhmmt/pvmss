@@ -39,7 +39,7 @@ func CreateVMSnapshotResty(ctx context.Context, client *RestyClient, node, vmid 
 	}
 
 	var response interface{}
-	err := client.Put(ctx, path, values, &response)
+	err := client.Post(ctx, path, values, &response)
 
 	if err != nil {
 		return fmt.Errorf("failed to create VM snapshot: %w", err)
