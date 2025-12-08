@@ -142,6 +142,72 @@ Some operations remain restricted and may still require a new VM to be created b
 - Migrating to a different storage backend when not supported by Proxmox
 - Structural changes that are not exposed in the PVMSS interface
 
+### Managing virtual machine snapshots
+
+Snapshots allow you to save the complete state of your VM at a specific moment in time and restore it later. This is useful for testing, backup, or recovery scenarios.
+
+#### Creating a snapshot
+
+1. Open the VM details page.
+2. Scroll to the **"VM snapshots"** section.
+3. Enter a **snapshot name** (alphanumeric characters, hyphens, and underscores only; maximum 40 characters).
+4. Optionally add a **description** to document the purpose of the snapshot (for example, "Before OS update" or "Working configuration").
+5. Optionally check **"Include RAM state"** to save the VM's memory state along with disk state. This allows for faster restoration but requires more storage space.
+6. Click the **"Create"** button.
+
+**Important notes:**
+
+- Your administrator may have set a limit on the maximum number of snapshots per VM. If you reach this limit, you must delete some snapshots before creating new ones.
+- Snapshots consume storage space. Monitor your storage usage and delete old snapshots when no longer needed.
+- The **"Current state (initial)"** entry in the snapshot list represents the VM's current state before any snapshots were created.
+
+#### Viewing snapshots
+
+The snapshot list on the VM details page displays:
+
+- **Snapshot name**: The name you gave the snapshot
+- **Description**: Optional notes about the snapshot
+- **Creation date**: When the snapshot was created
+- **State**: Whether the snapshot includes RAM state ("With RAM") or is disk-only ("Disk only")
+- **Current state indicator**: A star icon marks the VM's current state
+
+#### Editing a snapshot description
+
+1. Locate the snapshot in the list.
+2. Click the **"Edit"** button (pencil icon) on the right side of the snapshot row.
+3. A dialog box will open with the current description.
+4. Update the description as needed.
+5. Click **"Save"** to confirm the changes.
+
+#### Rolling back to a snapshot
+
+Rolling back restores your VM to the exact state it was in when the snapshot was created, including all disk changes and (if included) the RAM state.
+
+1. Locate the snapshot in the list.
+2. Click the **"Rollback"** button (undo icon) on the right side of the snapshot row.
+3. A confirmation dialog will appear. Confirm that you want to restore the VM to this snapshot.
+4. The VM will be restored to the snapshot state. If the VM was running, it will be stopped during the rollback and you may need to restart it.
+
+**Important:** Rollback is destructive. All changes made to the VM after the snapshot was created will be lost.
+
+#### Deleting a snapshot
+
+1. Locate the snapshot in the list.
+2. Click the **"Delete"** button (trash icon) on the right side of the snapshot row.
+3. A confirmation dialog will appear. Confirm that you want to delete the snapshot.
+4. The snapshot will be permanently deleted and cannot be recovered.
+
+**Important:** Deleting a snapshot frees up storage space but cannot be undone.
+
+#### Snapshot best practices
+
+- **Descriptive names and descriptions**: Use clear names like `before-update`, `working-state`, or `backup-2025-01-15` to easily identify snapshots later.
+- **Regular cleanup**: Delete old or unnecessary snapshots to free storage space and keep the snapshot list manageable.
+- **Test before production**: Always test changes in a snapshot before applying them to your production VM.
+- **Document important states**: Create snapshots before major changes (updates, configuration changes, etc.) so you can quickly revert if something goes wrong.
+- **Respect storage limits**: Remember that snapshots consume storage. Do not create excessive snapshots.
+- **RAM state considerations**: Only include RAM state if you need to preserve the exact running state. Disk-only snapshots are faster and use less storage.
+
 ### Console access
 
 PVMSS provides integrated console access to your VMs through noVNC, a web-based VNC client.
@@ -214,7 +280,7 @@ PVMSS provides a simplified self‑service interface on top of Proxmox VE. The t
 | Create KVM/QEMU VM | Yes (self‑service creation within administrator‑defined limits) | Yes (full configuration options) |
 | Create LXC container | No | Yes |
 | Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options) |
-| Manage snapshots | No | Yes |
+| Manage snapshots | Yes (create, edit, delete, rollback) | Yes (full snapshot management) |
 | Run backups / restores | No | Yes |
 | Live migrate VMs between nodes | No | Yes |
 | Configure advanced networking (VLANs, firewall rules, etc.) | Partially (choose bridge and NIC model only) | Yes (full networking stack) |
@@ -230,11 +296,12 @@ The PVMSS application currently does not support:
 
 - **Full resource reconfiguration**: While you can change CPU, memory, network cards and ISO for a stopped VM, some operations remain unavailable (for example, growing disks, changing the number of disks beyond administrator limits, or editing certain low-level Proxmox options).
 - **LXC containers**: Only KVM/QEMU VMs are supported. LXC container creation is unavailable.
-- **Snapshots**: VM snapshot creation and management are not available through PVMSS.
 - **Backups**: VM backup and restore operations must be handled directly by administrators in Proxmox.
 - **Live migration**: Moving VMs between nodes is not available via PVMSS.
 - **Advanced networking**: Advanced networking features (VLANs, firewall rules, etc.) must be configured by administrators, even though multiple network cards and network models are supported in PVMSS.
 - **Direct Proxmox access**: PVMSS is designed as a simplified interface and does not provide access to all Proxmox features.
+
+**Note:** VM snapshots are now fully supported in PVMSS. You can create, edit, delete, and rollback snapshots directly from the VM details page.
 
 ## Security and privacy
 

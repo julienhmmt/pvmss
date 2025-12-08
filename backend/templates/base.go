@@ -172,6 +172,13 @@ func GetBaseFuncMap() template.FuncMap {
 			return values
 		},
 		"printf": fmt.Sprintf,
+		"formatTime": func(timestamp int64) string {
+			if timestamp == 0 {
+				return ""
+			}
+			t := time.Unix(timestamp, 0)
+			return t.Format("2006-01-02 15:04:05")
+		},
 	}
 }
 

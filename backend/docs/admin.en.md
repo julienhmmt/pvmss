@@ -281,7 +281,7 @@ PVMSS is a focused self‑service interface on top of Proxmox VE. The table belo
 | Create KVM/QEMU VM | Yes (self‑service, constrained by admin‑defined limits and presets) | Yes (full configuration options) |
 | Create LXC container | No | Yes |
 | Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options) |
-| Manage snapshots | No | Yes |
+| Manage snapshots | Yes (create, edit, delete, rollback) | Yes (full snapshot management) |
 | Run backups / restores | No | Yes |
 | Live migrate VMs between nodes | No | Yes |
 | Configure advanced networking (VLANs, firewall rules, etc.) | Partially (choose bridge and NIC model only) | Yes (full networking stack) |
@@ -290,6 +290,63 @@ PVMSS is a focused self‑service interface on top of Proxmox VE. The table belo
 | Manage users and permissions | Yes (create/delete PVMSS users and pools; relies on Proxmox roles) | Yes (full RBAC, realms, roles, ACLs) |
 
 This comparison is not exhaustive but highlights that PVMSS intentionally exposes only a safe subset of Proxmox features for end‑users.
+
+## Virtual machine snapshots
+
+PVMSS provides users with a simplified interface to manage VM snapshots. Snapshots allow users to save the complete state of a VM at a specific moment and restore it later, which is useful for testing, backup, and recovery scenarios.
+
+### Snapshot features and limitations
+
+**Supported operations:**
+
+- **Create snapshots**: Users can create snapshots with optional descriptions and choose whether to include RAM state.
+- **Edit snapshot descriptions**: Users can update snapshot descriptions after creation.
+- **Rollback to snapshots**: Users can restore a VM to a previous snapshot state.
+- **Delete snapshots**: Users can remove snapshots to free storage space.
+
+**Snapshot limits:**
+
+- Administrators can configure the **maximum number of snapshots per VM** in the **Limits** section of the admin interface (`settings.Limits.MaxSnapshots`).
+- When a user reaches this limit, they must delete existing snapshots before creating new ones.
+- The limit applies globally to all VMs and all users.
+
+### Snapshot storage considerations
+
+Snapshots consume storage space on the same storage backend as the VM's disks. When planning storage capacity:
+
+- **Disk-only snapshots** (without RAM state) are smaller and faster to create.
+- **Snapshots with RAM state** include the VM's memory contents, making them larger but allowing for faster restoration to a running state.
+- Monitor storage usage on your Proxmox nodes and alert users when storage is approaching capacity.
+- Encourage users to delete old or unnecessary snapshots to free space.
+
+### Snapshot best practices for administrators
+
+1. **Set reasonable limits**: Configure `MaxSnapshots` to balance user flexibility with storage constraints. A typical value is 5-10 snapshots per VM.
+2. **Monitor storage**: Regularly check storage usage and alert users if snapshots are consuming excessive space.
+3. **Educate users**: Provide clear documentation (available in the user guide) on snapshot best practices, naming conventions, and storage implications.
+4. **Backup strategy**: Snapshots are **not** a replacement for backups. Snapshots are stored on the same storage as the VM and are vulnerable to storage failures. Implement separate backup strategies for critical VMs.
+5. **Cleanup policy**: Consider implementing a policy where old snapshots are periodically deleted to prevent storage bloat.
+
+### Troubleshooting snapshot issues
+
+#### Users cannot create snapshots
+
+- Check if the user has reached the configured `MaxSnapshots` limit. Ask them to delete old snapshots.
+- Verify that the storage backend has sufficient free space.
+- Check PVMSS logs for any Proxmox API errors related to snapshot creation.
+
+#### Snapshot rollback fails
+
+- Ensure the VM is stopped or in a state where rollback is allowed.
+- Verify that the snapshot still exists (it may have been deleted by another user).
+- Check PVMSS logs and Proxmox logs for detailed error messages.
+- Ensure the storage backend is accessible and has sufficient space.
+
+#### Snapshots consume excessive storage
+
+- Review the snapshot list with the user and identify old or unnecessary snapshots.
+- Recommend deleting snapshots with RAM state if disk-only snapshots are sufficient.
+- Educate the user on snapshot best practices and storage implications.
 
 ## Logging and diagnostics
 
