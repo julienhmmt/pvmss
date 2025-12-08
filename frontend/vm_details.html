@@ -1471,106 +1471,179 @@ function generateRandomMAC(inputId) {
                             <span>{{T "VMDetails.Snapshots.SnapshotTree"}}</span>
                         </span>
                     </h6>
-                    <div style="background-color: #fafafa; border-radius: 4px; padding: 1.5rem; border: 1px solid #e8e8e8;">
-                        {{range .Snapshots}}
-                        <div class="snapshot-tree-item mb-3" style="padding: 1rem; background-color: white; border-radius: 4px; border-left: 3px solid var(--primary); position: relative;">
-                            <!-- Snapshot Header -->
-                            <div class="level is-mobile mb-2">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                            {{if eq .Name "NOW"}}
-                                            <span class="icon has-text-success" style="font-size: 1.25rem;">
-                                                <i class="fas fa-star"></i>
-                                            </span>
-                                            <div>
-                                                <p class="has-text-weight-semibold has-text-success">{{T "VMDetails.Snapshots.CurrentState"}}</p>
-                                                <p class="is-size-7 has-text-grey">{{T "VMDetails.Snapshots.InitialState"}}</p>
+                    <style>
+                        .snapshot-tree-list {
+                            position: relative;
+                            background-color: #fafafa;
+                            border-radius: 4px;
+                            padding: 1.5rem;
+                            border: 1px solid #e8e8e8;
+                        }
+                        .snapshot-tree-node {
+                            position: relative;
+                            padding-left: calc(var(--depth, 0) * 24px + 24px);
+                            margin-bottom: 1.25rem;
+                        }
+                        .snapshot-tree-node .tree-line {
+                            position: absolute;
+                            left: calc(var(--depth, 0) * 24px + 12px);
+                            top: 0;
+                            bottom: 0;
+                            width: 2px;
+                            background: #e5e5e5;
+                            opacity: 0.8;
+                        }
+                        .snapshot-tree-node .tree-branch {
+                            position: absolute;
+                            left: calc(var(--depth, 0) * 24px + 12px);
+                            top: 36px;
+                            width: 16px;
+                            height: 2px;
+                            background: #e5e5e5;
+                            opacity: 0.8;
+                        }
+                        .snapshot-tree-node.tree-root .tree-line,
+                        .snapshot-tree-node.tree-root .tree-branch {
+                            display: none;
+                        }
+                        .vm-state-chip {
+                            margin-left: 4px;
+                            margin-top: 6px;
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 6px;
+                            background: #eff6ff;
+                            color: #1d4ed8;
+                            padding: 6px 10px;
+                            border-radius: 999px;
+                            font-size: 0.75rem;
+                        }
+                        .vm-state-chip .icon {
+                            font-size: 0.85rem;
+                        }
+                    </style>
+                    <div class="snapshot-tree-list">
+                        {{range $idx, $snap := .Snapshots}}
+                        <div class="snapshot-tree-node" data-snapshot-name="{{$snap.Name}}" data-snapshot-parent="{{$snap.Parent}}" data-snaptime="{{$snap.Snaptime}}" data-is-current="{{eq $snap.Name $.CurrentSnapshotName}}">
+                            <div class="tree-line" aria-hidden="true"></div>
+                            <div class="tree-branch" aria-hidden="true"></div>
+
+                            <div style="padding: 1rem; background-color: white; border-radius: 4px; border-left: 3px solid var(--primary); position: relative; {{if eq $snap.Name $.CurrentSnapshotName}}background-color: #f0f7ff;{{end}}">
+                                <!-- Current VM State Indicator -->
+                                {{if eq $snap.Name $.CurrentSnapshotName}}
+                                <div style="position: absolute; top: 0.5rem; right: 0.5rem;">
+                                    <span class="tag is-info is-light is-small">
+                                        <span class="icon is-small"><i class="fas fa-server"></i></span>
+                                        <span>VM HERE</span>
+                                    </span>
+                                </div>
+                                {{end}}
+
+                                <!-- Snapshot Header -->
+                                <div class="level is-mobile mb-2">
+                                    <div class="level-left">
+                                        <div class="level-item">
+                                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                {{if eq $snap.Name "NOW"}}
+                                                <span class="icon has-text-success" style="font-size: 1.25rem;">
+                                                    <i class="fas fa-star"></i>
+                                                </span>
+                                                <div>
+                                                    <p class="has-text-weight-semibold has-text-success">{{T "VMDetails.Snapshots.CurrentState"}}</p>
+                                                    <p class="is-size-7 has-text-grey">{{T "VMDetails.Snapshots.InitialState"}}</p>
+                                                </div>
+                                                {{else}}
+                                                <span class="icon" style="font-size: 1.25rem;">
+                                                    <i class="fas fa-camera"></i>
+                                                </span>
+                                                <div>
+                                                    <p class="has-text-weight-semibold">{{$snap.Name}}</p>
+                                                    <p class="is-size-7 has-text-grey">
+                                                        {{if $snap.Snaptime}}
+                                                            {{formatTime $snap.Snaptime}}
+                                                        {{else}}
+                                                            {{T "VMDetails.Snapshots.UnknownTime"}}
+                                                        {{end}}
+                                                    </p>
+                                                </div>
+                                                {{end}}
                                             </div>
+                                        </div>
+                                    </div>
+                                    <div class="level-right">
+                                        <div class="level-item">
+                                            {{if eq $snap.Vmstate 1}}
+                                            <span class="tag is-success is-light is-small">{{T "VMDetails.Snapshots.WithRAM"}}</span>
                                             {{else}}
-                                            <span class="icon" style="font-size: 1.25rem;">
-                                                <i class="fas fa-camera"></i>
-                                            </span>
-                                            <div>
-                                                <p class="has-text-weight-semibold">{{.Name}}</p>
-                                                <p class="is-size-7 has-text-grey">
-                                                    {{if .Snaptime}}
-                                                        {{formatTime .Snaptime}}
-                                                    {{else}}
-                                                        {{T "VMDetails.Snapshots.UnknownTime"}}
-                                                    {{end}}
-                                                </p>
-                                            </div>
+                                            <span class="tag is-warning is-light is-small">{{T "VMDetails.Snapshots.DiskOnly"}}</span>
                                             {{end}}
                                         </div>
                                     </div>
                                 </div>
-                                <div class="level-right">
-                                    <div class="level-item">
-                                        {{if eq .Vmstate 1}}
-                                        <span class="tag is-success is-light is-small">{{T "VMDetails.Snapshots.WithRAM"}}</span>
-                                        {{else}}
-                                        <span class="tag is-warning is-light is-small">{{T "VMDetails.Snapshots.DiskOnly"}}</span>
-                                        {{end}}
-                                    </div>
+
+                                <!-- Description -->
+                                {{if $snap.Description}}
+                                <div class="mb-2" style="padding-left: 0; color: #555;">
+                                    <p class="is-size-7">
+                                        <span class="icon is-small"><i class="fas fa-align-left"></i></span>
+                                        {{$snap.Description}}
+                                    </p>
                                 </div>
-                            </div>
+                                {{end}}
 
-                            <!-- Description -->
-                            {{if .Description}}
-                            <div class="mb-2" style="padding-left: 2.25rem; color: #555;">
-                                <p class="is-size-7">
-                                    <span class="icon is-small"><i class="fas fa-align-left"></i></span>
-                                    {{.Description}}
-                                </p>
-                            </div>
-                            {{end}}
-
-                            <!-- Actions -->
-                            <div class="level is-mobile" style="padding-left: 2.25rem;">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <div class="buttons are-small">
-                                            <!-- Edit Description -->
-                                            <button class="button is-info is-outlined snapshot-edit-btn" 
-                                                    data-snapshot-name="{{.Name}}"
-                                                    data-snapshot-desc="{{.Description}}"
-                                                    title="{{T "VMDetails.Snapshots.EditDescription"}}"
-                                                    {{if not $.ProxmoxConnected}}disabled{{end}}>
-                                                <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                                                <span>{{T "Common.Edit"}}</span>
-                                            </button>
-                                            
-                                            <!-- Rollback -->
-                                            <form action="/vm/snapshot/rollback" method="POST" class="is-inline snapshot-rollback-form">
-                                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                                                <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
-                                                <input type="hidden" name="node" value="{{$.VM.Node}}">
-                                                <input type="hidden" name="snapshot_name" value="{{.Name}}">
-                                                <button type="submit" class="button is-warning is-outlined" 
-                                                        title="{{T "VMDetails.Snapshots.Rollback"}}"
+                                <!-- Actions -->
+                                <div class="level is-mobile" style="padding-left: 0;">
+                                    <div class="level-left">
+                                        <div class="level-item">
+                                            <div class="buttons are-small">
+                                                <!-- Edit Description -->
+                                                <button class="button is-info is-outlined snapshot-edit-btn" 
+                                                        data-snapshot-name="{{$snap.Name}}"
+                                                        data-snapshot-desc="{{$snap.Description}}"
+                                                        title="{{T "VMDetails.Snapshots.EditDescription"}}"
                                                         {{if not $.ProxmoxConnected}}disabled{{end}}>
-                                                    <span class="icon is-small"><i class="fas fa-undo"></i></span>
-                                                    <span>{{T "VMDetails.Snapshots.Rollback"}}</span>
+                                                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                                                    <span>{{T "Common.Edit"}}</span>
                                                 </button>
-                                            </form>
-                                            
-                                            <!-- Delete -->
-                                            <form action="/vm/snapshot/delete" method="POST" class="is-inline snapshot-delete-form">
-                                                <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-                                                <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
-                                                <input type="hidden" name="node" value="{{$.VM.Node}}">
-                                                <input type="hidden" name="snapshot_name" value="{{.Name}}">
-                                                <button type="submit" class="button is-danger is-outlined" 
-                                                        title="{{T "Common.Delete"}}"
-                                                        {{if not $.ProxmoxConnected}}disabled{{end}}>
-                                                    <span class="icon is-small"><i class="fas fa-trash"></i></span>
-                                                    <span>{{T "Common.Delete"}}</span>
-                                                </button>
-                                            </form>
+                                                
+                                                <!-- Rollback -->
+                                                <form action="/vm/snapshot/rollback" method="POST" class="is-inline snapshot-rollback-form">
+                                                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                                    <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
+                                                    <input type="hidden" name="node" value="{{$.VM.Node}}">
+                                                    <input type="hidden" name="snapshot_name" value="{{$snap.Name}}">
+                                                    <button type="submit" class="button is-warning is-outlined" 
+                                                            title="{{T "VMDetails.Snapshots.Rollback"}}"
+                                                            {{if not $.ProxmoxConnected}}disabled{{end}}>
+                                                        <span class="icon is-small"><i class="fas fa-undo"></i></span>
+                                                        <span>{{T "VMDetails.Snapshots.Rollback"}}</span>
+                                                    </button>
+                                                </form>
+                                                
+                                                <!-- Delete -->
+                                                <form action="/vm/snapshot/delete" method="POST" class="is-inline snapshot-delete-form">
+                                                    <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+                                                    <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
+                                                    <input type="hidden" name="node" value="{{$.VM.Node}}">
+                                                    <input type="hidden" name="snapshot_name" value="{{$snap.Name}}">
+                                                    <button type="submit" class="button is-danger is-outlined" 
+                                                            title="{{T "Common.Delete"}}"
+                                                            {{if not $.ProxmoxConnected}}disabled{{end}}>
+                                                        <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                                                        <span>{{T "Common.Delete"}}</span>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+
+                                {{if eq $snap.Name $.CurrentSnapshotName}}
+                                <div class="vm-state-chip">
+                                    <span class="icon"><i class="fas fa-server"></i></span>
+                                    <span>{{T "VMDetails.Snapshots.CurrentVMPosition"}}</span>
+                                </div>
+                                {{end}}
                             </div>
                         </div>
                         {{end}}
@@ -2278,6 +2351,70 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Layout snapshot tree: ensure parents before children, indent by depth, hide connectors for roots
+    function layoutSnapshotTree() {
+        const container = document.querySelector('.snapshot-tree-list');
+        if (!container) return;
+
+        const nodes = Array.from(container.querySelectorAll('.snapshot-tree-node'));
+        if (nodes.length === 0) {
+            return;
+        }
+
+        const nodeByName = new Map();
+        nodes.forEach(node => {
+            nodeByName.set(node.dataset.snapshotName, node);
+        });
+
+        // Build adjacency list
+        const children = new Map();
+        nodes.forEach(node => {
+            const parent = node.dataset.snapshotParent;
+            if (parent) {
+                if (!children.has(parent)) children.set(parent, []);
+                children.get(parent).push(node);
+            }
+        });
+
+        // Sort children by snaptime asc (fallback name)
+        const sortChildren = list => {
+            list.sort((a, b) => {
+                const ta = Number(a.dataset.snaptime || 0);
+                const tb = Number(b.dataset.snaptime || 0);
+                if (ta === tb) return a.dataset.snapshotName.localeCompare(b.dataset.snapshotName);
+                return ta - tb;
+            });
+        };
+        children.forEach(sortChildren);
+
+        const ordered = [];
+        const visit = (node, depth) => {
+            node.style.setProperty('--depth', depth);
+            if (depth === 0) {
+                node.classList.add('tree-root');
+            }
+            ordered.push(node);
+            const kids = children.get(node.dataset.snapshotName) || [];
+            kids.forEach(child => visit(child, depth + 1));
+        };
+
+        // Roots: no parent or parent not found
+        const roots = nodes.filter(node => {
+            const p = node.dataset.snapshotParent;
+            return !p || !nodeByName.has(p);
+        });
+        sortChildren(roots);
+        roots.forEach(root => visit(root, 0));
+
+        // Re-append in correct order
+        const frag = document.createDocumentFragment();
+        ordered.forEach(node => frag.appendChild(node));
+        container.innerHTML = '';
+        container.appendChild(frag);
+    }
+
+    layoutSnapshotTree();
 });
 </script>
 

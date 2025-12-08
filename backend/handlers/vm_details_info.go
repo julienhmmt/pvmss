@@ -192,12 +192,16 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 	}
 
+	var currentSnapshotName string
 	if cfgErr == nil && cfg != nil {
 		// Fetch snapshots after config is successfully retrieved
 		if snapshotsData, snapErr := proxmox.GetVMSnapshotsResty(r.Context(), restyClient, vm.Node, strconv.Itoa(vm.VMID)); snapErr == nil {
 			// Filter out the "current" pseudo-snapshot which represents the current VM state
 			for _, snap := range snapshotsData {
-				if snap.Name != "current" {
+				if snap.Name == "current" {
+					// Store the current snapshot name (which is the parent of the current state)
+					currentSnapshotName = snap.Parent
+				} else {
 					snapshots = append(snapshots, snap)
 				}
 			}
@@ -650,6 +654,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"Tags":                  strings.Join(tags, ", "),
 		"VM":                    vm,
 		"Snapshots":             snapshots,
+		"CurrentSnapshotName":   currentSnapshotName,
 		"MaxSnapshotsPerVM":     settings.Limits.MaxSnapshots,
 	}
 

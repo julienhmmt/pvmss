@@ -361,3 +361,5 @@ other = "Invalid snapshot name. Only letters, numbers, hyphens, and underscores 
 other = "Snapshot tree"
 ["VMDetails.Snapshots.InitialState"]
 other = "Initial state (no snapshots)"
+["VMDetails.Snapshots.CurrentVMPosition"]
+other = "Current VM state"

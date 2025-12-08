@@ -361,3 +361,5 @@ other = "Nom de snapshot invalide. Seules les lettres, chiffres, tirets et trait
 other = "Arborescence des snapshots"
 ["VMDetails.Snapshots.InitialState"]
 other = "État initial (aucun snapshot)"
+["VMDetails.Snapshots.CurrentVMPosition"]
+other = "État actuel de la VM"
