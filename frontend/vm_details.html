@@ -2157,13 +2157,36 @@ document.addEventListener('DOMContentLoaded', function() {
         form.method = 'POST';
         form.action = '/vm/snapshot/update';
         
-        form.innerHTML = `
-            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <input type="hidden" name="vmid" value="{{$.VM.VMID}}">
-            <input type="hidden" name="node" value="{{$.VM.Node}}">
-            <input type="hidden" name="snapshot_name" value="${currentSnapshotName}">
-            <input type="hidden" name="description" value="${descInput.value}">
-        `;
+        // Construct inputs safely using DOM APIs to avoid HTML injection
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{$.CSRFToken}}';
+        form.appendChild(csrfInput);
+
+        const vmidInput = document.createElement('input');
+        vmidInput.type = 'hidden';
+        vmidInput.name = 'vmid';
+        vmidInput.value = '{{$.VM.VMID}}';
+        form.appendChild(vmidInput);
+
+        const nodeInput = document.createElement('input');
+        nodeInput.type = 'hidden';
+        nodeInput.name = 'node';
+        nodeInput.value = '{{$.VM.Node}}';
+        form.appendChild(nodeInput);
+
+        const snapshotNameInput = document.createElement('input');
+        snapshotNameInput.type = 'hidden';
+        snapshotNameInput.name = 'snapshot_name';
+        snapshotNameInput.value = currentSnapshotName;
+        form.appendChild(snapshotNameInput);
+
+        const descInputField = document.createElement('input');
+        descInputField.type = 'hidden';
+        descInputField.name = 'description';
+        descInputField.value = descInput.value;
+        form.appendChild(descInputField);
         
         document.body.appendChild(form);
         form.submit();
