@@ -8,8 +8,6 @@ import (
 	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/middleware"
-	"pvmss/security"
-	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -117,35 +115,10 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	mux := http.NewServeMux()
 
 	// Public/Static Middleware Chain (no session)
-	var publicHandler http.Handler = router
-	publicHandler = recoverMiddleware(publicHandler)
+	publicHandler := buildPublicMiddleware()(router)
 
 	// Main App Middleware Chain (with session, CSRF, etc.)
-	var appHandler http.Handler = router
-	appHandler = stateManagerContextMiddleware(stateManager)(appHandler)
-	appHandler = snapshotRefreshMiddleware(stateManager)(appHandler)
-
-	sessionManager := stateManager.GetSessionManager()
-	if sessionManager != nil {
-		// Apply session-dependent middleware only to the app handler
-		appHandler = security.CSRF(appHandler)
-		appHandler = securityMiddleware.Headers(appHandler)
-		appHandler = securityMiddleware.SessionMiddleware(sessionManager)(appHandler)
-		appHandler = sessionDebugMiddleware(appHandler)
-		appHandler = sessionManager.LoadAndSave(appHandler) // Outermost session middleware
-	} else {
-		log.Warn().Msg("Session manager not available, running with limited functionality")
-	}
-
-	// Apply middleware that should run for the main app but after sessions
-	appHandler = middleware.ProxmoxStatusMiddlewareWithState(stateManager)(appHandler)
-	if !isTestEnv {
-		appHandler = middleware.RateLimitMiddleware(rateLimiter)(appHandler)
-	}
-	appHandler = trailingSlashRedirectMiddleware(appHandler)
-	// Limit request body size globally for the application to mitigate DoS via large uploads
-	appHandler = maxBodySizeMiddleware(appHandler, int64(constants.MaxFormSize))
-	appHandler = recoverMiddleware(appHandler) // Innermost recovery for the app
+	appHandler := buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(router)
 
 	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

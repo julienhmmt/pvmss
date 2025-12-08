@@ -181,7 +181,7 @@ func maskSensitiveValue(value string) string {
 // buildAppMiddleware assembles the middleware stack for the main app.
 func buildAppMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, isTestEnv bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		var handler http.Handler = next
+		handler := next
 		handler = stateManagerContextMiddleware(sm)(handler)
 		handler = snapshotRefreshMiddleware(sm)(handler)
 
