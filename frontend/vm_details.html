@@ -1358,7 +1358,13 @@ function generateRandomMAC(inputId) {
                     </span>
                 </p>
                 <div class="card-header-icon">
-                    <span class="tag is-info is-light">{{len .Snapshots}}/{{.MaxSnapshotsPerVM}}</span>
+                    {{if .Snapshots}}
+                    <span class="tag" style="background-color: #f5f5f5; color: #363636; border: 1px solid #dbdbdb;">
+                        {{len .Snapshots}}<span style="opacity: 0.6;">/{{.MaxSnapshotsPerVM}}</span>
+                    </span>
+                    {{else}}
+                    <span class="tag is-success is-light">{{T "VMDetails.Snapshots.NoSnapshots"}}</span>
+                    {{end}}
                 </div>
             </header>
             <div class="card-content">
@@ -1417,10 +1423,10 @@ function generateRandomMAC(inputId) {
                     <table class="table is-fullwidth is-hoverable">
                         <thead>
                             <tr>
-                                <th>{{T "VMDetails.Snapshots.Name"}}</th>
-                                <th>{{T "VMDetails.Snapshots.Description"}}</th>
-                                <th>{{T "VMDetails.Snapshots.Created"}}</th>
-                                <th>{{T "VMDetails.Snapshots.State"}}</th>
+                                <th style="width: 30%;">{{T "VMDetails.Snapshots.Name"}}</th>
+                                <th style="width: 35%;">{{T "VMDetails.Snapshots.Description"}}</th>
+                                <th style="width: 15%;">{{T "VMDetails.Snapshots.Created"}}</th>
+                                <th style="width: 20%;">{{T "VMDetails.Snapshots.State"}}</th>
                                 <th class="has-text-right">{{T "Common.Actions"}}</th>
                             </tr>
                         </thead>
@@ -1429,8 +1435,13 @@ function generateRandomMAC(inputId) {
                             <tr>
                                 <td>
                                     <span class="icon-text">
+                                        {{if eq .Name "NOW"}}
+                                        <span class="icon has-text-success"><i class="fas fa-star"></i></span>
+                                        <span class="has-text-weight-semibold has-text-success">{{T "VMDetails.Snapshots.CurrentState"}}</span>
+                                        {{else}}
                                         <span class="icon"><i class="fas fa-camera"></i></span>
                                         <span class="has-text-weight-semibold">{{.Name}}</span>
+                                        {{end}}
                                     </span>
                                 </td>
                                 <td>

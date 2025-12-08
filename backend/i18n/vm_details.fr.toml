@@ -314,7 +314,7 @@ other = "Nom"
 ["VMDetails.Snapshots.Description"]
 other = "Description"
 ["VMDetails.Snapshots.Created"]
-other = "Créé"
+other = "Date de création"
 ["VMDetails.Snapshots.State"]
 other = "État"
 ["VMDetails.Snapshots.NoDescription"]
@@ -334,9 +334,11 @@ other = "Êtes-vous sûr de vouloir restaurer cette VM à ce snapshot ? Cela rem
 ["VMDetails.Snapshots.DeleteConfirm"]
 other = "Êtes-vous sûr de vouloir supprimer ce snapshot ? Cette action ne peut pas être annulée."
 ["VMDetails.Snapshots.NoSnapshots"]
-other = "Aucun snapshot disponible"
+other = "Aucun snapshot"
 ["VMDetails.Snapshots.CreateFirst"]
 other = "Créez votre premier snapshot pour sauvegarder l'état actuel de la VM"
+["VMDetails.Snapshots.CurrentState"]
+other = "État actuel (initial)"
 ["VMDetails.Snapshots.CreatedSuccess"]
 other = "Snapshot créé avec succès"
 ["VMDetails.Snapshots.UpdatedSuccess"]
