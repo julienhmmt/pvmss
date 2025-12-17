@@ -132,17 +132,15 @@ func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[
 
 	for _, item := range base {
 		itemLen := len(item)
-		if itemLen < 0 {
-			logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: negative item map size, resetting to 0")
-			itemLen = 0
-		}
+		// Defensive: cap at maxStorageItemKeys; len() can't be negative in Go, so negative check is unnecessary.
 		if itemLen > maxStorageItemKeys {
 			logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: storage item map too large, capping allocation")
 			itemLen = maxStorageItemKeys
 		}
 		allocSize := itemLen + 1
-		if allocSize < 0 || allocSize > maxStorageItemKeys+1 {
-			logger.Get().Warn().Int("allocSize", allocSize).Msg("projectEnabledFlags: allocSize overflow detected, capping allocation")
+		// Defensive: make sure allocSize can't overflow max value
+		if allocSize > maxStorageItemKeys+1 {
+			logger.Get().Warn().Int("allocSize", allocSize).Msg("projectEnabledFlags: computed allocSize too large, capping allocation")
 			allocSize = maxStorageItemKeys + 1
 		}
 		cpy := make(map[string]interface{}, allocSize)
