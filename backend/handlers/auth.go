@@ -34,6 +34,7 @@ func setLanguageCookieAndRedirect(w http.ResponseWriter, r *http.Request, baseUR
 		Path:     "/",
 		MaxAge:   int(i18n.CookieMaxAge / time.Second),
 		HttpOnly: false,
+		Secure:   getSecureCookieFlag(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 

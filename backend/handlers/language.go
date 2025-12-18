@@ -36,6 +36,7 @@ func (h *LanguageHandler) SetLanguage(w http.ResponseWriter, r *http.Request, _ 
 		Path:     "/",
 		MaxAge:   int(i18n.CookieMaxAge / time.Second),
 		HttpOnly: false, // Allow JavaScript to read for client-side functionality
+		Secure:   getSecureCookieFlag(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 
