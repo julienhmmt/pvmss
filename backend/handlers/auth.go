@@ -757,7 +757,7 @@ func ensureLocalPath(urlStr string) string {
 	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
 		strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || // encoded slashes
 		strings.Contains(lower, "%3a") || // encoded colon
-		strings.Contains(lower, "://") {  // possible start of scheme
+		strings.Contains(lower, "://") { // possible start of scheme
 		return "/"
 	}
 
