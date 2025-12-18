@@ -50,6 +50,8 @@ func (h *LanguageHandler) SetLanguage(w http.ResponseWriter, r *http.Request, _ 
 				if parsed.RawQuery != "" {
 					returnURL += "?" + parsed.RawQuery
 				}
+				// Sanitize referer-derived path
+				returnURL = ensureLocalPath(returnURL)
 			} else {
 				returnURL = "/"
 			}

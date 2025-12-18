@@ -745,7 +745,15 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /, but not // or /\
+// ensureLocalPath ensures the URL is a local path starting with /, matches a whitelist of allowed endpoints.
+var allowedRedirectPaths = map[string]struct{}{
+	"/admin/nodes":     {},
+	"/admin/dashboard": {},
+	"/admin/settings":  {},
+	"/user/profile":    {},
+	"/":                {},
+}
+
 func ensureLocalPath(urlStr string) string {
 	if urlStr == "" {
 		return "/"
