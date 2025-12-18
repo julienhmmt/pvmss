@@ -744,7 +744,15 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /, but not // or /\
+// ensureLocalPath ensures the URL is a local path starting with /, matches a whitelist of allowed endpoints.
+var allowedRedirectPaths = map[string]struct{}{
+	"/admin/nodes":     {},
+	"/admin/dashboard": {},
+	"/admin/settings":  {},
+	"/user/profile":    {},
+	"/":                {},
+}
+
 func ensureLocalPath(urlStr string) string {
 	if urlStr == "" {
 		return "/"
@@ -761,16 +769,24 @@ func ensureLocalPath(urlStr string) string {
 	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
 		return "/"
 	}
-	// Forbid dangerous things like "//evil" or empty path
 	path := parsed.Path
-	if path == "" || (len(path) > 1 && (path[1] == '/' || path[1] == '\\')) {
-		return "/"
+	// Normalize multiple leading slashes, remove trailing slash if not root
+	for len(path) > 1 && path[0] == '/' && path[1] == '/' {
+		path = path[1:]
+	}
+	if len(path) > 1 && path[len(path)-1] == '/' {
+		path = path[:len(path)-1]
 	}
 	// Always start with a single /
-	if path[0] != '/' {
+	if path == "" || path[0] != '/' {
 		path = "/" + path
 	}
-	return path
+	// Final whitelist check
+	if _, ok := allowedRedirectPaths[path]; ok {
+		return path
+	}
+	// Default to safe path if not allowed
+	return "/"
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
