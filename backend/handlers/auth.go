@@ -744,7 +744,15 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /, but not // or /\
+// ensureLocalPath ensures the URL is a local path starting with /, matches a whitelist of allowed endpoints.
+var allowedRedirectPaths = map[string]struct{}{
+	"/admin/nodes":     {},
+	"/admin/dashboard": {},
+	"/admin/settings":  {},
+	"/user/profile":    {},
+	"/":                {},
+}
+
 func ensureLocalPath(urlStr string) string {
 	if urlStr == "" {
 		return "/"
@@ -776,10 +784,15 @@ func ensureLocalPath(urlStr string) string {
 		return "/"
 	}
 	// Always start with a single /
-	if path[0] != '/' {
+	if path == "" || path[0] != '/' {
 		path = "/" + path
 	}
-	return path
+	// Final whitelist check
+	if _, ok := allowedRedirectPaths[path]; ok {
+		return path
+	}
+	// Default to safe path if not allowed
+	return "/"
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
