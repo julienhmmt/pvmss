@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	pathpkg "path"
 	"strings"
 	"time"
-	"path"
 
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
@@ -763,17 +763,17 @@ func ensureLocalPath(urlStr string) string {
 		return "/"
 	}
 	// Forbid dangerous things like "//evil" or empty path
-	path := parsed.Path
-	if path == "" || (len(path) > 1 && (path[1] == '/' || path[1] == '\\')) {
+	redirectPath := parsed.Path
+	if redirectPath == "" || (len(redirectPath) > 1 && (redirectPath[1] == '/' || redirectPath[1] == '\\')) {
 		return "/"
 	}
 	// Canonicalize the path and ensure no directory traversal
-	cleanPath := path
-	if path[0] != '/' {
-		cleanPath = "/" + path
+	cleanPath := redirectPath
+	if redirectPath[0] != '/' {
+		cleanPath = "/" + redirectPath
 	}
 	cleanPath = "/" + strings.TrimLeft(strings.TrimPrefix(url.PathEscape(cleanPath), "/"), "/") // prevent double leading slashes
-	cleanPath = path.Clean(cleanPath) // collapse any sneaky traversal
+	cleanPath = pathpkg.Clean(cleanPath)                                                        // collapse any sneaky traversal
 	// Prevent directory traversal
 	if strings.Contains(cleanPath, "..") {
 		return "/"
