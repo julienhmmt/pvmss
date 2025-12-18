@@ -8,11 +8,14 @@ import (
 // TestHandlerCollection provides minimal handlers for testing
 type TestHandlerCollection struct{}
 
-func setTestAdminSessionCookie(w http.ResponseWriter) {
+func setTestAdminSessionCookie(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:  "admin_session",
-		Value: "admin",
-		Path:  "/",
+		Name:     "admin_session",
+		Value:    "admin",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   getSecureCookieFlag(r),
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 
@@ -78,7 +81,7 @@ func (hc *TestHandlerCollection) AdminLoginHandler(w http.ResponseWriter, r *htt
 		_, _ = w.Write([]byte("<html><body>Admin Login Page</body></html>"))
 		return
 	}
-	setTestAdminSessionCookie(w)
+	setTestAdminSessionCookie(w, r)
 	w.Header().Set("Location", "/admin")
 	w.WriteHeader(http.StatusSeeOther)
 }

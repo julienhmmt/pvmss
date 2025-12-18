@@ -35,6 +35,7 @@ func setLanguageCookieAndRedirect(w http.ResponseWriter, r *http.Request, baseUR
 		Path:     "/",
 		MaxAge:   int(i18n.CookieMaxAge / time.Second),
 		HttpOnly: false,
+		Secure:   getSecureCookieFlag(r),
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -760,6 +761,15 @@ func ensureLocalPath(urlStr string) string {
 	}
 	// Replace backslashes with forward slashes to avoid confusion:
 	urlStr = strings.ReplaceAll(urlStr, "\\", "/")
+
+	// Reject both raw and encoded double slashes, encoded colon, etc
+	lower := strings.ToLower(urlStr)
+	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
+		strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || // encoded slashes
+		strings.Contains(lower, "%3a") || // encoded colon
+		strings.Contains(lower, "://") { // possible start of scheme
+		return "/"
+	}
 
 	parsed, err := url.Parse(urlStr)
 	if err != nil {

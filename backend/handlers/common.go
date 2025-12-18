@@ -149,10 +149,13 @@ func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[strin
 	if qLang := strings.TrimSpace(r.URL.Query().Get(i18n.QueryParamLang)); qLang != "" {
 		// Normalize to the effective language code and set cookie on this response
 		http.SetCookie(w, &http.Cookie{
-			Name:   i18n.CookieNameLang,
-			Value:  lang,
-			Path:   "/",
-			MaxAge: int(i18n.CookieMaxAge / time.Second),
+			Name:     i18n.CookieNameLang,
+			Value:    lang,
+			Path:     "/",
+			MaxAge:   int(i18n.CookieMaxAge / time.Second),
+			HttpOnly: false,
+			Secure:   getSecureCookieFlag(r),
+			SameSite: http.SameSiteLaxMode,
 		})
 	}
 
