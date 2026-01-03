@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -62,6 +63,22 @@ func (h *LanguageHandler) SetLanguage(w http.ResponseWriter, r *http.Request, _ 
 	} else {
 		// Ensure return URL is a local path
 		returnURL = ensureLocalPath(returnURL)
+	}
+
+	// Final safety: ensure we always redirect to a normalized local path
+	if returnURL == "" {
+		returnURL = "/"
+	}
+	// Guard against any scheme-like or protocol-relative patterns
+	if len(returnURL) >= 2 && returnURL[0] == '/' && returnURL[1] == '/' {
+		returnURL = "/"
+	}
+	if len(returnURL) >= 3 && strings.Contains(returnURL, "://") {
+		returnURL = "/"
+	}
+	// Ensure leading slash for relative paths
+	if returnURL[0] != '/' {
+		returnURL = "/" + returnURL
 	}
 
 	log.Debug().Str("return_url", returnURL).Msg("Redirecting after language change")
