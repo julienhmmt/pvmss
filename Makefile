@@ -1,7 +1,7 @@
 # Makefile pour PVMSS
 # Permet de construire, démarrer, arrêter, nettoyer et tester l'application
 
-.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes go-lint go-fmt dev dev-logs
+.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt
 
 # Couleurs pour l'affichage
 BLUE=\033[0;34m
@@ -106,13 +106,33 @@ test-routes: ## Lance les tests de routes (offline-compatible)
 	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestRouteAccessibility ./tests
 	@echo "$(GREEN)✓ Tests de routes terminés$(NC)"
 
-test-offline: ## Lance tous les tests en mode offline (pour GitHub Actions)
-	@echo "$(BLUE)Lancement de tous les tests en mode offline...$(NC)"
+test-offline: ## Lance tous les tests en mode offline (rapide, pour GitHub Actions)
+	@echo "$(BLUE)Lancement de tous les tests en mode offline (optimisé)...$(NC)"
 	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -coverprofile=coverage.out ./...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -tags=integration -timeout=5m ./tests/...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestRouteAccessibility ./tests
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -timeout=5m ./...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests offline terminés$(NC)"
+
+test-offline-verbose: ## Lance tous les tests offline avec sortie détaillée
+	@echo "$(BLUE)Lancement de tous les tests en mode offline (verbose)...$(NC)"
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -timeout=5m ./...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -tags=integration -timeout=5m ./tests/...
+	@echo "$(GREEN)✓ Tests offline verbose terminés$(NC)"
+
+test-offline-race: ## Lance tous les tests offline avec race detector (lent mais complet)
+	@echo "$(BLUE)Lancement de tous les tests en mode offline avec race detector...$(NC)"
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -timeout=10m ./...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -tags=integration -timeout=10m ./tests/...
+	@echo "$(GREEN)✓ Tests offline avec race detector terminés$(NC)"
+
+test-offline-parallel: ## Lance tous les tests offline en parallèle (maximum vitesse)
+	@echo "$(BLUE)Lancement de tous les tests en mode offline (parallèle)...$(NC)"
+	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -timeout=5m ./...
+	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -tags=integration -timeout=5m ./tests/...
+	@echo "$(GREEN)✓ Tests offline parallèles terminés$(NC)"
 
 test-online: ## Lance tous les tests en mode online (requiert Proxmox)
 	@echo "$(BLUE)Lancement de tous les tests en mode online...$(NC)"
