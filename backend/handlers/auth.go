@@ -746,52 +746,70 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /.
+// ensureLocalPath ensures the URL is a local path starting with / and cannot be interpreted as an external URL.
 func ensureLocalPath(urlStr string) string {
 	if urlStr == "" {
 		return "/"
 	}
-	// Replace backslashes with forward slashes to avoid confusion:
+
+	// Normalize backslashes to forward slashes to avoid browser-dependent behavior.
 	urlStr = strings.ReplaceAll(urlStr, "\\", "/")
 
-	// Reject both raw and encoded double slashes, encoded colon, etc
+	// Reject obvious attempts to smuggle in a scheme or encoded separators.
 	lower := strings.ToLower(urlStr)
-	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
+	if strings.HasPrefix(lower, "//") ||
+		strings.Contains(lower, "://") || // possible start of scheme
 		strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || // encoded slashes
-		strings.Contains(lower, "%3a") || // encoded colon
-		strings.Contains(lower, "://") { // possible start of scheme
+		strings.Contains(lower, "%3a") { // encoded colon
 		return "/"
 	}
 
 	parsed, err := url.Parse(urlStr)
 	if err != nil {
-		// Malformed, default to safe path
+		// Malformed, default to a safe path.
 		return "/"
 	}
-	// Allow only *relative* paths (no scheme/host allowed)
+
+	// Allow only *relative* paths (no scheme/host allowed).
 	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
 		return "/"
 	}
-	// Forbid dangerous things like "//evil" or empty path
+
 	redirectPath := parsed.Path
-	if redirectPath == "" || (len(redirectPath) > 1 && (redirectPath[1] == '/' || redirectPath[1] == '\\')) {
+	if redirectPath == "" {
 		return "/"
 	}
-	// Canonicalize the path and ensure no directory traversal
-	cleanPath := redirectPath
+
+	// Ensure leading slash for local paths.
 	if redirectPath[0] != '/' {
-		cleanPath = "/" + redirectPath
+		redirectPath = "/" + redirectPath
 	}
-	cleanPath = "/" + strings.TrimLeft(strings.TrimPrefix(url.PathEscape(cleanPath), "/"), "/") // prevent double leading slashes
-	cleanPath = pathpkg.Clean(cleanPath)                                                        // collapse any sneaky traversal
-	// Prevent directory traversal
+
+	// Canonicalize the path and collapse any traversal like "/a/../b".
+	cleanPath := pathpkg.Clean(redirectPath)
+
+	// Clean should still leave a leading slash for absolute-ish paths.
+	if !strings.HasPrefix(cleanPath, "/") {
+		return "/"
+	}
+
+	// Prevent directory traversal: after cleaning, no ".." segments should remain.
 	if strings.Contains(cleanPath, "..") {
 		return "/"
 	}
-	// Prevent redirecting to a double-slash (which browsers may interpret as external schema)
+
+	// Prevent redirecting to a double-slash (which some browsers may interpret as protocol-relative).
 	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
 		return "/"
 	}
+
+	// As a final safeguard, reject any control characters.
+	for i := 0; i < len(cleanPath); i++ {
+		if cleanPath[i] < 0x20 {
+			return "/"
+		}
+	}
+
 	return cleanPath
 }
 
