@@ -1,0 +1,51 @@
+{{define "vm_header"}}
+{{/*
+  Composant: Header de VM
+  Affiche le nom, VMID, node, uptime, agent status et status badge
+  
+  Usage: {{template "vm_header" .}}
+*/}}
+<div class="card-content vm-header">
+    <div class="level is-mobile mb-0">
+        <div class="level-left">
+            <div class="level-item">
+                <div>
+                    <h1 class="title is-4 mb-2" style="font-weight: 700;">
+                        <span class="icon-text">
+                            <span class="icon has-text-primary"><i class="fas fa-server"></i></span>
+                            <span>{{.VM.Name}}</span>
+                        </span>
+                    </h1>
+                    <div class="is-flex is-flex-wrap-wrap" style="gap: 0.5rem;">
+                        <div class="tags has-addons mb-0">
+                            <span class="tag is-light">ID</span>
+                            <span class="tag is-dark">{{.VM.VMID}}</span>
+                        </div>
+                        <div class="tags has-addons mb-0">
+                            <span class="tag is-light">Node</span>
+                            <span class="tag is-primary is-light">{{.VM.Node}}</span>
+                        </div>
+                        <div class="tags has-addons mb-0">
+                            <span class="tag is-light"><i class="fas fa-clock"></i></span>
+                            <span class="tag is-warning" data-metric="uptime" data-uptime>{{if eq .VM.Status "running"}}{{.FormattedUptime}}{{else}}Stopped{{end}}</span>
+                        </div>
+                        <div class="tags has-addons mb-0" aria-label='{{T "VMDetails.Agent.Label"}}'>
+                            <span class="tag is-light" title='{{T "VMDetails.Agent.Label"}}'>
+                                QEMU agent
+                            </span>
+                            <span class="tag {{.AgentStatusClass}}" data-agent-status>
+                                {{T (printf "VMDetails.Agent.Status.%s" .AgentStatusKey)}}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="level-right">
+            <div class="level-item">
+                <span id="vm-status-badge" data-status-badge>{{template "status_badge" (dict "Status" .VM.Status "WithIcon" true)}}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
