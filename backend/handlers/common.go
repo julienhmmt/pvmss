@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/middleware"
@@ -264,12 +265,41 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := map[string]interface{}{
-		"TitleKey": "Navbar.Home",
-		"Lang":     i18n.GetLanguage(r),
+	// Get username and admin status from session
+	username := ""
+	isAdmin := false
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
+		}
 	}
 
-	ctx.RenderTemplate("index", data)
+	// Get CSRF token
+	csrfToken, _ := ctx.GetCSRFToken()
+
+	// Prepare home data
+	homeData := components.HomeData{
+		Username:  username,
+		Lang:      i18n.GetLanguage(r),
+		CSRFToken: csrfToken,
+		IsAdmin:   isAdmin,
+	}
+
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
+	}
+
+	// Render with Templ
+	if err := components.HomePage(homeData, translateFunc).Render(r.Context(), w); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to render home page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	ctx.Log.Info().Msg("Home page displayed successfully")
 }
 

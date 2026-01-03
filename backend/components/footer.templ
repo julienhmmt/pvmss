@@ -1,9 +1,50 @@
 package components
 
+type FooterProps struct {
+	Version      string
+	ShowLinks    bool
+	CustomText   string
+}
+
 templ Footer(version string, T TranslationFunc) {
 	<footer class="footer">
 		<div class="container has-text-centered">
-			<p>{ T("UI.Footer") } <span class="footer-version" title="Application version">{ version }</span></p>
+			<p>
+				{ T("UI.Footer") }
+				<span class="footer-version" title="Application version">{ version }</span>
+			</p>
+		</div>
+	</footer>
+}
+
+templ FooterExtended(props FooterProps, T TranslationFunc) {
+	<footer class="footer">
+		<div class="container has-text-centered">
+			<p>
+				if props.CustomText != "" {
+					{ props.CustomText }
+				} else {
+					{ T("UI.Footer") }
+				}
+				<span class="footer-version" title="Application version">{ props.Version }</span>
+			</p>
+			if props.ShowLinks {
+				<div class="footer-links mt-3">
+					<a href="/docs/user" class="footer-link">
+						<span class="icon-text">
+							<span class="icon is-small"><i class="fas fa-book"></i></span>
+							<span>{ T("Navbar.Documentation") }</span>
+						</span>
+					</a>
+					<span class="footer-separator">•</span>
+					<a href="/admin/appinfo" class="footer-link">
+						<span class="icon-text">
+							<span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+							<span>{ T("Admin.AppInfo.Title") }</span>
+						</span>
+					</a>
+				</div>
+			}
 		</div>
 	</footer>
 }

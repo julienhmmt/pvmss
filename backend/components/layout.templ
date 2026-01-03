@@ -23,6 +23,8 @@ templ Layout(props LayoutProps) {
 			<meta name="csrf-token" content={ props.CSRFToken }/>
 			<meta name="color-scheme" content="light"/>
 			<meta name="theme-color" content="#fff"/>
+			<meta name="apple-mobile-web-app-capable" content="yes"/>
+			<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 			<title>{ props.Title } - PVMSS</title>
 			<style>
 				body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; line-height: 1.5; }
@@ -30,10 +32,13 @@ templ Layout(props LayoutProps) {
 				.section { padding: 3rem 1.5rem; }
 				.container { max-width: 1344px; margin: 0 auto; }
 				.notification { padding: 1.25rem; margin-bottom: 1.5rem; }
+				.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
 			</style>
 			<link rel="stylesheet" href="/css/main.css"/>
 			<link rel="stylesheet" href="/css/fontawesome.min.css"/>
 			<link rel="stylesheet" href="/css/solid.min.css"/>
+			<link rel="preconnect" href="/webfonts/"/>
+			<link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
 		</head>
 		<body class="app-body">
 			if props.IsAuthenticated {
@@ -50,6 +55,7 @@ templ Layout(props LayoutProps) {
 				@props.Content
 			</main>
 			@Footer("v0.3.1", props.T)
+			<script src="/js/alpinejs.3.15.3.min.js" defer></script>
 			<script src="/js/notifications.js"></script>
 			<script src="/js/progress.js"></script>
 			<script src="/js/accessibility.js" defer></script>
