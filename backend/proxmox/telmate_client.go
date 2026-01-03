@@ -46,7 +46,12 @@ func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify boo
 		return nil, fmt.Errorf("failed to create base client for %s: %w", apiURL, err)
 	}
 
-	client.SetAPIToken(apiTokenID, apiTokenSecret)
+	var tokenID px.ApiTokenID
+	if err := tokenID.Parse(apiTokenID); err != nil {
+		return nil, fmt.Errorf("failed to parse API token ID: %w", err)
+	}
+
+	client.SetAPIToken(tokenID, px.ApiTokenSecret(apiTokenSecret))
 	client.AuthToken = fmt.Sprintf("%s=%s", apiTokenID, apiTokenSecret)
 
 	return client, nil

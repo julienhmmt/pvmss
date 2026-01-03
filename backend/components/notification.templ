@@ -1,0 +1,70 @@
+package components
+
+type NotificationType string
+
+const (
+	NotificationSuccess NotificationType = "success"
+	NotificationDanger  NotificationType = "danger"
+	NotificationWarning NotificationType = "warning"
+	NotificationInfo    NotificationType = "info"
+)
+
+type NotificationProps struct {
+	Type        NotificationType
+	Title       string
+	Message     string
+	Icon        string
+	Light       bool
+	Dismissible bool
+}
+
+func (n NotificationProps) GetIcon() string {
+	if n.Icon != "" {
+		return n.Icon
+	}
+	switch n.Type {
+	case NotificationSuccess:
+		return "fas fa-check-circle"
+	case NotificationDanger:
+		return "fas fa-exclamation-circle"
+	case NotificationWarning:
+		return "fas fa-exclamation-triangle"
+	case NotificationInfo:
+		return "fas fa-info-circle"
+	default:
+		return ""
+	}
+}
+
+templ Notification(props NotificationProps) {
+	<div
+		class={ "notification", "is-" + string(props.Type), templ.KV("is-light", props.Light) }
+		role="alert"
+		aria-live="polite"
+	>
+		if props.Dismissible {
+			<button class="delete" aria-label="Fermer la notification"></button>
+		}
+		<div class="notification-content">
+			<div class="notification-body">
+				if props.GetIcon() != "" {
+					<div class="notification-icon">
+						<span class="icon">
+							<i class={ props.GetIcon() }></i>
+						</span>
+					</div>
+				}
+				<div class="notification-text">
+					if props.Title != "" {
+						<div class="notification-heading">
+							<strong>{ props.Title }</strong>
+						</div>
+					}
+					if props.Message != "" {
+						<p class="notification-message">{ props.Message }</p>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}

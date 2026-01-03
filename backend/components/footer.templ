@@ -1,0 +1,9 @@
+package components
+
+templ Footer(version string, T TranslationFunc) {
+	<footer class="footer">
+		<div class="container has-text-centered">
+			<p>{ T("UI.Footer") } <span class="footer-version" title="Application version">{ version }</span></p>
+		</div>
+	</footer>
+}

@@ -14,6 +14,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/sync/errgroup"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -97,34 +98,59 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 
 	// Fetch VMs from the user's pool
 	vms := h.fetchUserVMs(r.Context(), client, poolName)
-	total, running, stopped, paused, unknown := computeVMStats(vms)
+	total, running, stopped, _, _ := computeVMStats(vms)
 
 	// Check for password update messages and form visibility
 	passwordSuccess := r.URL.Query().Get("password_success") == "1"
 	passwordError := r.URL.Query().Get("password_error")
 	showPasswordForm := r.URL.Query().Get("show_password_form") == "1" || passwordError != ""
 
-	// Prepare template data
-	data := map[string]interface{}{
-		"Title":            ctx.Translate("Profile.Title"),
-		"Username":         username,
-		"PoolName":         poolName,
-		"VMs":              vms,
-		"HasVMs":           total > 0,
-		"TotalVMs":         total,
-		"RunningVMs":       running,
-		"StoppedVMs":       stopped,
-		"PausedVMs":        paused,
-		"UnknownVMs":       unknown,
-		"Lang":             i18n.GetLanguage(r),
-		"IsAuthenticated":  true,
-		"IsAdmin":          ctx.IsAdmin(),
-		"PasswordSuccess":  passwordSuccess,
-		"PasswordError":    passwordError,
-		"ShowPasswordForm": showPasswordForm,
+	// Get CSRF token
+	csrfToken, err := ctx.GetCSRFToken()
+	if err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to get CSRF token")
+		csrfToken = ""
 	}
 
-	ctx.RenderTemplate("profile", data)
+	// Convert VMs to ProfileVM format
+	profileVMs := make([]components.ProfileVM, len(vms))
+	for i, vm := range vms {
+		profileVMs[i] = components.ProfileVM{
+			VMID:        vm.VMID,
+			Name:        vm.Name,
+			Description: vm.Description,
+			Node:        vm.Node,
+			Status:      vm.Status,
+		}
+	}
+
+	// Prepare Templ data
+	profileData := components.ProfileData{
+		Username:         username,
+		PoolName:         poolName,
+		TotalVMs:         total,
+		RunningVMs:       running,
+		StoppedVMs:       stopped,
+		HasVMs:           total > 0,
+		VMs:              profileVMs,
+		ProxmoxError:     false,
+		PasswordSuccess:  passwordSuccess,
+		PasswordError:    passwordError,
+		ShowPasswordForm: showPasswordForm,
+		CSRFToken:        csrfToken,
+		Lang:             i18n.GetLanguage(r),
+	}
+
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
+	}
+
+	// Render with Templ
+	if err := components.ProfilePage(profileData, translateFunc).Render(r.Context(), w); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to render profile page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // GetProfileVMsAPI returns the user's VM list as JSON for asynchronous refreshes

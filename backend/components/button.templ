@@ -1,0 +1,62 @@
+package components
+
+type ButtonType string
+
+const (
+	ButtonPrimary ButtonType = "primary"
+	ButtonSuccess ButtonType = "success"
+	ButtonDanger  ButtonType = "danger"
+	ButtonWarning ButtonType = "warning"
+	ButtonInfo    ButtonType = "info"
+	ButtonLight   ButtonType = "light"
+)
+
+type ButtonSize string
+
+const (
+	ButtonSmall  ButtonSize = "small"
+	ButtonMedium ButtonSize = "medium"
+	ButtonLarge  ButtonSize = "large"
+)
+
+type ButtonProps struct {
+	Text     string
+	Icon     string
+	Href     string
+	Type     ButtonType
+	Size     ButtonSize
+	Disabled bool
+	Class    string
+}
+
+templ Button(props ButtonProps) {
+	if props.Href != "" {
+		<a
+			class={ "button", templ.KV("is-"+string(props.Type), props.Type != ""), templ.KV("is-"+string(props.Size), props.Size != ""), props.Class }
+			href={ templ.SafeURL(props.Href) }
+			if props.Disabled {
+				aria-disabled="true"
+				tabindex="-1"
+			}
+		>
+			if props.Icon != "" {
+				<span class="icon is-small">
+					<i class={ props.Icon }></i>
+				</span>
+			}
+			<span>{ props.Text }</span>
+		</a>
+	} else {
+		<button
+			class={ "button", templ.KV("is-"+string(props.Type), props.Type != ""), templ.KV("is-"+string(props.Size), props.Size != ""), props.Class }
+			disabled?={ props.Disabled }
+		>
+			if props.Icon != "" {
+				<span class="icon is-small">
+					<i class={ props.Icon }></i>
+				</span>
+			}
+			<span>{ props.Text }</span>
+		</button>
+	}
+}
