@@ -16,6 +16,7 @@ type NotificationProps struct {
 	Icon        string
 	Light       bool
 	Dismissible bool
+	Class       string
 }
 
 func (n NotificationProps) GetIcon() string {
@@ -38,7 +39,7 @@ func (n NotificationProps) GetIcon() string {
 
 templ Notification(props NotificationProps) {
 	<div
-		class={ "notification", "is-" + string(props.Type), templ.KV("is-light", props.Light) }
+		class={ "notification", "is-" + string(props.Type), templ.KV("is-light", props.Light), props.Class }
 		role="alert"
 		aria-live="polite"
 	>

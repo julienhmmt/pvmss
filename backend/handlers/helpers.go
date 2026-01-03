@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
+	"github.com/rs/zerolog/log"
 )
 
 // ValidateMethodAndParseForm validates HTTP method and parses form data
@@ -115,17 +117,26 @@ func RedirectWithError(w http.ResponseWriter, r *http.Request, targetURL, messag
 func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message string) {
 	// Prepare minimal data for the error template
 	localizer := i18n.GetLocalizerFromRequest(r)
-	data := map[string]interface{}{
-		"Title":      i18n.Localize(localizer, "Error.Title"),
-		"StatusCode": status,
-		"Error":      message,
+	// Best-effort return URL: prefer Referer, fallback to current path
+	returnURL := ""
+	if ref := r.Referer(); ref != "" {
+		returnURL = ref
+	} else if r.URL != nil {
+		returnURL = r.URL.Path
 	}
 
-	// Best-effort return URL: prefer Referer, fallback to current path
-	if ref := r.Referer(); ref != "" {
-		data["ReturnURL"] = ref
-	} else if r.URL != nil {
-		data["ReturnURL"] = r.URL.Path
+	errorData := components.ErrorData{
+		Title:      i18n.Localize(localizer, "Error.Title"),
+		StatusCode: status,
+		Error:      message,
+		ReturnURL:  returnURL,
+		Lang:       i18n.GetLanguage(r),
+	}
+
+	// Translation function wrapper
+	ctx := NewHandlerContext(w, r, "RespondWithTemplateError")
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
 	}
 
 	// Ensure dynamic error pages are not cached
@@ -133,8 +144,12 @@ func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message
 	// Set HTTP status before rendering the template body
 	w.WriteHeader(status)
 
-	// Render the dedicated error content inside the standard layout
-	renderTemplateInternal(w, r, "error", data)
+	// Render with Templ
+	if err := components.ErrorPage(errorData, translateFunc).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render error page")
+		// Fallback to plain text if Templ rendering fails
+		http.Error(w, message, status)
+	}
 }
 
 // HandlerContext provides common context for handlers

@@ -123,7 +123,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Route static assets and /health to the public handler (no session)
-		if isStaticPath(r.URL.Path) || r.URL.Path == "/health" || r.URL.Path == "/templ-demo" {
+		if isStaticPath(r.URL.Path) || r.URL.Path == "/health" {
 			publicHandler.ServeHTTP(w, r)
 		} else {
 			// All other requests go to the main app handler with the full middleware stack

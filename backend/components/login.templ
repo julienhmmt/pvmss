@@ -1,0 +1,221 @@
+package components
+
+type LoginData struct {
+	Warning     string
+	Error       string
+	CSRFToken   string
+	ReturnURL   string
+	RedirectURL string
+	Lang        string
+	IsAdmin     bool
+}
+
+templ LoginPage(data LoginData, T TranslationFunc) {
+	<!DOCTYPE html>
+	<html lang={ data.Lang }>
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ T("Login.UserLogin") }</title>
+			<link rel="stylesheet" href="/css/bulma.min.css"/>
+			<link rel="stylesheet" href="/css/fontawesome.min.css"/>
+			<link rel="stylesheet" href="/css/solid.min.css"/>
+			<link rel="stylesheet" href="/css/brands.min.css"/>
+			<link rel="stylesheet" href="/css/login.css"/>
+			<link rel="stylesheet" href="/css/style.css"/>
+			<link rel="icon" type="image/png" href="/favicon.png"/>
+		</head>
+		<body class="login-body">
+			@loginContent(data, T)
+		</body>
+	</html>
+}
+
+templ loginContent(data LoginData, T TranslationFunc) {
+	<section class="section min-h-100vh flex-center" style="padding: 2rem 1rem;">
+		<div class="container">
+			<div class="columns is-centered">
+				<div class="column is-10-mobile is-8-tablet is-6-desktop is-5-widescreen">
+					<div class="card admin-card login-card">
+						<header class="card-header brand-header is-align-items-center login-header">
+							<p class="card-header-title login-title">
+								if data.IsAdmin {
+									{ T("Login.AdminLogin") }
+								} else {
+									{ T("Login.UserLogin") }
+								}
+							</p>
+						</header>
+						<div class="card-content login-content">
+							if data.Warning != "" {
+								@Notification(NotificationProps{
+									Type:        NotificationInfo,
+									Title:       T("Common.Information"),
+									Message:     data.Warning,
+									Icon:        "fas fa-info-circle",
+									Dismissible: true,
+								})
+							}
+							if data.Error != "" {
+								@Notification(NotificationProps{
+									Type:        NotificationDanger,
+									Title:       T("Common.Error"),
+									Message:     data.Error,
+									Icon:        "fas fa-exclamation-triangle",
+									Dismissible: true,
+								})
+							}
+							if data.IsAdmin {
+								@adminLoginForm(data, T)
+							} else {
+								@userLoginForm(data, T)
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+}
+
+templ userLoginForm(data LoginData, T TranslationFunc) {
+	<form method="post" action="/login" novalidate>
+		<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+		<input type="hidden" name="login_type" value="user"/>
+		if data.ReturnURL != "" {
+			<input type="hidden" name="return" value={ data.ReturnURL }/>
+		}
+		if data.RedirectURL != "" {
+			<input type="hidden" name="redirect" value={ data.RedirectURL }/>
+		}
+		<div class="field">
+			<label class="form-label" for="username">
+				<span class="form-label-icon">
+					<span class="icon"><i class="fas fa-user"></i></span>
+				</span>
+				<span class="form-label-text">{ T("Login.UsernameLabel") }</span>
+			</label>
+			<div class="control">
+				<input
+					class="input is-large input-lg"
+					type="text"
+					id="username"
+					name="username"
+					required
+					autofocus
+					autocomplete="username"
+					aria-required="true"
+					aria-describedby="username-help"
+					minlength="3"
+					maxlength="50"
+					pattern="[a-zA-Z0-9_\-]+"
+					placeholder={ T("Login.UsernameLabel") }
+				/>
+			</div>
+		</div>
+		<div class="field">
+			<label class="form-label" for="password">
+				<span class="form-label-icon">
+					<span class="icon"><i class="fas fa-lock"></i></span>
+				</span>
+				<span class="form-label-text">{ T("Login.PasswordLabel") }</span>
+			</label>
+			<div class="control">
+				<input
+					class="input is-large input-lg"
+					type="password"
+					id="password"
+					name="password"
+					required
+					autocomplete="current-password"
+					aria-required="true"
+					aria-describedby="password-help"
+					minlength="6"
+					maxlength="128"
+					placeholder={ T("Login.PasswordLabel") }
+				/>
+			</div>
+		</div>
+		<div class="field mt-5">
+			<div class="control">
+				<button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label={ T("Login.Button") }>
+					<span class="icon is-medium" aria-hidden="true">
+						<i class="fas fa-sign-in-alt"></i>
+					</span>
+					<span>{ T("Login.Button") }</span>
+				</button>
+			</div>
+		</div>
+	</form>
+	<div class="has-text-centered divider-with-text">
+		<hr/>
+		<span></span>
+	</div>
+	<div class="has-text-centered">
+		<a class="button is-light is-fullwidth login-alt-button" href="/admin/login">
+			<span class="icon has-text-primary">
+				<i class="fas fa-shield-alt"></i>
+			</span>
+			<span>{ T("Login.AdminLoginLink") }</span>
+		</a>
+	</div>
+}
+
+templ adminLoginForm(data LoginData, T TranslationFunc) {
+	<form method="post" action="/admin/login" novalidate>
+		<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+		<input type="hidden" name="login_type" value="admin"/>
+		if data.ReturnURL != "" {
+			<input type="hidden" name="return" value={ data.ReturnURL }/>
+		}
+		if data.RedirectURL != "" {
+			<input type="hidden" name="redirect" value={ data.RedirectURL }/>
+		}
+		<div class="field">
+			<label class="form-label" for="password">
+				<span class="form-label-icon">
+					<span class="icon"><i class="fas fa-lock"></i></span>
+				</span>
+				<span class="form-label-text">{ T("Login.AdminPasswordLabel") }</span>
+			</label>
+			<div class="control">
+				<input
+					class="input is-large input-lg"
+					type="password"
+					id="password"
+					name="password"
+					required
+					autofocus
+					autocomplete="current-password"
+					aria-required="true"
+					aria-describedby="password-help"
+					minlength="6"
+					maxlength="128"
+					placeholder={ T("Login.AdminPasswordLabel") }
+				/>
+			</div>
+		</div>
+		<div class="field mt-5">
+			<div class="control">
+				<button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label={ T("Login.Button") }>
+					<span class="icon is-medium" aria-hidden="true">
+						<i class="fas fa-sign-in-alt"></i>
+					</span>
+					<span>{ T("Login.Button") }</span>
+				</button>
+			</div>
+		</div>
+	</form>
+	<div class="has-text-centered divider-with-text">
+		<hr/>
+		<span></span>
+	</div>
+	<div class="has-text-centered">
+		<a class="button is-light is-fullwidth login-alt-button" href="/login">
+			<span class="icon has-text-primary">
+				<i class="fas fa-user"></i>
+			</span>
+			<span>{ T("Login.UserLoginLink") }</span>
+		</a>
+	</div>
+}
