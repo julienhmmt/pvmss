@@ -752,13 +752,13 @@ func ensureLocalPath(urlStr string) string {
 		return "/"
 	}
 
-	// Normalize backslashes to forward slashes to avoid browser-dependent behavior.
+	// Normalize backslashes to forward slashes to avoid browser quirks.
 	urlStr = strings.ReplaceAll(urlStr, "\\", "/")
 
-	// Reject obvious attempts to smuggle in a scheme or encoded separators.
 	lower := strings.ToLower(urlStr)
-	if strings.HasPrefix(lower, "//") ||
-		strings.Contains(lower, "://") || // possible start of scheme
+	// Reject raw or encoded schemes or protocol-relative URLs.
+	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
+		strings.Contains(lower, "://") ||
 		strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || // encoded slashes
 		strings.Contains(lower, "%3a") { // encoded colon
 		return "/"
@@ -770,8 +770,8 @@ func ensureLocalPath(urlStr string) string {
 		return "/"
 	}
 
-	// Allow only *relative* paths (no scheme/host allowed).
-	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
+	// Allow only *relative* URLs without scheme/host.
+	if parsed.IsAbs() || parsed.Scheme != "" || parsed.Host != "" {
 		return "/"
 	}
 
@@ -780,25 +780,20 @@ func ensureLocalPath(urlStr string) string {
 		return "/"
 	}
 
-	// Ensure leading slash for local paths.
-	if redirectPath[0] != '/' {
+	// Ensure leading slash, then canonicalize and prevent traversal.
+	if !strings.HasPrefix(redirectPath, "/") {
 		redirectPath = "/" + redirectPath
 	}
 
-	// Canonicalize the path and collapse any traversal like "/a/../b".
 	cleanPath := pathpkg.Clean(redirectPath)
 
-	// Clean should still leave a leading slash for absolute-ish paths.
-	if !strings.HasPrefix(cleanPath, "/") {
+	// Clean path must still be absolute and must not contain traversal.
+	if !strings.HasPrefix(cleanPath, "/") || strings.Contains(cleanPath, "..") {
 		return "/"
 	}
 
-	// Prevent directory traversal: after cleaning, no ".." segments should remain.
-	if strings.Contains(cleanPath, "..") {
-		return "/"
-	}
+	// Prevent redirecting to a path starting with a second slash (//evil).
 
-	// Prevent redirecting to a double-slash (which some browsers may interpret as protocol-relative).
 	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
 		return "/"
 	}
