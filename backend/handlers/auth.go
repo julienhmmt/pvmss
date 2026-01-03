@@ -767,7 +767,7 @@ func ensureLocalPath(urlStr string) string {
 
 	parsed, err := url.Parse(urlStr)
 	if err != nil {
-		// Malformed, default to safe path
+		// Malformed, default to a safe path.
 		return "/"
 	}
 
