@@ -746,15 +746,16 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /.
+// ensureLocalPath ensures the URL is a local path starting with /, on the same host.
 func ensureLocalPath(urlStr string) string {
 	if urlStr == "" {
 		return "/"
 	}
 
-	// Normalize backslashes to forward slashes to avoid browser quirks.
+	// Normalize backslashes to forward slashes before parsing
 	urlStr = strings.ReplaceAll(urlStr, "\\", "/")
 
+	// Quickly reject obvious external or scheme-based URLs
 	lower := strings.ToLower(urlStr)
 	// Reject raw or encoded schemes or protocol-relative URLs.
 	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
@@ -797,7 +798,17 @@ func ensureLocalPath(urlStr string) string {
 	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
 		return "/"
 	}
-	return cleanPath
+
+	// Re-attach query and fragment only after the path is validated
+	result := cleanPath
+	if parsed.RawQuery != "" {
+		result = result + "?" + parsed.RawQuery
+	}
+	if parsed.Fragment != "" {
+		result = result + "#" + parsed.Fragment
+	}
+
+	return result
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
