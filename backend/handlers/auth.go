@@ -757,9 +757,11 @@ func ensureLocalPath(urlStr string) string {
 
 	// Quickly reject obvious external or scheme-based URLs
 	lower := strings.ToLower(urlStr)
+	// Reject raw or encoded schemes or protocol-relative URLs.
 	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
-		strings.Contains(lower, "%3a") || // encoded colon
-		strings.Contains(lower, "://") { // possible start of scheme
+		strings.Contains(lower, "://") ||
+		strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || // encoded slashes
+		strings.Contains(lower, "%3a") { // encoded colon
 		return "/"
 	}
 
@@ -769,8 +771,8 @@ func ensureLocalPath(urlStr string) string {
 		return "/"
 	}
 
-	// Allow only *relative* URLs: no scheme, no host
-	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
+	// Allow only *relative* URLs without scheme/host.
+	if parsed.IsAbs() || parsed.Scheme != "" || parsed.Host != "" {
 		return "/"
 	}
 
@@ -779,20 +781,20 @@ func ensureLocalPath(urlStr string) string {
 		return "/"
 	}
 
-	// Ensure leading slash for application-local paths
-	if redirectPath[0] != '/' {
+	// Ensure leading slash, then canonicalize and prevent traversal.
+	if !strings.HasPrefix(redirectPath, "/") {
 		redirectPath = "/" + redirectPath
 	}
 
-	// Canonicalize the path
 	cleanPath := pathpkg.Clean(redirectPath)
 
-	// Prevent directory traversal outside the root
-	if cleanPath == "/.." || strings.HasPrefix(cleanPath, "/../") {
+	// Clean path must still be absolute and must not contain traversal.
+	if !strings.HasPrefix(cleanPath, "/") || strings.Contains(cleanPath, "..") {
 		return "/"
 	}
 
-	// Prevent redirecting to a path that browsers may treat as protocol-relative
+	// Prevent redirecting to a path starting with a second slash (//evil).
+
 	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
 		return "/"
 	}
