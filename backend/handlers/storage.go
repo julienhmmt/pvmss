@@ -140,9 +140,6 @@ func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[
 		allocSize := itemLen + 1
 		// allocSize is now capped at maxStorageItemKeys
 
-
-
-
 		cpy := make(map[string]interface{}, allocSize)
 		for k, v := range item {
 			cpy[k] = v

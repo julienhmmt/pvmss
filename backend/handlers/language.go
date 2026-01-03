@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 	"net/url"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
