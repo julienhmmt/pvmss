@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	pathpkg "path"
 	"strings"
 	"time"
 
@@ -745,15 +746,7 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /, matches a whitelist of allowed endpoints.
-var allowedRedirectPaths = map[string]struct{}{
-	"/admin/nodes":     {},
-	"/admin/dashboard": {},
-	"/admin/settings":  {},
-	"/user/profile":    {},
-	"/":                {},
-}
-
+// ensureLocalPath ensures the URL is a local path starting with /.
 func ensureLocalPath(urlStr string) string {
 	if urlStr == "" {
 		return "/"
@@ -779,21 +772,27 @@ func ensureLocalPath(urlStr string) string {
 	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
 		return "/"
 	}
-	path := parsed.Path
 	// Forbid dangerous things like "//evil" or empty path
-	if path == "" || (len(path) > 1 && (path[1] == '/' || path[1] == '\\')) {
+	redirectPath := parsed.Path
+	if redirectPath == "" || (len(redirectPath) > 1 && (redirectPath[1] == '/' || redirectPath[1] == '\\')) {
 		return "/"
 	}
-	// Always start with a single /
-	if path == "" || path[0] != '/' {
-		path = "/" + path
+	// Canonicalize the path and ensure no directory traversal
+	cleanPath := redirectPath
+	if redirectPath[0] != '/' {
+		cleanPath = "/" + redirectPath
 	}
-	// Final whitelist check
-	if _, ok := allowedRedirectPaths[path]; ok {
-		return path
+	cleanPath = "/" + strings.TrimLeft(strings.TrimPrefix(url.PathEscape(cleanPath), "/"), "/") // prevent double leading slashes
+	cleanPath = pathpkg.Clean(cleanPath)                                                        // collapse any sneaky traversal
+	// Prevent directory traversal
+	if strings.Contains(cleanPath, "..") {
+		return "/"
 	}
-	// Default to safe path if not allowed
-	return "/"
+	// Prevent redirecting to a double-slash (which browsers may interpret as external schema)
+	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
+		return "/"
+	}
+	return cleanPath
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
