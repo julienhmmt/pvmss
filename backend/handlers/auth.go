@@ -746,18 +746,18 @@ func getRedirectURL(r *http.Request, defaultURL string) string {
 	return ensureLocalPath(defaultURL)
 }
 
-// ensureLocalPath ensures the URL is a local path starting with /.
+// ensureLocalPath ensures the URL is a local path starting with /, on the same host.
 func ensureLocalPath(urlStr string) string {
 	if urlStr == "" {
 		return "/"
 	}
-	// Replace backslashes with forward slashes to avoid confusion:
+
+	// Normalize backslashes to forward slashes before parsing
 	urlStr = strings.ReplaceAll(urlStr, "\\", "/")
 
-	// Reject both raw and encoded double slashes, encoded colon, etc
+	// Quickly reject obvious external or scheme-based URLs
 	lower := strings.ToLower(urlStr)
 	if strings.HasPrefix(lower, "//") || strings.HasPrefix(lower, "/\\") ||
-		strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || // encoded slashes
 		strings.Contains(lower, "%3a") || // encoded colon
 		strings.Contains(lower, "://") { // possible start of scheme
 		return "/"
@@ -768,31 +768,45 @@ func ensureLocalPath(urlStr string) string {
 		// Malformed, default to safe path
 		return "/"
 	}
-	// Allow only *relative* paths (no scheme/host allowed)
+
+	// Allow only *relative* URLs: no scheme, no host
 	if parsed.IsAbs() || parsed.Host != "" || parsed.Scheme != "" {
 		return "/"
 	}
-	// Forbid dangerous things like "//evil" or empty path
+
 	redirectPath := parsed.Path
-	if redirectPath == "" || (len(redirectPath) > 1 && (redirectPath[1] == '/' || redirectPath[1] == '\\')) {
+	if redirectPath == "" {
 		return "/"
 	}
-	// Canonicalize the path and ensure no directory traversal
-	cleanPath := redirectPath
+
+	// Ensure leading slash for application-local paths
 	if redirectPath[0] != '/' {
-		cleanPath = "/" + redirectPath
+		redirectPath = "/" + redirectPath
 	}
-	cleanPath = "/" + strings.TrimLeft(strings.TrimPrefix(url.PathEscape(cleanPath), "/"), "/") // prevent double leading slashes
-	cleanPath = pathpkg.Clean(cleanPath)                                                        // collapse any sneaky traversal
-	// Prevent directory traversal
-	if strings.Contains(cleanPath, "..") {
+
+	// Canonicalize the path
+	cleanPath := pathpkg.Clean(redirectPath)
+
+	// Prevent directory traversal outside the root
+	if cleanPath == "/.." || strings.HasPrefix(cleanPath, "/../") {
 		return "/"
 	}
-	// Prevent redirecting to a double-slash (which browsers may interpret as external schema)
+
+	// Prevent redirecting to a path that browsers may treat as protocol-relative
 	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
 		return "/"
 	}
-	return cleanPath
+
+	// Re-attach query and fragment only after the path is validated
+	result := cleanPath
+	if parsed.RawQuery != "" {
+		result = result + "?" + parsed.RawQuery
+	}
+	if parsed.Fragment != "" {
+		result = result + "#" + parsed.Fragment
+	}
+
+	return result
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
