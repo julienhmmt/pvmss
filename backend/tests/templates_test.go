@@ -44,21 +44,10 @@ func TestTemplateFilesExist(t *testing.T) {
 	}
 
 	expectedTemplates := []string{
-		"admin_appinfo.html",
-		"admin_base.html",
-		"admin_cloudinit.html",
-		"admin_iso.html",
-		"admin_limits.html",
-		"admin_nodes.html",
-		"admin_storage.html",
-		"admin_tags.html",
-		"admin_userpool_delete.html",
-		"admin_userpool.html",
-		"admin_vmbr.html",
-		"admin_vms.html",
 		"layout.html",
 		"navbar.html",
 		// Note: Migrated to Templ components:
+		// - All admin_*.html files (admin_appinfo, admin_base, admin_cloudinit, etc.)
 		// - vm_create.html, vm_details.html
 		// - login.html, admin_login.html, search.html
 		// - docs.html, error.html, index.html, profile.html, vm_delete_confirm.html
@@ -184,6 +173,8 @@ func TestTemplateFileNaming(t *testing.T) {
 }
 
 // TestAdminTemplatesHaveAdminPrefix tests that admin templates are properly named
+// Note: Admin templates have been migrated to Templ components in backend/components/
+// This test now verifies that no legacy admin HTML templates remain in frontend/
 func TestAdminTemplatesHaveAdminPrefix(t *testing.T) {
 	frontendDir := findFrontendDirectory()
 	if frontendDir == "" {
@@ -201,8 +192,10 @@ func TestAdminTemplatesHaveAdminPrefix(t *testing.T) {
 		}
 	}
 
-	assert.NotEmpty(t, adminTemplates, "Should have at least one admin template")
-	t.Logf("Found %d admin templates", len(adminTemplates))
+	// Admin templates have been migrated to Templ components
+	// No legacy admin HTML templates should remain
+	assert.Empty(t, adminTemplates, "Legacy admin HTML templates should be removed (migrated to Templ)")
+	t.Logf("Found %d legacy admin templates (expected 0)", len(adminTemplates))
 }
 
 // TestTemplatesFindFunction tests the FindTemplateFiles function

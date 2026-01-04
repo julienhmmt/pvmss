@@ -14,7 +14,6 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
-	"github.com/rs/zerolog/log"
 )
 
 // ValidateMethodAndParseForm validates HTTP method and parses form data
@@ -146,7 +145,7 @@ func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message
 
 	// Render with Templ
 	if err := components.ErrorPage(errorData, translateFunc).Render(r.Context(), w); err != nil {
-		log.Error().Err(err).Msg("Failed to render error page")
+		logger.Get().Error().Err(err).Msg("Failed to render error page")
 		// Fallback to plain text if Templ rendering fails
 		http.Error(w, message, status)
 	}

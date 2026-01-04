@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -237,15 +238,19 @@ func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("tags_delete"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("TitleKey", "Admin.Tags.Title"),
-		WithData("Tag", tagName),
-	).ToMap()
-	renderTemplateInternal(w, r, "admin_tags_delete", data)
+	// Build Templ data
+	tagDeleteData := components.AdminTagDeleteData{
+		Username:  getUsernameFromSession(r),
+		Lang:      i18n.GetLanguage(r),
+		CSRFToken: getCSRFTokenFromContext(r),
+		Tag:       tagName,
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminTagDeletePage(tagDeleteData, T).Render(r.Context(), w); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to render admin tag delete page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // TagsPageHandler handles the rendering of the admin tags page.
@@ -397,8 +402,21 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		opts = append(opts, WithError(errorMsg))
 	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_tags", data)
+	// Build Templ data
+	tagsTemplData := components.AdminTagsData{
+		Username:    getUsernameFromSession(r),
+		Lang:        i18n.GetLanguage(r),
+		CSRFToken:   getCSRFTokenFromContext(r),
+		CurrentPath: "/admin/tags",
+		Tags:        tags,
+		TagCounts:   tagCounts,
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminTagsPage(tagsTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin tags page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // RegisterRoutes registers the routes for tag management.

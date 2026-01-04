@@ -214,3 +214,61 @@ templ existingUserPoolsSection(pools []UserPoolInfo, T TranslationFunc) {
 		</div>
 	</div>
 }
+
+type AdminUserPoolDeleteData struct {
+	Username  string
+	Lang      string
+	CSRFToken string
+	Pool      string
+	User      string
+}
+
+templ AdminUserPoolDeletePage(data AdminUserPoolDeleteData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.UserPool.DeleteTitle"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/userpool",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminUserPoolDeleteContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminUserPoolDeleteContent(data AdminUserPoolDeleteData, T TranslationFunc) {
+	@AdminPageHeader(T("Admin.UserPool.DeleteTitle"), "fas fa-user-times", T("Admin.UserPool.DeleteConfirmMessage"), nil)
+	<div class="box admin-box">
+		@Notification(NotificationProps{
+			Type:        NotificationWarning,
+			Title:       T("Common.Warning"),
+			Message:     fmt.Sprintf("%s: %s", T("Admin.UserPool.DeleteConfirmMessage"), data.User),
+			Icon:        "fas fa-exclamation-triangle",
+			Dismissible: true,
+		})
+		<div class="level">
+			<div class="level-left">
+				<div class="level-item">
+					<span class="tag is-danger is-large">{ data.Pool }</span>
+				</div>
+			</div>
+			<div class="level-right">
+				<div class="level-item">
+					<form method="POST" action="/admin/userpool/delete" class="is-inline">
+						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+						<input type="hidden" name="pool" value={ data.Pool }/>
+						<button type="submit" class="button is-danger has-text-white">
+							<span class="icon"><i class="fas fa-trash"></i></span>
+							<span>{ T("Common.Yes") }</span>
+						</button>
+					</form>
+				</div>
+				<div class="level-item">
+					<a href="/admin/userpool" class="button">
+						<span class="icon"><i class="fas fa-times"></i></span>
+						<span>{ T("Common.No") }</span>
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+}

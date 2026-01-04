@@ -88,7 +88,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDelete.ConfirmTitle"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 36, Col: 109}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 36, Col: 109}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -115,7 +115,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", data.VMID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 51, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 51, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -128,7 +128,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 54, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 54, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -141,7 +141,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 55, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 55, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -154,7 +154,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Node"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 58, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 58, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -167,7 +167,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.Node)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 59, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 59, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -180,7 +180,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Status"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 62, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 62, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -204,7 +204,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDelete.WarningTitle"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 71, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 71, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -217,7 +217,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDelete.Warning1"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 73, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 73, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -230,7 +230,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDelete.Warning2"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 74, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 74, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -243,7 +243,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDelete.Warning3"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 75, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 75, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -256,7 +256,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDelete.Question"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 77, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 77, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -269,7 +269,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var15 templ.SafeURL
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(fmt.Sprintf("/vm/details/%d?refresh=1", data.VMID)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 80, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 80, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -282,7 +282,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.No"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 82, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 82, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -295,7 +295,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 85, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 85, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -308,7 +308,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", data.VMID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 86, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 86, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -321,7 +321,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(data.Node)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 87, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 87, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -334,7 +334,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Yes"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 90, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 90, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -347,7 +347,7 @@ func vmDeleteConfirmContent(data VMDeleteData, T TranslationFunc) templ.Componen
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDelete.BackInfo"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_delete_confirm.templ`, Line: 99, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_delete_confirm.templ`, Line: 99, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {

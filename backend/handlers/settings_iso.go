@@ -14,9 +14,12 @@ import (
 
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
+	"pvmss/components"
+	"pvmss/i18n"
 	appI18n "pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 // ISOEntry represents an ISO file entry
@@ -308,9 +311,12 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 
 	// Return early if Proxmox not connected
 	if !data["ProxmoxConnected"].(bool) {
-		data["Warning"] = true
-		data["WarningMessage"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError")
-		renderTemplateInternal(w, r, "admin_iso", data)
+		isoTemplData := convertToAdminISOData(r, []ISOEntry{}, h.stateManager.GetSettings())
+		T := getTranslationFunc(r)
+		if err := components.AdminISOPage(isoTemplData, T).Render(r.Context(), w); err != nil {
+			log.Error().Err(err).Msg("Failed to render admin ISO page")
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -321,9 +327,12 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	isos, failedStorages, failedStorageDetails, err := h.fetchAllISOs(ctx, true)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to fetch ISOs for page")
-		data["Warning"] = true
-		data["WarningMessage"] = appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.FailedToGetResources")
-		renderTemplateInternal(w, r, "admin_iso", data)
+		isoTemplData := convertToAdminISOData(r, []ISOEntry{}, h.stateManager.GetSettings())
+		T := getTranslationFunc(r)
+		if renderErr := components.AdminISOPage(isoTemplData, T).Render(r.Context(), w); renderErr != nil {
+			log.Error().Err(renderErr).Msg("Failed to render admin ISO page")
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -337,20 +346,20 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 				storageName := parts[0]
 				nodeName := strings.TrimSuffix(parts[1], ")")
 
-				localizer := appI18n.GetLocalizerFromRequest(r)
+				localizer := i18n.GetLocalizerFromRequest(r)
 				data["WarningMessage"] = fmt.Sprintf("%s: %s",
-					appI18n.Localize(localizer, "Admin.ISO.PartialStorageFailure"),
-					fmt.Sprintf(appI18n.Localize(localizer, "Admin.ISO.StorageUnavailableOnNode"), storageName, nodeName))
+					i18n.Localize(localizer, "Admin.ISO.PartialStorageFailure"),
+					fmt.Sprintf(i18n.Localize(localizer, "Admin.ISO.StorageUnavailableOnNode"), storageName, nodeName))
 			} else {
 				// Multiple storage failures
 				details := strings.Join(failedStorageDetails, ", ")
 				data["WarningMessage"] = fmt.Sprintf("%s: %s",
-					appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Admin.ISO.PartialStorageFailure"),
+					i18n.Localize(i18n.GetLocalizerFromRequest(r), "Admin.ISO.PartialStorageFailure"),
 					details)
 			}
 		} else {
 			data["WarningMessage"] = fmt.Sprintf("%s: %d storage(s) failed",
-				appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Admin.ISO.PartialStorageFailure"),
+				i18n.Localize(i18n.GetLocalizerFromRequest(r), "Admin.ISO.PartialStorageFailure"),
 				failedStorages)
 		}
 	}
@@ -414,7 +423,14 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		Str("operation", "render_iso_page").
 		Str("reason", "page_rendered").
 		Msg("ISO page rendered")
-	renderTemplateInternal(w, r, "admin_iso", data)
+
+	// Convert to Templ data
+	isoTemplData := convertToAdminISOData(r, isos, h.stateManager.GetSettings())
+	T := getTranslationFunc(r)
+	if err := components.AdminISOPage(isoTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin ISO page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // ToggleISOHandler toggles a single ISO enabled state (auto-save per click, no JS)
@@ -430,13 +446,13 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 
 	if volid == "" {
 		log.Error().Msg("Missing volid parameter")
-		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
 		return
 	}
 
 	if action == "" {
 		log.Error().Msg("Missing action parameter")
-		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredParameters"), http.StatusBadRequest)
 		return
 	}
 
@@ -449,7 +465,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 		enabled = false
 	default:
 		log.Error().Str("action", action).Msg("Invalid action parameter")
-		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"), http.StatusBadRequest)
 		return
 	}
 
@@ -465,7 +481,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	settings := h.stateManager.GetSettings()
 	if settings == nil {
 		log.Error().Msg("Settings not available")
-		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.SettingsUnavailable"), http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SettingsUnavailable"), http.StatusInternalServerError)
 		return
 	}
 
@@ -493,7 +509,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 	settings.ISOs = newISOs
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
-		http.Error(w, appI18n.Localize(appI18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
+		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
 
@@ -553,4 +569,54 @@ func isStorageAvailableOnNode(nodesField, nodeName string) bool {
 	}
 
 	return false
+}
+
+func convertToAdminISOData(r *http.Request, isos []ISOEntry, settings *state.AppSettings) components.AdminISOData {
+	result := components.AdminISOData{
+		Username:  getUsernameFromSession(r),
+		Lang:      i18n.GetLanguage(r),
+		CSRFToken: getCSRFTokenFromContext(r),
+	}
+
+	// Build enabled ISOs map
+	enabledISOs := make(map[string]bool)
+	if settings != nil {
+		for _, iso := range settings.ISOs {
+			enabledISOs[iso] = true
+		}
+	}
+	result.EnabledISOs = enabledISOs
+
+	// Group ISOs by node
+	if len(isos) > 0 {
+		groups := make([]components.ISOGroupByNode, 0)
+		currentNode := isos[0].Node
+		currentGroup := components.ISOGroupByNode{Node: currentNode, ISOs: []components.ISOInfo{}}
+
+		for _, iso := range isos {
+			if iso.Node != currentNode {
+				groups = append(groups, currentGroup)
+				currentNode = iso.Node
+				currentGroup = components.ISOGroupByNode{Node: currentNode, ISOs: []components.ISOInfo{}}
+			}
+			size := int64(0)
+			switch v := iso.Size.(type) {
+			case float64:
+				size = int64(v)
+			case int64:
+				size = v
+			case int:
+				size = int64(v)
+			}
+			currentGroup.ISOs = append(currentGroup.ISOs, components.ISOInfo{
+				Volid:   iso.Volid,
+				Storage: iso.Storage,
+				Size:    size,
+			})
+		}
+		groups = append(groups, currentGroup)
+		result.ISOGroupByNode = groups
+	}
+
+	return result
 }

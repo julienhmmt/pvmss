@@ -12,6 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/cloudinit"
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -182,8 +183,40 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 		opts = append(opts, WithWarning(warningMsg))
 	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_cloudinit", data)
+	// Build Templ data
+	cloudInitTemplData := components.AdminCloudInitData{
+		Username:          getUsernameFromSession(r),
+		Lang:              i18n.GetLanguage(r),
+		CSRFToken:         getCSRFTokenFromContext(r),
+		ProxmoxConnected:  proxmoxConnected,
+		HasProxmoxSession: hasProxmoxSession,
+	}
+
+	// Convert templates
+	for _, t := range settings.CloudInitTemplates {
+		cloudInitTemplData.Templates = append(cloudInitTemplData.Templates, components.CloudInitTemplate{
+			ID:          t.ID,
+			Name:        t.Name,
+			Description: t.Description,
+			Enabled:     t.Enabled,
+			Content:     t.YAMLContent,
+		})
+	}
+
+	// Add SFTP status
+	cloudInitTemplData.SFTPStatus = &components.SFTPStatus{
+		Enabled:    sftpStatus.Enabled,
+		Host:       sftpStatus.Host,
+		Username:   sftpStatus.Username,
+		StatusType: sftpStatus.StatusType,
+		StatusText: sftpStatus.StatusText,
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminCloudInitPage(cloudInitTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin cloudinit page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // CreateTemplateHandler handles creating a new cloud-init template.

@@ -83,7 +83,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.Header"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 32, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 32, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -96,7 +96,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.Subtitle"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 35, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 35, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -109,7 +109,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.Body"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 38, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 38, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -122,7 +122,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.CreateVM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 54, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 54, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -135,7 +135,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.CreateVMDescription"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 59, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 59, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -148,7 +148,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.GetStarted"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 61, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 61, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -161,7 +161,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(T("Docs.User.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 74, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 74, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -174,7 +174,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.DocsDescription"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 79, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 79, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -187,7 +187,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.ViewDocumentation"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 81, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 81, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -200,7 +200,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Admin"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 94, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 94, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -213,7 +213,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.AdminDescription"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 99, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 99, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -226,7 +226,7 @@ func homeContent(data HomeData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.AccessAdmin"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/home.templ`, Line: 101, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/home.templ`, Line: 101, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {

@@ -13,7 +13,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/components"
 	"pvmss/i18n"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -264,22 +266,27 @@ func NewUserPoolHandler(sm state.StateManager) *UserPoolHandler {
 
 // DeleteUserPoolConfirmHandler handles the GET request for user pool deletion confirmation page
 func (h *UserPoolHandler) DeleteUserPoolConfirmHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("DeleteUserPoolConfirmHandler", r)
 	poolID := strings.TrimSpace(r.URL.Query().Get("pool"))
 	if poolID == "" {
 		http.Redirect(w, r, "/admin/userpool", http.StatusSeeOther)
 		return
 	}
 
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("userpool_delete"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("TitleKey", "Admin.UserPool.Title"),
-		WithData("Pool", poolID),
-		WithData("User", strings.TrimPrefix(poolID, "pvmss_")),
-	).ToMap()
-	renderTemplateInternal(w, r, "admin_userpool_delete", data)
+	// Build Templ data
+	deleteData := components.AdminUserPoolDeleteData{
+		Username:  getUsernameFromSession(r),
+		Lang:      i18n.GetLanguage(r),
+		CSRFToken: getCSRFTokenFromContext(r),
+		Pool:      poolID,
+		User:      strings.TrimPrefix(poolID, "pvmss_"),
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminUserPoolDeletePage(deleteData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin userpool delete page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // RegisterRoutes registers routes for user/pool admin
@@ -543,7 +550,44 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		}
 	}
 
-	renderTemplateInternal(w, r, "admin_userpool", data)
+	// Build Templ data
+	userpoolTemplData := components.AdminUserPoolData{
+		Username:       getUsernameFromSession(r),
+		Lang:           i18n.GetLanguage(r),
+		CSRFToken:      getCSRFTokenFromContext(r),
+		Error:          getBoolFromMap(data, "Error"),
+		ErrorMessage:   getStringFromMap(data, "ErrorMessage"),
+		Success:        getBoolFromMap(data, "Success"),
+		SuccessMessage: getStringFromMap(data, "SuccessMessage"),
+	}
+
+	// Convert user pools
+	if pools, ok := data["UserPools"].([]map[string]interface{}); ok {
+		for _, p := range pools {
+			userpoolTemplData.UserPools = append(userpoolTemplData.UserPools, components.UserPoolInfo{
+				User:    getStringFromMap(p, "User"),
+				Pool:    getStringFromMap(p, "Pool"),
+				Comment: getStringFromMap(p, "Comment"),
+				VMCount: getIntFromMap(p, "VMCount"),
+			})
+		}
+	}
+
+	// Convert current user pool status
+	if status, ok := data["CurrentUserPoolStatus"].(map[string]interface{}); ok {
+		userpoolTemplData.CurrentUserPoolStatus = &components.CurrentUserPoolStatus{
+			Username:  getStringFromMap(status, "Username"),
+			PoolName:  getStringFromMap(status, "PoolName"),
+			HasPool:   getBoolFromMap(status, "HasPool"),
+			CanCreate: getBoolFromMap(status, "CanCreate"),
+		}
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminUserPoolPage(userpoolTemplData, T).Render(r.Context(), w); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to render admin userpool page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // CreateUserPool handles POST to create a user in PVE realm, create pool pvmss_<username>, and grant ACL

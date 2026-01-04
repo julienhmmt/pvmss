@@ -12,6 +12,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -149,11 +150,41 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	if nodeCapacities == nil {
 		nodeCapacities = make(map[string]*NodeCapacity)
 	}
-	opts = append(opts, WithData("NodeUsage", nodeUsage))
-	opts = append(opts, WithData("NodeCapacities", nodeCapacities))
+	// Convert nodeUsage to components.NodeUsage
+	templNodeUsage := make(map[string]*components.NodeUsage)
+	for nodeName, usage := range nodeUsage {
+		if usage != nil {
+			templNodeUsage[nodeName] = &components.NodeUsage{
+				TotalVMs: usage.TotalVMs,
+				Cores:    usage.Cores,
+				MaxCores: usage.MaxCores,
+				RamGB:    usage.RamGB,
+				MaxRamGB: usage.MaxRamGB,
+			}
+		}
+	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_limits", data)
+	// Build Templ data
+	limitsTemplData := components.AdminLimitsData{
+		Username:         getUsernameFromSession(r),
+		Lang:             i18n.GetLanguage(r),
+		CSRFToken:        getCSRFTokenFromContext(r),
+		ProxmoxConnected: proxmoxConnected,
+		Node:             r.URL.Query().Get("node"),
+		NodeNames:        nodeNames,
+		NodeUsage:        templNodeUsage,
+		Limits:           limitsData,
+		Settings: &components.LimitsSettings{
+			MaxVMPerUser: 0, // Not in current settings structure
+			MaxSnapshots: settings.Limits.MaxSnapshots,
+		},
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminLimitsPage(limitsTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin limits page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // UpdateLimitsFormHandler handles POST from admin_limits.html to update VM/Node limits

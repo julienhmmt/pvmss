@@ -103,7 +103,7 @@ func adminISOContent(data AdminISOData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.ISO.Header.Storage"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_iso.templ`, Line: 54, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_iso.templ`, Line: 54, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -116,7 +116,7 @@ func adminISOContent(data AdminISOData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.ISO.Header.Size"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_iso.templ`, Line: 55, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_iso.templ`, Line: 55, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -129,7 +129,7 @@ func adminISOContent(data AdminISOData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Actions"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_iso.templ`, Line: 56, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_iso.templ`, Line: 56, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -147,7 +147,7 @@ func adminISOContent(data AdminISOData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(group.Node)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_iso.templ`, Line: 65, Col: 61}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_iso.templ`, Line: 65, Col: 61}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -219,7 +219,7 @@ func isoRow(iso ISOInfo, enabledISOs map[string]bool, csrfToken string, T Transl
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(iso.Basename())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_iso.templ`, Line: 94, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_iso.templ`, Line: 94, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -238,7 +238,7 @@ func isoRow(iso ISOInfo, enabledISOs map[string]bool, csrfToken string, T Transl
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(iso.Storage)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_iso.templ`, Line: 104, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_iso.templ`, Line: 104, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -251,7 +251,7 @@ func isoRow(iso ISOInfo, enabledISOs map[string]bool, csrfToken string, T Transl
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(FormatBytesInt(iso.Size))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_iso.templ`, Line: 108, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_iso.templ`, Line: 108, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {

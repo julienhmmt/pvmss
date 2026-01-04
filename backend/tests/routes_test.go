@@ -469,7 +469,7 @@ func TestRouteAccessibility(t *testing.T) {
 			authenticate(t, cfg, client, cfg.AdminUsername, cfg.AdminPassword, "/admin/login")
 
 			runRouteGroup(t, cfg, []routeTest{
-				{Name: "Admin dashboard", Method: http.MethodGet, Path: "/admin", ExpectedStatus: http.StatusOK},
+				{Name: "Admin dashboard", Method: http.MethodGet, Path: "/admin", ExpectedStatus: http.StatusSeeOther}, // Redirects to /admin/appinfo
 				{Name: "Admin nodes", Method: http.MethodGet, Path: "/admin/nodes", ExpectedStatus: http.StatusOK},
 				{Name: "Admin tags", Method: http.MethodGet, Path: "/admin/tags", ExpectedStatus: http.StatusOK},
 				{Name: "Admin storage", Method: http.MethodGet, Path: "/admin/storage", ExpectedStatus: http.StatusOK},

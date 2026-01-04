@@ -377,7 +377,7 @@ func vmDetailsStatusBadge(status string, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var4).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -390,7 +390,7 @@ func vmDetailsStatusBadge(status string, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(vmStatusLabel(status, T))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 257, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 257, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -432,7 +432,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Processing"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 266, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 266, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -445,7 +445,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(T("Message.NetworkCardEnabled"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 267, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 267, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -458,7 +458,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(T("Message.NetworkCardDisabled"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 268, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 268, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -471,7 +471,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(T("Message.ActionFailed"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 269, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 269, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -484,7 +484,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(data.ErrorMessage)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 270, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 270, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -497,7 +497,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(data.SuccessMessage)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 271, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 271, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -510,7 +510,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(data.WarningMessage)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 272, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 272, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -523,7 +523,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Enabled"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 273, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 273, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -536,7 +536,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Disabled"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 274, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 274, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -549,7 +549,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Enable"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 275, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 275, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -562,7 +562,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Disable"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 276, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 276, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -575,7 +575,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Network"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 277, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 277, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -588,7 +588,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.MustBeRunning"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 278, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 278, Col: 69}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -601,7 +601,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.TemporarilyUnavailable"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 279, Col: 74}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 279, Col: 74}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -614,7 +614,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.ButtonNotFound"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 280, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 280, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -627,7 +627,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VM.VMID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 281, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 281, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -640,7 +640,7 @@ func vmDetailsConfigDiv(data VMDetailsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(data.VM.Node)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 282, Col: 26}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 282, Col: 26}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -740,7 +740,7 @@ func vmDetailsNavLinks(T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Profile"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 321, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 321, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -753,7 +753,7 @@ func vmDetailsNavLinks(T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Search"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_details.templ`, Line: 325, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 325, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {

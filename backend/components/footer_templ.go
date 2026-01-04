@@ -42,7 +42,7 @@ func Footer(version string, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.Footer"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/footer.templ`, Line: 13, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/footer.templ`, Line: 13, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -55,7 +55,7 @@ func Footer(version string, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/footer.templ`, Line: 14, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/footer.templ`, Line: 14, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -98,7 +98,7 @@ func FooterExtended(props FooterProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(props.CustomText)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/footer.templ`, Line: 25, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/footer.templ`, Line: 25, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -112,7 +112,7 @@ func FooterExtended(props FooterProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.Footer"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/footer.templ`, Line: 27, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/footer.templ`, Line: 27, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -130,7 +130,7 @@ func FooterExtended(props FooterProps, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(props.Version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/footer.templ`, Line: 29, Col: 76}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/footer.templ`, Line: 29, Col: 76}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -148,7 +148,7 @@ func FooterExtended(props FooterProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Documentation"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/footer.templ`, Line: 36, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/footer.templ`, Line: 36, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -161,7 +161,7 @@ func FooterExtended(props FooterProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.AppInfo.Title"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/footer.templ`, Line: 43, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/footer.templ`, Line: 43, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {

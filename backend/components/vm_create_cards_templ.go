@@ -55,7 +55,7 @@ func vmCreateBasicInfoCard(data VMCreateData, T TranslationFunc) templ.Component
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.BasicInfo"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 27, Col: 97}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 27, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -129,7 +129,7 @@ func vmCreateNameField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.VMName"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 47, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 47, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -150,7 +150,7 @@ func vmCreateNameField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.PlaceholderVMName"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 51, Col: 135}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 51, Col: 135}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -163,7 +163,7 @@ func vmCreateNameField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.Name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 51, Col: 180}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 51, Col: 180}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -205,7 +205,7 @@ func vmCreateDescriptionField(data VMCreateData, T TranslationFunc) templ.Compon
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Description"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 61, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 61, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -226,7 +226,7 @@ func vmCreateDescriptionField(data VMCreateData, T TranslationFunc) templ.Compon
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.DescriptionPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 65, Col: 119}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 65, Col: 119}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -239,7 +239,7 @@ func vmCreateDescriptionField(data VMCreateData, T TranslationFunc) templ.Compon
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 65, Col: 212}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 65, Col: 212}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {
@@ -281,7 +281,7 @@ func vmCreateIdField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.VMID"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 74, Col: 54}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 74, Col: 54}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -302,7 +302,7 @@ func vmCreateIdField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.VMID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 78, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 78, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -315,7 +315,7 @@ func vmCreateIdField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.VMIDPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 78, Col: 169}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 78, Col: 169}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -367,7 +367,7 @@ func vmCreateTPMField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.EnableTPM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 87, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 87, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -388,7 +388,7 @@ func vmCreateTPMField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.TPMHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 90, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 90, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -440,7 +440,7 @@ func vmCreateStartField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.StartVM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 98, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 98, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -461,7 +461,7 @@ func vmCreateStartField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.StartVMHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 101, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 101, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -503,7 +503,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.ProxmoxNode"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 109, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 109, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -524,7 +524,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.SelectNode"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 115, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 115, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -548,7 +548,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var25 string
 				templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Value)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 118, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 118, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 				if templ_7745c5c3_Err != nil {
@@ -561,7 +561,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(opt.CoresMax))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 118, Col: 78}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 118, Col: 78}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -574,7 +574,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var27 string
 				templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(opt.RamMaxGB))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 118, Col: 125}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 118, Col: 125}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 				if templ_7745c5c3_Err != nil {
@@ -603,7 +603,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var28 string
 				templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var24).String())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 1, Col: 0}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 1, Col: 0}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 				if templ_7745c5c3_Err != nil {
@@ -616,7 +616,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Text)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 119, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 119, Col: 18}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 				if templ_7745c5c3_Err != nil {
@@ -634,7 +634,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 					var templ_7745c5c3_Var30 string
 					templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(opt.Reason)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 121, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 121, Col: 26}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 					if templ_7745c5c3_Err != nil {
@@ -655,7 +655,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var31 string
 				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(node)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 127, Col: 27}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 127, Col: 27}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 				if templ_7745c5c3_Err != nil {
@@ -678,7 +678,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var32 string
 				templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(node)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 127, Col: 104}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 127, Col: 104}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 				if templ_7745c5c3_Err != nil {
@@ -698,7 +698,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.NoNodesAvailable"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 131, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 131, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -716,7 +716,7 @@ func vmCreateNodeField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.ProxmoxNodeHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 136, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 136, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
@@ -758,7 +758,7 @@ func vmCreatePoolField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.ResourcePool"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 144, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 144, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -779,7 +779,7 @@ func vmCreatePoolField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(getVMCreatePoolValue(data))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 148, Col: 102}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 148, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -821,7 +821,7 @@ func vmCreateTooltip(id string, text string) templ.Component {
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 155, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 155, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -834,7 +834,7 @@ func vmCreateTooltip(id string, text string) templ.Component {
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 156, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 156, Col: 14}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -847,7 +847,7 @@ func vmCreateTooltip(id string, text string) templ.Component {
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 156, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 156, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -889,7 +889,7 @@ func vmCreateTooltipInline(text string) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 162, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 162, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -902,7 +902,7 @@ func vmCreateTooltipInline(text string) templ.Component {
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 163, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 163, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -944,7 +944,7 @@ func vmCreateResourcesCard(data VMCreateData, T TranslationFunc) templ.Component
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Resources"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 172, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 172, Col: 92}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 		if templ_7745c5c3_Err != nil {
@@ -1016,7 +1016,7 @@ func vmCreateCPUField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CPUCores"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 193, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 193, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -1037,7 +1037,7 @@ func vmCreateCPUField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var49 string
 		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CPUSockets"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 198, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 198, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 		if templ_7745c5c3_Err != nil {
@@ -1055,7 +1055,7 @@ func vmCreateCPUField(data VMCreateData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var50 string
 			templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 203, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 203, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 			if templ_7745c5c3_Err != nil {
@@ -1078,7 +1078,7 @@ func vmCreateCPUField(data VMCreateData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var51 string
 			templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 203, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 203, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 			if templ_7745c5c3_Err != nil {
@@ -1096,7 +1096,7 @@ func vmCreateCPUField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var52 string
 		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CPUCores"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 210, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 210, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 		if templ_7745c5c3_Err != nil {
@@ -1114,7 +1114,7 @@ func vmCreateCPUField(data VMCreateData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 215, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 215, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -1137,7 +1137,7 @@ func vmCreateCPUField(data VMCreateData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var54 string
 			templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 215, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 215, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 			if templ_7745c5c3_Err != nil {
@@ -1184,7 +1184,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var56 string
 		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Memory"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 229, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 229, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 		if templ_7745c5c3_Err != nil {
@@ -1205,7 +1205,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var57 string
 		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMinMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 234, Col: 110}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 234, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 		if templ_7745c5c3_Err != nil {
@@ -1218,7 +1218,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var58 string
 		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMaxMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 234, Col: 148}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 234, Col: 148}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 		if templ_7745c5c3_Err != nil {
@@ -1231,7 +1231,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var59 string
 		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMinMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 234, Col: 199}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 234, Col: 199}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
 		if templ_7745c5c3_Err != nil {
@@ -1244,7 +1244,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var60 string
 		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("e.g., %d", data.VMRamMinMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 234, Col: 337}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 234, Col: 337}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
 		if templ_7745c5c3_Err != nil {
@@ -1257,7 +1257,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var61 string
 		templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMinMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 234, Col: 383}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 234, Col: 383}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var61))
 		if templ_7745c5c3_Err != nil {
@@ -1270,7 +1270,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var62 string
 		templ_7745c5c3_Var62, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMaxMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 234, Col: 429}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 234, Col: 429}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var62))
 		if templ_7745c5c3_Err != nil {
@@ -1283,7 +1283,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var63 string
 		templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Selected"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 247, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 247, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 		if templ_7745c5c3_Err != nil {
@@ -1296,7 +1296,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var64 string
 		templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Selected"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 247, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 247, Col: 96}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
 		if templ_7745c5c3_Err != nil {
@@ -1309,7 +1309,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var65 string
 		templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%.1f", float64(data.VMRamMinMB)/1024))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 247, Col: 152}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 247, Col: 152}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
 		if templ_7745c5c3_Err != nil {
@@ -1322,7 +1322,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var66 string
 		templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMinMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 247, Col: 190}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 247, Col: 190}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
 		if templ_7745c5c3_Err != nil {
@@ -1335,7 +1335,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var67 string
 		templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Min"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 248, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 248, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 		if templ_7745c5c3_Err != nil {
@@ -1348,7 +1348,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var68 string
 		templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMinMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 248, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 248, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 		if templ_7745c5c3_Err != nil {
@@ -1361,7 +1361,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var69 string
 		templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Max"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 249, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 249, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 		if templ_7745c5c3_Err != nil {
@@ -1374,7 +1374,7 @@ func vmCreateMemoryField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var70 string
 		templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMRamMaxMB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 249, Col: 78}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 249, Col: 78}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 		if templ_7745c5c3_Err != nil {
@@ -1416,7 +1416,7 @@ func vmCreateDiskBusField(data VMCreateData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var72 string
 		templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.DiskBusType"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 258, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 258, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 		if templ_7745c5c3_Err != nil {
@@ -1477,7 +1477,7 @@ func vmCreateDiskBusField(data VMCreateData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var73 string
 		templ_7745c5c3_Var73, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.DiskBusTypeHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 272, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 272, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var73))
 		if templ_7745c5c3_Err != nil {
@@ -1519,7 +1519,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var75 string
 		templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("diskSize_%d", diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 279, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 279, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 		if templ_7745c5c3_Err != nil {
@@ -1533,7 +1533,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var76 string
 			templ_7745c5c3_Var76, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.DiskSize"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 283, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 283, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var76))
 			if templ_7745c5c3_Err != nil {
@@ -1542,7 +1542,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var77 string
 			templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(vmCreateDiskLabel(data, diskIdx))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 283, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 283, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 			if templ_7745c5c3_Err != nil {
@@ -1552,7 +1552,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var78 string
 			templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.DiskSize"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 285, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 285, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 			if templ_7745c5c3_Err != nil {
@@ -1565,7 +1565,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var79 string
 			templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(diskIdx + 1))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 285, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 285, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 			if templ_7745c5c3_Err != nil {
@@ -1578,7 +1578,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var80 string
 			templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.DiskOptional"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 285, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 285, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 			if templ_7745c5c3_Err != nil {
@@ -1606,7 +1606,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var81 string
 		templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("diskSize_%d", diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 294, Col: 51}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 294, Col: 51}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
 		if templ_7745c5c3_Err != nil {
@@ -1619,7 +1619,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var82 string
 		templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("disk_size_%d", diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 294, Col: 135}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 294, Col: 135}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 		if templ_7745c5c3_Err != nil {
@@ -1632,7 +1632,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var83 string
 		templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(vmCreateDiskMin(data, diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 294, Col: 174}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 294, Col: 174}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
 		if templ_7745c5c3_Err != nil {
@@ -1645,7 +1645,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var84 string
 		templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMDiskMax))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 294, Col: 211}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 294, Col: 211}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
 		if templ_7745c5c3_Err != nil {
@@ -1658,7 +1658,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var85 string
 		templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(vmCreateDiskStep(diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 294, Col: 246}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 294, Col: 246}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 		if templ_7745c5c3_Err != nil {
@@ -1671,7 +1671,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var86 string
 		templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(vmCreateDiskValue(data, diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 294, Col: 289}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 294, Col: 289}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 		if templ_7745c5c3_Err != nil {
@@ -1694,7 +1694,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var87 string
 		templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("diskSize-unit-%d", diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 298, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 298, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
 		if templ_7745c5c3_Err != nil {
@@ -1707,7 +1707,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 		var templ_7745c5c3_Var88 string
 		templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("disk_size_unit_%d", diskIdx))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 298, Col: 109}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 298, Col: 109}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 		if templ_7745c5c3_Err != nil {
@@ -1725,7 +1725,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var89 string
 			templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("diskSize-display-%d", diskIdx))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 308, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 308, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 			if templ_7745c5c3_Err != nil {
@@ -1738,7 +1738,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var90 string
 			templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Selected"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 308, Col: 83}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 308, Col: 83}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 			if templ_7745c5c3_Err != nil {
@@ -1751,7 +1751,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var91 string
 			templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMDiskMin))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 308, Col: 117}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 308, Col: 117}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 			if templ_7745c5c3_Err != nil {
@@ -1764,7 +1764,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var92 string
 			templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Min"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 309, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 309, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 			if templ_7745c5c3_Err != nil {
@@ -1777,7 +1777,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var93 string
 			templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMDiskMin))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 309, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 309, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 			if templ_7745c5c3_Err != nil {
@@ -1790,7 +1790,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var94 string
 			templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Max"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 310, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 310, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
 			if templ_7745c5c3_Err != nil {
@@ -1803,7 +1803,7 @@ func vmCreateDiskField(data VMCreateData, diskIdx int, T TranslationFunc) templ.
 			var templ_7745c5c3_Var95 string
 			templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VMDiskMax))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 310, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 310, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
 			if templ_7745c5c3_Err != nil {
@@ -1850,7 +1850,7 @@ func vmCreateStorageField(data VMCreateData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var97 string
 		templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Storage"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 320, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 320, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var97))
 		if templ_7745c5c3_Err != nil {
@@ -1871,7 +1871,7 @@ func vmCreateStorageField(data VMCreateData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var98 string
 		templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.SelectStorage"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 326, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 326, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var98))
 		if templ_7745c5c3_Err != nil {
@@ -1890,7 +1890,7 @@ func vmCreateStorageField(data VMCreateData, T TranslationFunc) templ.Component 
 				var templ_7745c5c3_Var99 string
 				templ_7745c5c3_Var99, templ_7745c5c3_Err = templ.JoinStringErrs(storage)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 329, Col: 30}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 329, Col: 30}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var99))
 				if templ_7745c5c3_Err != nil {
@@ -1913,7 +1913,7 @@ func vmCreateStorageField(data VMCreateData, T TranslationFunc) templ.Component 
 				var templ_7745c5c3_Var100 string
 				templ_7745c5c3_Var100, templ_7745c5c3_Err = templ.JoinStringErrs(storage)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 330, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 330, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var100))
 				if templ_7745c5c3_Err != nil {
@@ -1931,7 +1931,7 @@ func vmCreateStorageField(data VMCreateData, T TranslationFunc) templ.Component 
 					var templ_7745c5c3_Var101 string
 					templ_7745c5c3_Var101, templ_7745c5c3_Err = templ.JoinStringErrs(node)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 332, Col: 17}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 332, Col: 17}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var101))
 					if templ_7745c5c3_Err != nil {
@@ -1949,7 +1949,7 @@ func vmCreateStorageField(data VMCreateData, T TranslationFunc) templ.Component 
 					var templ_7745c5c3_Var102 string
 					templ_7745c5c3_Var102, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Shared"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 334, Col: 34}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 334, Col: 34}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var102))
 					if templ_7745c5c3_Err != nil {
@@ -1973,7 +1973,7 @@ func vmCreateStorageField(data VMCreateData, T TranslationFunc) templ.Component 
 			var templ_7745c5c3_Var103 string
 			templ_7745c5c3_Var103, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.NoStoragesAvailable"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 339, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 339, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var103))
 			if templ_7745c5c3_Err != nil {
@@ -2030,7 +2030,7 @@ func vmCreateEFIField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var105 string
 		templ_7745c5c3_Var105, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.EnableEFI"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 351, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 351, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var105))
 		if templ_7745c5c3_Err != nil {
@@ -2051,7 +2051,7 @@ func vmCreateEFIField(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var106 string
 		templ_7745c5c3_Var106, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.EFIHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 354, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 354, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var106))
 		if templ_7745c5c3_Err != nil {
@@ -2093,7 +2093,7 @@ func vmCreateTagsCard(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var108 string
 		templ_7745c5c3_Var108, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Tags"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 363, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 363, Col: 85}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var108))
 		if templ_7745c5c3_Err != nil {
@@ -2106,7 +2106,7 @@ func vmCreateTagsCard(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var109 string
 		templ_7745c5c3_Var109, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.AvailableTags"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 370, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 370, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var109))
 		if templ_7745c5c3_Err != nil {
@@ -2130,7 +2130,7 @@ func vmCreateTagsCard(data VMCreateData, T TranslationFunc) templ.Component {
 					var templ_7745c5c3_Var110 string
 					templ_7745c5c3_Var110, templ_7745c5c3_Err = templ.JoinStringErrs(tag)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 379, Col: 56}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 379, Col: 56}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var110))
 					if templ_7745c5c3_Err != nil {
@@ -2143,7 +2143,7 @@ func vmCreateTagsCard(data VMCreateData, T TranslationFunc) templ.Component {
 					var templ_7745c5c3_Var111 string
 					templ_7745c5c3_Var111, templ_7745c5c3_Err = templ.JoinStringErrs(tag)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 380, Col: 52}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 380, Col: 52}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var111))
 					if templ_7745c5c3_Err != nil {
@@ -2163,7 +2163,7 @@ func vmCreateTagsCard(data VMCreateData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var112 string
 			templ_7745c5c3_Var112, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.NoTagsAvailable"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 385, Col: 76}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 385, Col: 76}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var112))
 			if templ_7745c5c3_Err != nil {
@@ -2181,7 +2181,7 @@ func vmCreateTagsCard(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var113 string
 		templ_7745c5c3_Var113, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.TagsHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/vm_create_cards.templ`, Line: 388, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cards.templ`, Line: 388, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var113))
 		if templ_7745c5c3_Err != nil {
