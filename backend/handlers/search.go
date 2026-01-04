@@ -166,18 +166,6 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 			Strs("tag_queries", tagQueries).
 			Msg("Processing optimized search query")
 
-		// Build query display string
-		var queryParts []string
-		if vmidQuery != "" {
-			queryParts = append(queryParts, "VMID: "+vmidQuery)
-		}
-		if nameQuery != "" {
-			queryParts = append(queryParts, "Name: "+nameQuery)
-		}
-		if len(tagQueries) > 0 {
-			tagDisplay := strings.Join(tagQueries, ", ")
-			queryParts = append(queryParts, "Tags: "+tagDisplay)
-		}
 		// If no query provided, just render empty search page
 		if vmidQuery == "" && nameQuery == "" && len(tagQueries) == 0 {
 			if err := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); err != nil {

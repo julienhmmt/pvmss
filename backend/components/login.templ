@@ -21,8 +21,13 @@ templ LoginPage(data LoginData, T TranslationFunc) {
 			<link rel="stylesheet" href="/css/fontawesome.min.css"/>
 			<link rel="stylesheet" href="/css/solid.min.css"/>
 			<link rel="stylesheet" href="/css/brands.min.css"/>
-			<link rel="stylesheet" href="/css/login.css"/>
+			<link rel="stylesheet" href="/css/tokens.css"/>
+			<link rel="stylesheet" href="/css/base.css"/>
+			<link rel="stylesheet" href="/css/components.css"/>
+			<link rel="stylesheet" href="/css/forms.css"/>
+			<link rel="stylesheet" href="/css/utilities.css"/>
 			<link rel="stylesheet" href="/css/style.css"/>
+			<link rel="stylesheet" href="/css/glass.css"/>
 			<link rel="icon" type="image/png" href="/favicon.png"/>
 		</head>
 		<body class="login-body">
@@ -40,13 +45,13 @@ templ loginContent(data LoginData, T TranslationFunc) {
 						<header class="card-header brand-header is-align-items-center login-header">
 							<p class="card-header-title login-title">
 								if data.IsAdmin {
-									{ T("Login.AdminLogin") }
+									{ T("AdminLogin.Title") }
 								} else {
 									{ T("Login.UserLogin") }
 								}
 							</p>
 						</header>
-						<div class="card-content login-content">
+						<div class="card-content login-content p-6">
 							if data.Warning != "" {
 								@Notification(NotificationProps{
 									Type:        NotificationInfo,
@@ -176,7 +181,7 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 				<span class="form-label-icon">
 					<span class="icon"><i class="fas fa-lock"></i></span>
 				</span>
-				<span class="form-label-text">{ T("Login.AdminPasswordLabel") }</span>
+				<span class="form-label-text">{ T("AdminLogin.PasswordLabel") }</span>
 			</label>
 			<div class="control">
 				<input
@@ -191,7 +196,7 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 					aria-describedby="password-help"
 					minlength="6"
 					maxlength="128"
-					placeholder={ T("Login.AdminPasswordLabel") }
+					placeholder={ T("AdminLogin.PasswordLabel") }
 				/>
 			</div>
 		</div>
@@ -215,7 +220,7 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 			<span class="icon has-text-primary">
 				<i class="fas fa-user"></i>
 			</span>
-			<span>{ T("Login.UserLoginLink") }</span>
+			<span>{ T("Login.UserLogin") }</span>
 		</a>
 	</div>
 }
