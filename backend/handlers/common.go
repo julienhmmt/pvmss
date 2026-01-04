@@ -2,8 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
-	"html/template"
 	"net/http"
 	"strings"
 	"time"
@@ -14,7 +12,6 @@ import (
 	"pvmss/middleware"
 	"pvmss/security"
 	"pvmss/state"
-	"pvmss/templates"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
@@ -49,35 +46,14 @@ func getStateManager(r *http.Request) state.StateManager {
 	return nil
 }
 
-// RenderTemplate renders a template with the provided data
-// This function is exported for use by other packages
+// RenderTemplate is deprecated - use Templ components instead
+// Kept for backwards compatibility but should not be used in new code
 func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
-	log := CreateHandlerLogger("RenderTemplate", r).With().
+	log := CreateHandlerLogger("RenderTemplate", r)
+	log.Warn().
 		Str("template", name).
-		Logger()
-
-	log.Debug().Msg("Starting template rendering")
-
-	// Convert data to map if necessary
-	dataMap := make(map[string]interface{})
-	if data != nil {
-		if dm, ok := data.(map[string]interface{}); ok {
-			dataMap = dm
-			log.Debug().Int("data_map_size", len(dm)).Msg("Data provided as a map")
-		} else {
-			dataMap["Data"] = data
-			log.Debug().Type("data_type", data).Msg("Data provided as a struct, converting to map")
-		}
-	} else {
-		log.Debug().Msg("No data provided for template rendering")
-	}
-
-	// Use the internal function with the map
-	renderTemplateInternal(w, r, name, dataMap)
-
-	log.Info().
-		Str("template", name).
-		Msg("Template rendered successfully")
+		Msg("DEPRECATED: RenderTemplate called - migrate to Templ components")
+	http.Error(w, "Template rendering deprecated", http.StatusInternalServerError)
 }
 
 // populateTemplateData adds common data to the template data map.
@@ -170,70 +146,14 @@ func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[strin
 	data["Host"] = r.Host
 }
 
-// renderTemplateInternal renders a template with a layout, injecting translation functions.
+// renderTemplateInternal is deprecated - all pages now use Templ components
+// This function is kept only for potential emergency fallback
 func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-	log := CreateHandlerLogger("renderTemplateInternal", r).With().
+	log := CreateHandlerLogger("renderTemplateInternal", r)
+	log.Error().
 		Str("template", name).
-		Logger()
-
-	if data == nil {
-		data = make(map[string]interface{})
-	}
-	// Ensure dynamic pages are not cached by browsers or proxies
-	setNoCacheHeaders(w)
-	populateTemplateData(w, r, data)
-
-	data["IsAdminPage"] = strings.HasPrefix(r.URL.Path, "/admin")
-	data["NeedsRegularIcons"] = detectNeedsRegularIcons(name, data)
-	data["NeedsBrandIcons"] = detectNeedsBrandIcons(name, data)
-
-	stateManager := getStateManager(r)
-	tmpl := stateManager.GetTemplates()
-	if tmpl == nil {
-		log.Error().Msg("Templates not initialized")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
-		return
-	}
-
-	// Clone the template set for this request to avoid concurrency issues and
-	// allow adding request-specific functions.
-	instance, err := tmpl.Clone()
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to clone template set")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
-		return
-	}
-
-	// Add the translation function and request-aware helpers to the template instance for this request.
-	localizer := i18n.GetLocalizerFromRequest(r)
-	instance.Funcs(template.FuncMap{
-		"T": func(messageID string, args ...interface{}) string {
-			localized := i18n.Localize(localizer, messageID)
-			if localized == "" {
-				return messageID
-			}
-			return localized
-		},
-	})
-
-	// Merge in request-aware functions (currentPath, urlWithLang, withLang, etc.)
-	instance.Funcs(templates.GetFuncMap(r))
-
-	// Define a per-request content slot that renders the requested template.
-	contentWrapper := fmt.Sprintf(`{{define "content_slot"}}{{template "%s" .}}{{end}}`, name)
-	if _, err := instance.Parse(contentWrapper); err != nil {
-		log.Error().Err(err).Msg("Failed to parse content slot template")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
-		return
-	}
-
-	// Execute the layout template with the combined data.
-	if err := instance.ExecuteTemplate(w, "layout", data); err != nil {
-		log.Error().Err(err).Msg("Error executing layout template")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
-	}
-
-	log.Info().Msg("Page rendered successfully")
+		Msg("DEPRECATED: renderTemplateInternal called - all pages should use Templ")
+	http.Error(w, "Legacy template rendering no longer supported", http.StatusInternalServerError)
 }
 
 // setNoCacheHeaders sets headers to prevent client-side caching.

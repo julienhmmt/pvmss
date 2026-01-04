@@ -14,56 +14,19 @@ func NewTemplateHelpers() *TemplateHelpers {
 	return &TemplateHelpers{}
 }
 
-// RenderAdminPage renders an admin page with standardized data structure
+// RenderAdminPage is deprecated - use Templ components with AdminLayout instead
 func (th *TemplateHelpers) RenderAdminPage(w http.ResponseWriter, r *http.Request, templateName string, title string, adminSection string, sm state.StateManager, customData map[string]interface{}) {
-	opts := []TemplateOption{
-		WithAdminActive(adminSection),
-		WithAuth(r),
-		WithProxmoxStatus(sm),
-		WithMessages(r),
-	}
-
-	// Add custom data
-	for key, value := range customData {
-		opts = append(opts, WithData(key, value))
-	}
-
-	data := NewTemplateDataWithOptions(title, opts...).ToMap()
-	renderTemplateInternal(w, r, templateName, data)
+	http.Error(w, "DEPRECATED: Use Templ components with AdminLayout", http.StatusInternalServerError)
 }
 
-// RenderUserPage renders a user page with standardized data structure
+// RenderUserPage is deprecated - use Templ components with Layout instead
 func (th *TemplateHelpers) RenderUserPage(w http.ResponseWriter, r *http.Request, templateName string, title string, sm state.StateManager, customData map[string]interface{}) {
-	opts := []TemplateOption{
-		WithPageType("user"),
-		WithAuth(r),
-		WithProxmoxStatus(sm),
-		WithMessages(r),
-	}
-
-	// Add custom data
-	for key, value := range customData {
-		opts = append(opts, WithData(key, value))
-	}
-
-	data := NewTemplateDataWithOptions(title, opts...).ToMap()
-	renderTemplateInternal(w, r, templateName, data)
+	http.Error(w, "DEPRECATED: Use Templ components with Layout", http.StatusInternalServerError)
 }
 
-// RenderPublicPage renders a public page with standardized data structure
+// RenderPublicPage is deprecated - use Templ components with Layout instead
 func (th *TemplateHelpers) RenderPublicPage(w http.ResponseWriter, r *http.Request, templateName string, title string, customData map[string]interface{}) {
-	opts := []TemplateOption{
-		WithPageType("public"),
-		WithMessages(r),
-	}
-
-	// Add custom data
-	for key, value := range customData {
-		opts = append(opts, WithData(key, value))
-	}
-
-	data := NewTemplateDataWithOptions(title, opts...).ToMap()
-	renderTemplateInternal(w, r, templateName, data)
+	http.Error(w, "DEPRECATED: Use Templ components with Layout", http.StatusInternalServerError)
 }
 
 // StandardUserPageData creates standardized user page data (legacy compatibility)
