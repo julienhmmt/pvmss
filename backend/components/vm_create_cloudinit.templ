@@ -1,0 +1,173 @@
+package components
+
+templ vmCreateCloudInitCard(data VMCreateData, T TranslationFunc) {
+	<div class="column is-12-tablet is-6-desktop">
+		<div class="card no-hover mb-5 mt-5">
+			<header class="card-header brand-header is-align-items-center">
+				<p class="card-header-title">
+					<span class="icon"><i class="fas fa-cloud"></i></span>&nbsp;{ T("VM.Create.CloudInit") }
+				</p>
+			</header>
+			<div class="card-content form-vertical">
+				<div class="field">
+					<label class="checkbox">
+						<input type="checkbox" name="cloudinit_enable" id="cloudinit_enable" value="1" checked?={ data.FormData.CloudInitEnable == "1" }/>
+						<strong>{ T("VM.Create.CloudInit.Enable") }</strong>
+					</label>
+					<p class="help has-text-grey is-size-7">{ T("VM.Create.CloudInit.EnableHelp") }</p>
+				</div>
+				<div id="cloudinit-options" style={ vmCreateCloudInitDisplay(data) }>
+					if len(data.CloudInitTemplates) > 0 {
+						@vmCreateCloudInitTemplateField(data, T)
+					}
+					<hr class="my-4"/>
+					@vmCreateCloudInitUserFields(data, T)
+					@vmCreateCloudInitSSHField(data, T)
+					<hr class="my-4"/>
+					@vmCreateCloudInitNetworkFields(data, T)
+					@vmCreateCloudInitDNSField(data, T)
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+func vmCreateCloudInitDisplay(data VMCreateData) string {
+	if data.FormData.CloudInitEnable == "1" {
+		return "display: block;"
+	}
+	return "display: none;"
+}
+
+func vmCreateStaticIPDisplay(data VMCreateData) string {
+	if data.FormData.CloudInitIPConfig == "static" {
+		return "display: block;"
+	}
+	return "display: none;"
+}
+
+templ vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) {
+	<div class="field">
+		<label class="form-label" for="cloudinit_template">
+			<span class="form-label-icon"><span class="icon"><i class="fas fa-file-code"></i></span></span>
+			<span class="form-label-text">{ T("VM.Create.CloudInit.Template") }</span>
+		</label>
+		<div class="control">
+			<div class="select is-fullwidth">
+				<select name="cloudinit_template" id="cloudinit_template">
+					<option value="">{ T("VM.Create.CloudInit.NoTemplate") }</option>
+					for _, tpl := range data.CloudInitTemplates {
+						<option value={ tpl.ID } selected?={ data.FormData.CloudInitTemplate == tpl.ID }>
+							{ tpl.Name }
+							if tpl.Description != "" {
+								 - { tpl.Description }
+							}
+						</option>
+					}
+				</select>
+			</div>
+		</div>
+	</div>
+	<div class="field is-grouped is-grouped-right mt-2">
+		<div class="control">
+			<button type="button" class="button is-small is-link is-light" id="cloudinit-view-template-btn" disabled>
+				<span class="icon"><i class="fas fa-eye"></i></span>
+				<span>{ T("Admin.CloudInit.ViewYAML") }</span>
+			</button>
+		</div>
+	</div>
+}
+
+templ vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) {
+	<div class="columns is-multiline">
+		<div class="column is-6">
+			<div class="field">
+				<label class="form-label" for="cloudinit_user">
+					<span class="form-label-icon"><span class="icon"><i class="fas fa-user"></i></span></span>
+					<span class="form-label-text">{ T("VM.Create.CloudInit.Username") }</span>
+				</label>
+				<div class="control">
+					<input class="input" type="text" name="cloudinit_user" id="cloudinit_user" value={ data.FormData.CloudInitUser } placeholder={ T("VM.Create.CloudInit.UsernamePlaceholder") }/>
+				</div>
+				<p class="help">{ T("VM.Create.CloudInit.UsernameHelp") }</p>
+			</div>
+		</div>
+		<div class="column is-6">
+			<div class="field">
+				<label class="form-label" for="cloudinit_password">
+					<span class="form-label-icon"><span class="icon"><i class="fas fa-key"></i></span></span>
+					<span class="form-label-text">{ T("VM.Create.CloudInit.Password") }</span>
+				</label>
+				<div class="control">
+					<input class="input" type="password" name="cloudinit_password" id="cloudinit_password" placeholder={ T("VM.Create.CloudInit.PasswordPlaceholder") }/>
+				</div>
+				<p class="help">{ T("VM.Create.CloudInit.PasswordHelp") }</p>
+			</div>
+		</div>
+	</div>
+}
+
+templ vmCreateCloudInitSSHField(data VMCreateData, T TranslationFunc) {
+	<div class="field">
+		<label class="form-label" for="cloudinit_sshkeys">
+			<span class="form-label-icon"><span class="icon"><i class="fas fa-key"></i></span></span>
+			<span class="form-label-text">{ T("VM.Create.CloudInit.SSHKeys") }</span>
+		</label>
+		<div class="control">
+			<textarea class="textarea is-family-monospace" name="cloudinit_sshkeys" id="cloudinit_sshkeys" rows="3" placeholder={ T("VM.Create.CloudInit.SSHKeysPlaceholder") }>{ data.FormData.CloudInitSSHKeys }</textarea>
+		</div>
+		<p class="help">{ T("VM.Create.CloudInit.SSHKeysHelp") }</p>
+	</div>
+}
+
+templ vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) {
+	<div class="field">
+		<label class="form-label">
+			<span class="form-label-icon"><span class="icon"><i class="fas fa-network-wired"></i></span></span>
+			<span class="form-label-text">{ T("VM.Create.CloudInit.IPConfig") }</span>
+		</label>
+		<div class="control">
+			<label class="radio">
+				<input type="radio" name="cloudinit_ipconfig" value="dhcp" checked?={ data.FormData.CloudInitIPConfig == "dhcp" || data.FormData.CloudInitIPConfig == "" }/>
+				{ T("VM.Create.CloudInit.DHCP") }
+			</label>
+			<label class="radio ml-4">
+				<input type="radio" name="cloudinit_ipconfig" value="static" checked?={ data.FormData.CloudInitIPConfig == "static" }/>
+				{ T("VM.Create.CloudInit.Static") }
+			</label>
+		</div>
+	</div>
+	<div id="static-ip-fields" style={ vmCreateStaticIPDisplay(data) }>
+		<div class="columns is-multiline">
+			<div class="column is-6">
+				<div class="field">
+					<label class="label is-small" for="cloudinit_ip">{ T("VM.Create.CloudInit.StaticIP") }</label>
+					<div class="control">
+						<input class="input" type="text" name="cloudinit_ip" id="cloudinit_ip" value={ data.FormData.CloudInitIP } placeholder={ T("VM.Create.CloudInit.StaticIPPlaceholder") }/>
+					</div>
+				</div>
+			</div>
+			<div class="column is-6">
+				<div class="field">
+					<label class="label is-small" for="cloudinit_gateway">{ T("VM.Create.CloudInit.Gateway") }</label>
+					<div class="control">
+						<input class="input" type="text" name="cloudinit_gateway" id="cloudinit_gateway" value={ data.FormData.CloudInitGateway } placeholder={ T("VM.Create.CloudInit.GatewayPlaceholder") }/>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ vmCreateCloudInitDNSField(data VMCreateData, T TranslationFunc) {
+	<div class="field">
+		<label class="form-label" for="cloudinit_dns">
+			<span class="form-label-icon"><span class="icon"><i class="fas fa-server"></i></span></span>
+			<span class="form-label-text">{ T("VM.Create.CloudInit.DNS") }</span>
+		</label>
+		<div class="control">
+			<input class="input" type="text" name="cloudinit_dns" id="cloudinit_dns" value={ data.FormData.CloudInitDNS } placeholder={ T("VM.Create.CloudInit.DNSPlaceholder") }/>
+		</div>
+		<p class="help">{ T("VM.Create.CloudInit.DNSHelp") }</p>
+	</div>
+}

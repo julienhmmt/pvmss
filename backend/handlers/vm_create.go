@@ -330,7 +330,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	if vmRamMinMB == 0 || vmRamMaxMB == 0 || coresMin == 0 || coresMax == 0 || socketsMin == 0 || socketsMax == 0 || diskMin == 0 || diskMax == 0 {
 		log.Error().Msg("Incomplete VM limits in settings.json")
 		data["ValidationError"] = "Incomplete system configuration. Please contact administrator."
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
@@ -381,7 +381,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		if err := r.ParseForm(); err != nil {
 			log.Error().Err(err).Msg("Failed to parse VM creation form")
 			data["ValidationError"] = i18n.Localize(localizer, "Error.InvalidFormData")
-			renderTemplateInternal(w, r, "vm_create", data)
+			renderVMCreateTempl(w, r, data)
 			return
 		}
 
@@ -390,7 +390,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	renderTemplateInternal(w, r, "vm_create", data)
+	renderVMCreateTempl(w, r, data)
 	log.Debug().Msg("Template rendered successfully")
 }
 
