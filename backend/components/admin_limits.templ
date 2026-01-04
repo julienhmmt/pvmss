@@ -1,0 +1,482 @@
+package components
+
+import "fmt"
+
+type NodeUsage struct {
+	TotalVMs  int
+	Cores     int
+	MaxCores  int
+	RamGB     int
+	MaxRamGB  int
+}
+
+type LimitsSettings struct {
+	MaxVMPerUser   int
+	MaxSnapshots   int
+}
+
+type AdminLimitsData struct {
+	Username         string
+	Lang             string
+	CSRFToken        string
+	ProxmoxConnected bool
+	Node             string
+	NodeNames        []string
+	NodeUsage        map[string]*NodeUsage
+	Limits           map[string]interface{}
+	Settings         *LimitsSettings
+}
+
+templ AdminLimitsPage(data AdminLimitsData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.Limits.Title"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/limits",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminLimitsContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminLimitsContent(data AdminLimitsData, T TranslationFunc) {
+	@AdminPageHeader(T("Admin.Limits.Title"), "fas fa-sliders-h", T("Admin.Limits.Description"), nil)
+	if data.ProxmoxConnected {
+		@nodeLimitsSection(data, T)
+		@vmLimitsSection(data, T)
+		@userLimitsSection(data, T)
+	} else {
+		@Notification(NotificationProps{
+			Type:    NotificationWarning,
+			Title:   T("Proxmox.ConnectionRequired"),
+			Message: T("Proxmox.NotConnected"),
+			Icon:    "fas fa-exclamation-triangle",
+		})
+	}
+	@limitsScripts()
+}
+
+templ nodeLimitsSection(data AdminLimitsData, T TranslationFunc) {
+	<div class="box admin-box mb-5">
+		<div class="columns">
+			<div class="column is-8">
+				<h2 class="title is-5 mb-2">
+					<span class="icon has-text-primary"><i class="fas fa-server"></i></span>
+					<span>{ T("Admin.Limits.NodeSection") }</span>
+				</h2>
+				<p class="subtitle is-6 has-text-grey">{ T("Admin.Limits.AggregateScopeNode") }</p>
+			</div>
+			<div class="column is-4">
+				<div class="field">
+					<label class="label">{ T("Admin.Limits.Node") }</label>
+					<div class="field has-addons">
+						<div class="control is-expanded">
+							<div class="select is-fullwidth is-medium">
+								<select id="nodeSelect" name="node" onchange="if(this.value) window.location.href='/admin/limits?node=' + encodeURIComponent(this.value)">
+									<option value="">{ T("Admin.Limits.SelectNode") }</option>
+									for _, node := range data.NodeNames {
+										<option value={ node } selected?={ node == data.Node }>{ node }</option>
+									}
+								</select>
+							</div>
+						</div>
+					</div>
+				</div>
+				if data.Node != "" {
+					<div class="notification is-info is-light mt-3">
+						<span class="icon"><i class="fas fa-server"></i></span>
+						<span class="has-text-weight-bold">{ T("Admin.Limits.NodeLabel") } { data.Node }</span>
+					</div>
+				}
+			</div>
+		</div>
+		if data.Node != "" {
+			if usage, ok := data.NodeUsage[data.Node]; ok && usage != nil {
+				@nodeUsageCard(usage, T)
+			}
+		}
+		@nodeLimitsForm(data, T)
+	</div>
+}
+
+templ nodeUsageCard(usage *NodeUsage, T TranslationFunc) {
+	<div class="card mb-4">
+		<header class="card-header">
+			<p class="card-header-title">
+				<span class="icon has-text-warning"><i class="fas fa-chart-bar"></i></span>
+				<span>{ T("Admin.Limits.AggregateTitle") }</span>
+			</p>
+		</header>
+		<div class="card-content">
+			<div class="columns is-multiline">
+				<div class="column is-4">
+					<div class="has-text-centered">
+						<p class="heading is-size-7 has-text-grey">{ T("Admin.Limits.AggregateTotalVMs") }</p>
+						<p class="title is-4 has-text-primary">
+							<span class="icon"><i class="fas fa-desktop"></i></span>
+							{ fmt.Sprintf("%d", usage.TotalVMs) }
+						</p>
+					</div>
+				</div>
+				<div class="column is-4">
+					<div class="has-text-centered">
+						<p class="heading is-size-7 has-text-grey">{ T("Admin.Limits.AggregateCores") }</p>
+						<p class="title is-4">
+							if usage.MaxCores > 0 {
+								<span class={ usageColorClass(usage.Cores, usage.MaxCores) }>{ fmt.Sprintf("%d", usage.Cores) }</span> /
+								<span class="has-text-grey">{ fmt.Sprintf("%d", usage.MaxCores) }</span>
+							} else {
+								<span class="has-text-primary">{ fmt.Sprintf("%d", usage.Cores) }</span>
+								<span class="tag is-warning is-light is-small ml-1">{ T("Admin.Limits.AggregateNoLimit") }</span>
+							}
+						</p>
+					</div>
+				</div>
+				<div class="column is-4">
+					<div class="has-text-centered">
+						<p class="heading is-size-7 has-text-grey">{ T("Admin.Limits.AggregateMemory") }</p>
+						<p class="title is-4">
+							if usage.MaxRamGB > 0 {
+								<span class={ usageColorClass(usage.RamGB, usage.MaxRamGB) }>{ fmt.Sprintf("%d", usage.RamGB) } GB</span> /
+								<span class="has-text-grey">{ fmt.Sprintf("%d", usage.MaxRamGB) } GB</span>
+							} else {
+								<span class="has-text-primary">{ fmt.Sprintf("%d", usage.RamGB) } GB</span>
+								<span class="tag is-warning is-light is-small ml-1">{ T("Admin.Limits.AggregateNoLimit") }</span>
+							}
+						</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+func usageColorClass(used, max int) string {
+	if max == 0 {
+		return "has-text-primary"
+	}
+	percent := (used * 100) / max
+	if percent >= 90 {
+		return "has-text-danger"
+	} else if percent >= 75 {
+		return "has-text-warning"
+	}
+	return "has-text-success"
+}
+
+templ nodeLimitsForm(data AdminLimitsData, T TranslationFunc) {
+	<form action="/admin/limits/update" method="POST" style={ templ.KV("opacity: 0.6; pointer-events: none;", data.Node == "") }>
+		<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+		<input type="hidden" name="entityId" value="node"/>
+		if data.Node != "" {
+			<input type="hidden" name="nodeName" value={ data.Node }/>
+		}
+		<div class="columns is-multiline">
+			<div class="column is-6">
+				<div class="card">
+					<header class="card-header">
+						<p class="card-header-title">
+							<span class="icon has-text-primary"><i class="fas fa-microchip"></i></span>
+							<span>{ T("Admin.Limits.TotalCores") }</span>
+						</p>
+					</header>
+					<div class="card-content">
+						<div class="field">
+							<label class="label">{ T("Common.Max") }</label>
+							<div class="control">
+								<input class="input" type="number" name="cores-max" value="1" min="1" step="1" placeholder="Max" disabled?={ data.Node == "" }/>
+							</div>
+							<p class="help has-text-grey"><span class="tag is-light is-small">{ T("Admin.Limits.MinAlways1") }</span></p>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="column is-6">
+				<div class="card">
+					<header class="card-header">
+						<p class="card-header-title">
+							<span class="icon has-text-info"><i class="fas fa-memory"></i></span>
+							<span>{ T("Admin.Limits.TotalMemory") }</span>
+						</p>
+					</header>
+					<div class="card-content">
+						<div class="field">
+							<label class="label">{ T("Common.Range") }</label>
+							<div class="field has-addons">
+								<div class="control is-expanded">
+									<input id="node-ram-min" class="input" type="number" name="ram-min" value="1" min="1" step="1" placeholder="Min" disabled?={ data.Node == "" }/>
+								</div>
+								<div class="control">
+									<span class="button">-</span>
+								</div>
+								<div class="control is-expanded">
+									<input id="node-ram-max" class="input" type="number" name="ram-max" value="1" min="1" step="1" placeholder="Max" disabled?={ data.Node == "" }/>
+								</div>
+								<div class="control">
+									<div class="select">
+										<select id="node-ram-unit" name="ram_unit" disabled?={ data.Node == "" }>
+											<option value="GB">{ T("Admin.Limits.GB") }</option>
+											<option value="MB">MB</option>
+										</select>
+									</div>
+								</div>
+							</div>
+							<p class="help has-text-grey"><span class="tag is-light is-small">Min: 1 { T("Admin.Limits.GB") }</span></p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="card mt-4">
+			<div class="card-content">
+				<div class="buttons is-right">
+					<button type="reset" class="button is-medium" disabled?={ data.Node == "" }>
+						<span class="icon"><i class="fas fa-undo"></i></span>
+						<span>{ T("Admin.Limits.ResetToDefaults") }</span>
+					</button>
+					<button type="submit" class="button is-primary is-medium" disabled?={ data.Node == "" }>
+						<span class="icon"><i class="fas fa-save"></i></span>
+						<span>{ T("Common.Save") }</span>
+					</button>
+				</div>
+			</div>
+		</div>
+	</form>
+}
+
+templ vmLimitsSection(data AdminLimitsData, T TranslationFunc) {
+	<div class="box admin-box">
+		<h2 class="title is-5 mb-4">
+			<span class="icon has-text-success"><i class="fas fa-desktop"></i></span>
+			<span>{ T("Admin.Limits.VMSection") }</span>
+		</h2>
+		<p class="subtitle is-6 has-text-grey mb-5">{ T("Admin.Limits.ScopeVM") }</p>
+		<form action="/admin/limits/update" method="POST">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="entityId" value="vm"/>
+			<div class="columns is-multiline">
+				<div class="column is-4">
+					@vmLimitCard("Sockets", "fas fa-microchip", "has-text-primary", "sockets-max", "2", T)
+				</div>
+				<div class="column is-4">
+					@vmLimitCard("Cores", "fas fa-microchip", "has-text-warning", "cores-max", "32", T)
+				</div>
+				<div class="column is-4">
+					@vmLimitRangeCard("Memory", "fas fa-memory", "has-text-info", "vm-ram", "1", "64", T)
+				</div>
+				<div class="column is-4">
+					@vmLimitRangeCardDisk("Disk", "fas fa-hdd", "has-text-success", "vm-disk", "10", "500", T)
+				</div>
+			</div>
+			<div class="card mt-5">
+				<div class="card-content">
+					<div class="buttons is-right">
+						<button type="reset" class="button is-medium">
+							<span class="icon"><i class="fas fa-undo"></i></span>
+							<span>{ T("Admin.Limits.ResetToDefaults") }</span>
+						</button>
+						<button type="submit" class="button is-primary is-medium">
+							<span class="icon"><i class="fas fa-save"></i></span>
+							<span>{ T("Common.Save") }</span>
+						</button>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+}
+
+templ vmLimitCard(titleKey string, icon string, iconClass string, inputName string, defaultVal string, T TranslationFunc) {
+	<div class="card">
+		<header class="card-header">
+			<p class="card-header-title">
+				<span class={ "icon", iconClass }><i class={ icon }></i></span>
+				<span>{ T("Admin.Limits." + titleKey) }</span>
+			</p>
+		</header>
+		<div class="card-content">
+			<div class="field">
+				<label class="label">{ T("Common.Max") }</label>
+				<div class="control">
+					<input class="input" type="number" name={ inputName } value={ defaultVal } min="1" step="1" placeholder="Max"/>
+				</div>
+				<p class="help has-text-grey"><span class="tag is-light is-small">{ T("Admin.Limits.MinAlways1") }</span></p>
+			</div>
+		</div>
+	</div>
+}
+
+templ vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefix string, minVal string, maxVal string, T TranslationFunc) {
+	<div class="card">
+		<header class="card-header">
+			<p class="card-header-title">
+				<span class={ "icon", iconClass }><i class={ icon }></i></span>
+				<span>{ T("Admin.Limits." + titleKey) }</span>
+			</p>
+		</header>
+		<div class="card-content">
+			<div class="field">
+				<label class="label">{ T("Common.Range") }</label>
+				<div class="field has-addons">
+					<div class="control is-expanded">
+						<input id={ inputPrefix + "-min" } class="input" type="number" name="ram-min" value={ minVal } min="1" step="1" placeholder="Min"/>
+					</div>
+					<div class="control">
+						<span class="button">-</span>
+					</div>
+					<div class="control is-expanded">
+						<input id={ inputPrefix + "-max" } class="input" type="number" name="ram-max" value={ maxVal } min="1" step="1" placeholder="Max"/>
+					</div>
+					<div class="control">
+						<div class="select">
+							<select id={ inputPrefix + "-unit" } name="ram_unit">
+								<option value="GB">{ T("Admin.Limits.GB") }</option>
+								<option value="MB">MB</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<p class="help has-text-grey"><span class="tag is-light is-small">Min: 1 { T("Admin.Limits.GB") }</span></p>
+			</div>
+		</div>
+	</div>
+}
+
+templ vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputPrefix string, minVal string, maxVal string, T TranslationFunc) {
+	<div class="card">
+		<header class="card-header">
+			<p class="card-header-title">
+				<span class={ "icon", iconClass }><i class={ icon }></i></span>
+				<span>{ T("Admin.Limits." + titleKey) }</span>
+			</p>
+		</header>
+		<div class="card-content">
+			<div class="field">
+				<label class="label">{ T("Common.Range") }</label>
+				<div class="field has-addons">
+					<div class="control is-expanded">
+						<input id={ inputPrefix + "-min" } class="input" type="number" name="disk-min" value={ minVal } min="1" step="1" placeholder="Min"/>
+					</div>
+					<div class="control">
+						<span class="button">-</span>
+					</div>
+					<div class="control is-expanded">
+						<input id={ inputPrefix + "-max" } class="input" type="number" name="disk-max" value={ maxVal } min="1" step="1" placeholder="Max"/>
+					</div>
+					<div class="control">
+						<div class="select">
+							<select id={ inputPrefix + "-unit" } name="disk_unit">
+								<option value="GB">{ T("Admin.Limits.GB") }</option>
+								<option value="MB">MB</option>
+							</select>
+						</div>
+					</div>
+				</div>
+				<p class="help has-text-grey"><span class="tag is-light is-small">Min: 10 { T("Admin.Limits.GB") }</span></p>
+			</div>
+		</div>
+	</div>
+}
+
+templ userLimitsSection(data AdminLimitsData, T TranslationFunc) {
+	<div class="box admin-box mt-5">
+		<form action="/admin/limits/update-user" method="POST">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div class="mb-5">
+				<h2 class="title is-5 mb-2">
+					<span class="icon has-text-info"><i class="fas fa-users"></i></span>
+					<span>{ T("Admin.Limits.UserLimits") }</span>
+				</h2>
+				<p class="subtitle is-6 has-text-grey">{ T("Admin.Limits.UserLimitsDescription") }</p>
+			</div>
+			<div class="field mb-5">
+				<label class="label" id="label-max-vm-per-user">
+					<span class="icon"><i class="fas fa-server"></i></span>
+					<span>{ T("Admin.Limits.MaxVMPerUser") }</span>
+				</label>
+				<div class="control">
+					<input id="max-vm-per-user" class="input is-medium" type="number" name="max_vm_per_user" value={ fmt.Sprintf("%d", getSettingOrDefault(data.Settings, "MaxVMPerUser", 5)) } min="0" max="100" step="1" required/>
+				</div>
+				<p id="max-vm-per-user-help" class="help">{ T("Admin.Limits.MaxVMPerUserHelp") }</p>
+			</div>
+			<div class="field mb-5">
+				<label class="label" id="label-max-snapshots-per-vm">
+					<span class="icon"><i class="fas fa-camera"></i></span>
+					<span>{ T("Admin.Limits.MaxSnapshotsPerVM") }</span>
+				</label>
+				<div class="control">
+					<input id="max-snapshots-per-vm" class="input is-medium" type="number" name="max_snapshots_per_vm" value={ fmt.Sprintf("%d", getSettingOrDefault(data.Settings, "MaxSnapshots", 8)) } min="0" max="32" step="1" required/>
+				</div>
+				<p id="max-snapshots-per-vm-help" class="help">{ T("Admin.Limits.MaxSnapshotsPerVMHelp") }</p>
+			</div>
+			<div class="card mt-6">
+				<div class="card-content">
+					<div class="buttons is-right">
+						<button type="reset" class="button is-medium">
+							<span class="icon"><i class="fas fa-undo"></i></span>
+							<span>{ T("Admin.Limits.ResetToDefaults") }</span>
+						</button>
+						<button type="submit" class="button is-primary is-medium">
+							<span class="icon"><i class="fas fa-save"></i></span>
+							<span>{ T("Common.Save") }</span>
+						</button>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+}
+
+func getSettingOrDefault(settings *LimitsSettings, field string, defaultVal int) int {
+	if settings == nil {
+		return defaultVal
+	}
+	switch field {
+	case "MaxVMPerUser":
+		if settings.MaxVMPerUser > 0 {
+			return settings.MaxVMPerUser
+		}
+	case "MaxSnapshots":
+		if settings.MaxSnapshots > 0 {
+			return settings.MaxSnapshots
+		}
+	}
+	return defaultVal
+}
+
+templ limitsScripts() {
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			function setupUnitConversion(minId, maxId, unitId) {
+				const minInput = document.getElementById(minId);
+				const maxInput = document.getElementById(maxId);
+				const unitSelect = document.getElementById(unitId);
+				if (!minInput || !maxInput || !unitSelect) return;
+				minInput.dataset.lastUnit = unitSelect.value;
+				maxInput.dataset.lastUnit = unitSelect.value;
+				unitSelect.addEventListener('change', function() {
+					const newUnit = this.value;
+					const lastUnit = minInput.dataset.lastUnit;
+					const currentMin = parseFloat(minInput.value) || 0;
+					const currentMax = parseFloat(maxInput.value) || 0;
+					if (newUnit === 'GB' && lastUnit === 'MB') {
+						minInput.value = (currentMin / 1024).toFixed(1);
+						maxInput.value = (currentMax / 1024).toFixed(1);
+						minInput.step = '0.1';
+						maxInput.step = '0.1';
+					} else if (newUnit === 'MB' && lastUnit === 'GB') {
+						minInput.value = Math.round(currentMin * 1024);
+						maxInput.value = Math.round(currentMax * 1024);
+						minInput.step = '1';
+						maxInput.step = '1';
+					}
+					minInput.dataset.lastUnit = newUnit;
+					maxInput.dataset.lastUnit = newUnit;
+				});
+			}
+			setupUnitConversion('node-ram-min', 'node-ram-max', 'node-ram-unit');
+			setupUnitConversion('vm-ram-min', 'vm-ram-max', 'vm-ram-unit');
+			setupUnitConversion('vm-disk-min', 'vm-disk-max', 'vm-disk-unit');
+		});
+	</script>
+}

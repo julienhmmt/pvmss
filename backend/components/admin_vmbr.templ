@@ -1,0 +1,217 @@
+package components
+
+import "fmt"
+
+type VMBRInfo struct {
+	Name        string
+	Node        string
+	UniqueID    string
+	Description string
+	IsFromCache bool
+}
+
+type AdminVMBRData struct {
+	Username        string
+	Lang            string
+	CSRFToken       string
+	Error           string
+	VMBRs           []VMBRInfo
+	Nodes           []string
+	EnabledVMBRs    map[string]bool
+	MaxNetworkCards int
+}
+
+templ AdminVMBRPage(data AdminVMBRData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.VMBR.Title"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/vmbr",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminVMBRContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminVMBRContent(data AdminVMBRData, T TranslationFunc) {
+	if data.Error != "" {
+		@Notification(NotificationProps{
+			Type:        NotificationDanger,
+			Title:       T("Common.Error"),
+			Message:     data.Error,
+			Icon:        "fas fa-exclamation-triangle",
+			Dismissible: true,
+		})
+	} else {
+		@AdminPageHeader(T("Admin.VMBR.Title"), "fas fa-network-wired", T("Admin.VMBR.Description"), nil)
+		@networkCardsConfig(data, T)
+		if len(data.VMBRs) > 0 {
+			@vmbrList(data, T)
+		} else {
+			<div class="box admin-box">
+				@Notification(NotificationProps{
+					Type:    NotificationWarning,
+					Message: T("Admin.VMBR.NoVMBRs"),
+					Icon:    "fas fa-circle-info",
+				})
+			</div>
+		}
+	}
+	<script>
+		function filterVMBRsByNode(node) {
+			const rows = document.querySelectorAll('tbody tr:not(.is-spacer)');
+			rows.forEach(row => {
+				if (node === '') {
+					row.style.display = '';
+				} else {
+					const nodeCell = row.querySelector('td:nth-child(2) span span');
+					if (nodeCell && nodeCell.textContent.trim() === node) {
+						row.style.display = '';
+					} else {
+						row.style.display = 'none';
+					}
+				}
+			});
+		}
+	</script>
+}
+
+templ networkCardsConfig(data AdminVMBRData, T TranslationFunc) {
+	<div class="box admin-box mb-5">
+		<h2 class="title is-5 mb-4">
+			<span class="icon"><i class="fas fa-sliders-h"></i></span>
+			<span>{ T("Admin.VMBR.NetworkCardsConfig") }</span>
+		</h2>
+		<form method="POST" action="/admin/vmbr/update-network-cards">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div class="field">
+				<label class="label">{ T("Admin.VMBR.MaxNetworkCards") }</label>
+				<div class="field has-addons">
+					<div class="control is-expanded">
+						<input
+							type="number"
+							name="max_network_cards"
+							class="input is-medium"
+							value={ fmt.Sprintf("%d", data.MaxNetworkCards) }
+							min="1"
+							max="10"
+							required
+						/>
+					</div>
+					<div class="control">
+						<button type="submit" class="button is-primary is-medium">
+							<span class="icon"><i class="fas fa-save"></i></span>
+							<span>{ T("Common.Save") }</span>
+						</button>
+					</div>
+				</div>
+				<p class="help">{ T("Admin.VMBR.MaxNetworkCardsHelp") }</p>
+			</div>
+		</form>
+	</div>
+}
+
+templ vmbrList(data AdminVMBRData, T TranslationFunc) {
+	<div class="box admin-box">
+		<div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+			<div>
+				<h2 class="title is-5 mb-2">
+					<span class="icon"><i class="fas fa-network-wired"></i></span>
+					<span>{ T("Admin.VMBR.Title") }</span>
+				</h2>
+				if len(data.Nodes) > 0 {
+					<div class="field is-grouped">
+						<label class="label">{ T("Admin.VMBR.FilterByNode") }:</label>
+						<div class="control">
+							<div class="select is-small">
+								<select onchange="filterVMBRsByNode(this.value)">
+									<option value="">{ T("Admin.VMBR.AllNodes") }</option>
+									for _, node := range data.Nodes {
+										<option value={ node }>{ node }</option>
+									}
+								</select>
+							</div>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+		<div class="table-container">
+			<table class="table modern is-fullwidth">
+				<thead>
+					<tr>
+						<th>
+							<span class="icon-text">
+								<span class="icon is-small"><i class="fas fa-network-wired"></i></span>
+								<span>{ T("Admin.VMBR.Title") }</span>
+							</span>
+						</th>
+						<th>{ T("Admin.VMBR.Header.Node") }</th>
+						<th>{ T("Admin.VMBR.Header.Description") }</th>
+						<th class="has-text-right">{ T("Common.Actions") }</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, vmbr := range data.VMBRs {
+						@vmbrRow(vmbr, data.EnabledVMBRs, data.CSRFToken, T)
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}
+
+templ vmbrRow(vmbr VMBRInfo, enabledVMBRs map[string]bool, csrfToken string, T TranslationFunc) {
+	<tr class={ templ.KV("has-background-grey-lighter", vmbr.IsFromCache) }>
+		<td>
+			<span class="has-text-weight-semibold">{ vmbr.Name }</span>
+			if vmbr.IsFromCache {
+				<span class="tag is-warning is-light ml-2" title={ T("Admin.VMBR.FromCache") }>
+					<span class="icon is-small"><i class="fas fa-clock"></i></span>
+					<span>{ T("Admin.VMBR.Cached") }</span>
+				</span>
+			}
+		</td>
+		<td>
+			<span class="tag is-light">
+				<span class="icon is-small"><i class="fas fa-server"></i></span>
+				<span>{ vmbr.Node }</span>
+			</span>
+		</td>
+		<td>
+			if vmbr.Description != "" {
+				<span class="has-text-grey">{ vmbr.Description }</span>
+			} else {
+				<span class="has-text-grey is-italic">{ T("VMDetails.NoDescription") }</span>
+			}
+		</td>
+		<td class="has-text-right">
+			<form method="POST" action="/admin/vmbr/toggle" class="is-inline">
+				<input type="hidden" name="csrf_token" value={ csrfToken }/>
+				<input type="hidden" name="vmbr" value={ vmbr.Name }/>
+				<input type="hidden" name="node" value={ vmbr.Node }/>
+				if enabledVMBRs[vmbr.UniqueID] {
+					<input type="hidden" name="action" value="disable"/>
+					<button
+						type="submit"
+						class={ "button is-small is-success is-light", templ.KV("is-disabled", vmbr.IsFromCache) }
+						disabled?={ vmbr.IsFromCache }
+					>
+						<span class="icon is-small"><i class="fas fa-toggle-on"></i></span>
+						<span>{ T("Common.Enabled") }</span>
+					</button>
+				} else {
+					<input type="hidden" name="action" value="enable"/>
+					<button
+						type="submit"
+						class={ "button is-small is-ghost", templ.KV("is-disabled", vmbr.IsFromCache) }
+						disabled?={ vmbr.IsFromCache }
+					>
+						<span class="icon is-small"><i class="fas fa-toggle-off"></i></span>
+						<span>{ T("Common.Disabled") }</span>
+					</button>
+				}
+			</form>
+		</td>
+	</tr>
+}

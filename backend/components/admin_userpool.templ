@@ -1,0 +1,216 @@
+package components
+
+import "fmt"
+
+type UserPoolInfo struct {
+	User    string
+	Pool    string
+	Comment string
+	VMCount int
+}
+
+type CurrentUserPoolStatus struct {
+	Username  string
+	PoolName  string
+	HasPool   bool
+	CanCreate bool
+}
+
+type AdminUserPoolData struct {
+	Username              string
+	Lang                  string
+	CSRFToken             string
+	Error                 bool
+	ErrorMessage          string
+	Success               bool
+	SuccessMessage        string
+	UserPools             []UserPoolInfo
+	CurrentUserPoolStatus *CurrentUserPoolStatus
+}
+
+templ AdminUserPoolPage(data AdminUserPoolData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.UserPool.Title"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/userpool",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminUserPoolContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminUserPoolContent(data AdminUserPoolData, T TranslationFunc) {
+	if data.Error {
+		@Notification(NotificationProps{
+			Type:        NotificationDanger,
+			Title:       T("Common.Error"),
+			Message:     data.ErrorMessage,
+			Icon:        "fas fa-exclamation-triangle",
+			Dismissible: true,
+		})
+	} else {
+		@AdminPageHeader(T("Admin.UserPool.Title"), "fas fa-user-shield", T("Admin.UserPool.Description"), nil)
+		if data.Success {
+			@Notification(NotificationProps{
+				Type:        NotificationSuccess,
+				Title:       T("Common.Success"),
+				Message:     data.SuccessMessage,
+				Icon:        "fas fa-user-plus",
+				Dismissible: true,
+				Class:       "is-pulse mb-4",
+			})
+		}
+		if data.CurrentUserPoolStatus != nil && data.CurrentUserPoolStatus.Username != "" {
+			@currentUserPoolStatusSection(data.CurrentUserPoolStatus, data.CSRFToken, T)
+		}
+		@createUserPoolForm(data.CSRFToken, T)
+		if len(data.UserPools) > 0 {
+			@existingUserPoolsSection(data.UserPools, T)
+		}
+	}
+}
+
+templ currentUserPoolStatusSection(status *CurrentUserPoolStatus, csrfToken string, T TranslationFunc) {
+	<div class="box admin-box mb-5">
+		<h2 class="title is-5 mb-4">
+			<span class="icon"><i class="fas fa-user-shield"></i></span>
+			<span>{ T("Admin.UserPool.CurrentUserPoolStatus") }</span>
+		</h2>
+		if status.HasPool {
+			<div class="notification is-success is-light">
+				<span class="icon"><i class="fas fa-check-circle"></i></span>
+				<span>{ T("Admin.UserPool.PoolExists") } { status.PoolName }</span>
+			</div>
+		} else {
+			<div class="notification is-warning is-light">
+				<span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+				<span>{ T("Admin.UserPool.PoolMissing") } { status.PoolName }</span>
+			</div>
+			if status.CanCreate {
+				<form method="POST" action="/userpool/create" class="mt-4">
+					<input type="hidden" name="csrf_token" value={ csrfToken }/>
+					<input type="hidden" name="username" value={ status.Username }/>
+					<input type="hidden" name="role" value="PVMSSUser"/>
+					<input type="hidden" name="propagate" value="true"/>
+					<div class="field is-grouped">
+						<div class="control">
+							<button class="button is-primary is-medium" type="submit">
+								<span class="icon is-small"><i class="fas fa-plus"></i></span>
+								<span>{ T("Admin.UserPool.CreatePoolButton") }</span>
+							</button>
+						</div>
+						<div class="control">
+							<div class="help has-text-grey">
+								<span class="icon is-small"><i class="fas fa-info-circle"></i></span>
+								{ T("Admin.UserPool.CreatePoolHelp") } { status.PoolName }
+							</div>
+						</div>
+					</div>
+				</form>
+			}
+		}
+	</div>
+}
+
+templ createUserPoolForm(csrfToken string, T TranslationFunc) {
+	<form method="POST" action="/userpool/create" class="box admin-box">
+		<input type="hidden" name="csrf_token" value={ csrfToken }/>
+		<div class="columns is-multiline">
+			<div class="column is-6">
+				<div class="field">
+					<label class="label">{ T("Login.UsernameLabel") }</label>
+					<div class="control has-icons-left">
+						<input class="input" type="text" name="username" placeholder={ T("Admin.UserPool.UsernamePlaceholder") } required/>
+						<span class="icon is-small is-left"><i class="fas fa-user"></i></span>
+					</div>
+					<p class="help">{ T("Admin.UserPool.UsernameHelp") }</p>
+				</div>
+			</div>
+			<div class="column is-6">
+				<div class="field">
+					<label class="label">{ T("Login.PasswordLabel") }</label>
+					<div class="control has-icons-left">
+						<input class="input" type="password" name="password" placeholder="********" required/>
+						<span class="icon is-small is-left"><i class="fas fa-key"></i></span>
+					</div>
+				</div>
+			</div>
+			<div class="column is-6">
+				<div class="field">
+					<label class="label">{ T("Admin.UserPool.CommentOptional") }</label>
+					<div class="control">
+						<input class="input" type="text" name="comment" placeholder={ T("Admin.UserPool.CommentPlaceholder") }/>
+					</div>
+				</div>
+			</div>
+		</div>
+		<input type="hidden" name="role" value="PVEVMUser"/>
+		<input type="hidden" name="propagate" value="true"/>
+		<div class="field is-grouped is-grouped-right">
+			<div class="control">
+				<button class="button is-primary is-medium" type="submit">
+					<span class="icon is-small"><i class="fas fa-plus"></i></span>
+					<span>{ T("Common.Create") }</span>
+				</button>
+			</div>
+		</div>
+	</form>
+}
+
+templ existingUserPoolsSection(pools []UserPoolInfo, T TranslationFunc) {
+	<div class="box admin-box mt-5">
+		<h2 class="title is-5 mb-4">
+			<span class="icon"><i class="fas fa-users"></i></span>
+			<span>{ T("Admin.UserPool.ExistingTitle") }</span>
+		</h2>
+		<div class="table-container">
+			<table class="table modern is-fullwidth">
+				<thead>
+					<tr>
+						<th>{ T("Common.User") }</th>
+						<th>{ T("Common.Pool") }</th>
+						<th>{ T("Admin.UserPool.VMCountHeader") }</th>
+						<th class="has-text-right">{ T("Common.Actions") }</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, pool := range pools {
+						<tr>
+							<td>
+								<span class="icon-text">
+									<span class="icon is-small has-text-grey"><i class="fas fa-user"></i></span>
+									<span class="has-text-weight-semibold">{ pool.User }</span>
+								</span>
+							</td>
+							<td>
+								<code class="has-background-grey-lighter has-text-grey-dark px-2 py-1 rounded">{ pool.Pool }</code>
+								if pool.Comment != "" {
+									<div class="has-text-grey is-size-7 mt-1">{ pool.Comment }</div>
+								}
+							</td>
+							<td>
+								<span class="tag is-light">
+									<span class="icon is-small"><i class="fas fa-desktop"></i></span>
+									<span>{ fmt.Sprintf("%d", pool.VMCount) }</span>
+								</span>
+							</td>
+							<td class="has-text-right">
+								<div class="buttons is-justify-content-flex-end">
+									<a class="button is-small is-ghost" href={ templ.SafeURL("/admin/userpool?pool=" + pool.Pool) } title={ T("Admin.UserPool.RefreshPoolTitle") }>
+										<span class="icon is-small"><i class="fas fa-sync"></i></span>
+										<span>{ T("Common.Refresh") }</span>
+									</a>
+									<a href={ templ.SafeURL("/admin/userpool/delete?pool=" + pool.Pool) } class="button is-danger is-small is-light" title={ T("Admin.UserPool.DeleteTitle") }>
+										<span class="icon is-small"><i class="fas fa-trash"></i></span>
+										<span>{ T("Common.Delete") }</span>
+									</a>
+								</div>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	</div>
+}

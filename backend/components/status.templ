@@ -40,14 +40,14 @@ func (s VMStatus) Icon() string {
 	}
 }
 
-func (s VMStatus) Text() string {
+func (s VMStatus) TranslationKey() string {
 	switch s {
 	case VMStatusRunning:
-		return "En cours"
+		return "Status.Running"
 	case VMStatusStopped:
-		return "Arrêtée"
+		return "Status.Stopped"
 	case VMStatusPaused:
-		return "En pause"
+		return "Status.Paused"
 	default:
 		return string(s)
 	}
@@ -60,6 +60,17 @@ templ StatusBadge(props StatusBadgeProps) {
 				<i class={ props.Status.Icon() }></i>
 			</span>
 		}
-		<span>{ props.Status.Text() }</span>
+		<span>{ props.Status.TranslationKey() }</span>
+	</span>
+}
+
+templ StatusBadgeWithT(props StatusBadgeProps, T TranslationFunc) {
+	<span class={ "tag", "is-medium", props.Status.BadgeClass(), props.Class }>
+		if props.WithIcon {
+			<span class="icon">
+				<i class={ props.Status.Icon() }></i>
+			</span>
+		}
+		<span>{ T(props.Status.TranslationKey()) }</span>
 	</span>
 }

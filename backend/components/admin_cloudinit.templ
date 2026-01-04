@@ -1,0 +1,415 @@
+package components
+
+type CloudInitTemplate struct {
+	ID          string
+	Name        string
+	Description string
+	Enabled     bool
+	Content     string
+}
+
+type SFTPStatus struct {
+	Enabled    bool
+	Host       string
+	Username   string
+	StatusType string
+	StatusText string
+}
+
+type AdminCloudInitData struct {
+	Username          string
+	Lang              string
+	CSRFToken         string
+	ErrorMessage      string
+	ProxmoxConnected  bool
+	HasProxmoxSession bool
+	Templates         []CloudInitTemplate
+	SFTPStatus        *SFTPStatus
+}
+
+templ AdminCloudInitPage(data AdminCloudInitData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.CloudInit.Title"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/cloudinit",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminCloudInitContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminCloudInitContent(data AdminCloudInitData, T TranslationFunc) {
+	if data.ErrorMessage != "" {
+		@Notification(NotificationProps{
+			Type:        NotificationDanger,
+			Title:       T("Common.Error"),
+			Message:     data.ErrorMessage,
+			Icon:        "fas fa-exclamation-triangle",
+			Dismissible: true,
+		})
+	}
+	@AdminPageHeader(T("Admin.CloudInit.Title"), "fas fa-cloud", T("Admin.CloudInit.Description"), nil)
+	if !data.ProxmoxConnected {
+		@Notification(NotificationProps{
+			Type:    NotificationWarning,
+			Title:   T("Common.Warning"),
+			Message: T("Admin.CloudInit.ProxmoxOffline"),
+			Icon:    "fas fa-exclamation-triangle",
+			Light:   true,
+		})
+	} else if !data.HasProxmoxSession {
+		@Notification(NotificationProps{
+			Type:    NotificationWarning,
+			Title:   T("Common.Warning"),
+			Message: T("Admin.CloudInit.Error.NoProxmoxSession"),
+			Icon:    "fas fa-user-lock",
+			Light:   true,
+		})
+	}
+	<article class="message is-info mb-5">
+		<div class="message-body">
+			<span class="icon"><i class="fas fa-shield-alt"></i></span>
+			<span>{ T("Admin.CloudInit.SecurityNote") }</span>
+		</div>
+	</article>
+	if data.SFTPStatus != nil {
+		@sftpStatusSection(data.SFTPStatus, T)
+	}
+	if data.HasProxmoxSession {
+		<div class="mb-4">
+			<a href="#create-form" class="button is-primary is-small">
+				<span class="icon"><i class="fas fa-plus"></i></span>
+				<span>{ T("Admin.CloudInit.CreateTemplate") }</span>
+			</a>
+		</div>
+	}
+	@templatesListSection(data, T)
+	if data.HasProxmoxSession {
+		@createEditFormSection(data, T)
+	}
+	@yamlViewModal(T)
+	@cloudInitScripts(data, T)
+}
+
+templ sftpStatusSection(status *SFTPStatus, T TranslationFunc) {
+	<article class={ "message mb-5", "is-" + status.StatusType }>
+		<div class="message-header">
+			<p>
+				<span class="icon"><i class="fas fa-server"></i></span>
+				<span>{ T("Admin.CloudInit.SFTPStatus") }</span>
+			</p>
+		</div>
+		<div class="message-body">
+			if status.Enabled {
+				<div class="columns is-multiline">
+					<div class="column is-6">
+						<strong>{ T("Common.Host") }:</strong> { status.Host }
+					</div>
+					<div class="column is-6">
+						<strong>{ T("Common.Username") }:</strong> { status.Username }
+					</div>
+					<div class="column is-12">
+						<strong>{ T("Common.Status") }:</strong>
+						if status.StatusType == "success" {
+							<span class="tag is-success">{ status.StatusText }</span>
+						} else if status.StatusType == "warning" {
+							<span class="tag is-warning">{ status.StatusText }</span>
+						} else {
+							<span class="tag is-danger">{ status.StatusText }</span>
+						}
+					</div>
+				</div>
+			} else {
+				<p>
+					<span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+					<span>{ T("Admin.CloudInit.SFTPDisabled") }</span>
+				</p>
+				<p class="mt-2">
+					<a href="/docs/cloud-init" target="_blank" class="has-text-link">
+						<span class="icon"><i class="fas fa-book"></i></span>
+						<span>{ T("Admin.CloudInit.SFTPDocsLink") }</span>
+					</a>
+				</p>
+			}
+		</div>
+	</article>
+}
+
+templ templatesListSection(data AdminCloudInitData, T TranslationFunc) {
+	<div class="columns">
+		<div class="column is-12">
+			<div class="box admin-box">
+				<h2 class="title is-5 mb-4">
+					<span class="icon"><i class="fas fa-list"></i></span>
+					<span>{ T("Admin.CloudInit.TemplatesList") }</span>
+				</h2>
+				if len(data.Templates) > 0 {
+					<div class="table-container">
+						<table class="table modern is-fullwidth">
+							<thead>
+								<tr>
+									<th>{ T("Common.Name") }</th>
+									<th>{ T("Common.Status") }</th>
+									<th class="has-text-right">{ T("Common.Actions") }</th>
+								</tr>
+							</thead>
+							<tbody>
+								for _, tpl := range data.Templates {
+									@templateRow(tpl, data.HasProxmoxSession, data.CSRFToken, T)
+								}
+							</tbody>
+						</table>
+					</div>
+				} else {
+					<div class="notification is-light">
+						<div class="has-text-centered py-4">
+							<span class="icon is-large has-text-grey-light">
+								<i class="fas fa-cloud fa-3x"></i>
+							</span>
+							<p class="mt-3 has-text-grey">{ T("Admin.CloudInit.NoTemplates") }</p>
+							<p class="mt-2">
+								<a href="#create-form" class="button is-primary is-small">
+									<span class="icon"><i class="fas fa-plus"></i></span>
+									<span>{ T("Admin.CloudInit.CreateFirst") }</span>
+								</a>
+							</p>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+templ templateRow(tpl CloudInitTemplate, hasSession bool, csrfToken string, T TranslationFunc) {
+	<tr>
+		<td>
+			<span class="has-text-weight-semibold">{ tpl.Name }</span>
+			if tpl.Description != "" {
+				<br/>
+				<small class="has-text-grey">{ tpl.Description }</small>
+			}
+		</td>
+		<td>
+			if tpl.Enabled {
+				<span class="tag is-success is-light">{ T("Common.Enabled") }</span>
+			} else {
+				<span class="tag is-grey is-light">{ T("Common.Disabled") }</span>
+			}
+		</td>
+		<td class="has-text-right">
+			<div class="buttons are-small is-right">
+				if hasSession {
+					<form action="/admin/cloudinit/toggle" method="POST" class="is-inline">
+						<input type="hidden" name="csrf_token" value={ csrfToken }/>
+						<input type="hidden" name="id" value={ tpl.ID }/>
+						if tpl.Enabled {
+							<input type="hidden" name="action" value="disable"/>
+							<button type="submit" class="button is-success is-light is-small" title={ T("Common.Disable") }>
+								<span class="icon"><i class="fas fa-toggle-on"></i></span>
+							</button>
+						} else {
+							<input type="hidden" name="action" value="enable"/>
+							<button type="submit" class="button is-ghost is-small" title={ T("Common.Enable") }>
+								<span class="icon"><i class="fas fa-toggle-off"></i></span>
+							</button>
+						}
+					</form>
+				}
+				<button type="button" class="button is-link is-light is-small btn-view-template" data-id={ tpl.ID } title={ T("Admin.CloudInit.ViewYAML") }>
+					<span class="icon"><i class="fas fa-eye"></i></span>
+				</button>
+				if hasSession {
+					<button type="button" class="button is-info is-light is-small btn-edit-template" data-id={ tpl.ID } data-name={ tpl.Name } data-description={ tpl.Description } title={ T("Common.Edit") }>
+						<span class="icon"><i class="fas fa-edit"></i></span>
+					</button>
+					<form action="/admin/cloudinit/delete" method="POST" class="is-inline" onsubmit="return confirm(confirmDeleteMessage);">
+						<input type="hidden" name="csrf_token" value={ csrfToken }/>
+						<input type="hidden" name="id" value={ tpl.ID }/>
+						<button type="submit" class="button is-danger is-light is-small" title={ T("Common.Delete") }>
+							<span class="icon"><i class="fas fa-trash"></i></span>
+						</button>
+					</form>
+				}
+			</div>
+		</td>
+	</tr>
+}
+
+templ createEditFormSection(data AdminCloudInitData, T TranslationFunc) {
+	<div class="columns">
+		<div class="column is-12">
+			<div class="box admin-box" id="create-form">
+				<h2 class="title is-5 mb-4" id="form-title">
+					<span class="icon"><i class="fas fa-plus-circle"></i></span>
+					<span>{ T("Admin.CloudInit.CreateTemplate") }</span>
+				</h2>
+				<form id="template-form" action="/admin/cloudinit/create" method="POST">
+					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+					<input type="hidden" name="id" id="edit-id" value=""/>
+					<div class="field">
+						<label class="label" for="name">
+							<span class="icon is-small"><i class="fas fa-tag"></i></span>
+							{ T("Common.Name") } <span class="has-text-danger">*</span>
+						</label>
+						<div class="control">
+							<input class="input" type="text" name="name" id="name" required placeholder={ T("Admin.CloudInit.NamePlaceholder") }/>
+						</div>
+					</div>
+					<div class="field">
+						<label class="label" for="description">
+							<span class="icon is-small"><i class="fas fa-align-left"></i></span>
+							{ T("Common.Description") }
+						</label>
+						<div class="control">
+							<input class="input" type="text" name="description" id="description" placeholder={ T("Admin.CloudInit.DescriptionPlaceholder") }/>
+						</div>
+						<p class="help">{ T("Admin.CloudInit.DescriptionHelp") }</p>
+					</div>
+					<div class="field">
+						<label class="label" for="yaml_content">
+							<span class="icon is-small"><i class="fas fa-code"></i></span>
+							{ T("Admin.CloudInit.YAMLContent") } <span class="has-text-danger">*</span>
+						</label>
+						<div class="control">
+							<textarea class="textarea is-family-monospace" name="yaml_content" id="yaml_content" rows="12" required placeholder="#cloud-config&#10;# Your cloud-init configuration here"></textarea>
+						</div>
+						<p class="help">{ T("Admin.CloudInit.YAMLHelp") }</p>
+					</div>
+					<div class="field is-grouped is-grouped-right">
+						<div class="control">
+							<button type="button" class="button is-light" onclick="resetForm()">
+								<span class="icon"><i class="fas fa-times"></i></span>
+								<span>{ T("Common.Cancel") }</span>
+							</button>
+						</div>
+						<div class="control">
+							<button type="submit" class="button is-primary" id="submit-btn" disabled?={ !data.ProxmoxConnected }>
+								<span class="icon"><i class="fas fa-save"></i></span>
+								<span id="submit-text">{ T("Admin.CloudInit.ValidateAndSave") }</span>
+							</button>
+						</div>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+}
+
+templ yamlViewModal(T TranslationFunc) {
+	<div class="modal" id="yaml-modal">
+		<div class="modal-background" onclick="closeYamlModal()"></div>
+		<div class="modal-card">
+			<header class="modal-card-head">
+				<p class="modal-card-title">
+					<span class="icon"><i class="fas fa-file-code"></i></span>
+					<span id="yaml-modal-title">{ T("Admin.CloudInit.ViewYAML") }</span>
+				</p>
+				<button class="delete" aria-label="close" onclick="closeYamlModal()"></button>
+			</header>
+			<section class="modal-card-body">
+				<pre class="has-background-black-bis has-text-white-bis p-3 is-size-7" style="max-height: 400px; overflow: auto;" id="yaml-modal-content"></pre>
+			</section>
+			<footer class="modal-card-foot is-justify-content-flex-end">
+				<button class="button" type="button" onclick="closeYamlModal()">{ T("Common.Close") }</button>
+			</footer>
+		</div>
+	</div>
+}
+
+templ cloudInitScripts(data AdminCloudInitData, T TranslationFunc) {
+	<script>
+		var proxmoxConnected = { templ.JSONString(fmt.Sprintf("%t", data.ProxmoxConnected)) };
+		var hasProxmoxSession = { templ.JSONString(fmt.Sprintf("%t", data.HasProxmoxSession)) };
+		var confirmDeleteMessage = { templ.JSONString(T("Admin.CloudInit.ConfirmDelete")) };
+		var createTitleHtml = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>' + { templ.JSONString(T("Admin.CloudInit.CreateTemplate")) } + '</span>';
+		var editTitleHtml = '<span class="icon"><i class="fas fa-edit"></i></span><span>' + { templ.JSONString(T("Admin.CloudInit.EditTemplate")) } + '</span>';
+		var saveText = { templ.JSONString(T("Common.Save")) };
+		var validateSaveText = { templ.JSONString(T("Admin.CloudInit.ValidateAndSave")) };
+		var fetchErrorMsg = { templ.JSONString(T("Admin.CloudInit.Error.FetchTemplate")) };
+		var requiredFieldsMsg = { templ.JSONString(T("Admin.CloudInit.Error.RequiredFields")) };
+
+		function showInlineNotification(type, message) {
+			const notification = document.createElement('div');
+			notification.className = `notification is-${type} has-text-black`;
+			notification.innerHTML = `<button class="delete" onclick="this.parentElement.remove()"></button>${message}`;
+			const content = document.querySelector('.section .container');
+			if (content) content.insertBefore(notification, content.firstChild);
+			if (type === 'success') setTimeout(() => { if (notification.parentElement) notification.remove(); }, 5000);
+		}
+
+		async function editTemplate(id, name, description) {
+			document.getElementById('edit-id').value = id;
+			document.getElementById('name').value = name;
+			document.getElementById('description').value = description;
+			document.getElementById('template-form').action = '/admin/cloudinit/edit';
+			document.getElementById('form-title').innerHTML = editTitleHtml;
+			document.getElementById('submit-text').textContent = saveText;
+			try {
+				const response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+				if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }
+				if (!response.ok) throw new Error('Failed to fetch template data');
+				const templateData = await response.json();
+				if (templateData.content) document.getElementById('yaml_content').value = templateData.content;
+				document.getElementById('yaml_content').required = true;
+			} catch (error) {
+				console.error('Error fetching template data:', error);
+				showInlineNotification('danger', fetchErrorMsg);
+			}
+			document.getElementById('name').focus();
+		}
+
+		async function viewTemplate(id) {
+			try {
+				const response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+				if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }
+				if (!response.ok) throw new Error('Failed to fetch template data');
+				const templateData = await response.json();
+				const titleEl = document.getElementById('yaml-modal-title');
+				if (titleEl && templateData.name) titleEl.textContent = templateData.name;
+				const contentEl = document.getElementById('yaml-modal-content');
+				if (contentEl) contentEl.textContent = templateData.content || '';
+				const modal = document.getElementById('yaml-modal');
+				if (modal) modal.classList.add('is-active');
+			} catch (error) {
+				console.error('Error fetching template data for view:', error);
+				showInlineNotification('danger', fetchErrorMsg);
+			}
+		}
+
+		function closeYamlModal() {
+			const modal = document.getElementById('yaml-modal');
+			if (modal) modal.classList.remove('is-active');
+		}
+
+		function resetForm() {
+			document.getElementById('edit-id').value = '';
+			document.getElementById('template-form').reset();
+			document.getElementById('template-form').action = '/admin/cloudinit/create';
+			document.getElementById('form-title').innerHTML = createTitleHtml;
+			document.getElementById('submit-text').textContent = validateSaveText;
+			document.getElementById('yaml_content').required = true;
+		}
+
+		document.addEventListener('DOMContentLoaded', function() {
+			const form = document.getElementById('template-form');
+			if (form) {
+				form.addEventListener('submit', function(event) {
+					if (!document.getElementById('yaml_content').value) {
+						showInlineNotification('danger', requiredFieldsMsg);
+						document.getElementById('yaml_content').focus();
+						event.preventDefault();
+						return false;
+					}
+				});
+			}
+			document.querySelectorAll('.btn-view-template').forEach(btn => {
+				btn.addEventListener('click', function() { viewTemplate(this.dataset.id); });
+			});
+			document.querySelectorAll('.btn-edit-template').forEach(btn => {
+				btn.addEventListener('click', function() { editTemplate(this.dataset.id, this.dataset.name, this.dataset.description); });
+			});
+		});
+	</script>
+}

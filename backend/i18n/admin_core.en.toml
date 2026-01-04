@@ -4,6 +4,30 @@ other = "PVMSS admin page"
 ["Admin.SelectSectionPrompt"]
 other = "Select an admin section from the menu to get started."
 
+# Admin Menu
+["Admin.Menu.Title"]
+other = "Administration"
+["Admin.Menu.Nodes"]
+other = "Nodes"
+["Admin.Menu.Storage"]
+other = "Storage"
+["Admin.Menu.VMs"]
+other = "Virtual machines"
+["Admin.Menu.UserPool"]
+other = "User pool"
+["Admin.Menu.Tags"]
+other = "Tags"
+["Admin.Menu.Limits"]
+other = "Limits"
+["Admin.Menu.Network"]
+other = "Network (VMBR)"
+["Admin.Menu.CloudInit"]
+other = "Cloud-Init"
+["Admin.Menu.ISO"]
+other = "ISO images"
+["Admin.Menu.AppInfo"]
+other = "App information"
+
 # Admin Authentication Test
 ["Admin.Auth.TestSuccess"]
 other = "Proxmox authentication test completed successfully"

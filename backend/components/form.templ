@@ -1,5 +1,7 @@
 package components
 
+import "strconv"
+
 type InputType string
 
 const (
@@ -219,7 +221,7 @@ templ FormTextarea(props FormTextareaProps) {
 					placeholder={ props.Placeholder }
 				}
 				if props.Rows > 0 {
-					rows={ string(rune(props.Rows + '0')) }
+					rows={ strconv.Itoa(props.Rows) }
 				} else {
 					rows="3"
 				}

@@ -1,0 +1,232 @@
+package components
+
+import (
+	"fmt"
+	"strings"
+)
+
+type StorageInfo struct {
+	Storage     string
+	Node        string
+	Content     string
+	Used        int64
+	Total       int64
+	UsedPercent float64
+	HasValidData bool
+}
+
+type AdminStorageData struct {
+	Username      string
+	Lang          string
+	CSRFToken     string
+	CurrentPath   string
+	Error         string
+	Storages      []StorageInfo
+	Nodes         []string
+	EnabledMap    map[string]bool
+	MaxDiskPerVM  int
+}
+
+func (s StorageInfo) UniqueID() string {
+	return fmt.Sprintf("%s:%s", s.Node, s.Storage)
+}
+
+func (s StorageInfo) ContentTypes() []string {
+	if s.Content == "" {
+		return nil
+	}
+	return strings.Split(s.Content, ",")
+}
+
+templ AdminStoragePage(data AdminStorageData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.Storage.Title"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/storage",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminStorageContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminStorageContent(data AdminStorageData, T TranslationFunc) {
+	if data.Error != "" {
+		@Notification(NotificationProps{
+			Type:        NotificationDanger,
+			Title:       T("Common.Error"),
+			Message:     data.Error,
+			Icon:        "fas fa-exclamation-triangle",
+			Dismissible: true,
+		})
+	} else {
+		@AdminPageHeader(T("Admin.Storage.Title"), "fas fa-hdd", T("Admin.Storage.Description"), nil)
+		if len(data.Storages) > 0 {
+			<div class="box admin-box">
+				<div class="is-flex is-justify-content-space-between is-align-items-center mb-4">
+					<div>
+						<h2 class="title is-5 mb-2">
+							<span class="icon"><i class="fas fa-hdd"></i></span>
+							<span>{ T("Admin.Storage.Title") }</span>
+						</h2>
+						if len(data.Nodes) > 0 {
+							<div class="field is-grouped">
+								<label class="label">{ T("Admin.Storage.FilterByNode") }:</label>
+								<div class="control">
+									<div class="select is-small">
+										<select id="nodeFilter" onchange="filterStoragesByNode(this.value)">
+											<option value="">{ T("Admin.Storage.AllNodes") }</option>
+											for _, node := range data.Nodes {
+												<option value={ node }>{ node }</option>
+											}
+										</select>
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+				<div class="table-container">
+					<table class="table modern is-fullwidth">
+						<thead>
+							<tr>
+								<th>
+									<span class="icon-text">
+										<span class="icon is-small"><i class="fas fa-hdd"></i></span>
+										<span>{ T("Admin.Storage.Title") }</span>
+									</span>
+								</th>
+								<th class="w-35">{ T("Admin.Storage.Header.Usage") }</th>
+								<th>{ T("Admin.Storage.Header.Type") }</th>
+								<th class="has-text-right">{ T("Common.Actions") }</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, storage := range data.Storages {
+								@storageRow(storage, data.EnabledMap, data.CSRFToken, T)
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+			@storageDiskConfig(data, T)
+		} else {
+			<div class="box admin-box">
+				@Notification(NotificationProps{
+					Type:    NotificationWarning,
+					Message: T("Admin.Storage.NoStorages"),
+					Icon:    "fas fa-circle-info",
+				})
+			</div>
+		}
+	}
+	<script>
+		function filterStoragesByNode(node) {
+			const rows = document.querySelectorAll('tbody tr[data-node]');
+			rows.forEach(row => {
+				if (node === '') {
+					row.style.display = '';
+				} else {
+					const rowNode = row.getAttribute('data-node');
+					row.style.display = rowNode === node ? '' : 'none';
+				}
+			});
+		}
+	</script>
+}
+
+templ storageRow(storage StorageInfo, enabledMap map[string]bool, csrfToken string, T TranslationFunc) {
+	<tr data-node={ storage.Node }>
+		<td>
+			<span class="has-text-weight-semibold">{ storage.Storage }</span>
+			if storage.Node != "" {
+				<br/>
+				<small class="has-text-grey">{ T("Admin.Storage.Node") }: { storage.Node }</small>
+			}
+		</td>
+		<td>
+			if storage.HasValidData {
+				<div class="mb-2">
+					<progress
+						class={ "progress", progressClass(storage.UsedPercent) }
+						value={ fmt.Sprintf("%.0f", storage.UsedPercent) }
+						max="100"
+					></progress>
+				</div>
+				<div class="is-flex is-align-items-center is-justify-content-space-between is-size-7">
+					<span class="has-text-grey">{ formatBytes(float64(storage.Used)) } / { formatBytes(float64(storage.Total)) }</span>
+					<span class={ "tag is-light", progressClass(storage.UsedPercent) }>
+						{ fmt.Sprintf("%.0f%%", storage.UsedPercent) }
+					</span>
+				</div>
+			} else {
+				<div class="is-flex is-align-items-center is-justify-content-center is-size-7 has-text-grey">
+					<span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+					<span>{ T("Admin.Storage.NoDataAvailable") }</span>
+				</div>
+			}
+		</td>
+		<td>
+			<div class="tags">
+				for _, contentType := range storage.ContentTypes() {
+					<span class="tag is-light">{ contentType }</span>
+				}
+			</div>
+		</td>
+		<td class="has-text-right">
+			<form method="POST" action="/admin/storage/toggle" class="is-inline">
+				<input type="hidden" name="csrf_token" value={ csrfToken }/>
+				<input type="hidden" name="storage" value={ storage.Storage }/>
+				<input type="hidden" name="node" value={ storage.Node }/>
+				if enabledMap[storage.UniqueID()] {
+					<input type="hidden" name="action" value="disable"/>
+					<button type="submit" class="button is-small is-success is-light">
+						<span class="icon is-small"><i class="fas fa-toggle-on"></i></span>
+						<span>{ T("Common.Enabled") }</span>
+					</button>
+				} else {
+					<input type="hidden" name="action" value="enable"/>
+					<button type="submit" class="button is-small is-ghost">
+						<span class="icon is-small"><i class="fas fa-toggle-off"></i></span>
+						<span>{ T("Common.Disabled") }</span>
+					</button>
+				}
+			</form>
+		</td>
+	</tr>
+}
+
+templ storageDiskConfig(data AdminStorageData, T TranslationFunc) {
+	<div class="box admin-box mb-5">
+		<h2 class="title is-5 mb-4">
+			<span class="icon"><i class="fas fa-hard-drive"></i></span>
+			<span>{ T("Admin.Storage.DiskConfig") }</span>
+		</h2>
+		<form method="POST" action="/admin/storage/update-disk-config">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div class="field">
+				<label class="label">{ T("Admin.Storage.MaxDiskPerVM") }</label>
+				<div class="field has-addons">
+					<div class="control is-expanded">
+						<input
+							type="number"
+							name="max_disk_per_vm"
+							class="input is-medium"
+							value={ fmt.Sprintf("%d", data.MaxDiskPerVM) }
+							min="1"
+							max="16"
+							required
+						/>
+					</div>
+					<div class="control">
+						<button type="submit" class="button is-primary is-medium">
+							<span class="icon"><i class="fas fa-save"></i></span>
+							<span>{ T("Common.Save") }</span>
+						</button>
+					</div>
+				</div>
+				<p class="help">{ T("Admin.Storage.MaxDiskPerVMHelp") }</p>
+			</div>
+		</form>
+	</div>
+}
