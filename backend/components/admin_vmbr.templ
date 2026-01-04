@@ -186,32 +186,16 @@ templ vmbrRow(vmbr VMBRInfo, enabledVMBRs map[string]bool, csrfToken string, T T
 			}
 		</td>
 		<td class="has-text-right">
-			<form method="POST" action="/admin/vmbr/toggle" class="is-inline">
-				<input type="hidden" name="csrf_token" value={ csrfToken }/>
-				<input type="hidden" name="vmbr" value={ vmbr.Name }/>
-				<input type="hidden" name="node" value={ vmbr.Node }/>
-				if enabledVMBRs[vmbr.UniqueID] {
-					<input type="hidden" name="action" value="disable"/>
-					<button
-						type="submit"
-						class={ "button is-small is-success is-light", templ.KV("is-disabled", vmbr.IsFromCache) }
-						disabled?={ vmbr.IsFromCache }
-					>
-						<span class="icon is-small"><i class="fas fa-toggle-on"></i></span>
-						<span>{ T("Common.Enabled") }</span>
-					</button>
-				} else {
-					<input type="hidden" name="action" value="enable"/>
-					<button
-						type="submit"
-						class={ "button is-small is-ghost", templ.KV("is-disabled", vmbr.IsFromCache) }
-						disabled?={ vmbr.IsFromCache }
-					>
-						<span class="icon is-small"><i class="fas fa-toggle-off"></i></span>
-						<span>{ T("Common.Disabled") }</span>
-					</button>
-				}
-			</form>
+			@ToggleButton(ToggleButtonProps{
+				FormAction: "/admin/vmbr/toggle",
+				CSRFToken:  csrfToken,
+				ItemName:   "vmbr",
+				ItemValue:  vmbr.Name,
+				NodeName:   "node",
+				NodeValue:  vmbr.Node,
+				IsEnabled:  enabledVMBRs[vmbr.UniqueID],
+				IsDisabled: vmbr.IsFromCache,
+			}, T)
 		</td>
 	</tr>
 }

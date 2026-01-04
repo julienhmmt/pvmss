@@ -47,27 +47,7 @@ func (n NodeDetail) IsOfflineNoMetrics() bool {
 	return n.Status == "offline" && n.MaxCPU == 0 && n.MaxMemory == 0 && n.MaxDisk == 0
 }
 
-func progressClass(percent float64) string {
-	if percent < 70.0 {
-		return "is-success"
-	} else if percent < 90.0 {
-		return "is-warning"
-	}
-	return "is-danger"
-}
-
-func formatBytes(bytes float64) string {
-	const unit = 1024
-	if bytes < unit {
-		return fmt.Sprintf("%.0f B", bytes)
-	}
-	div, exp := float64(unit), 0
-	for n := bytes / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %ciB", bytes/div, "KMGTPE"[exp])
-}
+// progressClass and formatBytes are now in helpers.templ as ProgressClass and FormatBytes
 
 templ AdminNodesPage(data AdminNodesData, T TranslationFunc) {
 	@AdminLayout(AdminLayoutProps{
@@ -83,22 +63,9 @@ templ AdminNodesPage(data AdminNodesData, T TranslationFunc) {
 
 templ adminNodesContent(data AdminNodesData, T TranslationFunc) {
 	if !data.ProxmoxConnected {
-		@Notification(NotificationProps{
-			Type:    NotificationWarning,
-			Title:   T("Proxmox.ConnectionRequired"),
-			Message: T("Proxmox.NotConnected") + " " + T("Proxmox.CheckConnection"),
-			Icon:    "fas fa-exclamation-triangle",
-			Class:   "mb-5",
-		})
+		@ProxmoxOfflineWarning(T)
 	} else if data.Error != "" {
-		@Notification(NotificationProps{
-			Type:        NotificationDanger,
-			Title:       T("Common.Error"),
-			Message:     data.Error,
-			Icon:        "fas fa-times-circle",
-			Dismissible: true,
-			Class:       "mb-5",
-		})
+		@ErrorNotification(data.Error, T)
 	} else if len(data.NodeDetails) > 0 {
 		@AdminPageHeader(T("Nodes.Title"), "fas fa-server", T("Nodes.Description"), nil)
 		if data.NodeCacheAgeSeconds > 0 {
@@ -205,7 +172,7 @@ templ nodeMetricCPU(node NodeDetail, T TranslationFunc) {
 		</label>
 		<div class="control">
 			<progress
-				class={ "progress is-small", progressClass(node.CPUPercent()) }
+				class={ "progress is-small", ProgressClass(node.CPUPercent()) }
 				value={ fmt.Sprintf("%.0f", node.CPUPercent()) }
 				max="100"
 			></progress>
@@ -224,13 +191,13 @@ templ nodeMetricMemory(node NodeDetail, T TranslationFunc) {
 		</label>
 		<div class="control">
 			<progress
-				class={ "progress is-small", progressClass(node.MemoryPercent()) }
+				class={ "progress is-small", ProgressClass(node.MemoryPercent()) }
 				value={ fmt.Sprintf("%.0f", node.MemoryPercent()) }
 				max="100"
 			></progress>
 		</div>
 		<div class="is-flex is-justify-content-space-between is-size-7">
-			<span>{ formatBytes(node.Memory) } / { formatBytes(node.MaxMemory) }</span>
+			<span>{ FormatBytes(node.Memory) } / { FormatBytes(node.MaxMemory) }</span>
 			<span class="has-text-weight-bold">{ fmt.Sprintf("%.0f%%", node.MemoryPercent()) }</span>
 		</div>
 	</div>
@@ -244,13 +211,13 @@ templ nodeMetricDisk(node NodeDetail, T TranslationFunc) {
 		</label>
 		<div class="control">
 			<progress
-				class={ "progress is-small", progressClass(node.DiskPercent()) }
+				class={ "progress is-small", ProgressClass(node.DiskPercent()) }
 				value={ fmt.Sprintf("%.0f", node.DiskPercent()) }
 				max="100"
 			></progress>
 		</div>
 		<div class="is-flex is-justify-content-space-between is-size-7">
-			<span>{ formatBytes(node.Disk) } / { formatBytes(node.MaxDisk) }</span>
+			<span>{ FormatBytes(node.Disk) } / { FormatBytes(node.MaxDisk) }</span>
 			<span class="has-text-weight-bold">{ fmt.Sprintf("%.0f%%", node.DiskPercent()) }</span>
 		</div>
 	</div>

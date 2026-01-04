@@ -105,26 +105,16 @@ templ isoRow(iso ISOInfo, enabledISOs map[string]bool, csrfToken string, T Trans
 			</span>
 		</td>
 		<td>
-			<span class="has-text-grey">{ formatBytes(float64(iso.Size)) }</span>
+			<span class="has-text-grey">{ FormatBytesInt(iso.Size) }</span>
 		</td>
 		<td class="has-text-right">
-			<form method="POST" action="/admin/iso/toggle" class="is-inline">
-				<input type="hidden" name="csrf_token" value={ csrfToken }/>
-				<input type="hidden" name="volid" value={ iso.Volid }/>
-				if enabledISOs[iso.Volid] {
-					<input type="hidden" name="action" value="disable"/>
-					<button type="submit" class="button is-small is-success is-light">
-						<span class="icon is-small"><i class="fas fa-toggle-on"></i></span>
-						<span>{ T("Common.Enabled") }</span>
-					</button>
-				} else {
-					<input type="hidden" name="action" value="enable"/>
-					<button type="submit" class="button is-small is-ghost">
-						<span class="icon is-small"><i class="fas fa-toggle-off"></i></span>
-						<span>{ T("Common.Disabled") }</span>
-					</button>
-				}
-			</form>
+			@ToggleButton(ToggleButtonProps{
+				FormAction: "/admin/iso/toggle",
+				CSRFToken:  csrfToken,
+				ItemName:   "volid",
+				ItemValue:  iso.Volid,
+				IsEnabled:  enabledISOs[iso.Volid],
+			}, T)
 		</td>
 	</tr>
 }

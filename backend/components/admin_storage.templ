@@ -148,14 +148,14 @@ templ storageRow(storage StorageInfo, enabledMap map[string]bool, csrfToken stri
 			if storage.HasValidData {
 				<div class="mb-2">
 					<progress
-						class={ "progress", progressClass(storage.UsedPercent) }
+						class={ "progress", ProgressClass(storage.UsedPercent) }
 						value={ fmt.Sprintf("%.0f", storage.UsedPercent) }
 						max="100"
 					></progress>
 				</div>
 				<div class="is-flex is-align-items-center is-justify-content-space-between is-size-7">
-					<span class="has-text-grey">{ formatBytes(float64(storage.Used)) } / { formatBytes(float64(storage.Total)) }</span>
-					<span class={ "tag is-light", progressClass(storage.UsedPercent) }>
+					<span class="has-text-grey">{ FormatBytesInt(storage.Used) } / { FormatBytesInt(storage.Total) }</span>
+					<span class={ "tag is-light", ProgressClass(storage.UsedPercent) }>
 						{ fmt.Sprintf("%.0f%%", storage.UsedPercent) }
 					</span>
 				</div>
@@ -174,24 +174,15 @@ templ storageRow(storage StorageInfo, enabledMap map[string]bool, csrfToken stri
 			</div>
 		</td>
 		<td class="has-text-right">
-			<form method="POST" action="/admin/storage/toggle" class="is-inline">
-				<input type="hidden" name="csrf_token" value={ csrfToken }/>
-				<input type="hidden" name="storage" value={ storage.Storage }/>
-				<input type="hidden" name="node" value={ storage.Node }/>
-				if enabledMap[storage.UniqueID()] {
-					<input type="hidden" name="action" value="disable"/>
-					<button type="submit" class="button is-small is-success is-light">
-						<span class="icon is-small"><i class="fas fa-toggle-on"></i></span>
-						<span>{ T("Common.Enabled") }</span>
-					</button>
-				} else {
-					<input type="hidden" name="action" value="enable"/>
-					<button type="submit" class="button is-small is-ghost">
-						<span class="icon is-small"><i class="fas fa-toggle-off"></i></span>
-						<span>{ T("Common.Disabled") }</span>
-					</button>
-				}
-			</form>
+			@ToggleButton(ToggleButtonProps{
+				FormAction: "/admin/storage/toggle",
+				CSRFToken:  csrfToken,
+				ItemName:   "storage",
+				ItemValue:  storage.Storage,
+				NodeName:   "node",
+				NodeValue:  storage.Node,
+				IsEnabled:  enabledMap[storage.UniqueID()],
+			}, T)
 		</td>
 	</tr>
 }
