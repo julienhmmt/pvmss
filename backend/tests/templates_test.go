@@ -46,9 +46,9 @@ func TestTemplateFilesExist(t *testing.T) {
 	expectedTemplates := []string{
 		"admin_appinfo.html",
 		"admin_base.html",
+		"admin_cloudinit.html",
 		"admin_iso.html",
 		"admin_limits.html",
-		"admin_login.html",
 		"admin_nodes.html",
 		"admin_storage.html",
 		"admin_tags.html",
@@ -56,16 +56,12 @@ func TestTemplateFilesExist(t *testing.T) {
 		"admin_userpool.html",
 		"admin_vmbr.html",
 		"admin_vms.html",
-		"docs.html",
-		"error.html",
-		"index.html",
 		"layout.html",
-		"login.html",
 		"navbar.html",
-		"profile.html",
-		"search.html",
-		"vm_delete_confirm.html",
-		// Note: vm_create.html and vm_details.html migrated to Templ components
+		// Note: Migrated to Templ components:
+		// - vm_create.html, vm_details.html
+		// - login.html, admin_login.html, search.html
+		// - docs.html, error.html, index.html, profile.html, vm_delete_confirm.html
 	}
 
 	for _, filename := range expectedTemplates {
