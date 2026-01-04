@@ -2,42 +2,7 @@ package handlers
 
 import (
 	"net/http"
-
-	"pvmss/state"
 )
-
-// TemplateHelpers provides utility functions for template rendering
-type TemplateHelpers struct{}
-
-// NewTemplateHelpers creates a new TemplateHelpers instance
-func NewTemplateHelpers() *TemplateHelpers {
-	return &TemplateHelpers{}
-}
-
-// RenderAdminPage is deprecated - use Templ components with AdminLayout instead
-func (th *TemplateHelpers) RenderAdminPage(w http.ResponseWriter, r *http.Request, templateName string, title string, adminSection string, sm state.StateManager, customData map[string]interface{}) {
-	http.Error(w, "DEPRECATED: Use Templ components with AdminLayout", http.StatusInternalServerError)
-}
-
-// RenderUserPage is deprecated - use Templ components with Layout instead
-func (th *TemplateHelpers) RenderUserPage(w http.ResponseWriter, r *http.Request, templateName string, title string, sm state.StateManager, customData map[string]interface{}) {
-	http.Error(w, "DEPRECATED: Use Templ components with Layout", http.StatusInternalServerError)
-}
-
-// RenderPublicPage is deprecated - use Templ components with Layout instead
-func (th *TemplateHelpers) RenderPublicPage(w http.ResponseWriter, r *http.Request, templateName string, title string, customData map[string]interface{}) {
-	http.Error(w, "DEPRECATED: Use Templ components with Layout", http.StatusInternalServerError)
-}
-
-// StandardUserPageData creates standardized user page data (legacy compatibility)
-func StandardUserPageData(title string, r *http.Request, sm state.StateManager) map[string]interface{} {
-	return NewTemplateDataWithOptions(title,
-		WithPageType("user"),
-		WithAuth(r),
-		WithProxmoxStatus(sm),
-		WithMessages(r),
-	).ToMap()
-}
 
 // MessageHandlers provides standardized message handling
 type MessageHandlers struct {

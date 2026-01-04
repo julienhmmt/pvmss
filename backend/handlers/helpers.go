@@ -245,14 +245,6 @@ func (ctx *HandlerContext) GetUsername() string {
 	return ""
 }
 
-// RenderTemplate is deprecated - use Templ components instead
-func (ctx *HandlerContext) RenderTemplate(templateName string, data map[string]interface{}) {
-	ctx.Log.Error().
-		Str("template", templateName).
-		Msg("DEPRECATED: HandlerContext.RenderTemplate called - migrate to Templ")
-	http.Error(ctx.ResponseWriter, "Legacy template rendering deprecated", http.StatusInternalServerError)
-}
-
 // HandleError logs and responds with an HTTP error
 func (ctx *HandlerContext) HandleError(err error, message string, statusCode int) {
 	ctx.Log.Error().Err(err).Msg(message)

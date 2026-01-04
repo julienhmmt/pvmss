@@ -3,17 +3,13 @@ package handlers
 import (
 	"context"
 	"net/http"
-	"strings"
-	"time"
 
 	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
-	"pvmss/middleware"
 	"pvmss/security"
 	"pvmss/state"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -44,116 +40,6 @@ func getStateManager(r *http.Request) state.StateManager {
 	}
 	logger.Get().Error().Msg("State manager missing from request context")
 	return nil
-}
-
-// RenderTemplate is deprecated - use Templ components instead
-// Kept for backwards compatibility but should not be used in new code
-func RenderTemplate(w http.ResponseWriter, r *http.Request, name string, data interface{}) {
-	log := CreateHandlerLogger("RenderTemplate", r)
-	log.Warn().
-		Str("template", name).
-		Msg("DEPRECATED: RenderTemplate called - migrate to Templ components")
-	http.Error(w, "Template rendering deprecated", http.StatusInternalServerError)
-}
-
-// populateTemplateData adds common data to the template data map.
-func populateTemplateData(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
-	log := CreateHandlerLogger("populateTemplateData", r)
-
-	// Get CSRF token from session and add to template data
-	stateManager := getStateManager(r)
-	var sessionManager *scs.SessionManager
-	if stateManager != nil {
-		sessionManager = stateManager.GetSessionManager()
-	}
-
-	// Get template data from context if it exists (use the same key as the middleware)
-	if ctxData, ok := r.Context().Value(middleware.TemplateDataKey).(map[string]interface{}); ok {
-		log.Debug().Int("context_data_size", len(ctxData)).Msg("Context data retrieved")
-		// Merge context data with provided data (provided data has priority)
-		for k, v := range ctxData {
-			if _, exists := data[k]; !exists {
-				data[k] = v
-			}
-		}
-	}
-
-	// Add authentication data
-	if sessionManager != nil && IsAuthenticated(r) {
-		log.Debug().Msg("Authenticated user detected, adding session data")
-		data["IsAuthenticated"] = true
-		data["IsAdmin"] = IsAdmin(r)
-
-		// Add username for regular users (admin users don't have username in session)
-		if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
-			data["Username"] = username
-		} else if IsAdmin(r) {
-			data["Username"] = "Admin"
-		}
-	} else {
-		log.Debug().Msg("No authenticated user detected")
-		data["IsAuthenticated"] = false
-		data["IsAdmin"] = false
-	}
-
-	// Add/override CSRF token from request context if available (prefer context value set by middleware)
-	if token, ok := security.CSRFTokenFromContext(r.Context()); ok && token != "" {
-		data["CSRFToken"] = token
-		log.Debug().Msg("CSRF token added to template data from request context")
-	} else if sessionManager != nil {
-		// Fallback: ensure a CSRF token exists in session for templates even if middleware/context didn't set it.
-		// This covers cases where a GET page is rendered without the CSRF middleware injecting the token in context.
-		sessToken := sessionManager.GetString(r.Context(), "csrf_token")
-		if sessToken == "" {
-			if newToken, err := security.GenerateCSRFToken(); err == nil {
-				sessionManager.Put(r.Context(), "csrf_token", newToken)
-				sessToken = newToken
-				log.Debug().Msg("Generated new CSRF token and stored in session for template rendering")
-			} else {
-				log.Error().Err(err).Msg("Failed to generate CSRF token for template rendering")
-			}
-		}
-		if sessToken != "" {
-			data["CSRFToken"] = sessToken
-			log.Debug().Msg("CSRF token added to template data from session fallback")
-		}
-	}
-	// Add language to data for template rendering
-	lang := i18n.GetLanguage(r)
-	data["Lang"] = lang
-
-	// Persist selected language in cookie when explicitly provided via query param
-	if qLang := strings.TrimSpace(r.URL.Query().Get(i18n.QueryParamLang)); qLang != "" {
-		// Normalize to the effective language code and set cookie on this response
-		http.SetCookie(w, &http.Cookie{
-			Name:     i18n.CookieNameLang,
-			Value:    lang,
-			Path:     "/",
-			MaxAge:   int(i18n.CookieMaxAge / time.Second),
-			HttpOnly: false,
-			Secure:   getSecureCookieFlag(r),
-			SameSite: http.SameSiteLaxMode,
-		})
-	}
-
-	data["CurrentPath"] = r.URL.Path
-	if r.URL.RawQuery != "" {
-		data["CurrentURL"] = r.URL.Path + "?" + r.URL.RawQuery
-	} else {
-		data["CurrentURL"] = r.URL.Path
-	}
-	data["IsHTTPS"] = r.TLS != nil
-	data["Host"] = r.Host
-}
-
-// renderTemplateInternal is deprecated - all pages now use Templ components
-// This function is kept only for potential emergency fallback
-func renderTemplateInternal(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) {
-	log := CreateHandlerLogger("renderTemplateInternal", r)
-	log.Error().
-		Str("template", name).
-		Msg("DEPRECATED: renderTemplateInternal called - all pages should use Templ")
-	http.Error(w, "Legacy template rendering no longer supported", http.StatusInternalServerError)
 }
 
 // setNoCacheHeaders sets headers to prevent client-side caching.
@@ -248,20 +134,6 @@ func HandlerFuncToHTTPrHandle(h http.HandlerFunc) httprouter.Handle {
 
 		log.Debug().Msg("HTTP handler processing finished")
 	}
-}
-
-// detectNeedsRegularIcons determines if regular Font Awesome icons are needed
-func detectNeedsRegularIcons(_ string, _ map[string]interface{}) bool {
-	// Add logic to detect if regular icons are needed based on template or data
-	// For now, return false to optimize CSS loading
-	return false
-}
-
-// detectNeedsBrandIcons determines if brand Font Awesome icons are needed
-func detectNeedsBrandIcons(_ string, _ map[string]interface{}) bool {
-	// Add logic to detect if brand icons are needed based on template or data
-	// For now, return false to optimize CSS loading
-	return false
 }
 
 // AdminAuditMiddleware logs all admin actions for audit trail
