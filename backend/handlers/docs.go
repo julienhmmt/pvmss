@@ -216,20 +216,32 @@ func isAlpha(s string) bool {
 
 // findDocsDir searches for the documentation directory
 func findDocsDir() (string, error) {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("unable to determine caller information")
+	// Try multiple locations for the docs directory
+	possiblePaths := []string{
+		"/app/backend/docs", // Docker container absolute path
+		"./docs",            // Current directory
+		"../docs",           // Parent directory
+		"./backend/docs",    // From project root
 	}
 
-	handlersDir := filepath.Dir(filename)
-	backendDir := filepath.Dir(handlersDir)
-	docsDir := filepath.Join(backendDir, "docs")
-
-	if _, err := os.Stat(docsDir); os.IsNotExist(err) {
-		return "", fmt.Errorf("docs directory not found at %s", docsDir)
+	// Add runtime.Caller path as fallback
+	if _, filename, _, ok := runtime.Caller(0); ok {
+		handlersDir := filepath.Dir(filename)
+		backendDir := filepath.Dir(handlersDir)
+		possiblePaths = append(possiblePaths, filepath.Join(backendDir, "docs"))
 	}
 
-	return docsDir, nil
+	for _, docsPath := range possiblePaths {
+		absPath, err := filepath.Abs(docsPath)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(absPath); err == nil {
+			return absPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("docs directory not found in any of the expected locations")
 }
 
 // renderDocsPage renders the documentation page using Templ

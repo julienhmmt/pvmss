@@ -75,6 +75,8 @@ type VMCreateData struct {
 	Lang                     string
 	CSRFToken                string
 	ProxmoxConnected         bool
+	IsAuthenticated          bool
+	IsAdmin                  bool
 	AllNodesSaturated        bool
 	NoNodesAvailable         bool
 	ValidationError          string
@@ -129,10 +131,15 @@ func VMCreatePage(data VMCreateData, T TranslationFunc) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		templ_7745c5c3_Err = Layout(LayoutProps{
-			Title:   T("VM.Create.Title"),
-			Lang:    data.Lang,
-			Content: vmCreateContent(data, T),
-			T:       T,
+			Title:            T("VM.Create.Title"),
+			Lang:             data.Lang,
+			Content:          vmCreateContent(data, T),
+			IsAuthenticated:  data.IsAuthenticated,
+			IsAdmin:          data.IsAdmin,
+			Username:         data.Username,
+			ProxmoxConnected: data.ProxmoxConnected,
+			CSRFToken:        data.CSRFToken,
+			T:                T,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -177,7 +184,7 @@ func vmCreateContent(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Configuration"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 120, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 127, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -190,7 +197,7 @@ func vmCreateContent(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(T("UI.CreateVMDescription"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 125, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 132, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -248,7 +255,7 @@ func vmCreatePageHeader(T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 141, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 148, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -261,7 +268,7 @@ func vmCreatePageHeader(T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(T("Profile.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 149, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 156, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -274,7 +281,7 @@ func vmCreatePageHeader(T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(T("Search.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 155, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 162, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -397,7 +404,7 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 208, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 215, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -446,7 +453,7 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Reset"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 224, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 231, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -459,7 +466,7 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Create"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 228, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 235, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {

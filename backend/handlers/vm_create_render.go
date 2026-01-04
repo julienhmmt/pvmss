@@ -58,6 +58,8 @@ func convertToVMCreateData(data map[string]interface{}, r *http.Request) compone
 	result.Lang = getStringFromMap(data, "Lang")
 	result.CSRFToken = getStringFromMap(data, "CSRFToken")
 	result.ProxmoxConnected = getBoolFromMap(data, "ProxmoxConnected")
+	result.IsAuthenticated = getBoolFromMap(data, "IsAuthenticated")
+	result.IsAdmin = getBoolFromMap(data, "IsAdmin")
 	result.AllNodesSaturated = getBoolFromMap(data, "AllNodesSaturated")
 	result.NoNodesAvailable = getBoolFromMap(data, "NoNodesAvailable")
 	result.ValidationError = getStringFromMap(data, "ValidationError")

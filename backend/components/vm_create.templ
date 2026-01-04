@@ -67,6 +67,8 @@ type VMCreateData struct {
 	Lang                     string
 	CSRFToken                string
 	ProxmoxConnected         bool
+	IsAuthenticated          bool
+	IsAdmin                  bool
 	AllNodesSaturated        bool
 	NoNodesAvailable         bool
 	ValidationError          string
@@ -101,10 +103,15 @@ type VMCreateData struct {
 
 templ VMCreatePage(data VMCreateData, T TranslationFunc) {
 	@Layout(LayoutProps{
-		Title:   T("VM.Create.Title"),
-		Lang:    data.Lang,
-		Content: vmCreateContent(data, T),
-		T:       T,
+		Title:            T("VM.Create.Title"),
+		Lang:             data.Lang,
+		Content:          vmCreateContent(data, T),
+		IsAuthenticated:  data.IsAuthenticated,
+		IsAdmin:          data.IsAdmin,
+		Username:         data.Username,
+		ProxmoxConnected: data.ProxmoxConnected,
+		CSRFToken:        data.CSRFToken,
+		T:                T,
 	})
 }
 
