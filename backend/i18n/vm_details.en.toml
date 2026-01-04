@@ -363,3 +363,27 @@ other = "Snapshot tree"
 other = "Initial state (no snapshots)"
 ["VMDetails.Snapshots.CurrentVMPosition"]
 other = "Current VM state"
+["VMDetails.QuickActions"]
+other = "Quick Actions"
+["VMDetails.AvailableTags"]
+other = "Available tags"
+["VMDetails.EditTagsTitle"]
+other = "Edit tags"
+["VMDetails.Section.Snapshots"]
+other = "Snapshots"
+["VMDetails.Snapshots.Empty"]
+other = "No snapshots"
+["VMDetails.Snapshots.EmptyDescription"]
+other = "Create a snapshot to save the current state of your VM"
+["VMDetails.Snapshots.Current"]
+other = "Current"
+["VMDetails.Snapshots.ConfirmRollback"]
+other = "Are you sure you want to rollback to this snapshot? This will restore the VM to its state at the time of the snapshot."
+["VMDetails.Snapshots.ConfirmDelete"]
+other = "Are you sure you want to delete this snapshot? This action cannot be undone."
+["VMDetails.Snapshots.Delete"]
+other = "Delete"
+["VMDetails.Console.Title"]
+other = "Console"
+["VMDetails.Console.Fullscreen"]
+other = "Fullscreen"

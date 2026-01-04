@@ -363,3 +363,27 @@ other = "Arborescence des snapshots"
 other = "État initial (aucun snapshot)"
 ["VMDetails.Snapshots.CurrentVMPosition"]
 other = "État actuel de la VM"
+["VMDetails.QuickActions"]
+other = "Actions rapides"
+["VMDetails.AvailableTags"]
+other = "Tags disponibles"
+["VMDetails.EditTagsTitle"]
+other = "Modifier les tags"
+["VMDetails.Section.Snapshots"]
+other = "Snapshots"
+["VMDetails.Snapshots.Empty"]
+other = "Aucun snapshot"
+["VMDetails.Snapshots.EmptyDescription"]
+other = "Créez un snapshot pour sauvegarder l'état actuel de votre VM"
+["VMDetails.Snapshots.Current"]
+other = "Actuel"
+["VMDetails.Snapshots.ConfirmRollback"]
+other = "Êtes-vous sûr de vouloir restaurer ce snapshot ? Cela restaurera la VM à son état au moment du snapshot."
+["VMDetails.Snapshots.ConfirmDelete"]
+other = "Êtes-vous sûr de vouloir supprimer ce snapshot ? Cette action est irréversible."
+["VMDetails.Snapshots.Delete"]
+other = "Supprimer"
+["VMDetails.Console.Title"]
+other = "Console"
+["VMDetails.Console.Fullscreen"]
+other = "Plein écran"

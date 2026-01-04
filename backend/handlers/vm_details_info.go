@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -656,26 +655,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"Snapshots":             snapshots,
 		"CurrentSnapshotName":   currentSnapshotName,
 		"MaxSnapshotsPerVM":     settings.Limits.MaxSnapshots,
-	}
-
-	title := ""
-	idLabel := "ID"
-	if handlerCtx != nil {
-		idLabel = handlerCtx.Translate("Common.ID")
-	}
-	if vm.Name != "" && vm.VMID > 0 {
-		title = fmt.Sprintf("%s (%s %d)", vm.Name, idLabel, vm.VMID)
-	} else if vm.VMID > 0 {
-		title = fmt.Sprintf("%s %d", idLabel, vm.VMID)
-	} else if vm.Name != "" {
-		title = vm.Name
-	}
-	if title == "" {
-		if handlerCtx != nil {
-			title = handlerCtx.Translate("VMDetails.EditResourcesTitle")
-		} else {
-			title = "VM Details"
-		}
 	}
 
 	connected, _ := stateManager.GetProxmoxStatus()

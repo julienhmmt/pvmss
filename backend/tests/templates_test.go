@@ -64,9 +64,8 @@ func TestTemplateFilesExist(t *testing.T) {
 		"navbar.html",
 		"profile.html",
 		"search.html",
-		"vm_create.html",
 		"vm_delete_confirm.html",
-		"vm_details.html",
+		// Note: vm_create.html and vm_details.html migrated to Templ components
 	}
 
 	for _, filename := range expectedTemplates {
