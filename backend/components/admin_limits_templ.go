@@ -165,7 +165,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.NodeSection"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 65, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 65, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -178,7 +178,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.AggregateScopeNode"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 67, Col: 81}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 67, Col: 81}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -191,7 +191,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.Node"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 71, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 71, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -204,7 +204,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.SelectNode"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 76, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 76, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -222,7 +222,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(node)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 78, Col: 30}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 78, Col: 30}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -245,7 +245,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(node)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 78, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 78, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -268,7 +268,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.NodeLabel"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 88, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 88, Col: 70}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -281,7 +281,7 @@ func nodeLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.Node)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 88, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 88, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -344,7 +344,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.AggregateTitle"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 107, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 107, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -357,7 +357,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.AggregateTotalVMs"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 114, Col: 86}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 114, Col: 86}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -370,7 +370,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", usage.TotalVMs))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 117, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 117, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -383,7 +383,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.AggregateCores"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 123, Col: 83}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 123, Col: 83}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -406,7 +406,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var17).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -419,7 +419,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", usage.Cores))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 126, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 126, Col: 101}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 			if templ_7745c5c3_Err != nil {
@@ -432,7 +432,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", usage.MaxCores))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 127, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 127, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -450,7 +450,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", usage.Cores))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 129, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 129, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -463,7 +463,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.AggregateNoLimit"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 130, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 130, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -481,7 +481,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.AggregateMemory"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 137, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 137, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -504,7 +504,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var24).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -517,7 +517,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", usage.RamGB))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 140, Col: 101}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 140, Col: 101}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -530,7 +530,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", usage.MaxRamGB))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 141, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 141, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -548,7 +548,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", usage.RamGB))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 143, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 143, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -561,7 +561,7 @@ func nodeUsageCard(usage *NodeUsage, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.AggregateNoLimit"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 144, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 144, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -621,7 +621,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(templ.KV("opacity: 0.6; pointer-events: none;", data.Node == ""))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 168, Col: 123}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 168, Col: 123}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -634,7 +634,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 169, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 169, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -652,7 +652,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var33 string
 			templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(data.Node)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 172, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 172, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -670,7 +670,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.TotalCores"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 180, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 180, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
@@ -683,7 +683,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Max"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 185, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 185, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
@@ -706,7 +706,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.MinAlways1"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 189, Col: 103}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 189, Col: 103}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -719,7 +719,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.TotalMemory"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 199, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 199, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
@@ -732,7 +732,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Range"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 204, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 204, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -775,7 +775,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.GB"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 218, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 218, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -788,7 +788,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.GB"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 224, Col: 102}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 224, Col: 102}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -811,7 +811,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.ResetToDefaults"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 235, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 235, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -834,7 +834,7 @@ func nodeLimitsForm(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Save"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 239, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 239, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
@@ -876,7 +876,7 @@ func vmLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.VMSection"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 251, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 251, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -889,7 +889,7 @@ func vmLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.ScopeVM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 253, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 253, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
@@ -902,7 +902,7 @@ func vmLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var46 string
 		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 255, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 255, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 		if templ_7745c5c3_Err != nil {
@@ -947,7 +947,7 @@ func vmLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.ResetToDefaults"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 276, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 276, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
@@ -960,7 +960,7 @@ func vmLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Save"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 280, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 280, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -1011,7 +1011,7 @@ func vmLimitCard(titleKey string, icon string, iconClass string, inputName strin
 		var templ_7745c5c3_Var51 string
 		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var50).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 		if templ_7745c5c3_Err != nil {
@@ -1033,7 +1033,7 @@ func vmLimitCard(titleKey string, icon string, iconClass string, inputName strin
 		var templ_7745c5c3_Var53 string
 		templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var52).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 		if templ_7745c5c3_Err != nil {
@@ -1046,7 +1046,7 @@ func vmLimitCard(titleKey string, icon string, iconClass string, inputName strin
 		var templ_7745c5c3_Var54 string
 		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits." + titleKey))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 294, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 294, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 		if templ_7745c5c3_Err != nil {
@@ -1059,7 +1059,7 @@ func vmLimitCard(titleKey string, icon string, iconClass string, inputName strin
 		var templ_7745c5c3_Var55 string
 		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Max"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 299, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 299, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 		if templ_7745c5c3_Err != nil {
@@ -1072,7 +1072,7 @@ func vmLimitCard(titleKey string, icon string, iconClass string, inputName strin
 		var templ_7745c5c3_Var56 string
 		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(inputName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 301, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 301, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 		if templ_7745c5c3_Err != nil {
@@ -1085,7 +1085,7 @@ func vmLimitCard(titleKey string, icon string, iconClass string, inputName strin
 		var templ_7745c5c3_Var57 string
 		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(defaultVal)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 301, Col: 77}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 301, Col: 77}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 		if templ_7745c5c3_Err != nil {
@@ -1098,7 +1098,7 @@ func vmLimitCard(titleKey string, icon string, iconClass string, inputName strin
 		var templ_7745c5c3_Var58 string
 		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.MinAlways1"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 303, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 303, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 		if templ_7745c5c3_Err != nil {
@@ -1149,7 +1149,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var61 string
 		templ_7745c5c3_Var61, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var60).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var61))
 		if templ_7745c5c3_Err != nil {
@@ -1171,7 +1171,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var63 string
 		templ_7745c5c3_Var63, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var62).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var63))
 		if templ_7745c5c3_Err != nil {
@@ -1184,7 +1184,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var64 string
 		templ_7745c5c3_Var64, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits." + titleKey))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 314, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 314, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var64))
 		if templ_7745c5c3_Err != nil {
@@ -1197,7 +1197,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var65 string
 		templ_7745c5c3_Var65, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Range"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 319, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 319, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var65))
 		if templ_7745c5c3_Err != nil {
@@ -1210,7 +1210,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var66 string
 		templ_7745c5c3_Var66, templ_7745c5c3_Err = templ.JoinStringErrs(inputPrefix + "-min")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 322, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 322, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var66))
 		if templ_7745c5c3_Err != nil {
@@ -1223,7 +1223,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var67 string
 		templ_7745c5c3_Var67, templ_7745c5c3_Err = templ.JoinStringErrs(minVal)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 322, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 322, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var67))
 		if templ_7745c5c3_Err != nil {
@@ -1236,7 +1236,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var68 string
 		templ_7745c5c3_Var68, templ_7745c5c3_Err = templ.JoinStringErrs(inputPrefix + "-max")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 328, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 328, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var68))
 		if templ_7745c5c3_Err != nil {
@@ -1249,7 +1249,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var69 string
 		templ_7745c5c3_Var69, templ_7745c5c3_Err = templ.JoinStringErrs(maxVal)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 328, Col: 98}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 328, Col: 98}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var69))
 		if templ_7745c5c3_Err != nil {
@@ -1262,7 +1262,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var70 string
 		templ_7745c5c3_Var70, templ_7745c5c3_Err = templ.JoinStringErrs(inputPrefix + "-unit")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 332, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 332, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var70))
 		if templ_7745c5c3_Err != nil {
@@ -1275,7 +1275,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var71 string
 		templ_7745c5c3_Var71, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.GB"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 333, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 333, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var71))
 		if templ_7745c5c3_Err != nil {
@@ -1288,7 +1288,7 @@ func vmLimitRangeCard(titleKey string, icon string, iconClass string, inputPrefi
 		var templ_7745c5c3_Var72 string
 		templ_7745c5c3_Var72, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.GB"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 339, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 339, Col: 99}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var72))
 		if templ_7745c5c3_Err != nil {
@@ -1339,7 +1339,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var75 string
 		templ_7745c5c3_Var75, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var74).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var75))
 		if templ_7745c5c3_Err != nil {
@@ -1361,7 +1361,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var77 string
 		templ_7745c5c3_Var77, templ_7745c5c3_Err = templ.JoinStringErrs(templ.CSSClasses(templ_7745c5c3_Var76).String())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 1, Col: 0}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 1, Col: 0}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var77))
 		if templ_7745c5c3_Err != nil {
@@ -1374,7 +1374,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var78 string
 		templ_7745c5c3_Var78, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits." + titleKey))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 350, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 350, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var78))
 		if templ_7745c5c3_Err != nil {
@@ -1387,7 +1387,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var79 string
 		templ_7745c5c3_Var79, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Range"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 355, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 355, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var79))
 		if templ_7745c5c3_Err != nil {
@@ -1400,7 +1400,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var80 string
 		templ_7745c5c3_Var80, templ_7745c5c3_Err = templ.JoinStringErrs(inputPrefix + "-min")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 358, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 358, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var80))
 		if templ_7745c5c3_Err != nil {
@@ -1413,7 +1413,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var81 string
 		templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(minVal)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 358, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 358, Col: 99}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
 		if templ_7745c5c3_Err != nil {
@@ -1426,7 +1426,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var82 string
 		templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(inputPrefix + "-max")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 364, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 364, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 		if templ_7745c5c3_Err != nil {
@@ -1439,7 +1439,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var83 string
 		templ_7745c5c3_Var83, templ_7745c5c3_Err = templ.JoinStringErrs(maxVal)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 364, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 364, Col: 99}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var83))
 		if templ_7745c5c3_Err != nil {
@@ -1452,7 +1452,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var84 string
 		templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(inputPrefix + "-unit")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 368, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 368, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
 		if templ_7745c5c3_Err != nil {
@@ -1465,7 +1465,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var85 string
 		templ_7745c5c3_Var85, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.GB"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 369, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 369, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var85))
 		if templ_7745c5c3_Err != nil {
@@ -1478,7 +1478,7 @@ func vmLimitRangeCardDisk(titleKey string, icon string, iconClass string, inputP
 		var templ_7745c5c3_Var86 string
 		templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.GB"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 375, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 375, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 		if templ_7745c5c3_Err != nil {
@@ -1520,7 +1520,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var88 string
 		templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 384, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 384, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 		if templ_7745c5c3_Err != nil {
@@ -1533,7 +1533,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var89 string
 		templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.UserLimits"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 388, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 388, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 		if templ_7745c5c3_Err != nil {
@@ -1546,7 +1546,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var90 string
 		templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.UserLimitsDescription"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 390, Col: 84}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 390, Col: 84}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 		if templ_7745c5c3_Err != nil {
@@ -1559,7 +1559,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var91 string
 		templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.MaxVMPerUser"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 395, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 395, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 		if templ_7745c5c3_Err != nil {
@@ -1572,7 +1572,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var92 string
 		templ_7745c5c3_Var92, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", getSettingOrDefault(data.Settings, "MaxVMPerUser", 5)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 398, Col: 174}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 398, Col: 174}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var92))
 		if templ_7745c5c3_Err != nil {
@@ -1585,7 +1585,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var93 string
 		templ_7745c5c3_Var93, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.MaxVMPerUserHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 400, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 400, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var93))
 		if templ_7745c5c3_Err != nil {
@@ -1598,7 +1598,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var94 string
 		templ_7745c5c3_Var94, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.MaxSnapshotsPerVM"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 405, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 405, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var94))
 		if templ_7745c5c3_Err != nil {
@@ -1611,7 +1611,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var95 string
 		templ_7745c5c3_Var95, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%d", getSettingOrDefault(data.Settings, "MaxSnapshots", 8)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 408, Col: 184}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 408, Col: 184}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var95))
 		if templ_7745c5c3_Err != nil {
@@ -1624,7 +1624,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var96 string
 		templ_7745c5c3_Var96, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.MaxSnapshotsPerVMHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 410, Col: 92}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 410, Col: 92}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var96))
 		if templ_7745c5c3_Err != nil {
@@ -1637,7 +1637,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var97 string
 		templ_7745c5c3_Var97, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.Limits.ResetToDefaults"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 417, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 417, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var97))
 		if templ_7745c5c3_Err != nil {
@@ -1650,7 +1650,7 @@ func userLimitsSection(data AdminLimitsData, T TranslationFunc) templ.Component 
 		var templ_7745c5c3_Var98 string
 		templ_7745c5c3_Var98, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Save"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_limits.templ`, Line: 421, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/components/admin_limits.templ`, Line: 421, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var98))
 		if templ_7745c5c3_Err != nil {

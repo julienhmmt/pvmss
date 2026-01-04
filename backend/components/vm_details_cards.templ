@@ -1,0 +1,397 @@
+package components
+
+import (
+	"fmt"
+	"strconv"
+)
+
+templ vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) {
+	<div
+		id="vm-celebration-banner"
+		class="notification is-success is-light mb-4"
+		style="border: 2px solid #48c774; background: linear-gradient(135deg, rgba(72,199,116,0.1) 0%, rgba(72,199,116,0.05) 100%); animation: slideInBounce 0.8s ease-out;"
+	>
+		<button class="delete" onclick="dismissCelebration()"></button>
+		<div class="media">
+			<div class="media-left">
+				<span class="icon has-text-success" style="font-size: 1.5rem;">
+					<i class="fas fa-check-circle"></i>
+				</span>
+			</div>
+			<div class="media-content">
+				<p class="has-text-weight-semibold mb-2" style="color: #2d5a3d;">
+					<i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>
+					{ T("VMDetails.Celebration.Title") }
+				</p>
+				<p style="color: #2d5a3d; margin-bottom: 0.5rem;">
+					{ T("VMDetails.Celebration.Message") }
+				</p>
+				<div class="buttons" style="margin-top: 0.75rem;">
+					<button class="button is-small is-success" onclick="startVM()">
+						<span class="icon is-small"><i class="fas fa-play"></i></span>
+						<span>{ T("VMDetails.Celebration.StartNow") }</span>
+					</button>
+					<button class="button is-small is-info" onclick="openConsole()">
+						<span class="icon is-small"><i class="fas fa-terminal"></i></span>
+						<span>{ T("VMDetails.Celebration.OpenConsole") }</span>
+					</button>
+					<button class="button is-small is-primary" onclick="editResources()">
+						<span class="icon is-small"><i class="fas fa-sliders"></i></span>
+						<span>{ T("VMDetails.Celebration.EditResources") }</span>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ vmDetailsOverviewCard(data VMDetailsData, T TranslationFunc) {
+	<div class="card mb-4">
+		@vmDetailsHeader(data, T)
+		<div class="card-content pt-4 pb-3 px-3">
+			<div class="columns is-mobile is-multiline is-variable is-2">
+				@vmDetailsCPUStat(data, T)
+				@vmDetailsRAMStat(data, T)
+				@vmDetailsDiskStat(data, T)
+				@vmDetailsCDROMStat(data, T)
+				@vmDetailsNetworkStat(data, T)
+				@vmDetailsSecurityStat(data, T)
+				@vmDetailsCloudInitStat(data, T)
+			</div>
+		</div>
+		@vmDetailsQuickActions(data, T)
+	</div>
+}
+
+templ vmDetailsHeader(data VMDetailsData, T TranslationFunc) {
+	<header class="card-header brand-header is-align-items-center">
+		<p class="card-header-title">
+			<span class="icon-text">
+				<span class="icon"><i class="fas fa-server"></i></span>
+				<span>{ data.VM.Name } ({ strconv.Itoa(data.VM.VMID) })</span>
+			</span>
+		</p>
+		<div class="card-header-icon">
+			@vmDetailsStatusBadge(data.VM.Status, T)
+		</div>
+	</header>
+}
+
+templ vmDetailsQuickActions(data VMDetailsData, T TranslationFunc) {
+	<div class="card-content pt-0 pb-4 px-4" style="border-top: 1px solid rgb(0,0,0,6%);">
+		<div class="has-text-centered mb-2 mt-3">
+			<span class="has-text-grey is-size-7" style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">{ T("VMDetails.QuickActions") }</span>
+		</div>
+		@VMActionButtons(VMActionButtonsProps{
+			VMID:             data.VM.VMID,
+			Node:             data.VM.Node,
+			Status:           data.VM.Status,
+			CSRFToken:        data.CSRFToken,
+			ProxmoxConnected: data.ProxmoxConnected,
+			ExtraClasses:     "is-flex-wrap-wrap is-justify-content-center enhanced-loading",
+		}, T)
+		if data.ProxmoxConnected {
+			<div class="has-text-centered mt-4 pt-3" style="border-top: 1px solid rgb(0,0,0,6%);">
+				<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d?edit=resources", data.VM.VMID)) } class="button is-primary">
+					<span class="icon is-small"><i class="fas fa-sliders"></i></span>
+					<span>{ T("VMDetails.ModifyResources") }</span>
+				</a>
+			</div>
+		}
+	</div>
+}
+
+templ vmDetailsDescriptionTagsGrid(data VMDetailsData, T TranslationFunc) {
+	<div class="columns is-variable is-5">
+		<div class={ "column", vmDetailsDescColumnClass(data.Tags) }>
+			<div class="card mb-5">
+				<header class="card-header brand-header is-align-items-center">
+					<p class="card-header-title">
+						<span class="icon-text">
+							<span class="icon"><i class="fas fa-info-circle"></i></span>
+							<span>{ T("VMDetails.Label.Description") }</span>
+						</span>
+					</p>
+					if data.ProxmoxConnected {
+						<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d?edit=description", data.VM.VMID)) } class="button is-light mr-3">
+							<span class="icon is-small"><i class="fas fa-edit"></i></span>
+							<span class="is-hidden-mobile">{ T("VMDetails.Modify") }</span>
+						</a>
+					}
+				</header>
+				<div class="card-content content">
+					if data.Description != "" {
+						if data.DescriptionHTML != "" {
+							@templ.Raw(data.DescriptionHTML)
+						} else {
+							<p>{ data.Description }</p>
+						}
+					} else {
+						<p class="has-text-grey-light is-italic mb-0">{ T("VMDetails.NoDescription") }</p>
+					}
+				</div>
+			</div>
+		</div>
+		if data.Tags != "" {
+			<div class="column is-5">
+				<div class="card mb-5">
+					<header class="card-header brand-header is-align-items-center">
+						<p class="card-header-title">
+							<span class="icon-text">
+								<span class="icon"><i class="fas fa-tags"></i></span>
+								<span>{ T("Common.Tags") }</span>
+							</span>
+						</p>
+						if data.ProxmoxConnected {
+							<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d?edit=tags", data.VM.VMID)) } class="button is-light mr-3">
+								<span class="icon is-small"><i class="fas fa-edit"></i></span>
+								<span class="is-hidden-mobile">{ T("VMDetails.Modify") }</span>
+							</a>
+						}
+					</header>
+					<div class="card-content">
+						<div class="tags are-medium">
+							for _, tag := range vmDetailsSplitTags(data.Tags) {
+								<span class="tag tag-pvmss">{ tag }</span>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ vmDetailsDescriptionEditor(data VMDetailsData, T TranslationFunc) {
+	<div class="card mb-5">
+		<header class="card-header brand-header">
+			<p class="card-header-title">
+				<span class="icon-text">
+					<span class="icon"><i class="fas fa-edit"></i></span>
+					<span>{ T("VMDetails.EditDescriptionTitle") }</span>
+				</span>
+			</p>
+		</header>
+		<div class="card-content">
+			<form action="/vm/update/description" method="post">
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+				<input type="hidden" name="node" value={ data.VM.Node }/>
+				<div class="field">
+					<label for="description" class="label has-text-weight-semibold">{ T("VMDetails.DescriptionLabel") }</label>
+					<div class="control">
+						<textarea id="description" name="description" class="textarea" rows="6" placeholder={ T("VMDetails.DescriptionPlaceholder") }>{ data.Description }</textarea>
+					</div>
+					<p class="help has-text-grey">{ T("VMDetails.DescriptionHelp") }</p>
+				</div>
+				<hr class="my-4"/>
+				<div class="field is-grouped is-justify-content-space-between">
+					<div class="control">
+						<a class="button is-light" href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d", data.VM.VMID)) }>
+							<span class="icon"><i class="fas fa-times"></i></span>
+							<span>{ T("Common.Cancel") }</span>
+						</a>
+					</div>
+					<div class="control">
+						<button type="submit" class="button is-primary is-medium" disabled?={ !data.ProxmoxConnected }>
+							<span class="icon"><i class="fas fa-save"></i></span>
+							<span>{ T("VMDetails.SaveDescription") }</span>
+						</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+templ vmDetailsTagsEditor(data VMDetailsData, T TranslationFunc) {
+	<div class="card mb-5">
+		<header class="card-header brand-header">
+			<p class="card-header-title">
+				<span class="icon-text">
+					<span class="icon"><i class="fas fa-tags"></i></span>
+					<span>{ T("VMDetails.EditTagsTitle") }</span>
+				</span>
+			</p>
+		</header>
+		<div class="card-content">
+			<form action="/vm/update/tags" method="post">
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+				<input type="hidden" name="node" value={ data.VM.Node }/>
+				<div class="field">
+					<label class="label has-text-weight-semibold">{ T("VMDetails.AvailableTags") }</label>
+					<div class="tags are-medium">
+						<span class="tag is-primary is-medium">pvmss</span>
+						<input type="hidden" name="tags" value="pvmss"/>
+						for _, tag := range data.AvailableTags {
+							if tag != "pvmss" {
+								<label class="tag-checkbox-label">
+									<input type="checkbox" name="tags" value={ tag } class="is-hidden" checked?={ vmDetailsTagSelected(data.Tags, tag) }/>
+									<span class={ "tag", "is-light", "is-medium", vmDetailsTagClass(data.Tags, tag) }>{ tag }</span>
+								</label>
+							}
+						}
+					</div>
+				</div>
+				<hr class="my-4"/>
+				<div class="field is-grouped is-justify-content-space-between">
+					<div class="control">
+						<a class="button is-light" href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d", data.VM.VMID)) }>
+							<span class="icon"><i class="fas fa-times"></i></span>
+							<span>{ T("Common.Cancel") }</span>
+						</a>
+					</div>
+					<div class="control">
+						<button type="submit" class="button is-primary is-medium" disabled?={ !data.ProxmoxConnected }>
+							<span class="icon"><i class="fas fa-save"></i></span>
+							<span>{ T("VMDetails.SaveTags") }</span>
+						</button>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+func vmDetailsTagClass(currentTags string, tag string) string {
+	if vmDetailsTagSelected(currentTags, tag) {
+		return "is-primary"
+	}
+	return ""
+}
+
+templ vmDetailsSnapshotsCard(data VMDetailsData, T TranslationFunc) {
+	<div class="card mb-5">
+		<header class="card-header brand-header is-align-items-center">
+			<p class="card-header-title">
+				<span class="icon-text">
+					<span class="icon"><i class="fas fa-camera"></i></span>
+					<span>{ T("VMDetails.Section.Snapshots") }</span>
+				</span>
+			</p>
+			if data.ProxmoxConnected && len(data.Snapshots) < data.MaxSnapshots {
+				<a href={ templ.SafeURL(fmt.Sprintf("/vm/snapshot/create/%d", data.VM.VMID)) } class="button is-primary mr-3">
+					<span class="icon is-small"><i class="fas fa-plus"></i></span>
+					<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Create") }</span>
+				</a>
+			}
+		</header>
+		<div class="card-content">
+			if len(data.Snapshots) > 0 {
+				<div class="snapshot-list">
+					for _, snap := range data.Snapshots {
+						@vmDetailsSnapshotItem(snap, data, T)
+					}
+				</div>
+			} else {
+				<div class="has-text-centered" style="padding: 2rem 0;">
+					<div class="has-text-grey-light" style="font-size: 3rem; margin-bottom: 1rem;">
+						<i class="fas fa-camera"></i>
+					</div>
+					<div class="has-text-grey" style="font-size: 1.1rem; font-weight: 500;">
+						{ T("VMDetails.Snapshots.Empty") }
+					</div>
+					<div class="has-text-grey-light" style="font-size: 0.9rem; margin-top: 0.5rem;">
+						{ T("VMDetails.Snapshots.EmptyDescription") }
+					</div>
+					if data.ProxmoxConnected {
+						<a href={ templ.SafeURL(fmt.Sprintf("/vm/snapshot/create/%d", data.VM.VMID)) } class="button is-primary mt-4">
+							<span class="icon is-small"><i class="fas fa-plus"></i></span>
+							<span>{ T("VMDetails.Snapshots.CreateFirst") }</span>
+						</a>
+					}
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ vmDetailsSnapshotItem(snap SnapshotInfo, data VMDetailsData, T TranslationFunc) {
+	<div class="snapshot-item" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;">
+		<div class="is-flex is-align-items-center is-justify-content-space-between">
+			<div class="is-flex is-align-items-center" style="gap: 0.75rem;">
+				<span class="icon has-text-primary">
+					<i class="fas fa-camera"></i>
+				</span>
+				<div>
+					<div class="has-text-weight-semibold">{ snap.Name }</div>
+					if snap.Description != "" {
+						<div class="has-text-grey is-size-7">{ snap.Description }</div>
+					}
+				</div>
+				if snap.Vmstate == 1 {
+					<span class="tag is-info is-light">
+						<span class="icon is-small"><i class="fas fa-memory"></i></span>
+						<span>{ T("VMDetails.Snapshots.WithRAM") }</span>
+					</span>
+				}
+				if snap.Name == data.CurrentSnapshotName {
+					<span class="tag is-success is-light">
+						<span class="icon is-small"><i class="fas fa-check"></i></span>
+						<span>{ T("VMDetails.Snapshots.Current") }</span>
+					</span>
+				}
+			</div>
+			if data.ProxmoxConnected {
+				<div class="buttons are-small">
+					<form action="/vm/snapshot/rollback" method="post" style="display: inline;">
+						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+						<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+						<input type="hidden" name="node" value={ data.VM.Node }/>
+						<input type="hidden" name="snapname" value={ snap.Name }/>
+						<button type="submit" class="button is-warning is-small" onclick="return confirm(this.dataset.confirm)" data-confirm={ T("VMDetails.Snapshots.ConfirmRollback") }>
+							<span class="icon is-small"><i class="fas fa-undo"></i></span>
+							<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Rollback") }</span>
+						</button>
+					</form>
+					<form action="/vm/snapshot/delete" method="post" style="display: inline;">
+						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+						<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+						<input type="hidden" name="node" value={ data.VM.Node }/>
+						<input type="hidden" name="snapname" value={ snap.Name }/>
+						<button type="submit" class="button is-danger is-small" onclick="return confirm(this.dataset.confirm)" data-confirm={ T("VMDetails.Snapshots.ConfirmDelete") }>
+							<span class="icon is-small"><i class="fas fa-trash"></i></span>
+							<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Delete") }</span>
+						</button>
+					</form>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) {
+	<div id="console-modal" class="modal">
+		<div class="modal-background" onclick="closeConsoleModal()"></div>
+		<div class="modal-card" style="width: 90vw; max-width: 1200px; height: 80vh;">
+			<header class="modal-card-head">
+				<p class="modal-card-title">
+					<span class="icon-text">
+						<span class="icon"><i class="fas fa-terminal"></i></span>
+						<span>{ T("VMDetails.Console.Title") } - { data.VM.Name }</span>
+					</span>
+				</p>
+				<button class="delete" aria-label="close" onclick="closeConsoleModal()"></button>
+			</header>
+			<section class="modal-card-body" style="padding: 0; overflow: hidden;">
+				<iframe id="console-iframe" style="width: 100%; height: 100%; border: none;"></iframe>
+			</section>
+			<footer class="modal-card-foot is-justify-content-flex-end">
+				<button class="button" onclick="closeConsoleModal()">{ T("Common.Close") }</button>
+				<a id="console-fullscreen-link" href="#" target="_blank" class="button is-primary">
+					<span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+					<span>{ T("VMDetails.Console.Fullscreen") }</span>
+				</a>
+			</footer>
+		</div>
+	</div>
+}
+
+templ vmDetailsScripts(data VMDetailsData, T TranslationFunc) {
+	<script>
+	var vmDetailsVMID = { strconv.Itoa(data.VM.VMID) };
+	var vmDetailsNode = { templ.JSONString(data.VM.Node) };
+	var vmDetailsStatus = { templ.JSONString(data.VM.Status) };
+	</script>
+}

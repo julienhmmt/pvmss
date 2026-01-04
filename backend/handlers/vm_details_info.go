@@ -678,6 +678,10 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		}
 	}
 
-	th := NewTemplateHelpers()
-	th.RenderUserPage(w, r, "vm_details", title, stateManager, custom)
+	connected, _ := stateManager.GetProxmoxStatus()
+	custom["ProxmoxConnected"] = connected
+	custom["IsAdmin"] = IsAdmin(r)
+	custom["Username"] = getUsernameFromSession(r)
+
+	renderVMDetailsTempl(w, r, custom)
 }
