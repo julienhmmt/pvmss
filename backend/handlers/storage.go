@@ -372,7 +372,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	if successMsg != "" {
-		opts = append(opts, WithSuccess(successMsg))
+		_ = append(opts, WithSuccess(successMsg))
 	}
 
 	// Convert to Templ data

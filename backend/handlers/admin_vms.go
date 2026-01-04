@@ -173,7 +173,7 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	}
 
 	if errMsg != "" {
-		opts = append(opts, WithError(errMsg))
+		_ = append(opts, WithError(errMsg))
 	}
 
 	// Build Templ data

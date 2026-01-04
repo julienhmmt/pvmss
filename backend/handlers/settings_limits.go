@@ -112,7 +112,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	if len(nodeNames) > 1 {
 		sort.Strings(nodeNames)
 	}
-	opts = append(opts, WithData("NodeNames", nodeNames))
+	_ = append(opts, WithData("NodeNames", nodeNames))
 
 	// Get resource usage for all nodes
 	var nodeUsage map[string]*NodeResourceUsage
@@ -148,7 +148,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		nodeUsage = make(map[string]*NodeResourceUsage)
 	}
 	if nodeCapacities == nil {
-		nodeCapacities = make(map[string]*NodeCapacity)
+		_ = make(map[string]*NodeCapacity)
 	}
 	// Convert nodeUsage to components.NodeUsage
 	templNodeUsage := make(map[string]*components.NodeUsage)

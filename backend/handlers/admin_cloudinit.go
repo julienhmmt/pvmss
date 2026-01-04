@@ -180,7 +180,7 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 		if name != "" && strings.Contains(warningMsg, "%s") {
 			warningMsg = strings.Replace(warningMsg, "%s", name, 1)
 		}
-		opts = append(opts, WithWarning(warningMsg))
+		_ = append(opts, WithWarning(warningMsg))
 	}
 
 	// Build Templ data

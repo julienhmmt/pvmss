@@ -155,7 +155,6 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 						errMsg = "Failed to retrieve node details"
 					} else {
 						log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with optimization")
-						nodeDataSource = "live"
 						nodeCacheAgeSeconds = 0
 						now := time.Now().In(nodeLocation)
 						for _, d := range nodeDetails {
@@ -231,7 +230,6 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 				}
 				// Mark data source as live for this request so that future debugging
 				// clearly indicates that fresh data was fetched.
-				nodeDataSource = "live"
 				nodeCacheAgeSeconds = 0
 				nodeLastUpdate[refreshNode] = time.Now().In(nodeLocation).Format(nodeTimeLayout)
 			}

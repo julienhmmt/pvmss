@@ -399,7 +399,7 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		opts = append(opts, WithSuccess(successMsg))
 	}
 	if errorMsg != "" {
-		opts = append(opts, WithError(errorMsg))
+		_ = append(opts, WithError(errorMsg))
 	}
 
 	// Build Templ data

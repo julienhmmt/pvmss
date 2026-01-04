@@ -16,7 +16,6 @@ import (
 
 	"pvmss/components"
 	"pvmss/i18n"
-	appI18n "pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -246,7 +245,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 	isoName := query.Get("iso")
 	var successMsg string
 	if success {
-		localizer := appI18n.GetLocalizerFromRequest(r)
+		localizer := i18n.GetLocalizerFromRequest(r)
 		isoDisplay := isoName
 		if isoDisplay != "" {
 			isoDisplay = filepath.Base(isoDisplay)

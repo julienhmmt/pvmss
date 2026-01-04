@@ -282,7 +282,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		opts = append(opts, WithSuccess(successMsg))
 	}
 	if err != nil {
-		opts = append(opts, WithData("Error", err.Error()))
+		_ = append(opts, WithData("Error", err.Error()))
 	}
 
 	// Build Templ data
