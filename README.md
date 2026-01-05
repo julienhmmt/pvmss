@@ -228,7 +228,7 @@ docker run -d \
   -e PVMSS_SETTINGS_PATH="/app/settings.json" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.2.1
+  jhmmt/pvmss:0.3.0
 ```
 
 To also write JSON logs to a file inside the container (and keep stdout), override:
@@ -255,7 +255,7 @@ The application will be available at <http://localhost:50000>.
 ```yaml
 services:
   pvmss:
-    image: jhmmt/pvmss:0.2.1
+    image: jhmmt/pvmss:0.3.0
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -329,4 +329,4 @@ Feedback and contributions are welcome through issues or pull requests. Next ver
 
 ## License
 
-PVMSS by Julien HOMMET is licensed under **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International**. See <https://creativecommons.org/licenses/by-nc-nd/4.0/>.
+PVMSS by Julien HOMMET is licensed under **GNU AGPL v3**. See <https://www.gnu.org/licenses/agpl-3.0.en.html>.
