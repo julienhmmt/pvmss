@@ -43,20 +43,13 @@ func TestTemplateFilesExist(t *testing.T) {
 		t.Skip("Frontend directory not found")
 	}
 
-	expectedTemplates := []string{
-		"layout.html",
-		"navbar.html",
-		// Note: Migrated to Templ components:
-		// - All admin_*.html files (admin_appinfo, admin_base, admin_cloudinit, etc.)
-		// - vm_create.html, vm_details.html
-		// - login.html, admin_login.html, search.html
-		// - docs.html, error.html, index.html, profile.html, vm_delete_confirm.html
-	}
+	files, err := templates.FindTemplateFiles(frontendDir)
+	require.NoError(t, err, "Should be able to find template files")
+	require.NotEmpty(t, files, "Should find at least one template file")
 
-	for _, filename := range expectedTemplates {
-		filePath := filepath.Join(frontendDir, filename)
-		_, err := os.Stat(filePath)
-		assert.NoError(t, err, "Template file %s should exist", filename)
+	for _, filePath := range files {
+		_, statErr := os.Stat(filePath)
+		assert.NoError(t, statErr, "Template file %s should exist", filepath.Base(filePath))
 	}
 }
 
