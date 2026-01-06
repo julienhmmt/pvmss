@@ -303,11 +303,11 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 	// Convert VMBRs
 	for _, v := range vmbrsForTemplate {
 		vmbrTemplData.VMBRs = append(vmbrTemplData.VMBRs, components.VMBRInfo{
-			Name:        v["Name"],
-			Node:        v["Node"],
-			UniqueID:    v["UniqueID"],
-			Description: v["Description"],
-			IsFromCache: v["IsFromCache"] == "true",
+			Name:        v["name"],
+			Node:        v["node"],
+			UniqueID:    v["unique_id"],
+			Description: v["description"],
+			IsFromCache: false, // VMBRs collected live are not from cache
 		})
 	}
 
