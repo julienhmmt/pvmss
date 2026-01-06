@@ -99,9 +99,13 @@
       }
     })
       .then((result) => {
+        console.log('Toggle response received:', result);
         toggleContainer.classList.remove('loading');
 
-        if (result.success) {
+        // Check if the fetch itself succeeded and the server response indicates success
+        if (result.success && result.data && result.data.success) {
+          console.log('Toggle successful, updating UI for card', cardIndex, 'to enabled:', enabled);
+          
           // Add success animation
           toggleContainer.classList.add('success');
           setTimeout(() => toggleContainer.classList.remove('success'), 600);
@@ -110,7 +114,7 @@
           updateNetworkCardUI(cardIndex, enabled);
 
           // Show success notification
-          const successMsg = enabled ? msgNetworkEnabled : msgNetworkDisabled;
+          const successMsg = result.data.message || (enabled ? msgNetworkEnabled : msgNetworkDisabled);
           showSuccess(successMsg);
 
           // Optional: Refresh data in background after a short delay
@@ -118,6 +122,8 @@
             refreshNetworkData();
           }, 1000);
         } else {
+          console.error('Toggle failed - result:', result);
+          
           // Add error animation
           toggleContainer.classList.add('error');
           setTimeout(() => toggleContainer.classList.remove('error'), 500);
@@ -127,8 +133,9 @@
           toggleLabel.innerHTML = originalLabel;
           toggleInput.disabled = false;
 
-          console.error('Network toggle failed:', result.errorDetail);
-          // Error notification is already shown by fetchJson
+          const errorMsg = (result.data && result.data.error) || result.error || msgActionFailed;
+          console.error('Network toggle failed:', errorMsg);
+          showError(errorMsg);
         }
       })
       .catch((error) => {
@@ -150,17 +157,27 @@
 
   // Update network card UI instantly
   function updateNetworkCardUI(cardIndex, enabled) {
+    console.log('updateNetworkCardUI called for card', cardIndex, 'enabled:', enabled);
+    
     const toggleLabel = document.querySelector('#network-toggle-' + cardIndex + ' .network-toggle-label');
     const toggleInput = document.querySelector('#network-toggle-' + cardIndex + ' input[type="checkbox"]');
     const toggleContainer = document.querySelector('#network-toggle-' + cardIndex);
 
+    console.log('Found elements:', { 
+      toggleLabel: !!toggleLabel, 
+      toggleInput: !!toggleInput, 
+      toggleContainer: !!toggleContainer 
+    });
+
     if (!toggleLabel || !toggleInput || !toggleContainer) {
+      console.error('Missing toggle elements for card', cardIndex);
       return;
     }
 
     // Update checkbox state and ARIA
     toggleInput.checked = enabled;
     toggleInput.setAttribute('aria-checked', enabled ? 'true' : 'false');
+    console.log('Updated checkbox state to:', enabled);
 
     // Update label with smooth transition
     toggleLabel.style.opacity = '0';
@@ -171,6 +188,7 @@
         toggleLabel.innerHTML = '<i class="fas fa-plug-circle-xmark has-text-grey"></i> ' + labelDisabled;
       }
       toggleLabel.style.opacity = '1';
+      console.log('Updated label to:', enabled ? 'enabled' : 'disabled');
     }, 100);
 
     // Re-enable controls
@@ -642,6 +660,7 @@
 
   function initNetworkToggles() {
     const toggleInputs = document.querySelectorAll('.network-toggle-input');
+    console.log('Initializing network toggles, found:', toggleInputs.length);
     toggleInputs.forEach(input => {
       input.addEventListener('change', function() {
         const index = this.dataset.networkIndex;
@@ -650,6 +669,7 @@
         const vmid = this.dataset.vmid;
         const node = this.dataset.node;
         
+        console.log('Network toggle triggered:', { index, enabled, vmid, node });
         toggleNetworkCard(index, enabled, csrfToken, vmid, node);
       });
     });

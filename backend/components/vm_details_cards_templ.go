@@ -3005,7 +3005,7 @@ func vmDetailsScripts(data VMDetailsData, T TranslationFunc) templ.Component {
 			templ_7745c5c3_Var165 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 269, "<script>\n\tvar vmDetailsVMID = { strconv.Itoa(data.VM.VMID) };\n\tvar vmDetailsNode = { templ.JSONString(data.VM.Node) };\n\tvar vmDetailsStatus = { templ.JSONString(data.VM.Status) };\n\t</script><script src=\"/js/vm-utils.js\"></script><script src=\"/js/vm-details.js\"></script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 269, "<script>\n\tvar vmDetailsVMID = { strconv.Itoa(data.VM.VMID) };\n\tvar vmDetailsNode = { templ.JSONString(data.VM.Node) };\n\tvar vmDetailsStatus = { templ.JSONString(data.VM.Status) };\n\t</script><script src=\"/js/vm-utils.js\"></script><script src=\"/js/vm-details.js\"></script><script type=\"module\" src=\"/js/vm-console-init.js\"></script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
