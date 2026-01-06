@@ -86,7 +86,7 @@ templ vmActionStartButton(props VMActionButtonsProps, T TranslationFunc) {
 }
 
 templ vmActionConsoleButton(props VMActionButtonsProps, T TranslationFunc) {
-	<button id="console-button" class="button is-primary vm-console-button" disabled?={ vmActionRunningRequired(props) }>
+	<button id="console-button" type="button" class="button is-primary vm-console-button">
 		<span class="icon"><i class="fas fa-terminal"></i></span>
 		<span class="button-text">{ T("VMDetails.Action.Console") }</span>
 		<span class="button-loading is-hidden">
