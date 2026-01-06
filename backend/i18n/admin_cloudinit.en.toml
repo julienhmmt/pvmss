@@ -4,6 +4,10 @@
 other = "Cloud-init Templates"
 ["Admin.CloudInit.Description"]
 other = "Manage cloud-init configuration templates for VM initialization"
+["Admin.CloudInit.SFTPStatus"]
+other = "SFTP Status"
+["Admin.CloudInit.SFTPStatusHelp"]
+other = "This status indicates whether SFTP is enabled for cloud-init templates"
 
 # Page sections
 ["Admin.CloudInit.TemplatesList"]

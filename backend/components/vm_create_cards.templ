@@ -112,7 +112,7 @@ templ vmCreateNodeField(data VMCreateData, T TranslationFunc) {
 		<div class="control">
 			<div class="select is-fullwidth is-medium">
 				<select id="node" name="node" required aria-required="true" aria-describedby="node-help">
-					<option value="">-- { T("VM.Create.SelectNode") } --</option>
+					<option value="">-- { T("VM.Create.ProxmoxNode") } --</option>
 					if len(data.NodeOptions) > 0 {
 						for _, opt := range data.NodeOptions {
 							<option value={ opt.Value } data-cores-max={ strconv.Itoa(opt.CoresMax) } data-ram-max-gb={ strconv.Itoa(opt.RamMaxGB) } selected?={ opt.IsSelected } disabled?={ opt.Disabled } class={ vmCreateNodeOptionClass(opt.Disabled) }>

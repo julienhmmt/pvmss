@@ -4,6 +4,10 @@
 other = "Modèles Cloud-init"
 ["Admin.CloudInit.Description"]
 other = "Gérer les modèles de configuration cloud-init pour l'initialisation des VM"
+["Admin.CloudInit.SFTPStatus"]
+other = "Statut SFTP"
+["Admin.CloudInit.SFTPStatusHelp"]
+other = "Ce statut indique si SFTP est activé pour les modèles cloud-init"
 
 # Page sections
 ["Admin.CloudInit.TemplatesList"]
