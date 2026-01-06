@@ -538,7 +538,12 @@ func runRouteTest(t *testing.T, cfg routeConfig, test routeTest, client *http.Cl
 func authenticate(t *testing.T, cfg routeConfig, client *http.Client, username, password, loginPath string) {
 	t.Helper()
 
-	getResp, err := client.Get(cfg.BaseURL + loginPath)
+	getReq, err := http.NewRequest(http.MethodGet, cfg.BaseURL+loginPath, nil)
+	if err != nil {
+		t.Fatalf("failed to create login GET request %s: %v", loginPath, err)
+	}
+	getReq.Header.Set("X-PVMSS-Test-Bypass", "1")
+	getResp, err := client.Do(getReq)
 	if err != nil {
 		t.Fatalf("failed to GET login page %s: %v", loginPath, err)
 	}
@@ -568,6 +573,7 @@ func authenticate(t *testing.T, cfg routeConfig, client *http.Client, username, 
 		t.Fatalf("failed to create login POST request %s: %v", loginPath, err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("X-PVMSS-Test-Bypass", "1")
 
 	originalRedirect := client.CheckRedirect
 	client.CheckRedirect = func(*http.Request, []*http.Request) error {
