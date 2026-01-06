@@ -276,9 +276,17 @@ templ vmDetailsResourcesEditor(data VMDetailsData, T TranslationFunc) {
 		<div class="card-content">
 			if data.VM.Status == "running" {
 				@Notification(NotificationProps{
-					Type:    NotificationWarning,
-					Message: T("VMDetails.Resources.StopVMWarning"),
-					Icon:    "fas fa-exclamation-triangle",
+					Type:    NotificationDanger,
+					Title:   T("VMDetails.ResourcesDisabledTitle"),
+					Message: T("VMDetails.ResourcesDisabledMessage"),
+					Icon:    "fas fa-exclamation-circle",
+				})
+			} else {
+				@Notification(NotificationProps{
+					Type:    NotificationInfo,
+					Message: T("VMDetails.ResourcesWarningText"),
+					Icon:    "fas fa-info-circle",
+					Light:   true,
 				})
 			}
 			<form action="/vm/update/resources" method="post">
@@ -293,16 +301,13 @@ templ vmDetailsResourcesEditor(data VMDetailsData, T TranslationFunc) {
 								{ T("VMDetails.Label.Sockets") }
 							</label>
 							<div class="control">
-								<input
-									class="input is-medium"
-									type="number"
-									name="sockets"
-									value={ strconv.Itoa(vmDetailsGetCurrentSockets(data)) }
-									min={ strconv.Itoa(data.VMSocketsMin) }
-									max={ strconv.Itoa(data.VMSocketsMax) }
-									required
-									disabled?={ data.VM.Status == "running" }
-								/>
+								<div class="select is-medium is-fullwidth">
+									<select name="sockets" required disabled?={ data.VM.Status == "running" }>
+										for i := data.VMSocketsMin; i <= data.VMSocketsMax; i++ {
+											<option value={ strconv.Itoa(i) } selected?={ i == vmDetailsGetCurrentSockets(data) }>{ strconv.Itoa(i) }</option>
+										}
+									</select>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -313,75 +318,46 @@ templ vmDetailsResourcesEditor(data VMDetailsData, T TranslationFunc) {
 								{ T("VMDetails.Label.Cores") }
 							</label>
 							<div class="control">
-								<input
-									class="input is-medium"
-									type="number"
-									name="cores"
-									value={ strconv.Itoa(data.VM.CPUs) }
-									min={ strconv.Itoa(data.VMCoresMin) }
-									max={ strconv.Itoa(data.VMCoresMax) }
-									required
-									disabled?={ data.VM.Status == "running" }
-								/>
-							</div>
-						</div>
-					</div>
-					<div class="column is-6">
-						<div class="field">
-							<label class="label">
-								<span class="icon is-small"><i class="fas fa-memory"></i></span>
-								{ T("VMDetails.Label.RAM") } (MB)
-							</label>
-							<div class="control">
-								<input
-									class="input is-medium"
-									type="number"
-									name="memory"
-									value={ strconv.FormatInt(data.VM.MaxMem/(1024*1024), 10) }
-									min={ strconv.Itoa(data.VMRamMinMB) }
-									max={ strconv.Itoa(data.VMRamMaxMB) }
-									step="256"
-									required
-									disabled?={ data.VM.Status == "running" }
-								/>
-							</div>
-							<p class="help">{ data.FormattedMaxMemGB }</p>
-						</div>
-					</div>
-					<div class="column is-6">
-						<div class="field">
-							<label class="label">
-								<span class="icon is-small"><i class="fas fa-network-wired"></i></span>
-								{ T("VMDetails.Label.Bridge") }
-							</label>
-							<div class="control">
 								<div class="select is-medium is-fullwidth">
-									<select name="bridge" disabled?={ data.VM.Status == "running" }>
-										for _, bridge := range data.Bridges {
-											<option value={ bridge } selected?={ bridge == data.CurrentBridge }>{ bridge }</option>
+									<select name="cores" required disabled?={ data.VM.Status == "running" }>
+										for i := data.VMCoresMin; i <= data.VMCoresMax; i++ {
+											<option value={ strconv.Itoa(i) } selected?={ i == data.VM.CPUs }>{ strconv.Itoa(i) }</option>
 										}
 									</select>
 								</div>
 							</div>
 						</div>
 					</div>
-					<div class="column is-6">
+					<div class="column is-12">
 						<div class="field">
 							<label class="label">
-								<span class="icon is-small"><i class="fas fa-ethernet"></i></span>
-								{ T("VM.Create.NetworkModel") }
+								<span class="icon is-small"><i class="fas fa-memory"></i></span>
+								{ T("VMDetails.Label.RAM") }
 							</label>
-							<div class="control">
-								<div class="select is-medium is-fullwidth">
-									<select name="network_model" disabled?={ data.VM.Status == "running" }>
-										<option value="virtio" selected?={ data.CurrentNetworkModel == "virtio" }>VirtIO</option>
-										<option value="e1000" selected?={ data.CurrentNetworkModel == "e1000" }>E1000</option>
-										<option value="e1000e" selected?={ data.CurrentNetworkModel == "e1000e" }>E1000E</option>
-										<option value="rtl8139" selected?={ data.CurrentNetworkModel == "rtl8139" }>RTL8139</option>
-										<option value="vmxnet3" selected?={ data.CurrentNetworkModel == "vmxnet3" }>VMXNet3</option>
-									</select>
+							<div class="field has-addons">
+								<div class="control is-expanded">
+									<input
+										id="memory"
+										class="input is-medium"
+										type="number"
+										name="memory"
+										value={ strconv.FormatInt(data.VM.MaxMem/(1024*1024), 10) }
+										min={ strconv.Itoa(data.VMRamMinMB) }
+										max={ strconv.Itoa(data.VMRamMaxMB) }
+										required
+										disabled?={ data.VM.Status == "running" }
+									/>
+								</div>
+								<div class="control">
+									<div class="select is-medium">
+										<select id="memory-unit" name="memory_unit" disabled?={ data.VM.Status == "running" }>
+											<option value="MB">MB</option>
+											<option value="GB">GB</option>
+										</select>
+									</div>
 								</div>
 							</div>
+							<p class="help" id="memory-display">{ data.FormattedMaxMemGB }</p>
 						</div>
 					</div>
 				</div>
@@ -423,21 +399,71 @@ func vmDetailsGetCurrentSockets(data VMDetailsData) int {
 
 templ vmDetailsSnapshotsCard(data VMDetailsData, T TranslationFunc) {
 	<div class="card mb-5">
-		<header class="card-header brand-header is-align-items-center">
+		<header class="card-header brand-header">
 			<p class="card-header-title">
 				<span class="icon-text">
 					<span class="icon"><i class="fas fa-camera"></i></span>
 					<span>{ T("VMDetails.Section.Snapshots") }</span>
 				</span>
 			</p>
-			if data.ProxmoxConnected && len(data.Snapshots) < data.MaxSnapshots {
-				<a href={ templ.SafeURL(fmt.Sprintf("/vm/snapshot/create/%d", data.VM.VMID)) } class="button is-primary mr-3">
-					<span class="icon is-small"><i class="fas fa-plus"></i></span>
-					<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Create") }</span>
-				</a>
-			}
 		</header>
 		<div class="card-content">
+			if data.ProxmoxConnected && len(data.Snapshots) < data.MaxSnapshots {
+				<form action="/vm/snapshot/create" method="post" class="mb-5">
+					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+					<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+					<input type="hidden" name="node" value={ data.VM.Node }/>
+					<div class="columns is-multiline">
+						<div class="column is-8">
+							<div class="field">
+								<label class="label">{ T("VMDetails.Snapshots.Name") }</label>
+								<div class="control">
+									<input name="snapshot_name" type="text" class="input" placeholder={ T("VMDetails.Snapshots.NamePlaceholder") } pattern="^[a-zA-Z0-9_-]+$" maxlength="40" required/>
+								</div>
+								<p class="help">{ T("VMDetails.Snapshots.NameHelp") }</p>
+							</div>
+						</div>
+						<div class="column is-4">
+							<div class="field">
+								<label class="label">&nbsp;</label>
+								<div class="control">
+									<label class="checkbox">
+										<input type="checkbox" name="vmstate" value="true"/>
+										<span class="ml-2">{ T("VMDetails.Snapshots.IncludeRAM") }</span>
+									</label>
+								</div>
+								<p class="help">{ T("VMDetails.Snapshots.IncludeRAMHelp") }</p>
+							</div>
+						</div>
+						<div class="column is-12">
+							<div class="field">
+								<label class="label">{ T("VMDetails.Snapshots.Description") }</label>
+								<div class="control">
+									<textarea name="description" class="textarea" placeholder={ T("VMDetails.Snapshots.DescriptionPlaceholder") } maxlength="255" rows="2"></textarea>
+								</div>
+								<p class="help">{ T("Common.Optional") }</p>
+							</div>
+						</div>
+						<div class="column is-12">
+							<div class="field is-grouped">
+								<div class="control">
+									@Button(ButtonProps{
+										Text:     T("VMDetails.Snapshots.Create"),
+										Icon:     "fas fa-plus",
+										Type:     ButtonPrimary,
+										IsSubmit: true,
+									})
+								</div>
+							</div>
+						</div>
+					</div>
+				</form>
+			} else if len(data.Snapshots) >= data.MaxSnapshots {
+				<div class="notification is-warning is-light mb-4">
+					<span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+					<span>{ T("VMDetails.Snapshots.LimitReached") }</span>
+				</div>
+			}
 			if len(data.Snapshots) > 0 {
 				<div class="snapshot-list">
 					for _, snap := range data.Snapshots {
@@ -455,12 +481,6 @@ templ vmDetailsSnapshotsCard(data VMDetailsData, T TranslationFunc) {
 					<div class="has-text-grey-light" style="font-size: 0.9rem; margin-top: 0.5rem;">
 						{ T("VMDetails.Snapshots.EmptyDescription") }
 					</div>
-					if data.ProxmoxConnected {
-						<a href={ templ.SafeURL(fmt.Sprintf("/vm/snapshot/create/%d", data.VM.VMID)) } class="button is-primary mt-4">
-							<span class="icon is-small"><i class="fas fa-plus"></i></span>
-							<span>{ T("VMDetails.Snapshots.CreateFirst") }</span>
-						</a>
-					}
 				</div>
 			}
 		</div>
@@ -494,21 +514,21 @@ templ vmDetailsSnapshotItem(snap SnapshotInfo, data VMDetailsData, T Translation
 				}
 			</div>
 			if data.ProxmoxConnected {
-				<form method="POST" action="/vm/snapshots/rollback" class="is-inline">
+				<form method="POST" action="/vm/snapshot/rollback" class="is-inline">
 					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
 					<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
 					<input type="hidden" name="node" value={ data.VM.Node }/>
-					<input type="hidden" name="snapname" value={ snap.Name }/>
+					<input type="hidden" name="snapshot_name" value={ snap.Name }/>
 					<button type="submit" class="button is-warning is-small" data-confirm={ T("VMDetails.Snapshots.ConfirmRollback") }>
 						<span class="icon is-small"><i class="fas fa-undo"></i></span>
 						<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Rollback") }</span>
 					</button>
 				</form>
-				<form method="POST" action="/vm/snapshots/delete" class="is-inline">
+				<form method="POST" action="/vm/snapshot/delete" class="is-inline">
 					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
 					<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
 					<input type="hidden" name="node" value={ data.VM.Node }/>
-					<input type="hidden" name="snapname" value={ snap.Name }/>
+					<input type="hidden" name="snapshot_name" value={ snap.Name }/>
 					<button type="submit" class="button is-danger is-small" data-confirm={ T("VMDetails.Snapshots.ConfirmDelete") }>
 						<span class="icon is-small"><i class="fas fa-trash"></i></span>
 						<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Delete") }</span>

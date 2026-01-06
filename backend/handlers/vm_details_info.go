@@ -569,15 +569,21 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	if successParam := r.URL.Query().Get("success"); successParam != "" {
 		success = true
-		switch successParam {
-		case "snapshot_created":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.CreatedSuccess")
-		case "snapshot_updated":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.UpdatedSuccess")
-		case "snapshot_deleted":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.DeletedSuccess")
-		case "snapshot_rollback":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.RollbackSuccess")
+		// Check for success_msg first (from RedirectWithSuccess)
+		if msg := r.URL.Query().Get("success_msg"); msg != "" {
+			successMessage = msg
+		} else {
+			// Fallback to old parameter-based messages
+			switch successParam {
+			case "snapshot_created":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.CreatedSuccess")
+			case "snapshot_updated":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.UpdatedSuccess")
+			case "snapshot_deleted":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.DeletedSuccess")
+			case "snapshot_rollback":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.RollbackSuccess")
+			}
 		}
 	}
 
