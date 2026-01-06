@@ -229,16 +229,25 @@ templ nodeLimitsForm(data AdminLimitsData, T TranslationFunc) {
 		</div>
 		<div class="card mt-4">
 			<div class="card-content">
-				<div class="buttons is-right">
-					<button type="reset" class="button is-medium" disabled?={ data.Node == "" }>
-						<span class="icon"><i class="fas fa-undo"></i></span>
-						<span>{ T("Admin.Limits.ResetToDefaults") }</span>
-					</button>
-					<button type="submit" class="button is-primary is-medium" disabled?={ data.Node == "" }>
-						<span class="icon"><i class="fas fa-save"></i></span>
-						<span>{ T("Common.Save") }</span>
-					</button>
-				</div>
+				@ButtonGroup(ButtonGroupProps{
+					Alignment: ButtonGroupRight,
+					Buttons: []templ.Component{
+						Button(ButtonProps{
+							Text:     T("Admin.Limits.ResetToDefaults"),
+							Icon:     "fas fa-undo",
+							Size:     ButtonMedium,
+							Disabled: data.Node == "",
+						}),
+						Button(ButtonProps{
+							Text:     T("Common.Save"),
+							Icon:     "fas fa-save",
+							Type:     ButtonPrimary,
+							Size:     ButtonMedium,
+							IsSubmit: true,
+							Disabled: data.Node == "",
+						}),
+					},
+				})
 			</div>
 		</div>
 	</form>
@@ -270,16 +279,23 @@ templ vmLimitsSection(data AdminLimitsData, T TranslationFunc) {
 			</div>
 			<div class="card mt-5">
 				<div class="card-content">
-					<div class="buttons is-right">
-						<button type="reset" class="button is-medium">
-							<span class="icon"><i class="fas fa-undo"></i></span>
-							<span>{ T("Admin.Limits.ResetToDefaults") }</span>
-						</button>
-						<button type="submit" class="button is-primary is-medium">
-							<span class="icon"><i class="fas fa-save"></i></span>
-							<span>{ T("Common.Save") }</span>
-						</button>
-					</div>
+					@ButtonGroup(ButtonGroupProps{
+						Alignment: ButtonGroupRight,
+						Buttons: []templ.Component{
+							Button(ButtonProps{
+								Text: T("Admin.Limits.ResetToDefaults"),
+								Icon: "fas fa-undo",
+								Size: ButtonMedium,
+							}),
+							Button(ButtonProps{
+								Text:     T("Common.Save"),
+								Icon:     "fas fa-save",
+								Type:     ButtonPrimary,
+								Size:     ButtonMedium,
+								IsSubmit: true,
+							}),
+						},
+					})
 				</div>
 			</div>
 		</form>
@@ -411,16 +427,23 @@ templ userLimitsSection(data AdminLimitsData, T TranslationFunc) {
 			</div>
 			<div class="card mt-6">
 				<div class="card-content">
-					<div class="buttons is-right">
-						<button type="reset" class="button is-medium">
-							<span class="icon"><i class="fas fa-undo"></i></span>
-							<span>{ T("Admin.Limits.ResetToDefaults") }</span>
-						</button>
-						<button type="submit" class="button is-primary is-medium">
-							<span class="icon"><i class="fas fa-save"></i></span>
-							<span>{ T("Common.Save") }</span>
-						</button>
-					</div>
+					@ButtonGroup(ButtonGroupProps{
+						Alignment: ButtonGroupRight,
+						Buttons: []templ.Component{
+							Button(ButtonProps{
+								Text: T("Admin.Limits.ResetToDefaults"),
+								Icon: "fas fa-undo",
+								Size: ButtonMedium,
+							}),
+							Button(ButtonProps{
+								Text:     T("Common.Save"),
+								Icon:     "fas fa-save",
+								Type:     ButtonPrimary,
+								Size:     ButtonMedium,
+								IsSubmit: true,
+							}),
+						},
+					})
 				</div>
 			</div>
 		</form>

@@ -69,6 +69,10 @@ func convertToVMDetailsData(data map[string]interface{}, r *http.Request) compon
 	result.MaxSnapshots = getIntFromMap(data, "MaxSnapshotsPerVM")
 	result.VMRamMinMB = getIntFromMap(data, "VMRamMinMB")
 	result.VMRamMaxMB = getIntFromMap(data, "VMRamMaxMB")
+	result.VMSocketsMin = getIntFromMapWithDefault(data, "VMSocketsMin", 1)
+	result.VMSocketsMax = getIntFromMapWithDefault(data, "VMSocketsMax", 4)
+	result.VMCoresMin = getIntFromMapWithDefault(data, "VMCoresMin", 1)
+	result.VMCoresMax = getIntFromMapWithDefault(data, "VMCoresMax", 32)
 
 	result.Disks = convertDisksData(data)
 	result.NetworkInterfaces = convertNetworkInterfaces(data)

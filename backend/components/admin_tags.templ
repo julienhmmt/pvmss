@@ -51,10 +51,13 @@ templ adminTagsContent(data AdminTagsData, T TranslationFunc) {
 						/>
 					</div>
 					<div class="control">
-						<button type="submit" class="button is-primary is-medium">
-							<span class="icon"><i class="fas fa-plus"></i></span>
-							<span>{ T("Admin.Tags.AddTag") }</span>
-						</button>
+						@Button(ButtonProps{
+							Text:     T("Admin.Tags.AddTag"),
+							Icon:     "fas fa-plus",
+							Type:     ButtonPrimary,
+							Size:     ButtonMedium,
+							IsSubmit: true,
+						})
 					</div>
 				</div>
 			</form>

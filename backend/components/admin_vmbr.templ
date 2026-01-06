@@ -99,10 +99,13 @@ templ networkCardsConfig(data AdminVMBRData, T TranslationFunc) {
 						/>
 					</div>
 					<div class="control">
-						<button type="submit" class="button is-primary is-medium">
-							<span class="icon"><i class="fas fa-save"></i></span>
-							<span>{ T("Common.Save") }</span>
-						</button>
+						@Button(ButtonProps{
+							Text:     T("Common.Save"),
+							Icon:     "fas fa-save",
+							Type:     ButtonPrimary,
+							Size:     ButtonMedium,
+							IsSubmit: true,
+						})
 					</div>
 				</div>
 				<p class="help">{ T("Admin.VMBR.MaxNetworkCardsHelp") }</p>

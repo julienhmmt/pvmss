@@ -240,6 +240,13 @@ func getIntFromMap(m map[string]interface{}, key string) int {
 	return 0
 }
 
+func getIntFromMapWithDefault(m map[string]interface{}, key string, defaultVal int) int {
+	if v, ok := m[key].(int); ok {
+		return v
+	}
+	return defaultVal
+}
+
 func getStringSliceFromMap(m map[string]interface{}, key string) []string {
 	if v, ok := m[key].([]string); ok {
 		return v

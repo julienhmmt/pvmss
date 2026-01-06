@@ -19,6 +19,8 @@ other = "Status"
 other = "Stop"
 ["VMDetails.Action.Success"]
 other = "Action completed successfully"
+["VMDetails.Label.Cores"]
+other = "Cores"
 ["VMDetails.Label.CPU"]
 other = "CPU"
 ["VMDetails.Label.Description"]
@@ -33,6 +35,8 @@ other = "Name"
 other = "Network"
 ["VMDetails.Label.RAM"]
 other = "Memory"
+["VMDetails.Label.Sockets"]
+other = "Sockets"
 ["VMDetails.Label.Status"]
 other = "Status"
 ["VMDetails.Label.Uptime"]
@@ -99,6 +103,8 @@ other = "Save resources"
 other = "Cannot modify running VM"
 ["VMDetails.ResourcesDisabledMessage"]
 other = "The VM is currently running. CPU, memory, and disk modifications are disabled to avoid performance issues or data loss. Network cards can still be enabled/disabled."
+["VMDetails.Resources.StopVMWarning"]
+other = "The VM must be stopped to modify resources. Please stop the VM first, then you can modify CPU, memory, and network settings."
 ["VM.Details.NoDisks"]
 other = "No disks found"
 ["VMDetails.Section.Disks"]

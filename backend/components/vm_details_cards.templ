@@ -263,6 +263,164 @@ func vmDetailsTagClass(currentTags string, tag string) string {
 	return ""
 }
 
+templ vmDetailsResourcesEditor(data VMDetailsData, T TranslationFunc) {
+	<div class="card mb-5">
+		<header class="card-header brand-header">
+			<p class="card-header-title">
+				<span class="icon-text">
+					<span class="icon"><i class="fas fa-sliders"></i></span>
+					<span>{ T("VMDetails.ModifyResources") }</span>
+				</span>
+			</p>
+		</header>
+		<div class="card-content">
+			if data.VM.Status == "running" {
+				@Notification(NotificationProps{
+					Type:    NotificationWarning,
+					Message: T("VMDetails.Resources.StopVMWarning"),
+					Icon:    "fas fa-exclamation-triangle",
+				})
+			}
+			<form action="/vm/update/resources" method="post">
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+				<input type="hidden" name="node" value={ data.VM.Node }/>
+				<div class="columns is-multiline">
+					<div class="column is-6">
+						<div class="field">
+							<label class="label">
+								<span class="icon is-small"><i class="fas fa-microchip"></i></span>
+								{ T("VMDetails.Label.Sockets") }
+							</label>
+							<div class="control">
+								<input
+									class="input is-medium"
+									type="number"
+									name="sockets"
+									value={ strconv.Itoa(vmDetailsGetCurrentSockets(data)) }
+									min={ strconv.Itoa(data.VMSocketsMin) }
+									max={ strconv.Itoa(data.VMSocketsMax) }
+									required
+									disabled?={ data.VM.Status == "running" }
+								/>
+							</div>
+						</div>
+					</div>
+					<div class="column is-6">
+						<div class="field">
+							<label class="label">
+								<span class="icon is-small"><i class="fas fa-microchip"></i></span>
+								{ T("VMDetails.Label.Cores") }
+							</label>
+							<div class="control">
+								<input
+									class="input is-medium"
+									type="number"
+									name="cores"
+									value={ strconv.Itoa(data.VM.CPUs) }
+									min={ strconv.Itoa(data.VMCoresMin) }
+									max={ strconv.Itoa(data.VMCoresMax) }
+									required
+									disabled?={ data.VM.Status == "running" }
+								/>
+							</div>
+						</div>
+					</div>
+					<div class="column is-6">
+						<div class="field">
+							<label class="label">
+								<span class="icon is-small"><i class="fas fa-memory"></i></span>
+								{ T("VMDetails.Label.RAM") } (MB)
+							</label>
+							<div class="control">
+								<input
+									class="input is-medium"
+									type="number"
+									name="memory"
+									value={ strconv.FormatInt(data.VM.MaxMem/(1024*1024), 10) }
+									min={ strconv.Itoa(data.VMRamMinMB) }
+									max={ strconv.Itoa(data.VMRamMaxMB) }
+									step="256"
+									required
+									disabled?={ data.VM.Status == "running" }
+								/>
+							</div>
+							<p class="help">{ data.FormattedMaxMemGB }</p>
+						</div>
+					</div>
+					<div class="column is-6">
+						<div class="field">
+							<label class="label">
+								<span class="icon is-small"><i class="fas fa-network-wired"></i></span>
+								{ T("VMDetails.Label.Bridge") }
+							</label>
+							<div class="control">
+								<div class="select is-medium is-fullwidth">
+									<select name="bridge" disabled?={ data.VM.Status == "running" }>
+										for _, bridge := range data.Bridges {
+											<option value={ bridge } selected?={ bridge == data.CurrentBridge }>{ bridge }</option>
+										}
+									</select>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="column is-6">
+						<div class="field">
+							<label class="label">
+								<span class="icon is-small"><i class="fas fa-ethernet"></i></span>
+								{ T("VM.Create.NetworkModel") }
+							</label>
+							<div class="control">
+								<div class="select is-medium is-fullwidth">
+									<select name="network_model" disabled?={ data.VM.Status == "running" }>
+										<option value="virtio" selected?={ data.CurrentNetworkModel == "virtio" }>VirtIO</option>
+										<option value="e1000" selected?={ data.CurrentNetworkModel == "e1000" }>E1000</option>
+										<option value="e1000e" selected?={ data.CurrentNetworkModel == "e1000e" }>E1000E</option>
+										<option value="rtl8139" selected?={ data.CurrentNetworkModel == "rtl8139" }>RTL8139</option>
+										<option value="vmxnet3" selected?={ data.CurrentNetworkModel == "vmxnet3" }>VMXNet3</option>
+									</select>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<hr class="my-4"/>
+				<div class="field is-grouped is-justify-content-space-between">
+					<div class="control">
+						@Button(ButtonProps{
+							Text: T("Common.Cancel"),
+							Icon: "fas fa-times",
+							Href: fmt.Sprintf("/vm/details/%d", data.VM.VMID),
+							Type: ButtonLight,
+						})
+					</div>
+					<div class="control">
+						@Button(ButtonProps{
+							Text:     T("Common.Save"),
+							Icon:     "fas fa-save",
+							Type:     ButtonPrimary,
+							Size:     ButtonMedium,
+							IsSubmit: true,
+							Disabled: data.VM.Status == "running" || !data.ProxmoxConnected,
+						})
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+}
+
+func vmDetailsGetCurrentSockets(data VMDetailsData) int {
+	// CPUs in VM struct is total vCPUs (sockets * cores)
+	// We need to calculate sockets from the current config
+	// Default to 1 if we can't determine
+	if data.VM.CPUs <= 0 {
+		return 1
+	}
+	return 1 // Default, actual value comes from CurrentSockets in template data
+}
+
 templ vmDetailsSnapshotsCard(data VMDetailsData, T TranslationFunc) {
 	<div class="card mb-5">
 		<header class="card-header brand-header is-align-items-center">

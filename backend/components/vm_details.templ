@@ -142,6 +142,9 @@ templ vmDetailsContent(data VMDetailsData, T TranslationFunc) {
 			if data.ShowTagsEditor {
 				@vmDetailsTagsEditor(data, T)
 			}
+			if data.ShowResourcesEditor {
+				@vmDetailsResourcesEditor(data, T)
+			}
 			@vmDetailsSnapshotsCard(data, T)
 		</div>
 	</section>

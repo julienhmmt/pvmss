@@ -95,10 +95,13 @@ templ currentUserPoolStatusSection(status *CurrentUserPoolStatus, csrfToken stri
 					<input type="hidden" name="propagate" value="true"/>
 					<div class="field is-grouped">
 						<div class="control">
-							<button class="button is-primary is-medium" type="submit">
-								<span class="icon is-small"><i class="fas fa-plus"></i></span>
-								<span>{ T("Admin.UserPool.CreatePoolButton") }</span>
-							</button>
+							@Button(ButtonProps{
+								Text:     T("Admin.UserPool.CreatePoolButton"),
+								Icon:     "fas fa-plus",
+								Type:     ButtonPrimary,
+								Size:     ButtonMedium,
+								IsSubmit: true,
+							})
 						</div>
 						<div class="control">
 							<div class="help has-text-grey">
