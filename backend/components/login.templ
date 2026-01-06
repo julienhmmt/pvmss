@@ -167,51 +167,139 @@ templ userLoginForm(data LoginData, T TranslationFunc) {
 }
 
 templ adminLoginForm(data LoginData, T TranslationFunc) {
-	<form method="post" action="/admin/login" novalidate>
-		<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-		<input type="hidden" name="login_type" value="admin"/>
-		if data.ReturnURL != "" {
-			<input type="hidden" name="return" value={ data.ReturnURL }/>
-		}
-		if data.RedirectURL != "" {
-			<input type="hidden" name="redirect" value={ data.RedirectURL }/>
-		}
-		<div class="field">
-			<label class="form-label" for="password">
-				<span class="form-label-icon">
-					<span class="icon"><i class="fas fa-lock"></i></span>
-				</span>
-				<span class="form-label-text">{ T("AdminLogin.PasswordLabel") }</span>
-			</label>
-			<div class="control">
-				<input
-					class="input is-large input-lg"
-					type="password"
-					id="password"
-					name="password"
-					required
-					autofocus
-					autocomplete="current-password"
-					aria-required="true"
-					aria-describedby="password-help"
-					minlength="6"
-					maxlength="128"
-					placeholder={ T("AdminLogin.PasswordLabel") }
-				/>
-			</div>
-		</div>
-		<div class="field mt-5">
-			<div class="control">
-				<button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label={ T("Login.Button") }>
-					<span class="icon is-medium" aria-hidden="true">
-						<i class="fas fa-sign-in-alt"></i>
+	<div class="tabs is-centered is-boxed mb-5">
+		<ul>
+			<li class="is-active" data-tab="local">
+				<a>
+					<span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
+					<span>{ T("AdminLogin.LocalAdminTab") }</span>
+				</a>
+			</li>
+			<li data-tab="pve">
+				<a>
+					<span class="icon is-small"><i class="fas fa-server"></i></span>
+					<span>{ T("AdminLogin.ProxmoxAdminTab") }</span>
+				</a>
+			</li>
+		</ul>
+	</div>
+	<div id="local-admin-form" class="tab-content">
+		<form method="post" action="/admin/login" novalidate>
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="login_type" value="admin"/>
+			if data.ReturnURL != "" {
+				<input type="hidden" name="return" value={ data.ReturnURL }/>
+			}
+			if data.RedirectURL != "" {
+				<input type="hidden" name="redirect" value={ data.RedirectURL }/>
+			}
+			<div class="field">
+				<label class="form-label" for="password">
+					<span class="form-label-icon">
+						<span class="icon"><i class="fas fa-lock"></i></span>
 					</span>
-					<span>{ T("Login.Button") }</span>
-				</button>
+					<span class="form-label-text">{ T("AdminLogin.PasswordLabel") }</span>
+				</label>
+				<div class="control">
+					<input
+						class="input is-large input-lg"
+						type="password"
+						id="password"
+						name="password"
+						required
+						autofocus
+						autocomplete="current-password"
+						aria-required="true"
+						aria-describedby="password-help"
+						minlength="6"
+						maxlength="128"
+						placeholder={ T("AdminLogin.PasswordLabel") }
+					/>
+				</div>
 			</div>
-		</div>
-	</form>
-	<div class="has-text-centered divider-with-text">
+			<div class="field mt-5">
+				<div class="control">
+					<button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label={ T("Login.Button") }>
+						<span class="icon is-medium" aria-hidden="true">
+							<i class="fas fa-sign-in-alt"></i>
+						</span>
+						<span>{ T("Login.Button") }</span>
+					</button>
+				</div>
+			</div>
+		</form>
+	</div>
+	<div id="pve-admin-form" class="tab-content is-hidden">
+		<form method="post" action="/admin/proxmox-login" novalidate>
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="login_type" value="admin"/>
+			if data.ReturnURL != "" {
+				<input type="hidden" name="return" value={ data.ReturnURL }/>
+			}
+			if data.RedirectURL != "" {
+				<input type="hidden" name="redirect" value={ data.RedirectURL }/>
+			}
+			<div class="field">
+				<label class="form-label" for="pve-username">
+					<span class="form-label-icon">
+						<span class="icon"><i class="fas fa-user"></i></span>
+					</span>
+					<span class="form-label-text">{ T("Login.UsernameLabel") }</span>
+				</label>
+				<div class="control">
+					<input
+						class="input is-large input-lg"
+						type="text"
+						id="pve-username"
+						name="username"
+						required
+						autofocus
+						autocomplete="username"
+						aria-required="true"
+						aria-describedby="pve-username-help"
+						minlength="3"
+						maxlength="50"
+						pattern="[a-zA-Z0-9_\-@]+"
+						placeholder={ T("Login.UsernameLabel") }
+					/>
+				</div>
+			</div>
+			<div class="field">
+				<label class="form-label" for="pve-password">
+					<span class="form-label-icon">
+						<span class="icon"><i class="fas fa-lock"></i></span>
+					</span>
+					<span class="form-label-text">{ T("Login.PasswordLabel") }</span>
+				</label>
+				<div class="control">
+					<input
+						class="input is-large input-lg"
+						type="password"
+						id="pve-password"
+						name="password"
+						required
+						autocomplete="current-password"
+						aria-required="true"
+						aria-describedby="pve-password-help"
+						minlength="6"
+						maxlength="128"
+						placeholder={ T("Login.PasswordLabel") }
+					/>
+				</div>
+			</div>
+			<div class="field mt-5">
+				<div class="control">
+					<button class="button is-primary is-fullwidth is-large login-button" type="submit" aria-label={ T("Login.Button") }>
+						<span class="icon is-medium" aria-hidden="true">
+							<i class="fas fa-sign-in-alt"></i>
+						</span>
+						<span>{ T("Login.Button") }</span>
+					</button>
+				</div>
+			</div>
+		</form>
+	</div>
+	<div class="has-text-centered divider-with-text mt-5">
 		<hr/>
 		<span></span>
 	</div>
@@ -223,4 +311,29 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 			<span>{ T("Login.UserLogin") }</span>
 		</a>
 	</div>
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			const tabs = document.querySelectorAll('.tabs li');
+			const localForm = document.getElementById('local-admin-form');
+			const pveForm = document.getElementById('pve-admin-form');
+			
+			tabs.forEach(tab => {
+				tab.addEventListener('click', function() {
+					tabs.forEach(t => t.classList.remove('is-active'));
+					this.classList.add('is-active');
+					
+					const tabType = this.getAttribute('data-tab');
+					if (tabType === 'local') {
+						localForm.classList.remove('is-hidden');
+						pveForm.classList.add('is-hidden');
+						document.getElementById('password').focus();
+					} else {
+						localForm.classList.add('is-hidden');
+						pveForm.classList.remove('is-hidden');
+						document.getElementById('pve-username').focus();
+					}
+				});
+			});
+		});
+	</script>
 }
