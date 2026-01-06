@@ -404,6 +404,23 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 
 	data := NewTemplateDataWithOptions("", opts...).ToMap()
 
+	// Prepare structures for direct data passing
+	type poolTableRow struct {
+		User    string
+		Pool    string
+		VMCount int
+		Comment string
+	}
+	var rows []poolTableRow
+
+	type currentUserPoolStatusType struct {
+		HasPool   bool
+		Username  string
+		PoolName  string
+		CanCreate bool
+	}
+	var currentUserPoolStatus currentUserPoolStatusType
+
 	// Fetch pools that match pattern pvmss_*
 	client := h.stateManager.GetProxmoxClient()
 	if client != nil {
@@ -423,14 +440,7 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 
 		// GET /pools to list all pools
 		if err := client.GetJSON(ctx, "/pools", &listResp); err == nil {
-			// Prepare detailed info per pool
-			type poolTableRow struct {
-				User    string
-				Pool    string
-				VMCount int
-				Comment string
-			}
-			rows := make([]poolTableRow, 0)
+			rows = make([]poolTableRow, 0)
 			var rowsMux sync.Mutex
 
 			// Concurrency limiter
@@ -492,13 +502,6 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 			wg.Wait()
 
 			// Get current authenticated user and check their pool status
-			currentUserPoolStatus := struct {
-				HasPool   bool
-				Username  string
-				PoolName  string
-				CanCreate bool
-			}{}
-
 			if sessionManager := h.stateManager.GetSessionManager(); sessionManager != nil {
 				if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
 					// Sanitize username to match pool naming convention
@@ -542,11 +545,10 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 					}
 					return left < right
 				})
-				data["UserPools"] = rows
+				logger.Get().Info().Int("pool_count", len(rows)).Msg("Found PVMSS pools")
+			} else {
+				logger.Get().Warn().Msg("No PVMSS pools found")
 			}
-
-			// Add current user's pool status to template data
-			data["CurrentUserPoolStatus"] = currentUserPoolStatus
 		}
 	}
 
@@ -561,26 +563,27 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		SuccessMessage: getStringFromMap(data, "SuccessMessage"),
 	}
 
-	// Convert user pools
-	if pools, ok := data["UserPools"].([]map[string]interface{}); ok {
-		for _, p := range pools {
-			userpoolTemplData.UserPools = append(userpoolTemplData.UserPools, components.UserPoolInfo{
-				User:    getStringFromMap(p, "User"),
-				Pool:    getStringFromMap(p, "Pool"),
-				Comment: getStringFromMap(p, "Comment"),
-				VMCount: getIntFromMap(p, "VMCount"),
-			})
-		}
+	// Convert user pools - use direct data instead of map conversion
+	logger.Get().Info().Int("pools_to_convert", len(rows)).Msg("Converting pools to template data")
+	for _, p := range rows {
+		userpoolTemplData.UserPools = append(userpoolTemplData.UserPools, components.UserPoolInfo{
+			User:    p.User,
+			Pool:    p.Pool,
+			Comment: p.Comment,
+			VMCount: p.VMCount,
+		})
 	}
+	logger.Get().Info().Int("final_count", len(userpoolTemplData.UserPools)).Msg("Pools converted successfully")
 
-	// Convert current user pool status
-	if status, ok := data["CurrentUserPoolStatus"].(map[string]interface{}); ok {
+	// Convert current user pool status - use direct data instead of map conversion
+	if currentUserPoolStatus.Username != "" {
 		userpoolTemplData.CurrentUserPoolStatus = &components.CurrentUserPoolStatus{
-			Username:  getStringFromMap(status, "Username"),
-			PoolName:  getStringFromMap(status, "PoolName"),
-			HasPool:   getBoolFromMap(status, "HasPool"),
-			CanCreate: getBoolFromMap(status, "CanCreate"),
+			Username:  currentUserPoolStatus.Username,
+			PoolName:  currentUserPoolStatus.PoolName,
+			HasPool:   currentUserPoolStatus.HasPool,
+			CanCreate: currentUserPoolStatus.CanCreate,
 		}
+		logger.Get().Info().Str("username", currentUserPoolStatus.Username).Bool("has_pool", currentUserPoolStatus.HasPool).Msg("Current user pool status converted")
 	}
 
 	T := getTranslationFunc(r)
