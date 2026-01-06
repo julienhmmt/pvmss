@@ -1208,6 +1208,7 @@ func ProxmoxOfflineWarning(T TranslationFunc) templ.Component {
 			Title:   T("Proxmox.ConnectionRequired"),
 			Message: T("Proxmox.NotConnected") + " " + T("Proxmox.CheckConnection"),
 			Icon:    "fas fa-exclamation-triangle",
+			Light:   true,
 			Class:   "mb-5",
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

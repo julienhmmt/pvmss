@@ -52,10 +52,12 @@ templ adminTicketTestContent(data AdminTicketTestData, T TranslationFunc) {
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
 			<div class="field">
 				<div class="control">
-					<button type="submit" class="button is-primary">
-						<span class="icon"><i class="fas fa-vial"></i></span>
-						<span>{ T("Admin.TicketTest.TestButton") }</span>
-					</button>
+					@Button(ButtonProps{
+						Text:     T("Admin.TicketTest.TestButton"),
+						Icon:     "fas fa-vial",
+						Type:     ButtonPrimary,
+						IsSubmit: true,
+					})
 				</div>
 			</div>
 		</form>

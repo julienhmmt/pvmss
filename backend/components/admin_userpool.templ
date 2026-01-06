@@ -147,14 +147,18 @@ templ createUserPoolForm(csrfToken string, T TranslationFunc) {
 		</div>
 		<input type="hidden" name="role" value="PVEVMUser"/>
 		<input type="hidden" name="propagate" value="true"/>
-		<div class="field is-grouped is-grouped-right">
-			<div class="control">
-				<button class="button is-primary is-medium" type="submit">
-					<span class="icon is-small"><i class="fas fa-plus"></i></span>
-					<span>{ T("Common.Create") }</span>
-				</button>
-			</div>
-		</div>
+		@ButtonGroup(ButtonGroupProps{
+			Alignment: ButtonGroupRight,
+			Buttons: []templ.Component{
+				Button(ButtonProps{
+					Text:     T("Common.Create"),
+					Icon:     "fas fa-plus",
+					Type:     ButtonPrimary,
+					Size:     ButtonMedium,
+					IsSubmit: true,
+				}),
+			},
+		})
 	</form>
 }
 
@@ -253,21 +257,27 @@ templ adminUserPoolDeleteContent(data AdminUserPoolDeleteData, T TranslationFunc
 			</div>
 			<div class="level-right">
 				<div class="level-item">
-					<form method="POST" action="/admin/userpool/delete" class="is-inline">
-						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-						<input type="hidden" name="pool" value={ data.Pool }/>
-						<button type="submit" class="button is-danger has-text-white">
-							<span class="icon"><i class="fas fa-trash"></i></span>
-							<span>{ T("Common.Yes") }</span>
-						</button>
-					</form>
-				</div>
-				<div class="level-item">
-					<a href="/admin/userpool" class="button">
-						<span class="icon"><i class="fas fa-times"></i></span>
-						<span>{ T("Common.No") }</span>
-					</a>
-				</div>
+				@ButtonGroup(ButtonGroupProps{
+					Buttons: []templ.Component{
+						Button(ButtonProps{
+							Text:       T("Common.Yes"),
+							Icon:       "fas fa-trash",
+							Type:       ButtonDanger,
+							Class:      "has-text-white",
+							FormAction: "/admin/userpool/delete",
+							CSRFToken:  data.CSRFToken,
+							HiddenInputs: map[string]string{
+								"pool": data.Pool,
+							},
+						}),
+						Button(ButtonProps{
+							Text: T("Common.No"),
+							Icon: "fas fa-times",
+							Href: "/admin/userpool",
+						}),
+					},
+				})
+			</div>
 			</div>
 		</div>
 	</div>

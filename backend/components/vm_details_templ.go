@@ -733,33 +733,30 @@ func vmDetailsNavLinks(T TranslationFunc) templ.Component {
 			templ_7745c5c3_Var26 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"level mb-4\"><div class=\"level-left\"></div><div class=\"level-right\"><div class=\"level-item\"><div class=\"buttons\"><a href=\"/profile\" class=\"button is-primary\"><span class=\"icon is-small\"><i class=\"fas fa-user\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<div class=\"level mb-4\"><div class=\"level-left\"></div><div class=\"level-right\"><div class=\"level-item\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var27 string
-		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Profile"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 321, Col: 33}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</span></a> <a href=\"/search\" class=\"button is-primary\"><span class=\"icon is-small\"><i class=\"fas fa-search\"></i></span> <span>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Search"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details.templ`, Line: 325, Col: 32}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
+		templ_7745c5c3_Err = ButtonGroup(ButtonGroupProps{
+			Buttons: []templ.Component{
+				Button(ButtonProps{
+					Text: T("Navbar.Profile"),
+					Icon: "fas fa-user",
+					Href: "/profile",
+					Type: ButtonPrimary,
+				}),
+				Button(ButtonProps{
+					Text: T("Common.Search"),
+					Icon: "fas fa-search",
+					Href: "/search",
+					Type: ButtonPrimary,
+				}),
+			},
+		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span></a></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

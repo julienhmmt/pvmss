@@ -26,19 +26,21 @@ templ vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) {
 				<p style="color: #2d5a3d; margin-bottom: 0.5rem;">
 					{ T("VMDetails.Celebration.Message") }
 				</p>
-				<div class="buttons" style="margin-top: 0.75rem;">
-					<button class="button is-small is-success" onclick="startVM()">
-						<span class="icon is-small"><i class="fas fa-play"></i></span>
-						<span>{ T("VMDetails.Celebration.StartNow") }</span>
-					</button>
-					<button class="button is-small is-info" onclick="openConsole()">
-						<span class="icon is-small"><i class="fas fa-terminal"></i></span>
-						<span>{ T("VMDetails.Celebration.OpenConsole") }</span>
-					</button>
-					<button class="button is-small is-primary" onclick="editResources()">
-						<span class="icon is-small"><i class="fas fa-sliders"></i></span>
-						<span>{ T("VMDetails.Celebration.EditResources") }</span>
-					</button>
+				<div style="margin-top: 0.75rem;">
+					<div class="buttons">
+						<button class="button is-small is-success" id="start-vm-button">
+							<span class="icon is-small"><i class="fas fa-play"></i></span>
+							<span>{ T("VMDetails.Celebration.StartNow") }</span>
+						</button>
+						<button class="button is-small is-info" id="open-console-button">
+							<span class="icon is-small"><i class="fas fa-terminal"></i></span>
+							<span>{ T("VMDetails.Celebration.OpenConsole") }</span>
+						</button>
+						<button class="button is-small is-primary" id="edit-resources-button">
+							<span class="icon is-small"><i class="fas fa-sliders"></i></span>
+							<span>{ T("VMDetails.Celebration.EditResources") }</span>
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -334,28 +336,26 @@ templ vmDetailsSnapshotItem(snap SnapshotInfo, data VMDetailsData, T Translation
 				}
 			</div>
 			if data.ProxmoxConnected {
-				<div class="buttons are-small">
-					<form action="/vm/snapshot/rollback" method="post" style="display: inline;">
-						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-						<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
-						<input type="hidden" name="node" value={ data.VM.Node }/>
-						<input type="hidden" name="snapname" value={ snap.Name }/>
-						<button type="submit" class="button is-warning is-small" onclick="return confirm(this.dataset.confirm)" data-confirm={ T("VMDetails.Snapshots.ConfirmRollback") }>
-							<span class="icon is-small"><i class="fas fa-undo"></i></span>
-							<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Rollback") }</span>
-						</button>
-					</form>
-					<form action="/vm/snapshot/delete" method="post" style="display: inline;">
-						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-						<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
-						<input type="hidden" name="node" value={ data.VM.Node }/>
-						<input type="hidden" name="snapname" value={ snap.Name }/>
-						<button type="submit" class="button is-danger is-small" onclick="return confirm(this.dataset.confirm)" data-confirm={ T("VMDetails.Snapshots.ConfirmDelete") }>
-							<span class="icon is-small"><i class="fas fa-trash"></i></span>
-							<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Delete") }</span>
-						</button>
-					</form>
-				</div>
+				<form method="POST" action="/vm/snapshots/rollback" class="is-inline">
+					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+					<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+					<input type="hidden" name="node" value={ data.VM.Node }/>
+					<input type="hidden" name="snapname" value={ snap.Name }/>
+					<button type="submit" class="button is-warning is-small" data-confirm={ T("VMDetails.Snapshots.ConfirmRollback") }>
+						<span class="icon is-small"><i class="fas fa-undo"></i></span>
+						<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Rollback") }</span>
+					</button>
+				</form>
+				<form method="POST" action="/vm/snapshots/delete" class="is-inline">
+					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+					<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+					<input type="hidden" name="node" value={ data.VM.Node }/>
+					<input type="hidden" name="snapname" value={ snap.Name }/>
+					<button type="submit" class="button is-danger is-small" data-confirm={ T("VMDetails.Snapshots.ConfirmDelete") }>
+						<span class="icon is-small"><i class="fas fa-trash"></i></span>
+						<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Delete") }</span>
+					</button>
+				</form>
 			}
 		</div>
 	</div>

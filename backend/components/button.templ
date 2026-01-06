@@ -32,11 +32,50 @@ type ButtonProps struct {
 	IsFullwidth bool
 	IsSubmit    bool
 	IsLoading   bool
+	Title       string
 	DataAttrs   map[string]string
+	FormAction  string
+	FormMethod  string
+	CSRFToken   string
+	HiddenInputs map[string]string
 }
 
 templ Button(props ButtonProps) {
-	if props.Href != "" {
+	if props.FormAction != "" {
+		<form
+			action={ templ.SafeURL(props.FormAction) }
+			method={ getFormMethod(props.FormMethod) }
+			class="is-inline"
+		>
+			if props.CSRFToken != "" {
+				<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+			}
+			for name, value := range props.HiddenInputs {
+				<input type="hidden" name={ name } value={ value }/>
+			}
+			<button
+				if props.ID != "" {
+					id={ props.ID }
+				}
+				type="submit"
+				class={ "button", templ.KV("is-"+string(props.Type), props.Type != ""), templ.KV("is-"+string(props.Size), props.Size != ""), templ.KV("is-fullwidth", props.IsFullwidth), templ.KV("is-loading", props.IsLoading), props.Class }
+				disabled?={ props.Disabled }
+				if props.AriaLabel != "" {
+					aria-label={ props.AriaLabel }
+				}
+				if props.Title != "" {
+					title={ props.Title }
+				}
+			>
+				if props.Icon != "" {
+					<span class="icon is-small">
+						<i class={ props.Icon }></i>
+					</span>
+				}
+				<span>{ props.Text }</span>
+			</button>
+		</form>
+	} else if props.Href != "" {
 		<a
 			if props.ID != "" {
 				id={ props.ID }
@@ -45,6 +84,9 @@ templ Button(props ButtonProps) {
 			href={ templ.SafeURL(props.Href) }
 			if props.AriaLabel != "" {
 				aria-label={ props.AriaLabel }
+			}
+			if props.Title != "" {
+				title={ props.Title }
 			}
 			if props.Disabled {
 				aria-disabled="true"
@@ -73,6 +115,9 @@ templ Button(props ButtonProps) {
 			if props.AriaLabel != "" {
 				aria-label={ props.AriaLabel }
 			}
+			if props.Title != "" {
+				title={ props.Title }
+			}
 		>
 			if props.Icon != "" {
 				<span class="icon is-small">
@@ -82,4 +127,11 @@ templ Button(props ButtonProps) {
 			<span>{ props.Text }</span>
 		</button>
 	}
+}
+
+func getFormMethod(method string) string {
+	if method != "" {
+		return method
+	}
+	return "POST"
 }

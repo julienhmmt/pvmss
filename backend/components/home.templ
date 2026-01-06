@@ -57,9 +57,13 @@ templ homeContent(data HomeData, T TranslationFunc) {
 								</div>
 								<div class="card-content has-text-centered">
 									<p class="mb-4">{ T("UI.CreateVMDescription") }</p>
-									<a href="/vm/create" class="button is-primary is-medium is-fullwidth">
-										<span>{ T("UI.GetStarted") }</span>
-									</a>
+									@Button(ButtonProps{
+										Text:        T("UI.GetStarted"),
+										Href:        "/vm/create",
+										Type:        ButtonPrimary,
+										Size:        ButtonMedium,
+										IsFullwidth: true,
+									})
 								</div>
 							</div>
 						</div>
@@ -97,9 +101,13 @@ templ homeContent(data HomeData, T TranslationFunc) {
 								</div>
 								<div class="card-content has-text-centered">
 									<p class="mb-4">{ T("UI.AdminDescription") }</p>
-									<a href="/admin/nodes" class="button is-primary is-medium is-fullwidth">
-										{ T("UI.AccessAdmin") }
-									</a>
+							@Button(ButtonProps{
+								Text:        T("UI.AccessAdmin"),
+								Href:        "/admin/nodes",
+								Type:        ButtonPrimary,
+								Size:        ButtonMedium,
+								IsFullwidth: true,
+							})
 								</div>
 							</div>
 						</div>

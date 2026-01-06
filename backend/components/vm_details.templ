@@ -315,16 +315,22 @@ templ vmDetailsNavLinks(T TranslationFunc) {
 		<div class="level-left"></div>
 		<div class="level-right">
 			<div class="level-item">
-				<div class="buttons">
-					<a href="/profile" class="button is-primary">
-						<span class="icon is-small"><i class="fas fa-user"></i></span>
-						<span>{ T("Navbar.Profile") }</span>
-					</a>
-					<a href="/search" class="button is-primary">
-						<span class="icon is-small"><i class="fas fa-search"></i></span>
-						<span>{ T("Common.Search") }</span>
-					</a>
-				</div>
+				@ButtonGroup(ButtonGroupProps{
+					Buttons: []templ.Component{
+						Button(ButtonProps{
+							Text: T("Navbar.Profile"),
+							Icon: "fas fa-user",
+							Href: "/profile",
+							Type: ButtonPrimary,
+						}),
+						Button(ButtonProps{
+							Text: T("Common.Search"),
+							Icon: "fas fa-search",
+							Href: "/search",
+							Type: ButtonPrimary,
+						}),
+					},
+				})
 			</div>
 		</div>
 	</div>

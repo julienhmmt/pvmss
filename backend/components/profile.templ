@@ -83,18 +83,15 @@ templ profileHeaderActions(T TranslationFunc) {
 			Size: ButtonSmall,
 			Class: "is-light has-text-dark",
 		})
-		<button
-			class="button is-light is-small"
-			id="profile-refresh-button"
-			data-profile-refresh
-			title={ T("Common.Refresh") }
-			onclick="window.location.href='/profile?refresh=1'"
-		>
-			<span class="icon is-small">
-				<i class="fas fa-sync-alt"></i>
-			</span>
-			<span>{ T("Common.Refresh") }</span>
-		</button>
+		@Button(ButtonProps{
+			Text:  T("Common.Refresh"),
+			Icon:  "fas fa-sync-alt",
+			Href:  "/profile?refresh=1",
+			Type:  ButtonLight,
+			Size:  ButtonSmall,
+			ID:    "profile-refresh-button",
+			Title: T("Common.Refresh"),
+		})
 	</div>
 }
 
@@ -271,28 +268,29 @@ templ profileVMsTable(vms []ProfileVM, T TranslationFunc) {
 							})
 						</td>
 						<td class="has-text-centered is-vcentered">
-							<div class="buttons is-centered mb-0">
-								<a
-									href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d", vm.VMID)) }
-									class="button is-small is-primary"
-									title={ T("Profile.ViewDetails") }
-								>
-									<span class="icon">
-										<i class="fas fa-eye"></i>
-									</span>
-									<span>{ T("Profile.ViewDetails") }</span>
-								</a>
-								<a
-									href={ templ.SafeURL(fmt.Sprintf("/vm/delete/%d", vm.VMID)) }
-									class="button is-small is-danger has-text-white"
-									title={ T("Profile.Delete") }
-								>
-									<span class="icon">
-										<i class="fas fa-trash-alt"></i>
-									</span>
-									<span>{ T("Profile.Delete") }</span>
-								</a>
-							</div>
+							@ButtonGroup(ButtonGroupProps{
+								Alignment: ButtonGroupCentered,
+								Class:     "mb-0",
+								Buttons: []templ.Component{
+									Button(ButtonProps{
+										Href:      fmt.Sprintf("/vm/details/%d", vm.VMID),
+										Icon:      "fas fa-info-circle",
+										Type:      ButtonPrimary,
+										Size:      ButtonSmall,
+										Title:     T("Profile.ViewDetails"),
+										AriaLabel: T("Profile.ViewDetails"),
+									}),
+									Button(ButtonProps{
+										Href:      fmt.Sprintf("/vm/delete/%d", vm.VMID),
+										Icon:      "fas fa-trash-alt",
+										Type:      ButtonDanger,
+										Size:      ButtonSmall,
+										Title:     T("Profile.Delete"),
+										AriaLabel: T("Profile.Delete"),
+										Class:     "has-text-white",
+									}),
+								},
+							})
 						</td>
 					</tr>
 				}

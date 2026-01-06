@@ -346,6 +346,7 @@ func vmCreateNotifications(data VMCreateData, T TranslationFunc) templ.Component
 				Title:       data.OfflineNodesNotification.Title,
 				Message:     data.OfflineNodesNotification.Text,
 				Icon:        "fas fa-info-circle",
+				Light:       true,
 				Dismissible: true,
 				Class:       "mb-4",
 			}).Render(ctx, templ_7745c5c3_Buffer)
@@ -404,7 +405,7 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 215, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 216, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
@@ -453,7 +454,7 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Reset"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 231, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 232, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -466,7 +467,7 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Create"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 235, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 236, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {

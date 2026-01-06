@@ -108,12 +108,18 @@ templ nodeCard(node NodeDetail, lastUpdate map[string]string, T TranslationFunc)
 				<div>
 					@nodeStatusTag(node.Status, T)
 				</div>
-				<form method="GET" action="/admin/nodes">
-					<input type="hidden" name="refreshNode" value={ node.Node }/>
-					<button class="button is-small is-light" type="submit" title={ T("Nodes.RefreshNode") }>
-						<span class="icon is-small"><i class="fas fa-sync-alt"></i></span>
-					</button>
-				</form>
+			@Button(ButtonProps{
+				Icon:       "fas fa-sync-alt",
+				Type:       ButtonLight,
+				Size:       ButtonSmall,
+				Title:      T("Nodes.RefreshNode"),
+				AriaLabel:  T("Nodes.RefreshNode"),
+				FormAction: "/admin/nodes",
+				FormMethod: "GET",
+				HiddenInputs: map[string]string{
+					"refreshNode": node.Node,
+				},
+			})
 			</div>
 			if node.IsOfflineNoMetrics() {
 				<div class="notification is-warning is-light">
