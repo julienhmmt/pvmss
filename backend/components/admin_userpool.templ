@@ -88,7 +88,7 @@ templ currentUserPoolStatusSection(status *CurrentUserPoolStatus, csrfToken stri
 				<span>{ T("Admin.UserPool.PoolMissing") } { status.PoolName }</span>
 			</div>
 			if status.CanCreate {
-				<form method="POST" action="/userpool/create" class="mt-4">
+				<form method="POST" action="/admin/userpool/create" class="mt-4">
 					<input type="hidden" name="csrf_token" value={ csrfToken }/>
 					<input type="hidden" name="username" value={ status.Username }/>
 					<input type="hidden" name="role" value="PVMSSUser"/>
@@ -117,7 +117,7 @@ templ currentUserPoolStatusSection(status *CurrentUserPoolStatus, csrfToken stri
 }
 
 templ createUserPoolForm(csrfToken string, T TranslationFunc) {
-	<form method="POST" action="/userpool/create" class="box admin-box">
+	<form method="POST" action="/admin/userpool/create" class="box admin-box">
 		<input type="hidden" name="csrf_token" value={ csrfToken }/>
 		<div class="columns is-multiline">
 			<div class="column is-6">

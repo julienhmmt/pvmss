@@ -310,58 +310,59 @@ func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
 	})))
 
 	// Admin user pool creation with CSRF protection (without lang prefix)
-	router.POST("/userpool/create", SecureFormHandler("CreateUserPool",
+	router.POST("/admin/userpool/create", SecureFormHandler("CreateUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
 	// Admin user pool deletion with CSRF protection (without lang prefix)
-	router.POST("/userpool/delete", SecureFormHandler("DeleteUserPool",
+	router.POST("/admin/userpool/delete", SecureFormHandler("DeleteUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
 	// Also register with lang prefixes for compatibility
-	router.POST("/en/userpool/create", SecureFormHandler("CreateUserPool",
+	router.POST("/en/admin/userpool/create", SecureFormHandler("CreateUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/fr/userpool/create", SecureFormHandler("CreateUserPool",
+	router.POST("/fr/admin/userpool/create", SecureFormHandler("CreateUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
 	// Admin user pool self-creation with CSRF protection (without lang prefix)
-	// DEBUG: Temporairement sans CSRF pour diagnostic
-	router.POST("/userpool/create-self", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	router.POST("/admin/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
 
 	// Also register with lang prefixes for compatibility
-	router.POST("/en/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+	router.POST("/en/admin/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/fr/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+	router.POST("/fr/admin/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/en/userpool/delete", SecureFormHandler("DeleteUserPool",
+	router.POST("/en/admin/userpool/delete", SecureFormHandler("DeleteUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/fr/userpool/delete", SecureFormHandler("DeleteUserPool",
+	router.POST("/fr/admin/userpool/delete", SecureFormHandler("DeleteUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
