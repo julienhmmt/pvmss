@@ -558,7 +558,7 @@ func vmCreateScriptsBlock(data VMCreateData, T TranslationFunc) templ.Component 
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<script src=\"/js/vm-utils.js\" defer></script><script src=\"/js/vm-create.js\" defer></script><script>\n\t\tvar vmRamGlobalMaxMB = { strconv.Itoa(data.VMRamMaxMB) };\n\t\tvar vmRamGlobalMinMB = { strconv.Itoa(data.VMRamMinMB) };\n\t\tvar vmCoresGlobalMax = { strconv.Itoa(data.VMCoresMax) };\n\t\tvar vmSocketsGlobalMax = { strconv.Itoa(data.VMSocketsMax) };\n\t\tvar vmDiskMinGB = { strconv.Itoa(data.VMDiskMin) };\n\t\tvar vmDiskMaxGB = { strconv.Itoa(data.VMDiskMax) };\n\t\tvar selectedLabel = { templ.JSONString(T(\"Common.Selected\")) };\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<script src=\"/js/vm-utils.js\" defer></script><script>\n\t\tvar vmRamGlobalMaxMB = { strconv.Itoa(data.VMRamMaxMB) };\n\t\tvar vmRamGlobalMinMB = { strconv.Itoa(data.VMRamMinMB) };\n\t\tvar vmCoresGlobalMax = { strconv.Itoa(data.VMCoresMax) };\n\t\tvar vmSocketsGlobalMax = { strconv.Itoa(data.VMSocketsMax) };\n\t\tvar vmDiskMinGB = { strconv.Itoa(data.VMDiskMin) };\n\t\tvar vmDiskMaxGB = { strconv.Itoa(data.VMDiskMax) };\n\t\tvar selectedLabel = { templ.JSONString(T(\"Common.Selected\")) };\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

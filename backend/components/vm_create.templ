@@ -298,7 +298,6 @@ func vmCreateIsNetworkModelSelected(data VMCreateData, cardIdx int, model string
 
 templ vmCreateScriptsBlock(data VMCreateData, T TranslationFunc) {
 	<script src="/js/vm-utils.js" defer></script>
-	<script src="/js/vm-create.js" defer></script>
 	<script>
 		var vmRamGlobalMaxMB = { strconv.Itoa(data.VMRamMaxMB) };
 		var vmRamGlobalMinMB = { strconv.Itoa(data.VMRamMinMB) };

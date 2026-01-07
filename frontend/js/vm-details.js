@@ -15,15 +15,6 @@
   // Config from DOM
   const configEl = document.getElementById('vm-details-config');
   const cfg = configEl ? configEl.dataset : {};
-  const processingLabel = cfg.processingLabel || 'Processing';
-  const msgNetworkEnabled = cfg.msgNetworkEnabled || 'Network card enabled';
-  const msgNetworkDisabled = cfg.msgNetworkDisabled || 'Network card disabled';
-  const msgActionFailed = cfg.msgActionFailed || 'Action failed';
-  const labelEnabled = cfg.labelEnabled || 'Enabled';
-  const labelDisabled = cfg.labelDisabled || 'Disabled';
-  const labelEnable = cfg.labelEnable || 'Enable';
-  const labelDisable = cfg.labelDisable || 'Disable';
-  const networkLabel = cfg.networkLabel || 'Network';
   const consoleMustBeRunning = cfg.consoleMustBeRunning || 'VM must be running to open console. Please start the VM first.';
   const consoleUnavailable = cfg.consoleUnavailable || 'Console is temporarily unavailable. Please try again in a moment.';
   const consoleNotFound = cfg.consoleNotFound || 'Console button not found';
@@ -59,152 +50,6 @@
       const newUrl = cleanSearch ? `${window.location.pathname}?${cleanSearch}` : window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
-  }
-
-  // Network card toggle function - Enhanced for instant feedback
-  function toggleNetworkCard(cardIndex, enabled, csrfToken, vmidArg, nodeArg) {
-    const toggleContainer = document.querySelector('#network-toggle-' + cardIndex);
-    const toggleLabel = document.querySelector('#network-toggle-' + cardIndex + ' .network-toggle-label');
-    const toggleInput = document.querySelector('#network-toggle-' + cardIndex + ' input[type="checkbox"]');
-
-    if (!toggleContainer || !toggleLabel || !toggleInput) {
-      return;
-    }
-
-    // Show loading state immediately
-    const originalLabel = toggleLabel.innerHTML;
-    toggleContainer.classList.add('loading');
-    toggleLabel.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + processingLabel + '...';
-    toggleInput.disabled = true;
-
-    const formData = new URLSearchParams();
-    formData.append('csrf_token', csrfToken);
-    formData.append('vmid', vmidArg);
-    formData.append('node', nodeArg);
-    formData.append('card_index', String(cardIndex));
-    formData.append('enabled', enabled ? '1' : '0');
-
-    // Use VMUtils fetchJson with enhanced error handling
-    VMUtils.fetchJson('/vm/toggle/network', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: formData
-    }, {
-      showNotification: true,
-      onRetry: function() {
-        // Retry the specific network toggle operation
-        return toggleNetworkCard(cardIndex, enabled, csrfToken, vmidArg, nodeArg);
-      }
-    })
-      .then((result) => {
-        console.log('Toggle response received:', result);
-        toggleContainer.classList.remove('loading');
-
-        // Check if the fetch itself succeeded and the server response indicates success
-        if (result.success && result.data && result.data.success) {
-          console.log('Toggle successful, updating UI for card', cardIndex, 'to enabled:', enabled);
-          
-          // Add success animation
-          toggleContainer.classList.add('success');
-          setTimeout(() => toggleContainer.classList.remove('success'), 600);
-
-          // Update UI immediately for instant feedback
-          updateNetworkCardUI(cardIndex, enabled);
-
-          // Show success notification
-          const successMsg = result.data.message || (enabled ? msgNetworkEnabled : msgNetworkDisabled);
-          showSuccess(successMsg);
-
-          // Optional: Refresh data in background after a short delay
-          setTimeout(() => {
-            refreshNetworkData();
-          }, 1000);
-        } else {
-          console.error('Toggle failed - result:', result);
-          
-          // Add error animation
-          toggleContainer.classList.add('error');
-          setTimeout(() => toggleContainer.classList.remove('error'), 500);
-
-          // Revert UI on failure
-          toggleInput.checked = !enabled;
-          toggleLabel.innerHTML = originalLabel;
-          toggleInput.disabled = false;
-
-          const errorMsg = (result.data && result.data.error) || result.error || msgActionFailed;
-          console.error('Network toggle failed:', errorMsg);
-          showError(errorMsg);
-        }
-      })
-      .catch((error) => {
-        toggleContainer.classList.remove('loading');
-
-        // Add error animation
-        toggleContainer.classList.add('error');
-        setTimeout(() => toggleContainer.classList.remove('error'), 500);
-
-        // Revert UI on error
-        toggleInput.checked = !enabled;
-        toggleLabel.innerHTML = originalLabel;
-        toggleInput.disabled = false;
-
-        console.error('Network toggle error:', error);
-        // Error notification is already shown by fetchJson
-      });
-  }
-
-  // Update network card UI instantly
-  function updateNetworkCardUI(cardIndex, enabled) {
-    console.log('updateNetworkCardUI called for card', cardIndex, 'enabled:', enabled);
-    
-    const toggleLabel = document.querySelector('#network-toggle-' + cardIndex + ' .network-toggle-label');
-    const toggleInput = document.querySelector('#network-toggle-' + cardIndex + ' input[type="checkbox"]');
-    const toggleContainer = document.querySelector('#network-toggle-' + cardIndex);
-
-    console.log('Found elements:', { 
-      toggleLabel: !!toggleLabel, 
-      toggleInput: !!toggleInput, 
-      toggleContainer: !!toggleContainer 
-    });
-
-    if (!toggleLabel || !toggleInput || !toggleContainer) {
-      console.error('Missing toggle elements for card', cardIndex);
-      return;
-    }
-
-    // Update checkbox state and ARIA
-    toggleInput.checked = enabled;
-    toggleInput.setAttribute('aria-checked', enabled ? 'true' : 'false');
-    console.log('Updated checkbox state to:', enabled);
-
-    // Update label with smooth transition
-    toggleLabel.style.opacity = '0';
-    setTimeout(() => {
-      if (enabled) {
-        toggleLabel.innerHTML = '<i class="fas fa-plug-circle-check has-text-success"></i> ' + labelEnabled;
-      } else {
-        toggleLabel.innerHTML = '<i class="fas fa-plug-circle-xmark has-text-grey"></i> ' + labelDisabled;
-      }
-      toggleLabel.style.opacity = '1';
-      console.log('Updated label to:', enabled ? 'enabled' : 'disabled');
-    }, 100);
-
-    // Re-enable controls
-    toggleInput.disabled = false;
-
-    // Update tooltip
-    const actionLabel = enabled ? labelDisable : labelEnable;
-    const index = parseInt(String(cardIndex), 10) + 1;
-    toggleContainer.title = actionLabel + ' ' + networkLabel + ' #' + index;
-  }
-
-  // Refresh network data in background (optional)
-  function refreshNetworkData() {
-    // This could refresh network interface data without full page reload
-    // For now, we'll skip it to keep the experience fast
-    console.log('Network data refreshed');
   }
 
   // Auto-refresh VM metrics with visibility optimization
@@ -527,17 +372,6 @@
     showNotification(message, 'danger', true);
   }
 
-  // Celebration banner functions
-  function dismissCelebration() {
-    const banner = document.getElementById('vm-celebration-banner');
-    if (banner) {
-      banner.style.animation = 'slideOut 0.3s ease-in forwards';
-      setTimeout(() => {
-        banner.remove();
-      }, 300);
-    }
-  }
-
   function startVM() {
     const startBtn = document.querySelector('form[action="/vm/action"] input[value="start"]');
     if (startBtn) {
@@ -658,23 +492,6 @@
     });
   }
 
-  function initNetworkToggles() {
-    const toggleInputs = document.querySelectorAll('.network-toggle-input');
-    console.log('Initializing network toggles, found:', toggleInputs.length);
-    toggleInputs.forEach(input => {
-      input.addEventListener('change', function() {
-        const index = this.dataset.networkIndex;
-        const enabled = this.checked;
-        const csrfToken = this.dataset.csrfToken;
-        const vmid = this.dataset.vmid;
-        const node = this.dataset.node;
-        
-        console.log('Network toggle triggered:', { index, enabled, vmid, node });
-        toggleNetworkCard(index, enabled, csrfToken, vmid, node);
-      });
-    });
-  }
-
   document.addEventListener('DOMContentLoaded', function () {
     // Only start auto-refresh for running VMs
     const statusBadge = document.getElementById('vm-status-badge');
@@ -697,14 +514,9 @@
 
     // Enhance VM action forms with loading indicators
     enhanceVMActionForms();
-    
-    // Initialize network toggle listeners
-    initNetworkToggles();
   });
 
   // Expose functions used from inline HTML
-  window.toggleNetworkCard = toggleNetworkCard;
-  window.dismissCelebration = dismissCelebration;
   window.startVM = startVM;
   window.openConsole = openConsoleShortcut;
   window.editResources = editResources;
