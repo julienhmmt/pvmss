@@ -512,47 +512,49 @@ window.memoryConverter = (minMB, maxMB, initialValue, selectedLabel) => ({
  * Admin login tabs component
  * Usage: x-data="adminLoginTabs()"
  */
-window.adminLoginTabs = () => ({
-  activeTab: 'local',
+document.addEventListener('alpine:init', () => {
+  window.adminLoginTabs = () => ({
+    activeTab: 'local',
 
-  setTab(tab) {
-    this.activeTab = tab;
-    this.$nextTick(() => {
-      if (tab === 'local') {
-        const el = document.getElementById('password');
-        if (el) el.focus();
-      } else {
-        const el = document.getElementById('pve-username');
-        if (el) el.focus();
+    setTab(tab) {
+      this.activeTab = tab;
+      this.$nextTick(() => {
+        if (tab === 'local') {
+          const el = document.getElementById('password');
+          if (el) el.focus();
+        } else {
+          const el = document.getElementById('pve-username');
+          if (el) el.focus();
+        }
+      });
+    },
+
+    addRealmIfMissing(event) {
+      const input = event.target;
+      let username = input.value.trim();
+      if (username && !username.includes('@')) {
+        input.value = username + '@pve';
       }
-    });
-  },
+    },
 
-  addRealmIfMissing(event) {
-    const input = event.target;
-    let username = input.value.trim();
-    if (username && !username.includes('@')) {
-      input.value = username + '@pve';
+    validatePveForm(event) {
+      const usernameInput = document.getElementById('pve-username');
+      let username = usernameInput ? usernameInput.value.trim() : '';
+      if (username && !username.includes('@')) {
+        usernameInput.value = username + '@pve';
+      }
+      if (!username) {
+        event.preventDefault();
+        alert('Please enter a username');
+        return false;
+      }
+      const passwordInput = document.getElementById('pve-password');
+      if (!passwordInput || !passwordInput.value) {
+        event.preventDefault();
+        alert('Please enter a password');
+        return false;
+      }
+      return true;
     }
-  },
-
-  validatePveForm(event) {
-    const usernameInput = document.getElementById('pve-username');
-    let username = usernameInput ? usernameInput.value.trim() : '';
-    if (username && !username.includes('@')) {
-      usernameInput.value = username + '@pve';
-    }
-    if (!username) {
-      event.preventDefault();
-      alert('Please enter a username');
-      return false;
-    }
-    const passwordInput = document.getElementById('pve-password');
-    if (!passwordInput || !passwordInput.value) {
-      event.preventDefault();
-      alert('Please enter a password');
-      return false;
-    }
-    return true;
-  }
+  });
 });

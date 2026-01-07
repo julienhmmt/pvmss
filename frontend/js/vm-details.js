@@ -421,77 +421,6 @@
     }, 60000);
   }
 
-  function showLoadingOnButton(button, loadingText) {
-    if (!button) return;
-
-    const originalContent = button.innerHTML;
-    button.setAttribute('data-original-content', originalContent);
-
-    button.innerHTML = [
-      '<span class="icon">',
-      '  <i class="fas fa-spinner fa-spin"></i>',
-      '</span>',
-      '<span>' + loadingText + '</span>'
-    ].join('');
-    button.disabled = true;
-    button.classList.add('is-loading');
-  }
-
-  function restoreButton(button) {
-    if (!button) return;
-
-    const originalContent = button.getAttribute('data-original-content');
-    if (originalContent) {
-      button.innerHTML = originalContent;
-      button.removeAttribute('data-original-content');
-    }
-    button.disabled = false;
-    button.classList.remove('is-loading');
-  }
-
-  function enhanceVMActionForms() {
-    const actionForms = document.querySelectorAll('form[action="/vm/action"]');
-
-    actionForms.forEach((form) => {
-      form.addEventListener('submit', function () {
-        const submitButton = form.querySelector('button[type="submit"]');
-        const actionInput = form.querySelector('input[name="action"]');
-        const action = actionInput ? actionInput.value : '';
-
-        let loadingText = 'Processing...';
-        switch (action) {
-          case 'start':
-            loadingText = 'Starting...';
-            break;
-          case 'stop':
-            loadingText = 'Stopping...';
-            break;
-          case 'reboot':
-            loadingText = 'Rebooting...';
-            break;
-          case 'shutdown':
-            loadingText = 'Shutting down...';
-            break;
-          case 'reset':
-            loadingText = 'Resetting...';
-            break;
-          default:
-            break;
-        }
-
-        showLoadingOnButton(submitButton, loadingText);
-
-        const allActionButtons = document.querySelectorAll('form[action="/vm/action"] button');
-        allActionButtons.forEach((btn) => {
-          if (btn !== submitButton) {
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-          }
-        });
-      });
-    });
-  }
-
   document.addEventListener('DOMContentLoaded', function () {
     // Only start auto-refresh for running VMs
     const statusBadge = document.getElementById('vm-status-badge');
@@ -502,18 +431,6 @@
     // Pause refresh on user interaction
     document.addEventListener('click', pauseAutoRefresh);
     document.addEventListener('keypress', pauseAutoRefresh);
-    
-    // Show refresh indicator
-    const refreshBtn = document.querySelector('a[href*="refresh=1"]');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        window.location.href = this.href;
-      });
-    }
-
-    // Enhance VM action forms with loading indicators
-    enhanceVMActionForms();
   });
 
   // Expose functions used from inline HTML

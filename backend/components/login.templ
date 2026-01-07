@@ -170,14 +170,14 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 	<div x-data="adminLoginTabs()">
 		<div class="tabs is-centered is-boxed mb-5">
 			<ul>
-				<li :class="{ 'is-active': activeTab === 'local' }" @click="setTab('local')">
-					<a>
+				<li :class="{ 'is-active': activeTab === 'local' }">
+					<a @click.prevent="setTab('local')" href="#" role="button">
 						<span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
 						<span>{ T("AdminLogin.LocalAdminTab") }</span>
 					</a>
 				</li>
-				<li :class="{ 'is-active': activeTab === 'pve' }" @click="setTab('pve')">
-					<a>
+				<li :class="{ 'is-active': activeTab === 'pve' }">
+					<a @click.prevent="setTab('pve')" href="#" role="button">
 						<span class="icon is-small"><i class="fas fa-server"></i></span>
 						<span>{ T("AdminLogin.ProxmoxAdminTab") }</span>
 					</a>

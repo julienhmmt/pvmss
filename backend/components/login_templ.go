@@ -370,7 +370,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 			templ_7745c5c3_Var18 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div x-data=\"adminLoginTabs()\"><div class=\"tabs is-centered is-boxed mb-5\"><ul><li :class=\"{ 'is-active': activeTab === 'local' }\" @click=\"setTab('local')\"><a><span class=\"icon is-small\"><i class=\"fas fa-shield-alt\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div x-data=\"adminLoginTabs()\"><div class=\"tabs is-centered is-boxed mb-5\"><ul><li :class=\"{ 'is-active': activeTab === 'local' }\"><a @click.prevent=\"setTab('local')\" href=\"#\" role=\"button\"><span class=\"icon is-small\"><i class=\"fas fa-shield-alt\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -383,7 +383,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></a></li><li :class=\"{ 'is-active': activeTab === 'pve' }\" @click=\"setTab('pve')\"><a><span class=\"icon is-small\"><i class=\"fas fa-server\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></a></li><li :class=\"{ 'is-active': activeTab === 'pve' }\"><a @click.prevent=\"setTab('pve')\" href=\"#\" role=\"button\"><span class=\"icon is-small\"><i class=\"fas fa-server\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
