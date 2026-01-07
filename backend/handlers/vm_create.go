@@ -301,10 +301,20 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	}
 	data["AvailableTags"] = availableTags
 
-	// Add CSRF token from request context
-	if csrfToken, ok := r.Context().Value("csrf_token").(string); ok {
-		data["CSRFToken"] = csrfToken
+	// Generate or retrieve CSRF token from session
+	csrfToken := ""
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if token, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && token != "" {
+			csrfToken = token
+		} else {
+			// Generate new token if none exists
+			if newToken, err := security.GenerateCSRFToken(); err == nil {
+				sessionManager.Put(r.Context(), "csrf_token", newToken)
+				csrfToken = newToken
+			}
+		}
 	}
+	data["CSRFToken"] = csrfToken
 
 	// Compute explicit VM limits for template (avoids nil map indexing in templates)
 	// IMPORTANT: Limits MUST come from settings.json (NO hardcoded defaults)
