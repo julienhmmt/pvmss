@@ -223,7 +223,7 @@ templ vmCreateCPUField(data VMCreateData, T TranslationFunc) {
 }
 
 templ vmCreateMemoryField(data VMCreateData, T TranslationFunc) {
-	<div class="field">
+	<div class="field" x-data={ fmt.Sprintf("memoryConverter(%d, %d, %d, '%s')", data.VMRamMinMB, data.VMRamMaxMB, data.VMRamMinMB, T("Common.Selected")) }>
 		<label for="memory" class="form-label">
 			<span class="form-label-icon"><span class="icon"><i class="fas fa-memory"></i></span></span>
 			<span class="form-label-text">{ T("Common.Memory") }</span>
@@ -231,11 +231,11 @@ templ vmCreateMemoryField(data VMCreateData, T TranslationFunc) {
 		</label>
 		<div class="field has-addons">
 			<div class="control is-expanded">
-				<input id="memory" class="input is-medium" type="number" name="memory" min={ strconv.Itoa(data.VMRamMinMB) } max={ strconv.Itoa(data.VMRamMaxMB) } step="256" value={ strconv.Itoa(data.VMRamMinMB) } required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder={ fmt.Sprintf("e.g., %d", data.VMRamMinMB) } data-min-mb={ strconv.Itoa(data.VMRamMinMB) } data-max-mb={ strconv.Itoa(data.VMRamMaxMB) }/>
+				<input id="memory" class="input is-medium" type="number" name="memory" :min="minValue" :max="maxValue" :step="step" x-model="value" required aria-required="true" aria-describedby="memory-help" inputmode="numeric" placeholder={ fmt.Sprintf("e.g., %d", data.VMRamMinMB) }/>
 			</div>
 			<div class="control">
 				<div class="select is-medium">
-					<select id="memory-unit" name="memory_unit">
+					<select id="memory-unit" name="memory_unit" x-model="unit" @change="changeUnit()">
 						<option value="MB">MB</option>
 						<option value="GB">GB</option>
 					</select>
@@ -244,7 +244,7 @@ templ vmCreateMemoryField(data VMCreateData, T TranslationFunc) {
 		</div>
 		<p class="help has-text-grey is-size-7 mt-2">
 			<span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
-			<span id="memory-display" data-selected-label={ T("Common.Selected") }>{ T("Common.Selected") }: { fmt.Sprintf("%.1f", float64(data.VMRamMinMB)/1024) } GB ({ strconv.Itoa(data.VMRamMinMB) } MB)</span>
+			<span id="memory-display" x-text="displayText"></span>
 			<span class="ml-2">• { T("Common.Min") }: { strconv.Itoa(data.VMRamMinMB) } MB</span>
 			<span class="ml-2">• { T("Common.Max") }: { strconv.Itoa(data.VMRamMaxMB) } MB</span>
 		</p>

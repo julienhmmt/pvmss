@@ -167,23 +167,24 @@ templ userLoginForm(data LoginData, T TranslationFunc) {
 }
 
 templ adminLoginForm(data LoginData, T TranslationFunc) {
-	<div class="tabs is-centered is-boxed mb-5">
-		<ul>
-			<li class="is-active" data-tab="local">
-				<a>
-					<span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
-					<span>{ T("AdminLogin.LocalAdminTab") }</span>
-				</a>
-			</li>
-			<li data-tab="pve">
-				<a>
-					<span class="icon is-small"><i class="fas fa-server"></i></span>
-					<span>{ T("AdminLogin.ProxmoxAdminTab") }</span>
-				</a>
-			</li>
-		</ul>
-	</div>
-	<div id="local-admin-form" class="tab-content">
+	<div x-data="adminLoginTabs()">
+		<div class="tabs is-centered is-boxed mb-5">
+			<ul>
+				<li :class="{ 'is-active': activeTab === 'local' }" @click="setTab('local')">
+					<a>
+						<span class="icon is-small"><i class="fas fa-shield-alt"></i></span>
+						<span>{ T("AdminLogin.LocalAdminTab") }</span>
+					</a>
+				</li>
+				<li :class="{ 'is-active': activeTab === 'pve' }" @click="setTab('pve')">
+					<a>
+						<span class="icon is-small"><i class="fas fa-server"></i></span>
+						<span>{ T("AdminLogin.ProxmoxAdminTab") }</span>
+					</a>
+				</li>
+			</ul>
+		</div>
+		<div id="local-admin-form" class="tab-content" x-show="activeTab === 'local'" x-transition>
 		<form method="post" action="/admin/login" novalidate>
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
 			<input type="hidden" name="login_type" value="admin"/>
@@ -229,8 +230,8 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 			</div>
 		</form>
 	</div>
-	<div id="pve-admin-form" class="tab-content is-hidden">
-		<form method="post" action="/admin/proxmox-login" novalidate>
+	<div id="pve-admin-form" class="tab-content" x-show="activeTab === 'pve'" x-cloak x-transition>
+		<form method="post" action="/admin/proxmox-login" novalidate @submit="validatePveForm($event)">
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
 			<input type="hidden" name="login_type" value="admin"/>
 			if data.ReturnURL != "" {
@@ -253,7 +254,6 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 						id="pve-username"
 						name="username"
 						required
-						autofocus
 						autocomplete="username"
 						aria-required="true"
 						aria-describedby="pve-username-help"
@@ -261,6 +261,7 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 						maxlength="50"
 						pattern="[a-zA-Z0-9_\-@]+"
 						placeholder={ T("Login.UsernameLabel") }
+						@blur="addRealmIfMissing($event)"
 					/>
 				</div>
 			</div>
@@ -300,75 +301,16 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 		</form>
 	</div>
 	<div class="has-text-centered divider-with-text mt-5">
-		<hr/>
-		<span></span>
+			<hr/>
+			<span></span>
+		</div>
+		<div class="has-text-centered">
+			<a class="button is-light is-fullwidth login-alt-button" href="/login">
+				<span class="icon has-text-primary">
+					<i class="fas fa-user"></i>
+				</span>
+				<span>{ T("Login.UserLogin") }</span>
+			</a>
+		</div>
 	</div>
-	<div class="has-text-centered">
-		<a class="button is-light is-fullwidth login-alt-button" href="/login">
-			<span class="icon has-text-primary">
-				<i class="fas fa-user"></i>
-			</span>
-			<span>{ T("Login.UserLogin") }</span>
-		</a>
-	</div>
-	<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			const tabs = document.querySelectorAll('.tabs li');
-			const localForm = document.getElementById('local-admin-form');
-			const pveForm = document.getElementById('pve-admin-form');
-			
-			tabs.forEach(tab => {
-				tab.addEventListener('click', function() {
-					tabs.forEach(t => t.classList.remove('is-active'));
-					this.classList.add('is-active');
-					
-					const tabType = this.getAttribute('data-tab');
-					if (tabType === 'local') {
-						localForm.classList.remove('is-hidden');
-						pveForm.classList.add('is-hidden');
-						document.getElementById('password').focus();
-					} else {
-						localForm.classList.add('is-hidden');
-						pveForm.classList.remove('is-hidden');
-						document.getElementById('pve-username').focus();
-					}
-				});
-			});
-			
-			// Add realm to Proxmox username if missing
-			const pveUsernameInput = document.getElementById('pve-username');
-			if (pveUsernameInput) {
-				pveUsernameInput.addEventListener('blur', function() {
-					let username = this.value.trim();
-					if (username && !username.includes('@')) {
-						this.value = username + '@pve';
-					}
-				});
-			}
-			
-			// Validate Proxmox form before submit
-			const pveFormElement = pveForm ? pveForm.querySelector('form') : null;
-			if (pveFormElement) {
-				pveFormElement.addEventListener('submit', function(e) {
-					const usernameInput = document.getElementById('pve-username');
-					let username = usernameInput ? usernameInput.value.trim() : '';
-					if (username && !username.includes('@')) {
-						usernameInput.value = username + '@pve';
-					}
-					if (!username) {
-						e.preventDefault();
-						alert('Please enter a username');
-						return false;
-					}
-					const passwordInput = document.getElementById('pve-password');
-					if (!passwordInput || !passwordInput.value) {
-						e.preventDefault();
-						alert('Please enter a password');
-						return false;
-					}
-					return true;
-				});
-			}
-		});
-	</script>
 }

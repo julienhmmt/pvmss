@@ -370,40 +370,40 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 			templ_7745c5c3_Var18 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div class=\"tabs is-centered is-boxed mb-5\"><ul><li class=\"is-active\" data-tab=\"local\"><a><span class=\"icon is-small\"><i class=\"fas fa-shield-alt\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<div x-data=\"adminLoginTabs()\"><div class=\"tabs is-centered is-boxed mb-5\"><ul><li :class=\"{ 'is-active': activeTab === 'local' }\" @click=\"setTab('local')\"><a><span class=\"icon is-small\"><i class=\"fas fa-shield-alt\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(T("AdminLogin.LocalAdminTab"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 175, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 176, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></a></li><li data-tab=\"pve\"><a><span class=\"icon is-small\"><i class=\"fas fa-server\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></a></li><li :class=\"{ 'is-active': activeTab === 'pve' }\" @click=\"setTab('pve')\"><a><span class=\"icon is-small\"><i class=\"fas fa-server\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(T("AdminLogin.ProxmoxAdminTab"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 181, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 182, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span></a></li></ul></div><div id=\"local-admin-form\" class=\"tab-content\"><form method=\"post\" action=\"/admin/login\" novalidate><input type=\"hidden\" name=\"csrf_token\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span></a></li></ul></div><div id=\"local-admin-form\" class=\"tab-content\" x-show=\"activeTab === 'local'\" x-transition><form method=\"post\" action=\"/admin/login\" novalidate><input type=\"hidden\" name=\"csrf_token\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 188, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 189, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -421,7 +421,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(data.ReturnURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 191, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 192, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -440,7 +440,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(data.RedirectURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 194, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 195, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
@@ -458,7 +458,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(T("AdminLogin.PasswordLabel"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 201, Col: 66}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 202, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -471,7 +471,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(T("AdminLogin.PasswordLabel"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 216, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 217, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -484,7 +484,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.Button"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 222, Col: 118}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 223, Col: 118}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -497,20 +497,20 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.Button"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 226, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 227, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</span></button></div></div></form></div><div id=\"pve-admin-form\" class=\"tab-content is-hidden\"><form method=\"post\" action=\"/admin/proxmox-login\" novalidate><input type=\"hidden\" name=\"csrf_token\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</span></button></div></div></form></div><div id=\"pve-admin-form\" class=\"tab-content\" x-show=\"activeTab === 'pve'\" x-cloak x-transition><form method=\"post\" action=\"/admin/proxmox-login\" novalidate @submit=\"validatePveForm($event)\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 234, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 235, Col: 64}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -528,7 +528,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(data.ReturnURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 237, Col: 61}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 238, Col: 61}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -547,7 +547,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(data.RedirectURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 240, Col: 65}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 241, Col: 65}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -565,13 +565,13 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.UsernameLabel"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 247, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 248, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span></label><div class=\"control\"><input class=\"input is-large input-lg\" type=\"text\" id=\"pve-username\" name=\"username\" required autofocus autocomplete=\"username\" aria-required=\"true\" aria-describedby=\"pve-username-help\" minlength=\"3\" maxlength=\"50\" pattern=\"[a-zA-Z0-9_\\-@]+\" placeholder=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "</span></label><div class=\"control\"><input class=\"input is-large input-lg\" type=\"text\" id=\"pve-username\" name=\"username\" required autocomplete=\"username\" aria-required=\"true\" aria-describedby=\"pve-username-help\" minlength=\"3\" maxlength=\"50\" pattern=\"[a-zA-Z0-9_\\-@]+\" placeholder=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -584,14 +584,14 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\"></div></div><div class=\"field\"><label class=\"form-label\" for=\"pve-password\"><span class=\"form-label-icon\"><span class=\"icon\"><i class=\"fas fa-lock\"></i></span></span> <span class=\"form-label-text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" @blur=\"addRealmIfMissing($event)\"></div></div><div class=\"field\"><label class=\"form-label\" for=\"pve-password\"><span class=\"form-label-icon\"><span class=\"icon\"><i class=\"fas fa-lock\"></i></span></span> <span class=\"form-label-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.PasswordLabel"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 272, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 273, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -604,7 +604,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.PasswordLabel"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 286, Col: 44}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 287, Col: 44}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
@@ -617,7 +617,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.Button"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 292, Col: 118}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 293, Col: 118}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
@@ -630,7 +630,7 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.Button"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 296, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 297, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -643,13 +643,13 @@ func adminLoginForm(data LoginData, T TranslationFunc) templ.Component {
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(T("Login.UserLogin"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 311, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/login.templ`, Line: 312, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</span></a></div><script>\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\tconst tabs = document.querySelectorAll('.tabs li');\n\t\t\tconst localForm = document.getElementById('local-admin-form');\n\t\t\tconst pveForm = document.getElementById('pve-admin-form');\n\t\t\t\n\t\t\ttabs.forEach(tab => {\n\t\t\t\ttab.addEventListener('click', function() {\n\t\t\t\t\ttabs.forEach(t => t.classList.remove('is-active'));\n\t\t\t\t\tthis.classList.add('is-active');\n\t\t\t\t\t\n\t\t\t\t\tconst tabType = this.getAttribute('data-tab');\n\t\t\t\t\tif (tabType === 'local') {\n\t\t\t\t\t\tlocalForm.classList.remove('is-hidden');\n\t\t\t\t\t\tpveForm.classList.add('is-hidden');\n\t\t\t\t\t\tdocument.getElementById('password').focus();\n\t\t\t\t\t} else {\n\t\t\t\t\t\tlocalForm.classList.add('is-hidden');\n\t\t\t\t\t\tpveForm.classList.remove('is-hidden');\n\t\t\t\t\t\tdocument.getElementById('pve-username').focus();\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t});\n\t\t\t\n\t\t\t// Add realm to Proxmox username if missing\n\t\t\tconst pveUsernameInput = document.getElementById('pve-username');\n\t\t\tif (pveUsernameInput) {\n\t\t\t\tpveUsernameInput.addEventListener('blur', function() {\n\t\t\t\t\tlet username = this.value.trim();\n\t\t\t\t\tif (username && !username.includes('@')) {\n\t\t\t\t\t\tthis.value = username + '@pve';\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\t\t\t\n\t\t\t// Validate Proxmox form before submit\n\t\t\tconst pveFormElement = pveForm ? pveForm.querySelector('form') : null;\n\t\t\tif (pveFormElement) {\n\t\t\t\tpveFormElement.addEventListener('submit', function(e) {\n\t\t\t\t\tconst usernameInput = document.getElementById('pve-username');\n\t\t\t\t\tlet username = usernameInput ? usernameInput.value.trim() : '';\n\t\t\t\t\tif (username && !username.includes('@')) {\n\t\t\t\t\t\tusernameInput.value = username + '@pve';\n\t\t\t\t\t}\n\t\t\t\t\tif (!username) {\n\t\t\t\t\t\te.preventDefault();\n\t\t\t\t\t\talert('Please enter a username');\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t\tconst passwordInput = document.getElementById('pve-password');\n\t\t\t\t\tif (!passwordInput || !passwordInput.value) {\n\t\t\t\t\t\te.preventDefault();\n\t\t\t\t\t\talert('Please enter a password');\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t\treturn true;\n\t\t\t\t});\n\t\t\t}\n\t\t});\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</span></a></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

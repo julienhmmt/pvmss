@@ -801,8 +801,8 @@ templ vmDetailsSnapshotItem(snap SnapshotInfo, data VMDetailsData, T Translation
 }
 
 templ vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) {
-	<div id="console-modal" class="modal">
-		<div class="modal-background"></div>
+	<div id="console-modal" class="modal" x-data="{ isOpen: false }" :class="{ 'is-active': isOpen }" @open-console.window="isOpen = true" @close-console.window="isOpen = false" @keydown.escape.window="if(isOpen) { isOpen = false; $dispatch('console-closed') }">
+		<div class="modal-background" @click="isOpen = false; $dispatch('console-closed')"></div>
 		<div class="modal-card" style="width: 95vw; max-width: 1400px; height: 90vh;">
 			<header class="modal-card-head">
 				<p id="console-title" class="modal-card-title">
@@ -811,7 +811,7 @@ templ vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) {
 						<span>{ T("VMDetails.Console.Title") }</span>
 					</span>
 				</p>
-				<button id="console-close" class="delete" aria-label="close"></button>
+				<button id="console-close" class="delete" aria-label="close" @click="isOpen = false; $dispatch('console-closed')"></button>
 			</header>
 			<section class="modal-card-body" style="padding: 0; overflow: hidden; position: relative;">
 				<div id="console-status" style="position: absolute; top: 0; left: 0; right: 0; padding: 0.75rem; background: #f5f5f5; border-bottom: 1px solid #dbdbdb; z-index: 10; display: flex; align-items: center; gap: 0.5rem;">
@@ -832,7 +832,7 @@ templ vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) {
 					</button>
 				</div>
 				<div class="buttons">
-					<button id="console-disconnect" class="button">
+					<button id="console-disconnect" class="button" @click="isOpen = false; $dispatch('console-closed')">
 						<span class="icon"><i class="fas fa-times"></i></span>
 						<span>{ T("Common.Close") }</span>
 					</button>

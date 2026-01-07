@@ -222,3 +222,99 @@ window.modal = () => ({
     }
   }
 });
+
+/**
+ * Memory converter component for VM creation
+ * Usage: x-data="memoryConverter(minMB, maxMB, initialValue, selectedLabel)"
+ */
+window.memoryConverter = (minMB, maxMB, initialValue, selectedLabel) => ({
+  value: initialValue || minMB,
+  unit: 'MB',
+  minMB: minMB,
+  maxMB: maxMB,
+  selectedLabel: selectedLabel || 'Selected',
+
+  get minValue() {
+    return this.unit === 'GB' ? (this.minMB / 1024).toFixed(1) : this.minMB;
+  },
+
+  get maxValue() {
+    return this.unit === 'GB' ? Math.round(this.maxMB / 1024) : this.maxMB;
+  },
+
+  get step() {
+    return this.unit === 'GB' ? '0.5' : '256';
+  },
+
+  get displayMB() {
+    const val = parseFloat(String(this.value).replace(',', '.')) || 0;
+    return this.unit === 'GB' ? Math.round(val * 1024) : Math.round(val);
+  },
+
+  get displayGB() {
+    const val = parseFloat(String(this.value).replace(',', '.')) || 0;
+    return this.unit === 'GB' ? val.toFixed(1) : (val / 1024).toFixed(1);
+  },
+
+  get displayText() {
+    return `${this.selectedLabel}: ${this.displayGB} GB (${this.displayMB} MB)`;
+  },
+
+  changeUnit() {
+    const currentVal = parseFloat(String(this.value).replace(',', '.')) || 0;
+    if (this.unit === 'GB') {
+      this.value = (currentVal / 1024).toFixed(1);
+    } else {
+      this.value = Math.round(currentVal * 1024);
+    }
+  }
+});
+
+/**
+ * Admin login tabs component
+ * Usage: x-data="adminLoginTabs()"
+ */
+window.adminLoginTabs = () => ({
+  activeTab: 'local',
+
+  setTab(tab) {
+    this.activeTab = tab;
+    this.$nextTick(() => {
+      if (tab === 'local') {
+        const el = document.getElementById('password');
+        if (el) el.focus();
+      } else {
+        const el = document.getElementById('pve-username');
+        if (el) el.focus();
+      }
+    });
+  },
+
+  addRealmIfMissing(event) {
+    const input = event.target;
+    let username = input.value.trim();
+    if (username && !username.includes('@')) {
+      input.value = username + '@pve';
+    }
+  },
+
+  validatePveForm(event) {
+    const usernameInput = document.getElementById('pve-username');
+    let username = usernameInput ? usernameInput.value.trim() : '';
+    if (username && !username.includes('@')) {
+      usernameInput.value = username + '@pve';
+    }
+    if (!username) {
+      event.preventDefault();
+      alert('Please enter a username');
+      return false;
+    }
+    const passwordInput = document.getElementById('pve-password');
+    if (!passwordInput || !passwordInput.value) {
+      event.preventDefault();
+      alert('Please enter a password');
+      return false;
+    }
+    return true;
+  }
+});

@@ -2941,7 +2941,7 @@ func vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) templ.Componen
 			templ_7745c5c3_Var160 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, "<div id=\"console-modal\" class=\"modal\"><div class=\"modal-background\"></div><div class=\"modal-card\" style=\"width: 95vw; max-width: 1400px; height: 90vh;\"><header class=\"modal-card-head\"><p id=\"console-title\" class=\"modal-card-title\"><span class=\"icon-text\"><span class=\"icon\"><i class=\"fas fa-terminal\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, "<div id=\"console-modal\" class=\"modal\" x-data=\"{ isOpen: false }\" :class=\"{ 'is-active': isOpen }\" @open-console.window=\"isOpen = true\" @close-console.window=\"isOpen = false\" @keydown.escape.window=\"if(isOpen) { isOpen = false; $dispatch('console-closed') }\"><div class=\"modal-background\" @click=\"isOpen = false; $dispatch('console-closed')\"></div><div class=\"modal-card\" style=\"width: 95vw; max-width: 1400px; height: 90vh;\"><header class=\"modal-card-head\"><p id=\"console-title\" class=\"modal-card-title\"><span class=\"icon-text\"><span class=\"icon\"><i class=\"fas fa-terminal\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2954,7 +2954,7 @@ func vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) templ.Componen
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, "</span></span></p><button id=\"console-close\" class=\"delete\" aria-label=\"close\"></button></header><section class=\"modal-card-body\" style=\"padding: 0; overflow: hidden; position: relative;\"><div id=\"console-status\" style=\"position: absolute; top: 0; left: 0; right: 0; padding: 0.75rem; background: #f5f5f5; border-bottom: 1px solid #dbdbdb; z-index: 10; display: flex; align-items: center; gap: 0.5rem;\"><span class=\"icon\"><i class=\"fas fa-info-circle\"></i></span> <span id=\"console-status-text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, "</span></span></p><button id=\"console-close\" class=\"delete\" aria-label=\"close\" @click=\"isOpen = false; $dispatch('console-closed')\"></button></header><section class=\"modal-card-body\" style=\"padding: 0; overflow: hidden; position: relative;\"><div id=\"console-status\" style=\"position: absolute; top: 0; left: 0; right: 0; padding: 0.75rem; background: #f5f5f5; border-bottom: 1px solid #dbdbdb; z-index: 10; display: flex; align-items: center; gap: 0.5rem;\"><span class=\"icon\"><i class=\"fas fa-info-circle\"></i></span> <span id=\"console-status-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2967,7 +2967,7 @@ func vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) templ.Componen
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, "</span></div><div id=\"console-container\" style=\"width: 100%; height: 100%; padding-top: 3rem;\"></div></section><footer class=\"modal-card-foot is-justify-content-space-between\"><div class=\"buttons\"><button id=\"console-ctrl-alt-del\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-keyboard\"></i></span> <span>Ctrl+Alt+Del</span></button> <button id=\"console-scale-toggle\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-expand-arrows-alt\"></i></span> <span>Scale: On</span></button></div><div class=\"buttons\"><button id=\"console-disconnect\" class=\"button\"><span class=\"icon\"><i class=\"fas fa-times\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, "</span></div><div id=\"console-container\" style=\"width: 100%; height: 100%; padding-top: 3rem;\"></div></section><footer class=\"modal-card-foot is-justify-content-space-between\"><div class=\"buttons\"><button id=\"console-ctrl-alt-del\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-keyboard\"></i></span> <span>Ctrl+Alt+Del</span></button> <button id=\"console-scale-toggle\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-expand-arrows-alt\"></i></span> <span>Scale: On</span></button></div><div class=\"buttons\"><button id=\"console-disconnect\" class=\"button\" @click=\"isOpen = false; $dispatch('console-closed')\"><span class=\"icon\"><i class=\"fas fa-times\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
