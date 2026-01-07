@@ -74,12 +74,17 @@ templ Notification(props NotificationProps) {
 		aria-live="polite"
 		data-notification="true"
 		data-notification-type={ string(props.Type) }
-		if props.Dismissible {
-			data-dismissible="true"
+		if props.Dismissible || props.AutoDismiss {
+			x-data={ fmt.Sprintf("dismissible(%t, %d)", props.AutoDismiss, props.GetAutoDismissDelay()) }
+			x-show="show"
+			x-transition:enter="transition ease-out duration-300"
+			x-transition:enter-start="opacity-0 transform translate-y-2"
+			x-transition:enter-end="opacity-100 transform translate-y-0"
+			x-transition:leave="transition ease-in duration-200"
+			x-transition:leave-start="opacity-100"
+			x-transition:leave-end="opacity-0"
 		}
 		if props.AutoDismiss {
-			data-auto-dismiss="true"
-			data-auto-dismiss-delay={ fmt.Sprintf("%d", props.GetAutoDismissDelay()) }
 			style={ fmt.Sprintf("--notification-duration: %dms;", props.GetAutoDismissDelay()) }
 		}
 	>
@@ -129,7 +134,7 @@ templ Notification(props NotificationProps) {
 								class="delete notification-dismiss-button"
 								type="button"
 								aria-label="Dismiss notification"
-								data-action="dismiss"
+								@click="dismiss()"
 							></button>
 						</div>
 					}

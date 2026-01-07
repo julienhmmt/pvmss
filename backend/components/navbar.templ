@@ -146,14 +146,22 @@ templ navbarActions(props NavbarProps, T TranslationFunc) {
 			>EN</a>
 		</div>
 		if props.IsAuthenticated {
-			<div class="navbar-user-menu">
-				<input type="checkbox" id="user-menu-toggle" class="user-menu-toggle" hidden/>
-				<label for="user-menu-toggle" class="button is-primary navbar-user-toggle" title="User menu">
+			<div class="navbar-user-menu" x-data="dropdown()" @keydown.escape.window="close()">
+				<button
+					type="button"
+					class="button is-primary navbar-user-toggle"
+					title="User menu"
+					@click="toggle()"
+					:aria-expanded="open"
+					aria-haspopup="true"
+				>
 					<span class="icon"><i class="fas fa-user-circle"></i></span>
 					<span class="navbar-username">{ props.Username }</span>
-					<span class="icon"><i class="fas fa-chevron-down"></i></span>
-				</label>
-				<div class="navbar-user-dropdown">
+					<span class="icon">
+						<i class="fas fa-chevron-down" :class="{ 'fa-rotate-180': open }" style="transition: transform 0.2s;"></i>
+					</span>
+				</button>
+				<div class="navbar-user-dropdown" x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" @click.outside="close()" x-cloak>
 					if props.IsAdmin {
 						<a class="navbar-dropdown-item" href="/admin/nodes">
 							<span class="icon"><i class="fas fa-cog"></i></span>

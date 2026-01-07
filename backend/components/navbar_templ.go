@@ -446,20 +446,20 @@ func navbarActions(props NavbarProps, T TranslationFunc) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if props.IsAuthenticated {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"navbar-user-menu\"><input type=\"checkbox\" id=\"user-menu-toggle\" class=\"user-menu-toggle\" hidden> <label for=\"user-menu-toggle\" class=\"button is-primary navbar-user-toggle\" title=\"User menu\"><span class=\"icon\"><i class=\"fas fa-user-circle\"></i></span> <span class=\"navbar-username\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"navbar-user-menu\" x-data=\"dropdown()\" @keydown.escape.window=\"close()\"><button type=\"button\" class=\"button is-primary navbar-user-toggle\" title=\"User menu\" @click=\"toggle()\" :aria-expanded=\"open\" aria-haspopup=\"true\"><span class=\"icon\"><i class=\"fas fa-user-circle\"></i></span> <span class=\"navbar-username\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(props.Username)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 153, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 159, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</span> <span class=\"icon\"><i class=\"fas fa-chevron-down\"></i></span></label><div class=\"navbar-user-dropdown\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</span> <span class=\"icon\"><i class=\"fas fa-chevron-down\" :class=\"{ 'fa-rotate-180': open }\" style=\"transition: transform 0.2s;\"></i></span></button><div class=\"navbar-user-dropdown\" x-show=\"open\" x-transition:enter=\"transition ease-out duration-100\" x-transition:enter-start=\"opacity-0 transform scale-95\" x-transition:enter-end=\"opacity-100 transform scale-100\" x-transition:leave=\"transition ease-in duration-75\" x-transition:leave-start=\"opacity-100 transform scale-100\" x-transition:leave-end=\"opacity-0 transform scale-95\" @click.outside=\"close()\" x-cloak>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -471,7 +471,7 @@ func navbarActions(props NavbarProps, T TranslationFunc) templ.Component {
 				var templ_7745c5c3_Var24 string
 				templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Admin"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 160, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 168, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 				if templ_7745c5c3_Err != nil {
@@ -489,7 +489,7 @@ func navbarActions(props NavbarProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Profile"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 166, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 174, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -502,7 +502,7 @@ func navbarActions(props NavbarProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Logout"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 170, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 178, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -520,7 +520,7 @@ func navbarActions(props NavbarProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var27 string
 			templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Login"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 175, Col: 88}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 183, Col: 88}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 			if templ_7745c5c3_Err != nil {
@@ -533,7 +533,7 @@ func navbarActions(props NavbarProps, T TranslationFunc) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(T("Navbar.Login"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 177, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/navbar.templ`, Line: 185, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
