@@ -22,11 +22,34 @@ func findFrontendDirectory() string {
 		"/app/frontend",  // Container path
 	}
 
+	// Try relative paths first
 	for _, path := range possiblePaths {
-		if info, err := os.Stat(path); err == nil && info.IsDir() {
-			return path
+		absPath, err := filepath.Abs(path)
+		if err == nil {
+			if info, err := os.Stat(absPath); err == nil && info.IsDir() {
+				return absPath
+			}
 		}
 	}
+
+	// Fallback: try to find it from current working directory
+	cwd, err := os.Getwd()
+	if err == nil {
+		// Walk up the directory tree to find the project root
+		for {
+			frontendPath := filepath.Join(cwd, "frontend")
+			if info, err := os.Stat(frontendPath); err == nil && info.IsDir() {
+				return frontendPath
+			}
+
+			parent := filepath.Dir(cwd)
+			if parent == cwd {
+				break // Reached root directory
+			}
+			cwd = parent
+		}
+	}
+
 	return ""
 }
 
