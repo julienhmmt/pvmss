@@ -224,6 +224,150 @@ window.modal = () => ({
 });
 
 /**
+ * Auto-refresh component with Visibility API support
+ * Usage: x-data="autoRefresh('/api/endpoint', 30000)"
+ */
+window.autoRefresh = (url, intervalMs = 30000) => ({
+  data: null,
+  loading: false,
+  error: null,
+  interval: null,
+  enabled: true,
+  paused: false,
+
+  init() {
+    this.fetch();
+    this.start();
+    document.addEventListener('visibilitychange', () => this.handleVisibility());
+  },
+
+  destroy() {
+    this.stop();
+  },
+
+  async fetch() {
+    if (this.paused || document.hidden || !this.enabled) return;
+    
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      this.data = await response.json();
+    } catch (e) {
+      this.error = e.message;
+      console.warn('Auto-refresh failed:', e);
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  start() {
+    if (this.interval) return;
+    this.interval = setInterval(() => this.fetch(), intervalMs);
+  },
+
+  stop() {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+    }
+  },
+
+  toggle() {
+    this.enabled = !this.enabled;
+    if (this.enabled) {
+      this.fetch();
+      this.start();
+    } else {
+      this.stop();
+    }
+  },
+
+  handleVisibility() {
+    if (document.hidden) {
+      this.stop();
+    } else if (this.enabled) {
+      this.fetch();
+      this.start();
+    }
+  },
+
+  pause() {
+    this.paused = true;
+    this.stop();
+  },
+
+  resume() {
+    this.paused = false;
+    if (this.enabled && !document.hidden) {
+      this.fetch();
+      this.start();
+    }
+  }
+});
+
+/**
+ * Network toggle component for VM details
+ * Usage: x-data="networkToggle(index, initialEnabled, vmid, node, csrfToken)"
+ */
+window.networkToggle = (index, initialEnabled, vmid, node, csrfToken) => ({
+  enabled: initialEnabled,
+  loading: false,
+  index: index,
+
+  async toggle() {
+    if (this.loading) return;
+    
+    this.loading = true;
+    const newState = !this.enabled;
+    
+    try {
+      const formData = new URLSearchParams({
+        vmid: vmid,
+        node: node,
+        card_index: String(this.index),
+        enabled: newState ? '1' : '0',
+        csrf_token: csrfToken
+      });
+
+      const response = await fetch('/vm/toggle/network', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        this.enabled = newState;
+        Alpine.store('notifications').add({
+          type: 'success',
+          message: newState ? this.$el.dataset.msgEnabled : this.$el.dataset.msgDisabled,
+          duration: 3000
+        });
+      } else {
+        Alpine.store('notifications').add({
+          type: 'danger',
+          message: result.error || this.$el.dataset.msgFailed,
+          duration: 5000
+        });
+      }
+    } catch (error) {
+      console.error('Network toggle error:', error);
+      Alpine.store('notifications').add({
+        type: 'danger',
+        message: this.$el.dataset.msgFailed,
+        duration: 5000
+      });
+    } finally {
+      this.loading = false;
+    }
+  }
+});
+
+/**
  * Memory converter component for VM creation
  * Usage: x-data="memoryConverter(minMB, maxMB, initialValue, selectedLabel)"
  */

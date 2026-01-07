@@ -35,8 +35,13 @@ templ vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) {
 		id="vm-celebration-banner"
 		class="notification is-success is-light mb-4"
 		style="border: 2px solid #48c774; background: linear-gradient(135deg, rgba(72,199,116,0.1) 0%, rgba(72,199,116,0.05) 100%); animation: slideInBounce 0.8s ease-out;"
+		x-data="{ show: true }"
+		x-show="show"
+		x-transition:leave="transition ease-in duration-200"
+		x-transition:leave-start="opacity-100 transform scale-100"
+		x-transition:leave-end="opacity-0 transform scale-95"
 	>
-		<button class="delete" onclick="dismissCelebration()"></button>
+		<button class="delete" @click="show = false"></button>
 		<div class="media">
 			<div class="media-left">
 				<span class="icon has-text-success" style="font-size: 1.5rem;">
@@ -403,28 +408,34 @@ templ vmDetailsResourcesEditor(data VMDetailsData, T TranslationFunc) {
 										if idx > 0 {
 											<span class="tag is-light is-size-7 mr-2">{ T("VM.Create.NetworkOptional") }</span>
 										}
-										<label id={ fmt.Sprintf("network-toggle-%d", idx) } class="network-toggle-switch" title={ vmDetailsNetworkToggleTitle(card.LinkDown, idx, T) }>
+										<label
+											id={ fmt.Sprintf("network-toggle-%d", idx) }
+											class="network-toggle-switch"
+											title={ vmDetailsNetworkToggleTitle(card.LinkDown, idx, T) }
+											x-data={ fmt.Sprintf("networkToggle(%d, %t, '%d', '%s', '%s')", idx, !card.LinkDown, data.VM.VMID, data.VM.Node, data.CSRFToken) }
+											data-msg-enabled={ T("Message.NetworkCardEnabled") }
+											data-msg-disabled={ T("Message.NetworkCardDisabled") }
+											data-msg-failed={ T("Message.ActionFailed") }
+										>
 											<input
 												type="checkbox"
 												role="switch"
-												checked?={ !card.LinkDown }
-												data-network-index={ strconv.Itoa(idx) }
-												data-csrf-token={ data.CSRFToken }
-												data-vmid={ strconv.Itoa(data.VM.VMID) }
-												data-node={ data.VM.Node }
+												:checked="enabled"
+												@change="toggle()"
+												:disabled="loading"
 												class="network-toggle-input"
 											/>
 											<span class="network-toggle-slider" aria-hidden="true"></span>
 											<span class="network-toggle-label">
-												if card.LinkDown {
-													<i class="fas fa-plug-circle-xmark has-text-grey"></i>
-													{ " " }
-													{ T("Common.Disabled") }
-												} else {
-													<i class="fas fa-plug-circle-check has-text-success"></i>
-													{ " " }
-													{ T("Common.Enabled") }
-												}
+												<template x-if="loading">
+													<span><i class="fas fa-spinner fa-spin"></i></span>
+												</template>
+												<template x-if="!loading && !enabled">
+													<span><i class="fas fa-plug-circle-xmark has-text-grey"></i> { T("Common.Disabled") }</span>
+												</template>
+												<template x-if="!loading && enabled">
+													<span><i class="fas fa-plug-circle-check has-text-success"></i> { T("Common.Enabled") }</span>
+												</template>
 											</span>
 										</label>
 									</div>
