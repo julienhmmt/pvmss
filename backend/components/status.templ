@@ -19,9 +19,9 @@ func (s VMStatus) BadgeClass() string {
 	case VMStatusRunning:
 		return "is-success"
 	case VMStatusStopped:
-		return "is-warning"
+		return "is-danger"
 	case VMStatusPaused:
-		return "is-info"
+		return "is-warning"
 	default:
 		return "is-light"
 	}

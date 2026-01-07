@@ -147,6 +147,38 @@ templ nodeUsageCard(usage *NodeUsage, T TranslationFunc) {
 					</div>
 				</div>
 			</div>
+			<div class="columns">
+				<div class="column is-6">
+					if usage.MaxCores > 0 {
+						<div class="field">
+							<label class="label is-small">{ T("Admin.Limits.AggregateCores") }</label>
+							<div class="control">
+								<progress
+									class={ "progress", usageProgressClass(usage.Cores, usage.MaxCores) }
+									value={ fmt.Sprintf("%d", usage.Cores) }
+									max={ fmt.Sprintf("%d", usage.MaxCores) }
+								>{ fmt.Sprintf("%d%%", usagePercent(usage.Cores, usage.MaxCores)) }</progress>
+								<p class="help is-size-7">{ fmt.Sprintf("%d%%", usagePercent(usage.Cores, usage.MaxCores)) } { T("Common.Used") }</p>
+							</div>
+						</div>
+					}
+				</div>
+				<div class="column is-6">
+					if usage.MaxRamGB > 0 {
+						<div class="field">
+							<label class="label is-small">{ T("Admin.Limits.AggregateMemory") }</label>
+							<div class="control">
+								<progress
+									class={ "progress", usageProgressClass(usage.RamGB, usage.MaxRamGB) }
+									value={ fmt.Sprintf("%d", usage.RamGB) }
+									max={ fmt.Sprintf("%d", usage.MaxRamGB) }
+								>{ fmt.Sprintf("%d%%", usagePercent(usage.RamGB, usage.MaxRamGB)) }</progress>
+								<p class="help is-size-7">{ fmt.Sprintf("%d%%", usagePercent(usage.RamGB, usage.MaxRamGB)) } { T("Common.Used") }</p>
+							</div>
+						</div>
+					}
+				</div>
+			</div>
 		</div>
 	</div>
 }
@@ -162,6 +194,26 @@ func usageColorClass(used, max int) string {
 		return "has-text-warning"
 	}
 	return "has-text-success"
+}
+
+func usageProgressClass(used, max int) string {
+	if max == 0 {
+		return "is-primary"
+	}
+	percent := (used * 100) / max
+	if percent >= 90 {
+		return "is-danger"
+	} else if percent >= 75 {
+		return "is-warning"
+	}
+	return "is-success"
+}
+
+func usagePercent(used, max int) int {
+	if max == 0 {
+		return 0
+	}
+	return (used * 100) / max
 }
 
 templ nodeLimitsForm(data AdminLimitsData, T TranslationFunc) {

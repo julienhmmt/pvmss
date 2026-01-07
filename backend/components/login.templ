@@ -334,6 +334,41 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 					}
 				});
 			});
+			
+			// Add realm to Proxmox username if missing
+			const pveUsernameInput = document.getElementById('pve-username');
+			if (pveUsernameInput) {
+				pveUsernameInput.addEventListener('blur', function() {
+					let username = this.value.trim();
+					if (username && !username.includes('@')) {
+						this.value = username + '@pve';
+					}
+				});
+			}
+			
+			// Validate Proxmox form before submit
+			const pveFormElement = pveForm ? pveForm.querySelector('form') : null;
+			if (pveFormElement) {
+				pveFormElement.addEventListener('submit', function(e) {
+					const usernameInput = document.getElementById('pve-username');
+					let username = usernameInput ? usernameInput.value.trim() : '';
+					if (username && !username.includes('@')) {
+						usernameInput.value = username + '@pve';
+					}
+					if (!username) {
+						e.preventDefault();
+						alert('Please enter a username');
+						return false;
+					}
+					const passwordInput = document.getElementById('pve-password');
+					if (!passwordInput || !passwordInput.value) {
+						e.preventDefault();
+						alert('Please enter a password');
+						return false;
+					}
+					return true;
+				});
+			}
 		});
 	</script>
 }

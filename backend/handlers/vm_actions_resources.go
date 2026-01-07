@@ -326,7 +326,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Bad request"})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Bad request"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for bad request")
+			}
 		} else {
 			ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
 		}
@@ -337,7 +339,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Invalid VM ID"})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Invalid VM ID"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for invalid VM ID")
+			}
 		} else {
 			ctx.HandleError(err, "Invalid VM ID", http.StatusBadRequest)
 		}
@@ -348,7 +352,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Invalid card index"})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Invalid card index"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for invalid card index")
+			}
 		} else {
 			ctx.HandleError(err, "Invalid card index", http.StatusBadRequest)
 		}
@@ -359,7 +365,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Failed to create API client"})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Failed to create API client"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for API client creation error")
+			}
 		} else {
 			ctx.HandleError(err, "Failed to create API client", http.StatusInternalServerError)
 		}
@@ -371,7 +379,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for VM config error")
+			}
 		} else {
 			ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
 		}
@@ -389,7 +399,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for interface not found")
+			}
 		} else {
 			ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
 		}
@@ -423,7 +435,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": successMsg})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": successMsg}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for no change needed")
+			}
 		} else {
 			redirectURL := fmt.Sprintf("/vm/details/%s?success=1&success_msg=%s", vmidStr, url.QueryEscape(successMsg))
 			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
@@ -470,7 +484,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		if isAjax {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for Proxmox API error")
+			}
 		} else {
 			ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
 		}
@@ -495,7 +511,9 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	if isAjax {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": successMsg})
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": successMsg}); err != nil {
+			ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for successful network toggle")
+		}
 	} else {
 		redirectURL := fmt.Sprintf("/vm/details/%s?success=1&success_msg=%s&refresh=1", vmidStr, url.QueryEscape(successMsg))
 		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
