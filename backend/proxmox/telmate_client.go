@@ -234,7 +234,7 @@ func (c *Client) doJSONRequest(ctx context.Context, method, path string, data ur
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("request failed with status %s: %s", resp.Status, string(respBody))
 	}
