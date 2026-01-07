@@ -224,6 +224,100 @@ window.modal = () => ({
 });
 
 /**
+ * VM Search component
+ * Usage: x-data="vmSearch()"
+ */
+window.vmSearch = () => ({
+  vmid: '',
+  name: '',
+  tags: '',
+  limit: '50',
+  results: [],
+  loading: false,
+  error: null,
+  hasSearched: false,
+  searchTimeout: null,
+
+  get hasResults() {
+    return this.results && this.results.length > 0;
+  },
+
+  get resultCount() {
+    return this.results ? this.results.length : 0;
+  },
+
+  async search() {
+    this.loading = true;
+    this.error = null;
+    this.hasSearched = true;
+
+    const params = new URLSearchParams({
+      vmid: this.vmid.trim(),
+      name: this.name.trim(),
+      tags: this.tags.trim(),
+      limit: this.limit
+    });
+
+    try {
+      const response = await fetch(`/api/search/vms?${params}`, {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        this.results = data.results || [];
+      } else {
+        this.error = data.error || 'Search failed';
+        this.results = [];
+      }
+    } catch (e) {
+      this.error = e.message || 'Search failed';
+      this.results = [];
+    } finally {
+      this.loading = false;
+    }
+  },
+
+  debouncedSearch() {
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(() => this.search(), 400);
+  },
+
+  clear() {
+    this.vmid = '';
+    this.name = '';
+    this.tags = '';
+    this.limit = '50';
+    this.results = [];
+    this.error = null;
+    this.hasSearched = false;
+  },
+
+  getStatusClass(status) {
+    const s = (status || '').toLowerCase();
+    if (s === 'running') return 'is-success';
+    if (s === 'stopped') return 'is-danger';
+    if (s === 'paused' || s === 'suspended') return 'is-warning';
+    return 'is-light';
+  },
+
+  getStatusIcon(status) {
+    const s = (status || '').toLowerCase();
+    if (s === 'running') return 'fa-play';
+    if (s === 'stopped') return 'fa-stop';
+    if (s === 'paused' || s === 'suspended') return 'fa-pause';
+    return 'fa-question';
+  },
+
+  parseTags(tagsStr) {
+    if (!tagsStr) return [];
+    return tagsStr.split(/[,;]/)
+      .map(t => t.trim())
+      .filter(t => t && t !== 'pvmss');
+  }
+});
+
+/**
  * Auto-refresh component with Visibility API support
  * Usage: x-data="autoRefresh('/api/endpoint', 30000)"
  */

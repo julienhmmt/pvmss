@@ -477,7 +477,7 @@ fieldset[disabled]::after {
   pointer-events: auto;
 }
 
-/* Base desktop dropdown panel (must come before checked-state visibility rule) */
+/* Base desktop dropdown panel - Alpine.js handles visibility via x-show */
 .navbar-user-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
@@ -487,10 +487,6 @@ fieldset[disabled]::after {
   border-radius: 8px;
   box-shadow: 0 10px 32px rgb(0 0 0 / 12%);
   min-width: 200px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-8px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1001;
   overflow: hidden;
 }
@@ -518,18 +514,6 @@ fieldset[disabled]::after {
 }
 
 .navbar-user-menu.is-active .navbar-user-toggle .icon:last-child {
-  transform: rotate(180deg);
-}
-
-/* Desktop dropdown visibility when checked */
-.navbar-user-menu .user-menu-toggle:checked ~ .navbar-user-dropdown {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-/* User dropdown: rotate chevron when open */
-.navbar-user-menu .user-menu-toggle:checked + .navbar-user-toggle .icon:last-child {
   transform: rotate(180deg);
 }
 

@@ -23,15 +23,12 @@ templ SearchPage(data SearchData, T TranslationFunc) {
 
 templ searchContent(T TranslationFunc) {
 	<section class="section">
-		<div class="container">
+		<div class="container" x-data="vmSearch()">
 			@searchHeader(T)
-			@searchFormCard(T)
-			@searchResultsCard(T)
-			@searchTranslations(T)
+			@searchFormCardAlpine(T)
+			@searchResultsCardAlpine(T)
 		</div>
 	</section>
-	<script src="/js/vm-utils.js" defer></script>
-	<script src="/js/search-page.js" defer></script>
 }
 
 templ searchHeader(T TranslationFunc) {
@@ -62,7 +59,7 @@ templ searchHeaderActions(T TranslationFunc) {
 	</div>
 }
 
-templ searchFormCard(T TranslationFunc) {
+templ searchFormCardAlpine(T TranslationFunc) {
 	<div class="card mb-5">
 		<header class="card-header brand-header">
 			<p class="card-header-title">
@@ -80,7 +77,7 @@ templ searchFormCard(T TranslationFunc) {
 						<div class="field">
 							<label class="label">{ T("Search.VMID") }</label>
 							<div class="control has-icons-left">
-								<input class="input" type="text" id="vmid-search" placeholder={ T("Search.PlaceholderVMID") }/>
+								<input class="input" type="text" x-model="vmid" @input="debouncedSearch()" @keydown.enter.prevent="search()" placeholder={ T("Search.PlaceholderVMID") }/>
 								<span class="icon is-small is-left">
 									<i class="fas fa-hashtag"></i>
 								</span>
@@ -91,7 +88,7 @@ templ searchFormCard(T TranslationFunc) {
 						<div class="field">
 							<label class="label">{ T("Search.Name") }</label>
 							<div class="control has-icons-left">
-								<input class="input" type="text" id="name-search" placeholder={ T("Search.PlaceholderName") }/>
+								<input class="input" type="text" x-model="name" @input="debouncedSearch()" @keydown.enter.prevent="search()" placeholder={ T("Search.PlaceholderName") }/>
 								<span class="icon is-small is-left">
 									<i class="fas fa-server"></i>
 								</span>
@@ -102,7 +99,7 @@ templ searchFormCard(T TranslationFunc) {
 						<div class="field">
 							<label class="label">{ T("Search.Tags") }</label>
 							<div class="control has-icons-left">
-								<input class="input" type="text" id="tags-filter" placeholder={ T("Search.PlaceholderTag") }/>
+								<input class="input" type="text" x-model="tags" @input="debouncedSearch()" @keydown.enter.prevent="search()" placeholder={ T("Search.PlaceholderTag") }/>
 								<span class="icon is-small is-left">
 									<i class="fas fa-tags"></i>
 								</span>
@@ -114,11 +111,13 @@ templ searchFormCard(T TranslationFunc) {
 				<div class="level">
 					<div class="level-left">
 						<div class="level-item">
-							<button class="button is-primary" id="search-btn">
-								<span class="icon"><i class="fas fa-search"></i></span>
-								<span>{ T("Search.Search") }</span>
+							<button class="button is-primary" @click="search()" :disabled="loading" data-searching={ T("Search.Searching") } data-search={ T("Search.Search") }>
+								<span class="icon">
+									<i class="fas" :class="loading ? 'fa-spinner fa-spin' : 'fa-search'"></i>
+								</span>
+								<span x-text="loading ? $el.parentElement.dataset.searching : $el.parentElement.dataset.search"></span>
 							</button>
-							<button class="button is-light ml-2" id="clear-btn">
+							<button class="button is-light ml-2" @click="clear()" :disabled="loading">
 								<span class="icon"><i class="fas fa-times"></i></span>
 								<span>{ T("Search.Clear") }</span>
 							</button>
@@ -130,9 +129,9 @@ templ searchFormCard(T TranslationFunc) {
 								<label class="label is-small">{ T("Search.Limit") }</label>
 								<div class="control">
 									<div class="select is-small">
-										<select id="limit-select">
+										<select x-model="limit" @change="debouncedSearch()">
 											<option value="25">25</option>
-											<option value="50" selected>50</option>
+											<option value="50">50</option>
 											<option value="100">100</option>
 											<option value="200">200</option>
 										</select>
@@ -143,67 +142,107 @@ templ searchFormCard(T TranslationFunc) {
 					</div>
 				</div>
 			</div>
-			<div id="search-loading" class="has-text-centered is-hidden mb-4">
+			<div x-show="loading" x-cloak class="has-text-centered mb-4">
 				<div class="icon is-large has-text-primary">
 					<i class="fas fa-spinner fa-spin fa-2x"></i>
 				</div>
 				<p class="has-text-grey">{ T("Search.Searching") }</p>
 			</div>
-			<div id="search-error" class="notification is-danger is-hidden">
-				<button class="delete" id="error-close"></button>
-				<span id="error-message"></span>
+			<div x-show="error" x-cloak class="notification is-danger">
+				<button class="delete" @click="error = null"></button>
+				<span x-text="error"></span>
 			</div>
 		</div>
 	</div>
 }
 
-templ searchResultsCard(T TranslationFunc) {
-	<div id="search-results" class="is-hidden">
+templ searchResultsCardAlpine(T TranslationFunc) {
+	<div x-show="hasSearched" x-cloak>
 		<div class="card">
 			<header class="card-header brand-header">
 				<p class="card-header-title">
 					<span class="icon-text">
 						<span class="icon"><i class="fas fa-list"></i></span>
 						<span>{ T("Search.Results") }</span>
+						<span class="tag is-light ml-2" x-text="resultCount"></span>
 					</span>
 				</p>
 			</header>
 			<div class="card-content">
-				<div id="results-container">
-					<!-- Results will be loaded here via AJAX -->
-				</div>
+				<template x-if="!hasResults && !loading">
+					<div class="notification is-warning">
+						<div class="level">
+							<div class="level-left">
+								<div class="level-item">
+									<div>
+										<strong>{ T("Search.NoResults") }</strong>
+										<p class="mb-0">{ T("Search.NoResultsMessage") }</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</template>
+				<template x-if="hasResults">
+					<div class="table-container">
+						<table class="table is-fullwidth is-hoverable">
+							<thead>
+								<tr class="has-background-light">
+									<th class="has-text-centered" width="80">{ T("Search.VMID") }</th>
+									<th>{ T("Search.Name") }</th>
+									<th>{ T("Search.Description") }</th>
+									<th class="has-text-centered" width="100">{ T("Search.Node") }</th>
+									<th class="has-text-centered" width="80">{ T("Search.Status") }</th>
+									<th class="has-text-centered" width="120">{ T("Search.Tags") }</th>
+									<th class="has-text-centered" width="120">{ T("Search.Actions") }</th>
+								</tr>
+							</thead>
+							<tbody>
+								<template x-for="vm in results" :key="vm.vmid">
+									<tr class="is-vcentered">
+										<td class="has-text-centered">
+											<span class="tag is-light is-medium has-text-weight-bold" x-text="vm.vmid"></span>
+										</td>
+										<td>
+											<span class="has-text-weight-semibold" x-text="vm.name || '-'"></span>
+										</td>
+										<td>
+											<span x-text="vm.description || '-'" :class="{ 'has-text-grey-light': !vm.description }"></span>
+										</td>
+										<td class="has-text-centered">
+											<span class="tag is-medium" x-text="vm.node"></span>
+										</td>
+										<td class="has-text-centered">
+											<span class="tag is-medium" :class="getStatusClass(vm.status)">
+												<span class="icon is-small"><i class="fas" :class="getStatusIcon(vm.status)"></i></span>
+												<span x-text="vm.status"></span>
+											</span>
+										</td>
+										<td class="has-text-centered">
+											<template x-if="parseTags(vm.tags).length > 0">
+												<div class="tags is-centered">
+													<template x-for="tag in parseTags(vm.tags)" :key="tag">
+														<span class="tag is-small is-info is-light" x-text="tag"></span>
+													</template>
+												</div>
+											</template>
+											<template x-if="parseTags(vm.tags).length === 0">
+												<em class="has-text-grey-light is-size-7">{ T("Search.NoTags") }</em>
+											</template>
+										</td>
+										<td class="has-text-centered">
+											<a :href="'/vm/details/' + vm.vmid" class="button is-small is-primary">
+												<span class="icon"><i class="fas fa-eye"></i></span>
+												<span>{ T("Search.Details") }</span>
+											</a>
+										</td>
+									</tr>
+								</template>
+							</tbody>
+						</table>
+					</div>
+				</template>
 			</div>
 		</div>
 	</div>
-}
-
-templ searchTranslations(T TranslationFunc) {
-	<div
-		id="search-translations"
-		class="is-hidden"
-		aria-hidden="true"
-		data-actions={ T("Search.Actions") }
-		data-description={ T("Search.Description") }
-		data-details={ T("Search.Details") }
-		data-load-error={ T("Search.LoadError") }
-		data-name={ T("Search.Name") }
-		data-no-description={ T("Search.NoDescription") }
-		data-no-name={ T("Search.NoName") }
-		data-no-results={ T("Search.NoResults") }
-		data-no-results-message={ T("Search.NoResultsMessage") }
-		data-no-tags={ T("Search.NoTags") }
-		data-node={ T("Search.Node") }
-		data-result-found={ T("Search.ResultFound") }
-		data-results-found={ T("Search.ResultsFound") }
-		data-search={ T("Search.Search") }
-		data-search-error={ T("Search.Error") }
-		data-searching={ T("Search.Searching") }
-		data-status={ T("Search.Status") }
-		data-status-running={ T("Status.Running") }
-		data-status-stopped={ T("Status.Stopped") }
-		data-status-paused={ T("Status.Paused") }
-		data-status-unknown={ T("Status.Unknown") }
-		data-tags={ T("Search.Tags") }
-		data-vmid={ T("Search.VMID") }
-	></div>
 }
