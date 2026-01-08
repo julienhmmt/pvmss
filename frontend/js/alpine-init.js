@@ -1,13 +1,10 @@
 /**
- * Alpine.js initialization and global configuration
+ * Alpine.js initialization and global configuration - Optimized
  * This file must be loaded BEFORE Alpine.js
  */
 
 document.addEventListener('alpine:init', () => {
-  /**
-   * Global notification store
-   * Usage: Alpine.store('notifications').add({ type: 'success', message: 'Done!' })
-   */
+  // Global notification store
   Alpine.store('notifications', {
     items: [],
     counter: 0,
@@ -53,10 +50,7 @@ document.addEventListener('alpine:init', () => {
     }
   });
 
-  /**
-   * Global loading state store
-   * Usage: Alpine.store('loading').set('vmAction', true)
-   */
+  // Global loading store
   Alpine.store('loading', {
     states: {},
 
@@ -68,39 +62,24 @@ document.addEventListener('alpine:init', () => {
       return this.states[key] || false;
     },
 
-    toggle(key) {
-      this.states[key] = !this.states[key];
+    clear(key) {
+      if (key) {
+        delete this.states[key];
+      } else {
+        this.states = {};
+      }
     }
   });
 
-  /**
-   * Magic helper for CSRF token
-   * Usage in Alpine: this.$csrf or $csrf
-   */
+  // CSRF token helper
   Alpine.magic('csrf', () => {
-    const input = document.querySelector('input[name="csrf_token"]');
-    if (input) return input.value;
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
-  });
-
-  /**
-   * Magic helper for translations from data attributes
-   * Usage: $t('key') where key is from data-t-key attribute
-   */
-  Alpine.magic('t', (el) => {
-    return (key) => {
-      const configEl = document.getElementById('alpine-config') || el.closest('[data-translations]');
-      if (configEl && configEl.dataset[key]) {
-        return configEl.dataset[key];
-      }
-      return key;
-    };
   });
 });
 
 /**
- * Dropdown component
+ * Dropdown component - Optimized
  * Usage: x-data="dropdown()"
  */
 window.dropdown = () => ({
@@ -112,17 +91,11 @@ window.dropdown = () => ({
 
   close() {
     this.open = false;
-  },
-
-  handleClickOutside(event) {
-    if (!this.$el.contains(event.target)) {
-      this.close();
-    }
   }
 });
 
 /**
- * Dismissible notification component
+ * Dismissible notification component - Optimized
  * Usage: x-data="dismissible()"
  */
 window.dismissible = (autoDismiss = false, delay = 6000) => ({
@@ -147,200 +120,143 @@ window.dismissible = (autoDismiss = false, delay = 6000) => ({
       clearInterval(this.interval);
     }
     this.show = false;
-  },
-
-  destroy() {
-    if (this.interval) {
-      clearInterval(this.interval);
-    }
   }
 });
 
 /**
- * Tabs component
- * Usage: x-data="tabs('defaultTab')"
+ * Tabs component - Optimized
+ * Usage: x-data="tabs('default-tab')"
  */
-window.tabs = (defaultTab = '') => ({
+window.tabs = (defaultTab = 'tab1') => ({
   activeTab: defaultTab,
 
-  isActive(tab) {
-    return this.activeTab === tab;
+  setTab(tabName) {
+    this.activeTab = tabName;
   },
 
-  setActive(tab) {
-    this.activeTab = tab;
+  isActive(tabName) {
+    return this.activeTab === tabName;
   }
 });
 
 /**
- * Loading button component
+ * Loading button component - Optimized
  * Usage: x-data="loadingButton()"
  */
 window.loadingButton = () => ({
   loading: false,
 
-  start() {
+  setLoading(state) {
+    this.loading = state;
+  },
+
+  async submit(event) {
+    if (this.loading) return;
+    
     this.loading = true;
-  },
-
-  stop() {
-    this.loading = false;
-  },
-
-  submit(event) {
-    if (this.loading) {
-      event.preventDefault();
-      return false;
-    }
-    this.start();
-    return true;
-  }
-});
-
-/**
- * Modal component
- * Usage: x-data="modal()"
- */
-window.modal = () => ({
-  isOpen: false,
-
-  open() {
-    this.isOpen = true;
-    document.body.classList.add('is-clipped');
-  },
-
-  close() {
-    this.isOpen = false;
-    document.body.classList.remove('is-clipped');
-  },
-
-  toggle() {
-    if (this.isOpen) {
-      this.close();
-    } else {
-      this.open();
-    }
-  }
-});
-
-/**
- * VM Search component
- * Usage: x-data="vmSearch()"
- */
-window.vmSearch = () => ({
-  vmid: '',
-  name: '',
-  tags: '',
-  limit: '50',
-  results: [],
-  loading: false,
-  error: null,
-  hasSearched: false,
-  searchTimeout: null,
-
-  get hasResults() {
-    return this.results && this.results.length > 0;
-  },
-
-  get resultCount() {
-    return this.results ? this.results.length : 0;
-  },
-
-  async search() {
-    this.loading = true;
-    this.error = null;
-    this.hasSearched = true;
-
-    const params = new URLSearchParams({
-      vmid: this.vmid.trim(),
-      name: this.name.trim(),
-      tags: this.tags.trim(),
-      limit: this.limit
-    });
-
     try {
-      const response = await fetch(`/api/search/vms?${params}`, {
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        this.results = data.results || [];
-      } else {
-        this.error = data.error || 'Search failed';
-        this.results = [];
-      }
-    } catch (e) {
-      this.error = e.message || 'Search failed';
-      this.results = [];
+      // Form will submit normally
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } finally {
       this.loading = false;
     }
-  },
-
-  debouncedSearch() {
-    clearTimeout(this.searchTimeout);
-    this.searchTimeout = setTimeout(() => this.search(), 400);
-  },
-
-  clear() {
-    this.vmid = '';
-    this.name = '';
-    this.tags = '';
-    this.limit = '50';
-    this.results = [];
-    this.error = null;
-    this.hasSearched = false;
-  },
-
-  getStatusClass(status) {
-    const s = (status || '').toLowerCase();
-    if (s === 'running') return 'is-success';
-    if (s === 'stopped') return 'is-danger';
-    if (s === 'paused' || s === 'suspended') return 'is-warning';
-    return 'is-light';
-  },
-
-  getStatusIcon(status) {
-    const s = (status || '').toLowerCase();
-    if (s === 'running') return 'fa-play';
-    if (s === 'stopped') return 'fa-stop';
-    if (s === 'paused' || s === 'suspended') return 'fa-pause';
-    return 'fa-question';
-  },
-
-  parseTags(tagsStr) {
-    if (!tagsStr) return [];
-    return tagsStr.split(/[,;]/)
-      .map(t => t.trim())
-      .filter(t => t && t !== 'pvmss');
   }
 });
 
 /**
- * Auto-refresh component with Visibility API support
- * Usage: x-data="autoRefresh('/api/endpoint', 30000)"
+ * Modal component - Optimized
+ * Usage: x-data="modal()"
  */
-window.autoRefresh = (url, intervalMs = 30000) => ({
+window.modal = () => ({
+  open: false,
+
+  show() {
+    this.open = true;
+    document.body.style.overflow = 'hidden';
+  },
+
+  hide() {
+    this.open = false;
+    document.body.style.overflow = '';
+  }
+});
+
+/**
+ * Memory converter component - Optimized
+ * Usage: x-data="memoryConverter()"
+ */
+window.memoryConverter = () => ({
+  value: 2048,
+  unit: 'MB',
+  minMB: 2048,
+  maxMB: 65536,
+
+  get minValue() {
+    return this.unit === 'GB' ? this.minMB / 1024 : this.minMB;
+  },
+
+  get maxValue() {
+    return this.unit === 'GB' ? this.maxMB / 1024 : this.maxMB;
+  },
+
+  get step() {
+    return this.unit === 'GB' ? 0.5 : 256;
+  },
+
+  get displayText() {
+    const mb = this.unit === 'GB' ? this.value * 1024 : this.value;
+    const gb = (mb / 1024).toFixed(1);
+    return `Selected: ${gb} GB (${Math.round(mb)} MB)`;
+  },
+
+  convertUnit() {
+    if (this.unit === 'GB') {
+      this.value = (this.value / 1024).toFixed(1);
+    } else {
+      this.value = Math.round(this.value * 1024);
+    }
+  }
+});
+
+/**
+ * VM search component - Optimized
+ * Usage: x-data="vmSearch()"
+ */
+window.vmSearch = () => ({
+  query: '',
+  status: 'all',
+
+  filter(vms) {
+    return vms.filter(vm => {
+      const matchesQuery = !this.query || 
+        vm.name?.toLowerCase().includes(this.query.toLowerCase()) ||
+        String(vm.vmid).includes(this.query);
+      
+      const matchesStatus = this.status === 'all' || vm.status === this.status;
+      
+      return matchesQuery && matchesStatus;
+    });
+  },
+
+  reset() {
+    this.query = '';
+    this.status = 'all';
+  }
+});
+
+/**
+ * Auto-refresh component - Optimized
+ * Usage: x-data="autoRefresh(url, interval)"
+ */
+window.autoRefresh = (url, interval = 30000) => ({
   data: null,
   loading: false,
   error: null,
-  interval: null,
-  enabled: true,
+  intervalId: null,
   paused: false,
 
-  init() {
-    this.fetch();
-    this.start();
-    document.addEventListener('visibilitychange', () => this.handleVisibility());
-  },
-
-  destroy() {
-    this.stop();
-  },
-
   async fetch() {
-    if (this.paused || document.hidden || !this.enabled) return;
+    if (this.paused || document.hidden) return;
     
     this.loading = true;
     this.error = null;
@@ -349,61 +265,37 @@ window.autoRefresh = (url, intervalMs = 30000) => ({
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       this.data = await response.json();
-    } catch (e) {
-      this.error = e.message;
-      console.warn('Auto-refresh failed:', e);
+    } catch (error) {
+      this.error = error.message;
+      console.warn('Auto-refresh failed:', error);
     } finally {
       this.loading = false;
     }
   },
 
   start() {
-    if (this.interval) return;
-    this.interval = setInterval(() => this.fetch(), intervalMs);
+    this.fetch();
+    this.intervalId = setInterval(() => this.fetch(), interval);
   },
 
   stop() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-  },
-
-  toggle() {
-    this.enabled = !this.enabled;
-    if (this.enabled) {
-      this.fetch();
-      this.start();
-    } else {
-      this.stop();
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
     }
   },
 
   handleVisibility() {
     if (document.hidden) {
       this.stop();
-    } else if (this.enabled) {
-      this.fetch();
-      this.start();
-    }
-  },
-
-  pause() {
-    this.paused = true;
-    this.stop();
-  },
-
-  resume() {
-    this.paused = false;
-    if (this.enabled && !document.hidden) {
-      this.fetch();
+    } else {
       this.start();
     }
   }
 });
 
 /**
- * Network toggle component for VM details
+ * Network toggle component - Optimized
  * Usage: x-data="networkToggle(index, initialEnabled, vmid, node, csrfToken)"
  */
 window.networkToggle = (index, initialEnabled, vmid, node, csrfToken) => ({
@@ -449,112 +341,38 @@ window.networkToggle = (index, initialEnabled, vmid, node, csrfToken) => ({
         });
       }
     } catch (error) {
-      console.error('Network toggle error:', error);
       Alpine.store('notifications').add({
         type: 'danger',
-        message: this.$el.dataset.msgFailed,
+        message: this.$el.dataset.msgError || 'Network toggle failed',
         duration: 5000
       });
     } finally {
       this.loading = false;
     }
+  },
+
+  get statusText() {
+    if (this.loading) return 'Processing...';
+    return this.enabled ? 'Enabled' : 'Disabled';
+  },
+
+  get statusClass() {
+    return this.enabled ? 'has-text-success' : 'has-text-grey';
   }
 });
 
 /**
- * Memory converter component for VM creation
- * Usage: x-data="memoryConverter(minMB, maxMB, initialValue, selectedLabel)"
- */
-window.memoryConverter = (minMB, maxMB, initialValue, selectedLabel) => ({
-  value: initialValue || minMB,
-  unit: 'MB',
-  minMB: minMB,
-  maxMB: maxMB,
-  selectedLabel: selectedLabel || 'Selected',
-
-  get minValue() {
-    return this.unit === 'GB' ? (this.minMB / 1024).toFixed(1) : this.minMB;
-  },
-
-  get maxValue() {
-    return this.unit === 'GB' ? Math.round(this.maxMB / 1024) : this.maxMB;
-  },
-
-  get step() {
-    return this.unit === 'GB' ? '0.5' : '256';
-  },
-
-  get displayMB() {
-    const val = parseFloat(String(this.value).replace(',', '.')) || 0;
-    return this.unit === 'GB' ? Math.round(val * 1024) : Math.round(val);
-  },
-
-  get displayGB() {
-    const val = parseFloat(String(this.value).replace(',', '.')) || 0;
-    return this.unit === 'GB' ? val.toFixed(1) : (val / 1024).toFixed(1);
-  },
-
-  get displayText() {
-    return `${this.selectedLabel}: ${this.displayGB} GB (${this.displayMB} MB)`;
-  },
-
-  changeUnit() {
-    const currentVal = parseFloat(String(this.value).replace(',', '.')) || 0;
-    if (this.unit === 'GB') {
-      this.value = (currentVal / 1024).toFixed(1);
-    } else {
-      this.value = Math.round(currentVal * 1024);
-    }
-  }
-});
-
-/**
- * Admin login tabs component
+ * Admin login tabs component - Optimized
  * Usage: x-data="adminLoginTabs()"
  */
-document.addEventListener('alpine:init', () => {
-  window.adminLoginTabs = () => ({
-    activeTab: 'local',
+window.adminLoginTabs = () => ({
+  activeTab: 'local',
 
-    setTab(tab) {
-      this.activeTab = tab;
-      this.$nextTick(() => {
-        if (tab === 'local') {
-          const el = document.getElementById('password');
-          if (el) el.focus();
-        } else {
-          const el = document.getElementById('pve-username');
-          if (el) el.focus();
-        }
-      });
-    },
+  setTab(tabName) {
+    this.activeTab = tabName;
+  },
 
-    addRealmIfMissing(event) {
-      const input = event.target;
-      let username = input.value.trim();
-      if (username && !username.includes('@')) {
-        input.value = username + '@pve';
-      }
-    },
-
-    validatePveForm(event) {
-      const usernameInput = document.getElementById('pve-username');
-      let username = usernameInput ? usernameInput.value.trim() : '';
-      if (username && !username.includes('@')) {
-        usernameInput.value = username + '@pve';
-      }
-      if (!username) {
-        event.preventDefault();
-        alert('Please enter a username');
-        return false;
-      }
-      const passwordInput = document.getElementById('pve-password');
-      if (!passwordInput || !passwordInput.value) {
-        event.preventDefault();
-        alert('Please enter a password');
-        return false;
-      }
-      return true;
-    }
-  });
+  isActive(tabName) {
+    return this.activeTab === tabName;
+  }
 });
