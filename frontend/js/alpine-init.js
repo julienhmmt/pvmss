@@ -223,24 +223,120 @@ window.memoryConverter = () => ({
  * Usage: x-data="vmSearch()"
  */
 window.vmSearch = () => ({
-  query: '',
-  status: 'all',
-
-  filter(vms) {
-    return vms.filter(vm => {
-      const matchesQuery = !this.query || 
-        vm.name?.toLowerCase().includes(this.query.toLowerCase()) ||
-        String(vm.vmid).includes(this.query);
-      
-      const matchesStatus = this.status === 'all' || vm.status === this.status;
-      
-      return matchesQuery && matchesStatus;
-    });
+  // Search form variables
+  vmid: '',
+  name: '',
+  tags: '',
+  limit: 25,
+  loading: false,
+  error: null,
+  
+  // Results state
+  results: [],
+  hasSearched: false,
+  
+  // Computed properties
+  get resultCount() {
+    return this.results.length;
+  },
+  
+  get hasResults() {
+    return this.results.length > 0;
   },
 
-  reset() {
-    this.query = '';
-    this.status = 'all';
+  // Search methods
+  async search() {
+    this.loading = true;
+    this.error = null;
+    this.hasSearched = true;
+    
+    try {
+      const params = new URLSearchParams({
+        vmid: this.vmid.trim(),
+        name: this.name.trim(),
+        tags: this.tags.trim(),
+        limit: this.limit.toString()
+      });
+      
+      const response = await fetch(`/api/search/vms?${params}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response format from server');
+      }
+      
+      const data = await response.json();
+      this.results = data.results || [];
+    } catch (error) {
+      this.error = error.message;
+      this.results = [];
+    } finally {
+      this.loading = false;
+    }
+  },
+  
+  clear() {
+    this.vmid = '';
+    this.name = '';
+    this.tags = '';
+    this.limit = 25;
+    this.results = [];
+    this.hasSearched = false;
+    this.error = null;
+    this.loading = false;
+  },
+  
+  // Debounced search
+  init() {
+    let timeoutId;
+    this.debouncedSearch = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (this.vmid.trim() || this.name.trim() || this.tags.trim()) {
+          this.search();
+        } else {
+          this.clear();
+        }
+      }, 500);
+    };
+  },
+
+  // Filter method (for backward compatibility)
+  filter(vms) {
+    return vms.filter(vm => {
+      const matchesVMID = !this.vmid || String(vm.vmid).includes(this.vmid.trim());
+      const matchesName = !this.name || vm.name?.toLowerCase().includes(this.name.toLowerCase());
+      const matchesTags = !this.tags || (vm.tags && vm.tags.toLowerCase().includes(this.tags.toLowerCase()));
+      
+      return matchesVMID && matchesName && matchesTags;
+    });
+  },
+  
+  // Helper methods for template
+  getStatusClass(status) {
+    const classes = {
+      running: 'is-success',
+      stopped: 'is-danger',
+      paused: 'is-warning'
+    };
+    return classes[status] || 'is-light';
+  },
+  
+  getStatusIcon(status) {
+    const icons = {
+      running: 'fa-play',
+      stopped: 'fa-stop',
+      paused: 'fa-pause'
+    };
+    return icons[status] || 'fa-question';
+  },
+  
+  parseTags(tagsString) {
+    if (!tagsString || typeof tagsString !== 'string') return [];
+    return tagsString.split(';')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
   }
 });
 
