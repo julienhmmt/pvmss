@@ -54,8 +54,7 @@ templ profileContent(data ProfileData, T TranslationFunc) {
 			@profileSecurityCard(data, T)
 		</div>
 	</section>
-	<script src="/js/vm-utils.js" defer></script>
-	<script src="/js/profile.js" defer></script>
+	<script src="/js/profile-alpine.js"></script>
 }
 
 templ profileHeader(T TranslationFunc) {
@@ -140,7 +139,7 @@ templ profileStats(data ProfileData, T TranslationFunc) {
 			<div class="py-2">
 				<p class="heading is-size-7 mb-1 has-text-grey">{ T("Profile.TotalVMs") }</p>
 				<p class="title is-4 mb-0 has-text-primary">
-					<span data-profile-total>{ fmt.Sprintf("%d", data.TotalVMs) }</span>
+					<span x-text="stats.total">{ fmt.Sprintf("%d", data.TotalVMs) }</span>
 				</p>
 			</div>
 		</div>
@@ -151,7 +150,7 @@ templ profileStats(data ProfileData, T TranslationFunc) {
 			<div class="py-2">
 				<p class="heading is-size-7 mb-1 has-text-grey">{ T("Profile.RunningVMs") }</p>
 				<p class="title is-4 mb-0 has-text-success">
-					<span data-profile-running>{ fmt.Sprintf("%d", data.RunningVMs) }</span>
+					<span x-text="stats.running">{ fmt.Sprintf("%d", data.RunningVMs) }</span>
 				</p>
 			</div>
 		</div>
@@ -161,8 +160,8 @@ templ profileStats(data ProfileData, T TranslationFunc) {
 		<div class="column">
 			<div class="py-2">
 				<p class="heading is-size-7 mb-1 has-text-grey">{ T("Profile.StoppedVMs") }</p>
-				<p class="title is-4 mb-0 has-text-warning">
-					<span data-profile-stopped>{ fmt.Sprintf("%d", data.StoppedVMs) }</span>
+				<p class="title is-4 mb-0 has-text-danger">
+					<span x-text="stats.stopped">{ fmt.Sprintf("%d", data.StoppedVMs) }</span>
 				</p>
 			</div>
 		</div>
@@ -198,17 +197,97 @@ templ profileVMsCard(data ProfileData, T TranslationFunc) {
 					Dismissible: false,
 				})
 			} else {
-				<div id="profile-vms-wrapper">
-					if data.HasVMs {
-						@profileVMsTable(data.VMs, T)
-					} else {
-						@profileVMsEmpty(T)
-					}
-				</div>
+				if data.HasVMs {
+					@profileVMsWithData(data, T)
+				} else {
+					@profileVMsEmpty(T)
+				}
 			}
 		</div>
 	</div>
 	@profileTranslations(T)
+}
+
+templ profileVMsWithData(data ProfileData, T TranslationFunc) {
+	<div id="profile-vms-wrapper" x-data="profilePage()" x-init="init()">
+		<div x-show="loading" class="has-text-centered py-4">
+			<span class="icon"><i class="fas fa-spinner fa-spin"></i></span>
+			<span class="ml-2">{ T("Common.Loading") }...</span>
+		</div>
+		<div x-show="error" class="notification is-danger">
+			<button class="delete" @click="error = null"></button>
+			<span x-text="error"></span>
+		</div>
+		<template x-if="!loading && !error">
+			@profileVMsTableAlpine(data.VMs, T)
+		</template>
+	</div>
+}
+
+templ profileVMsTableAlpine(vms []ProfileVM, T TranslationFunc) {
+	<div class="table-container" id="profile-vm-table-container">
+		<table class="table is-fullwidth">
+			<thead>
+				<tr class="has-background-light">
+					<th class="has-text-centered" width="100">
+						<span>{ T("Profile.VMID") }</span>
+					</th>
+					<th>
+						<span>{ T("Profile.VMName") }</span>
+					</th>
+					<th>
+						<span>{ T("Profile.Description") }</span>
+					</th>
+					<th class="has-text-centered" width="150">
+						<span>{ T("Profile.Node") }</span>
+					</th>
+					<th class="has-text-centered" width="150">
+						<span>{ T("Profile.Status") }</span>
+					</th>
+					<th class="has-text-centered" width="280">
+						<span>{ T("Profile.Actions") }</span>
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<template x-for="vm in vms" :key="vm.vmid">
+					<tr class="is-size-6">
+						<td class="has-text-centered is-vcentered">
+							<span class="tag is-light is-medium has-text-weight-bold" x-text="vm.vmid"></span>
+						</td>
+						<td class="is-vcentered">
+							<div class="is-flex is-align-items-center">
+								<span x-show="vm.name" class="has-text-weight-semibold" x-text="vm.name || ''"></span>
+								<em x-show="!vm.name" class="has-text-grey-light">{ T("Profile.NoName") }</em>
+							</div>
+						</td>
+						<td class="is-vcentered">
+							<span x-show="vm.description" x-text="vm.description || ''"></span>
+							<em x-show="!vm.description" class="has-text-grey-light">{ T("Profile.NoDescription") }</em>
+						</td>
+						<td class="has-text-centered is-vcentered">
+							<span class="tag is-light" x-text="vm.node || ''"></span>
+						</td>
+						<td class="has-text-centered is-vcentered">
+							<span :class="'tag is-' + getStatusClass(vm.status)" x-text="vm.status || ''"></span>
+						</td>
+						<td class="has-text-centered is-vcentered">
+							<div class="buttons are-small is-centered">
+								<a :href="'/vm/details/' + vm.vmid" class="button is-primary is-small">
+									<span class="icon"><i class="fas fa-eye"></i></span>
+									<span>{ T("Common.View") }</span>
+								</a>
+								<a :href="'/vm/console?vmid=' + vm.vmid + '&node=' + vm.node" class="button is-info is-small" x-show="vm.status === 'running'">
+									<span class="icon"><i class="fas fa-desktop"></i></span>
+									<span>{ T("Profile.Console") }</span>
+								</a>
+							</div>
+						</td>
+					</tr>
+				</template>
+			</tbody>
+		</table>
+	</div>
 }
 
 templ profileVMsTable(vms []ProfileVM, T TranslationFunc) {

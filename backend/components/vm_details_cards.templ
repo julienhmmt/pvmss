@@ -858,12 +858,9 @@ templ vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) {
 }
 
 templ vmDetailsScripts(data VMDetailsData, T TranslationFunc) {
-	<script>
-	window.vmDetailsVMID = { strconv.Itoa(data.VM.VMID) };
-	window.vmDetailsNode = { templ.JSONString(data.VM.Node) };
-	window.vmDetailsStatus = { templ.JSONString(data.VM.Status) };
-	</script>
-	<script src="/js/vm-utils.js"></script>
-	<script src="/js/vm-details.js"></script>
+	<div id="vm-details-config" data-vmid={ strconv.Itoa(data.VM.VMID) } data-node={ templ.JSONString(data.VM.Node) } data-status={ templ.JSONString(data.VM.Status) } data-error-message={ templ.JSONString(data.ErrorMessage) } data-success-message={ templ.JSONString(data.SuccessMessage) } data-warning-message={ templ.JSONString(data.WarningMessage) } data-console-must-be-running={ T("VMDetails.Console.MustBeRunning") } data-console-unavailable={ T("VMDetails.Console.TemporarilyUnavailable") } data-console-not-found={ T("VMDetails.Console.ButtonNotFound") } style="display: none;"></div>
+	<div id="vm-details-content" x-data="vmDetails()" x-init="init()">
+	</div>
+	<script src="/js/vm-details-alpine.js"></script>
 	@templ.Raw(vmDetailsConsoleScript(data))
 }
