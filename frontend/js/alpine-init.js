@@ -376,3 +376,35 @@ window.adminLoginTabs = () => ({
     return this.activeTab === tabName;
   }
 });
+
+/**
+ * Admin login helper functions
+ * Used by admin login form for Proxmox authentication
+ */
+
+// Add realm if missing from username
+window.addRealmIfMissing = (event) => {
+  const input = event.target;
+  const value = input.value.trim();
+  
+  // If username doesn't contain @ and is not empty, add @pve
+  if (value && !value.includes('@')) {
+    input.value = value + '@pve';
+  }
+};
+
+// Validate Proxmox form
+window.validatePveForm = (event) => {
+  const form = event.target;
+  const username = form.querySelector('#pve-username').value.trim();
+  const password = form.querySelector('#pve-password').value;
+  
+  if (!username || !password) {
+    event.preventDefault();
+    alert('Please enter both username and password');
+    return false;
+  }
+  
+  // Form will submit normally
+  return true;
+};
