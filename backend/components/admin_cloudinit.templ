@@ -323,8 +323,10 @@ templ cloudInitScripts(data AdminCloudInitData, T TranslationFunc) {
 		var proxmoxConnected = { templ.JSONString(fmt.Sprintf("%t", data.ProxmoxConnected)) };
 		var hasProxmoxSession = { templ.JSONString(fmt.Sprintf("%t", data.HasProxmoxSession)) };
 		var confirmDeleteMessage = { templ.JSONString(T("Admin.CloudInit.ConfirmDelete")) };
-		var createTitleHtml = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>' + { templ.JSONString(T("Admin.CloudInit.CreateTemplate")) } + '</span>';
-		var editTitleHtml = '<span class="icon"><i class="fas fa-edit"></i></span><span>' + { templ.JSONString(T("Admin.CloudInit.EditTemplate")) } + '</span>';
+		var createTemplateText = { T("Admin.CloudInit.CreateTemplate") };
+		var editTemplateText = { T("Admin.CloudInit.EditTemplate") };
+		var createTitleHtml = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>' + createTemplateText + '</span>';
+		var editTitleHtml = '<span class="icon"><i class="fas fa-edit"></i></span><span>' + editTemplateText + '</span>';
 		var saveText = { templ.JSONString(T("Common.Save")) };
 		var validateSaveText = { templ.JSONString(T("Admin.CloudInit.ValidateAndSave")) };
 		var fetchErrorMsg = { templ.JSONString(T("Admin.CloudInit.Error.FetchTemplate")) };
