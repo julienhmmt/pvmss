@@ -86,12 +86,18 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	// Get CSRF token
 	csrfToken, _ := ctx.GetCSRFToken()
 
+	// Check authentication status
+	isAuthenticated := ctx.IsAuthenticated()
+	proxmoxConnected := IsProxmoxTicketValid(r)
+
 	// Prepare home data
 	homeData := components.HomeData{
-		Username:  username,
-		Lang:      i18n.GetLanguage(r),
-		CSRFToken: csrfToken,
-		IsAdmin:   isAdmin,
+		Username:         username,
+		Lang:             i18n.GetLanguage(r),
+		CSRFToken:        csrfToken,
+		IsAdmin:          isAdmin,
+		IsAuthenticated:  isAuthenticated,
+		ProxmoxConnected: proxmoxConnected,
 	}
 
 	// Translation function wrapper

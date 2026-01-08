@@ -1,10 +1,12 @@
 package components
 
 type HomeData struct {
-	Username    string
-	Lang        string
-	CSRFToken   string
-	IsAdmin     bool
+	Username         string
+	Lang             string
+	CSRFToken        string
+	IsAdmin          bool
+	IsAuthenticated  bool
+	ProxmoxConnected bool
 }
 
 templ HomePage(data HomeData, T TranslationFunc) {
@@ -12,10 +14,10 @@ templ HomePage(data HomeData, T TranslationFunc) {
 		Title:            T("UI.Header"),
 		Lang:             data.Lang,
 		CurrentPath:      "/",
-		IsAuthenticated:  true,
+		IsAuthenticated:  data.IsAuthenticated,
 		IsAdmin:          data.IsAdmin,
 		Username:         data.Username,
-		ProxmoxConnected: true,
+		ProxmoxConnected: data.ProxmoxConnected,
 		CSRFToken:        data.CSRFToken,
 		T:                T,
 		Content:          homeContent(data, T),
