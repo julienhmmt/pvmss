@@ -23,6 +23,8 @@ other = "Node"
 other = "Status"
 ["Profile.Actions"]
 other = "Actions"
+["Profile.VMManagement"]
+other = "VM Management"
 ["Profile.ViewDetails"]
 other = "View details"
 ["Profile.Delete"]

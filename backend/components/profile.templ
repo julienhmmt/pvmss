@@ -5,11 +5,12 @@ import (
 )
 
 type ProfileVM struct {
-	VMID        int
-	Name        string
-	Description string
-	Node        string
-	Status      string
+	VMID         int
+	Name         string
+	Description  string
+	DescriptionHTML string
+	Node         string
+	Status       string
 }
 
 type ProfileData struct {
@@ -245,7 +246,7 @@ templ profileVMsTableAlpine(vms []ProfileVM, T TranslationFunc) {
 						<span>{ T("Profile.Status") }</span>
 					</th>
 					<th class="has-text-centered" width="280">
-						<span>{ T("Profile.Actions") }</span>
+						<span>{ T("Profile.VMManagement") }</span>
 					</th>
 				</tr>
 			</thead>
@@ -262,7 +263,7 @@ templ profileVMsTableAlpine(vms []ProfileVM, T TranslationFunc) {
 							</div>
 						</td>
 						<td class="is-vcentered">
-							<span x-show="vm.description" x-text="vm.description || ''"></span>
+							<div x-show="vm.description" x-html="formatMarkdown(vm.description || '')"></div>
 							<em x-show="!vm.description" class="has-text-grey-light">{ T("Profile.NoDescription") }</em>
 						</td>
 						<td class="has-text-centered is-vcentered">
@@ -275,7 +276,7 @@ templ profileVMsTableAlpine(vms []ProfileVM, T TranslationFunc) {
 							<div class="buttons are-small is-centered">
 								<a :href="'/vm/details/' + vm.vmid" class="button is-primary is-small">
 									<span class="icon"><i class="fas fa-eye"></i></span>
-									<span>{ T("Common.View") }</span>
+									<span>{ T("Profile.ViewDetails") }</span>
 								</a>
 								<a :href="'/vm/console?vmid=' + vm.vmid + '&node=' + vm.node" class="button is-info is-small" x-show="vm.status === 'running'">
 									<span class="icon"><i class="fas fa-desktop"></i></span>
@@ -311,7 +312,7 @@ templ profileVMsTable(vms []ProfileVM, T TranslationFunc) {
 						<span>{ T("Profile.Status") }</span>
 					</th>
 					<th class="has-text-centered" width="280">
-						<span>{ T("Profile.Actions") }</span>
+						<span>{ T("Profile.VMManagement") }</span>
 					</th>
 				</tr>
 			</thead>
@@ -332,7 +333,7 @@ templ profileVMsTable(vms []ProfileVM, T TranslationFunc) {
 						</td>
 						<td class="is-vcentered">
 							if vm.Description != "" {
-								<span class="is-size-7">{ vm.Description }</span>
+								<span class="is-size-7" templ.HTML={ vm.DescriptionHTML }></span>
 							} else {
 								<em class="has-text-grey-light is-size-7">{ T("Profile.NoDescription") }</em>
 							}

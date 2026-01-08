@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gomarkdown/markdown"
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/sync/errgroup"
 
@@ -46,6 +47,14 @@ type VMInfo struct {
 	Description string `json:"description"`
 	Node        string `json:"node"`
 	Status      string `json:"status"`
+}
+
+// formatDescriptionMarkdown converts markdown description to HTML
+func formatDescriptionMarkdown(description string) string {
+	if description == "" {
+		return ""
+	}
+	return string(markdown.ToHTML([]byte(description), nil, nil))
 }
 
 // ShowProfile renders the user profile page
@@ -116,11 +125,12 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	profileVMs := make([]components.ProfileVM, len(vms))
 	for i, vm := range vms {
 		profileVMs[i] = components.ProfileVM{
-			VMID:        vm.VMID,
-			Name:        vm.Name,
-			Description: vm.Description,
-			Node:        vm.Node,
-			Status:      vm.Status,
+			VMID:            vm.VMID,
+			Name:            vm.Name,
+			Description:     vm.Description,
+			DescriptionHTML: formatDescriptionMarkdown(vm.Description),
+			Node:            vm.Node,
+			Status:          vm.Status,
 		}
 	}
 

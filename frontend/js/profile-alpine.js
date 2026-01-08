@@ -4,37 +4,37 @@
  * Handles VM list auto-refresh, stats updates, and table rendering
  */
 
-document.addEventListener('alpine:init', () => {
-  window.profilePage = () => ({
-    vms: [],
-    loading: false,
-    error: null,
-    refreshInterval: 45000,
-    refreshTimer: null,
-    
-    // Stats
-    get stats() {
-      return {
-        total: this.vms.length,
-        running: this.vms.filter(vm => vm.status === 'running').length,
-        stopped: this.vms.filter(vm => vm.status === 'stopped').length
-      };
-    },
-    
-    // Init
-    init() {
-      const card = document.getElementById('profile-vms-card');
-      if (card && card.dataset.hasError !== '1') {
-        const parsedInterval = parseInt(card.dataset.refreshInterval || '45000', 10);
-        this.refreshInterval = Number.isFinite(parsedInterval) ? parsedInterval : 45000;
-        
-        this.fetchVMs();
-        this.startAutoRefresh();
-        
-        // Handle visibility changes
-        document.addEventListener('visibilitychange', () => this.handleVisibility());
-      }
-    },
+// Define component immediately for better compatibility
+window.profilePage = () => ({
+  vms: [],
+  loading: false,
+  error: null,
+  refreshInterval: 45000,
+  refreshTimer: null,
+  
+  // Stats
+  get stats() {
+    return {
+      total: this.vms.length,
+      running: this.vms.filter(vm => vm.status === 'running').length,
+      stopped: this.vms.filter(vm => vm.status === 'stopped').length
+    };
+  },
+  
+  // Init
+  init() {
+    const card = document.getElementById('profile-vms-card');
+    if (card && card.dataset.hasError !== '1') {
+      const parsedInterval = parseInt(card.dataset.refreshInterval || '45000', 10);
+      this.refreshInterval = Number.isFinite(parsedInterval) ? parsedInterval : 45000;
+      
+      this.fetchVMs();
+      this.startAutoRefresh();
+      
+      // Handle visibility changes
+      document.addEventListener('visibilitychange', () => this.handleVisibility());
+    }
+  },
     
     // Destroy
     destroy() {
@@ -130,6 +130,22 @@ document.addEventListener('alpine:init', () => {
       if (days > 0) return `${days}d ${hours}h`;
       if (hours > 0) return `${hours}h ${minutes}m`;
       return `${minutes}m`;
+    },
+    
+    // Simple markdown formatter for descriptions
+    formatMarkdown(text) {
+      if (!text) return '';
+      
+      return text
+        // Bold: **text** -> <strong>text</strong>
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Italic: *text* -> <em>text</em>
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Code: `code` -> <code>code</code>
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        // Line breaks: double newline -> <br>
+        .replace(/\n\n/g, '<br><br>')
+        // Single newline -> <br>
+        .replace(/\n/g, '<br>');
     }
   });
-});

@@ -5,8 +5,8 @@
  * local notifications, celebration banner actions, and VM action loaders.
  */
 
-document.addEventListener('alpine:init', () => {
-  window.vmDetails = () => ({
+// Define component immediately for better compatibility
+window.vmDetails = () => ({
     vmid: '',
     node: '',
     status: '',
@@ -242,4 +242,3 @@ document.addEventListener('alpine:init', () => {
       }
     }
   });
-});
