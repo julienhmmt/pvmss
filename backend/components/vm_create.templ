@@ -305,6 +305,6 @@ templ vmCreateScriptsBlock(data VMCreateData, T TranslationFunc) {
 		var vmSocketsGlobalMax = { strconv.Itoa(data.VMSocketsMax) };
 		var vmDiskMinGB = { strconv.Itoa(data.VMDiskMin) };
 		var vmDiskMaxGB = { strconv.Itoa(data.VMDiskMax) };
-		var selectedLabel = { templ.JSONString(T("Common.Selected")) };
+		var selectedLabel = { T("Common.Selected") };
 	</script>
 }
