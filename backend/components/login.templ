@@ -11,29 +11,18 @@ type LoginData struct {
 }
 
 templ LoginPage(data LoginData, T TranslationFunc) {
-	<!DOCTYPE html>
-	<html lang={ data.Lang }>
-		<head>
-			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>{ T("Login.UserLogin") }</title>
-			<link rel="stylesheet" href="/css/bulma.min.css"/>
-			<link rel="stylesheet" href="/css/fontawesome.min.css"/>
-			<link rel="stylesheet" href="/css/solid.min.css"/>
-			<link rel="stylesheet" href="/css/brands.min.css"/>
-			<link rel="stylesheet" href="/css/tokens.css"/>
-			<link rel="stylesheet" href="/css/base.css"/>
-			<link rel="stylesheet" href="/css/components.css"/>
-			<link rel="stylesheet" href="/css/forms.css"/>
-			<link rel="stylesheet" href="/css/utilities.css"/>
-			<link rel="stylesheet" href="/css/style.css"/>
-			<link rel="stylesheet" href="/css/glass.css"/>
-			<link rel="icon" type="image/png" href="/favicon.png"/>
-		</head>
-		<body class="login-body">
-			@loginContent(data, T)
-		</body>
-	</html>
+	@Layout(LayoutProps{
+		Title:            T("Login.UserLogin"),
+		Lang:             data.Lang,
+		CurrentPath:      "/login",
+		Content:          loginContent(data, T),
+		IsAuthenticated:  false,
+		IsAdmin:          data.IsAdmin,
+		Username:         "",
+		ProxmoxConnected: false,
+		CSRFToken:        data.CSRFToken,
+		T:                T,
+	})
 }
 
 templ loginContent(data LoginData, T TranslationFunc) {
@@ -313,7 +302,4 @@ templ adminLoginForm(data LoginData, T TranslationFunc) {
 			</a>
 		</div>
 	</div>
-	<script src="/js/alpine-init.js"></script>
-	<script src="/js/alpinejs.3.15.3.min.js" defer></script>
-	<script src="/js/accessibility.js" defer></script>
 }

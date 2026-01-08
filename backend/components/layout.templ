@@ -41,16 +41,14 @@ templ Layout(props LayoutProps) {
 			<link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
 		</head>
 		<body class="app-body">
-			if props.IsAuthenticated {
-				@Navbar(NavbarProps{
-					CurrentPath:      props.CurrentPath,
-					IsAuthenticated:  props.IsAuthenticated,
-					IsAdmin:          props.IsAdmin,
-					Username:         props.Username,
-					ProxmoxConnected: props.ProxmoxConnected,
-					Lang:             props.Lang,
-				}, props.T)
-			}
+			@Navbar(NavbarProps{
+				CurrentPath:      props.CurrentPath,
+				IsAuthenticated:  props.IsAuthenticated,
+				IsAdmin:          props.IsAdmin,
+				Username:         props.Username,
+				ProxmoxConnected: props.ProxmoxConnected,
+				Lang:             props.Lang,
+			}, props.T)
 			<main id="main-content">
 				@props.Content
 			</main>

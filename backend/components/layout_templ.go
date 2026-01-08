@@ -85,18 +85,16 @@ func Layout(props LayoutProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if props.IsAuthenticated {
-			templ_7745c5c3_Err = Navbar(NavbarProps{
-				CurrentPath:      props.CurrentPath,
-				IsAuthenticated:  props.IsAuthenticated,
-				IsAdmin:          props.IsAdmin,
-				Username:         props.Username,
-				ProxmoxConnected: props.ProxmoxConnected,
-				Lang:             props.Lang,
-			}, props.T).Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
+		templ_7745c5c3_Err = Navbar(NavbarProps{
+			CurrentPath:      props.CurrentPath,
+			IsAuthenticated:  props.IsAuthenticated,
+			IsAdmin:          props.IsAdmin,
+			Username:         props.Username,
+			ProxmoxConnected: props.ProxmoxConnected,
+			Lang:             props.Lang,
+		}, props.T).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<main id=\"main-content\">")
 		if templ_7745c5c3_Err != nil {
