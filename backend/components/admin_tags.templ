@@ -94,10 +94,10 @@ templ adminTagsContent(data AdminTagsData, T TranslationFunc) {
 									if tag != "pvmss" {
 										<a
 											href={ templ.SafeURL("/admin/tags/delete?tag=" + tag) }
-											class="button is-small is-danger is-light"
+											class="button is-danger is-outlined"
 											title={ T("Admin.Tags.DeleteTag") + " \"" + tag + "\"" }
 										>
-											<span class="icon is-small"><i class="fas fa-trash"></i></span>
+											<span class="icon"><i class="fas fa-trash"></i></span>
 											<span>{ T("Common.Delete") }</span>
 										</a>
 									} else {
@@ -150,20 +150,20 @@ templ adminTagDeleteContent(data AdminTagDeleteData, T TranslationFunc) {
 			</div>
 			<div class="level-right">
 				<div class="level-item">
-					<form method="POST" action="/tags/delete" class="is-inline">
-						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-						<input type="hidden" name="tag" value={ data.Tag }/>
-						<button type="submit" class="button is-danger has-text-white">
-							<span class="icon"><i class="fas fa-trash"></i></span>
-							<span>{ T("Common.Yes") }</span>
-						</button>
-					</form>
-				</div>
-				<div class="level-item">
-					<a href="/admin/tags" class="button">
-						<span class="icon"><i class="fas fa-times"></i></span>
-						<span>{ T("Common.No") }</span>
-					</a>
+					<div class="buttons">
+						<a href="/admin/tags" class="button is-light">
+							<span class="icon"><i class="fas fa-times"></i></span>
+							<span>{ T("Common.No") }</span>
+						</a>
+						<form method="POST" action="/tags/delete" class="is-inline">
+							<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+							<input type="hidden" name="tag" value={ data.Tag }/>
+							<button type="submit" class="button is-danger">
+								<span class="icon"><i class="fas fa-trash"></i></span>
+								<span>{ T("Common.Yes") }</span>
+							</button>
+						</form>
+					</div>
 				</div>
 			</div>
 		</div>

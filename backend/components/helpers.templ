@@ -54,22 +54,22 @@ templ ToggleButton(props ToggleButtonProps, T TranslationFunc) {
 			<input type="hidden" name="action" value="disable"/>
 			<button
 				type="submit"
-				class={ "button is-small is-success is-light", templ.KV("is-disabled", props.IsDisabled) }
+				class={ "button is-success is-light", templ.KV("is-disabled", props.IsDisabled) }
 				disabled?={ props.IsDisabled }
 				title={ T("Common.Disable") }
 			>
-				<span class="icon is-small"><i class="fas fa-toggle-on"></i></span>
+				<span class="icon"><i class="fas fa-toggle-on"></i></span>
 				<span>{ T("Common.Enabled") }</span>
 			</button>
 		} else {
 			<input type="hidden" name="action" value="enable"/>
 			<button
 				type="submit"
-				class={ "button is-small is-ghost", templ.KV("is-disabled", props.IsDisabled) }
+				class={ "button is-light", templ.KV("is-disabled", props.IsDisabled) }
 				disabled?={ props.IsDisabled }
 				title={ T("Common.Enable") }
 			>
-				<span class="icon is-small"><i class="fas fa-toggle-off"></i></span>
+				<span class="icon"><i class="fas fa-toggle-off"></i></span>
 				<span>{ T("Common.Disabled") }</span>
 			</button>
 		}

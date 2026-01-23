@@ -165,7 +165,7 @@ func ToggleButton(props ToggleButtonProps, T TranslationFunc) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var8 = []any{"button is-small is-success is-light", templ.KV("is-disabled", props.IsDisabled)}
+			var templ_7745c5c3_Var8 = []any{"button is-success is-light", templ.KV("is-disabled", props.IsDisabled)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var8...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -206,7 +206,7 @@ func ToggleButton(props ToggleButtonProps, T TranslationFunc) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"><span class=\"icon is-small\"><i class=\"fas fa-toggle-on\"></i></span> <span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\"><span class=\"icon\"><i class=\"fas fa-toggle-on\"></i></span> <span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -228,7 +228,7 @@ func ToggleButton(props ToggleButtonProps, T TranslationFunc) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var12 = []any{"button is-small is-ghost", templ.KV("is-disabled", props.IsDisabled)}
+			var templ_7745c5c3_Var12 = []any{"button is-light", templ.KV("is-disabled", props.IsDisabled)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var12...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -269,7 +269,7 @@ func ToggleButton(props ToggleButtonProps, T TranslationFunc) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\"><span class=\"icon is-small\"><i class=\"fas fa-toggle-off\"></i></span> <span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\"><span class=\"icon\"><i class=\"fas fa-toggle-off\"></i></span> <span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

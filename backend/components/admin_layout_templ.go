@@ -107,7 +107,7 @@ func adminLayoutContent(props AdminLayoutProps) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"section\"><div class=\"container\"><div class=\"columns\"><div class=\"column is-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"section admin-section\"><div class=\"container\"><div class=\"columns\"><div class=\"column is-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -152,7 +152,7 @@ func AdminSidebar(currentPath string, T TranslationFunc) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<aside class=\"menu admin-sidebar\"><p class=\"menu-label\"><span class=\"icon-text\"><span class=\"icon\"><i class=\"fas fa-cog\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<aside class=\"menu admin-menu\"><p class=\"menu-label\"><span class=\"icon-text\"><span class=\"icon\"><i class=\"fas fa-cog\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

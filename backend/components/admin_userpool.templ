@@ -204,12 +204,12 @@ templ existingUserPoolsSection(pools []UserPoolInfo, T TranslationFunc) {
 							</td>
 							<td class="has-text-right">
 								<div class="buttons is-justify-content-flex-end">
-									<a class="button is-small is-ghost" href={ templ.SafeURL("/admin/userpool?pool=" + pool.Pool) } title={ T("Admin.UserPool.RefreshPoolTitle") }>
-										<span class="icon is-small"><i class="fas fa-sync"></i></span>
+									<a class="button is-light" href={ templ.SafeURL("/admin/userpool?pool=" + pool.Pool) } title={ T("Admin.UserPool.RefreshPoolTitle") }>
+										<span class="icon"><i class="fas fa-sync"></i></span>
 										<span>{ T("Common.Refresh") }</span>
 									</a>
-									<a href={ templ.SafeURL("/admin/userpool/delete?pool=" + pool.Pool) } class="button is-danger is-small is-light" title={ T("Admin.UserPool.DeleteTitle") }>
-										<span class="icon is-small"><i class="fas fa-trash"></i></span>
+									<a href={ templ.SafeURL("/admin/userpool/delete?pool=" + pool.Pool) } class="button is-danger is-outlined" title={ T("Admin.UserPool.DeleteTitle") }>
+										<span class="icon"><i class="fas fa-trash"></i></span>
 										<span>{ T("Common.Delete") }</span>
 									</a>
 								</div>

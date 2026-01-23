@@ -1791,7 +1791,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 .global-notification.is-info {
-  border-left: 4px solid #3273dc;
+  border-left: 4px solid var(--primary);
 }
 
 /* Mobile responsive adjustments */
@@ -1884,7 +1884,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 
 .progress-notification .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3273dc 0%, #00d1b2 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
   border-radius: 4px;
   transition: width 0.3s ease;
   width: 0%;
