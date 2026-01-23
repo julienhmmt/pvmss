@@ -174,7 +174,7 @@ func convertStringSlice(data map[string]interface{}, key string) []string {
 func getLangFromRequest(r *http.Request) string {
 	lang := r.URL.Query().Get("lang")
 	if lang == "" {
-		if cookie, err := r.Cookie("lang"); err == nil {
+		if cookie, err := r.Cookie("pvmss_lang"); err == nil {
 			lang = cookie.Value
 		}
 	}

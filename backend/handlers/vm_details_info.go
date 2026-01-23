@@ -650,6 +650,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"NetworkBridges":        networkBridgesStr,
 		"NetworkCards":          networkCardsData,
 		"NetworkInterfaces":     networkInterfaces,
+		"Lang":                  getLangFromRequest(r),
 		"AgentStatusKey":        agentStatusKey,
 		"AgentStatusClass":      agentStatusClass,
 		"ShowDescriptionEditor": showDescriptionEditor,
