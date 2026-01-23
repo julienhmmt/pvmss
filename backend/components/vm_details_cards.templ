@@ -66,7 +66,7 @@ templ vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) {
 							<span class="icon"><i class="fas fa-terminal"></i></span>
 							<span>{ T("VMDetails.Celebration.OpenConsole") }</span>
 						</button>
-						<button class="button is-primary" id="edit-resources-button">
+						<button class="button is-primary" @click="$dispatch('open-modal', 'edit-resources-modal')">
 							<span class="icon"><i class="fas fa-sliders"></i></span>
 							<span>{ T("VMDetails.Celebration.EditResources") }</span>
 						</button>
@@ -124,10 +124,13 @@ templ vmDetailsQuickActions(data VMDetailsData, T TranslationFunc) {
 		}, T)
 		if data.ProxmoxConnected {
 			<div class="has-text-centered mt-4 pt-3" style="border-top: 1px solid rgb(0,0,0,6%);">
-				<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d?edit=resources", data.VM.VMID)) } class="button is-primary">
+				<button
+					class="button is-primary"
+					@click="$dispatch('open-modal', 'edit-resources-modal')"
+				>
 					<span class="icon is-small"><i class="fas fa-sliders"></i></span>
 					<span>{ T("VMDetails.ModifyResources") }</span>
-				</a>
+				</button>
 			</div>
 		}
 	</div>
@@ -145,10 +148,13 @@ templ vmDetailsDescriptionTagsGrid(data VMDetailsData, T TranslationFunc) {
 						</span>
 					</p>
 					if data.ProxmoxConnected {
-						<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d?edit=description", data.VM.VMID)) } class="button is-light mr-3">
+						<button
+							class="button is-light mr-3"
+							@click="$dispatch('open-modal', 'edit-description-modal')"
+						>
 							<span class="icon is-small"><i class="fas fa-edit"></i></span>
 							<span class="is-hidden-mobile">{ T("VMDetails.Modify") }</span>
-						</a>
+						</button>
 					}
 				</header>
 				<div class="card-content content">
@@ -175,10 +181,13 @@ templ vmDetailsDescriptionTagsGrid(data VMDetailsData, T TranslationFunc) {
 							</span>
 						</p>
 						if data.ProxmoxConnected {
-							<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d?edit=tags", data.VM.VMID)) } class="button is-light mr-3">
+							<button
+								class="button is-light mr-3"
+								@click="$dispatch('open-modal', 'edit-tags-modal')"
+							>
 								<span class="icon is-small"><i class="fas fa-edit"></i></span>
 								<span class="is-hidden-mobile">{ T("VMDetails.Modify") }</span>
-							</a>
+							</button>
 						}
 					</header>
 					<div class="card-content">
@@ -195,95 +204,87 @@ templ vmDetailsDescriptionTagsGrid(data VMDetailsData, T TranslationFunc) {
 }
 
 templ vmDetailsDescriptionEditor(data VMDetailsData, T TranslationFunc) {
-	<div class="card mb-5">
-		<header class="card-header brand-header">
-			<p class="card-header-title">
-				<span class="icon-text">
-					<span class="icon"><i class="fas fa-edit"></i></span>
-					<span>{ T("VMDetails.EditDescriptionTitle") }</span>
-				</span>
-			</p>
-		</header>
-		<div class="card-content">
-			<form action="/vm/update/description" method="post">
-				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-				<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
-				<input type="hidden" name="node" value={ data.VM.Node }/>
-				<div class="field">
-					<label for="description" class="label has-text-weight-semibold">{ T("VMDetails.DescriptionLabel") }</label>
-					<div class="control">
-						<textarea id="description" name="description" class="textarea" rows="6" placeholder={ T("VMDetails.DescriptionPlaceholder") }>{ data.Description }</textarea>
-					</div>
-					<p class="help has-text-grey">{ T("VMDetails.DescriptionHelp") }</p>
+	@Modal(ModalProps{
+		ID:    "edit-description-modal",
+		Title: T("VMDetails.EditDescriptionTitle"),
+		Size:  ModalMedium,
+		ShowClose: true,
+		Class: "vm-details-modal",
+	}) {
+		<form action="/vm/update/description" method="post">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+			<input type="hidden" name="node" value={ data.VM.Node }/>
+			<div class="field">
+				<label for="description" class="label has-text-weight-semibold">{ T("VMDetails.DescriptionLabel") }</label>
+				<div class="control">
+					<textarea id="description" name="description" class="textarea" rows="6" placeholder={ T("VMDetails.DescriptionPlaceholder") }>{ data.Description }</textarea>
 				</div>
-				<hr class="my-4"/>
-				<div class="field is-grouped is-justify-content-space-between">
-					<div class="control">
-						<a class="button is-light" href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d", data.VM.VMID)) }>
-							<span class="icon"><i class="fas fa-times"></i></span>
-							<span>{ T("Common.Cancel") }</span>
-						</a>
-					</div>
-					<div class="control">
-						<button type="submit" class="button is-primary is-medium" disabled?={ !data.ProxmoxConnected }>
-							<span class="icon"><i class="fas fa-save"></i></span>
-							<span>{ T("VMDetails.SaveDescription") }</span>
-						</button>
-					</div>
+				<p class="help has-text-grey">{ T("VMDetails.DescriptionHelp") }</p>
+			</div>
+			<hr class="my-4"/>
+			<div class="field is-grouped is-justify-content-flex-end">
+				<div class="control">
+					<button type="button" class="button is-light" @click="open = false">
+						<span class="icon"><i class="fas fa-times"></i></span>
+						<span>{ T("Common.Cancel") }</span>
+					</button>
 				</div>
-			</form>
-		</div>
-	</div>
+				<div class="control">
+					<button type="submit" class="button is-primary is-medium" disabled?={ !data.ProxmoxConnected }>
+						<span class="icon"><i class="fas fa-save"></i></span>
+						<span>{ T("VMDetails.SaveDescription") }</span>
+					</button>
+				</div>
+			</div>
+		</form>
+	}
 }
 
 templ vmDetailsTagsEditor(data VMDetailsData, T TranslationFunc) {
-	<div class="card mb-5">
-		<header class="card-header brand-header">
-			<p class="card-header-title">
-				<span class="icon-text">
-					<span class="icon"><i class="fas fa-tags"></i></span>
-					<span>{ T("VMDetails.EditTagsTitle") }</span>
-				</span>
-			</p>
-		</header>
-		<div class="card-content">
-			<form action="/vm/update/tags" method="post">
-				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-				<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
-				<input type="hidden" name="node" value={ data.VM.Node }/>
-				<div class="field">
-					<label class="label has-text-weight-semibold">{ T("VMDetails.AvailableTags") }</label>
-					<div class="tags are-medium">
-						<span class="tag is-primary is-medium">pvmss</span>
-						<input type="hidden" name="tags" value="pvmss"/>
-						for _, tag := range data.AvailableTags {
-							if tag != "pvmss" {
-								<label class="tag-checkbox-label">
-									<input type="checkbox" name="tags" value={ tag } class="is-hidden" checked?={ vmDetailsTagSelected(data.Tags, tag) }/>
-									<span class={ "tag", "is-light", "is-medium", vmDetailsTagClass(data.Tags, tag) }>{ tag }</span>
-								</label>
-							}
+	@Modal(ModalProps{
+		ID:    "edit-tags-modal",
+		Title: T("VMDetails.EditTagsTitle"),
+		Size:  ModalMedium,
+		ShowClose: true,
+		Class: "vm-details-modal",
+	}) {
+		<form action="/vm/update/tags" method="post">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+			<input type="hidden" name="node" value={ data.VM.Node }/>
+			<div class="field">
+				<label class="label has-text-weight-semibold">{ T("VMDetails.AvailableTags") }</label>
+				<div class="tags are-medium">
+					<span class="tag is-primary is-medium">pvmss</span>
+					<input type="hidden" name="tags" value="pvmss"/>
+					for _, tag := range data.AvailableTags {
+						if tag != "pvmss" {
+							<label class="tag-checkbox-label">
+								<input type="checkbox" name="tags" value={ tag } class="is-hidden" checked?={ vmDetailsTagSelected(data.Tags, tag) }/>
+								<span class={ "tag", "is-light", "is-medium", vmDetailsTagClass(data.Tags, tag) }>{ tag }</span>
+							</label>
 						}
-					</div>
+					}
 				</div>
-				<hr class="my-4"/>
-				<div class="field is-grouped is-justify-content-space-between">
-					<div class="control">
-						<a class="button is-light" href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d", data.VM.VMID)) }>
-							<span class="icon"><i class="fas fa-times"></i></span>
-							<span>{ T("Common.Cancel") }</span>
-						</a>
-					</div>
-					<div class="control">
-						<button type="submit" class="button is-primary is-medium" disabled?={ !data.ProxmoxConnected }>
-							<span class="icon"><i class="fas fa-save"></i></span>
-							<span>{ T("VMDetails.SaveTags") }</span>
-						</button>
-					</div>
+			</div>
+			<hr class="my-4"/>
+			<div class="field is-grouped is-justify-content-flex-end">
+				<div class="control">
+					<button type="button" class="button is-light" @click="open = false">
+						<span class="icon"><i class="fas fa-times"></i></span>
+						<span>{ T("Common.Cancel") }</span>
+					</button>
 				</div>
-			</form>
-		</div>
-	</div>
+				<div class="control">
+					<button type="submit" class="button is-primary is-medium" disabled?={ !data.ProxmoxConnected }>
+						<span class="icon"><i class="fas fa-save"></i></span>
+						<span>{ T("VMDetails.SaveTags") }</span>
+					</button>
+				</div>
+			</div>
+		</form>
+	}
 }
 
 func vmDetailsTagClass(currentTags string, tag string) string {
@@ -294,369 +295,359 @@ func vmDetailsTagClass(currentTags string, tag string) string {
 }
 
 templ vmDetailsResourcesEditor(data VMDetailsData, T TranslationFunc) {
-	<div class="card mb-5">
-		<header class="card-header brand-header">
-			<p class="card-header-title">
-				<span class="icon-text">
-					<span class="icon"><i class="fas fa-sliders"></i></span>
-					<span>{ T("VMDetails.ModifyResources") }</span>
-				</span>
-			</p>
-		</header>
-		<div class="card-content">
-			if data.VM.Status == "running" {
-				@Notification(NotificationProps{
-					Type:    NotificationDanger,
-					Title:   T("VMDetails.ResourcesDisabledTitle"),
-					Message: T("VMDetails.ResourcesDisabledMessage"),
-					Icon:    "fas fa-exclamation-circle",
-				})
-			} else {
-				@Notification(NotificationProps{
-					Type:    NotificationInfo,
-					Message: T("VMDetails.ResourcesWarningText"),
-					Icon:    "fas fa-info-circle",
-					Light:   true,
-				})
+	@Modal(ModalProps{
+		ID:    "edit-resources-modal",
+		Title: T("VMDetails.ModifyResources"),
+		Size:  ModalLarge,
+		ShowClose: true,
+		Class: "vm-details-modal",
+	}) {
+		if data.VM.Status == "running" {
+			@Notification(NotificationProps{
+				Type:    NotificationDanger,
+				Title:   T("VMDetails.ResourcesDisabledTitle"),
+				Message: T("VMDetails.ResourcesDisabledMessage"),
+				Icon:    "fas fa-exclamation-circle",
+			})
+		} else {
+			@Notification(NotificationProps{
+				Type:    NotificationInfo,
+				Message: T("VMDetails.ResourcesWarningText"),
+				Icon:    "fas fa-info-circle",
+				Light:   true,
+			})
+		}
+		<form action="/vm/update/resources" method="post">
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
+			<input type="hidden" name="node" value={ data.VM.Node }/>
+			<div class="columns is-multiline">
+				<div class="column is-6">
+					<div class="field">
+						<label class="label">
+							<span class="icon is-small"><i class="fas fa-microchip"></i></span>
+							{ T("VMDetails.Label.Sockets") }
+						</label>
+						<div class="control">
+							<div class="select is-medium is-fullwidth">
+								<select name="sockets" required disabled?={ data.VM.Status == "running" }>
+									for i := data.VMSocketsMin; i <= data.VMSocketsMax; i++ {
+										<option value={ strconv.Itoa(i) } selected?={ i == vmDetailsGetCurrentSockets(data) }>{ strconv.Itoa(i) }</option>
+									}
+								</select>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="column is-6">
+					<div class="field">
+						<label class="label">
+							<span class="icon is-small"><i class="fas fa-microchip"></i></span>
+							{ T("VMDetails.Label.Cores") }
+						</label>
+						<div class="control">
+							<div class="select is-medium is-fullwidth">
+								<select name="cores" required disabled?={ data.VM.Status == "running" }>
+									for i := data.VMCoresMin; i <= data.VMCoresMax; i++ {
+										<option value={ strconv.Itoa(i) } selected?={ i == data.VM.CPUs }>{ strconv.Itoa(i) }</option>
+									}
+								</select>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="column is-12">
+					<div class="field">
+						<label class="label">
+							<span class="icon is-small"><i class="fas fa-memory"></i></span>
+							{ T("VMDetails.Label.RAM") }
+						</label>
+						<div class="field has-addons">
+							<div class="control is-expanded">
+								<input
+									id="memory"
+									class="input is-medium"
+									type="number"
+									name="memory"
+									value={ strconv.FormatInt(data.VM.MaxMem/(1024*1024), 10) }
+									min={ strconv.Itoa(data.VMRamMinMB) }
+									max={ strconv.Itoa(data.VMRamMaxMB) }
+									required
+									disabled?={ data.VM.Status == "running" }
+								/>
+							</div>
+							<div class="control">
+								<div class="select is-medium">
+									<select id="memory-unit" name="memory_unit" disabled?={ data.VM.Status == "running" }>
+										<option value="MB">MB</option>
+										<option value="GB">GB</option>
+									</select>
+								</div>
+							</div>
+						</div>
+						<p class="help" id="memory-display">{ data.FormattedMaxMemGB }</p>
+					</div>
+				</div>
+			</div>
+			if len(data.NetworkInterfaces) > 0 {
+				<hr class="my-4"/>
+				<div class="field">
+					<label class="label has-text-weight-semibold">
+						<span class="icon-text">
+							<span class="icon"><i class="fas fa-network-wired"></i></span>
+							<span>{ T("VM.Create.Network") }</span>
+						</span>
+					</label>
+					for idx, card := range data.NetworkInterfaces {
+						<div class="box is-shadowless p-3 mb-3" style="background: rgba(0,0,0,0.02); position: relative;">
+							<div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+								<strong>{ T("VM.Create.Network") } #{ strconv.Itoa(idx + 1) }</strong>
+								<div class="is-flex is-align-items-center">
+									if idx > 0 {
+										<span class="tag is-light is-size-7 mr-2">{ T("VM.Create.NetworkOptional") }</span>
+									}
+									<label
+										id={ fmt.Sprintf("network-toggle-%d", idx) }
+										class="network-toggle-switch"
+										title={ vmDetailsNetworkToggleTitle(card.LinkDown, idx, T) }
+										x-data={ fmt.Sprintf("networkToggle(%d, %t, '%d', '%s', '%s')", idx, !card.LinkDown, data.VM.VMID, data.VM.Node, data.CSRFToken) }
+										data-msg-enabled={ T("Message.NetworkCardEnabled") }
+										data-msg-disabled={ T("Message.NetworkCardDisabled") }
+										data-msg-failed={ T("Message.ActionFailed") }
+									>
+										<input
+											type="checkbox"
+											role="switch"
+											:checked="enabled"
+											@change="toggle()"
+											:disabled="loading"
+											class="network-toggle-input"
+										/>
+										<span class="network-toggle-slider" aria-hidden="true"></span>
+										<span class="network-toggle-label">
+											<template x-if="loading">
+												<span><i class="fas fa-spinner fa-spin"></i></span>
+											</template>
+											<template x-if="!loading && !enabled">
+												<span><i class="fas fa-plug-circle-xmark has-text-grey"></i> { T("Common.Disabled") }</span>
+											</template>
+											<template x-if="!loading && enabled">
+												<span><i class="fas fa-plug-circle-check has-text-success"></i> { T("Common.Enabled") }</span>
+											</template>
+										</span>
+									</label>
+								</div>
+							</div>
+							<div class="columns is-mobile is-variable is-2">
+								<div class="column">
+									<label class="label is-size-7 has-text-grey">{ T("VM.Create.NetworkBridge") }</label>
+									<div class="control">
+										<div class="select is-fullwidth is-medium">
+											<select name={ fmt.Sprintf("bridge_%d", idx) } required?={ idx == 0 } disabled?={ data.VM.Status == "running" }>
+												if idx > 0 {
+													<option value="">-- { T("VM.Create.NoNetwork") } --</option>
+												}
+												for _, bridge := range data.Bridges {
+													<option value={ bridge } selected?={ bridge == card.Bridge }>{ bridge }</option>
+												}
+											</select>
+										</div>
+									</div>
+								</div>
+								<div class="column">
+									<label class="label is-size-7 has-text-grey">{ T("VM.Create.NetworkModel") }</label>
+									<div class="control">
+										<div class="select is-fullwidth is-medium">
+											<select name={ fmt.Sprintf("network_model_%d", idx) } required?={ idx == 0 } disabled?={ data.VM.Status == "running" }>
+												<option value="virtio" selected?={ card.Model == "virtio" }>VirtIO</option>
+												<option value="e1000" selected?={ card.Model == "e1000" }>E1000</option>
+												<option value="e1000e" selected?={ card.Model == "e1000e" }>E1000E</option>
+												<option value="rtl8139" selected?={ card.Model == "rtl8139" }>RTL8139</option>
+												<option value="vmxnet3" selected?={ card.Model == "vmxnet3" }>VMXNet3</option>
+											</select>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="columns is-multiline is-variable is-3">
+								<div class="column is-one-third">
+									<label class="label is-size-7 has-text-grey">{ T("VM.Create.NetworkVLAN") }</label>
+									<div class="control">
+										<input
+											type="text"
+											name={ fmt.Sprintf("vlan_tag_%d", idx) }
+											class="input is-medium"
+											placeholder="1-4096"
+											pattern="[0-9]+"
+											value={ card.VLAN }
+											disabled?={ data.VM.Status == "running" }
+										/>
+									</div>
+									<p class="help is-size-7">{ T("VM.Create.NetworkVLANHelp") }</p>
+								</div>
+								<div class="column is-one-third">
+									<label class="label is-size-7 has-text-grey">
+										{ T("VM.Create.NetworkRateLimit") }
+										<span class="icon is-small has-text-grey" title={ T("VM.Create.Tooltip.NetworkRateLimit") }>
+											<i class="fas fa-info-circle"></i>
+										</span>
+									</label>
+									<div class="control">
+										<input
+											type="number"
+											name={ fmt.Sprintf("rate_limit_%d", idx) }
+											class="input is-medium"
+											placeholder="1000"
+											min="1"
+											max="10240"
+											step="0.1"
+											value={ card.Rate }
+											disabled?={ data.VM.Status == "running" }
+										/>
+									</div>
+									<p class="help is-size-7">{ T("VM.Create.NetworkRateLimitHelp") }</p>
+								</div>
+								<div class="column is-one-third">
+									<label class="label is-size-7 has-text-grey">
+										{ T("VM.Create.NetworkMTU") }
+										<span class="icon is-small has-text-grey" title={ T("VM.Create.Tooltip.NetworkMTU") }>
+											<i class="fas fa-info-circle"></i>
+										</span>
+									</label>
+									<div class="control">
+										<input
+											type="number"
+											name={ fmt.Sprintf("mtu_%d", idx) }
+											class="input is-medium"
+											placeholder="1500"
+											min="576"
+											max="9000"
+											step="1"
+											value={ card.MTU }
+											disabled?={ data.VM.Status == "running" }
+										/>
+									</div>
+									<p class="help is-size-7">{ T("VM.Create.NetworkMTUHelp") }</p>
+								</div>
+							</div>
+							<input type="hidden" name={ fmt.Sprintf("mac_%d", idx) } value={ card.MACAddress }/>
+							if card.MACAddress != "" {
+								<p class="help is-size-7 mt-1">MAC: { card.MACAddress }</p>
+							}
+						</div>
+					}
+				</div>
 			}
-			<form action="/vm/update/resources" method="post">
-				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
-				<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
-				<input type="hidden" name="node" value={ data.VM.Node }/>
-				<div class="columns is-multiline">
-					<div class="column is-6">
-						<div class="field">
-							<label class="label">
-								<span class="icon is-small"><i class="fas fa-microchip"></i></span>
-								{ T("VMDetails.Label.Sockets") }
-							</label>
+			<hr class="my-4"/>
+			<div class="field">
+				<label class="label has-text-weight-semibold">
+					<span class="icon-text">
+						<span class="icon"><i class="fas fa-compact-disc"></i></span>
+						<span>{ T("VMDetails.Section.CDROM") }</span>
+					</span>
+				</label>
+				<div class="box is-shadowless p-3 mb-3" style="background: rgba(0,0,0,0.02);">
+					<div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+						<strong>{ T("VMDetails.CDROM.Drive") } (IDE)</strong>
+						<div class="has-text-grey is-size-7">
+							if data.CurrentISO != "" {
+								{ T("VMDetails.CDROM.CurrentISO") }: { data.CurrentISO }
+							} else {
+								{ T("VMDetails.CDROM.NoISO") }
+							}
+						</div>
+					</div>
+					<div class="columns is-mobile is-variable is-2">
+						<div class="column is-full">
+							<label class="label is-size-7 has-text-grey">{ T("VMDetails.CDROM.ChangeISO") }</label>
 							<div class="control">
-								<div class="select is-medium is-fullwidth">
-									<select name="sockets" required disabled?={ data.VM.Status == "running" }>
-										for i := data.VMSocketsMin; i <= data.VMSocketsMax; i++ {
-											<option value={ strconv.Itoa(i) } selected?={ i == vmDetailsGetCurrentSockets(data) }>{ strconv.Itoa(i) }</option>
+								<div class="select is-fullwidth is-medium">
+									<select name="cdrom_iso">
+										<option value="">{ T("VMDetails.CDROM.EjectISO") }</option>
+										for _, iso := range data.ISOs {
+											<option value={ iso } selected?={ iso == data.CurrentISO }>{ iso }</option>
+										}
+									</select>
+								</div>
+							</div>
+							<p class="help is-size-7 has-text-grey mt-1">
+								<i class="fas fa-info-circle" style="font-size: 0.75rem;"></i>
+								{ " " }
+								{ T("VMDetails.CDROM.RuntimeHelp") }
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+			if len(data.Disks) > 0 {
+				<hr class="my-4"/>
+				<div class="field">
+					<label class="label has-text-weight-semibold">
+						<span class="icon-text">
+							<span class="icon"><i class="fas fa-hdd"></i></span>
+							<span>{ T("VMDetails.DiskResize.Title") }</span>
+						</span>
+					</label>
+					@Notification(NotificationProps{
+						Type:    NotificationInfo,
+						Message: T("VMDetails.DiskResize.Help"),
+						Icon:    "fas fa-info-circle",
+						Light:   true,
+					})
+					<div class="columns is-mobile is-variable is-2">
+						<div class="column">
+							<label class="label is-size-7 has-text-grey">{ T("VMDetails.DiskResize.SelectDisk") }</label>
+							<div class="control">
+								<div class="select is-fullwidth is-medium">
+									<select id="diskResizeDisk" name="disk_resize_disk">
+										<option value="">-- { T("VMDetails.DiskResize.NoResize") } --</option>
+										for _, disk := range data.Disks {
+											<option value={ disk.Index } data-size={ strconv.Itoa(disk.SizeGB) }>{ disk.Index } ({ disk.SizeLabel })</option>
 										}
 									</select>
 								</div>
 							</div>
 						</div>
-					</div>
-					<div class="column is-6">
-						<div class="field">
-							<label class="label">
-								<span class="icon is-small"><i class="fas fa-microchip"></i></span>
-								{ T("VMDetails.Label.Cores") }
-							</label>
-							<div class="control">
-								<div class="select is-medium is-fullwidth">
-									<select name="cores" required disabled?={ data.VM.Status == "running" }>
-										for i := data.VMCoresMin; i <= data.VMCoresMax; i++ {
-											<option value={ strconv.Itoa(i) } selected?={ i == data.VM.CPUs }>{ strconv.Itoa(i) }</option>
-										}
-									</select>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="column is-12">
-						<div class="field">
-							<label class="label">
-								<span class="icon is-small"><i class="fas fa-memory"></i></span>
-								{ T("VMDetails.Label.RAM") }
-							</label>
+						<div class="column">
+							<label class="label is-size-7 has-text-grey">{ T("VMDetails.DiskResize.IncrementGB") }</label>
 							<div class="field has-addons">
 								<div class="control is-expanded">
-									<input
-										id="memory"
-										class="input is-medium"
-										type="number"
-										name="memory"
-										value={ strconv.FormatInt(data.VM.MaxMem/(1024*1024), 10) }
-										min={ strconv.Itoa(data.VMRamMinMB) }
-										max={ strconv.Itoa(data.VMRamMaxMB) }
-										required
-										disabled?={ data.VM.Status == "running" }
-									/>
+									<input id="diskResizeGB" class="input is-medium" type="number" name="disk_resize_gb" min="1" placeholder="1"/>
 								</div>
 								<div class="control">
 									<div class="select is-medium">
-										<select id="memory-unit" name="memory_unit" disabled?={ data.VM.Status == "running" }>
-											<option value="MB">MB</option>
+										<select>
 											<option value="GB">GB</option>
 										</select>
 									</div>
 								</div>
 							</div>
-							<p class="help" id="memory-display">{ data.FormattedMaxMemGB }</p>
+							<p class="help has-text-grey is-size-7 mt-2">
+								<span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
+								{ " " }
+								{ T("VMDetails.DiskResize.IncrementHelp") }
+							</p>
 						</div>
 					</div>
 				</div>
-				if len(data.NetworkInterfaces) > 0 {
-					<hr class="my-4"/>
-					<div class="field">
-						<label class="label has-text-weight-semibold">
-							<span class="icon-text">
-								<span class="icon"><i class="fas fa-network-wired"></i></span>
-								<span>{ T("VM.Create.Network") }</span>
-							</span>
-						</label>
-						for idx, card := range data.NetworkInterfaces {
-							<div class="box is-shadowless p-3 mb-3" style="background: rgba(0,0,0,0.02); position: relative;">
-								<div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
-									<strong>{ T("VM.Create.Network") } #{ strconv.Itoa(idx + 1) }</strong>
-									<div class="is-flex is-align-items-center">
-										if idx > 0 {
-											<span class="tag is-light is-size-7 mr-2">{ T("VM.Create.NetworkOptional") }</span>
-										}
-										<label
-											id={ fmt.Sprintf("network-toggle-%d", idx) }
-											class="network-toggle-switch"
-											title={ vmDetailsNetworkToggleTitle(card.LinkDown, idx, T) }
-											x-data={ fmt.Sprintf("networkToggle(%d, %t, '%d', '%s', '%s')", idx, !card.LinkDown, data.VM.VMID, data.VM.Node, data.CSRFToken) }
-											data-msg-enabled={ T("Message.NetworkCardEnabled") }
-											data-msg-disabled={ T("Message.NetworkCardDisabled") }
-											data-msg-failed={ T("Message.ActionFailed") }
-										>
-											<input
-												type="checkbox"
-												role="switch"
-												:checked="enabled"
-												@change="toggle()"
-												:disabled="loading"
-												class="network-toggle-input"
-											/>
-											<span class="network-toggle-slider" aria-hidden="true"></span>
-											<span class="network-toggle-label">
-												<template x-if="loading">
-													<span><i class="fas fa-spinner fa-spin"></i></span>
-												</template>
-												<template x-if="!loading && !enabled">
-													<span><i class="fas fa-plug-circle-xmark has-text-grey"></i> { T("Common.Disabled") }</span>
-												</template>
-												<template x-if="!loading && enabled">
-													<span><i class="fas fa-plug-circle-check has-text-success"></i> { T("Common.Enabled") }</span>
-												</template>
-											</span>
-										</label>
-									</div>
-								</div>
-								<div class="columns is-mobile is-variable is-2">
-									<div class="column">
-										<label class="label is-size-7 has-text-grey">{ T("VM.Create.NetworkBridge") }</label>
-										<div class="control">
-											<div class="select is-fullwidth is-medium">
-												<select name={ fmt.Sprintf("bridge_%d", idx) } required?={ idx == 0 } disabled?={ data.VM.Status == "running" }>
-													if idx > 0 {
-														<option value="">-- { T("VM.Create.NoNetwork") } --</option>
-													}
-													for _, bridge := range data.Bridges {
-														<option value={ bridge } selected?={ bridge == card.Bridge }>{ bridge }</option>
-													}
-												</select>
-											</div>
-										</div>
-									</div>
-									<div class="column">
-										<label class="label is-size-7 has-text-grey">{ T("VM.Create.NetworkModel") }</label>
-										<div class="control">
-											<div class="select is-fullwidth is-medium">
-												<select name={ fmt.Sprintf("network_model_%d", idx) } required?={ idx == 0 } disabled?={ data.VM.Status == "running" }>
-													<option value="virtio" selected?={ card.Model == "virtio" }>VirtIO</option>
-													<option value="e1000" selected?={ card.Model == "e1000" }>E1000</option>
-													<option value="e1000e" selected?={ card.Model == "e1000e" }>E1000E</option>
-													<option value="rtl8139" selected?={ card.Model == "rtl8139" }>RTL8139</option>
-													<option value="vmxnet3" selected?={ card.Model == "vmxnet3" }>VMXNet3</option>
-												</select>
-											</div>
-										</div>
-									</div>
-								</div>
-								<div class="columns is-multiline is-variable is-3">
-									<div class="column is-one-third">
-										<label class="label is-size-7 has-text-grey">{ T("VM.Create.NetworkVLAN") }</label>
-										<div class="control">
-											<input
-												type="text"
-												name={ fmt.Sprintf("vlan_tag_%d", idx) }
-												class="input is-medium"
-												placeholder="1-4096"
-												pattern="[0-9]+"
-												value={ card.VLAN }
-												disabled?={ data.VM.Status == "running" }
-											/>
-										</div>
-										<p class="help is-size-7">{ T("VM.Create.NetworkVLANHelp") }</p>
-									</div>
-									<div class="column is-one-third">
-										<label class="label is-size-7 has-text-grey">
-											{ T("VM.Create.NetworkRateLimit") }
-											<span class="icon is-small has-text-grey" title={ T("VM.Create.Tooltip.NetworkRateLimit") }>
-												<i class="fas fa-info-circle"></i>
-											</span>
-										</label>
-										<div class="control">
-											<input
-												type="number"
-												name={ fmt.Sprintf("rate_limit_%d", idx) }
-												class="input is-medium"
-												placeholder="1000"
-												min="1"
-												max="10240"
-												step="0.1"
-												value={ card.Rate }
-												disabled?={ data.VM.Status == "running" }
-											/>
-										</div>
-										<p class="help is-size-7">{ T("VM.Create.NetworkRateLimitHelp") }</p>
-									</div>
-									<div class="column is-one-third">
-										<label class="label is-size-7 has-text-grey">
-											{ T("VM.Create.NetworkMTU") }
-											<span class="icon is-small has-text-grey" title={ T("VM.Create.Tooltip.NetworkMTU") }>
-												<i class="fas fa-info-circle"></i>
-											</span>
-										</label>
-										<div class="control">
-											<input
-												type="number"
-												name={ fmt.Sprintf("mtu_%d", idx) }
-												class="input is-medium"
-												placeholder="1500"
-												min="576"
-												max="9000"
-												step="1"
-												value={ card.MTU }
-												disabled?={ data.VM.Status == "running" }
-											/>
-										</div>
-										<p class="help is-size-7">{ T("VM.Create.NetworkMTUHelp") }</p>
-									</div>
-								</div>
-								<input type="hidden" name={ fmt.Sprintf("mac_%d", idx) } value={ card.MACAddress }/>
-								if card.MACAddress != "" {
-									<p class="help is-size-7 mt-1">MAC: { card.MACAddress }</p>
-								}
-							</div>
-						}
-					</div>
-				}
-				<hr class="my-4"/>
-				<div class="field">
-					<label class="label has-text-weight-semibold">
-						<span class="icon-text">
-							<span class="icon"><i class="fas fa-compact-disc"></i></span>
-							<span>{ T("VMDetails.Section.CDROM") }</span>
-						</span>
-					</label>
-					<div class="box is-shadowless p-3 mb-3" style="background: rgba(0,0,0,0.02);">
-						<div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
-							<strong>{ T("VMDetails.CDROM.Drive") } (IDE)</strong>
-							<div class="has-text-grey is-size-7">
-								if data.CurrentISO != "" {
-									{ T("VMDetails.CDROM.CurrentISO") }: { data.CurrentISO }
-								} else {
-									{ T("VMDetails.CDROM.NoISO") }
-								}
-							</div>
-						</div>
-						<div class="columns is-mobile is-variable is-2">
-							<div class="column is-full">
-								<label class="label is-size-7 has-text-grey">{ T("VMDetails.CDROM.ChangeISO") }</label>
-								<div class="control">
-									<div class="select is-fullwidth is-medium">
-										<select name="cdrom_iso">
-											<option value="">{ T("VMDetails.CDROM.EjectISO") }</option>
-											for _, iso := range data.ISOs {
-												<option value={ iso } selected?={ iso == data.CurrentISO }>{ iso }</option>
-											}
-										</select>
-									</div>
-								</div>
-								<p class="help is-size-7 has-text-grey mt-1">
-									<i class="fas fa-info-circle" style="font-size: 0.75rem;"></i>
-									{ " " }
-									{ T("VMDetails.CDROM.RuntimeHelp") }
-								</p>
-							</div>
-						</div>
-					</div>
+			}
+			<hr class="my-4"/>
+			<div class="field is-grouped is-justify-content-flex-end">
+				<div class="control">
+					<button type="button" class="button is-light" @click="open = false">
+						<span class="icon"><i class="fas fa-times"></i></span>
+						<span>{ T("Common.Cancel") }</span>
+					</button>
 				</div>
-				if len(data.Disks) > 0 {
-					<hr class="my-4"/>
-					<div class="field">
-						<label class="label has-text-weight-semibold">
-							<span class="icon-text">
-								<span class="icon"><i class="fas fa-hdd"></i></span>
-								<span>{ T("VMDetails.DiskResize.Title") }</span>
-							</span>
-						</label>
-						@Notification(NotificationProps{
-							Type:    NotificationInfo,
-							Message: T("VMDetails.DiskResize.Help"),
-							Icon:    "fas fa-info-circle",
-							Light:   true,
-						})
-						<div class="columns is-mobile is-variable is-2">
-							<div class="column">
-								<label class="label is-size-7 has-text-grey">{ T("VMDetails.DiskResize.SelectDisk") }</label>
-								<div class="control">
-									<div class="select is-fullwidth is-medium">
-										<select id="diskResizeDisk" name="disk_resize_disk">
-											<option value="">-- { T("VMDetails.DiskResize.NoResize") } --</option>
-											for _, disk := range data.Disks {
-												<option value={ disk.Index } data-size={ strconv.Itoa(disk.SizeGB) }>{ disk.Index } ({ disk.SizeLabel })</option>
-											}
-										</select>
-									</div>
-								</div>
-							</div>
-							<div class="column">
-								<label class="label is-size-7 has-text-grey">{ T("VMDetails.DiskResize.IncrementGB") }</label>
-								<div class="field has-addons">
-									<div class="control is-expanded">
-										<input id="diskResizeGB" class="input is-medium" type="number" name="disk_resize_gb" min="1" placeholder="1"/>
-									</div>
-									<div class="control">
-										<div class="select is-medium">
-											<select>
-												<option value="GB">GB</option>
-											</select>
-										</div>
-									</div>
-								</div>
-								<p class="help has-text-grey is-size-7 mt-2">
-									<span class="icon is-small has-text-primary"><i class="fas fa-info-circle"></i></span>
-									{ " " }
-									{ T("VMDetails.DiskResize.IncrementHelp") }
-								</p>
-							</div>
-						</div>
-					</div>
-				}
-				<hr class="my-4"/>
-				<div class="field is-grouped is-justify-content-space-between">
-					<div class="control">
-						@Button(ButtonProps{
-							Text: T("Common.Cancel"),
-							Icon: "fas fa-times",
-							Href: fmt.Sprintf("/vm/details/%d", data.VM.VMID),
-							Type: ButtonLight,
-						})
-					</div>
-					<div class="control">
-						@Button(ButtonProps{
-							Text:     T("Common.Save"),
-							Icon:     "fas fa-save",
-							Type:     ButtonPrimary,
-							Size:     ButtonMedium,
-							IsSubmit: true,
-							Disabled: data.VM.Status == "running" || !data.ProxmoxConnected,
-						})
-					</div>
+				<div class="control">
+					<button type="submit" class="button is-primary is-medium" disabled?={ data.VM.Status == "running" || !data.ProxmoxConnected }>
+						<span class="icon"><i class="fas fa-save"></i></span>
+						<span>{ T("Common.Save") }</span>
+					</button>
 				</div>
-			</form>
-		</div>
-	</div>
+			</div>
+		</form>
+	}
 }
 
 func vmDetailsGetCurrentSockets(data VMDetailsData) int {
@@ -858,9 +849,6 @@ templ vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) {
 }
 
 templ vmDetailsScripts(data VMDetailsData, T TranslationFunc) {
-	<div id="vm-details-config" data-vmid={ strconv.Itoa(data.VM.VMID) } data-node={ templ.JSONString(data.VM.Node) } data-status={ templ.JSONString(data.VM.Status) } data-error-message={ templ.JSONString(data.ErrorMessage) } data-success-message={ templ.JSONString(data.SuccessMessage) } data-warning-message={ templ.JSONString(data.WarningMessage) } data-console-must-be-running={ T("VMDetails.Console.MustBeRunning") } data-console-unavailable={ T("VMDetails.Console.TemporarilyUnavailable") } data-console-not-found={ T("VMDetails.Console.ButtonNotFound") } style="display: none;"></div>
-	<div id="vm-details-content" x-data="vmDetails()" x-init="init()">
-	</div>
 	<script src="/js/vm-details-alpine.js"></script>
 	@templ.Raw(vmDetailsConsoleScript(data))
 }

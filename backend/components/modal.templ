@@ -32,10 +32,12 @@ templ Modal(props ModalProps) {
 	<div
 		id={ props.ID }
 		class={ "modal", props.Class }
+		:class="{ 'is-active': open }"
 		x-data="{ open: false }"
 		x-show="open"
 		x-cloak
 		@keydown.escape.window="open = false"
+		@open-modal.window="if ($event.detail === $el.id) open = true"
 		role="dialog"
 		aria-modal="true"
 		if props.Title != "" {

@@ -43,6 +43,30 @@ window.vmDetails = () => ({
       
       // Handle visibility changes
       document.addEventListener('visibilitychange', () => this.handleVisibility());
+
+      // Check for deep links to modals
+      this.checkDeepLinks();
+    },
+    
+    // Check for deep links in URL
+    checkDeepLinks() {
+      const editParam = this.readQueryParam('edit');
+      if (editParam === 'description') {
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'edit-description-modal' }));
+      } else if (editParam === 'tags') {
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'edit-tags-modal' }));
+      } else if (editParam === 'resources') {
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'edit-resources-modal' }));
+      }
+      
+      // Clear the edit param from URL without refreshing
+      if (editParam) {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('edit');
+        const cleanSearch = params.toString();
+        const newUrl = cleanSearch ? `${window.location.pathname}?${cleanSearch}` : window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
     },
     
     // Destroy

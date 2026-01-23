@@ -126,30 +126,26 @@ templ VMDetailsPage(data VMDetailsData, T TranslationFunc) {
 }
 
 templ vmDetailsContent(data VMDetailsData, T TranslationFunc) {
-	@vmDetailsConfigDiv(data, T)
-	<section class="section">
-		<div class="container" style="max-width: 1200px;">
-			@vmDetailsNotifications(data, T)
-			@vmDetailsNavLinks(T)
-			if data.IsNewlyCreated {
-				@vmDetailsCelebrationBanner(data, T)
-			}
-			@vmDetailsOverviewCard(data, T)
-			@vmDetailsDescriptionTagsGrid(data, T)
-			if data.ShowDescriptionEditor {
+	<div x-data="vmDetails()" x-init="init()">
+		@vmDetailsConfigDiv(data, T)
+		<section class="section">
+			<div class="container" style="max-width: 1200px;">
+				@vmDetailsNotifications(data, T)
+				@vmDetailsNavLinks(T)
+				if data.IsNewlyCreated {
+					@vmDetailsCelebrationBanner(data, T)
+				}
+				@vmDetailsOverviewCard(data, T)
+				@vmDetailsDescriptionTagsGrid(data, T)
 				@vmDetailsDescriptionEditor(data, T)
-			}
-			if data.ShowTagsEditor {
 				@vmDetailsTagsEditor(data, T)
-			}
-			if data.ShowResourcesEditor {
 				@vmDetailsResourcesEditor(data, T)
-			}
-			@vmDetailsSnapshotsCard(data, T)
-		</div>
-	</section>
-	@vmDetailsConsoleModal(data, T)
-	@vmDetailsScripts(data, T)
+				@vmDetailsSnapshotsCard(data, T)
+			</div>
+		</section>
+		@vmDetailsConsoleModal(data, T)
+		@vmDetailsScripts(data, T)
+	</div>
 }
 
 func vmStatusClass(status string) string {
