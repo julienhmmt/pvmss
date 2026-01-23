@@ -8,6 +8,17 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "encoding/json"
+
+func vmCreateJsonStr(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
+func vmCreateCloudInitScriptVars(T TranslationFunc) string {
+	return "var fetchErrorMsg = " + vmCreateJsonStr(T("Admin.CloudInit.Error.FetchTemplate")) + ";"
+}
+
 func vmCreateCloudInitCard(data VMCreateData, T TranslationFunc) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -36,7 +47,7 @@ func vmCreateCloudInitCard(data VMCreateData, T TranslationFunc) templ.Component
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 8, Col: 91}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 19, Col: 91}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -59,7 +70,7 @@ func vmCreateCloudInitCard(data VMCreateData, T TranslationFunc) templ.Component
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.Enable"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 15, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 26, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -72,7 +83,7 @@ func vmCreateCloudInitCard(data VMCreateData, T TranslationFunc) templ.Component
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.EnableHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 17, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 28, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -85,7 +96,7 @@ func vmCreateCloudInitCard(data VMCreateData, T TranslationFunc) templ.Component
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(vmCreateCloudInitDisplay(data))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 19, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 30, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -175,7 +186,7 @@ func vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.Template"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 53, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 64, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -188,7 +199,7 @@ func vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.NoTemplate"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 58, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 69, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -206,7 +217,7 @@ func vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) templ.
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 60, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 71, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
@@ -229,7 +240,7 @@ func vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) templ.
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 61, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 72, Col: 17}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -247,7 +258,7 @@ func vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) templ.
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.Description)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 63, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 74, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -266,7 +277,7 @@ func vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ViewYAML"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 75, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 86, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
@@ -308,7 +319,7 @@ func vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) templ.Com
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.Username"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 87, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 98, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -321,7 +332,7 @@ func vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) templ.Com
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.CloudInitUser)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 90, Col: 115}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 101, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
@@ -334,7 +345,7 @@ func vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) templ.Com
 		var templ_7745c5c3_Var16 string
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.UsernamePlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 90, Col: 176}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 101, Col: 176}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -347,7 +358,7 @@ func vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) templ.Com
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.UsernameHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 92, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 103, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -360,7 +371,7 @@ func vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) templ.Com
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.Password"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 99, Col: 70}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 110, Col: 70}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -373,7 +384,7 @@ func vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) templ.Com
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.PasswordPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 102, Col: 150}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 113, Col: 150}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -386,7 +397,7 @@ func vmCreateCloudInitUserFields(data VMCreateData, T TranslationFunc) templ.Com
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.PasswordHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 104, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 115, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -428,7 +439,7 @@ func vmCreateCloudInitSSHField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.SSHKeys"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 114, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 125, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -441,7 +452,7 @@ func vmCreateCloudInitSSHField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.SSHKeysPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 117, Col: 164}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 128, Col: 164}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -454,7 +465,7 @@ func vmCreateCloudInitSSHField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.CloudInitSSHKeys)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 117, Col: 199}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 128, Col: 199}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -467,7 +478,7 @@ func vmCreateCloudInitSSHField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.SSHKeysHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 119, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 130, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -509,7 +520,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.IPConfig"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 127, Col: 68}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 138, Col: 68}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -532,7 +543,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.DHCP"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 132, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 143, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -555,7 +566,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.Static"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 136, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 147, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -568,7 +579,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues(vmCreateStaticIPDisplay(data))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 140, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 151, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -581,7 +592,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.StaticIP"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 144, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 155, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 		if templ_7745c5c3_Err != nil {
@@ -594,7 +605,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.CloudInitIP)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 146, Col: 110}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 157, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 		if templ_7745c5c3_Err != nil {
@@ -607,7 +618,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.StaticIPPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 146, Col: 171}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 157, Col: 171}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 		if templ_7745c5c3_Err != nil {
@@ -620,7 +631,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.Gateway"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 152, Col: 93}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 163, Col: 93}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {
@@ -633,7 +644,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.CloudInitGateway)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 154, Col: 125}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 165, Col: 125}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 		if templ_7745c5c3_Err != nil {
@@ -646,7 +657,7 @@ func vmCreateCloudInitNetworkFields(data VMCreateData, T TranslationFunc) templ.
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.GatewayPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 154, Col: 185}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 165, Col: 185}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 		if templ_7745c5c3_Err != nil {
@@ -688,7 +699,7 @@ func vmCreateCloudInitDNSField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.DNS"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 166, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 177, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -701,7 +712,7 @@ func vmCreateCloudInitDNSField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var39 string
 		templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(data.FormData.CloudInitDNS)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 169, Col: 110}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 180, Col: 110}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 		if templ_7745c5c3_Err != nil {
@@ -714,7 +725,7 @@ func vmCreateCloudInitDNSField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.DNSPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 169, Col: 166}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 180, Col: 166}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -727,13 +738,152 @@ func vmCreateCloudInitDNSField(data VMCreateData, T TranslationFunc) templ.Compo
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.CloudInit.DNSHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 171, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 182, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</p></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func vmCreateCloudInitModal(T TranslationFunc) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var42 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var42 == nil {
+			templ_7745c5c3_Var42 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<div class=\"modal\" id=\"cloudinit-yaml-modal\"><div class=\"modal-background\" onclick=\"closeCloudInitModal()\"></div><div class=\"modal-card\" style=\"display: flex; flex-direction: column; max-height: 90vh;\"><header class=\"modal-card-head\"><p class=\"modal-card-title\"><span class=\"icon\"><i class=\"fas fa-file-code\"></i></span> <span id=\"cloudinit-modal-title\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var43 string
+		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ViewYAML"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 193, Col: 69}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "</span></p><button class=\"delete\" aria-label=\"close\" onclick=\"closeCloudInitModal()\"></button></header><section class=\"modal-card-body\" style=\"flex: 1; overflow-y: auto; min-height: 0;\"><pre class=\"has-background-black-bis has-text-white-bis p-3 is-size-7\" style=\"margin: 0; height: 100%;\" id=\"cloudinit-modal-content\"></pre></section><footer class=\"modal-card-foot is-justify-content-flex-end\"><button class=\"button\" type=\"button\" onclick=\"closeCloudInitModal()\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var44 string
+		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Close"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create_cloudinit.templ`, Line: 201, Col: 92}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</button></footer></div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func vmCreateCloudInitFullScript(T TranslationFunc) string {
+	return `<script>
+(function() {
+	` + vmCreateCloudInitScriptVars(T) + `
+
+	function closeCloudInitModal() {
+		var modal = document.getElementById('cloudinit-yaml-modal');
+		if (modal) modal.classList.remove('is-active');
+	}
+	window.closeCloudInitModal = closeCloudInitModal;
+
+	async function viewCloudInitTemplate(id) {
+		if (!id) return;
+		try {
+			var response = await fetch('/api/cloudinit/template/' + encodeURIComponent(id), {
+				method: 'GET',
+				credentials: 'same-origin',
+				headers: { 'Accept': 'application/json' }
+			});
+			if (!response.ok) throw new Error('Failed to fetch template');
+			var data = await response.json();
+			var titleEl = document.getElementById('cloudinit-modal-title');
+			if (titleEl && data.name) titleEl.textContent = data.name;
+			var contentEl = document.getElementById('cloudinit-modal-content');
+			if (contentEl) contentEl.textContent = data.content || '';
+			var modal = document.getElementById('cloudinit-yaml-modal');
+			if (modal) modal.classList.add('is-active');
+		} catch (error) {
+			console.error('Error fetching cloud-init template:', error);
+			alert(fetchErrorMsg);
+		}
+	}
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var templateSelect = document.getElementById('cloudinit_template');
+		var viewBtn = document.getElementById('cloudinit-view-template-btn');
+
+		if (templateSelect && viewBtn) {
+			function updateViewBtn() {
+				viewBtn.disabled = !templateSelect.value;
+			}
+			updateViewBtn();
+			templateSelect.addEventListener('change', updateViewBtn);
+
+			viewBtn.addEventListener('click', function(e) {
+				e.preventDefault();
+				var selectedId = templateSelect.value;
+				if (selectedId) viewCloudInitTemplate(selectedId);
+			});
+		}
+	});
+})();
+</script>`
+}
+
+func vmCreateCloudInitScripts(T TranslationFunc) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var45 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var45 == nil {
+			templ_7745c5c3_Var45 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templ.Raw(vmCreateCloudInitFullScript(T)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,5 +1,10 @@
 package components
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 type CloudInitTemplate struct {
 	ID          string
 	Name        string
@@ -76,18 +81,14 @@ templ adminCloudInitContent(data AdminCloudInitData, T TranslationFunc) {
 	if data.SFTPStatus != nil {
 		@sftpStatusSection(data.SFTPStatus, T)
 	}
-	if data.HasProxmoxSession {
-		<div class="mb-4">
-			<a href="#create-form" class="button is-primary">
-				<span class="icon"><i class="fas fa-plus"></i></span>
-				<span>{ T("Admin.CloudInit.CreateTemplate") }</span>
-			</a>
-		</div>
-	}
+	<div class="mb-4">
+		<a href="#create-form" class="button is-primary">
+			<span class="icon"><i class="fas fa-plus"></i></span>
+			<span>{ T("Admin.CloudInit.CreateTemplate") }</span>
+		</a>
+	</div>
 	@templatesListSection(data, T)
-	if data.HasProxmoxSession {
-		@createEditFormSection(data, T)
-	}
+	@createEditFormSection(data, T)
 	@yamlViewModal(T)
 	@cloudInitScripts(data, T)
 }
@@ -302,7 +303,7 @@ templ createEditFormSection(data AdminCloudInitData, T TranslationFunc) {
 templ yamlViewModal(T TranslationFunc) {
 	<div class="modal" id="yaml-modal">
 		<div class="modal-background" onclick="closeYamlModal()"></div>
-		<div class="modal-card">
+		<div class="modal-card" style="display: flex; flex-direction: column; max-height: 90vh;">
 			<header class="modal-card-head">
 				<p class="modal-card-title">
 					<span class="icon"><i class="fas fa-file-code"></i></span>
@@ -310,8 +311,8 @@ templ yamlViewModal(T TranslationFunc) {
 				</p>
 				<button class="delete" aria-label="close" onclick="closeYamlModal()"></button>
 			</header>
-			<section class="modal-card-body">
-				<pre class="has-background-black-bis has-text-white-bis p-3 is-size-7" style="max-height: 400px; overflow: auto;" id="yaml-modal-content"></pre>
+			<section class="modal-card-body" style="flex: 1; overflow-y: auto; min-height: 0;">
+				<pre class="has-background-black-bis has-text-white-bis p-3 is-size-7" style="margin: 0; height: 100%;" id="yaml-modal-content"></pre>
 			</section>
 			<footer class="modal-card-foot is-justify-content-flex-end">
 				<button class="button" type="button" onclick="closeYamlModal()">{ T("Common.Close") }</button>
@@ -320,100 +321,123 @@ templ yamlViewModal(T TranslationFunc) {
 	</div>
 }
 
-templ cloudInitScripts(data AdminCloudInitData, T TranslationFunc) {
-	<script>
-		var proxmoxConnected = { templ.JSONString(fmt.Sprintf("%t", data.ProxmoxConnected)) };
-		var hasProxmoxSession = { templ.JSONString(fmt.Sprintf("%t", data.HasProxmoxSession)) };
-		var confirmDeleteMessage = { templ.JSONString(T("Admin.CloudInit.ConfirmDelete")) };
-		var createTemplateText = { T("Admin.CloudInit.CreateTemplate") };
-		var editTemplateText = { T("Admin.CloudInit.EditTemplate") };
-		var createTitleHtml = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>' + createTemplateText + '</span>';
-		var editTitleHtml = '<span class="icon"><i class="fas fa-edit"></i></span><span>' + editTemplateText + '</span>';
-		var saveText = { templ.JSONString(T("Common.Save")) };
-		var validateSaveText = { templ.JSONString(T("Admin.CloudInit.ValidateAndSave")) };
-		var fetchErrorMsg = { templ.JSONString(T("Admin.CloudInit.Error.FetchTemplate")) };
-		var requiredFieldsMsg = { templ.JSONString(T("Admin.CloudInit.Error.RequiredFields")) };
+func jsonStr(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
 
-		function showInlineNotification(type, message) {
-			const notification = document.createElement('div');
-			notification.className = `notification is-${type} has-text-black`;
-			notification.innerHTML = `<button class="delete" onclick="this.parentElement.remove()"></button>${message}`;
-			const content = document.querySelector('.section .container');
-			if (content) content.insertBefore(notification, content.firstChild);
-			if (type === 'success') setTimeout(() => { if (notification.parentElement) notification.remove(); }, 5000);
-		}
+func cloudInitScriptVars(data AdminCloudInitData, T TranslationFunc) string {
+	return fmt.Sprintf(`var proxmoxConnected = %s;
+var hasProxmoxSession = %s;
+var confirmDeleteMessage = %s;
+var createTemplateText = %s;
+var editTemplateText = %s;
+var saveText = %s;
+var validateSaveText = %s;
+var fetchErrorMsg = %s;
+var requiredFieldsMsg = %s;`,
+		fmt.Sprintf("%t", data.ProxmoxConnected),
+		fmt.Sprintf("%t", data.HasProxmoxSession),
+		jsonStr(T("Admin.CloudInit.ConfirmDelete")),
+		jsonStr(T("Admin.CloudInit.CreateTemplate")),
+		jsonStr(T("Admin.CloudInit.EditTemplate")),
+		jsonStr(T("Common.Save")),
+		jsonStr(T("Admin.CloudInit.ValidateAndSave")),
+		jsonStr(T("Admin.CloudInit.Error.FetchTemplate")),
+		jsonStr(T("Admin.CloudInit.Error.RequiredFields")),
+	)
+}
 
-		async function editTemplate(id, name, description) {
-			document.getElementById('edit-id').value = id;
-			document.getElementById('name').value = name;
-			document.getElementById('description').value = description;
-			document.getElementById('template-form').action = '/admin/cloudinit/edit';
-			document.getElementById('form-title').innerHTML = editTitleHtml;
-			document.getElementById('submit-text').textContent = saveText;
-			try {
-				const response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
-				if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }
-				if (!response.ok) throw new Error('Failed to fetch template data');
-				const templateData = await response.json();
-				if (templateData.content) document.getElementById('yaml_content').value = templateData.content;
-				document.getElementById('yaml_content').required = true;
-			} catch (error) {
-				console.error('Error fetching template data:', error);
-				showInlineNotification('danger', fetchErrorMsg);
+func cloudInitFullScript(data AdminCloudInitData, T TranslationFunc) string {
+	return `<script>
+` + cloudInitScriptVars(data, T) + `
+var createTitleHtml = '<span class="icon"><i class="fas fa-plus-circle"></i></span><span>' + createTemplateText + '</span>';
+var editTitleHtml = '<span class="icon"><i class="fas fa-edit"></i></span><span>' + editTemplateText + '</span>';
+
+function showInlineNotification(type, message) {
+	const notification = document.createElement('div');
+	notification.className = 'notification is-' + type + ' has-text-black';
+	notification.innerHTML = '<button class="delete" onclick="this.parentElement.remove()"></button>' + message;
+	const content = document.querySelector('.section .container');
+	if (content) content.insertBefore(notification, content.firstChild);
+	if (type === 'success') setTimeout(function() { if (notification.parentElement) notification.remove(); }, 5000);
+}
+
+async function editTemplate(id, name, description) {
+	document.getElementById('edit-id').value = id;
+	document.getElementById('name').value = name;
+	document.getElementById('description').value = description;
+	document.getElementById('template-form').action = '/admin/cloudinit/edit';
+	document.getElementById('form-title').innerHTML = editTitleHtml;
+	document.getElementById('submit-text').textContent = saveText;
+	try {
+		const response = await fetch('/admin/cloudinit/template/' + id, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+		if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }
+		if (!response.ok) throw new Error('Failed to fetch template data');
+		const templateData = await response.json();
+		if (templateData.content) document.getElementById('yaml_content').value = templateData.content;
+		document.getElementById('yaml_content').required = true;
+	} catch (error) {
+		console.error('Error fetching template data:', error);
+		showInlineNotification('danger', fetchErrorMsg);
+	}
+	document.getElementById('name').focus();
+}
+
+async function viewTemplate(id) {
+	try {
+		const response = await fetch('/admin/cloudinit/template/' + id, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+		if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }
+		if (!response.ok) throw new Error('Failed to fetch template data');
+		const templateData = await response.json();
+		const titleEl = document.getElementById('yaml-modal-title');
+		if (titleEl && templateData.name) titleEl.textContent = templateData.name;
+		const contentEl = document.getElementById('yaml-modal-content');
+		if (contentEl) contentEl.textContent = templateData.content || '';
+		const modal = document.getElementById('yaml-modal');
+		if (modal) modal.classList.add('is-active');
+	} catch (error) {
+		console.error('Error fetching template data for view:', error);
+		showInlineNotification('danger', fetchErrorMsg);
+	}
+}
+
+function closeYamlModal() {
+	const modal = document.getElementById('yaml-modal');
+	if (modal) modal.classList.remove('is-active');
+}
+
+function resetForm() {
+	document.getElementById('edit-id').value = '';
+	document.getElementById('template-form').reset();
+	document.getElementById('template-form').action = '/admin/cloudinit/create';
+	document.getElementById('form-title').innerHTML = createTitleHtml;
+	document.getElementById('submit-text').textContent = validateSaveText;
+	document.getElementById('yaml_content').required = true;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+	const form = document.getElementById('template-form');
+	if (form) {
+		form.addEventListener('submit', function(event) {
+			if (!document.getElementById('yaml_content').value) {
+				showInlineNotification('danger', requiredFieldsMsg);
+				document.getElementById('yaml_content').focus();
+				event.preventDefault();
+				return false;
 			}
-			document.getElementById('name').focus();
-		}
-
-		async function viewTemplate(id) {
-			try {
-				const response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
-				if (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }
-				if (!response.ok) throw new Error('Failed to fetch template data');
-				const templateData = await response.json();
-				const titleEl = document.getElementById('yaml-modal-title');
-				if (titleEl && templateData.name) titleEl.textContent = templateData.name;
-				const contentEl = document.getElementById('yaml-modal-content');
-				if (contentEl) contentEl.textContent = templateData.content || '';
-				const modal = document.getElementById('yaml-modal');
-				if (modal) modal.classList.add('is-active');
-			} catch (error) {
-				console.error('Error fetching template data for view:', error);
-				showInlineNotification('danger', fetchErrorMsg);
-			}
-		}
-
-		function closeYamlModal() {
-			const modal = document.getElementById('yaml-modal');
-			if (modal) modal.classList.remove('is-active');
-		}
-
-		function resetForm() {
-			document.getElementById('edit-id').value = '';
-			document.getElementById('template-form').reset();
-			document.getElementById('template-form').action = '/admin/cloudinit/create';
-			document.getElementById('form-title').innerHTML = createTitleHtml;
-			document.getElementById('submit-text').textContent = validateSaveText;
-			document.getElementById('yaml_content').required = true;
-		}
-
-		document.addEventListener('DOMContentLoaded', function() {
-			const form = document.getElementById('template-form');
-			if (form) {
-				form.addEventListener('submit', function(event) {
-					if (!document.getElementById('yaml_content').value) {
-						showInlineNotification('danger', requiredFieldsMsg);
-						document.getElementById('yaml_content').focus();
-						event.preventDefault();
-						return false;
-					}
-				});
-			}
-			document.querySelectorAll('.btn-view-template').forEach(btn => {
-				btn.addEventListener('click', function() { viewTemplate(this.dataset.id); });
-			});
-			document.querySelectorAll('.btn-edit-template').forEach(btn => {
-				btn.addEventListener('click', function() { editTemplate(this.dataset.id, this.dataset.name, this.dataset.description); });
-			});
 		});
-	</script>
+	}
+	document.querySelectorAll('.btn-view-template').forEach(function(btn) {
+		btn.addEventListener('click', function() { viewTemplate(this.dataset.id); });
+	});
+	document.querySelectorAll('.btn-edit-template').forEach(function(btn) {
+		btn.addEventListener('click', function() { editTemplate(this.dataset.id, this.dataset.name, this.dataset.description); });
+	});
+});
+</script>`
+}
+
+templ cloudInitScripts(data AdminCloudInitData, T TranslationFunc) {
+	@templ.Raw(cloudInitFullScript(data, T))
 }

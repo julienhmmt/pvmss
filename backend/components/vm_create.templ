@@ -137,6 +137,10 @@ templ vmCreateContent(data VMCreateData, T TranslationFunc) {
 		</div>
 	</section>
 	@vmCreateScriptsBlock(data, T)
+	if len(data.CloudInitTemplates) > 0 {
+		@vmCreateCloudInitModal(T)
+		@vmCreateCloudInitScripts(T)
+	}
 }
 
 templ vmCreatePageHeader(T TranslationFunc) {

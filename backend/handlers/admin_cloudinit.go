@@ -66,7 +66,9 @@ func (h *CloudInitHandler) RegisterRoutes(router *httprouter.Router) {
 
 	// Get single template with content (admin view)
 	router.GET("/admin/cloudinit/template/:id", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.GetTemplateHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+		// Get params from our custom context key
+		ps, _ := r.Context().Value(ParamsKey).(httprouter.Params)
+		h.GetTemplateHandler(w, r, ps)
 	})))
 
 	// Public API for authenticated users to view template content (used on VM create page)

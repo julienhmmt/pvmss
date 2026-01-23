@@ -223,6 +223,20 @@ func vmCreateContent(data VMCreateData, T TranslationFunc) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
+		if len(data.CloudInitTemplates) > 0 {
+			templ_7745c5c3_Err = vmCreateCloudInitModal(T).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = vmCreateCloudInitScripts(T).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
 		return nil
 	})
 }
@@ -248,46 +262,46 @@ func vmCreatePageHeader(T TranslationFunc) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<div class=\"level mb-5\"><div class=\"level-left\"><div class=\"level-item\"><h1 class=\"title is-3\" id=\"main-title\"><span class=\"icon has-text-primary\"><i class=\"fas fa-plus-square\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"level mb-5\"><div class=\"level-left\"><div class=\"level-item\"><h1 class=\"title is-3\" id=\"main-title\"><span class=\"icon has-text-primary\"><i class=\"fas fa-plus-square\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(T("VM.Create.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 148, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 152, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</span></h1></div></div><div class=\"level-right\"><div class=\"level-item\"><a href=\"/profile\" class=\"button is-primary is-light has-text-dark\"><span class=\"icon\"><i class=\"fas fa-user\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</span></h1></div></div><div class=\"level-right\"><div class=\"level-item\"><a href=\"/profile\" class=\"button is-primary is-light has-text-dark\"><span class=\"icon\"><i class=\"fas fa-user\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(T("Profile.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 156, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 160, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</span></a></div><div class=\"level-item\"><a href=\"/search\" class=\"button is-primary is-light has-text-dark\"><span class=\"icon\"><i class=\"fas fa-search\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</span></a></div><div class=\"level-item\"><a href=\"/search\" class=\"button is-primary is-light has-text-dark\"><span class=\"icon\"><i class=\"fas fa-search\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(T("Search.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 162, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 166, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</span></a></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span></a></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -398,30 +412,30 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 			templ_7745c5c3_Var10 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<form method=\"POST\" action=\"/vm/create\" id=\"vmCreateForm\" aria-label=\"Create new virtual machine\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<form method=\"POST\" action=\"/vm/create\" id=\"vmCreateForm\" aria-label=\"Create new virtual machine\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 216, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 220, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "\"><fieldset")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\"><fieldset")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if !data.ProxmoxConnected || data.AllNodesSaturated || data.NoNodesAvailable {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, " disabled")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " disabled")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "><div class=\"columns is-multiline\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "><div class=\"columns is-multiline\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -447,33 +461,33 @@ func vmCreateForm(data VMCreateData, T TranslationFunc) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div></fieldset><footer class=\"form-footer\"><div class=\"form-footer-actions\"><button type=\"reset\" form=\"vmCreateForm\" class=\"button is-light is-medium\"><span class=\"icon\"><i class=\"fas fa-undo\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div></fieldset><footer class=\"form-footer\"><div class=\"form-footer-actions\"><button type=\"reset\" form=\"vmCreateForm\" class=\"button is-light is-medium\"><span class=\"icon\"><i class=\"fas fa-undo\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Reset"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 232, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 236, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</span></button> <button type=\"submit\" form=\"vmCreateForm\" class=\"button is-primary is-medium\"><span class=\"icon\"><i class=\"fas fa-save\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</span></button> <button type=\"submit\" form=\"vmCreateForm\" class=\"button is-primary is-medium\"><span class=\"icon\"><i class=\"fas fa-save\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Create"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 236, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_create.templ`, Line: 240, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</span></button></div></footer></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</span></button></div></footer></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -558,7 +572,7 @@ func vmCreateScriptsBlock(data VMCreateData, T TranslationFunc) templ.Component 
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<script src=\"/js/vm-utils.js\" defer></script><script>\n\t\tvar vmRamGlobalMaxMB = { strconv.Itoa(data.VMRamMaxMB) };\n\t\tvar vmRamGlobalMinMB = { strconv.Itoa(data.VMRamMinMB) };\n\t\tvar vmCoresGlobalMax = { strconv.Itoa(data.VMCoresMax) };\n\t\tvar vmSocketsGlobalMax = { strconv.Itoa(data.VMSocketsMax) };\n\t\tvar vmDiskMinGB = { strconv.Itoa(data.VMDiskMin) };\n\t\tvar vmDiskMaxGB = { strconv.Itoa(data.VMDiskMax) };\n\t\tvar selectedLabel = { T(\"Common.Selected\") };\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<script src=\"/js/vm-utils.js\" defer></script><script>\n\t\tvar vmRamGlobalMaxMB = { strconv.Itoa(data.VMRamMaxMB) };\n\t\tvar vmRamGlobalMinMB = { strconv.Itoa(data.VMRamMinMB) };\n\t\tvar vmCoresGlobalMax = { strconv.Itoa(data.VMCoresMax) };\n\t\tvar vmSocketsGlobalMax = { strconv.Itoa(data.VMSocketsMax) };\n\t\tvar vmDiskMinGB = { strconv.Itoa(data.VMDiskMin) };\n\t\tvar vmDiskMaxGB = { strconv.Itoa(data.VMDiskMax) };\n\t\tvar selectedLabel = { T(\"Common.Selected\") };\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,5 +1,16 @@
 package components
 
+import "encoding/json"
+
+func vmCreateJsonStr(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
+func vmCreateCloudInitScriptVars(T TranslationFunc) string {
+	return "var fetchErrorMsg = " + vmCreateJsonStr(T("Admin.CloudInit.Error.FetchTemplate")) + ";"
+}
+
 templ vmCreateCloudInitCard(data VMCreateData, T TranslationFunc) {
 	<div class="column is-12-tablet is-6-desktop">
 		<div class="card no-hover mb-5 mt-5">
@@ -170,4 +181,84 @@ templ vmCreateCloudInitDNSField(data VMCreateData, T TranslationFunc) {
 		</div>
 		<p class="help">{ T("VM.Create.CloudInit.DNSHelp") }</p>
 	</div>
+}
+
+templ vmCreateCloudInitModal(T TranslationFunc) {
+	<div class="modal" id="cloudinit-yaml-modal">
+		<div class="modal-background" onclick="closeCloudInitModal()"></div>
+		<div class="modal-card" style="display: flex; flex-direction: column; max-height: 90vh;">
+			<header class="modal-card-head">
+				<p class="modal-card-title">
+					<span class="icon"><i class="fas fa-file-code"></i></span>
+					<span id="cloudinit-modal-title">{ T("Admin.CloudInit.ViewYAML") }</span>
+				</p>
+				<button class="delete" aria-label="close" onclick="closeCloudInitModal()"></button>
+			</header>
+			<section class="modal-card-body" style="flex: 1; overflow-y: auto; min-height: 0;">
+				<pre class="has-background-black-bis has-text-white-bis p-3 is-size-7" style="margin: 0; height: 100%;" id="cloudinit-modal-content"></pre>
+			</section>
+			<footer class="modal-card-foot is-justify-content-flex-end">
+				<button class="button" type="button" onclick="closeCloudInitModal()">{ T("Common.Close") }</button>
+			</footer>
+		</div>
+	</div>
+}
+
+func vmCreateCloudInitFullScript(T TranslationFunc) string {
+	return `<script>
+(function() {
+	` + vmCreateCloudInitScriptVars(T) + `
+
+	function closeCloudInitModal() {
+		var modal = document.getElementById('cloudinit-yaml-modal');
+		if (modal) modal.classList.remove('is-active');
+	}
+	window.closeCloudInitModal = closeCloudInitModal;
+
+	async function viewCloudInitTemplate(id) {
+		if (!id) return;
+		try {
+			var response = await fetch('/api/cloudinit/template/' + encodeURIComponent(id), {
+				method: 'GET',
+				credentials: 'same-origin',
+				headers: { 'Accept': 'application/json' }
+			});
+			if (!response.ok) throw new Error('Failed to fetch template');
+			var data = await response.json();
+			var titleEl = document.getElementById('cloudinit-modal-title');
+			if (titleEl && data.name) titleEl.textContent = data.name;
+			var contentEl = document.getElementById('cloudinit-modal-content');
+			if (contentEl) contentEl.textContent = data.content || '';
+			var modal = document.getElementById('cloudinit-yaml-modal');
+			if (modal) modal.classList.add('is-active');
+		} catch (error) {
+			console.error('Error fetching cloud-init template:', error);
+			alert(fetchErrorMsg);
+		}
+	}
+
+	document.addEventListener('DOMContentLoaded', function() {
+		var templateSelect = document.getElementById('cloudinit_template');
+		var viewBtn = document.getElementById('cloudinit-view-template-btn');
+
+		if (templateSelect && viewBtn) {
+			function updateViewBtn() {
+				viewBtn.disabled = !templateSelect.value;
+			}
+			updateViewBtn();
+			templateSelect.addEventListener('change', updateViewBtn);
+
+			viewBtn.addEventListener('click', function(e) {
+				e.preventDefault();
+				var selectedId = templateSelect.value;
+				if (selectedId) viewCloudInitTemplate(selectedId);
+			});
+		}
+	});
+})();
+</script>`
+}
+
+templ vmCreateCloudInitScripts(T TranslationFunc) {
+	@templ.Raw(vmCreateCloudInitFullScript(T))
 }
