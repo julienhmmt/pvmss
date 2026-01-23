@@ -35,7 +35,7 @@ func renderVMCreateTempl(w http.ResponseWriter, r *http.Request, data map[string
 }
 
 // convertToVMCreateData converts the map[string]interface{} data to components.VMCreateData.
-func convertToVMCreateData(data map[string]interface{}, r *http.Request) components.VMCreateData {
+func convertToVMCreateData(data map[string]interface{}, _ *http.Request) components.VMCreateData {
 	result := components.VMCreateData{
 		FormData: components.VMCreateFormData{
 			DiskSizes:      make(map[int]string),

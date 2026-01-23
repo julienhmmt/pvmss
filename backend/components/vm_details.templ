@@ -256,7 +256,20 @@ func vmDetailsTagSelected(currentTags string, tag string) bool {
 }
 
 templ vmDetailsStatusBadge(status string, T TranslationFunc) {
-	<span class={ "tag", vmStatusClass(status) } id="vm-status-badge">
+	<span class={ "tag", vmStatusClass(status) } id="vm-status-badge" data-status={ status }>
+		{ vmStatusLabel(status, T) }
+	</span>
+}
+
+templ VMStatusBadgeHTMX(vmid int, status string, T TranslationFunc) {
+	<span
+		class={ "tag", vmStatusClass(status) }
+		id="vm-status-badge"
+		data-status={ status }
+		hx-get={ fmt.Sprintf("/api/vm/%d/status", vmid) }
+		hx-trigger="every 5s"
+		hx-swap="outerHTML"
+	>
 		{ vmStatusLabel(status, T) }
 	</span>
 }

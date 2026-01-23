@@ -1,0 +1,128 @@
+package components
+
+type ModalSize string
+
+const (
+	ModalSmall  ModalSize = "small"
+	ModalMedium ModalSize = "medium"
+	ModalLarge  ModalSize = "large"
+)
+
+type ModalProps struct {
+	ID          string
+	Title       string
+	Size        ModalSize
+	ShowClose   bool
+	Footer      templ.Component
+	Class       string
+}
+
+func modalSizeClass(size ModalSize) string {
+	switch size {
+	case ModalSmall:
+		return "is-small"
+	case ModalLarge:
+		return "is-large"
+	default:
+		return ""
+	}
+}
+
+templ Modal(props ModalProps) {
+	<div
+		id={ props.ID }
+		class={ "modal", props.Class }
+		x-data="{ open: false }"
+		x-show="open"
+		x-cloak
+		@keydown.escape.window="open = false"
+		role="dialog"
+		aria-modal="true"
+		if props.Title != "" {
+			aria-labelledby={ props.ID + "-title" }
+		}
+	>
+		<div class="modal-background" @click="open = false"></div>
+		<div class={ "modal-card", modalSizeClass(props.Size) }>
+			if props.Title != "" {
+				<header class="modal-card-head">
+					<p id={ props.ID + "-title" } class="modal-card-title">{ props.Title }</p>
+					if props.ShowClose {
+						<button class="delete" aria-label="close" @click="open = false" type="button"></button>
+					}
+				</header>
+			}
+			<section class="modal-card-body">
+				{ children... }
+			</section>
+			if props.Footer != nil {
+				<footer class="modal-card-foot">
+					@props.Footer
+				</footer>
+			}
+		</div>
+	</div>
+}
+
+templ ModalTrigger(modalID string) {
+	<span @click={ "$dispatch('open-modal', '" + modalID + "')" }>
+		{ children... }
+	</span>
+}
+
+type ConfirmModalProps struct {
+	ID            string
+	Title         string
+	Message       string
+	ConfirmText   string
+	CancelText    string
+	ConfirmAction string
+	IsDanger      bool
+	CSRFToken     string
+}
+
+templ ConfirmModal(props ConfirmModalProps) {
+	<div
+		id={ props.ID }
+		class="modal"
+		x-data="{ open: false }"
+		x-show="open"
+		x-cloak
+		@keydown.escape.window="open = false"
+		x-on:open-confirm.window="if ($event.detail === $el.id) open = true"
+		role="alertdialog"
+		aria-modal="true"
+		aria-labelledby={ props.ID + "-title" }
+		aria-describedby={ props.ID + "-desc" }
+	>
+		<div class="modal-background" @click="open = false"></div>
+		<div class="modal-card is-small">
+			<header class="modal-card-head">
+				<p id={ props.ID + "-title" } class="modal-card-title">
+					if props.IsDanger {
+						<span class="icon has-text-danger mr-2"><i class="fas fa-exclamation-triangle"></i></span>
+					}
+					{ props.Title }
+				</p>
+				<button class="delete" aria-label="close" @click="open = false" type="button"></button>
+			</header>
+			<section class="modal-card-body">
+				<p id={ props.ID + "-desc" }>{ props.Message }</p>
+			</section>
+			<footer class="modal-card-foot is-justify-content-flex-end">
+				<button class="button" @click="open = false" type="button">{ props.CancelText }</button>
+				<form action={ templ.SafeURL(props.ConfirmAction) } method="POST" class="is-inline">
+					if props.CSRFToken != "" {
+						<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+					}
+					<button
+						type="submit"
+						class={ "button", templ.KV("is-danger", props.IsDanger), templ.KV("is-primary", !props.IsDanger) }
+					>
+						{ props.ConfirmText }
+					</button>
+				</form>
+			</footer>
+		</div>
+	</div>
+}

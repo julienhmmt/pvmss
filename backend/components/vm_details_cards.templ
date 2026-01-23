@@ -104,7 +104,7 @@ templ vmDetailsHeader(data VMDetailsData, T TranslationFunc) {
 			</span>
 		</p>
 		<div class="card-header-icon">
-			@vmDetailsStatusBadge(data.VM.Status, T)
+			@VMStatusBadgeHTMX(data.VM.VMID, data.VM.Status, T)
 		</div>
 	</header>
 }
