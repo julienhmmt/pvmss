@@ -38,6 +38,10 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 			Capacity: constants.LoginRateLimitCapacity,
 			Refill:   constants.LoginRateLimitRefill,
 		})
+		rateLimiter.AddRule("POST", "/admin/proxmox-login", middleware.Rule{
+			Capacity: constants.LoginRateLimitCapacity,
+			Refill:   constants.LoginRateLimitRefill,
+		})
 	}
 
 	// Ensure default tag exists

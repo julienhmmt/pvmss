@@ -196,9 +196,15 @@ templ adminVMRow(vm AdminVMInfo, T TranslationFunc) {
 
 templ vmStatusBadge(status string) {
 	if status == "running" {
-		<span class="tag is-success">running</span>
+		<span class="tag is-success">
+			<span class="icon is-small"><i class="fas fa-play"></i></span>
+			<span>{ status }</span>
+		</span>
 	} else if status == "stopped" {
-		<span class="tag is-warning">stopped</span>
+		<span class="tag is-warning">
+			<span class="icon is-small"><i class="fas fa-stop"></i></span>
+			<span>{ status }</span>
+		</span>
 	} else {
 		<span class="tag is-light">{ status }</span>
 	}
