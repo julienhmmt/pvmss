@@ -3,7 +3,7 @@ name: pvmss
 description: Helm chart for the pvmss application
 type: application
 version: 0.2.0
-appVersion: "0.3.0"
+appVersion: "0.4.0"
 home: https://github.com/julienhmmt/pvmss
 sources:
   - https://github.com/julienhmmt/pvmss
