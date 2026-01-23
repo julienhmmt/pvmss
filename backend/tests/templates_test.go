@@ -132,12 +132,13 @@ func TestTemplComponentFilesNotEmpty(t *testing.T) {
 	}
 
 	var templFiles []string
-	filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".templ") {
 			templFiles = append(templFiles, path)
 		}
 		return nil
 	})
+	require.NoError(t, err, "Should be able to walk components directory")
 
 	require.NotEmpty(t, templFiles, "Should find at least one .templ file")
 
@@ -156,12 +157,13 @@ func TestTemplComponentFilesHaveValidSyntax(t *testing.T) {
 	}
 
 	var templFiles []string
-	filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".templ") {
 			templFiles = append(templFiles, path)
 		}
 		return nil
 	})
+	require.NoError(t, err, "Should be able to walk components directory")
 
 	for _, filePath := range templFiles {
 		content, err := os.ReadFile(filePath)
@@ -186,12 +188,13 @@ func TestTemplComponentFileNaming(t *testing.T) {
 	}
 
 	var templFiles []string
-	filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".templ") {
 			templFiles = append(templFiles, path)
 		}
 		return nil
 	})
+	require.NoError(t, err, "Should be able to walk components directory")
 
 	for _, filePath := range templFiles {
 		filename := filepath.Base(filePath)
@@ -211,12 +214,13 @@ func TestNoLegacyAdminHTMLTemplates(t *testing.T) {
 	}
 
 	var htmlFiles []string
-	filepath.Walk(frontendDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(frontendDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".html") {
 			htmlFiles = append(htmlFiles, path)
 		}
 		return nil
 	})
+	require.NoError(t, err, "Should be able to walk frontend directory")
 
 	adminTemplates := []string{}
 	for _, filePath := range htmlFiles {
@@ -264,12 +268,13 @@ func TestGeneratedTemplFilesExist(t *testing.T) {
 	}
 
 	var templFiles []string
-	filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(componentsDir, func(path string, info os.FileInfo, err error) error {
 		if err == nil && !info.IsDir() && strings.HasSuffix(path, ".templ") {
 			templFiles = append(templFiles, path)
 		}
 		return nil
 	})
+	require.NoError(t, err, "Should be able to walk components directory")
 
 	require.NotEmpty(t, templFiles, "Should find at least one .templ file")
 
