@@ -15,6 +15,21 @@ type LimitsSettings struct {
 	MaxSnapshots   int
 }
 
+type VMSettings struct {
+	SocketsMax int
+	CoresMax   int
+	RAMMin     int
+	RAMMax     int
+	DiskMin    int
+	DiskMax    int
+}
+
+type NodeSettings struct {
+	CoresMax int
+	RAMMin   int
+	RAMMax   int
+}
+
 type AdminLimitsData struct {
 	Username         string
 	Lang             string
@@ -25,6 +40,8 @@ type AdminLimitsData struct {
 	NodeUsage        map[string]*NodeUsage
 	Limits           map[string]interface{}
 	Settings         *LimitsSettings
+	VMSettings       *VMSettings
+	NodeSettings     *NodeSettings
 }
 
 templ AdminLimitsPage(data AdminLimitsData, T TranslationFunc) {
@@ -236,7 +253,7 @@ templ nodeLimitsForm(data AdminLimitsData, T TranslationFunc) {
 						<div class="field">
 							<label class="label">{ T("Common.Max") }</label>
 							<div class="control">
-								<input class="input" type="number" name="cores-max" value="1" min="1" step="1" placeholder="Max" disabled?={ data.Node == "" }/>
+								<input class="input" type="number" name="cores-max" value={ getNodeSettingStr(data.NodeSettings, "CoresMax", "1") } min="1" step="1" placeholder="Max" disabled?={ data.Node == "" }/>
 							</div>
 							<p class="help has-text-grey"><span class="tag is-light is-small">{ T("Admin.Limits.MinAlways1") }</span></p>
 						</div>
@@ -256,13 +273,13 @@ templ nodeLimitsForm(data AdminLimitsData, T TranslationFunc) {
 							<label class="label">{ T("Common.Range") }</label>
 							<div class="field has-addons">
 								<div class="control is-expanded">
-									<input id="node-ram-min" class="input" type="number" name="ram-min" value="1" min="1" step="1" placeholder="Min" disabled?={ data.Node == "" }/>
+									<input id="node-ram-min" class="input" type="number" name="ram-min" value={ getNodeSettingStr(data.NodeSettings, "RAMMin", "1") } min="1" step="1" placeholder="Min" disabled?={ data.Node == "" }/>
 								</div>
 								<div class="control">
 									<span class="button">-</span>
 								</div>
 								<div class="control is-expanded">
-									<input id="node-ram-max" class="input" type="number" name="ram-max" value="1" min="1" step="1" placeholder="Max" disabled?={ data.Node == "" }/>
+									<input id="node-ram-max" class="input" type="number" name="ram-max" value={ getNodeSettingStr(data.NodeSettings, "RAMMax", "1") } min="1" step="1" placeholder="Max" disabled?={ data.Node == "" }/>
 								</div>
 								<div class="control">
 									<div class="select">
@@ -317,16 +334,16 @@ templ vmLimitsSection(data AdminLimitsData, T TranslationFunc) {
 			<input type="hidden" name="entityId" value="vm"/>
 			<div class="columns is-multiline">
 				<div class="column is-4">
-					@vmLimitCard("Sockets", "fas fa-microchip", "has-text-primary", "sockets-max", "2", T)
+					@vmLimitCard("Sockets", "fas fa-microchip", "has-text-primary", "sockets-max", getVMSettingStr(data.VMSettings, "SocketsMax", "1"), T)
 				</div>
 				<div class="column is-4">
-					@vmLimitCard("Cores", "fas fa-microchip", "has-text-warning", "cores-max", "32", T)
+					@vmLimitCard("Cores", "fas fa-microchip", "has-text-warning", "cores-max", getVMSettingStr(data.VMSettings, "CoresMax", "2"), T)
 				</div>
 				<div class="column is-4">
-					@vmLimitRangeCard("Memory", "fas fa-memory", "has-text-info", "vm-ram", "1", "64", T)
+					@vmLimitRangeCard("Memory", "fas fa-memory", "has-text-info", "vm-ram", getVMSettingStr(data.VMSettings, "RAMMin", "1"), getVMSettingStr(data.VMSettings, "RAMMax", "4"), T)
 				</div>
 				<div class="column is-4">
-					@vmLimitRangeCardDisk("Disk", "fas fa-hdd", "has-text-success", "vm-disk", "10", "500", T)
+					@vmLimitRangeCardDisk("Disk", "fas fa-hdd", "has-text-success", "vm-disk", getVMSettingStr(data.VMSettings, "DiskMin", "10"), getVMSettingStr(data.VMSettings, "DiskMax", "100"), T)
 				</div>
 			</div>
 			<div class="card mt-5">
@@ -517,6 +534,54 @@ func getSettingOrDefault(settings *LimitsSettings, field string, defaultVal int)
 		}
 	}
 	return defaultVal
+}
+
+func getVMSettingStr(settings *VMSettings, field string, defaultVal string) string {
+	if settings == nil {
+		return defaultVal
+	}
+	var val int
+	switch field {
+	case "SocketsMax":
+		val = settings.SocketsMax
+	case "CoresMax":
+		val = settings.CoresMax
+	case "RAMMin":
+		val = settings.RAMMin
+	case "RAMMax":
+		val = settings.RAMMax
+	case "DiskMin":
+		val = settings.DiskMin
+	case "DiskMax":
+		val = settings.DiskMax
+	default:
+		return defaultVal
+	}
+	if val <= 0 {
+		return defaultVal
+	}
+	return fmt.Sprintf("%d", val)
+}
+
+func getNodeSettingStr(settings *NodeSettings, field string, defaultVal string) string {
+	if settings == nil {
+		return defaultVal
+	}
+	var val int
+	switch field {
+	case "CoresMax":
+		val = settings.CoresMax
+	case "RAMMin":
+		val = settings.RAMMin
+	case "RAMMax":
+		val = settings.RAMMax
+	default:
+		return defaultVal
+	}
+	if val <= 0 {
+		return defaultVal
+	}
+	return fmt.Sprintf("%d", val)
 }
 
 templ limitsScripts() {

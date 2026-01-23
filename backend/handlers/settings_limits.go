@@ -165,19 +165,39 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Build Templ data
+	selectedNode := r.URL.Query().Get("node")
 	limitsTemplData := components.AdminLimitsData{
 		Username:         getUsernameFromSession(r),
 		Lang:             i18n.GetLanguage(r),
 		CSRFToken:        getCSRFTokenFromContext(r),
 		ProxmoxConnected: proxmoxConnected,
-		Node:             r.URL.Query().Get("node"),
+		Node:             selectedNode,
 		NodeNames:        nodeNames,
 		NodeUsage:        templNodeUsage,
 		Limits:           limitsData,
 		Settings: &components.LimitsSettings{
-			MaxVMPerUser: 0, // Not in current settings structure
+			MaxVMPerUser: settings.MaxVMPerUser,
 			MaxSnapshots: settings.Limits.MaxSnapshots,
 		},
+		VMSettings: &components.VMSettings{
+			SocketsMax: settings.Limits.VM.Sockets.Max,
+			CoresMax:   settings.Limits.VM.Cores.Max,
+			RAMMin:     settings.Limits.VM.RAM.Min,
+			RAMMax:     settings.Limits.VM.RAM.Max,
+			DiskMin:    settings.Limits.VM.Disk.Min,
+			DiskMax:    settings.Limits.VM.Disk.Max,
+		},
+	}
+
+	// Populate NodeSettings if a node is selected and has limits configured
+	if selectedNode != "" && settings.Limits.Nodes != nil {
+		if nodeLimits, ok := settings.Limits.Nodes[selectedNode]; ok {
+			limitsTemplData.NodeSettings = &components.NodeSettings{
+				CoresMax: nodeLimits.Cores.Max,
+				RAMMin:   nodeLimits.RAM.Min,
+				RAMMax:   nodeLimits.RAM.Max,
+			}
+		}
 	}
 
 	T := getTranslationFunc(r)

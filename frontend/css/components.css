@@ -1195,23 +1195,28 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
     transform var(--notification-dismiss-duration) ease;
 }
 
-.notification[data-tone="success"] {
+.notification[data-notification-type="success"],
+.notification.is-success {
   --notification-accent-color: #16a34a;
   --notification-accent-color-fade: rgb(22 163 74 / 60%);
+  color: #155724;
 }
 
-.notification[data-tone="warning"] {
+.notification[data-notification-type="warning"],
+.notification.is-warning {
   --notification-accent-color: #f59e0b;
   --notification-accent-color-fade: rgb(245 158 11 / 60%);
 }
 
-.notification[data-tone="danger"],
-.notification[data-tone="error"] {
+.notification[data-notification-type="danger"],
+.notification[data-notification-type="error"],
+.notification.is-danger {
   --notification-accent-color: #dc2626;
   --notification-accent-color-fade: rgb(220 38 38 / 60%);
 }
 
-.notification[data-tone="info"] {
+.notification[data-notification-type="info"],
+.notification.is-info {
   --notification-accent-color: var(--info);
   --notification-accent-color-fade: rgb(255 136 0 / 60%);
 }
@@ -1220,16 +1225,19 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   --notification-icon-bg: var(--info-light);
 }
 
-.notification[data-tone="success"].is-light {
+.notification[data-notification-type="success"].is-light,
+.notification.is-success.is-light {
   --notification-icon-bg: rgb(22 163 74 / 12%);
 }
 
-.notification[data-tone="warning"].is-light {
+.notification[data-notification-type="warning"].is-light,
+.notification.is-warning.is-light {
   --notification-icon-bg: rgb(245 158 11 / 14%);
 }
 
-.notification[data-tone="danger"].is-light,
-.notification[data-tone="error"].is-light {
+.notification[data-notification-type="danger"].is-light,
+.notification[data-notification-type="error"].is-light,
+.notification.is-danger.is-light {
   --notification-icon-bg: rgb(220 38 38 / 12%);
 }
 
