@@ -67,28 +67,24 @@ templ profileHeader(T TranslationFunc) {
 }
 
 templ profileHeaderActions(T TranslationFunc) {
-	<div class="buttons are-small">
+	<div class="buttons">
 		@Button(ButtonProps{
 			Text: T("Profile.CreateVM"),
 			Icon: "fas fa-plus-square",
 			Href: "/vm/create",
 			Type: ButtonPrimary,
-			Size: ButtonSmall,
 		})
 		@Button(ButtonProps{
-			Text: T("Profile.SearchVM"),
-			Icon: "fas fa-search",
-			Href: "/search",
-			Type: ButtonPrimary,
-			Size: ButtonSmall,
-			Class: "is-light has-text-dark",
+			Text:  T("Profile.SearchVM"),
+			Icon:  "fas fa-search",
+			Href:  "/search",
+			Type:  ButtonLight,
 		})
 		@Button(ButtonProps{
 			Text:  T("Common.Refresh"),
 			Icon:  "fas fa-sync-alt",
 			Href:  "/profile?refresh=1",
 			Type:  ButtonLight,
-			Size:  ButtonSmall,
 			ID:    "profile-refresh-button",
 			Title: T("Common.Refresh"),
 		})
@@ -273,8 +269,8 @@ templ profileVMsTableAlpine(vms []ProfileVM, T TranslationFunc) {
 							<span :class="'tag is-' + getStatusClass(vm.status)" x-text="vm.status || ''"></span>
 						</td>
 						<td class="has-text-centered is-vcentered">
-							<div class="buttons are-small is-centered">
-								<a :href="'/vm/details/' + vm.vmid" class="button is-primary is-small">
+							<div class="buttons is-centered">
+								<a :href="'/vm/details/' + vm.vmid" class="button is-primary">
 									<span class="icon"><i class="fas fa-eye"></i></span>
 									<span>{ T("Profile.ViewDetails") }</span>
 								</a>
@@ -345,11 +341,11 @@ templ profileVMsTable(vms []ProfileVM, T TranslationFunc) {
 						</td>
 						<td class="has-text-centered is-vcentered">
 							<div class="buttons is-centered mb-0">
-								<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d", vm.VMID)) } class="button is-small is-primary" title={ T("Profile.ViewDetails") }>
+								<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d", vm.VMID)) } class="button is-primary" title={ T("Profile.ViewDetails") }>
 									<span class="icon"><i class="fas fa-eye"></i></span>
 									<span>{ T("Profile.ViewDetails") }</span>
 								</a>
-								<a href={ templ.SafeURL(fmt.Sprintf("/vm/delete/%d", vm.VMID)) } class="button is-small is-danger has-text-white" title={ T("Profile.Delete") }>
+								<a href={ templ.SafeURL(fmt.Sprintf("/vm/delete/%d", vm.VMID)) } class="button is-danger" title={ T("Profile.Delete") }>
 									<span class="icon"><i class="fas fa-trash-alt"></i></span>
 									<span>{ T("Profile.Delete") }</span>
 								</a>
@@ -509,14 +505,14 @@ templ profilePasswordForm(csrfToken string, T TranslationFunc) {
 				<hr class="my-3"/>
 				<div class="field is-grouped is-grouped-right">
 					<div class="control">
-						<a href="/profile" class="button is-small is-light">
-							<span class="icon is-small"><i class="fas fa-times"></i></span>
+						<a href="/profile" class="button is-light">
+							<span class="icon"><i class="fas fa-times"></i></span>
 							<span>{ T("Common.Cancel") }</span>
 						</a>
 					</div>
 					<div class="control">
-						<button type="submit" class="button is-small is-primary">
-							<span class="icon is-small"><i class="fas fa-check"></i></span>
+						<button type="submit" class="button is-primary">
+							<span class="icon"><i class="fas fa-check"></i></span>
 							<span>{ T("Profile.UpdatePassword") }</span>
 						</button>
 					</div>

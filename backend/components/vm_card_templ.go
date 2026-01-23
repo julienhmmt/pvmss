@@ -192,7 +192,6 @@ func VMCard(vm VM) templ.Component {
 			Icon:  "fas fa-eye",
 			Href:  fmt.Sprintf("/vm/%d", vm.VMID),
 			Type:  ButtonPrimary,
-			Size:  ButtonSmall,
 			Class: "card-footer-item",
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -203,7 +202,6 @@ func VMCard(vm VM) templ.Component {
 				Text:  "Arrêter",
 				Icon:  "fas fa-stop",
 				Type:  ButtonDanger,
-				Size:  ButtonSmall,
 				Class: "card-footer-item",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
@@ -214,7 +212,6 @@ func VMCard(vm VM) templ.Component {
 				Text:  "Démarrer",
 				Icon:  "fas fa-play",
 				Type:  ButtonSuccess,
-				Size:  ButtonSmall,
 				Class: "card-footer-item",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {

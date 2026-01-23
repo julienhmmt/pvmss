@@ -85,7 +85,7 @@ func vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</p><div style=\"margin-top: 0.75rem;\"><div class=\"buttons\"><button class=\"button is-small is-success\" id=\"start-vm-button\"><span class=\"icon is-small\"><i class=\"fas fa-play\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</p><div style=\"margin-top: 0.75rem;\"><div class=\"buttons\"><button class=\"button is-success\" id=\"start-vm-button\"><span class=\"icon\"><i class=\"fas fa-play\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -98,7 +98,7 @@ func vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></button> <button class=\"button is-small is-info\" id=\"open-console-button\"><span class=\"icon is-small\"><i class=\"fas fa-terminal\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span></button> <button class=\"button is-info\" id=\"open-console-button\"><span class=\"icon\"><i class=\"fas fa-terminal\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -111,7 +111,7 @@ func vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) templ.Com
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span></button> <button class=\"button is-small is-primary\" id=\"edit-resources-button\"><span class=\"icon is-small\"><i class=\"fas fa-sliders\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span></button> <button class=\"button is-primary\" id=\"edit-resources-button\"><span class=\"icon\"><i class=\"fas fa-sliders\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2760,116 +2760,142 @@ func vmDetailsSnapshotItem(snap SnapshotInfo, data VMDetailsData, T TranslationF
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 249, "\"> <button type=\"submit\" class=\"button is-warning is-small\" data-confirm=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 249, "\"> <button type=\"submit\" class=\"button is-warning is-outlined\" data-confirm=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var150 string
 			templ_7745c5c3_Var150, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.ConfirmRollback"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 794, Col: 117}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 794, Col: 120}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var150))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 250, "\"><span class=\"icon is-small\"><i class=\"fas fa-undo\"></i></span> <span class=\"is-hidden-mobile\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 250, "\" title=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var151 string
 			templ_7745c5c3_Var151, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.Rollback"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 796, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 794, Col: 164}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var151))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 251, "</span></button></form><form method=\"POST\" action=\"/vm/snapshot/delete\" class=\"is-inline\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 251, "\"><span class=\"icon\"><i class=\"fas fa-undo\"></i></span> <span class=\"is-hidden-mobile\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var152 string
-			templ_7745c5c3_Var152, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
+			templ_7745c5c3_Var152, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.Rollback"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 800, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 796, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var152))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 252, "\"> <input type=\"hidden\" name=\"vmid\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 252, "</span></button></form><form method=\"POST\" action=\"/vm/snapshot/delete\" class=\"is-inline\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var153 string
-			templ_7745c5c3_Var153, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VM.VMID))
+			templ_7745c5c3_Var153, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 801, Col: 72}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 800, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var153))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 253, "\"> <input type=\"hidden\" name=\"node\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 253, "\"> <input type=\"hidden\" name=\"vmid\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var154 string
-			templ_7745c5c3_Var154, templ_7745c5c3_Err = templ.JoinStringErrs(data.VM.Node)
+			templ_7745c5c3_Var154, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VM.VMID))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 802, Col: 58}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 801, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var154))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 254, "\"> <input type=\"hidden\" name=\"snapshot_name\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 254, "\"> <input type=\"hidden\" name=\"node\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var155 string
-			templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.JoinStringErrs(snap.Name)
+			templ_7745c5c3_Var155, templ_7745c5c3_Err = templ.JoinStringErrs(data.VM.Node)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 803, Col: 64}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 802, Col: 58}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var155))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 255, "\"> <button type=\"submit\" class=\"button is-danger is-small\" data-confirm=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 255, "\"> <input type=\"hidden\" name=\"snapshot_name\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var156 string
-			templ_7745c5c3_Var156, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.ConfirmDelete"))
+			templ_7745c5c3_Var156, templ_7745c5c3_Err = templ.JoinStringErrs(snap.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 804, Col: 114}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 803, Col: 64}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var156))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 256, "\"><span class=\"icon is-small\"><i class=\"fas fa-trash\"></i></span> <span class=\"is-hidden-mobile\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 256, "\"> <button type=\"submit\" class=\"button is-danger is-outlined\" data-confirm=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var157 string
-			templ_7745c5c3_Var157, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.Delete"))
+			templ_7745c5c3_Var157, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.ConfirmDelete"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 806, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 804, Col: 117}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var157))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 257, "</span></button></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 257, "\" title=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var158 string
+			templ_7745c5c3_Var158, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.Delete"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 804, Col: 159}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var158))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 258, "\"><span class=\"icon\"><i class=\"fas fa-trash\"></i></span> <span class=\"is-hidden-mobile\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var159 string
+			templ_7745c5c3_Var159, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Snapshots.Delete"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 806, Col: 70}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var159))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 259, "</span></button></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 258, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 260, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2893,64 +2919,64 @@ func vmDetailsConsoleModal(data VMDetailsData, T TranslationFunc) templ.Componen
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var158 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var158 == nil {
-			templ_7745c5c3_Var158 = templ.NopComponent
+		templ_7745c5c3_Var160 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var160 == nil {
+			templ_7745c5c3_Var160 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 259, "<div id=\"console-modal\" class=\"modal\" x-data=\"{ isOpen: false }\" :class=\"{ 'is-active': isOpen }\" @open-console.window=\"isOpen = true\" @close-console.window=\"isOpen = false\" @keydown.escape.window=\"if(isOpen) { isOpen = false; $dispatch('console-closed') }\"><div class=\"modal-background\" @click=\"isOpen = false; $dispatch('console-closed')\"></div><div class=\"modal-card\" style=\"width: 95vw; max-width: 1400px; height: 90vh;\"><header class=\"modal-card-head\"><p id=\"console-title\" class=\"modal-card-title\"><span class=\"icon-text\"><span class=\"icon\"><i class=\"fas fa-terminal\"></i></span> <span>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var159 string
-		templ_7745c5c3_Var159, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.Title"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 822, Col: 42}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var159))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 260, "</span></span></p><button id=\"console-close\" class=\"delete\" aria-label=\"close\" @click=\"isOpen = false; $dispatch('console-closed')\"></button></header><section class=\"modal-card-body\" style=\"padding: 0; overflow: hidden; position: relative;\"><div id=\"console-status\" style=\"position: absolute; top: 0; left: 0; right: 0; padding: 0.75rem; background: #f5f5f5; border-bottom: 1px solid #dbdbdb; z-index: 10; display: flex; align-items: center; gap: 0.5rem;\"><span class=\"icon\"><i class=\"fas fa-info-circle\"></i></span> <span id=\"console-status-text\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var160 string
-		templ_7745c5c3_Var160, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.Connecting"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 830, Col: 71}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var160))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 261, "</span></div><div id=\"console-container\" style=\"width: 100%; height: 100%; padding-top: 3rem;\"></div></section><footer class=\"modal-card-foot is-justify-content-space-between\"><div class=\"buttons\"><button id=\"console-ctrl-alt-del\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-keyboard\"></i></span> <span>Ctrl+Alt+Del</span></button> <button id=\"console-scale-toggle\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-expand-arrows-alt\"></i></span> <span>Scale: On</span></button></div><div class=\"buttons\"><button id=\"console-disconnect\" class=\"button\" @click=\"isOpen = false; $dispatch('console-closed')\"><span class=\"icon\"><i class=\"fas fa-times\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 261, "<div id=\"console-modal\" class=\"modal\" x-data=\"{ isOpen: false }\" :class=\"{ 'is-active': isOpen }\" @open-console.window=\"isOpen = true\" @close-console.window=\"isOpen = false\" @keydown.escape.window=\"if(isOpen) { isOpen = false; $dispatch('console-closed') }\"><div class=\"modal-background\" @click=\"isOpen = false; $dispatch('console-closed')\"></div><div class=\"modal-card\" style=\"width: 95vw; max-width: 1400px; height: 90vh;\"><header class=\"modal-card-head\"><p id=\"console-title\" class=\"modal-card-title\"><span class=\"icon-text\"><span class=\"icon\"><i class=\"fas fa-terminal\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var161 string
-		templ_7745c5c3_Var161, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Close"))
+		templ_7745c5c3_Var161, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.Title"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 848, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 822, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var161))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 262, "</span></button> <button id=\"console-fullscreen\" class=\"button is-primary\" disabled><span class=\"icon\"><i class=\"fas fa-expand\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 262, "</span></span></p><button id=\"console-close\" class=\"delete\" aria-label=\"close\" @click=\"isOpen = false; $dispatch('console-closed')\"></button></header><section class=\"modal-card-body\" style=\"padding: 0; overflow: hidden; position: relative;\"><div id=\"console-status\" style=\"position: absolute; top: 0; left: 0; right: 0; padding: 0.75rem; background: #f5f5f5; border-bottom: 1px solid #dbdbdb; z-index: 10; display: flex; align-items: center; gap: 0.5rem;\"><span class=\"icon\"><i class=\"fas fa-info-circle\"></i></span> <span id=\"console-status-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var162 string
-		templ_7745c5c3_Var162, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.Fullscreen"))
+		templ_7745c5c3_Var162, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.Connecting"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 852, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 830, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var162))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 263, "</span></button></div></footer></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 263, "</span></div><div id=\"console-container\" style=\"width: 100%; height: 100%; padding-top: 3rem;\"></div></section><footer class=\"modal-card-foot is-justify-content-space-between\"><div class=\"buttons\"><button id=\"console-ctrl-alt-del\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-keyboard\"></i></span> <span>Ctrl+Alt+Del</span></button> <button id=\"console-scale-toggle\" class=\"button is-light\" disabled><span class=\"icon\"><i class=\"fas fa-expand-arrows-alt\"></i></span> <span>Scale: On</span></button></div><div class=\"buttons\"><button id=\"console-disconnect\" class=\"button\" @click=\"isOpen = false; $dispatch('console-closed')\"><span class=\"icon\"><i class=\"fas fa-times\"></i></span> <span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var163 string
+		templ_7745c5c3_Var163, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Close"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 848, Col: 31}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var163))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, "</span></button> <button id=\"console-fullscreen\" class=\"button is-primary\" disabled><span class=\"icon\"><i class=\"fas fa-expand\"></i></span> <span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var164 string
+		templ_7745c5c3_Var164, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.Fullscreen"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 852, Col: 47}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var164))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, "</span></button></div></footer></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2974,129 +3000,129 @@ func vmDetailsScripts(data VMDetailsData, T TranslationFunc) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var163 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var163 == nil {
-			templ_7745c5c3_Var163 = templ.NopComponent
+		templ_7745c5c3_Var165 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var165 == nil {
+			templ_7745c5c3_Var165 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 264, "<div id=\"vm-details-config\" data-vmid=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var164 string
-		templ_7745c5c3_Var164, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VM.VMID))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 67}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var164))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 265, "\" data-node=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var165 string
-		templ_7745c5c3_Var165, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.VM.Node))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 112}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var165))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, "\" data-status=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 266, "<div id=\"vm-details-config\" data-vmid=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var166 string
-		templ_7745c5c3_Var166, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.VM.Status))
+		templ_7745c5c3_Var166, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(data.VM.VMID))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 161}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var166))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 267, "\" data-error-message=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 267, "\" data-node=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var167 string
-		templ_7745c5c3_Var167, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.ErrorMessage))
+		templ_7745c5c3_Var167, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.VM.Node))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 220}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 112}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var167))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 268, "\" data-success-message=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 268, "\" data-status=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var168 string
-		templ_7745c5c3_Var168, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.SuccessMessage))
+		templ_7745c5c3_Var168, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.VM.Status))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 283}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 161}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var168))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 269, "\" data-warning-message=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 269, "\" data-error-message=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var169 string
-		templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.WarningMessage))
+		templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.ErrorMessage))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 346}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 220}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var169))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 270, "\" data-console-must-be-running=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 270, "\" data-success-message=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var170 string
-		templ_7745c5c3_Var170, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.MustBeRunning"))
+		templ_7745c5c3_Var170, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.SuccessMessage))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 416}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 283}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var170))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 271, "\" data-console-unavailable=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 271, "\" data-warning-message=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var171 string
-		templ_7745c5c3_Var171, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.TemporarilyUnavailable"))
+		templ_7745c5c3_Var171, templ_7745c5c3_Err = templ.JoinStringErrs(templ.JSONString(data.WarningMessage))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 491}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 346}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var171))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 272, "\" data-console-not-found=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 272, "\" data-console-must-be-running=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var172 string
-		templ_7745c5c3_Var172, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.ButtonNotFound"))
+		templ_7745c5c3_Var172, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.MustBeRunning"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 556}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 416}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var172))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 273, "\" style=\"display: none;\"></div><div id=\"vm-details-content\" x-data=\"vmDetails()\" x-init=\"init()\"></div><script src=\"/js/vm-details-alpine.js\"></script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 273, "\" data-console-unavailable=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var173 string
+		templ_7745c5c3_Var173, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.TemporarilyUnavailable"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 491}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var173))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 274, "\" data-console-not-found=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var174 string
+		templ_7745c5c3_Var174, templ_7745c5c3_Err = templ.JoinStringErrs(T("VMDetails.Console.ButtonNotFound"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/vm_details_cards.templ`, Line: 861, Col: 556}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var174))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 275, "\" style=\"display: none;\"></div><div id=\"vm-details-content\" x-data=\"vmDetails()\" x-init=\"init()\"></div><script src=\"/js/vm-details-alpine.js\"></script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

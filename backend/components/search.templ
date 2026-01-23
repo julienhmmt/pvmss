@@ -40,21 +40,18 @@ templ searchHeader(T TranslationFunc) {
 }
 
 templ searchHeaderActions(T TranslationFunc) {
-	<div class="buttons are-small">
+	<div class="buttons">
 		@Button(ButtonProps{
 			Text: T("Profile.CreateVM"),
 			Icon: "fas fa-plus-square",
 			Href: "/vm/create",
 			Type: ButtonPrimary,
-			Size: ButtonSmall,
 		})
 		@Button(ButtonProps{
 			Text: T("Profile.MyProfile"),
 			Icon: "fas fa-user",
 			Href: "/profile",
-			Type: ButtonPrimary,
-			Size: ButtonSmall,
-			Class: "is-light has-text-dark",
+			Type: ButtonLight,
 		})
 	</div>
 }
@@ -231,7 +228,7 @@ templ searchResultsCardAlpine(T TranslationFunc) {
 											</template>
 										</td>
 										<td class="has-text-centered">
-											<a :href="'/vm/details/' + vm.vmid" class="button is-small is-primary">
+											<a :href="'/vm/details/' + vm.vmid" class="button is-primary">
 												<span class="icon"><i class="fas fa-eye"></i></span>
 												<span>{ T("Search.Details") }</span>
 											</a>

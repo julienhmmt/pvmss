@@ -58,16 +58,16 @@ templ vmDetailsCelebrationBanner(data VMDetailsData, T TranslationFunc) {
 				</p>
 				<div style="margin-top: 0.75rem;">
 					<div class="buttons">
-						<button class="button is-small is-success" id="start-vm-button">
-							<span class="icon is-small"><i class="fas fa-play"></i></span>
+						<button class="button is-success" id="start-vm-button">
+							<span class="icon"><i class="fas fa-play"></i></span>
 							<span>{ T("VMDetails.Celebration.StartNow") }</span>
 						</button>
-						<button class="button is-small is-info" id="open-console-button">
-							<span class="icon is-small"><i class="fas fa-terminal"></i></span>
+						<button class="button is-info" id="open-console-button">
+							<span class="icon"><i class="fas fa-terminal"></i></span>
 							<span>{ T("VMDetails.Celebration.OpenConsole") }</span>
 						</button>
-						<button class="button is-small is-primary" id="edit-resources-button">
-							<span class="icon is-small"><i class="fas fa-sliders"></i></span>
+						<button class="button is-primary" id="edit-resources-button">
+							<span class="icon"><i class="fas fa-sliders"></i></span>
 							<span>{ T("VMDetails.Celebration.EditResources") }</span>
 						</button>
 					</div>
@@ -791,8 +791,8 @@ templ vmDetailsSnapshotItem(snap SnapshotInfo, data VMDetailsData, T Translation
 					<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
 					<input type="hidden" name="node" value={ data.VM.Node }/>
 					<input type="hidden" name="snapshot_name" value={ snap.Name }/>
-					<button type="submit" class="button is-warning is-small" data-confirm={ T("VMDetails.Snapshots.ConfirmRollback") }>
-						<span class="icon is-small"><i class="fas fa-undo"></i></span>
+					<button type="submit" class="button is-warning is-outlined" data-confirm={ T("VMDetails.Snapshots.ConfirmRollback") } title={ T("VMDetails.Snapshots.Rollback") }>
+						<span class="icon"><i class="fas fa-undo"></i></span>
 						<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Rollback") }</span>
 					</button>
 				</form>
@@ -801,8 +801,8 @@ templ vmDetailsSnapshotItem(snap SnapshotInfo, data VMDetailsData, T Translation
 					<input type="hidden" name="vmid" value={ strconv.Itoa(data.VM.VMID) }/>
 					<input type="hidden" name="node" value={ data.VM.Node }/>
 					<input type="hidden" name="snapshot_name" value={ snap.Name }/>
-					<button type="submit" class="button is-danger is-small" data-confirm={ T("VMDetails.Snapshots.ConfirmDelete") }>
-						<span class="icon is-small"><i class="fas fa-trash"></i></span>
+					<button type="submit" class="button is-danger is-outlined" data-confirm={ T("VMDetails.Snapshots.ConfirmDelete") } title={ T("VMDetails.Snapshots.Delete") }>
+						<span class="icon"><i class="fas fa-trash"></i></span>
 						<span class="is-hidden-mobile">{ T("VMDetails.Snapshots.Delete") }</span>
 					</button>
 				</form>

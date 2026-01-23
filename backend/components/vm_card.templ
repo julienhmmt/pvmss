@@ -86,7 +86,6 @@ templ VMCard(vm VM) {
 				Icon: "fas fa-eye",
 				Href: fmt.Sprintf("/vm/%d", vm.VMID),
 				Type: ButtonPrimary,
-				Size: ButtonSmall,
 				Class: "card-footer-item",
 			})
 			if vm.IsRunning() {
@@ -94,7 +93,6 @@ templ VMCard(vm VM) {
 					Text: "Arrêter",
 					Icon: "fas fa-stop",
 					Type: ButtonDanger,
-					Size: ButtonSmall,
 					Class: "card-footer-item",
 				})
 			} else {
@@ -102,7 +100,6 @@ templ VMCard(vm VM) {
 					Text: "Démarrer",
 					Icon: "fas fa-play",
 					Type: ButtonSuccess,
-					Size: ButtonSmall,
 					Class: "card-footer-item",
 				})
 			}
