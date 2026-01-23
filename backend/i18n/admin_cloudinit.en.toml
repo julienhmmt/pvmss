@@ -8,6 +8,18 @@ other = "Manage cloud-init configuration templates for VM initialization"
 other = "SFTP Status"
 ["Admin.CloudInit.SFTPStatusHelp"]
 other = "This status indicates whether SFTP is enabled for cloud-init templates"
+["Admin.CloudInit.SFTPDisabled"]
+other = "SFTP upload is disabled. Templates will be stored locally only."
+["Admin.CloudInit.SFTPDocsLink"]
+other = "Learn how to configure SFTP"
+["Admin.CloudInit.SFTPConfigured"]
+other = "SFTP configured and ready"
+["Admin.CloudInit.SFTPKeyNotFound"]
+other = "Private key file not found"
+["Admin.CloudInit.SFTPHostNotConfigured"]
+other = "SFTP host not configured"
+["Admin.CloudInit.SFTPSettingsUnavailable"]
+other = "Settings not available"
 
 # Page sections
 ["Admin.CloudInit.TemplatesList"]

@@ -117,7 +117,7 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 	}
 
 	// Check SFTP configuration status
-	sftpStatus := h.getSFTPStatus(settings)
+	sftpStatus := h.getSFTPStatus(settings, r)
 
 	// Build template data using functional options pattern
 	opts := []TemplateOption{
@@ -567,11 +567,13 @@ type SFTPStatus struct {
 }
 
 // getSFTPStatus checks the SFTP configuration and returns status information.
-func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings) SFTPStatus {
+func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings, r *http.Request) SFTPStatus {
+	localizer := i18n.GetLocalizerFromRequest(r)
+
 	if settings == nil {
 		return SFTPStatus{
 			Enabled:    false,
-			StatusText: "Settings not available",
+			StatusText: i18n.Localize(localizer, "Admin.CloudInit.SFTPSettingsUnavailable"),
 			StatusType: "danger",
 		}
 	}
@@ -580,7 +582,7 @@ func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings) SFTPStatus
 	if !cfg.Enabled {
 		return SFTPStatus{
 			Enabled:    false,
-			StatusText: "SFTP upload disabled",
+			StatusText: i18n.Localize(localizer, "Admin.CloudInit.SFTPDisabled"),
 			StatusType: "warning",
 		}
 	}
@@ -601,13 +603,13 @@ func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings) SFTPStatus
 	}
 
 	if !keyExists {
-		status.StatusText = "Private key file not found"
+		status.StatusText = i18n.Localize(localizer, "Admin.CloudInit.SFTPKeyNotFound")
 		status.StatusType = "danger"
 	} else if cfg.Host == "" {
-		status.StatusText = "SFTP host not configured"
+		status.StatusText = i18n.Localize(localizer, "Admin.CloudInit.SFTPHostNotConfigured")
 		status.StatusType = "danger"
 	} else {
-		status.StatusText = "SFTP configured and ready"
+		status.StatusText = i18n.Localize(localizer, "Admin.CloudInit.SFTPConfigured")
 		status.StatusType = "success"
 	}
 

@@ -156,7 +156,7 @@ func adminCloudInitContent(data AdminCloudInitData, T TranslationFunc) templ.Com
 			}
 		}
 		if data.HasProxmoxSession {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"mb-4\"><a href=\"#create-form\" class=\"button is-primary is-small\"><span class=\"icon\"><i class=\"fas fa-plus\"></i></span> <span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"mb-4\"><a href=\"#create-form\" class=\"button is-primary\"><span class=\"icon\"><i class=\"fas fa-plus\"></i></span> <span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -527,7 +527,7 @@ func templatesListSection(data AdminCloudInitData, T TranslationFunc) templ.Comp
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p><p class=\"mt-2\"><a href=\"#create-form\" class=\"button is-primary is-small\"><span class=\"icon\"><i class=\"fas fa-plus\"></i></span> <span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</p><p class=\"mt-2\"><a href=\"#create-form\" class=\"button is-primary\"><span class=\"icon\"><i class=\"fas fa-plus\"></i></span> <span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -651,7 +651,7 @@ func templateRow(tpl CloudInitTemplate, hasSession bool, csrfToken string, T Tra
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</td><td class=\"has-text-right\"><div class=\"buttons are-small is-right\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</td><td class=\"has-text-right\"><div class=\"buttons is-right\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -687,175 +687,201 @@ func templateRow(tpl CloudInitTemplate, hasSession bool, csrfToken string, T Tra
 				return templ_7745c5c3_Err
 			}
 			if tpl.Enabled {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<input type=\"hidden\" name=\"action\" value=\"disable\"> <button type=\"submit\" class=\"button is-success is-light is-small\" title=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<input type=\"hidden\" name=\"action\" value=\"disable\"> <button type=\"submit\" class=\"button is-success is-light\" title=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var33 string
 				templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Disable"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 209, Col: 100}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 209, Col: 91}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\"><span class=\"icon\"><i class=\"fas fa-toggle-on\"></i></span></button>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<input type=\"hidden\" name=\"action\" value=\"enable\"> <button type=\"submit\" class=\"button is-ghost is-small\" title=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\"><span class=\"icon\"><i class=\"fas fa-toggle-on\"></i></span> <span>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var34 string
-				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Enable"))
+				templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Enabled"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 214, Col: 88}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 211, Col: 35}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "\"><span class=\"icon\"><i class=\"fas fa-toggle-off\"></i></span></button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "</span></button>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<input type=\"hidden\" name=\"action\" value=\"enable\"> <button type=\"submit\" class=\"button is-light\" title=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var35 string
+				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Enable"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 215, Col: 79}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "\"><span class=\"icon\"><i class=\"fas fa-toggle-off\"></i></span> <span>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var36 string
+				templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Disabled"))
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 217, Col: 36}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</span></button>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<button type=\"button\" class=\"button is-link is-light is-small btn-view-template\" data-id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<button type=\"button\" class=\"button is-link is-light btn-view-template\" data-id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var35 string
-		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.ID)
+		var templ_7745c5c3_Var37 string
+		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 220, Col: 101}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 222, Col: 92}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "\" title=\"")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var36 string
-		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ViewYAML"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 220, Col: 141}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "\" title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "\"><span class=\"icon\"><i class=\"fas fa-eye\"></i></span></button> ")
+		var templ_7745c5c3_Var38 string
+		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ViewYAML"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 222, Col: 132}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\"><span class=\"icon\"><i class=\"fas fa-eye\"></i></span></button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if hasSession {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<button type=\"button\" class=\"button is-info is-light is-small btn-edit-template\" data-id=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var37 string
-			templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.ID)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 224, Col: 102}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var37))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "\" data-name=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var38 string
-			templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.Name)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 224, Col: 125}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" data-description=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<button type=\"button\" class=\"button is-info is-light btn-edit-template\" data-id=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var39 string
-			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.Description)
+			templ_7745c5c3_Var39, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 224, Col: 162}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 226, Col: 93}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var39))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\" title=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\" data-name=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var40 string
-			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Edit"))
+			templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 224, Col: 189}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 226, Col: 116}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\"><span class=\"icon\"><i class=\"fas fa-edit\"></i></span></button><form action=\"/admin/cloudinit/delete\" method=\"POST\" class=\"is-inline\" onsubmit=\"return confirm(confirmDeleteMessage);\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "\" data-description=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var41 string
-			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
+			templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 228, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 226, Col: 153}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\"> <input type=\"hidden\" name=\"id\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "\" title=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var42 string
-			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.ID)
+			templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Edit"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 229, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 226, Col: 180}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\"> <button type=\"submit\" class=\"button is-danger is-light is-small\" title=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "\"><span class=\"icon\"><i class=\"fas fa-edit\"></i></span></button><form action=\"/admin/cloudinit/delete\" method=\"POST\" class=\"is-inline\" onsubmit=\"return confirm(confirmDeleteMessage);\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var43 string
-			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Delete"))
+			templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(csrfToken)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 230, Col: 97}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 230, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\"><span class=\"icon\"><i class=\"fas fa-trash\"></i></span></button></form>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "\"> <input type=\"hidden\" name=\"id\" value=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var44 string
+			templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(tpl.ID)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 231, Col: 51}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "\"> <button type=\"submit\" class=\"button is-danger is-outlined\" title=\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var45 string
+			templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Delete"))
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 232, Col: 91}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "\"><span class=\"icon\"><i class=\"fas fa-trash\"></i></span></button></form>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</div></td></tr>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</div></td></tr>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -879,165 +905,165 @@ func createEditFormSection(data AdminCloudInitData, T TranslationFunc) templ.Com
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var44 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var44 == nil {
-			templ_7745c5c3_Var44 = templ.NopComponent
+		templ_7745c5c3_Var46 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var46 == nil {
+			templ_7745c5c3_Var46 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "<div class=\"columns\"><div class=\"column is-12\"><div class=\"box admin-box\" id=\"create-form\"><h2 class=\"title is-5 mb-4\" id=\"form-title\"><span class=\"icon\"><i class=\"fas fa-plus-circle\"></i></span> <span>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var45 string
-		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.CreateTemplate"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 246, Col: 48}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 67, "</span></h2><form id=\"template-form\" action=\"/admin/cloudinit/create\" method=\"POST\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var46 string
-		templ_7745c5c3_Var46, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 249, Col: 66}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "\"> <input type=\"hidden\" name=\"id\" id=\"edit-id\" value=\"\"><div class=\"field\"><label class=\"label\" for=\"name\"><span class=\"icon is-small\"><i class=\"fas fa-tag\"></i></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 68, "<div class=\"columns\"><div class=\"column is-12\"><div class=\"box admin-box\" id=\"create-form\"><h2 class=\"title is-5 mb-4\" id=\"form-title\"><span class=\"icon\"><i class=\"fas fa-plus-circle\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var47 string
-		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Name"))
+		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.CreateTemplate"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 254, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 248, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, " <span class=\"has-text-danger\">*</span></label><div class=\"control\"><input class=\"input\" type=\"text\" name=\"name\" id=\"name\" required placeholder=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</span></h2><form id=\"template-form\" action=\"/admin/cloudinit/create\" method=\"POST\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var48 string
-		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.NamePlaceholder"))
+		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(data.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 257, Col: 121}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 251, Col: 66}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"></div></div><div class=\"field\"><label class=\"label\" for=\"description\"><span class=\"icon is-small\"><i class=\"fas fa-align-left\"></i></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 70, "\"> <input type=\"hidden\" name=\"id\" id=\"edit-id\" value=\"\"><div class=\"field\"><label class=\"label\" for=\"name\"><span class=\"icon is-small\"><i class=\"fas fa-tag\"></i></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var49 string
-		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Description"))
+		templ_7745c5c3_Var49, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Name"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 263, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 256, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var49))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, "</label><div class=\"control\"><input class=\"input\" type=\"text\" name=\"description\" id=\"description\" placeholder=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 71, " <span class=\"has-text-danger\">*</span></label><div class=\"control\"><input class=\"input\" type=\"text\" name=\"name\" id=\"name\" required placeholder=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var50 string
-		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.DescriptionPlaceholder"))
+		templ_7745c5c3_Var50, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.NamePlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 266, Col: 133}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 259, Col: 121}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\"></div><p class=\"help\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\"></div></div><div class=\"field\"><label class=\"label\" for=\"description\"><span class=\"icon is-small\"><i class=\"fas fa-align-left\"></i></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var51 string
-		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.DescriptionHelp"))
+		templ_7745c5c3_Var51, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Description"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 268, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 265, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</p></div><div class=\"field\"><label class=\"label\" for=\"yaml_content\"><span class=\"icon is-small\"><i class=\"fas fa-code\"></i></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 73, "</label><div class=\"control\"><input class=\"input\" type=\"text\" name=\"description\" id=\"description\" placeholder=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var52 string
-		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.YAMLContent"))
+		templ_7745c5c3_Var52, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.DescriptionPlaceholder"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 273, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 268, Col: 133}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, " <span class=\"has-text-danger\">*</span></label><div class=\"control\"><textarea class=\"textarea is-family-monospace\" name=\"yaml_content\" id=\"yaml_content\" rows=\"12\" required placeholder=\"#cloud-config&#10;# Your cloud-init configuration here\"></textarea></div><p class=\"help\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 74, "\"></div><p class=\"help\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var53 string
-		templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.YAMLHelp"))
+		templ_7745c5c3_Var53, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.DescriptionHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 278, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 270, Col: 60}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</p></div><div class=\"field is-grouped is-grouped-right\"><div class=\"control\"><button type=\"button\" class=\"button is-light\" onclick=\"resetForm()\"><span class=\"icon\"><i class=\"fas fa-times\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 75, "</p></div><div class=\"field\"><label class=\"label\" for=\"yaml_content\"><span class=\"icon is-small\"><i class=\"fas fa-code\"></i></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var54 string
-		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Cancel"))
+		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.YAMLContent"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 284, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 275, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, "</span></button></div><div class=\"control\"><button type=\"submit\" class=\"button is-primary\" id=\"submit-btn\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if !data.ProxmoxConnected {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, " disabled")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "><span class=\"icon\"><i class=\"fas fa-save\"></i></span> <span id=\"submit-text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 76, " <span class=\"has-text-danger\">*</span></label><div class=\"control\"><textarea class=\"textarea is-family-monospace\" name=\"yaml_content\" id=\"yaml_content\" rows=\"12\" required placeholder=\"#cloud-config&#10;# Your cloud-init configuration here\"></textarea></div><p class=\"help\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var55 string
-		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ValidateAndSave"))
+		templ_7745c5c3_Var55, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.YAMLHelp"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 290, Col: 69}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 280, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var55))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, "</span></button></div></div></form></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</p></div><div class=\"field is-grouped is-grouped-right\"><div class=\"control\"><button type=\"button\" class=\"button is-light\" onclick=\"resetForm()\"><span class=\"icon\"><i class=\"fas fa-times\"></i></span> <span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var56 string
+		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Cancel"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 286, Col: 34}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 78, "</span></button></div><div class=\"control\"><button type=\"submit\" class=\"button is-primary\" id=\"submit-btn\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if !data.ProxmoxConnected {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 79, " disabled")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "><span class=\"icon\"><i class=\"fas fa-save\"></i></span> <span id=\"submit-text\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var57 string
+		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ValidateAndSave"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 292, Col: 69}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</span></button></div></div></form></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1061,38 +1087,38 @@ func yamlViewModal(T TranslationFunc) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var56 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var56 == nil {
-			templ_7745c5c3_Var56 = templ.NopComponent
+		templ_7745c5c3_Var58 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var58 == nil {
+			templ_7745c5c3_Var58 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div class=\"modal\" id=\"yaml-modal\"><div class=\"modal-background\" onclick=\"closeYamlModal()\"></div><div class=\"modal-card\"><header class=\"modal-card-head\"><p class=\"modal-card-title\"><span class=\"icon\"><i class=\"fas fa-file-code\"></i></span> <span id=\"yaml-modal-title\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<div class=\"modal\" id=\"yaml-modal\"><div class=\"modal-background\" onclick=\"closeYamlModal()\"></div><div class=\"modal-card\"><header class=\"modal-card-head\"><p class=\"modal-card-title\"><span class=\"icon\"><i class=\"fas fa-file-code\"></i></span> <span id=\"yaml-modal-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var57 string
-		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ViewYAML"))
+		var templ_7745c5c3_Var59 string
+		templ_7745c5c3_Var59, templ_7745c5c3_Err = templ.JoinStringErrs(T("Admin.CloudInit.ViewYAML"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 307, Col: 64}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 309, Col: 64}
 		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 81, "</span></p><button class=\"delete\" aria-label=\"close\" onclick=\"closeYamlModal()\"></button></header><section class=\"modal-card-body\"><pre class=\"has-background-black-bis has-text-white-bis p-3 is-size-7\" style=\"max-height: 400px; overflow: auto;\" id=\"yaml-modal-content\"></pre></section><footer class=\"modal-card-foot is-justify-content-flex-end\"><button class=\"button\" type=\"button\" onclick=\"closeYamlModal()\">")
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var59))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var58 string
-		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Close"))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 315, Col: 87}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "</span></p><button class=\"delete\" aria-label=\"close\" onclick=\"closeYamlModal()\"></button></header><section class=\"modal-card-body\"><pre class=\"has-background-black-bis has-text-white-bis p-3 is-size-7\" style=\"max-height: 400px; overflow: auto;\" id=\"yaml-modal-content\"></pre></section><footer class=\"modal-card-foot is-justify-content-flex-end\"><button class=\"button\" type=\"button\" onclick=\"closeYamlModal()\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "</button></footer></div></div>")
+		var templ_7745c5c3_Var60 string
+		templ_7745c5c3_Var60, templ_7745c5c3_Err = templ.JoinStringErrs(T("Common.Close"))
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/admin_cloudinit.templ`, Line: 317, Col: 87}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var60))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 84, "</button></footer></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1116,12 +1142,12 @@ func cloudInitScripts(data AdminCloudInitData, T TranslationFunc) templ.Componen
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var59 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var59 == nil {
-			templ_7745c5c3_Var59 = templ.NopComponent
+		templ_7745c5c3_Var61 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var61 == nil {
+			templ_7745c5c3_Var61 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<script>\n\t\tvar proxmoxConnected = { templ.JSONString(fmt.Sprintf(\"%t\", data.ProxmoxConnected)) };\n\t\tvar hasProxmoxSession = { templ.JSONString(fmt.Sprintf(\"%t\", data.HasProxmoxSession)) };\n\t\tvar confirmDeleteMessage = { templ.JSONString(T(\"Admin.CloudInit.ConfirmDelete\")) };\n\t\tvar createTemplateText = { T(\"Admin.CloudInit.CreateTemplate\") };\n\t\tvar editTemplateText = { T(\"Admin.CloudInit.EditTemplate\") };\n\t\tvar createTitleHtml = '<span class=\"icon\"><i class=\"fas fa-plus-circle\"></i></span><span>' + createTemplateText + '</span>';\n\t\tvar editTitleHtml = '<span class=\"icon\"><i class=\"fas fa-edit\"></i></span><span>' + editTemplateText + '</span>';\n\t\tvar saveText = { templ.JSONString(T(\"Common.Save\")) };\n\t\tvar validateSaveText = { templ.JSONString(T(\"Admin.CloudInit.ValidateAndSave\")) };\n\t\tvar fetchErrorMsg = { templ.JSONString(T(\"Admin.CloudInit.Error.FetchTemplate\")) };\n\t\tvar requiredFieldsMsg = { templ.JSONString(T(\"Admin.CloudInit.Error.RequiredFields\")) };\n\n\t\tfunction showInlineNotification(type, message) {\n\t\t\tconst notification = document.createElement('div');\n\t\t\tnotification.className = `notification is-${type} has-text-black`;\n\t\t\tnotification.innerHTML = `<button class=\"delete\" onclick=\"this.parentElement.remove()\"></button>${message}`;\n\t\t\tconst content = document.querySelector('.section .container');\n\t\t\tif (content) content.insertBefore(notification, content.firstChild);\n\t\t\tif (type === 'success') setTimeout(() => { if (notification.parentElement) notification.remove(); }, 5000);\n\t\t}\n\n\t\tasync function editTemplate(id, name, description) {\n\t\t\tdocument.getElementById('edit-id').value = id;\n\t\t\tdocument.getElementById('name').value = name;\n\t\t\tdocument.getElementById('description').value = description;\n\t\t\tdocument.getElementById('template-form').action = '/admin/cloudinit/edit';\n\t\t\tdocument.getElementById('form-title').innerHTML = editTitleHtml;\n\t\t\tdocument.getElementById('submit-text').textContent = saveText;\n\t\t\ttry {\n\t\t\t\tconst response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });\n\t\t\t\tif (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }\n\t\t\t\tif (!response.ok) throw new Error('Failed to fetch template data');\n\t\t\t\tconst templateData = await response.json();\n\t\t\t\tif (templateData.content) document.getElementById('yaml_content').value = templateData.content;\n\t\t\t\tdocument.getElementById('yaml_content').required = true;\n\t\t\t} catch (error) {\n\t\t\t\tconsole.error('Error fetching template data:', error);\n\t\t\t\tshowInlineNotification('danger', fetchErrorMsg);\n\t\t\t}\n\t\t\tdocument.getElementById('name').focus();\n\t\t}\n\n\t\tasync function viewTemplate(id) {\n\t\t\ttry {\n\t\t\t\tconst response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });\n\t\t\t\tif (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }\n\t\t\t\tif (!response.ok) throw new Error('Failed to fetch template data');\n\t\t\t\tconst templateData = await response.json();\n\t\t\t\tconst titleEl = document.getElementById('yaml-modal-title');\n\t\t\t\tif (titleEl && templateData.name) titleEl.textContent = templateData.name;\n\t\t\t\tconst contentEl = document.getElementById('yaml-modal-content');\n\t\t\t\tif (contentEl) contentEl.textContent = templateData.content || '';\n\t\t\t\tconst modal = document.getElementById('yaml-modal');\n\t\t\t\tif (modal) modal.classList.add('is-active');\n\t\t\t} catch (error) {\n\t\t\t\tconsole.error('Error fetching template data for view:', error);\n\t\t\t\tshowInlineNotification('danger', fetchErrorMsg);\n\t\t\t}\n\t\t}\n\n\t\tfunction closeYamlModal() {\n\t\t\tconst modal = document.getElementById('yaml-modal');\n\t\t\tif (modal) modal.classList.remove('is-active');\n\t\t}\n\n\t\tfunction resetForm() {\n\t\t\tdocument.getElementById('edit-id').value = '';\n\t\t\tdocument.getElementById('template-form').reset();\n\t\t\tdocument.getElementById('template-form').action = '/admin/cloudinit/create';\n\t\t\tdocument.getElementById('form-title').innerHTML = createTitleHtml;\n\t\t\tdocument.getElementById('submit-text').textContent = validateSaveText;\n\t\t\tdocument.getElementById('yaml_content').required = true;\n\t\t}\n\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\tconst form = document.getElementById('template-form');\n\t\t\tif (form) {\n\t\t\t\tform.addEventListener('submit', function(event) {\n\t\t\t\t\tif (!document.getElementById('yaml_content').value) {\n\t\t\t\t\t\tshowInlineNotification('danger', requiredFieldsMsg);\n\t\t\t\t\t\tdocument.getElementById('yaml_content').focus();\n\t\t\t\t\t\tevent.preventDefault();\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\t\t\tdocument.querySelectorAll('.btn-view-template').forEach(btn => {\n\t\t\t\tbtn.addEventListener('click', function() { viewTemplate(this.dataset.id); });\n\t\t\t});\n\t\t\tdocument.querySelectorAll('.btn-edit-template').forEach(btn => {\n\t\t\t\tbtn.addEventListener('click', function() { editTemplate(this.dataset.id, this.dataset.name, this.dataset.description); });\n\t\t\t});\n\t\t});\n\t</script>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 85, "<script>\n\t\tvar proxmoxConnected = { templ.JSONString(fmt.Sprintf(\"%t\", data.ProxmoxConnected)) };\n\t\tvar hasProxmoxSession = { templ.JSONString(fmt.Sprintf(\"%t\", data.HasProxmoxSession)) };\n\t\tvar confirmDeleteMessage = { templ.JSONString(T(\"Admin.CloudInit.ConfirmDelete\")) };\n\t\tvar createTemplateText = { T(\"Admin.CloudInit.CreateTemplate\") };\n\t\tvar editTemplateText = { T(\"Admin.CloudInit.EditTemplate\") };\n\t\tvar createTitleHtml = '<span class=\"icon\"><i class=\"fas fa-plus-circle\"></i></span><span>' + createTemplateText + '</span>';\n\t\tvar editTitleHtml = '<span class=\"icon\"><i class=\"fas fa-edit\"></i></span><span>' + editTemplateText + '</span>';\n\t\tvar saveText = { templ.JSONString(T(\"Common.Save\")) };\n\t\tvar validateSaveText = { templ.JSONString(T(\"Admin.CloudInit.ValidateAndSave\")) };\n\t\tvar fetchErrorMsg = { templ.JSONString(T(\"Admin.CloudInit.Error.FetchTemplate\")) };\n\t\tvar requiredFieldsMsg = { templ.JSONString(T(\"Admin.CloudInit.Error.RequiredFields\")) };\n\n\t\tfunction showInlineNotification(type, message) {\n\t\t\tconst notification = document.createElement('div');\n\t\t\tnotification.className = `notification is-${type} has-text-black`;\n\t\t\tnotification.innerHTML = `<button class=\"delete\" onclick=\"this.parentElement.remove()\"></button>${message}`;\n\t\t\tconst content = document.querySelector('.section .container');\n\t\t\tif (content) content.insertBefore(notification, content.firstChild);\n\t\t\tif (type === 'success') setTimeout(() => { if (notification.parentElement) notification.remove(); }, 5000);\n\t\t}\n\n\t\tasync function editTemplate(id, name, description) {\n\t\t\tdocument.getElementById('edit-id').value = id;\n\t\t\tdocument.getElementById('name').value = name;\n\t\t\tdocument.getElementById('description').value = description;\n\t\t\tdocument.getElementById('template-form').action = '/admin/cloudinit/edit';\n\t\t\tdocument.getElementById('form-title').innerHTML = editTitleHtml;\n\t\t\tdocument.getElementById('submit-text').textContent = saveText;\n\t\t\ttry {\n\t\t\t\tconst response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });\n\t\t\t\tif (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }\n\t\t\t\tif (!response.ok) throw new Error('Failed to fetch template data');\n\t\t\t\tconst templateData = await response.json();\n\t\t\t\tif (templateData.content) document.getElementById('yaml_content').value = templateData.content;\n\t\t\t\tdocument.getElementById('yaml_content').required = true;\n\t\t\t} catch (error) {\n\t\t\t\tconsole.error('Error fetching template data:', error);\n\t\t\t\tshowInlineNotification('danger', fetchErrorMsg);\n\t\t\t}\n\t\t\tdocument.getElementById('name').focus();\n\t\t}\n\n\t\tasync function viewTemplate(id) {\n\t\t\ttry {\n\t\t\t\tconst response = await fetch(`/admin/cloudinit/template/${id}`, { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });\n\t\t\t\tif (response.redirected && response.url && response.url.indexOf('/admin/login') !== -1) { window.location.href = response.url; return; }\n\t\t\t\tif (!response.ok) throw new Error('Failed to fetch template data');\n\t\t\t\tconst templateData = await response.json();\n\t\t\t\tconst titleEl = document.getElementById('yaml-modal-title');\n\t\t\t\tif (titleEl && templateData.name) titleEl.textContent = templateData.name;\n\t\t\t\tconst contentEl = document.getElementById('yaml-modal-content');\n\t\t\t\tif (contentEl) contentEl.textContent = templateData.content || '';\n\t\t\t\tconst modal = document.getElementById('yaml-modal');\n\t\t\t\tif (modal) modal.classList.add('is-active');\n\t\t\t} catch (error) {\n\t\t\t\tconsole.error('Error fetching template data for view:', error);\n\t\t\t\tshowInlineNotification('danger', fetchErrorMsg);\n\t\t\t}\n\t\t}\n\n\t\tfunction closeYamlModal() {\n\t\t\tconst modal = document.getElementById('yaml-modal');\n\t\t\tif (modal) modal.classList.remove('is-active');\n\t\t}\n\n\t\tfunction resetForm() {\n\t\t\tdocument.getElementById('edit-id').value = '';\n\t\t\tdocument.getElementById('template-form').reset();\n\t\t\tdocument.getElementById('template-form').action = '/admin/cloudinit/create';\n\t\t\tdocument.getElementById('form-title').innerHTML = createTitleHtml;\n\t\t\tdocument.getElementById('submit-text').textContent = validateSaveText;\n\t\t\tdocument.getElementById('yaml_content').required = true;\n\t\t}\n\n\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\tconst form = document.getElementById('template-form');\n\t\t\tif (form) {\n\t\t\t\tform.addEventListener('submit', function(event) {\n\t\t\t\t\tif (!document.getElementById('yaml_content').value) {\n\t\t\t\t\t\tshowInlineNotification('danger', requiredFieldsMsg);\n\t\t\t\t\t\tdocument.getElementById('yaml_content').focus();\n\t\t\t\t\t\tevent.preventDefault();\n\t\t\t\t\t\treturn false;\n\t\t\t\t\t}\n\t\t\t\t});\n\t\t\t}\n\t\t\tdocument.querySelectorAll('.btn-view-template').forEach(btn => {\n\t\t\t\tbtn.addEventListener('click', function() { viewTemplate(this.dataset.id); });\n\t\t\t});\n\t\t\tdocument.querySelectorAll('.btn-edit-template').forEach(btn => {\n\t\t\t\tbtn.addEventListener('click', function() { editTemplate(this.dataset.id, this.dataset.name, this.dataset.description); });\n\t\t\t});\n\t\t});\n\t</script>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

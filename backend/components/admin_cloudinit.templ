@@ -78,7 +78,7 @@ templ adminCloudInitContent(data AdminCloudInitData, T TranslationFunc) {
 	}
 	if data.HasProxmoxSession {
 		<div class="mb-4">
-			<a href="#create-form" class="button is-primary is-small">
+			<a href="#create-form" class="button is-primary">
 				<span class="icon"><i class="fas fa-plus"></i></span>
 				<span>{ T("Admin.CloudInit.CreateTemplate") }</span>
 			</a>
@@ -169,7 +169,7 @@ templ templatesListSection(data AdminCloudInitData, T TranslationFunc) {
 							</span>
 							<p class="mt-3 has-text-grey">{ T("Admin.CloudInit.NoTemplates") }</p>
 							<p class="mt-2">
-								<a href="#create-form" class="button is-primary is-small">
+								<a href="#create-form" class="button is-primary">
 									<span class="icon"><i class="fas fa-plus"></i></span>
 									<span>{ T("Admin.CloudInit.CreateFirst") }</span>
 								</a>
@@ -199,35 +199,37 @@ templ templateRow(tpl CloudInitTemplate, hasSession bool, csrfToken string, T Tr
 			}
 		</td>
 		<td class="has-text-right">
-			<div class="buttons are-small is-right">
+			<div class="buttons is-right">
 				if hasSession {
 					<form action="/admin/cloudinit/toggle" method="POST" class="is-inline">
 						<input type="hidden" name="csrf_token" value={ csrfToken }/>
 						<input type="hidden" name="id" value={ tpl.ID }/>
 						if tpl.Enabled {
 							<input type="hidden" name="action" value="disable"/>
-							<button type="submit" class="button is-success is-light is-small" title={ T("Common.Disable") }>
+							<button type="submit" class="button is-success is-light" title={ T("Common.Disable") }>
 								<span class="icon"><i class="fas fa-toggle-on"></i></span>
+								<span>{ T("Common.Enabled") }</span>
 							</button>
 						} else {
 							<input type="hidden" name="action" value="enable"/>
-							<button type="submit" class="button is-ghost is-small" title={ T("Common.Enable") }>
+							<button type="submit" class="button is-light" title={ T("Common.Enable") }>
 								<span class="icon"><i class="fas fa-toggle-off"></i></span>
+								<span>{ T("Common.Disabled") }</span>
 							</button>
 						}
 					</form>
 				}
-				<button type="button" class="button is-link is-light is-small btn-view-template" data-id={ tpl.ID } title={ T("Admin.CloudInit.ViewYAML") }>
+				<button type="button" class="button is-link is-light btn-view-template" data-id={ tpl.ID } title={ T("Admin.CloudInit.ViewYAML") }>
 					<span class="icon"><i class="fas fa-eye"></i></span>
 				</button>
 				if hasSession {
-					<button type="button" class="button is-info is-light is-small btn-edit-template" data-id={ tpl.ID } data-name={ tpl.Name } data-description={ tpl.Description } title={ T("Common.Edit") }>
+					<button type="button" class="button is-info is-light btn-edit-template" data-id={ tpl.ID } data-name={ tpl.Name } data-description={ tpl.Description } title={ T("Common.Edit") }>
 						<span class="icon"><i class="fas fa-edit"></i></span>
 					</button>
 					<form action="/admin/cloudinit/delete" method="POST" class="is-inline" onsubmit="return confirm(confirmDeleteMessage);">
 						<input type="hidden" name="csrf_token" value={ csrfToken }/>
 						<input type="hidden" name="id" value={ tpl.ID }/>
-						<button type="submit" class="button is-danger is-light is-small" title={ T("Common.Delete") }>
+						<button type="submit" class="button is-danger is-outlined" title={ T("Common.Delete") }>
 							<span class="icon"><i class="fas fa-trash"></i></span>
 						</button>
 					</form>
