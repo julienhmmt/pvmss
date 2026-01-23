@@ -223,10 +223,10 @@ templ templateRow(tpl CloudInitTemplate, hasSession bool, csrfToken string, T Tr
 				<button type="button" class="button is-link is-light btn-view-template" data-id={ tpl.ID } title={ T("Admin.CloudInit.ViewYAML") }>
 					<span class="icon"><i class="fas fa-eye"></i></span>
 				</button>
+				<button type="button" class="button is-info is-light btn-edit-template" data-id={ tpl.ID } data-name={ tpl.Name } data-description={ tpl.Description } title={ T("Common.Edit") }>
+					<span class="icon"><i class="fas fa-edit"></i></span>
+				</button>
 				if hasSession {
-					<button type="button" class="button is-info is-light btn-edit-template" data-id={ tpl.ID } data-name={ tpl.Name } data-description={ tpl.Description } title={ T("Common.Edit") }>
-						<span class="icon"><i class="fas fa-edit"></i></span>
-					</button>
 					<form action="/admin/cloudinit/delete" method="POST" class="is-inline" onsubmit="return confirm(confirmDeleteMessage);">
 						<input type="hidden" name="csrf_token" value={ csrfToken }/>
 						<input type="hidden" name="id" value={ tpl.ID }/>
