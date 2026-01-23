@@ -270,7 +270,7 @@ func vmCreateCloudInitTemplateField(data VMCreateData, T TranslationFunc) templ.
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</select></div></div></div><div class=\"field is-grouped is-grouped-right mt-2\"><div class=\"control\"><button type=\"button\" class=\"button is-small is-link is-light\" id=\"cloudinit-view-template-btn\" disabled><span class=\"icon\"><i class=\"fas fa-eye\"></i></span> <span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</select></div></div></div><div class=\"field is-grouped is-grouped-right mt-2\"><div class=\"control\"><button type=\"button\" class=\"button is-primary is-light has-text-dark\" id=\"cloudinit-view-template-btn\" disabled><span class=\"icon\"><i class=\"fas fa-eye\"></i></span> <span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -841,9 +841,32 @@ func vmCreateCloudInitFullScript(T TranslationFunc) string {
 	}
 
 	document.addEventListener('DOMContentLoaded', function() {
+		// Cloud-init enable/disable toggle
+		var cloudinitEnable = document.getElementById('cloudinit_enable');
+		var cloudinitOptions = document.getElementById('cloudinit-options');
+		if (cloudinitEnable && cloudinitOptions) {
+			function toggleCloudInitOptions() {
+				cloudinitOptions.style.display = cloudinitEnable.checked ? 'block' : 'none';
+			}
+			cloudinitEnable.addEventListener('change', toggleCloudInitOptions);
+		}
+
+		// Static IP fields toggle
+		var ipConfigRadios = document.querySelectorAll('input[name="cloudinit_ipconfig"]');
+		var staticIpFields = document.getElementById('static-ip-fields');
+		if (ipConfigRadios.length > 0 && staticIpFields) {
+			function toggleStaticIpFields() {
+				var selectedValue = document.querySelector('input[name="cloudinit_ipconfig"]:checked');
+				staticIpFields.style.display = (selectedValue && selectedValue.value === 'static') ? 'block' : 'none';
+			}
+			ipConfigRadios.forEach(function(radio) {
+				radio.addEventListener('change', toggleStaticIpFields);
+			});
+		}
+
+		// Template select and view button
 		var templateSelect = document.getElementById('cloudinit_template');
 		var viewBtn = document.getElementById('cloudinit-view-template-btn');
-
 		if (templateSelect && viewBtn) {
 			function updateViewBtn() {
 				viewBtn.disabled = !templateSelect.value;

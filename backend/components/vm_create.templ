@@ -137,9 +137,11 @@ templ vmCreateContent(data VMCreateData, T TranslationFunc) {
 		</div>
 	</section>
 	@vmCreateScriptsBlock(data, T)
-	if len(data.CloudInitTemplates) > 0 {
-		@vmCreateCloudInitModal(T)
+	if len(data.CloudInitTemplates) > 0 || data.AllowCustomYAML {
 		@vmCreateCloudInitScripts(T)
+		if len(data.CloudInitTemplates) > 0 {
+			@vmCreateCloudInitModal(T)
+		}
 	}
 }
 
