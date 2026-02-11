@@ -270,8 +270,6 @@ func initTemplates() (*template.Template, string, error) {
 	}
 	logger.Get().Debug().Msg("Templates parsed successfully")
 
-	handlers.SetFrontendPath(frontendPath)
-
 	var templateCount int
 	for _, t := range tmpl.Templates() {
 		if t.Name() != "" && strings.HasSuffix(t.Name(), ".html") {

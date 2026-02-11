@@ -63,7 +63,7 @@ templ adminVMsContent(data AdminVMsData, T TranslationFunc) {
 					<div class="level-item">
 						<span class="tag is-info is-light is-medium">
 							<span class="icon"><i class="fas fa-list"></i></span>
-							<span>Total: { fmt.Sprintf("%d", data.TotalVMs) } VM{ pluralS(data.TotalVMs) }</span>
+							<span>{ T("AdminVMs.TotalLabel") }: { fmt.Sprintf("%d", data.TotalVMs) } VMs</span>
 						</span>
 					</div>
 				</div>
@@ -151,13 +151,6 @@ templ adminVMsContent(data AdminVMsData, T TranslationFunc) {
 			}
 		});
 	</script>
-}
-
-func pluralS(n int) string {
-	if n != 1 {
-		return "s"
-	}
-	return ""
 }
 
 templ adminVMRow(vm AdminVMInfo, T TranslationFunc) {

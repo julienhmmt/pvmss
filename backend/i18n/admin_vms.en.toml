@@ -12,6 +12,9 @@ other = "No VMs Found"
 ["Admin.VMs.NoVMsMessage"]
 other = "No virtual machines with the 'pvmss' tag were found. VMs must be tagged with 'pvmss' to be managed by this system."
 
+["AdminVMs.TotalLabel"]
+other = "Total"
+
 # Errors
 ["Admin.VMs.Error.ConnectionUnavailable"]
 other = "Proxmox connection not available"

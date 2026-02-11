@@ -89,9 +89,18 @@ templ adminNodesContent(data AdminNodesData, T TranslationFunc) {
 		})
 	}
 	<script>
-		setInterval(function() {
-			window.location.reload();
-		}, 30000);
+		(function() {
+			var timer = setInterval(function() {
+				if (!document.hidden) {
+					window.location.reload();
+				}
+			}, 30000);
+			document.addEventListener('visibilitychange', function() {
+				if (!document.hidden) {
+					window.location.reload();
+				}
+			});
+		})();
 	</script>
 }
 

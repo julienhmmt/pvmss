@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -345,7 +346,9 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 			return nil
 		})
 	}
-	_ = g.Wait()
+	if err := g.Wait(); err != nil {
+		log.Warn().Err(err).Str("pool", poolName).Msg("Concurrent VM fetch encountered errors")
+	}
 
 	// Sort by VMID ascending for consistent display order
 	sort.Slice(vms, func(i, j int) bool { return vms[i].VMID < vms[j].VMID })
@@ -456,7 +459,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	// Proxmox password update requires cookie-based authentication
 	// First, verify current password by attempting to authenticate
 	proxmoxURL := client.GetApiUrl()
-	insecureSkipVerify := strings.Contains(proxmoxURL, "192.168.") || strings.Contains(proxmoxURL, "localhost") // Simple heuristic
+	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
 	cookieClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkipVerify)
 	if err != nil {
