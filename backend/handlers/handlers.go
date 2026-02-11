@@ -13,11 +13,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
-// SetFrontendPath stores the frontend path in the state manager
-func SetFrontendPath(path string) {
-	// Deprecated: kept for backward compatibility. Frontend path is set in StateManager.
-}
-
 // InitHandlers initializes all handlers and configures routes
 func InitHandlers(stateManager state.StateManager) http.Handler {
 	log := logger.Get().With().Str("component", "handlers").Logger()

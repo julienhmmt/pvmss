@@ -18,3 +18,9 @@ backend/pvmss
 
 # noVNC
 frontend/components/noVNC*
+
+# Backup files
+*.backup
+
+# CSS lint output
+frontend/css/css_lint.txt

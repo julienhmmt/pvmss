@@ -74,7 +74,7 @@ func newBaseClient(apiURL string, insecureSkipVerify bool, opts ...ClientOption)
 
 	httpClient := newHTTPClient(insecureSkipVerify, constants.ProxmoxDefaultTimeout)
 
-	pxClient, err := px.NewClient(normalizedURL, httpClient, "", nil, "", 300)
+	pxClient, err := px.NewClient(normalizedURL, httpClient, "", nil, "", 300, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create base Proxmox client: %w", err)
 	}
