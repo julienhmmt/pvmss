@@ -91,7 +91,11 @@ func (b *BaseFormHandler) ValidateRequiredFields(w http.ResponseWriter, r *http.
 
 // RedirectWithSuccess redirects to a path with success parameters
 func (b *BaseFormHandler) RedirectWithSuccess(w http.ResponseWriter, r *http.Request, path string, params map[string]string) {
-	u, _ := url.Parse(path)
+	u, err := url.Parse(path)
+	if err != nil {
+		http.Redirect(w, r, path, http.StatusSeeOther)
+		return
+	}
 	q := u.Query()
 	q.Set("success", "1")
 
