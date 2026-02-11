@@ -1,0 +1,179 @@
+package components
+
+import "fmt"
+
+type BuildInfo struct {
+	Version              string
+	Environment          string
+	GoVersion            string
+	GoOS                 string
+	GoArch               string
+	ClusterInfo          *ClusterInfo
+	EnvironmentVariables map[string]string
+}
+
+type ClusterInfo struct {
+	IsCluster   bool
+	ClusterName string
+	NodeCount   int
+}
+
+type AdminAppInfoData struct {
+	Username  string
+	Lang      string
+	CSRFToken string
+	BuildInfo BuildInfo
+}
+
+templ AdminAppInfoPage(data AdminAppInfoData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.AppInfo.Title"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/appinfo",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminAppInfoContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminAppInfoContent(data AdminAppInfoData, T TranslationFunc) {
+	@AdminPageHeader(T("Admin.AppInfo.Title"), "fas fa-info-circle", T("Admin.AppInfo.Description"), nil)
+	<div class="box admin-box mb-5">
+		<div class="mb-5">
+			<h2 class="title is-5 mb-3">
+				<span class="icon"><i class="fas fa-cube"></i></span>
+				<span>{ T("Admin.AppInfo.BuildInfo") }</span>
+			</h2>
+		</div>
+		<div class="columns is-multiline">
+			<div class="column is-6">
+				<div class="box has-background-white-bis">
+					<p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{ T("Admin.AppInfo.Version") }</p>
+					<p class="is-size-5 has-text-weight-bold has-text-primary">
+						v{ data.BuildInfo.Version }
+					</p>
+				</div>
+			</div>
+			<div class="column is-6">
+				<div class="box has-background-white-bis">
+					<p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{ T("Admin.AppInfo.Environment") }</p>
+					<p class="is-size-5 has-text-weight-bold">
+						@environmentTag(data.BuildInfo.Environment)
+					</p>
+				</div>
+			</div>
+			<div class="column is-6">
+				<div class="box has-background-white-bis">
+					<p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{ T("Admin.AppInfo.GoVersion") }</p>
+					<p class="is-size-6 has-text-monospace">{ data.BuildInfo.GoVersion }</p>
+				</div>
+			</div>
+			<div class="column is-6">
+				<div class="box has-background-white-bis">
+					<p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{ T("Admin.AppInfo.Platform") }</p>
+					<p class="is-size-6">{ data.BuildInfo.GoOS } / { data.BuildInfo.GoArch }</p>
+				</div>
+			</div>
+		</div>
+	</div>
+	if data.BuildInfo.ClusterInfo != nil {
+		@clusterInfoSection(data.BuildInfo.ClusterInfo, T)
+	}
+	@environmentVariablesSection(data.BuildInfo.EnvironmentVariables, T)
+	@Notification(NotificationProps{
+		Type:    NotificationInfo,
+		Title:   T("Admin.AppInfo.SecurityNote"),
+		Message: T("Admin.AppInfo.SecurityMessage"),
+		Icon:    "fas fa-shield-alt",
+		Light:   true,
+	})
+}
+
+templ environmentTag(env string) {
+	if env == "development" {
+		<span class="tag is-warning is-light">{ env }</span>
+	} else if env == "offline" {
+		<span class="tag is-info is-light">{ env }</span>
+	} else {
+		<span class="tag is-success is-light">{ env }</span>
+	}
+}
+
+templ clusterInfoSection(info *ClusterInfo, T TranslationFunc) {
+	<div class="box admin-box mb-5">
+		<div class="mb-5">
+			<h2 class="title is-5 mb-3">
+				<span class="icon"><i class="fas fa-network-wired"></i></span>
+				<span>{ T("Admin.AppInfo.ProxmoxInfo") }</span>
+			</h2>
+		</div>
+		<div class="columns is-multiline">
+			<div class="column is-6">
+				<div class="box has-background-white-bis">
+					<p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{ T("Admin.AppInfo.ClusterStatus") }</p>
+					<p class="is-size-5 has-text-weight-bold">
+						if info.IsCluster {
+							<span class="tag is-success is-light">{ T("Admin.AppInfo.ClusterDetected") }</span>
+						} else {
+							<span class="tag is-warning is-light">{ T("Admin.AppInfo.StandaloneMode") }</span>
+						}
+					</p>
+				</div>
+			</div>
+			if info.IsCluster {
+				<div class="column is-4">
+					<div class="box has-background-white-bis">
+						<p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{ T("Admin.AppInfo.ClusterName") }</p>
+						<p class="is-size-6 has-text-monospace">{ info.ClusterName }</p>
+					</div>
+				</div>
+				<div class="column is-4">
+					<div class="box has-background-white-bis">
+						<p class="has-text-grey-dark is-size-7 has-text-weight-bold mb-1">{ T("Admin.AppInfo.NodeCount") }</p>
+						<p class="is-size-6 has-text-monospace">{ fmt.Sprintf("%d", info.NodeCount) } { T("Admin.AppInfo.Nodes") }</p>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ environmentVariablesSection(vars map[string]string, T TranslationFunc) {
+	<div class="box admin-box mb-5">
+		<div class="mb-5">
+			<h2 class="title is-5 mb-3">
+				<span class="icon"><i class="fas fa-sliders-h"></i></span>
+				<span>{ T("Admin.AppInfo.EnvironmentVariables") }</span>
+			</h2>
+			<p class="subtitle is-6 has-text-grey">{ T("Admin.AppInfo.EnvironmentVariablesDescription") }</p>
+		</div>
+		if len(vars) > 0 {
+			<div class="table-container">
+				<table class="table is-fullwidth is-striped">
+					<thead>
+						<tr>
+							<th>{ T("Common.Name") }</th>
+							<th>{ T("Common.Value") }</th>
+						</tr>
+					</thead>
+					<tbody>
+						for key, value := range vars {
+							<tr>
+								<td><code class="has-text-primary">{ key }</code></td>
+								<td><code class="has-text-monospace">{ value }</code></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		} else {
+			@Notification(NotificationProps{
+				Type:    NotificationInfo,
+				Message: T("Admin.AppInfo.NoVariables"),
+				Icon:    "fas fa-info-circle",
+				Light:   true,
+			})
+		}
+	</div>
+}

@@ -231,6 +231,7 @@ func EnsurePool(ctx context.Context, client ClientInterface, poolID, comment str
 			logger.Get().Warn().Err(err).Str("pool", poolID).Msg("Pool creation raced; treating as existing.")
 			return nil
 		}
+		logger.Get().Error().Err(err).Str("pool", poolID).Str("comment", comment).Msg("Proxmox API error during pool creation")
 		return fmt.Errorf("failed to create pool %s: %w", poolID, err)
 	}
 
@@ -295,6 +296,7 @@ func EnsureRole(ctx context.Context, client ClientInterface, roleID string, priv
 			logger.Get().Warn().Err(err).Str("role", roleID).Msg("Role creation raced; treating as existing.")
 			return nil
 		}
+		logger.Get().Error().Err(err).Str("role", roleID).Strs("privileges", privileges).Msg("Proxmox API error during role creation")
 		return fmt.Errorf("failed to create role %s: %w", roleID, err)
 	}
 

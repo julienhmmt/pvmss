@@ -11,6 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/components"
 	"pvmss/constants"
 	"pvmss/i18n"
 	"pvmss/proxmox"
@@ -154,7 +155,6 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 						errMsg = "Failed to retrieve node details"
 					} else {
 						log.Info().Int("node_details_count", len(nodeDetails)).Msg("Successfully fetched node details with optimization")
-						nodeDataSource = "live"
 						nodeCacheAgeSeconds = 0
 						now := time.Now().In(nodeLocation)
 						for _, d := range nodeDetails {
@@ -230,27 +230,47 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 				}
 				// Mark data source as live for this request so that future debugging
 				// clearly indicates that fresh data was fetched.
-				nodeDataSource = "live"
 				nodeCacheAgeSeconds = 0
 				nodeLastUpdate[refreshNode] = time.Now().In(nodeLocation).Format(nodeTimeLayout)
 			}
 		}
 	}
 
-	// Build template data with optimized builder pattern
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("nodes"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("NodeDetails", nodeDetails),
-		WithData("NodeLastUpdate", nodeLastUpdate),
-		WithData("Error", errMsg),
-		WithData("NodeDataSource", nodeDataSource),
-		WithData("NodeCacheAgeSeconds", nodeCacheAgeSeconds),
-	).ToMap()
+	// Build Templ data
+	nodesData := components.AdminNodesData{
+		Username:            getUsernameFromSession(r),
+		Lang:                i18n.GetLanguage(r),
+		CSRFToken:           getCSRFTokenFromContext(r),
+		CurrentPath:         "/admin/nodes",
+		ProxmoxConnected:    proxmoxConnected,
+		Error:               errMsg,
+		NodeCacheAgeSeconds: nodeCacheAgeSeconds,
+		NodeLastUpdate:      nodeLastUpdate,
+	}
 
-	renderTemplateInternal(w, r, "admin_nodes", data)
+	// Convert node details
+	nodesData.NodeDetails = make([]components.NodeDetail, 0, len(nodeDetails))
+	for _, nd := range nodeDetails {
+		if nd == nil {
+			continue
+		}
+		nodesData.NodeDetails = append(nodesData.NodeDetails, components.NodeDetail{
+			Node:      nd.Node,
+			Status:    nd.Status,
+			CPU:       nd.CPU,
+			MaxCPU:    nd.MaxCPU,
+			Memory:    float64(nd.Memory),
+			MaxMemory: float64(nd.MaxMemory),
+			Disk:      float64(nd.Disk),
+			MaxDisk:   float64(nd.MaxDisk),
+		})
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminNodesPage(nodesData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin nodes page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // getNodeDetailsOptimized delegates to the shared resty helper for node collection.
@@ -258,22 +278,9 @@ func (h *AdminOptimizedHandler) getNodeDetailsOptimized(ctx context.Context, res
 	return proxmox.FetchAllNodeDetailsResty(ctx, restyClient)
 }
 
-// AdminPageHandler renders the admin dashboard
+// AdminPageHandler redirects to the first admin page (appinfo)
 func (h *AdminOptimizedHandler) AdminPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("AdminPageHandler", r)
-	log.Debug().
-		Str("component", "admin").
-		Str("operation", "render_dashboard").
-		Msg("Rendering admin dashboard")
-
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("dashboard"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("TitleKey", "Navbar.Admin"),
-	).ToMap()
-	renderTemplateInternal(w, r, "admin_base", data)
+	http.Redirect(w, r, "/admin/appinfo", http.StatusSeeOther)
 }
 
 // AppInfoPageHandler renders the application info page
@@ -365,20 +372,41 @@ func (h *AdminOptimizedHandler) AppInfoPageHandler(w http.ResponseWriter, r *htt
 
 	buildInfo["clusterInfo"] = clusterInfo
 
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("appinfo"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("TitleKey", "Admin.AppInfo.Title"),
-		WithData("BuildInfo", buildInfo),
-	).ToMap()
+	// Build Templ data
+	appInfoData := components.AdminAppInfoData{
+		Username:  getUsernameFromSession(r),
+		Lang:      i18n.GetLanguage(r),
+		CSRFToken: getCSRFTokenFromContext(r),
+		BuildInfo: components.BuildInfo{
+			Version:              constants.AppVersion,
+			Environment:          environment,
+			GoVersion:            runtime.Version(),
+			GoOS:                 runtime.GOOS,
+			GoArch:               runtime.GOARCH,
+			EnvironmentVariables: envInfo,
+		},
+	}
+
+	// Add cluster info if available
+	if clusterInfo["isCluster"].(bool) {
+		appInfoData.BuildInfo.ClusterInfo = &components.ClusterInfo{
+			IsCluster:   true,
+			ClusterName: clusterInfo["clusterName"].(string),
+			NodeCount:   clusterInfo["nodeCount"].(int),
+		}
+	}
+
+	T := getTranslationFunc(r)
 	log.Info().Msg("Rendering Application Info page")
-	renderTemplateInternal(w, r, "admin_appinfo", data)
+	if err := components.AdminAppInfoPage(appInfoData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin appinfo page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // ProxmoxTicketTestPageHandler renders the Proxmox ticket test page
 func (h *AdminOptimizedHandler) ProxmoxTicketTestPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("ProxmoxTicketTestPageHandler", r)
 	// Get Proxmox host URL from client
 	var proxmoxHost string
 	var authMethod string
@@ -406,20 +434,25 @@ func (h *AdminOptimizedHandler) ProxmoxTicketTestPageHandler(w http.ResponseWrit
 		}
 	}
 
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("ticket-test"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("TitleKey", "Navbar.Admin"),
-		WithData("ProxmoxHost", proxmoxHost),
-		WithData("AuthMethod", authMethod),
-	).ToMap()
-	renderTemplateInternal(w, r, "admin_ticket_test", data)
+	// Build Templ data
+	ticketTestData := components.AdminTicketTestData{
+		Username:    getUsernameFromSession(r),
+		Lang:        i18n.GetLanguage(r),
+		CSRFToken:   getCSRFTokenFromContext(r),
+		ProxmoxHost: proxmoxHost,
+		AuthMethod:  authMethod,
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminTicketTestPage(ticketTestData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin ticket test page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // ProxmoxTicketTestFormHandler handles POST from admin_ticket_test.html to test Proxmox authentication
 func (h *AdminOptimizedHandler) ProxmoxTicketTestFormHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("ProxmoxTicketTestFormHandler", r)
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
@@ -427,11 +460,18 @@ func (h *AdminOptimizedHandler) ProxmoxTicketTestFormHandler(w http.ResponseWrit
 	// For now, just redirect with a success message
 	localizer := i18n.GetLocalizerFromRequest(r)
 
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("ticket-test"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithSuccess(i18n.Localize(localizer, "Admin.TicketTest.Success")),
-	).ToMap()
-	renderTemplateInternal(w, r, "admin_ticket_test", data)
+	// Build Templ data
+	ticketTestData := components.AdminTicketTestData{
+		Username:   getUsernameFromSession(r),
+		Lang:       i18n.GetLanguage(r),
+		CSRFToken:  getCSRFTokenFromContext(r),
+		Success:    true,
+		SuccessMsg: i18n.Localize(localizer, "Admin.TicketTest.Success"),
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminTicketTestPage(ticketTestData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin ticket test page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }

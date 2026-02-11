@@ -14,6 +14,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -224,16 +225,33 @@ func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	data := map[string]interface{}{
-		"TitleKey":    "AdminLogin.Title",
-		"Error":       errorMsg,
-		"CSRFToken":   csrfToken,
-		"RedirectURL": r.URL.Query().Get("redirect"),
-		"ReturnURL":   r.URL.Query().Get("return"),
-		"Lang":        i18n.GetLanguage(r),
+	// Optional friendly warning (e.g., session expired)
+	warning := ""
+	if r.URL.Query().Get("warning") == "session_expired" {
+		warning = ctx.Translate("Login.Warning.SessionExpired")
 	}
 
-	ctx.RenderTemplate("admin_login", data)
+	// Prepare admin login data
+	loginData := components.LoginData{
+		Warning:     warning,
+		Error:       errorMsg,
+		CSRFToken:   csrfToken,
+		ReturnURL:   r.URL.Query().Get("return"),
+		RedirectURL: r.URL.Query().Get("redirect"),
+		Lang:        i18n.GetLanguage(r),
+		IsAdmin:     true,
+	}
+
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
+	}
+
+	// Render with Templ
+	if err := components.LoginPage(loginData, translateFunc).Render(r.Context(), w); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to render admin login page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // validateCSRF checks the CSRF token from the form against the one in the session.
@@ -839,16 +857,25 @@ func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, er
 		warning = ctx.Translate(warningKey)
 	}
 
-	// Prepare template data with CSRF token
-	data := map[string]interface{}{
-		"TitleKey":    "Login.Title",
-		"Error":       errorMsg,
-		"Warning":     warning,
-		"CSRFToken":   csrfToken,
-		"RedirectURL": r.URL.Query().Get("redirect"),
-		"ReturnURL":   r.URL.Query().Get("return"),
-		"Lang":        i18n.GetLanguage(r),
+	// Prepare login data
+	loginData := components.LoginData{
+		Warning:     warning,
+		Error:       errorMsg,
+		CSRFToken:   csrfToken,
+		ReturnURL:   r.URL.Query().Get("return"),
+		RedirectURL: r.URL.Query().Get("redirect"),
+		Lang:        i18n.GetLanguage(r),
+		IsAdmin:     false,
 	}
 
-	ctx.RenderTemplate("login", data)
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
+	}
+
+	// Render with Templ
+	if err := components.LoginPage(loginData, translateFunc).Render(r.Context(), w); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to render login page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }

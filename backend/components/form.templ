@@ -1,0 +1,277 @@
+package components
+
+import "strconv"
+
+type InputType string
+
+const (
+	InputText     InputType = "text"
+	InputEmail    InputType = "email"
+	InputPassword InputType = "password"
+	InputNumber   InputType = "number"
+	InputDate     InputType = "date"
+	InputTime     InputType = "time"
+	InputURL      InputType = "url"
+	InputTel      InputType = "tel"
+)
+
+type FormInputProps struct {
+	Name        string
+	Label       string
+	Type        InputType
+	Icon        string
+	Tooltip     string
+	Help        string
+	Required    bool
+	Disabled    bool
+	Readonly    bool
+	Placeholder string
+	Value       string
+	Min         string
+	Max         string
+	Step        string
+	Pattern     string
+	Class       string
+}
+
+templ FormInput(props FormInputProps) {
+	<div class="field">
+		<label class="form-label" for={ props.Name }>
+			if props.Icon != "" {
+				<span class="form-label-icon">
+					<i class={ props.Icon }></i>
+				</span>
+			}
+			{ props.Label }
+			if props.Required {
+				<span class="has-text-danger">*</span>
+			}
+			if props.Tooltip != "" {
+				<button class="form-tooltip" type="button" title={ props.Tooltip } aria-label={ props.Tooltip }>
+					<i class="fas fa-info-circle"></i>
+				</button>
+			}
+		</label>
+		<div class="control">
+			<input
+				id={ props.Name }
+				name={ props.Name }
+				type={ string(props.Type) }
+				class={ "input is-medium", props.Class }
+				if props.Required {
+					required
+				}
+				if props.Disabled {
+					disabled
+				}
+				if props.Readonly {
+					readonly
+				}
+				if props.Placeholder != "" {
+					placeholder={ props.Placeholder }
+				}
+				if props.Value != "" {
+					value={ props.Value }
+				}
+				if props.Min != "" {
+					min={ props.Min }
+				}
+				if props.Max != "" {
+					max={ props.Max }
+				}
+				if props.Step != "" {
+					step={ props.Step }
+				}
+				if props.Pattern != "" {
+					pattern={ props.Pattern }
+				}
+				if props.Help != "" {
+					aria-describedby={ props.Name + "-help" }
+				}
+			/>
+		</div>
+		if props.Help != "" {
+			<p id={ props.Name + "-help" } class="form-help">{ props.Help }</p>
+		}
+	</div>
+}
+
+type SelectOption struct {
+	Value    string
+	Text     string
+	Disabled bool
+}
+
+type FormSelectProps struct {
+	Name     string
+	Label    string
+	Icon     string
+	Tooltip  string
+	Help     string
+	Required bool
+	Disabled bool
+	Options  []SelectOption
+	Selected string
+	Class    string
+}
+
+templ FormSelect(props FormSelectProps) {
+	<div class="field">
+		<label class="form-label" for={ props.Name }>
+			if props.Icon != "" {
+				<span class="form-label-icon">
+					<i class={ props.Icon }></i>
+				</span>
+			}
+			{ props.Label }
+			if props.Required {
+				<span class="has-text-danger">*</span>
+			}
+			if props.Tooltip != "" {
+				<button class="form-tooltip" type="button" title={ props.Tooltip } aria-label={ props.Tooltip }>
+					<i class="fas fa-info-circle"></i>
+				</button>
+			}
+		</label>
+		<div class="control">
+			<div class={ "select is-medium is-fullwidth", props.Class }>
+				<select
+					id={ props.Name }
+					name={ props.Name }
+					if props.Required {
+						required
+					}
+					if props.Disabled {
+						disabled
+					}
+					if props.Help != "" {
+						aria-describedby={ props.Name + "-help" }
+					}
+				>
+					for _, opt := range props.Options {
+						<option
+							value={ opt.Value }
+							if opt.Value == props.Selected {
+								selected
+							}
+							if opt.Disabled {
+								disabled
+							}
+						>
+							{ opt.Text }
+						</option>
+					}
+				</select>
+			</div>
+		</div>
+		if props.Help != "" {
+			<p id={ props.Name + "-help" } class="form-help">{ props.Help }</p>
+		}
+	</div>
+}
+
+type FormTextareaProps struct {
+	Name        string
+	Label       string
+	Icon        string
+	Tooltip     string
+	Help        string
+	Required    bool
+	Disabled    bool
+	Readonly    bool
+	Placeholder string
+	Value       string
+	Rows        int
+	Class       string
+}
+
+templ FormTextarea(props FormTextareaProps) {
+	<div class="field">
+		<label class="form-label" for={ props.Name }>
+			if props.Icon != "" {
+				<span class="form-label-icon">
+					<i class={ props.Icon }></i>
+				</span>
+			}
+			{ props.Label }
+			if props.Required {
+				<span class="has-text-danger">*</span>
+			}
+			if props.Tooltip != "" {
+				<button class="form-tooltip" type="button" title={ props.Tooltip } aria-label={ props.Tooltip }>
+					<i class="fas fa-info-circle"></i>
+				</button>
+			}
+		</label>
+		<div class="control">
+			<textarea
+				id={ props.Name }
+				name={ props.Name }
+				class={ "textarea", props.Class }
+				if props.Required {
+					required
+				}
+				if props.Disabled {
+					disabled
+				}
+				if props.Readonly {
+					readonly
+				}
+				if props.Placeholder != "" {
+					placeholder={ props.Placeholder }
+				}
+				if props.Rows > 0 {
+					rows={ strconv.Itoa(props.Rows) }
+				} else {
+					rows="3"
+				}
+				if props.Help != "" {
+					aria-describedby={ props.Name + "-help" }
+				}
+			>{ props.Value }</textarea>
+		</div>
+		if props.Help != "" {
+			<p id={ props.Name + "-help" } class="form-help">{ props.Help }</p>
+		}
+	</div>
+}
+
+type FormCheckboxProps struct {
+	Name     string
+	Label    string
+	Help     string
+	Checked  bool
+	Disabled bool
+	Value    string
+	Class    string
+}
+
+templ FormCheckbox(props FormCheckboxProps) {
+	<div class="field">
+		<div class="control">
+			<label class={ "checkbox", props.Class }>
+				<input
+					type="checkbox"
+					name={ props.Name }
+					if props.Value != "" {
+						value={ props.Value }
+					}
+					if props.Checked {
+						checked
+					}
+					if props.Disabled {
+						disabled
+					}
+					if props.Help != "" {
+						aria-describedby={ props.Name + "-help" }
+					}
+				/>
+				{ " " }
+				{ props.Label }
+			</label>
+		</div>
+		if props.Help != "" {
+			<p id={ props.Name + "-help" } class="form-help">{ props.Help }</p>
+		}
+	</div>
+}

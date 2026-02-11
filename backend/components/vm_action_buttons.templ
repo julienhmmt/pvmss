@@ -1,0 +1,180 @@
+package components
+
+import (
+	"fmt"
+	"strconv"
+)
+
+type VMActionButtonsProps struct {
+	VMID             int
+	Node             string
+	Status           string
+	CSRFToken        string
+	ProxmoxConnected bool
+	ExtraClasses     string
+	Actions          []string
+}
+
+func getDefaultActions() []string {
+	return []string{"start", "console", "reboot", "shutdown", "stop", "reset", "refresh", "delete"}
+}
+
+func vmActionButtonsActions(props VMActionButtonsProps) []string {
+	if len(props.Actions) > 0 {
+		return props.Actions
+	}
+	return getDefaultActions()
+}
+
+func vmActionStartDisabled(props VMActionButtonsProps) bool {
+	return !props.ProxmoxConnected || props.Status == "running"
+}
+
+func vmActionRunningRequired(props VMActionButtonsProps) bool {
+	return !props.ProxmoxConnected || props.Status != "running"
+}
+
+func vmActionDeleteDisabled(props VMActionButtonsProps) bool {
+	return !props.ProxmoxConnected
+}
+
+templ VMActionButtons(props VMActionButtonsProps, T TranslationFunc) {
+	<div class={ "buttons", props.ExtraClasses } style="gap: 0.5rem;">
+		for _, action := range vmActionButtonsActions(props) {
+			if action == "start" {
+				@vmActionStartButton(props, T)
+			}
+			if action == "console" {
+				@vmActionConsoleButton(props, T)
+			}
+			if action == "reboot" {
+				@vmActionRebootButton(props, T)
+			}
+			if action == "shutdown" {
+				@vmActionShutdownButton(props, T)
+			}
+			if action == "stop" {
+				@vmActionStopButton(props, T)
+			}
+			if action == "reset" {
+				@vmActionResetButton(props, T)
+			}
+			if action == "refresh" {
+				@vmActionRefreshButton(props, T)
+			}
+			if action == "delete" {
+				@vmActionDeleteButton(props, T)
+			}
+		}
+	</div>
+}
+
+templ vmActionStartButton(props VMActionButtonsProps, T TranslationFunc) {
+	<form action="/vm/action" method="post" class="is-inline vm-action-form" data-action="start" x-data="loadingButton()" @submit="submit($event)">
+		<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+		<input type="hidden" name="vmid" value={ strconv.Itoa(props.VMID) }/>
+		<input type="hidden" name="node" value={ props.Node }/>
+		<input type="hidden" name="action" value="start"/>
+		<button type="submit" class="button is-success has-text-white vm-action-button" :disabled={ fmt.Sprintf("loading || %t", vmActionStartDisabled(props)) } :class="{ 'is-loading': loading }">
+			<span class="icon" x-show="!loading"><i class="fas fa-play"></i></span>
+			<span class="button-text" x-show="!loading">{ T("VMDetails.Action.Start") }</span>
+			<span x-show="loading" x-cloak>
+				<i class="fas fa-spinner fa-spin"></i>
+			</span>
+		</button>
+	</form>
+}
+
+templ vmActionConsoleButton(props VMActionButtonsProps, T TranslationFunc) {
+	<button id="console-button" type="button" class="button is-primary vm-console-button">
+		<span class="icon"><i class="fas fa-terminal"></i></span>
+		<span class="button-text">{ T("VMDetails.Action.Console") }</span>
+		<span class="button-loading is-hidden">
+			<i class="fas fa-spinner fa-spin"></i>
+		</span>
+	</button>
+}
+
+templ vmActionRebootButton(props VMActionButtonsProps, T TranslationFunc) {
+	<form action="/vm/action" method="post" class="is-inline vm-action-form" data-action="reboot" x-data="loadingButton()" @submit="submit($event)">
+		<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+		<input type="hidden" name="vmid" value={ strconv.Itoa(props.VMID) }/>
+		<input type="hidden" name="node" value={ props.Node }/>
+		<input type="hidden" name="action" value="reboot"/>
+		<button type="submit" class="button is-info vm-action-button" :disabled={ fmt.Sprintf("loading || %t", vmActionRunningRequired(props)) } :class="{ 'is-loading': loading }">
+			<span class="icon" x-show="!loading"><i class="fas fa-redo"></i></span>
+			<span class="button-text" x-show="!loading">{ T("VMDetails.Action.Reboot") }</span>
+			<span x-show="loading" x-cloak>
+				<i class="fas fa-spinner fa-spin"></i>
+			</span>
+		</button>
+	</form>
+}
+
+templ vmActionShutdownButton(props VMActionButtonsProps, T TranslationFunc) {
+	<form action="/vm/action" method="post" class="is-inline vm-action-form" data-action="shutdown" x-data="loadingButton()" @submit="submit($event)">
+		<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+		<input type="hidden" name="vmid" value={ strconv.Itoa(props.VMID) }/>
+		<input type="hidden" name="node" value={ props.Node }/>
+		<input type="hidden" name="action" value="shutdown"/>
+		<button type="submit" class="button is-danger has-text-white vm-action-button" :disabled={ fmt.Sprintf("loading || %t", vmActionRunningRequired(props)) } :class="{ 'is-loading': loading }">
+			<span class="icon" x-show="!loading"><i class="fas fa-power-off"></i></span>
+			<span class="button-text" x-show="!loading">{ T("VMDetails.Action.Shutdown") }</span>
+			<span x-show="loading" x-cloak>
+				<i class="fas fa-spinner fa-spin"></i>
+			</span>
+		</button>
+	</form>
+}
+
+templ vmActionStopButton(props VMActionButtonsProps, T TranslationFunc) {
+	<form action="/vm/action" method="post" class="is-inline vm-action-form" data-action="stop" x-data="loadingButton()" @submit="submit($event)">
+		<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+		<input type="hidden" name="vmid" value={ strconv.Itoa(props.VMID) }/>
+		<input type="hidden" name="node" value={ props.Node }/>
+		<input type="hidden" name="action" value="stop"/>
+		<button type="submit" class="button is-light vm-action-button" :disabled={ fmt.Sprintf("loading || %t", vmActionRunningRequired(props)) } :class="{ 'is-loading': loading }">
+			<span class="icon" x-show="!loading"><i class="fas fa-stop"></i></span>
+			<span class="button-text" x-show="!loading">{ T("VMDetails.Action.Stop") }</span>
+			<span x-show="loading" x-cloak>
+				<i class="fas fa-spinner fa-spin"></i>
+			</span>
+		</button>
+	</form>
+}
+
+templ vmActionResetButton(props VMActionButtonsProps, T TranslationFunc) {
+	<form action="/vm/action" method="post" class="is-inline vm-action-form" data-action="reset" x-data="loadingButton()" @submit="submit($event)">
+		<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+		<input type="hidden" name="vmid" value={ strconv.Itoa(props.VMID) }/>
+		<input type="hidden" name="node" value={ props.Node }/>
+		<input type="hidden" name="action" value="reset"/>
+		<button type="submit" class="button is-light vm-action-button" :disabled={ fmt.Sprintf("loading || %t", vmActionRunningRequired(props)) } :class="{ 'is-loading': loading }">
+			<span class="icon" x-show="!loading"><i class="fas fa-bolt"></i></span>
+			<span class="button-text" x-show="!loading">{ T("VMDetails.Action.Reset") }</span>
+			<span x-show="loading" x-cloak>
+				<i class="fas fa-spinner fa-spin"></i>
+			</span>
+		</button>
+	</form>
+}
+
+templ vmActionRefreshButton(props VMActionButtonsProps, T TranslationFunc) {
+	<a href={ templ.SafeURL(fmt.Sprintf("/vm/details/%d?refresh=1", props.VMID)) } class="button is-light vm-refresh-button">
+		<span class="icon"><i class="fas fa-sync-alt"></i></span>
+		<span class="button-text">{ T("VMDetails.Action.Refresh") }</span>
+		<span class="button-loading is-hidden">
+			<i class="fas fa-spinner fa-spin"></i>
+		</span>
+	</a>
+}
+
+templ vmActionDeleteButton(props VMActionButtonsProps, T TranslationFunc) {
+	<a href={ templ.SafeURL(fmt.Sprintf("/vm/delete/%d", props.VMID)) } class="button is-danger has-text-white vm-delete-button" disabled?={ vmActionDeleteDisabled(props) }>
+		<span class="icon"><i class="fas fa-trash-alt"></i></span>
+		<span class="button-text">{ T("VMDetails.Action.Delete") }</span>
+		<span class="button-loading is-hidden">
+			<i class="fas fa-spinner fa-spin"></i>
+		</span>
+	</a>
+}

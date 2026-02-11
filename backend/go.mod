@@ -5,6 +5,7 @@ go 1.24.4
 require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/Telmate/proxmox-api-go v0.0.0-20251229135606-8be09b4e56c6
+	github.com/a-h/templ v0.3.977
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/go-resty/resty/v2 v2.17.1
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a

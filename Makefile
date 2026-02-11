@@ -163,6 +163,10 @@ go-fmt: ## Formate le code Go
 	@echo "$(BLUE)Formatage du code Go...$(NC)"
 	cd backend && go fmt ./...
 
+go-template: ## Génère les templates Go
+	@echo "$(BLUE)Génération des templates Go...$(NC)"
+	cd backend && ~/go/bin/templ generate && cd ..
+
 # =============================================================================
 # Commandes de développement rapide
 

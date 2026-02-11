@@ -31,7 +31,7 @@ func TestDefaultValues(t *testing.T) {
 	assertEqualString(t, "DefaultLogLevel", DefaultLogLevel, "info")
 	assertEqualString(t, "DefaultLanguage", DefaultLanguage, "en")
 	assertEqualString(t, "DefaultLoginRealm", DefaultLoginRealm, "pve")
-	assertEqualString(t, "AppVersion", AppVersion, "0.3.0")
+	assertEqualString(t, "AppVersion", AppVersion, "0.4.0")
 }
 
 func TestValidationLimits(t *testing.T) {

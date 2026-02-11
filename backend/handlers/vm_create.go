@@ -301,10 +301,20 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	}
 	data["AvailableTags"] = availableTags
 
-	// Add CSRF token from request context
-	if csrfToken, ok := r.Context().Value("csrf_token").(string); ok {
-		data["CSRFToken"] = csrfToken
+	// Generate or retrieve CSRF token from session
+	csrfToken := ""
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if token, ok := sessionManager.Get(r.Context(), "csrf_token").(string); ok && token != "" {
+			csrfToken = token
+		} else {
+			// Generate new token if none exists
+			if newToken, err := security.GenerateCSRFToken(); err == nil {
+				sessionManager.Put(r.Context(), "csrf_token", newToken)
+				csrfToken = newToken
+			}
+		}
 	}
+	data["CSRFToken"] = csrfToken
 
 	// Compute explicit VM limits for template (avoids nil map indexing in templates)
 	// IMPORTANT: Limits MUST come from settings.json (NO hardcoded defaults)
@@ -330,7 +340,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	if vmRamMinMB == 0 || vmRamMaxMB == 0 || coresMin == 0 || coresMax == 0 || socketsMin == 0 || socketsMax == 0 || diskMin == 0 || diskMax == 0 {
 		log.Error().Msg("Incomplete VM limits in settings.json")
 		data["ValidationError"] = "Incomplete system configuration. Please contact administrator."
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
@@ -381,7 +391,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		if err := r.ParseForm(); err != nil {
 			log.Error().Err(err).Msg("Failed to parse VM creation form")
 			data["ValidationError"] = i18n.Localize(localizer, "Error.InvalidFormData")
-			renderTemplateInternal(w, r, "vm_create", data)
+			renderVMCreateTempl(w, r, data)
 			return
 		}
 
@@ -390,7 +400,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		return
 	}
 
-	renderTemplateInternal(w, r, "vm_create", data)
+	renderVMCreateTempl(w, r, data)
 	log.Debug().Msg("Template rendered successfully")
 }
 

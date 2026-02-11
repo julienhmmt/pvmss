@@ -4,6 +4,22 @@
 other = "Modèles Cloud-init"
 ["Admin.CloudInit.Description"]
 other = "Gérer les modèles de configuration cloud-init pour l'initialisation des VM"
+["Admin.CloudInit.SFTPStatus"]
+other = "Statut SFTP"
+["Admin.CloudInit.SFTPStatusHelp"]
+other = "Ce statut indique si SFTP est activé pour les modèles cloud-init"
+["Admin.CloudInit.SFTPDisabled"]
+other = "Le téléversement SFTP est désactivé. Les modèles seront stockés localement uniquement."
+["Admin.CloudInit.SFTPDocsLink"]
+other = "Apprendre à configurer SFTP"
+["Admin.CloudInit.SFTPConfigured"]
+other = "SFTP configuré et prêt"
+["Admin.CloudInit.SFTPKeyNotFound"]
+other = "Fichier de clé privée introuvable"
+["Admin.CloudInit.SFTPHostNotConfigured"]
+other = "Hôte SFTP non configuré"
+["Admin.CloudInit.SFTPSettingsUnavailable"]
+other = "Paramètres non disponibles"
 
 # Page sections
 ["Admin.CloudInit.TemplatesList"]

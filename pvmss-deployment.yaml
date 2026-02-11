@@ -102,7 +102,7 @@ metadata:
   labels:
     app.kubernetes.io/name: pvmss
     app.kubernetes.io/instance: pvmss
-    app.kubernetes.io/version: "0.3.0"
+    app.kubernetes.io/version: "0.4.0"
 spec:
   replicas: 1
   strategy:
@@ -126,7 +126,7 @@ spec:
       restartPolicy: Always
       containers:
         - name: pvmss
-          image: jhmmt/pvmss:0.3.0
+          image: jhmmt/pvmss:0.4.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: backend
@@ -213,7 +213,7 @@ spec:
   selector:
     app.kubernetes.io/name: pvmss
     app.kubernetes.io/instance: pvmss
-    app.kubernetes.io/version: "0.3.0"
+    app.kubernetes.io/version: "0.4.0"
   ports:
     - name: backend
       protocol: TCP

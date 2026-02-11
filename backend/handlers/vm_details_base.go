@@ -29,7 +29,8 @@ func NewVMHandler(stateManager state.StateManager) *VMHandler {
 func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/vm/details/:vmid", RequireAuthHandle(h.VMDetailsHandler))
 
-	// API routes for dynamic updates
+	// API routes for dynamic updates (HTMX partials)
+	router.GET("/api/vm/:vmid/status", RequireAuthHandle(h.VMStatusPartialHandler))
 	router.GET("/api/vm/:vmid/metrics", RequireAuthHandle(h.VMMetricsHandler))
 
 	router.POST("/api/vm/validate/vmid", RequireAuthHandle(h.ValidateVMIDHandler))

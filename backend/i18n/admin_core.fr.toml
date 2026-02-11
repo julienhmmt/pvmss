@@ -4,6 +4,30 @@ other = "Page d'administration de PVMSS"
 ["Admin.SelectSectionPrompt"]
 other = "Sélectionnez une section d'administration dans le menu pour commencer."
 
+# Menu Admin
+["Admin.Menu.Title"]
+other = "Administration"
+["Admin.Menu.Nodes"]
+other = "Nœuds"
+["Admin.Menu.Storage"]
+other = "Stockage"
+["Admin.Menu.VMs"]
+other = "Machines virtuelles"
+["Admin.Menu.UserPool"]
+other = "Pool utilisateurs"
+["Admin.Menu.Tags"]
+other = "Tags"
+["Admin.Menu.Limits"]
+other = "Limites"
+["Admin.Menu.Network"]
+other = "Réseau (VMBR)"
+["Admin.Menu.CloudInit"]
+other = "Cloud-Init"
+["Admin.Menu.ISO"]
+other = "Images ISO"
+["Admin.Menu.AppInfo"]
+other = "Info application"
+
 # Admin Authentication Test
 ["Admin.Auth.TestSuccess"]
 other = "Test d'authentification Proxmox terminé avec succès"

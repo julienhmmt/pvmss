@@ -12,6 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/cloudinit"
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -65,7 +66,9 @@ func (h *CloudInitHandler) RegisterRoutes(router *httprouter.Router) {
 
 	// Get single template with content (admin view)
 	router.GET("/admin/cloudinit/template/:id", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.GetTemplateHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+		// Get params from our custom context key
+		ps, _ := r.Context().Value(ParamsKey).(httprouter.Params)
+		h.GetTemplateHandler(w, r, ps)
 	})))
 
 	// Public API for authenticated users to view template content (used on VM create page)
@@ -116,7 +119,7 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 	}
 
 	// Check SFTP configuration status
-	sftpStatus := h.getSFTPStatus(settings)
+	sftpStatus := h.getSFTPStatus(settings, r)
 
 	// Build template data using functional options pattern
 	opts := []TemplateOption{
@@ -179,11 +182,43 @@ func (h *CloudInitHandler) CloudInitPageHandler(w http.ResponseWriter, r *http.R
 		if name != "" && strings.Contains(warningMsg, "%s") {
 			warningMsg = strings.Replace(warningMsg, "%s", name, 1)
 		}
-		opts = append(opts, WithWarning(warningMsg))
+		_ = append(opts, WithWarning(warningMsg))
 	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_cloudinit", data)
+	// Build Templ data
+	cloudInitTemplData := components.AdminCloudInitData{
+		Username:          getUsernameFromSession(r),
+		Lang:              i18n.GetLanguage(r),
+		CSRFToken:         getCSRFTokenFromContext(r),
+		ProxmoxConnected:  proxmoxConnected,
+		HasProxmoxSession: hasProxmoxSession,
+	}
+
+	// Convert templates
+	for _, t := range settings.CloudInitTemplates {
+		cloudInitTemplData.Templates = append(cloudInitTemplData.Templates, components.CloudInitTemplate{
+			ID:          t.ID,
+			Name:        t.Name,
+			Description: t.Description,
+			Enabled:     t.Enabled,
+			Content:     t.YAMLContent,
+		})
+	}
+
+	// Add SFTP status
+	cloudInitTemplData.SFTPStatus = &components.SFTPStatus{
+		Enabled:    sftpStatus.Enabled,
+		Host:       sftpStatus.Host,
+		Username:   sftpStatus.Username,
+		StatusType: sftpStatus.StatusType,
+		StatusText: sftpStatus.StatusText,
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminCloudInitPage(cloudInitTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin cloudinit page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // CreateTemplateHandler handles creating a new cloud-init template.
@@ -534,11 +569,13 @@ type SFTPStatus struct {
 }
 
 // getSFTPStatus checks the SFTP configuration and returns status information.
-func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings) SFTPStatus {
+func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings, r *http.Request) SFTPStatus {
+	localizer := i18n.GetLocalizerFromRequest(r)
+
 	if settings == nil {
 		return SFTPStatus{
 			Enabled:    false,
-			StatusText: "Settings not available",
+			StatusText: i18n.Localize(localizer, "Admin.CloudInit.SFTPSettingsUnavailable"),
 			StatusType: "danger",
 		}
 	}
@@ -547,7 +584,7 @@ func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings) SFTPStatus
 	if !cfg.Enabled {
 		return SFTPStatus{
 			Enabled:    false,
-			StatusText: "SFTP upload disabled",
+			StatusText: i18n.Localize(localizer, "Admin.CloudInit.SFTPDisabled"),
 			StatusType: "warning",
 		}
 	}
@@ -568,13 +605,13 @@ func (h *CloudInitHandler) getSFTPStatus(settings *state.AppSettings) SFTPStatus
 	}
 
 	if !keyExists {
-		status.StatusText = "Private key file not found"
+		status.StatusText = i18n.Localize(localizer, "Admin.CloudInit.SFTPKeyNotFound")
 		status.StatusType = "danger"
 	} else if cfg.Host == "" {
-		status.StatusText = "SFTP host not configured"
+		status.StatusText = i18n.Localize(localizer, "Admin.CloudInit.SFTPHostNotConfigured")
 		status.StatusType = "danger"
 	} else {
-		status.StatusText = "SFTP configured and ready"
+		status.StatusText = i18n.Localize(localizer, "Admin.CloudInit.SFTPConfigured")
 		status.StatusType = "success"
 	}
 

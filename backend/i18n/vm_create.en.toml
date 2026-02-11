@@ -305,25 +305,25 @@ other = "Select a template..."
 ["VM.Create.CloudInit.NoTemplate"]
 other = "No template (configure manually)"
 ["VM.Create.CloudInit.Username"]
-other = "Default Username"
+other = "Default username"
 ["VM.Create.CloudInit.UsernamePlaceholder"]
 other = "e.g., admin"
 ["VM.Create.CloudInit.UsernameHelp"]
 other = "Username for the default user account"
 ["VM.Create.CloudInit.Password"]
-other = "Default Password"
+other = "Default password"
 ["VM.Create.CloudInit.PasswordPlaceholder"]
 other = "Leave empty for no password"
 ["VM.Create.CloudInit.PasswordHelp"]
 other = "Password for the default user. Leave empty if using SSH keys only."
 ["VM.Create.CloudInit.SSHKeys"]
-other = "SSH Public Keys"
+other = "SSH public keys"
 ["VM.Create.CloudInit.SSHKeysPlaceholder"]
 other = "Paste SSH public keys here (one per line)"
 ["VM.Create.CloudInit.SSHKeysHelp"]
 other = "SSH public keys for passwordless authentication"
 ["VM.Create.CloudInit.IPConfig"]
-other = "Network Configuration"
+other = "Network configuration"
 ["VM.Create.CloudInit.DHCP"]
 other = "DHCP (automatic)"
 ["VM.Create.CloudInit.Static"]
@@ -337,21 +337,21 @@ other = "Gateway"
 ["VM.Create.CloudInit.GatewayPlaceholder"]
 other = "e.g., 192.168.1.1"
 ["VM.Create.CloudInit.Nameserver"]
-other = "DNS Server"
+other = "DNS server"
 ["VM.Create.CloudInit.NameserverPlaceholder"]
 other = "e.g., 9.9.9.9"
 ["VM.Create.CloudInit.DNS"]
-other = "DNS Server"
+other = "DNS server"
 ["VM.Create.CloudInit.DNSPlaceholder"]
 other = "e.g., 9.9.9.9 or 1.1.1.1"
 ["VM.Create.CloudInit.DNSHelp"]
 other = "Custom DNS server (works with both DHCP and static IP)"
 ["VM.Create.CloudInit.Searchdomain"]
-other = "Search Domain"
+other = "Search domain"
 ["VM.Create.CloudInit.SearchdomainPlaceholder"]
 other = "e.g., example.com"
 ["VM.Create.CloudInit.Advanced"]
-other = "Advanced Configuration"
+other = "Advanced configuration"
 ["VM.Create.CloudInit.AdvancedHelp"]
 other = "Provide custom cloud-init YAML configuration (overrides template)"
 ["VM.Create.CloudInit.CustomYAML"]

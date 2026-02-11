@@ -24,7 +24,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	if client == nil {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
@@ -45,14 +45,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if macAddress != "" && !utils.ValidateMACAddress(macAddress) {
 		h.preserveNetworkCardFormData(r, data)
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 	if vlanTag != "" {
 		if vlanID, err := strconv.Atoi(vlanTag); err != nil || vlanID < 1 || vlanID > 4096 {
 			h.preserveNetworkCardFormData(r, data)
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.VLANRange")
-			renderTemplateInternal(w, r, "vm_create", data)
+			renderVMCreateTempl(w, r, data)
 			return
 		}
 	}
@@ -60,7 +60,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		if rate, err := strconv.ParseFloat(rateLimit, 64); err != nil || rate < 1 || rate > 10240 {
 			h.preserveNetworkCardFormData(r, data)
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.RateLimitRange")
-			renderTemplateInternal(w, r, "vm_create", data)
+			renderVMCreateTempl(w, r, data)
 			return
 		}
 	}
@@ -92,19 +92,19 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	if name == "" {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.VMNameRequired")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
 	if macAddress != "" && !ValidateMACAddress(macAddress) {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
 	if storage == "" {
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.StorageRequired")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
@@ -114,7 +114,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if settings == nil {
 		log.Error().Msg("Settings not available for VM creation")
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SettingsUnavailable")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
@@ -175,14 +175,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	} else {
 		log.Error().Msg("Settings or limits not available for VM creation POST")
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SystemUnavailable")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
 	if memoryMin == 0 || memoryMax == 0 || coresMin == 0 || coresMax == 0 || socketsMin == 0 || socketsMax == 0 || diskMin == 0 || diskMax == 0 {
 		log.Error().Msg("Incomplete VM limits in settings.json for POST")
 		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.SystemUnavailable")
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 				localizer := i18n.GetLocalizerFromRequest(r)
 				errorMsg := i18n.Localize(localizer, "VM.Create.Error.MaxVMPerUserReached", currentVMCount, maxVMPerUser)
 				data["ValidationError"] = errorMsg
-				renderTemplateInternal(w, r, "vm_create", data)
+				renderVMCreateTempl(w, r, data)
 				return
 			}
 		}
@@ -239,14 +239,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 		restyClient, err := getDefaultRestyClient()
 		if err != nil {
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Error.FailedToGetNextVMID")
-			renderTemplateInternal(w, r, "vm_create", data)
+			renderVMCreateTempl(w, r, data)
 			return
 		}
 		nextID, err := proxmox.GetNextVMIDResty(ctx, restyClient)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to get next VMID")
 			data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Error.FailedToGetNextVMID")
-			renderTemplateInternal(w, r, "vm_create", data)
+			renderVMCreateTempl(w, r, data)
 			return
 		}
 		vmid = nextID
@@ -406,14 +406,14 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 			if additionalMAC != "" && !utils.ValidateMACAddress(additionalMAC) {
 				h.preserveNetworkCardFormData(r, data)
 				data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "VM.Create.Validation.InvalidMACAddress")
-				renderTemplateInternal(w, r, "vm_create", data)
+				renderVMCreateTempl(w, r, data)
 				return
 			}
 			if additionalVLANTag != "" {
 				if vlanID, err := strconv.Atoi(additionalVLANTag); err != nil || vlanID < 1 || vlanID > 4096 {
 					h.preserveNetworkCardFormData(r, data)
 					data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.VLANRange")
-					renderTemplateInternal(w, r, "vm_create", data)
+					renderVMCreateTempl(w, r, data)
 					return
 				}
 			}
@@ -421,7 +421,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 				if rate, err := strconv.ParseFloat(additionalRateLimit, 64); err != nil || rate < 1 || rate > 10240 {
 					h.preserveNetworkCardFormData(r, data)
 					data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.RateLimitRange")
-					renderTemplateInternal(w, r, "vm_create", data)
+					renderVMCreateTempl(w, r, data)
 					return
 				}
 			}
@@ -429,7 +429,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 				if mtuVal, err := strconv.Atoi(additionalMTU); err != nil || mtuVal < 576 || mtuVal > 9000 {
 					h.preserveNetworkCardFormData(r, data)
 					data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Validation.MTURange")
-					renderTemplateInternal(w, r, "vm_create", data)
+					renderVMCreateTempl(w, r, data)
 					return
 				}
 			}
@@ -465,7 +465,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB, localizer); err != nil {
 		log.Warn().Err(err).Str("component", "vm_create").Str("operation", "validate_node_limits").Str("node", node).Str("reason", "resource_limits_exceeded").Msg("VM resources exceed aggregate node limits")
 		data["ValidationError"] = err.Error()
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 
@@ -475,7 +475,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
 		logger.VMFailure("vm_create", vmid, node, "proxmox_api_error").Err(err).Str("vm_name", name).Int("cpu_sockets", cpuSockets).Int("cpu_cores", cpuCores).Int("memory_mb", memoryMB).Int("disk_gb", diskSizeMB/1024).Str("storage", storage).Str("network_model", networkModel).Str("pool", pool).Str("client_ip", r.RemoteAddr).Msg("VM creation failed")
 		data["ValidationError"] = fmt.Sprintf("Failed to create VM: %v", err)
-		renderTemplateInternal(w, r, "vm_create", data)
+		renderVMCreateTempl(w, r, data)
 		return
 	}
 

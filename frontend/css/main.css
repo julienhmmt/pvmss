@@ -22,13 +22,5 @@
 @import url('style.css');
 @import url('glass.css');
 
-/* Admin Styles (loaded conditionally)
-   @import url('admin.css');
-*/
-
-/* Font Awesome (loaded separately for performance)
-   @import url('fontawesome.min.css');
-   @import url('solid.min.css');
-   @import url('regular.min.css');
-   @import url('brands.min.css');
-*/
+/* Admin Styles */
+@import url('admin.css');

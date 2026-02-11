@@ -8,6 +8,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -281,11 +282,40 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 		opts = append(opts, WithSuccess(successMsg))
 	}
 	if err != nil {
-		opts = append(opts, WithData("Error", err.Error()))
+		_ = append(opts, WithData("Error", err.Error()))
 	}
 
-	templateData := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_vmbr", templateData)
+	// Build Templ data
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
+	vmbrTemplData := components.AdminVMBRData{
+		Username:        getUsernameFromSession(r),
+		Lang:            i18n.GetLanguage(r),
+		CSRFToken:       getCSRFTokenFromContext(r),
+		Error:           errMsg,
+		Nodes:           allNodes,
+		EnabledVMBRs:    enabledVMBRs,
+		MaxNetworkCards: settings.MaxNetworkCards,
+	}
+
+	// Convert VMBRs
+	for _, v := range vmbrsForTemplate {
+		vmbrTemplData.VMBRs = append(vmbrTemplData.VMBRs, components.VMBRInfo{
+			Name:        v["name"],
+			Node:        v["node"],
+			UniqueID:    v["unique_id"],
+			Description: v["description"],
+			IsFromCache: false, // VMBRs collected live are not from cache
+		})
+	}
+
+	T := getTranslationFunc(r)
+	if renderErr := components.AdminVMBRPage(vmbrTemplData, T).Render(r.Context(), w); renderErr != nil {
+		log.Error().Err(renderErr).Msg("Failed to render admin vmbr page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // RegisterRoutes registers the routes for VMBR management.
