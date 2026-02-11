@@ -1,9 +1,10 @@
 package components
 
 type SearchData struct {
-	Lang     string
-	Username string
+	Lang      string
+	Username  string
 	CSRFToken string
+	IsAdmin   bool
 }
 
 templ SearchPage(data SearchData, T TranslationFunc) {
@@ -12,7 +13,7 @@ templ SearchPage(data SearchData, T TranslationFunc) {
 		Lang:             data.Lang,
 		CurrentPath:      "/search",
 		IsAuthenticated:  true,
-		IsAdmin:          false,
+		IsAdmin:          data.IsAdmin,
 		Username:         data.Username,
 		ProxmoxConnected: true,
 		CSRFToken:        data.CSRFToken,

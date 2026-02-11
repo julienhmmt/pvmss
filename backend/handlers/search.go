@@ -118,6 +118,7 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 		Lang:      i18n.GetLanguage(r),
 		Username:  username,
 		CSRFToken: csrfToken,
+		IsAdmin:   isAdmin,
 	}
 
 	// Translation function wrapper
