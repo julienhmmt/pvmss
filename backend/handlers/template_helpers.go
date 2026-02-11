@@ -2,79 +2,7 @@ package handlers
 
 import (
 	"net/http"
-
-	"pvmss/state"
 )
-
-// TemplateHelpers provides utility functions for template rendering
-type TemplateHelpers struct{}
-
-// NewTemplateHelpers creates a new TemplateHelpers instance
-func NewTemplateHelpers() *TemplateHelpers {
-	return &TemplateHelpers{}
-}
-
-// RenderAdminPage renders an admin page with standardized data structure
-func (th *TemplateHelpers) RenderAdminPage(w http.ResponseWriter, r *http.Request, templateName string, title string, adminSection string, sm state.StateManager, customData map[string]interface{}) {
-	opts := []TemplateOption{
-		WithAdminActive(adminSection),
-		WithAuth(r),
-		WithProxmoxStatus(sm),
-		WithMessages(r),
-	}
-
-	// Add custom data
-	for key, value := range customData {
-		opts = append(opts, WithData(key, value))
-	}
-
-	data := NewTemplateDataWithOptions(title, opts...).ToMap()
-	renderTemplateInternal(w, r, templateName, data)
-}
-
-// RenderUserPage renders a user page with standardized data structure
-func (th *TemplateHelpers) RenderUserPage(w http.ResponseWriter, r *http.Request, templateName string, title string, sm state.StateManager, customData map[string]interface{}) {
-	opts := []TemplateOption{
-		WithPageType("user"),
-		WithAuth(r),
-		WithProxmoxStatus(sm),
-		WithMessages(r),
-	}
-
-	// Add custom data
-	for key, value := range customData {
-		opts = append(opts, WithData(key, value))
-	}
-
-	data := NewTemplateDataWithOptions(title, opts...).ToMap()
-	renderTemplateInternal(w, r, templateName, data)
-}
-
-// RenderPublicPage renders a public page with standardized data structure
-func (th *TemplateHelpers) RenderPublicPage(w http.ResponseWriter, r *http.Request, templateName string, title string, customData map[string]interface{}) {
-	opts := []TemplateOption{
-		WithPageType("public"),
-		WithMessages(r),
-	}
-
-	// Add custom data
-	for key, value := range customData {
-		opts = append(opts, WithData(key, value))
-	}
-
-	data := NewTemplateDataWithOptions(title, opts...).ToMap()
-	renderTemplateInternal(w, r, templateName, data)
-}
-
-// StandardUserPageData creates standardized user page data (legacy compatibility)
-func StandardUserPageData(title string, r *http.Request, sm state.StateManager) map[string]interface{} {
-	return NewTemplateDataWithOptions(title,
-		WithPageType("user"),
-		WithAuth(r),
-		WithProxmoxStatus(sm),
-		WithMessages(r),
-	).ToMap()
-}
 
 // MessageHandlers provides standardized message handling
 type MessageHandlers struct {

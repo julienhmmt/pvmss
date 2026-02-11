@@ -12,6 +12,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -111,7 +112,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	if len(nodeNames) > 1 {
 		sort.Strings(nodeNames)
 	}
-	opts = append(opts, WithData("NodeNames", nodeNames))
+	_ = append(opts, WithData("NodeNames", nodeNames))
 
 	// Get resource usage for all nodes
 	var nodeUsage map[string]*NodeResourceUsage
@@ -147,13 +148,63 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 		nodeUsage = make(map[string]*NodeResourceUsage)
 	}
 	if nodeCapacities == nil {
-		nodeCapacities = make(map[string]*NodeCapacity)
+		_ = make(map[string]*NodeCapacity)
 	}
-	opts = append(opts, WithData("NodeUsage", nodeUsage))
-	opts = append(opts, WithData("NodeCapacities", nodeCapacities))
+	// Convert nodeUsage to components.NodeUsage
+	templNodeUsage := make(map[string]*components.NodeUsage)
+	for nodeName, usage := range nodeUsage {
+		if usage != nil {
+			templNodeUsage[nodeName] = &components.NodeUsage{
+				TotalVMs: usage.TotalVMs,
+				Cores:    usage.Cores,
+				MaxCores: usage.MaxCores,
+				RamGB:    usage.RamGB,
+				MaxRamGB: usage.MaxRamGB,
+			}
+		}
+	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_limits", data)
+	// Build Templ data
+	selectedNode := r.URL.Query().Get("node")
+	limitsTemplData := components.AdminLimitsData{
+		Username:         getUsernameFromSession(r),
+		Lang:             i18n.GetLanguage(r),
+		CSRFToken:        getCSRFTokenFromContext(r),
+		ProxmoxConnected: proxmoxConnected,
+		Node:             selectedNode,
+		NodeNames:        nodeNames,
+		NodeUsage:        templNodeUsage,
+		Limits:           limitsData,
+		Settings: &components.LimitsSettings{
+			MaxVMPerUser: settings.MaxVMPerUser,
+			MaxSnapshots: settings.Limits.MaxSnapshots,
+		},
+		VMSettings: &components.VMSettings{
+			SocketsMax: settings.Limits.VM.Sockets.Max,
+			CoresMax:   settings.Limits.VM.Cores.Max,
+			RAMMin:     settings.Limits.VM.RAM.Min,
+			RAMMax:     settings.Limits.VM.RAM.Max,
+			DiskMin:    settings.Limits.VM.Disk.Min,
+			DiskMax:    settings.Limits.VM.Disk.Max,
+		},
+	}
+
+	// Populate NodeSettings if a node is selected and has limits configured
+	if selectedNode != "" && settings.Limits.Nodes != nil {
+		if nodeLimits, ok := settings.Limits.Nodes[selectedNode]; ok {
+			limitsTemplData.NodeSettings = &components.NodeSettings{
+				CoresMax: nodeLimits.Cores.Max,
+				RAMMin:   nodeLimits.RAM.Min,
+				RAMMax:   nodeLimits.RAM.Max,
+			}
+		}
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminLimitsPage(limitsTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin limits page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // UpdateLimitsFormHandler handles POST from admin_limits.html to update VM/Node limits

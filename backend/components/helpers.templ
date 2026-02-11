@@ -1,0 +1,279 @@
+package components
+
+import "fmt"
+
+// ProgressClass returns the appropriate Bulma class based on percentage
+func ProgressClass(percent float64) string {
+	if percent < 70.0 {
+		return "is-success"
+	} else if percent < 90.0 {
+		return "is-warning"
+	}
+	return "is-danger"
+}
+
+// FormatBytes formats bytes into human-readable format
+func FormatBytes(bytes float64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%.0f B", bytes)
+	}
+	div, exp := float64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", bytes/div, "KMGTPE"[exp])
+}
+
+// FormatBytesInt formats int64 bytes into human-readable format
+func FormatBytesInt(bytes int64) string {
+	return FormatBytes(float64(bytes))
+}
+
+// ToggleButton renders a toggle button for enable/disable actions
+type ToggleButtonProps struct {
+	FormAction string
+	CSRFToken  string
+	ItemName   string
+	ItemValue  string
+	NodeName   string
+	NodeValue  string
+	IsEnabled  bool
+	IsDisabled bool
+}
+
+templ ToggleButton(props ToggleButtonProps, T TranslationFunc) {
+	<form method="POST" action={ templ.SafeURL(props.FormAction) } class="is-inline">
+		<input type="hidden" name="csrf_token" value={ props.CSRFToken }/>
+		<input type="hidden" name={ props.ItemName } value={ props.ItemValue }/>
+		if props.NodeName != "" {
+			<input type="hidden" name={ props.NodeName } value={ props.NodeValue }/>
+		}
+		if props.IsEnabled {
+			<input type="hidden" name="action" value="disable"/>
+			<button
+				type="submit"
+				class={ "button is-success is-light", templ.KV("is-disabled", props.IsDisabled) }
+				disabled?={ props.IsDisabled }
+				title={ T("Common.Disable") }
+			>
+				<span class="icon"><i class="fas fa-toggle-on"></i></span>
+				<span>{ T("Common.Enabled") }</span>
+			</button>
+		} else {
+			<input type="hidden" name="action" value="enable"/>
+			<button
+				type="submit"
+				class={ "button is-light", templ.KV("is-disabled", props.IsDisabled) }
+				disabled?={ props.IsDisabled }
+				title={ T("Common.Enable") }
+			>
+				<span class="icon"><i class="fas fa-toggle-off"></i></span>
+				<span>{ T("Common.Disabled") }</span>
+			</button>
+		}
+	</form>
+}
+
+// NodeFilterSelect renders a node filter dropdown
+type NodeFilterProps struct {
+	Nodes          []string
+	FilterFunction string
+	LabelKey       string
+	AllNodesKey    string
+}
+
+templ NodeFilterSelect(props NodeFilterProps, T TranslationFunc) {
+	if len(props.Nodes) > 0 {
+		<div class="field is-grouped">
+			<label class="label">{ T(props.LabelKey) }:</label>
+			<div class="control">
+				<div class="select is-small">
+					<select id="nodeFilterSelect" data-filter-fn={ props.FilterFunction }>
+						<option value="">{ T(props.AllNodesKey) }</option>
+						for _, node := range props.Nodes {
+							<option value={ node }>{ node }</option>
+						}
+					</select>
+				</div>
+			</div>
+		</div>
+		<script>
+			document.getElementById('nodeFilterSelect').addEventListener('change', function() {
+				var fn = this.dataset.filterFn;
+				if (fn && window[fn]) window[fn](this.value);
+			});
+		</script>
+	}
+}
+
+// ProgressBar renders a progress bar with percentage
+type ProgressBarProps struct {
+	Value      float64
+	Max        float64
+	ShowLabel  bool
+	LabelIcon  string
+	LabelText  string
+	ShowValues bool
+	UsedText   string
+	TotalText  string
+	Size       string
+}
+
+templ ProgressBar(props ProgressBarProps) {
+	<div class="field mb-4">
+		if props.ShowLabel {
+			<label class="label is-small has-text-grey">
+				if props.LabelIcon != "" {
+					<span class="icon is-small"><i class={ props.LabelIcon }></i></span>
+				}
+				<span>{ props.LabelText }</span>
+			</label>
+		}
+		<div class="control">
+			<progress
+				class={ "progress", templ.KV("is-small", props.Size == "small" || props.Size == ""), ProgressClass(props.Value) }
+				value={ fmt.Sprintf("%.0f", props.Value) }
+				max="100"
+			></progress>
+		</div>
+		<div class="is-flex is-justify-content-space-between is-size-7">
+			if props.ShowValues {
+				<span>{ props.UsedText } / { props.TotalText }</span>
+			}
+			<span class="has-text-weight-bold">{ fmt.Sprintf("%.0f%%", props.Value) }</span>
+		</div>
+	</div>
+}
+
+// FormActions renders save/reset buttons for forms
+type FormActionsProps struct {
+	SaveText      string
+	ResetText     string
+	SaveIcon      string
+	ResetIcon     string
+	SaveDisabled  bool
+	ResetDisabled bool
+	IsInCard      bool
+}
+
+templ FormActions(props FormActionsProps, T TranslationFunc) {
+	if props.IsInCard {
+		<div class="card mt-4">
+			<div class="card-content">
+				@formActionsButtons(props, T)
+			</div>
+		</div>
+	} else {
+		@formActionsButtons(props, T)
+	}
+}
+
+templ formActionsButtons(props FormActionsProps, T TranslationFunc) {
+	<div class="buttons is-right">
+		<button type="reset" class="button is-medium" disabled?={ props.ResetDisabled }>
+			<span class="icon"><i class={ getIconOrDefault(props.ResetIcon, "fas fa-undo") }></i></span>
+			<span>{ getTextOrDefault(props.ResetText, T("Admin.Limits.ResetToDefaults")) }</span>
+		</button>
+		<button type="submit" class="button is-primary is-medium" disabled?={ props.SaveDisabled }>
+			<span class="icon"><i class={ getIconOrDefault(props.SaveIcon, "fas fa-save") }></i></span>
+			<span>{ getTextOrDefault(props.SaveText, T("Common.Save")) }</span>
+		</button>
+	</div>
+}
+
+func getIconOrDefault(icon, defaultIcon string) string {
+	if icon != "" {
+		return icon
+	}
+	return defaultIcon
+}
+
+func getTextOrDefault(text, defaultText string) string {
+	if text != "" {
+		return text
+	}
+	return defaultText
+}
+
+// TableHeaderCell renders a table header cell with icon
+type TableHeaderCellProps struct {
+	Icon  string
+	Text  string
+	Class string
+}
+
+templ TableHeaderCell(props TableHeaderCellProps) {
+	<th class={ props.Class }>
+		<span class="icon-text">
+			if props.Icon != "" {
+				<span class="icon is-small"><i class={ props.Icon }></i></span>
+			}
+			<span>{ props.Text }</span>
+		</span>
+	</th>
+}
+
+// SectionTitle renders a section title with icon
+type SectionTitleProps struct {
+	Icon      string
+	IconClass string
+	Title     string
+	Subtitle  string
+	Level     int
+}
+
+templ SectionTitle(props SectionTitleProps) {
+	if props.Level == 5 || props.Level == 0 {
+		<h2 class="title is-5 mb-2">
+			<span class={ "icon", props.IconClass }><i class={ props.Icon }></i></span>
+			<span>{ props.Title }</span>
+		</h2>
+	} else if props.Level == 4 {
+		<h1 class="title is-4 mb-2">
+			<span class={ "icon", props.IconClass }><i class={ props.Icon }></i></span>
+			<span>{ props.Title }</span>
+		</h1>
+	}
+	if props.Subtitle != "" {
+		<p class="subtitle is-6 has-text-grey">{ props.Subtitle }</p>
+	}
+}
+
+// InfoTag renders a small info tag
+templ InfoTag(text string, tagClass string) {
+	<span class={ "tag", tagClass }>{ text }</span>
+}
+
+// IconText renders icon with text
+templ IconText(icon string, text string) {
+	<span class="icon-text">
+		<span class="icon is-small"><i class={ icon }></i></span>
+		<span>{ text }</span>
+	</span>
+}
+
+// ProxmoxOfflineWarning renders the standard Proxmox offline warning
+templ ProxmoxOfflineWarning(T TranslationFunc) {
+	@Notification(NotificationProps{
+		Type:    NotificationWarning,
+		Title:   T("Proxmox.ConnectionRequired"),
+		Message: T("Proxmox.NotConnected") + " " + T("Proxmox.CheckConnection"),
+		Icon:    "fas fa-exclamation-triangle",
+		Light:   true,
+		Class:   "mb-5",
+	})
+}
+
+// ErrorNotification renders a standard error notification
+templ ErrorNotification(message string, T TranslationFunc) {
+	@Notification(NotificationProps{
+		Type:        NotificationDanger,
+		Title:       T("Common.Error"),
+		Message:     message,
+		Icon:        "fas fa-times-circle",
+		Dismissible: true,
+		Class:       "mb-5",
+	})
+}

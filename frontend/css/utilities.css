@@ -1,3 +1,6 @@
+/* Alpine.js Utilities */
+[x-cloak] { display: none !important; }
+
 /* Layout Utilities */
 .max-w-1200 { max-width: 1200px; }
 .max-w-1344 { max-width: 1344px; }

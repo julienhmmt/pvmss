@@ -1,0 +1,76 @@
+package components
+
+type VMStatus string
+
+const (
+	VMStatusRunning VMStatus = "running"
+	VMStatusStopped VMStatus = "stopped"
+	VMStatusPaused  VMStatus = "paused"
+)
+
+type StatusBadgeProps struct {
+	Status   VMStatus
+	WithIcon bool
+	Class    string
+}
+
+func (s VMStatus) BadgeClass() string {
+	switch s {
+	case VMStatusRunning:
+		return "is-success"
+	case VMStatusStopped:
+		return "is-danger"
+	case VMStatusPaused:
+		return "is-warning"
+	default:
+		return "is-light"
+	}
+}
+
+func (s VMStatus) Icon() string {
+	switch s {
+	case VMStatusRunning:
+		return "fas fa-play-circle"
+	case VMStatusStopped:
+		return "fas fa-stop-circle"
+	case VMStatusPaused:
+		return "fas fa-pause-circle"
+	default:
+		return "fas fa-question-circle"
+	}
+}
+
+func (s VMStatus) TranslationKey() string {
+	switch s {
+	case VMStatusRunning:
+		return "Status.Running"
+	case VMStatusStopped:
+		return "Status.Stopped"
+	case VMStatusPaused:
+		return "Status.Paused"
+	default:
+		return string(s)
+	}
+}
+
+templ StatusBadge(props StatusBadgeProps) {
+	<span class={ "tag", "is-medium", props.Status.BadgeClass(), props.Class }>
+		if props.WithIcon {
+			<span class="icon">
+				<i class={ props.Status.Icon() }></i>
+			</span>
+		}
+		<span>{ props.Status.TranslationKey() }</span>
+	</span>
+}
+
+templ StatusBadgeWithT(props StatusBadgeProps, T TranslationFunc) {
+	<span class={ "tag", "is-medium", props.Status.BadgeClass(), props.Class }>
+		if props.WithIcon {
+			<span class="icon">
+				<i class={ props.Status.Icon() }></i>
+			</span>
+		}
+		<span>{ T(props.Status.TranslationKey()) }</span>
+	</span>
+}

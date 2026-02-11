@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
@@ -115,17 +116,26 @@ func RedirectWithError(w http.ResponseWriter, r *http.Request, targetURL, messag
 func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message string) {
 	// Prepare minimal data for the error template
 	localizer := i18n.GetLocalizerFromRequest(r)
-	data := map[string]interface{}{
-		"Title":      i18n.Localize(localizer, "Error.Title"),
-		"StatusCode": status,
-		"Error":      message,
+	// Best-effort return URL: prefer Referer, fallback to current path
+	returnURL := ""
+	if ref := r.Referer(); ref != "" {
+		returnURL = ref
+	} else if r.URL != nil {
+		returnURL = r.URL.Path
 	}
 
-	// Best-effort return URL: prefer Referer, fallback to current path
-	if ref := r.Referer(); ref != "" {
-		data["ReturnURL"] = ref
-	} else if r.URL != nil {
-		data["ReturnURL"] = r.URL.Path
+	errorData := components.ErrorData{
+		Title:      i18n.Localize(localizer, "Error.Title"),
+		StatusCode: status,
+		Error:      message,
+		ReturnURL:  returnURL,
+		Lang:       i18n.GetLanguage(r),
+	}
+
+	// Translation function wrapper
+	ctx := NewHandlerContext(w, r, "RespondWithTemplateError")
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
 	}
 
 	// Ensure dynamic error pages are not cached
@@ -133,8 +143,12 @@ func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message
 	// Set HTTP status before rendering the template body
 	w.WriteHeader(status)
 
-	// Render the dedicated error content inside the standard layout
-	renderTemplateInternal(w, r, "error", data)
+	// Render with Templ
+	if err := components.ErrorPage(errorData, translateFunc).Render(r.Context(), w); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to render error page")
+		// Fallback to plain text if Templ rendering fails
+		http.Error(w, message, status)
+	}
 }
 
 // HandlerContext provides common context for handlers
@@ -229,16 +243,6 @@ func (ctx *HandlerContext) GetUsername() string {
 		return username
 	}
 	return ""
-}
-
-// RenderTemplate renders a template with common data population
-func (ctx *HandlerContext) RenderTemplate(templateName string, data map[string]interface{}) {
-	if data == nil {
-		data = make(map[string]interface{})
-	}
-
-	ctx.Log.Debug().Str("template", templateName).Msg("Rendering template")
-	renderTemplateInternal(ctx.ResponseWriter, ctx.Request, templateName, data)
 }
 
 // HandleError logs and responds with an HTTP error

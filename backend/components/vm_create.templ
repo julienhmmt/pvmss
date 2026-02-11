@@ -1,0 +1,316 @@
+package components
+
+import (
+	"strconv"
+)
+
+type NodeOption struct {
+	Value      string
+	Text       string
+	Disabled   bool
+	Reason     string
+	CoresMax   int
+	RamMaxGB   int
+	IsSelected bool
+}
+
+type CloudInitTemplateOption struct {
+	ID          string
+	Name        string
+	Description string
+}
+
+type VMCreateFormData struct {
+	Name              string
+	Description       string
+	VMID              string
+	EnableTPM         string
+	StartVM           string
+	Node              string
+	Pool              string
+	Sockets           string
+	Cores             string
+	Memory            string
+	MemoryUnit        string
+	DiskBusType       string
+	Storage           string
+	EnableEFI         string
+	ISO               string
+	CloudInitEnable   string
+	CloudInitTemplate string
+	CloudInitUser     string
+	CloudInitPassword string
+	CloudInitSSHKeys  string
+	CloudInitIPConfig string
+	CloudInitIP       string
+	CloudInitGateway  string
+	CloudInitDNS      string
+	DiskSizes         map[int]string
+	DiskUnits         map[int]string
+	Bridges           map[int]string
+	MACAddresses      map[int]string
+	VLANTags          map[int]string
+	RateLimits        map[int]string
+	MTUs              map[int]string
+	NetworkModels     map[int]string
+	NetworkEnabled    map[int]string
+}
+
+type VMCreateNotificationData struct {
+	Type  string
+	Title string
+	Text  string
+}
+
+type VMCreateData struct {
+	Username                 string
+	Lang                     string
+	CSRFToken                string
+	ProxmoxConnected         bool
+	IsAuthenticated          bool
+	IsAdmin                  bool
+	AllNodesSaturated        bool
+	NoNodesAvailable         bool
+	ValidationError          string
+	OfflineNodesNotification *VMCreateNotificationData
+	FormData                 VMCreateFormData
+	Nodes                    []string
+	NodeOptions              []NodeOption
+	ActiveNode               string
+	DefaultPool              string
+	VMSocketsMin             int
+	VMSocketsMax             int
+	VMCoresMin               int
+	VMCoresMax               int
+	VMRamMinGB               int
+	VMRamMaxGB               int
+	VMRamMinMB               int
+	VMRamMaxMB               int
+	VMDiskMin                int
+	VMDiskMax                int
+	MaxDiskPerVM             int
+	MaxNetworkCards          int
+	Storages                 []string
+	StorageNodes             map[string]string
+	ISOs                     []string
+	Bridges                  []string
+	BridgeDescriptions       map[string]string
+	BridgeNodes              map[string]string
+	AvailableTags            []string
+	CloudInitTemplates       []CloudInitTemplateOption
+	AllowCustomYAML          bool
+}
+
+templ VMCreatePage(data VMCreateData, T TranslationFunc) {
+	@Layout(LayoutProps{
+		Title:            T("VM.Create.Title"),
+		Lang:             data.Lang,
+		Content:          vmCreateContent(data, T),
+		IsAuthenticated:  data.IsAuthenticated,
+		IsAdmin:          data.IsAdmin,
+		Username:         data.Username,
+		ProxmoxConnected: data.ProxmoxConnected,
+		CSRFToken:        data.CSRFToken,
+		T:                T,
+	})
+}
+
+templ vmCreateContent(data VMCreateData, T TranslationFunc) {
+	<section class="section" aria-labelledby="main-title" role="main">
+		<div class="container">
+			@vmCreatePageHeader(T)
+			<div class="card">
+				<header class="card-header brand-header">
+					<p class="card-header-title">
+						<span class="icon-text">
+							<span class="icon"><i class="fas fa-sliders"></i></span>
+							<span>{ T("VM.Create.Configuration") }</span>
+						</span>
+					</p>
+				</header>
+				<div class="card-content">
+					<p class="mb-5 has-text-grey">{ T("UI.CreateVMDescription") }</p>
+					@vmCreateNotifications(data, T)
+					@vmCreateForm(data, T)
+				</div>
+			</div>
+		</div>
+	</section>
+	@vmCreateScriptsBlock(data, T)
+	if len(data.CloudInitTemplates) > 0 || data.AllowCustomYAML {
+		@vmCreateCloudInitScripts(T)
+		if len(data.CloudInitTemplates) > 0 {
+			@vmCreateCloudInitModal(T)
+		}
+	}
+}
+
+templ vmCreatePageHeader(T TranslationFunc) {
+	<div class="level mb-5">
+		<div class="level-left">
+			<div class="level-item">
+				<h1 class="title is-3" id="main-title">
+					<span class="icon has-text-primary"><i class="fas fa-plus-square"></i></span>
+					<span>{ T("VM.Create.Title") }</span>
+				</h1>
+			</div>
+		</div>
+		<div class="level-right">
+			<div class="level-item">
+				<a href="/profile" class="button is-primary is-light has-text-dark">
+					<span class="icon"><i class="fas fa-user"></i></span>
+					<span>{ T("Profile.Title") }</span>
+				</a>
+			</div>
+			<div class="level-item">
+				<a href="/search" class="button is-primary is-light has-text-dark">
+					<span class="icon"><i class="fas fa-search"></i></span>
+					<span>{ T("Search.Title") }</span>
+				</a>
+			</div>
+		</div>
+	</div>
+}
+
+templ vmCreateNotifications(data VMCreateData, T TranslationFunc) {
+	if data.AllNodesSaturated {
+		@Notification(NotificationProps{
+			Type:    NotificationWarning,
+			Title:   T("VM.Create.ResourceLimitsTitle"),
+			Message: T("VM.Create.ResourceLimitsMessage"),
+			Icon:    "fas fa-exclamation-triangle",
+			Class:   "mb-4",
+		})
+	}
+	if data.NoNodesAvailable {
+		@Notification(NotificationProps{
+			Type:    NotificationDanger,
+			Title:   T("VM.Create.NoNodesAvailableTitle"),
+			Message: T("VM.Create.NoNodesAvailableMessage"),
+			Icon:    "fas fa-server",
+			Class:   "mb-4",
+		})
+	}
+	if data.OfflineNodesNotification != nil {
+		@Notification(NotificationProps{
+			Type:        NotificationType(data.OfflineNodesNotification.Type),
+			Title:       data.OfflineNodesNotification.Title,
+			Message:     data.OfflineNodesNotification.Text,
+			Icon:        "fas fa-info-circle",
+			Light:       true,
+			Dismissible: true,
+			Class:       "mb-4",
+		})
+	}
+	if data.ValidationError != "" {
+		@Notification(NotificationProps{
+			Type:        NotificationDanger,
+			Title:       T("VM.Create.ValidationErrorTitle"),
+			Message:     data.ValidationError,
+			Icon:        "fas fa-exclamation-circle",
+			Dismissible: true,
+			Class:       "mb-4",
+		})
+	}
+	if !data.ProxmoxConnected {
+		@ProxmoxOfflineWarning(T)
+	}
+}
+
+templ vmCreateForm(data VMCreateData, T TranslationFunc) {
+	<form method="POST" action="/vm/create" id="vmCreateForm" aria-label="Create new virtual machine">
+		<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+		<fieldset disabled?={ !data.ProxmoxConnected || data.AllNodesSaturated || data.NoNodesAvailable }>
+			<div class="columns is-multiline">
+				@vmCreateBasicInfoCard(data, T)
+				@vmCreateResourcesCard(data, T)
+				if len(data.CloudInitTemplates) > 0 || data.AllowCustomYAML {
+					@vmCreateCloudInitCard(data, T)
+				}
+				@vmCreateMediaNetworkCard(data, T)
+				@vmCreateTagsCard(data, T)
+			</div>
+		</fieldset>
+		<footer class="form-footer">
+			<div class="form-footer-actions">
+				<button type="reset" form="vmCreateForm" class="button is-light is-medium">
+					<span class="icon"><i class="fas fa-undo"></i></span>
+					<span>{ T("Common.Reset") }</span>
+				</button>
+				<button type="submit" form="vmCreateForm" class="button is-primary is-medium">
+					<span class="icon"><i class="fas fa-save"></i></span>
+					<span>{ T("Common.Create") }</span>
+				</button>
+			</div>
+		</footer>
+	</form>
+}
+
+func getVMCreatePoolValue(data VMCreateData) string {
+	if data.FormData.Pool != "" {
+		return data.FormData.Pool
+	}
+	return data.DefaultPool
+}
+
+func getVMCreateMaxDisks(data VMCreateData) int {
+	if data.MaxDiskPerVM > 0 {
+		return data.MaxDiskPerVM
+	}
+	return 1
+}
+
+func getVMCreateMaxNetCards(data VMCreateData) int {
+	if data.MaxNetworkCards > 0 {
+		return data.MaxNetworkCards
+	}
+	return 1
+}
+
+func vmCreateDiskMin(data VMCreateData, diskIdx int) string {
+	if diskIdx == 0 {
+		return strconv.Itoa(data.VMDiskMin)
+	}
+	return "0"
+}
+
+func vmCreateDiskStep(diskIdx int) string {
+	if diskIdx == 0 {
+		return "1"
+	}
+	return "0.1"
+}
+
+func vmCreateDiskValue(data VMCreateData, diskIdx int) string {
+	if diskIdx == 0 {
+		return strconv.Itoa(data.VMDiskMin)
+	}
+	return ""
+}
+
+func vmCreateIsBridgeSelected(data VMCreateData, cardIdx int, bridge string) bool {
+	return data.FormData.Bridges[cardIdx] == bridge
+}
+
+func vmCreateIsNetworkModelSelected(data VMCreateData, cardIdx int, model string) bool {
+	if data.FormData.NetworkModels[cardIdx] == model {
+		return true
+	}
+	if data.FormData.NetworkModels[cardIdx] == "" && model == "virtio" {
+		return true
+	}
+	return false
+}
+
+templ vmCreateScriptsBlock(data VMCreateData, T TranslationFunc) {
+	<script src="/js/vm-utils.js" defer></script>
+	<script>
+		var vmRamGlobalMaxMB = { strconv.Itoa(data.VMRamMaxMB) };
+		var vmRamGlobalMinMB = { strconv.Itoa(data.VMRamMinMB) };
+		var vmCoresGlobalMax = { strconv.Itoa(data.VMCoresMax) };
+		var vmSocketsGlobalMax = { strconv.Itoa(data.VMSocketsMax) };
+		var vmDiskMinGB = { strconv.Itoa(data.VMDiskMin) };
+		var vmDiskMaxGB = { strconv.Itoa(data.VMDiskMax) };
+		var selectedLabel = { T("Common.Selected") };
+	</script>
+}

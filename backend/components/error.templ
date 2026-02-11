@@ -1,0 +1,90 @@
+package components
+
+import "fmt"
+
+type ErrorData struct {
+	Title      string
+	StatusCode int
+	Error      string
+	ReturnURL  string
+	Lang       string
+}
+
+templ ErrorPage(data ErrorData, T TranslationFunc) {
+	@Layout(LayoutProps{
+		Title:            getErrorTitle(data.Title, T),
+		Lang:             data.Lang,
+		CurrentPath:      "",
+		IsAuthenticated:  false,
+		IsAdmin:          false,
+		Username:         "",
+		ProxmoxConnected: false,
+		CSRFToken:        "",
+		T:                T,
+		Content:          errorContent(data, T),
+	})
+}
+
+func getErrorTitle(title string, T TranslationFunc) string {
+	if title != "" {
+		return title
+	}
+	return "Error"
+}
+
+templ errorContent(data ErrorData, T TranslationFunc) {
+	<section class="section">
+		<div class="container">
+			<div class="columns is-centered">
+				<div class="column is-8">
+					<div class="card">
+						<header class="card-header">
+							<p class="card-header-title">
+								if data.Title != "" {
+									{ data.Title }
+								} else {
+									Error
+								}
+							</p>
+						</header>
+						<div class="card-content">
+							<div class="content">
+								if data.StatusCode > 0 {
+									<p><strong>{ T("Common.Status") }:</strong> { fmt.Sprintf("%d", data.StatusCode) }</p>
+								}
+								if data.Error != "" {
+									<p>{ data.Error }</p>
+								} else {
+									<p>{ T("Error.Unexpected") }</p>
+								}
+							</div>
+							<div class="buttons mt-4">
+								<button class="button is-light" type="button" id="back-button" data-action="back">
+									← { T("Common.Back") }
+								</button>
+								<a class="button is-primary" href="/">
+									{ T("Common.Home") }
+								</a>
+							</div>
+							if data.ReturnURL != "" {
+								<p class="is-size-7 has-text-grey mt-3">
+									{ T("Error.PreviousPage") }: <a href={ templ.SafeURL(data.ReturnURL) }>{ data.ReturnURL }</a>
+								</p>
+							}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+	<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			const backButton = document.getElementById('back-button');
+			if (backButton) {
+				backButton.addEventListener('click', function() {
+					window.history.back();
+				});
+			}
+		});
+	</script>
+}

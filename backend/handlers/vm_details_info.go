@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -570,15 +569,21 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	if successParam := r.URL.Query().Get("success"); successParam != "" {
 		success = true
-		switch successParam {
-		case "snapshot_created":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.CreatedSuccess")
-		case "snapshot_updated":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.UpdatedSuccess")
-		case "snapshot_deleted":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.DeletedSuccess")
-		case "snapshot_rollback":
-			successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.RollbackSuccess")
+		// Check for success_msg first (from RedirectWithSuccess)
+		if msg := r.URL.Query().Get("success_msg"); msg != "" {
+			successMessage = msg
+		} else {
+			// Fallback to old parameter-based messages
+			switch successParam {
+			case "snapshot_created":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.CreatedSuccess")
+			case "snapshot_updated":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.UpdatedSuccess")
+			case "snapshot_deleted":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.DeletedSuccess")
+			case "snapshot_rollback":
+				successMessage = i18n.Localize(localizer, "VMDetails.Snapshots.RollbackSuccess")
+			}
 		}
 	}
 
@@ -645,6 +650,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"NetworkBridges":        networkBridgesStr,
 		"NetworkCards":          networkCardsData,
 		"NetworkInterfaces":     networkInterfaces,
+		"Lang":                  getLangFromRequest(r),
 		"AgentStatusKey":        agentStatusKey,
 		"AgentStatusClass":      agentStatusClass,
 		"ShowDescriptionEditor": showDescriptionEditor,
@@ -658,26 +664,10 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 		"MaxSnapshotsPerVM":     settings.Limits.MaxSnapshots,
 	}
 
-	title := ""
-	idLabel := "ID"
-	if handlerCtx != nil {
-		idLabel = handlerCtx.Translate("Common.ID")
-	}
-	if vm.Name != "" && vm.VMID > 0 {
-		title = fmt.Sprintf("%s (%s %d)", vm.Name, idLabel, vm.VMID)
-	} else if vm.VMID > 0 {
-		title = fmt.Sprintf("%s %d", idLabel, vm.VMID)
-	} else if vm.Name != "" {
-		title = vm.Name
-	}
-	if title == "" {
-		if handlerCtx != nil {
-			title = handlerCtx.Translate("VMDetails.EditResourcesTitle")
-		} else {
-			title = "VM Details"
-		}
-	}
+	connected, _ := stateManager.GetProxmoxStatus()
+	custom["ProxmoxConnected"] = connected
+	custom["IsAdmin"] = IsAdmin(r)
+	custom["Username"] = getUsernameFromSession(r)
 
-	th := NewTemplateHelpers()
-	th.RenderUserPage(w, r, "vm_details", title, stateManager, custom)
+	renderVMDetailsTempl(w, r, custom)
 }

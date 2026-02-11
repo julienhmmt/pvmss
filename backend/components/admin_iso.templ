@@ -1,0 +1,120 @@
+package components
+
+import "path/filepath"
+
+type ISOInfo struct {
+	Volid   string
+	Storage string
+	Size    int64
+}
+
+type ISOGroupByNode struct {
+	Node string
+	ISOs []ISOInfo
+}
+
+type AdminISOData struct {
+	Username       string
+	Lang           string
+	CSRFToken      string
+	ISOGroupByNode []ISOGroupByNode
+	EnabledISOs    map[string]bool
+}
+
+func (iso ISOInfo) Basename() string {
+	return filepath.Base(iso.Volid)
+}
+
+templ AdminISOPage(data AdminISOData, T TranslationFunc) {
+	@AdminLayout(AdminLayoutProps{
+		Title:       T("Admin.ISO.Title"),
+		Lang:        data.Lang,
+		CurrentPath: "/admin/iso",
+		Username:    data.Username,
+		CSRFToken:   data.CSRFToken,
+		Content:     adminISOContent(data, T),
+		T:           T,
+	})
+}
+
+templ adminISOContent(data AdminISOData, T TranslationFunc) {
+	@AdminPageHeader(T("Admin.ISO.Title"), "fas fa-compact-disc", T("Admin.ISO.Description"), nil)
+	if len(data.ISOGroupByNode) > 0 {
+		<div class="box admin-box">
+			<div class="table-container">
+				<table class="table modern is-fullwidth">
+					<thead>
+						<tr>
+							<th>
+								<span class="icon-text">
+									<span class="icon is-small"><i class="fas fa-compact-disc"></i></span>
+									<span>ISO</span>
+								</span>
+							</th>
+							<th>{ T("Admin.ISO.Header.Storage") }</th>
+							<th>{ T("Admin.ISO.Header.Size") }</th>
+							<th class="has-text-right">{ T("Common.Actions") }</th>
+						</tr>
+					</thead>
+					<tbody>
+						for _, group := range data.ISOGroupByNode {
+							<tr class="is-spacer">
+								<td colspan="4" class="has-background-light">
+									<span class="icon-text">
+										<span class="icon is-small"><i class="fas fa-server"></i></span>
+										<span class="has-text-weight-semibold">{ group.Node }</span>
+									</span>
+								</td>
+							</tr>
+							for _, iso := range group.ISOs {
+								@isoRow(iso, data.EnabledISOs, data.CSRFToken, T)
+							}
+						}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	} else {
+		<div class="box admin-box">
+			@Notification(NotificationProps{
+				Type:    NotificationWarning,
+				Message: T("Admin.ISO.NoISOs"),
+				Icon:    "fas fa-circle-info",
+			})
+		</div>
+	}
+}
+
+templ isoRow(iso ISOInfo, enabledISOs map[string]bool, csrfToken string, T TranslationFunc) {
+	<tr>
+		<td>
+			<span class="icon-text">
+				<span class="has-text-weight-semibold">
+					if iso.Volid != "" {
+						{ iso.Basename() }
+					} else {
+						Unknown ISO
+					}
+				</span>
+			</span>
+		</td>
+		<td>
+			<span class="tag is-light">
+				<span class="icon is-small"><i class="fas fa-hdd"></i></span>
+				<span>{ iso.Storage }</span>
+			</span>
+		</td>
+		<td>
+			<span class="has-text-grey">{ FormatBytesInt(iso.Size) }</span>
+		</td>
+		<td class="has-text-right">
+			@ToggleButton(ToggleButtonProps{
+				FormAction: "/admin/iso/toggle",
+				CSRFToken:  csrfToken,
+				ItemName:   "volid",
+				ItemValue:  iso.Volid,
+				IsEnabled:  enabledISOs[iso.Volid],
+			}, T)
+		</td>
+	</tr>
+}

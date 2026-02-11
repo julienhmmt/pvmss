@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -371,11 +372,45 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	if successMsg != "" {
-		opts = append(opts, WithSuccess(successMsg))
+		_ = append(opts, WithSuccess(successMsg))
 	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_storage", data)
+	// Convert to Templ data
+	storageTemplData := components.AdminStorageData{
+		Username:     getUsernameFromSession(r),
+		Lang:         i18n.GetLanguage(r),
+		CSRFToken:    getCSRFTokenFromContext(r),
+		CurrentPath:  "/admin/storage",
+		Nodes:        allNodes,
+		EnabledMap:   enabledMap,
+		MaxDiskPerVM: settings.MaxDiskPerVM,
+	}
+
+	// Convert storages
+	for _, s := range allStorages {
+		storage := getStringFromMap(s, "Storage")
+		node := getStringFromMap(s, "Node")
+		content := getStringFromMap(s, "Content")
+		used := getInt64FromMap(s, "Used")
+		total := getInt64FromMap(s, "Total")
+		usedPercent := getFloat64FromMap(s, "UsedPercent")
+		hasValidData := getBoolFromMap(s, "HasValidData")
+		storageTemplData.Storages = append(storageTemplData.Storages, components.StorageInfo{
+			Storage:      storage,
+			Node:         node,
+			Content:      content,
+			Used:         used,
+			Total:        total,
+			UsedPercent:  usedPercent,
+			HasValidData: hasValidData,
+		})
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminStoragePage(storageTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin storage page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // RegisterRoutes registers storage-related routes

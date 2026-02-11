@@ -1,0 +1,101 @@
+package components
+
+type DocsData struct {
+	Content     string
+	CurrentLang string
+	DocType     string
+	Username    string
+	Lang        string
+	CSRFToken   string
+	IsAdmin     bool
+}
+
+templ DocsPage(data DocsData, T TranslationFunc) {
+	@Layout(LayoutProps{
+		Title:            T("Navbar.Documentation"),
+		Lang:             data.Lang,
+		CurrentPath:      "/docs/" + data.DocType,
+		IsAuthenticated:  true,
+		IsAdmin:          data.IsAdmin,
+		Username:         data.Username,
+		ProxmoxConnected: true,
+		CSRFToken:        data.CSRFToken,
+		T:                T,
+		Content:          docsContent(data, T),
+	})
+}
+
+templ docsContent(data DocsData, T TranslationFunc) {
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			var content = document.querySelector('.content');
+			if (!content) {
+				return;
+			}
+			var headings = Array.from(content.querySelectorAll('h2'));
+			if (!headings.length) {
+				return;
+			}
+			var tocHeading = headings.find(function (h) {
+				var text = (h.textContent || '').trim().toLowerCase();
+				return text === 'table of contents' || text === 'table des matières';
+			});
+			if (!tocHeading) {
+				return;
+			}
+			var node = tocHeading.nextElementSibling;
+			var tocList = null;
+			while (node) {
+				if (node.tagName && node.tagName.toLowerCase() === 'ul') {
+					tocList = node;
+					break;
+				}
+				node = node.nextElementSibling;
+			}
+			if (!tocList) {
+				return;
+			}
+			var tocLinks = Array.from(tocList.querySelectorAll('a[href^="#"]'));
+			var targetHeadings = headings.filter(function (h) { return h !== tocHeading; });
+			tocLinks.forEach(function (link, index) {
+				if (!targetHeadings[index]) {
+					return;
+				}
+				var href = link.getAttribute('href') || '';
+				if (!href.startsWith('#')) {
+					return;
+				}
+				var id = href.slice(1);
+				if (!id) {
+					return;
+				}
+				targetHeadings[index].id = id;
+			});
+		});
+	</script>
+	<section class="section">
+		<div class="container">
+			<div id="top"></div>
+			<div class="field is-grouped mb-4">
+				<p class="control">
+					<a
+						class={ "button", templ.KV("is-primary", data.CurrentLang == "en"), templ.KV("is-light", data.CurrentLang != "en") }
+						href="/set-lang?lang=en"
+					>English</a>
+				</p>
+				<p class="control">
+					<a
+						class={ "button", templ.KV("is-primary", data.CurrentLang == "fr"), templ.KV("is-light", data.CurrentLang != "fr") }
+						href="/set-lang?lang=fr"
+					>Français</a>
+				</p>
+			</div>
+			<div class="content">
+				@templ.Raw(data.Content)
+			</div>
+		</div>
+	</section>
+	<a href="#top" class="button is-small is-light" style="position: fixed; right: 1rem; bottom: 1rem; z-index: 40;" aria-label="Back to top">
+		↑
+	</a>
+}

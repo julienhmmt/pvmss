@@ -1,0 +1,162 @@
+package components
+
+import "fmt"
+
+type NotificationType string
+
+const (
+	NotificationSuccess NotificationType = "success"
+	NotificationDanger  NotificationType = "danger"
+	NotificationWarning NotificationType = "warning"
+	NotificationInfo    NotificationType = "info"
+)
+
+type NotificationAction struct {
+	Link   string
+	Text   string
+	Icon   string
+	Type   string
+	Target string
+}
+
+type NotificationProps struct {
+	Type             NotificationType
+	Title            string
+	Message          string
+	Icon             string
+	Light            bool
+	Dismissible      bool
+	Class            string
+	ID               string
+	Action           *NotificationAction
+	Actions          []NotificationAction
+	AutoDismiss      bool
+	AutoDismissDelay int
+	List             []string
+}
+
+func (n NotificationProps) GetIcon() string {
+	if n.Icon != "" {
+		return n.Icon
+	}
+	switch n.Type {
+	case NotificationSuccess:
+		return "fas fa-check-circle"
+	case NotificationDanger:
+		return "fas fa-exclamation-circle"
+	case NotificationWarning:
+		return "fas fa-exclamation-triangle"
+	case NotificationInfo:
+		return "fas fa-info-circle"
+	default:
+		return ""
+	}
+}
+
+func (n NotificationProps) GetAutoDismissDelay() int {
+	if n.AutoDismissDelay > 0 {
+		return n.AutoDismissDelay
+	}
+	return 6000
+}
+
+func (n NotificationProps) HasActions() bool {
+	return n.Action != nil || len(n.Actions) > 0
+}
+
+templ Notification(props NotificationProps) {
+	<div
+		class={ "notification", "is-" + string(props.Type), templ.KV("is-light", props.Light), props.Class }
+		if props.ID != "" {
+			id={ props.ID }
+		}
+		role="alert"
+		aria-live="polite"
+		data-notification="true"
+		data-notification-type={ string(props.Type) }
+		if props.Dismissible || props.AutoDismiss {
+			x-data={ fmt.Sprintf("dismissible(%t, %d)", props.AutoDismiss, props.GetAutoDismissDelay()) }
+			x-show="show"
+			x-transition:enter="transition ease-out duration-300"
+			x-transition:enter-start="opacity-0 transform translate-y-2"
+			x-transition:enter-end="opacity-100 transform translate-y-0"
+			x-transition:leave="transition ease-in duration-200"
+			x-transition:leave-start="opacity-100"
+			x-transition:leave-end="opacity-0"
+		}
+		if props.AutoDismiss {
+			style={ fmt.Sprintf("--notification-duration: %dms;", props.GetAutoDismissDelay()) }
+		}
+	>
+		<span class="notification-accent" aria-hidden="true"></span>
+		if props.AutoDismiss {
+			<span class="notification-progress" aria-hidden="true"></span>
+		}
+		<div class="notification-content">
+			<div class="notification-body">
+				if props.GetIcon() != "" {
+					<div class="notification-icon">
+						<span class="icon notification-icon-badge">
+							<i class={ props.GetIcon() } aria-hidden="true"></i>
+						</span>
+					</div>
+				}
+				<div class="notification-text">
+					if props.Title != "" {
+						<div class="notification-heading">
+							<strong>{ props.Title }</strong>
+						</div>
+					}
+					if props.Message != "" {
+						<p class="notification-message">{ props.Message }</p>
+					}
+					if len(props.List) > 0 {
+						<ul class="notification-list">
+							for _, item := range props.List {
+								<li>{ item }</li>
+							}
+						</ul>
+					}
+				</div>
+			</div>
+			if props.HasActions() || props.Dismissible {
+				<div class="notification-actions">
+					if len(props.Actions) > 0 {
+						for _, action := range props.Actions {
+							@notificationActionButton(action)
+						}
+					} else if props.Action != nil {
+						@notificationActionButton(*props.Action)
+					}
+					if props.Dismissible {
+						<div class="notification-dismiss">
+							<button
+								class="delete notification-dismiss-button"
+								type="button"
+								aria-label="Dismiss notification"
+								@click="dismiss()"
+							></button>
+						</div>
+					}
+				</div>
+			}
+		</div>
+	</div>
+}
+
+templ notificationActionButton(action NotificationAction) {
+	<div class="notification-action">
+		<a
+			href={ templ.SafeURL(action.Link) }
+			class={ "button", "is-small", templ.KV("is-primary", action.Type == "" || action.Type == "primary"), templ.KV("is-" + action.Type, action.Type != "" && action.Type != "primary") }
+			if action.Target != "" {
+				target={ action.Target }
+			}
+		>
+			if action.Icon != "" {
+				<span class="icon"><i class={ action.Icon } aria-hidden="true"></i></span>
+			}
+			<span>{ action.Text }</span>
+		</a>
+	</div>
+}

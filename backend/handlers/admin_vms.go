@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"pvmss/components"
 	"pvmss/constants"
 	"pvmss/i18n"
 	"pvmss/logger"
@@ -172,11 +173,42 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 	}
 
 	if errMsg != "" {
-		opts = append(opts, WithError(errMsg))
+		_ = append(opts, WithError(errMsg))
 	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
-	renderTemplateInternal(w, r, "admin_vms", data)
+	// Build Templ data
+	vmsTemplData := components.AdminVMsData{
+		Username:        getUsernameFromSession(r),
+		Lang:            i18n.GetLanguage(r),
+		CSRFToken:       getCSRFTokenFromContext(r),
+		TotalVMs:        totalVMs,
+		CurrentPage:     page,
+		TotalPages:      totalPages,
+		Limit:           limit,
+		HasPrevPage:     page > 1,
+		HasNextPage:     page < totalPages,
+		PrevPage:        page - 1,
+		NextPage:        page + 1,
+		PaginationPages: paginationPages,
+		PaginationInfo:  components.PaginationInfo{From: from, To: to},
+	}
+
+	// Convert VMs
+	for _, vm := range vms {
+		vmsTemplData.VMs = append(vmsTemplData.VMs, components.AdminVMInfo{
+			VMID:   vm.VMID,
+			Name:   vm.Name,
+			Node:   vm.Node,
+			Status: vm.Status,
+			Tags:   vm.Tags,
+		})
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminVMsPage(vmsTemplData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin vms page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // getVMsWithPVMSSTag retrieves all VMs that have the pvmss tag using resty

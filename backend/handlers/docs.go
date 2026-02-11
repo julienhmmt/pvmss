@@ -10,8 +10,10 @@ import (
 	"strings"
 	"sync"
 
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
+	"pvmss/security"
 
 	"github.com/gomarkdown/markdown"
 	"github.com/julienschmidt/httprouter"
@@ -97,22 +99,11 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 			Str("operation", "serve_cached_docs").
 			Str("reason", "cache_hit").
 			Msg("Serving cached documentation")
-		titleKey := "Docs.User.Title"
-		switch docType {
-		case "admin":
-			titleKey = "Docs.Admin.Title"
-		case "proxmox-permissions":
-			titleKey = "Docs.ProxmoxPermissions.Title"
+		if cached != nil {
+			h.renderDocsPage(w, r, cached.HTML, docType, cached.Lang)
+			log.Info().Str("type", docType).Str("lang", lang).Msg("Served cached documentation")
+			return
 		}
-		data := map[string]interface{}{
-			"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
-			"Content":     cached.HTML,
-			"CurrentLang": lang,
-			"DocType":     docType,
-		}
-		renderTemplateInternal(w, r, "docs", data)
-		log.Info().Str("type", docType).Str("lang", lang).Msg("Served cached documentation")
-		return
 	}
 
 	// Cache miss - load and convert documentation
@@ -172,21 +163,7 @@ func (h *DocsHandler) DocsHandler(w http.ResponseWriter, r *http.Request, ps htt
 		Str("reason", "cache_updated").
 		Msg("Documentation cached")
 
-	titleKey := "Docs.User.Title"
-	switch docType {
-	case "admin":
-		titleKey = "Docs.Admin.Title"
-	case "proxmox-permissions":
-		titleKey = "Docs.ProxmoxPermissions.Title"
-	}
-	data := map[string]interface{}{
-		"Title":       i18n.Localize(i18n.GetLocalizerFromRequest(r), titleKey),
-		"Content":     htmlContent,
-		"CurrentLang": finalLang,
-		"DocType":     docType,
-	}
-
-	renderTemplateInternal(w, r, "docs", data)
+	h.renderDocsPage(w, r, htmlContent, docType, finalLang)
 	log.Info().Str("type", docType).Str("lang", finalLang).Msg("Served documentation")
 }
 
@@ -239,41 +216,77 @@ func isAlpha(s string) bool {
 
 // findDocsDir searches for the documentation directory
 func findDocsDir() (string, error) {
-	log := logger.Get()
-
-	// Build list of possible locations
-	possibleDirs := []string{
-		"./docs",
-		"../docs",
-		"./backend/docs",
-		"/app/backend/docs",
-		"/app/docs",
+	// Try multiple locations for the docs directory
+	possiblePaths := []string{
+		"/app/backend/docs", // Docker container absolute path
+		"./docs",            // Current directory
+		"../docs",           // Parent directory
+		"./backend/docs",    // From project root
 	}
 
-	// Add the directory of the running binary
-	if execPath, err := os.Executable(); err == nil {
-		possibleDirs = append(possibleDirs, filepath.Join(filepath.Dir(execPath), "docs"))
-	}
-
-	// Add the source file directory (call runtime.Caller only once)
+	// Add runtime.Caller path as fallback
 	if _, filename, _, ok := runtime.Caller(0); ok {
-		srcDir := filepath.Dir(filepath.Dir(filename))
-		possibleDirs = append(possibleDirs, filepath.Join(srcDir, "docs"))
+		handlersDir := filepath.Dir(filename)
+		backendDir := filepath.Dir(handlersDir)
+		possiblePaths = append(possiblePaths, filepath.Join(backendDir, "docs"))
 	}
 
-	// Check each possible location
-	for _, dir := range possibleDirs {
-		if info, err := os.Stat(dir); err == nil && info.IsDir() {
-			// Verify directory contains files
-			if entries, err := os.ReadDir(dir); err == nil && len(entries) > 0 {
-				log.Info().Str("docs_dir", dir).Int("files", len(entries)).Msg("Found docs directory")
-				return dir, nil
-			}
+	for _, docsPath := range possiblePaths {
+		absPath, err := filepath.Abs(docsPath)
+		if err != nil {
+			continue
+		}
+		if _, err := os.Stat(absPath); err == nil {
+			return absPath, nil
 		}
 	}
 
-	// If no valid directory was found
-	return "", fmt.Errorf("documentation directory not found in: %v", possibleDirs)
+	return "", fmt.Errorf("docs directory not found in any of the expected locations")
+}
+
+// renderDocsPage renders the documentation page using Templ
+func (h *DocsHandler) renderDocsPage(w http.ResponseWriter, r *http.Request, htmlContent template.HTML, docType, lang string) {
+	log := logger.Get()
+
+	// Get username and admin status from session
+	username := ""
+	isAdmin := false
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
+		}
+	}
+
+	// Get CSRF token
+	csrfToken := ""
+	if token, ok := security.CSRFTokenFromContext(r.Context()); ok {
+		csrfToken = token
+	}
+
+	// Prepare docs data
+	docsData := components.DocsData{
+		Content:     string(htmlContent),
+		CurrentLang: lang,
+		DocType:     docType,
+		Username:    username,
+		Lang:        i18n.GetLanguage(r),
+		CSRFToken:   csrfToken,
+		IsAdmin:     isAdmin,
+	}
+
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return i18n.Localize(i18n.GetLocalizerFromRequest(r), key)
+	}
+
+	// Render with Templ
+	if err := components.DocsPage(docsData, translateFunc).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render documentation page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // RegisterRoutes registers documentation routes

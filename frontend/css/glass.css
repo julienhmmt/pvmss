@@ -142,12 +142,32 @@ section:not(.admin-section) .node-card {
 }
 
 /* Visual glass effects for .notification - excluded from admin contexts */
-section:not(.admin-section) .notification {
+section:not(.admin-section) .notification:not(.is-danger):not(.is-success):not(.is-warning):not(.is-info) {
   /* Visual properties only - glassmorphism effects */
   background: var(--glass-opacity-light);
   backdrop-filter: var(--blur-sm) saturate(180%);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-md), var(--shadow-inner);
+}
+
+section:not(.admin-section) .notification.is-danger {
+  background: var(--danger-bg) !important;
+  color: var(--danger-dark) !important;
+}
+
+section:not(.admin-section) .notification.is-success {
+  background: var(--success-bg) !important;
+  color: var(--success-dark) !important;
+}
+
+section:not(.admin-section) .notification.is-warning {
+  background: var(--warning-bg) !important;
+  color: var(--warning-dark) !important;
+}
+
+section:not(.admin-section) .notification.is-info {
+  background: var(--info-light) !important;
+  color: var(--primary-dark) !important;
 }
 
 /* Base table-container glass styling */

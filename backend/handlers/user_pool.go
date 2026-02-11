@@ -13,7 +13,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/components"
 	"pvmss/i18n"
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -264,22 +266,27 @@ func NewUserPoolHandler(sm state.StateManager) *UserPoolHandler {
 
 // DeleteUserPoolConfirmHandler handles the GET request for user pool deletion confirmation page
 func (h *UserPoolHandler) DeleteUserPoolConfirmHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	log := CreateHandlerLogger("DeleteUserPoolConfirmHandler", r)
 	poolID := strings.TrimSpace(r.URL.Query().Get("pool"))
 	if poolID == "" {
 		http.Redirect(w, r, "/admin/userpool", http.StatusSeeOther)
 		return
 	}
 
-	data := NewTemplateDataWithOptions("",
-		WithAdminActive("userpool_delete"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("TitleKey", "Admin.UserPool.Title"),
-		WithData("Pool", poolID),
-		WithData("User", strings.TrimPrefix(poolID, "pvmss_")),
-	).ToMap()
-	renderTemplateInternal(w, r, "admin_userpool_delete", data)
+	// Build Templ data
+	deleteData := components.AdminUserPoolDeleteData{
+		Username:  getUsernameFromSession(r),
+		Lang:      i18n.GetLanguage(r),
+		CSRFToken: getCSRFTokenFromContext(r),
+		Pool:      poolID,
+		User:      strings.TrimPrefix(poolID, "pvmss_"),
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminUserPoolDeletePage(deleteData, T).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render admin userpool delete page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // RegisterRoutes registers routes for user/pool admin
@@ -303,58 +310,59 @@ func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
 	})))
 
 	// Admin user pool creation with CSRF protection (without lang prefix)
-	router.POST("/userpool/create", SecureFormHandler("CreateUserPool",
+	router.POST("/admin/userpool/create", SecureFormHandler("CreateUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
 	// Admin user pool deletion with CSRF protection (without lang prefix)
-	router.POST("/userpool/delete", SecureFormHandler("DeleteUserPool",
+	router.POST("/admin/userpool/delete", SecureFormHandler("DeleteUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
 	// Also register with lang prefixes for compatibility
-	router.POST("/en/userpool/create", SecureFormHandler("CreateUserPool",
+	router.POST("/en/admin/userpool/create", SecureFormHandler("CreateUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/fr/userpool/create", SecureFormHandler("CreateUserPool",
+	router.POST("/fr/admin/userpool/create", SecureFormHandler("CreateUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
 	// Admin user pool self-creation with CSRF protection (without lang prefix)
-	// DEBUG: Temporairement sans CSRF pour diagnostic
-	router.POST("/userpool/create-self", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
+	router.POST("/admin/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
+		})),
+	))
 
 	// Also register with lang prefixes for compatibility
-	router.POST("/en/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+	router.POST("/en/admin/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/fr/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
+	router.POST("/fr/admin/userpool/create-self", SecureFormHandler("CreateUserPoolSelf",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateUserPoolSelf(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/en/userpool/delete", SecureFormHandler("DeleteUserPool",
+	router.POST("/en/admin/userpool/delete", SecureFormHandler("DeleteUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	router.POST("/fr/userpool/delete", SecureFormHandler("DeleteUserPool",
+	router.POST("/fr/admin/userpool/delete", SecureFormHandler("DeleteUserPool",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteUserPool(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
@@ -397,6 +405,23 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 
 	data := NewTemplateDataWithOptions("", opts...).ToMap()
 
+	// Prepare structures for direct data passing
+	type poolTableRow struct {
+		User    string
+		Pool    string
+		VMCount int
+		Comment string
+	}
+	var rows []poolTableRow
+
+	type currentUserPoolStatusType struct {
+		HasPool   bool
+		Username  string
+		PoolName  string
+		CanCreate bool
+	}
+	var currentUserPoolStatus currentUserPoolStatusType
+
 	// Fetch pools that match pattern pvmss_*
 	client := h.stateManager.GetProxmoxClient()
 	if client != nil {
@@ -416,14 +441,7 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 
 		// GET /pools to list all pools
 		if err := client.GetJSON(ctx, "/pools", &listResp); err == nil {
-			// Prepare detailed info per pool
-			type poolTableRow struct {
-				User    string
-				Pool    string
-				VMCount int
-				Comment string
-			}
-			rows := make([]poolTableRow, 0)
+			rows = make([]poolTableRow, 0)
 			var rowsMux sync.Mutex
 
 			// Concurrency limiter
@@ -485,13 +503,6 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 			wg.Wait()
 
 			// Get current authenticated user and check their pool status
-			currentUserPoolStatus := struct {
-				HasPool   bool
-				Username  string
-				PoolName  string
-				CanCreate bool
-			}{}
-
 			if sessionManager := h.stateManager.GetSessionManager(); sessionManager != nil {
 				if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
 					// Sanitize username to match pool naming convention
@@ -535,15 +546,52 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 					}
 					return left < right
 				})
-				data["UserPools"] = rows
+				logger.Get().Info().Int("pool_count", len(rows)).Msg("Found PVMSS pools")
+			} else {
+				logger.Get().Warn().Msg("No PVMSS pools found")
 			}
-
-			// Add current user's pool status to template data
-			data["CurrentUserPoolStatus"] = currentUserPoolStatus
 		}
 	}
 
-	renderTemplateInternal(w, r, "admin_userpool", data)
+	// Build Templ data
+	userpoolTemplData := components.AdminUserPoolData{
+		Username:       getUsernameFromSession(r),
+		Lang:           i18n.GetLanguage(r),
+		CSRFToken:      getCSRFTokenFromContext(r),
+		Error:          getBoolFromMap(data, "Error"),
+		ErrorMessage:   getStringFromMap(data, "ErrorMessage"),
+		Success:        getBoolFromMap(data, "Success"),
+		SuccessMessage: getStringFromMap(data, "SuccessMessage"),
+	}
+
+	// Convert user pools - use direct data instead of map conversion
+	logger.Get().Info().Int("pools_to_convert", len(rows)).Msg("Converting pools to template data")
+	for _, p := range rows {
+		userpoolTemplData.UserPools = append(userpoolTemplData.UserPools, components.UserPoolInfo{
+			User:    p.User,
+			Pool:    p.Pool,
+			Comment: p.Comment,
+			VMCount: p.VMCount,
+		})
+	}
+	logger.Get().Info().Int("final_count", len(userpoolTemplData.UserPools)).Msg("Pools converted successfully")
+
+	// Convert current user pool status - use direct data instead of map conversion
+	if currentUserPoolStatus.Username != "" {
+		userpoolTemplData.CurrentUserPoolStatus = &components.CurrentUserPoolStatus{
+			Username:  currentUserPoolStatus.Username,
+			PoolName:  currentUserPoolStatus.PoolName,
+			HasPool:   currentUserPoolStatus.HasPool,
+			CanCreate: currentUserPoolStatus.CanCreate,
+		}
+		logger.Get().Info().Str("username", currentUserPoolStatus.Username).Bool("has_pool", currentUserPoolStatus.HasPool).Msg("Current user pool status converted")
+	}
+
+	T := getTranslationFunc(r)
+	if err := components.AdminUserPoolPage(userpoolTemplData, T).Render(r.Context(), w); err != nil {
+		logger.Get().Error().Err(err).Msg("Failed to render admin userpool page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // CreateUserPool handles POST to create a user in PVE realm, create pool pvmss_<username>, and grant ACL

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -312,34 +313,78 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}
+
+	// Check if this is an AJAX request
+	isAjax := r.Header.Get("X-Requested-With") == "XMLHttpRequest" || r.Header.Get("Accept") == "application/json"
+
 	vmidStr := strings.TrimSpace(r.FormValue("vmid"))
 	node := strings.TrimSpace(r.FormValue("node"))
 	cardIndexStr := strings.TrimSpace(r.FormValue("card_index"))
 	action := strings.TrimSpace(r.FormValue("action"))
 	enabledParam := strings.TrimSpace(r.FormValue("enabled"))
 	if vmidStr == "" || node == "" || cardIndexStr == "" || (enabledParam == "" && (action != "enable" && action != "disable")) {
-		ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Bad request"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for bad request")
+			}
+		} else {
+			ctx.HandleError(nil, "Bad request", http.StatusBadRequest)
+		}
 		return
 	}
 	vmidInt, err := strconv.Atoi(vmidStr)
 	if err != nil {
-		ctx.HandleError(err, "Invalid VM ID", http.StatusBadRequest)
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Invalid VM ID"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for invalid VM ID")
+			}
+		} else {
+			ctx.HandleError(err, "Invalid VM ID", http.StatusBadRequest)
+		}
 		return
 	}
 	cardIndex, err := strconv.Atoi(cardIndexStr)
 	if err != nil || cardIndex < 0 {
-		ctx.HandleError(err, "Invalid card index", http.StatusBadRequest)
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Invalid card index"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for invalid card index")
+			}
+		} else {
+			ctx.HandleError(err, "Invalid card index", http.StatusBadRequest)
+		}
 		return
 	}
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
-		ctx.HandleError(err, "Failed to create API client", http.StatusInternalServerError)
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "Failed to create API client"}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for API client creation error")
+			}
+		} else {
+			ctx.HandleError(err, "Failed to create API client", http.StatusInternalServerError)
+		}
 		return
 	}
 	vmConfig, err := proxmox.GetVMConfigResty(r.Context(), restyClient, node, vmidInt)
 	if err != nil {
 		ctx.Log.Error().Err(err).Msg("Failed to get VM config for network toggle")
-		ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for VM config error")
+			}
+		} else {
+			ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
+		}
 		return
 	}
 	netKey := fmt.Sprintf("net%d", cardIndex)
@@ -351,7 +396,15 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	}
 	if currentConfig == "" {
 		ctx.Log.Warn().Str("component", "vm_actions").Str("operation", "network_interface_update").Str("reason", "interface_not_found").Int("card_index", cardIndex).Str("vmid", vmidStr).Msg("Network interface not found")
-		ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for interface not found")
+			}
+		} else {
+			ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
+		}
 		return
 	}
 
@@ -379,8 +432,16 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 		} else {
 			successMsg = ctx.Translate("Message.NetworkCardDisabled")
 		}
-		redirectURL := fmt.Sprintf("/vm/details/%s?success=1&success_msg=%s", vmidStr, url.QueryEscape(successMsg))
-		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": successMsg}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for no change needed")
+			}
+		} else {
+			redirectURL := fmt.Sprintf("/vm/details/%s?success=1&success_msg=%s", vmidStr, url.QueryEscape(successMsg))
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		}
 		return
 	}
 
@@ -420,7 +481,15 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	ctx.Log.Debug().Str("vmid", vmidStr).Str("node", node).Str("param_key", netKey).Str("param_value", newConfig).Msg("Sending update to Proxmox API")
 	if err := proxmox.UpdateVMConfigResty(r.Context(), restyClient, node, vmidInt, params); err != nil {
 		ctx.Log.Error().Err(err).Str("vmid", vmidStr).Int("card_index", cardIndex).Str("attempted_config", newConfig).Msg("Network toggle failed - Proxmox API error")
-		ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
+		if isAjax {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": ctx.Translate("Message.ActionFailed")}); err != nil {
+				ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for Proxmox API error")
+			}
+		} else {
+			ctx.RedirectWithError(buildVMDetailsURL(vmidStr), "Message.ActionFailed")
+		}
 		return
 	}
 	ctx.Log.Info().Str("vmid", vmidStr).Str("node", node).Int("card_index", cardIndex).Str("action", action).Bool("link_down", newLinkDown).Msg("Network card state changed successfully in Proxmox")
@@ -438,7 +507,15 @@ func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Requ
 	} else {
 		successMsg = ctx.Translate("Message.NetworkCardDisabled")
 	}
-	ctx.Log.Info().Str("vmid", vmidStr).Int("card_index", cardIndex).Str("final_state", action).Msg("Network card toggle completed, redirecting with success")
-	redirectURL := fmt.Sprintf("/vm/details/%s?success=1&success_msg=%s&refresh=1", vmidStr, url.QueryEscape(successMsg))
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	ctx.Log.Info().Str("vmid", vmidStr).Int("card_index", cardIndex).Str("final_state", action).Msg("Network card toggle completed")
+	if isAjax {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "message": successMsg}); err != nil {
+			ctx.Log.Error().Err(err).Msg("Failed to encode JSON response for successful network toggle")
+		}
+	} else {
+		redirectURL := fmt.Sprintf("/vm/details/%s?success=1&success_msg=%s&refresh=1", vmidStr, url.QueryEscape(successMsg))
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	}
 }

@@ -1,0 +1,62 @@
+package components
+
+type LayoutProps struct {
+	Title            string
+	Lang             string
+	CurrentPath      string
+	Content          templ.Component
+	IsAuthenticated  bool
+	IsAdmin          bool
+	Username         string
+	ProxmoxConnected bool
+	CSRFToken        string
+	T                TranslationFunc
+}
+
+templ Layout(props LayoutProps) {
+	<!DOCTYPE html>
+	<html lang={ props.Lang } data-theme="light">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="description" content="PVMSS - Proxmox VE VM Self-Service"/>
+			<meta name="csrf-token" content={ props.CSRFToken }/>
+			<meta name="color-scheme" content="light"/>
+			<meta name="theme-color" content="#fff"/>
+			<meta name="apple-mobile-web-app-capable" content="yes"/>
+			<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+			<title>{ props.Title } - PVMSS</title>
+			<style>
+				body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; line-height: 1.5; }
+				.navbar { background: #fff; border-bottom: 1px solid #e1e5e9; }
+				.section { padding: 3rem 1.5rem; }
+				.container { max-width: 1344px; margin: 0 auto; }
+				.notification { padding: 1.25rem; margin-bottom: 1.5rem; }
+				.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }
+			</style>
+			<link rel="stylesheet" href="/css/main.css"/>
+			<link rel="stylesheet" href="/css/fontawesome.min.css"/>
+			<link rel="stylesheet" href="/css/solid.min.css"/>
+			<link rel="preconnect" href="/webfonts/"/>
+			<link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
+		</head>
+		<body class="app-body">
+			@Navbar(NavbarProps{
+				CurrentPath:      props.CurrentPath,
+				IsAuthenticated:  props.IsAuthenticated,
+				IsAdmin:          props.IsAdmin,
+				Username:         props.Username,
+				ProxmoxConnected: props.ProxmoxConnected,
+				Lang:             props.Lang,
+			}, props.T)
+			<main id="main-content">
+				@props.Content
+			</main>
+			@Footer("v0.4.0", props.T)
+			<script src="/js/htmx.2.0.7.min.js"></script>
+			<script src="/js/alpine-init.js"></script>
+			<script src="/js/alpinejs.3.15.3.min.js" defer></script>
+			<script src="/js/accessibility.js" defer></script>
+		</body>
+	</html>
+}

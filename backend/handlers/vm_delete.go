@@ -6,12 +6,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
-
+	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 // findVMByID finds a VM in a list by its ID
@@ -80,14 +81,35 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 	handlerCtx := NewHandlerContext(w, r, "VMDeleteConfirmHandler")
 	csrfToken, _ := handlerCtx.GetCSRFToken()
 
-	custom := map[string]interface{}{
-		"VM":        vm,
-		"CSRFToken": csrfToken,
+	// Get username from session
+	username := ""
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
 	}
 
-	th := NewTemplateHelpers()
-	title := handlerCtx.Translate("VMDelete.ConfirmTitle")
-	th.RenderUserPage(w, r, "vm_delete_confirm", title, stateManager, custom)
+	// Prepare delete confirmation data
+	deleteData := components.VMDeleteData{
+		VMID:      vm.VMID,
+		Name:      vm.Name,
+		Node:      vm.Node,
+		Status:    vm.Status,
+		CSRFToken: csrfToken,
+		Username:  username,
+		Lang:      i18n.GetLanguage(r),
+	}
+
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return handlerCtx.Translate(key)
+	}
+
+	// Render with Templ
+	if err := components.VMDeleteConfirmPage(deleteData, translateFunc).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render VM delete confirmation page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // VMDeleteHandler handles the actual VM deletion (force stop + delete)

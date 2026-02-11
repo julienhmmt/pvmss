@@ -477,7 +477,7 @@ fieldset[disabled]::after {
   pointer-events: auto;
 }
 
-/* Base desktop dropdown panel (must come before checked-state visibility rule) */
+/* Base desktop dropdown panel - Alpine.js handles visibility via x-show */
 .navbar-user-dropdown {
   position: absolute;
   top: calc(100% + 0.5rem);
@@ -487,10 +487,6 @@ fieldset[disabled]::after {
   border-radius: 8px;
   box-shadow: 0 10px 32px rgb(0 0 0 / 12%);
   min-width: 200px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-8px);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1001;
   overflow: hidden;
 }
@@ -518,18 +514,6 @@ fieldset[disabled]::after {
 }
 
 .navbar-user-menu.is-active .navbar-user-toggle .icon:last-child {
-  transform: rotate(180deg);
-}
-
-/* Desktop dropdown visibility when checked */
-.navbar-user-menu .user-menu-toggle:checked ~ .navbar-user-dropdown {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-/* User dropdown: rotate chevron when open */
-.navbar-user-menu .user-menu-toggle:checked + .navbar-user-toggle .icon:last-child {
   transform: rotate(180deg);
 }
 
@@ -1211,23 +1195,28 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
     transform var(--notification-dismiss-duration) ease;
 }
 
-.notification[data-tone="success"] {
+.notification[data-notification-type="success"],
+.notification.is-success {
   --notification-accent-color: #16a34a;
   --notification-accent-color-fade: rgb(22 163 74 / 60%);
+  color: #155724;
 }
 
-.notification[data-tone="warning"] {
+.notification[data-notification-type="warning"],
+.notification.is-warning {
   --notification-accent-color: #f59e0b;
   --notification-accent-color-fade: rgb(245 158 11 / 60%);
 }
 
-.notification[data-tone="danger"],
-.notification[data-tone="error"] {
+.notification[data-notification-type="danger"],
+.notification[data-notification-type="error"],
+.notification.is-danger {
   --notification-accent-color: #dc2626;
   --notification-accent-color-fade: rgb(220 38 38 / 60%);
 }
 
-.notification[data-tone="info"] {
+.notification[data-notification-type="info"],
+.notification.is-info {
   --notification-accent-color: var(--info);
   --notification-accent-color-fade: rgb(255 136 0 / 60%);
 }
@@ -1236,16 +1225,19 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
   --notification-icon-bg: var(--info-light);
 }
 
-.notification[data-tone="success"].is-light {
+.notification[data-notification-type="success"].is-light,
+.notification.is-success.is-light {
   --notification-icon-bg: rgb(22 163 74 / 12%);
 }
 
-.notification[data-tone="warning"].is-light {
+.notification[data-notification-type="warning"].is-light,
+.notification.is-warning.is-light {
   --notification-icon-bg: rgb(245 158 11 / 14%);
 }
 
-.notification[data-tone="danger"].is-light,
-.notification[data-tone="error"].is-light {
+.notification[data-notification-type="danger"].is-light,
+.notification[data-notification-type="error"].is-light,
+.notification.is-danger.is-light {
   --notification-icon-bg: rgb(220 38 38 / 12%);
 }
 
@@ -1807,7 +1799,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 }
 
 .global-notification.is-info {
-  border-left: 4px solid #3273dc;
+  border-left: 4px solid var(--primary);
 }
 
 /* Mobile responsive adjustments */
@@ -1900,7 +1892,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 
 .progress-notification .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3273dc 0%, #00d1b2 100%);
+  background: linear-gradient(90deg, var(--primary) 0%, var(--success) 100%);
   border-radius: 4px;
   transition: width 0.3s ease;
   width: 0%;
