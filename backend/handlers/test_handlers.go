@@ -14,7 +14,7 @@ func setTestAdminSessionCookie(w http.ResponseWriter, r *http.Request) {
 		Value:    "admin",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   getSecureCookieFlag(r),
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
