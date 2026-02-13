@@ -133,9 +133,11 @@ func projectEnabledFlags(base []map[string]interface{}, enabled []string) []map[
 
 	for _, item := range base {
 		itemLen := len(item)
-		// Defensive: cap itemLen _before_ adding 1, to avoid potential overflow.
+		// Defensive: cap itemLen _before_ adding 1, to avoid potential overflow on 32-bit platforms
 		if itemLen > maxStorageItemKeys-1 {
-			logger.Get().Warn().Int("size", itemLen).Msg("projectEnabledFlags: storage item map too large, capping allocation before sum")
+			logger.Get().Warn().
+				Int("size", itemLen).
+				Msg("projectEnabledFlags: storage item map too large, capping allocation before sum")
 			itemLen = maxStorageItemKeys - 1
 		}
 		allocSize := itemLen + 1
