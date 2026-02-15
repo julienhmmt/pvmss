@@ -39,13 +39,6 @@ body::before {
   z-index: 0;
 }
 
-/* Admin context navbar uses solid styling */
-.admin-section .navbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-
 /* Visual glass effects for .navbar - excluded from admin contexts */
 body:not(.admin-page) .navbar {
   /* Visual properties only - glassmorphism effects */
