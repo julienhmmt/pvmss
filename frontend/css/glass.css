@@ -460,26 +460,6 @@ section:not(.admin-section) .table-container {
   position: relative;
 }
 
-.notification.is-danger {
-  background: var(--danger-light);
-  border-left: 3px solid var(--danger);
-}
-
-.notification.is-success {
-  background: var(--success-light);
-  border-left: 3px solid var(--success);
-}
-
-.notification.is-warning {
-  background: var(--warning-light);
-  border-left: 3px solid var(--warning);
-}
-
-.notification.is-info {
-  background: var(--info-light);
-  border-left: 3px solid var(--info);
-}
-
 .modal-background {
   backdrop-filter: blur(8px) saturate(120%);
   background: rgb(0 0 0 / 40%);

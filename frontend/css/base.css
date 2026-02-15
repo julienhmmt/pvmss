@@ -326,10 +326,6 @@ body.app-body main {
   background-color: var(--gray-100);
 }
 
-.button.is-primary {
-  color: var(--white);
-}
-
 .table {
   background-color: transparent;
   color: var(--text);
