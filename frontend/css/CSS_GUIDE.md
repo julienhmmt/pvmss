@@ -170,6 +170,187 @@ section:not(.admin-section) .card {
 }
 ```
 
+## 🎯 Z-Index Strategy
+
+PVMSS uses a layered z-index approach to prevent conflicts and maintain proper stacking order:
+
+### Z-Index Scale
+
+- **Base Layer** (`--z-base: 0`): Default content, no special stacking
+- **Navbar** (`--z-navbar: 100`): Fixed navigation bar, always visible
+- **Banner** (`--z-banner: 99`): Status banners (below navbar for proper layering)
+- **Dropdown** (`--z-dropdown: 1000`): Dropdown menus, above content
+- **Tooltip** (`--z-tooltip: 1100`): Tooltips, above dropdowns
+- **Modal** (`--z-modal: 2000`): Modal dialogs, highest layer
+
+### Usage Rules
+
+- Always use z-index tokens from `tokens.css` instead of hardcoded values
+- Never use z-index values outside the documented scale
+- When adding new components that need stacking, add a new token to `tokens.css`
+- Document the purpose of each z-index level in code comments
+
+### Example
+
+```css
+.my-dropdown {
+  position: absolute;
+  z-index: var(--z-dropdown);
+}
+
+.my-modal {
+  position: fixed;
+  z-index: var(--z-modal);
+}
+```
+
+## 📱 Responsive Design
+
+PVMSS uses a mobile-first approach with three main breakpoints:
+
+### Breakpoints
+
+- **Mobile** (`--breakpoint-mobile: 768px`): Phones and small tablets
+- **Tablet** (`--breakpoint-tablet: 1024px`): Tablets and small desktops
+- **Desktop** (`--breakpoint-desktop: 1200px`): Large desktops and ultra-wide screens
+
+### Responsive Adjustments
+
+**Navbar Height**:
+
+- Desktop: `3.75rem` (60px)
+- Mobile: `3.25rem` (52px) - reduced for screen space
+
+**Layout Changes**:
+
+- Desktop: Multi-column flex layouts
+- Tablet: Adjusted column widths
+- Mobile: Single-column stack layouts
+
+**Font Sizes**:
+
+- Scale down on mobile for readability
+- Use relative units (rem, em) for scalability
+
+### Media Query Pattern
+
+```css
+/* Desktop-first approach */
+.your-component {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* Tablet adjustments */
+@media (width <= 1024px) {
+  .your-component {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Mobile adjustments */
+@media (width <= 768px) {
+  .your-component {
+    grid-template-columns: 1fr;
+  }
+}
+```
+
+## ✅ Form Validation States
+
+Form validation uses semantic CSS classes to indicate field states:
+
+### Validation Classes
+
+- `.is-success`: Green background, success styling
+- `.is-warning`: Yellow background, warning styling
+- `.is-danger`: Red background, error styling
+- `.is-info`: Blue background, informational styling
+
+### Light variants
+
+Light variants (`.is-light`) use dark text for proper contrast on light backgrounds:
+
+```css
+/* Success state */
+.field.is-success input {
+  border-color: var(--success);
+  background: var(--success-light);
+}
+
+.field.is-success.is-light input {
+  color: var(--success-dark);
+  background: var(--success-light);
+}
+```
+
+### Validation Messages
+
+Use `.form-help` class for validation messages:
+
+```html
+<div class="field">
+  <input class="input is-danger" type="text">
+  <p class="form-help is-danger">This field is required</p>
+</div>
+```
+
+### Animation on State Change
+
+Validation states should animate smoothly:
+
+```css
+.field input {
+  transition: border-color var(--transition-base),
+              background-color var(--transition-base),
+              box-shadow var(--transition-base);
+}
+```
+
+## 💡 Light vs. Normal variants
+
+Understanding when to use light vs. normal variants:
+
+### Light variants (`.is-light`)
+
+Use light variants for:
+
+- Secondary information that doesn't need emphasis
+- Less important alerts or notifications
+- Background elements that support primary content
+- Informational messages (not errors)
+
+**Characteristics**:
+
+- Light background color
+- Dark text for contrast
+- Subtle, non-intrusive appearance
+
+### Normal variants
+
+Use normal variants for:
+
+- Primary information requiring attention
+- Important alerts and errors
+- Call-to-action elements
+- Critical status messages
+
+**Characteristics**:
+
+- Darker background color
+- Light text (usually white)
+- Prominent, attention-grabbing appearance
+
+### Decision Tree
+
+```text
+Is this critical information?
+├─ YES → Use normal variant (.is-danger, .is-warning, etc.)
+└─ NO → Is this supplementary?
+    ├─ YES → Use light variant (.is-danger.is-light, etc.)
+    └─ NO → Use normal variant
+```
+
 ## 🧪 Testing
 
 After CSS changes, verify these pages:
