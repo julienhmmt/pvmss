@@ -143,19 +143,9 @@ section:not(.admin-section) .notification:is(:not(.is-danger), :not(.is-success)
   box-shadow: var(--shadow-md), var(--shadow-inner);
 }
 
-.notification.is-danger {
-  background: var(--danger-light);
-  border-left: 3px solid var(--danger);
-}
-
 section:not(.admin-section) .notification.is-danger {
   background: var(--danger-bg) !important;
   color: var(--danger-dark) !important;
-}
-
-.notification.is-success {
-  background: var(--success-light);
-  border-left: 3px solid var(--success);
 }
 
 section:not(.admin-section) .notification.is-success {
@@ -163,19 +153,9 @@ section:not(.admin-section) .notification.is-success {
   color: var(--success-dark) !important;
 }
 
-.notification.is-warning {
-  background: var(--warning-light);
-  border-left: 3px solid var(--warning);
-}
-
 section:not(.admin-section) .notification.is-warning {
   background: var(--warning-bg) !important;
   color: var(--warning-dark) !important;
-}
-
-.notification.is-info {
-  background: var(--info-light);
-  border-left: 3px solid var(--info);
 }
 
 section:not(.admin-section) .notification.is-info {
