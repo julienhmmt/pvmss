@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"pvmss/errors"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
@@ -37,14 +38,14 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 	pveTicket, pveCSRF, _, ok := GetProxmoxTicketFromSession(r)
 	if !ok {
 		log.Warn().Msg("No Proxmox ticket found in session")
-		return "", 0, fmt.Errorf("proxmox authentication required")
+		return "", 0, errors.AuthErr("", "vnc_proxy", "proxmox authentication required")
 	}
 
 	// Get Proxmox URL from environment
 	proxmoxURL := os.Getenv("PROXMOX_URL")
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL not configured")
-		return "", 0, fmt.Errorf("proxmox URL not configured")
+		return "", 0, errors.ConfigErr("PROXMOX_URL", "proxmox URL not configured")
 	}
 
 	// Create a temporary Proxmox client with the user's stored credentials
@@ -52,7 +53,7 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 	client, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkipVerify)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client")
-		return "", 0, fmt.Errorf("failed to create proxmox client: %w", err)
+		return "", 0, errors.WrapProxmox(err, "/api2/json/access/ticket", 0, "failed to create proxmox client")
 	}
 
 	// Set the user's authentication credentials
@@ -63,7 +64,7 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 	vmidInt := 0
 	if _, err := fmt.Sscanf(vmid, "%d", &vmidInt); err != nil || vmidInt <= 0 {
 		log.Error().Str("vmid", vmid).Msg("Invalid VM ID")
-		return "", 0, fmt.Errorf("invalid VM ID: %s", vmid)
+		return "", 0, errors.ValidationErr("vmid", vmid, "invalid VM ID format")
 	}
 
 	// Create context with timeout
@@ -75,14 +76,14 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 	vncProxy, err := proxmox.GetVNCProxy(ctx, client, node, vmidInt, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get VNC proxy")
-		return "", 0, fmt.Errorf("failed to get VNC proxy: %w", err)
+		return "", 0, errors.WrapVM(err, vmidInt, node, "failed to get VNC proxy")
 	}
 
 	// Convert port string to int
 	portInt, err := strconv.Atoi(vncProxy.Port)
 	if err != nil {
 		log.Error().Err(err).Str("port_string", vncProxy.Port).Msg("Failed to convert port to integer")
-		return "", 0, fmt.Errorf("invalid port value: %s", vncProxy.Port)
+		return "", 0, errors.ValidationErr("port", vncProxy.Port, "invalid port value")
 	}
 
 	log.Info().
