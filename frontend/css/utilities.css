@@ -16,6 +16,16 @@ input.notification-dismiss-toggle.visually-hidden-checkbox {
   pointer-events: auto;
 }
 
+/* Reusable Animations */
+@keyframes shimmer-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 /* Alpine.js Utilities */
 [x-cloak] { display: none !important; }
 

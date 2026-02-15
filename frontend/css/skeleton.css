@@ -15,19 +15,8 @@
 .skeleton {
   background: linear-gradient(90deg, var(--bg, #f0f0f0) 25%, #e0e0e0 50%, var(--bg, #f0f0f0) 75%);
   background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
+  animation: shimmer-loading 1.5s infinite;
   border-radius: var(--radius-sm, 4px);
-}
-
-/* Skeleton animation */
-@keyframes skeleton-loading {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
 }
 
 /* Skeleton variants */
