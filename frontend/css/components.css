@@ -27,10 +27,6 @@
   border: 1px solid var(--glass-border);
 }
 
-.card .button.is-primary {
-  color: var(--white);
-}
-
 fieldset[disabled] {
   opacity: 0.7;
   position: relative;
@@ -1199,6 +1195,7 @@ label>input[type="checkbox"].is-hidden:checked+.tag {
 .notification.is-success {
   --notification-accent-color: #16a34a;
   --notification-accent-color-fade: rgb(22 163 74 / 60%);
+
   color: #155724;
 }
 

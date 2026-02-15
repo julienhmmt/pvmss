@@ -71,21 +71,11 @@
 .network-toggle-switch.loading .network-toggle-slider {
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
-  animation: loading-shimmer 1.5s infinite;
+  animation: shimmer-loading 1.5s infinite;
 }
 
 .network-toggle-switch.loading .network-toggle-label {
   opacity: 0.7;
-}
-
-@keyframes loading-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
 }
 
 /* Success state animation */

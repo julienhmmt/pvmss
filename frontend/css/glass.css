@@ -39,13 +39,6 @@ body::before {
   z-index: 0;
 }
 
-/* Admin context navbar uses solid styling */
-.admin-section .navbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-
 /* Visual glass effects for .navbar - excluded from admin contexts */
 body:not(.admin-page) .navbar {
   /* Visual properties only - glassmorphism effects */
@@ -142,7 +135,7 @@ section:not(.admin-section) .node-card {
 }
 
 /* Visual glass effects for .notification - excluded from admin contexts */
-section:not(.admin-section) .notification:not(.is-danger):not(.is-success):not(.is-warning):not(.is-info) {
+section:not(.admin-section) .notification:is(:not(.is-danger), :not(.is-success), :not(.is-warning), :not(.is-info)) {
   /* Visual properties only - glassmorphism effects */
   background: var(--glass-opacity-light);
   backdrop-filter: var(--blur-sm) saturate(180%);
@@ -465,26 +458,6 @@ section:not(.admin-section) .table-container {
 .progress::-webkit-progress-value {
   box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
   position: relative;
-}
-
-.notification.is-danger {
-  background: var(--danger-light);
-  border-left: 3px solid var(--danger);
-}
-
-.notification.is-success {
-  background: var(--success-light);
-  border-left: 3px solid var(--success);
-}
-
-.notification.is-warning {
-  background: var(--warning-light);
-  border-left: 3px solid var(--warning);
-}
-
-.notification.is-info {
-  background: var(--info-light);
-  border-left: 3px solid var(--info);
 }
 
 .modal-background {
