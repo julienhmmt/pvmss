@@ -52,8 +52,9 @@ input.notification-dismiss-toggle.visually-hidden-checkbox {
   flex-direction: column;
 }
 
-.shadow-lg { box-shadow: 0 20px 60px rgb(0 0 0 / 12%); }
-.shadow-md { box-shadow: 0 4px 14px rgb(255 136 0 / 25%); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-md-primary { box-shadow: 0 4px 14px rgb(255 136 0 / 25%); }
 
 /* Composite Classes */
 .card-base {
