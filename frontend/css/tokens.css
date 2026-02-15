@@ -15,7 +15,7 @@
   --glass-border: rgb(255 255 255 / 40%);
   --glass-shadow: 0 8px 32px rgb(0 0 0 / 6%);
 
-  /* Glass opacity levels - Hiérarchie claire */
+  /* Glass opacity levels - Clear hierarchy */
   --glass-opacity-light: rgb(255 255 255 / 65%);
 
   /* Boxes */
@@ -111,6 +111,19 @@
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-Index Scale - Layered stacking hierarchy */
+  --z-base: 0;
+  --z-navbar: 100;
+  --z-banner: 99;
+  --z-dropdown: 1000;
+  --z-tooltip: 1100;
+  --z-modal: 2000;
+
+  /* Responsive Breakpoints */
+  --breakpoint-mobile: 768px;
+  --breakpoint-tablet: 1024px;
+  --breakpoint-desktop: 1200px;
 
   /* Bulma compatibility */
   --bulma-primary-h: 32;
