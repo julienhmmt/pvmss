@@ -1,16 +1,15 @@
+*.log
 .DS_Store
 .env
 .idea/
+.specify/
 .vscode/
 .windsurf/
-docker-compose.dev.yml
-settings.dev.json
 coverage.out
-node_modules/
-package-lock.json
-*.log
-pvmss_snippets_ed25519
+docker-compose.dev.yml
 proxmox_host_key.pub
+pvmss_snippets_ed25519
+settings.dev.json
 
 # binaries
 pvmss
