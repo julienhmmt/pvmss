@@ -10,6 +10,13 @@
  * Load Order: This file loads AFTER glass.css to override glass effects.
  */
 
+/* Admin navbar styling - moved from glass.css for proper separation of concerns */
+.admin-section .navbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
 .section-anchor {
     scroll-margin-top: 4.5rem;
 }
