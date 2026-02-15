@@ -70,8 +70,7 @@
 
 .form-tooltip-trigger {
     border: none;
-    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
-    color: #fff;
+    color: white;
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -79,10 +78,15 @@
     align-items: center;
     justify-content: center;
     font-size: 0.75rem;
-    box-shadow: 0 4px 12px rgb(245 124 0 / 25%);
     cursor: help;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     padding: 0;
+}
+
+/* Inherit primary button styling from base.css */
+.form-tooltip-trigger {
+    background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+    box-shadow: 0 4px 12px rgb(245 124 0 / 25%);
 }
 
 .form-tooltip-trigger:focus-visible {

@@ -138,6 +138,17 @@ body.app-body main {
   position: relative;
 }
 
+/* Canonical primary button styling */
+.button.is-primary {
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: white;
+  border: none;
+}
+
+.button.is-primary:hover {
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary-dark));
+}
+
 .notification {
   /* Structural properties */
   border-radius: var(--radius-md);

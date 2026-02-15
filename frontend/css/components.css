@@ -27,10 +27,6 @@
   border: 1px solid var(--glass-border);
 }
 
-.card .button.is-primary {
-  color: var(--white);
-}
-
 fieldset[disabled] {
   opacity: 0.7;
   position: relative;
