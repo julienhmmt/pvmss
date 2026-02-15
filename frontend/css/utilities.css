@@ -17,6 +17,8 @@ input.notification-dismiss-toggle.visually-hidden-checkbox {
 }
 
 /* Reusable Animations */
+
+
 @keyframes shimmer-loading {
   0% {
     background-position: 200% 0;

@@ -145,7 +145,8 @@ body.app-body main {
   border: none;
 }
 
-.button.is-primary:hover {
+.button.is-primary:hover,
+.button.is-primary:focus {
   background: linear-gradient(135deg, var(--primary-hover), var(--primary-dark));
 }
 
