@@ -1050,6 +1050,9 @@ const isUseStore = (fn) => {
 function patchObject(newState, oldState) {
     // no need to go through symbols because they cannot be serialized anyway
     for (const key in oldState) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+            continue;
+        }
         const subPatch = oldState[key];
         // skip the whole sub tree
         if (!(key in newState)) {
