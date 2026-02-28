@@ -30,7 +30,7 @@ dev-logs: up logs ## Démarre et affiche les logs
 	@echo ""
 
 build: ## Construit le binaire Go et le container docker
-	@echo "Building binary" && cd /Users/jh/git/pvmss && go clean -cache && go build -C backend -o ../pvmss
+	@echo "Building binary" && go clean -cache && go build -C backend -o ../pvmss
 	@echo "Binary built successfully"
 	@echo ""
 	@echo "Remove old app logs and create new one"
