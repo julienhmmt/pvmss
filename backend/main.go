@@ -16,6 +16,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	apiv1 "pvmss/api/v1"
 	"pvmss/constants"
 	"pvmss/handlers"
 	"pvmss/i18n"
@@ -77,9 +78,12 @@ func main() {
 		port = constants.DefaultPort
 	}
 
+	httpHandler, router := handlers.InitHandlers(stateManager)
+	apiv1.RegisterRoutes(router, stateManager)
+
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           handlers.InitHandlers(stateManager),
+		Handler:           httpHandler,
 		ReadTimeout:       constants.ServerReadTimeout,
 		WriteTimeout:      constants.ServerWriteTimeout,
 		IdleTimeout:       constants.ServerIdleTimeout,

@@ -61,6 +61,7 @@ make go-template   # Regenerate templ files
 ```
 backend/          # Go application (module: pvmss)
   main.go         # Entry point: logger init, Proxmox client, templates, HTTP server
+  api/v1/         # JWT-authenticated JSON API (/api/v1/auth/*, /api/v1/vms/*)
   handlers/       # HTTP handlers, one file per feature area
   proxmox/        # Proxmox API client layer (dual: Telmate legacy + Resty)
   state/          # Centralized app state via StateManager interface
@@ -75,6 +76,11 @@ frontend/         # Static assets + HTML templates
   components/     # Partial HTML templates rendered by Go backend
   css/            # Compiled CSS (Bulma-based + custom)
   js/             # JavaScript
+  src/            # Vue 3 SPA (no build step — plain ES modules, vendored libs)
+    api/          # Axios-based API client for /api/v1/
+    components/   # VmCard.js, VmActionButtons.js, AppButton.js
+    stores/       # Pinia stores (auth, vms)
+  vendor/         # Vendored ESM bundles: vue, pinia, axios (no npm needed)
   webfonts/       # Font Awesome webfonts
 ```
 
@@ -104,7 +110,11 @@ Setting `PVMSS_OFFLINE=true` skips all Proxmox API calls. All tests use offline 
 
 ### Settings
 
-`settings.json` (runtime) and `backend/settings.dev.json` (development/tests) configure available storages, ISOs, VMBRs, tags, VM resource limits, and cloud-init SFTP. All keys are mandatory.
+`settings.json` (runtime) and `backend/settings.dev.json` (development/tests) configure available storages, ISOs, VMBRs, tags, VM resource limits, cloud-init SFTP, and the JWT signing key. All keys are mandatory.
+
+| Key | Purpose |
+|---|---|
+| `jwt_secret` | 32+ byte signing key for `/api/v1/` JWT tokens. Stored in `settings.json`, **not** an env var. |
 
 ### Internationalization
 

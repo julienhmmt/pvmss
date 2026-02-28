@@ -25,7 +25,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
-# Copy frontend files in a separate stage to keep builder image smaller
+# Copy frontend files in a separate stage to keep builder image smaller.
+# Vue 3 SPA uses vendored ESM (frontend/vendor/) — no npm/Node build step needed.
+# Airgap-compatible: all JS dependencies are committed to the repository.
 FROM alpine:3.23 AS frontend
 WORKDIR /app
 

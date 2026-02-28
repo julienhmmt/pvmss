@@ -137,6 +137,9 @@ type AppSettings struct {
 	CloudInitTemplates []CloudInitTemplate         `json:"cloudinit_templates,omitempty"`
 	AllowCustomYAML    bool                        `json:"allow_custom_yaml,omitempty"` // Allow users to provide custom YAML (default: true)
 	CloudInitSFTP      proxmox.CloudInitSFTPConfig `json:"cloudinit_sftp,omitempty"`    // SSH/SFTP configuration for snippet uploads
+	// JWTSecret is the signing key for /api/v1/ JWT tokens (minimum 32 bytes).
+	// Stored in settings.json; no environment variable needed.
+	JWTSecret string `json:"jwt_secret,omitempty"`
 }
 
 // getSettingsFilePath returns the absolute path to the settings file.
@@ -255,6 +258,13 @@ func LoadSettings() (*AppSettings, bool, error) {
 	if settings.Limits.MaxSnapshots < MinSnapshotsPerVM || settings.Limits.MaxSnapshots > MaxSnapshotsPerVM {
 		modified = true
 		settings.Limits.MaxSnapshots = DefaultSnapshotsPerVM
+	}
+
+	// Warn when jwt_secret is absent or too short (API auth will refuse to issue tokens)
+	if settings.JWTSecret == "" {
+		log.Warn().Msg("jwt_secret not set in settings.json — /api/v1/ JWT auth will be unavailable")
+	} else if len(settings.JWTSecret) < 32 {
+		log.Warn().Int("length", len(settings.JWTSecret)).Msg("jwt_secret is shorter than 32 bytes — consider using a longer secret")
 	}
 
 	// Validate SFTP configuration if enabled
