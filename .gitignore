@@ -24,3 +24,6 @@ frontend/components/noVNC*
 
 # CSS lint output
 frontend/css/css_lint.txt
+
+# Git worktrees
+.worktrees/
