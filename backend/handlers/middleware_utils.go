@@ -212,6 +212,32 @@ func buildPublicMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
+// buildAPIMiddleware assembles the middleware stack for /api/v1/ routes.
+// It loads sessions (needed by /api/v1/auth/exchange) but skips CSRF validation
+// because JSON API clients authenticate via JWT, not CSRF tokens.
+func buildAPIMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, isTestEnv bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		handler := next
+		handler = stateManagerContextMiddleware(sm)(handler)
+
+		sessionManager := sm.GetSessionManager()
+		if sessionManager != nil {
+			handler = sessionManager.LoadAndSave(handler)
+		}
+		if !isTestEnv {
+			handler = middleware.RateLimitMiddleware(rateLimiter)(handler)
+		}
+		handler = maxBodySizeMiddleware(handler, int64(constants.MaxFormSize))
+		handler = recoverMiddleware(handler)
+		return handler
+	}
+}
+
+// isAPIPath returns true when the request path is under /api/.
+func isAPIPath(p string) bool {
+	return strings.HasPrefix(p, "/api/")
+}
+
 // withStaticCaching wraps a static file handler to add strong caching headers.
 func withStaticCaching(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +253,7 @@ func isStaticPath(p string) bool {
 	if p == "/favicon.ico" {
 		return true
 	}
-	for _, prefix := range []string{"/css/", "/js/", "/webfonts/", "/components/"} {
+	for _, prefix := range []string{"/css/", "/js/", "/webfonts/", "/components/", "/vendor/", "/src/"} {
 		if strings.HasPrefix(p, prefix) {
 			return true
 		}
