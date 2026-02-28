@@ -1,5 +1,7 @@
 package components
 
+import "fmt"
+
 type LayoutProps struct {
 	Title            string
 	Lang             string
@@ -39,6 +41,15 @@ templ Layout(props LayoutProps) {
 			<link rel="stylesheet" href="/css/solid.min.css"/>
 			<link rel="preconnect" href="/webfonts/"/>
 			<link rel="preload" href="/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous"/>
+			<script type="importmap">
+				{
+					"imports": {
+						"vue":   "/vendor/vue.esm-browser.prod.js",
+						"pinia": "/vendor/pinia.esm-browser.prod.js",
+						"axios": "/vendor/axios.min.mjs"
+					}
+				}
+			</script>
 		</head>
 		<body class="app-body">
 			@Navbar(NavbarProps{
@@ -57,6 +68,20 @@ templ Layout(props LayoutProps) {
 			<script src="/js/alpine-init.js"></script>
 			<script src="/js/alpinejs.3.15.3.min.js" defer></script>
 			<script src="/js/accessibility.js" defer></script>
+			<!-- Vue 3 SPA mount point (x-ignore keeps Alpine from touching it) -->
+			<div
+				id="vue-app"
+				data-username={ props.Username }
+				data-is-admin={ fmt.Sprintf("%t", props.IsAdmin) }
+				x-ignore
+			></div>
+			<!-- Exchange the session cookie for JWT tokens, then load the Vue SPA -->
+			<script>
+				(async () => {
+					try { await fetch('/api/v1/auth/exchange', { method: 'POST', credentials: 'include' }); } catch (_) {}
+				})();
+			</script>
+			<script type="module" src="/src/main.js"></script>
 		</body>
 	</html>
 }

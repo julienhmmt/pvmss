@@ -14,7 +14,10 @@ import (
 )
 
 // InitHandlers initializes all handlers and configures routes
-func InitHandlers(stateManager state.StateManager) http.Handler {
+// InitHandlers returns the HTTP handler and the underlying httprouter.Router.
+// The router is exposed so that additional route groups (e.g. api/v1) can be
+// registered before the server starts.
+func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Router) {
 	log := logger.Get().With().Str("component", "handlers").Logger()
 
 	// Create a new router
@@ -116,16 +119,21 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	// Public/Static Middleware Chain (no session)
 	publicHandler := buildPublicMiddleware()(router)
 
+	// API Middleware Chain: session loading (needed by /api/v1/auth/exchange),
+	// but NO CSRF validation (JSON APIs use JWT, not CSRF tokens).
+	apiHandler := buildAPIMiddleware(stateManager, rateLimiter, isTestEnv)(router)
+
 	// Main App Middleware Chain (with session, CSRF, etc.)
 	appHandler := buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(router)
 
 	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Route static assets and /health to the public handler (no session)
-		if isStaticPath(r.URL.Path) || r.URL.Path == "/health" {
+		switch {
+		case isStaticPath(r.URL.Path) || r.URL.Path == "/health":
 			publicHandler.ServeHTTP(w, r)
-		} else {
-			// All other requests go to the main app handler with the full middleware stack
+		case isAPIPath(r.URL.Path):
+			apiHandler.ServeHTTP(w, r)
+		default:
 			appHandler.ServeHTTP(w, r)
 		}
 	})
@@ -133,7 +141,7 @@ func InitHandlers(stateManager state.StateManager) http.Handler {
 	var handler http.Handler = mux
 
 	log.Info().Msg("HTTP handlers and middleware initialized")
-	return handler
+	return handler, router
 }
 
 // handlerRegistrar interface for handlers that can register routes
@@ -223,7 +231,13 @@ func setupStaticFiles(router *httprouter.Router, stateManager state.StateManager
 	registerStaticHandler(router, "/components/*filepath", http.StripPrefix("/components/", createCachedFileServer(basePath, "components")))
 	registerStaticHandler(router, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
-	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured for css, js, components, webfonts")
+	// Vendored ESM libraries (vue, pinia, axios) — strong caching, content is immutable
+	registerStaticHandler(router, "/vendor/*filepath", http.StripPrefix("/vendor/", createCachedFileServer(basePath, "vendor")))
+
+	// Vue SPA source files — no aggressive caching during development
+	registerStaticHandler(router, "/src/*filepath", http.StripPrefix("/src/", http.FileServer(http.Dir(filepath.Join(basePath, "src")))))
+
+	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured for css, js, components, webfonts, vendor, src")
 }
 
 // setupStaticFiles configures the static file server
