@@ -9,6 +9,19 @@ GREEN=\033[0;32m
 RED=\033[0;31m
 NC=\033[0m # No Color
 
+# Detect git worktree root (works for both main worktree and linked worktrees)
+GIT_ROOT := $(shell git rev-parse --show-toplevel)
+# Get current directory relative to git root
+CURRENT_DIR := $(shell git rev-parse --show-prefix)
+# If we're in a worktree subdirectory, adjust paths accordingly
+ifeq ($(CURRENT_DIR),)
+    # We're in the main worktree
+    BACKEND_DIR := backend
+else
+    # We're in a worktree, backend is still at ./backend relative to current dir
+    BACKEND_DIR := backend
+endif
+
 # Test configuration
 TEST_SETTINGS_PATH=/tmp/settings.test.json
 
@@ -30,7 +43,7 @@ dev-logs: up logs ## Démarre et affiche les logs
 	@echo ""
 
 build: ## Construit le binaire Go et le container docker
-	@echo "Building binary" && go clean -cache && go build -C backend -o ../pvmss
+	@echo "Building binary" && go clean -cache && go build -C $(BACKEND_DIR) -o ../pvmss
 	@echo "Binary built successfully"
 	@echo ""
 	@echo "Remove old app logs and create new one"
@@ -84,62 +97,62 @@ logs:
 
 coverage: ## Génère un rapport de couverture de code
 	@echo "$(BLUE)Génération du rapport de couverture...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./...
-	@echo "$(GREEN)✓ Rapport généré: backend/coverage.out$(NC)"
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./...
+	@echo "$(GREEN)✓ Rapport généré: $(BACKEND_DIR)/coverage.out$(NC)"
 
 test-unit: ## Lance les tests unitaires Go (offline-compatible)
 	@echo "$(BLUE)Lancement des tests unitaires Go...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -coverprofile=coverage.out ./...
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -coverprofile=coverage.out ./...
 	@echo "$(GREEN)✓ Tests unitaires terminés$(NC)"
 
 test-integration: ## Lance les tests d'intégration (offline-compatible)
 	@echo "$(BLUE)Lancement des tests d'intégration...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -tags=integration -timeout=5m ./tests/...
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests d'intégration terminés$(NC)"
 
 test-routes: ## Lance les tests de routes (offline-compatible)
 	@echo "$(BLUE)Lancement des tests de routes...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestRouteAccessibility ./tests
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestRouteAccessibility ./tests
 	@echo "$(GREEN)✓ Tests de routes terminés$(NC)"
 
 test-offline: ## Lance tous les tests en mode offline (rapide, pour GitHub Actions)
 	@echo "$(BLUE)Lancement de tous les tests en mode offline (optimisé)...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -timeout=5m ./...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -tags=integration -timeout=5m ./tests/...
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -timeout=5m ./...
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests offline terminés$(NC)"
 
 test-offline-verbose: ## Lance tous les tests offline avec sortie détaillée
 	@echo "$(BLUE)Lancement de tous les tests en mode offline (verbose)...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -timeout=5m ./...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -tags=integration -timeout=5m ./tests/...
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -timeout=5m ./...
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests offline verbose terminés$(NC)"
 
 test-offline-race: ## Lance tous les tests offline avec race detector (lent mais complet)
 	@echo "$(BLUE)Lancement de tous les tests en mode offline avec race detector...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -timeout=10m ./...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -tags=integration -timeout=10m ./tests/...
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -timeout=10m ./...
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -tags=integration -timeout=10m ./tests/...
 	@echo "$(GREEN)✓ Tests offline avec race detector terminés$(NC)"
 
 test-offline-parallel: ## Lance tous les tests offline en parallèle (maximum vitesse)
 	@echo "$(BLUE)Lancement de tous les tests en mode offline (parallèle)...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -timeout=5m ./...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -tags=integration -timeout=5m ./tests/...
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -timeout=5m ./...
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests offline parallèles terminés$(NC)"
 
 test-online: ## Lance tous les tests en mode online (requiert Proxmox)
 	@echo "$(BLUE)Lancement de tous les tests en mode online...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -coverprofile=coverage.out ./...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -tags=integration -timeout=5m ./tests/...
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -run TestRouteAccessibility ./tests
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -coverprofile=coverage.out ./...
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -tags=integration -timeout=5m ./tests/...
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -run TestRouteAccessibility ./tests
 	@echo "$(GREEN)✓ Tests online terminés$(NC)"
 
 test-all: test-offline ## Lance tous les tests (mode offline par défaut)
@@ -148,8 +161,8 @@ test-all: test-offline ## Lance tous les tests (mode offline par défaut)
 
 quick-test: ## Lance les tests rapides en mode offline
 	@echo "$(BLUE)Lancement des tests rapides...$(NC)"
-	@cp backend/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd backend && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -short ./...
+	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -short ./...
 	@echo "$(GREEN)✓ Tests rapides terminés$(NC)"
 
 # =============================================================================
@@ -157,15 +170,15 @@ quick-test: ## Lance les tests rapides en mode offline
 
 go-lint: ## Lance le linter Go
 	@echo "$(BLUE)Lancement du linter Go...$(NC)"
-	cd backend && golangci-lint run -v --timeout=3m
+	cd $(BACKEND_DIR) && golangci-lint run -v --timeout=3m
 
 go-fmt: ## Formate le code Go
 	@echo "$(BLUE)Formatage du code Go...$(NC)"
-	cd backend && go fmt ./...
+	cd $(BACKEND_DIR) && go fmt ./...
 
 go-template: ## Génère les templates Go
 	@echo "$(BLUE)Génération des templates Go...$(NC)"
-	cd backend && ~/go/bin/templ generate && cd ..
+	cd $(BACKEND_DIR) && ~/go/bin/templ generate && cd ..
 
 # =============================================================================
 # Commandes de développement rapide
