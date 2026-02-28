@@ -160,8 +160,11 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles POST /api/v1/auth/logout. Clears both token cookies.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{Name: accessTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
-	http.SetCookie(w, &http.Cookie{Name: refreshTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode})
+	env := os.Getenv("PVMSS_ENV")
+	secure := env == "production" || env == "prod"
+
+	http.SetCookie(w, &http.Cookie{Name: accessTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
+	http.SetCookie(w, &http.Cookie{Name: refreshTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
