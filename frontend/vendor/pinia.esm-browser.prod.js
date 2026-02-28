@@ -1169,6 +1169,9 @@ function mergeReactiveObjects(target, patchToApply) {
     for (const key in patchToApply) {
         if (!patchToApply.hasOwnProperty(key))
             continue;
+        // prevent prototype pollution by blocking dangerous keys
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype')
+            continue;
         const subPatch = patchToApply[key];
         const targetValue = target[key];
         if (isPlainObject(targetValue) &&
