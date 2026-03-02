@@ -146,7 +146,7 @@ func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 
 // ShowLoginForm renders the user login page.
 func (h *AuthHandler) ShowLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	renderVueShell(w, r, "Login", "/login")
+	h.renderLoginForm(w, r, "")
 }
 
 // LogoutHandler handles user logout
