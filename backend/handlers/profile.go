@@ -16,7 +16,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/sync/errgroup"
 
-	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -61,107 +60,15 @@ func formatDescriptionMarkdown(description string) string {
 // ShowProfile renders the user profile page
 func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := NewHandlerContext(w, r, "ProfileHandler.ShowProfile")
-
-	// Require authentication
 	if !ctx.RequireAuthentication() {
 		return
 	}
-
-	// Admin users don't have profiles - redirect to admin dashboard
+	// Admin users don't have profiles — send to admin dashboard
 	if ctx.IsAdmin() {
-		ctx.Log.Info().Msg("Admin user accessing profile page, redirecting to admin dashboard")
 		http.Redirect(w, r, "/admin", http.StatusSeeOther)
 		return
 	}
-
-	// Get username from session
-	username := ctx.GetUsername()
-	if username == "" {
-		ctx.Log.Error().Msg("No username in session")
-		RespondWithError(w, r, ErrSessionExpired)
-		return
-	}
-
-	// Derive pool name from username
-	poolName := "pvmss_" + username
-
-	// Get Proxmox client
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		ctx.Log.Error().Msg("Proxmox client not available")
-		RespondWithError(w, r, ErrProxmoxConnection)
-		return
-	}
-
-	// If 'refresh=1' is present, invalidate pool and node caches for fresh data
-	if r.URL.Query().Get("refresh") == "1" {
-		ctx.Log.Info().Str("pool", poolName).Msg("Refreshing profile page - invalidating caches")
-		// Invalidate pool cache
-		client.InvalidateCache("/pools/" + url.PathEscape(poolName))
-		// Invalidate all node VM lists
-		if nodes, err := h.getNodeNames(r.Context(), client); err == nil {
-			for _, node := range nodes {
-				client.InvalidateCache("/nodes/" + url.PathEscape(node) + "/qemu")
-			}
-		}
-	}
-
-	// Fetch VMs from the user's pool
-	vms := h.fetchUserVMs(r.Context(), client, poolName)
-	total, running, stopped, _, _ := computeVMStats(vms)
-
-	// Check for password update messages and form visibility
-	passwordSuccess := r.URL.Query().Get("password_success") == "1"
-	passwordError := r.URL.Query().Get("password_error")
-	showPasswordForm := r.URL.Query().Get("show_password_form") == "1" || passwordError != ""
-
-	// Get CSRF token
-	csrfToken, err := ctx.GetCSRFToken()
-	if err != nil {
-		ctx.Log.Error().Err(err).Msg("Failed to get CSRF token")
-		csrfToken = ""
-	}
-
-	// Convert VMs to ProfileVM format
-	profileVMs := make([]components.ProfileVM, len(vms))
-	for i, vm := range vms {
-		profileVMs[i] = components.ProfileVM{
-			VMID:            vm.VMID,
-			Name:            vm.Name,
-			Description:     vm.Description,
-			DescriptionHTML: formatDescriptionMarkdown(vm.Description),
-			Node:            vm.Node,
-			Status:          vm.Status,
-		}
-	}
-
-	// Prepare Templ data
-	profileData := components.ProfileData{
-		Username:         username,
-		PoolName:         poolName,
-		TotalVMs:         total,
-		RunningVMs:       running,
-		StoppedVMs:       stopped,
-		HasVMs:           total > 0,
-		VMs:              profileVMs,
-		ProxmoxError:     false,
-		PasswordSuccess:  passwordSuccess,
-		PasswordError:    passwordError,
-		ShowPasswordForm: showPasswordForm,
-		CSRFToken:        csrfToken,
-		Lang:             i18n.GetLanguage(r),
-	}
-
-	// Translation function wrapper
-	translateFunc := func(key string) string {
-		return ctx.Translate(key)
-	}
-
-	// Render with Templ
-	if err := components.ProfilePage(profileData, translateFunc).Render(r.Context(), w); err != nil {
-		ctx.Log.Error().Err(err).Msg("Failed to render profile page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+	renderVueShell(w, r, "My VMs", "/profile")
 }
 
 // GetProfileVMsAPI returns the user's VM list as JSON for asynchronous refreshes

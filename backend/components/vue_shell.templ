@@ -1,0 +1,42 @@
+package components
+
+import "fmt"
+
+// VueShellData holds the minimum info needed to render the Vue SPA shell.
+type VueShellData struct {
+	Lang             string
+	Title            string
+	CurrentPath      string
+	IsAuthenticated  bool
+	IsAdmin          bool
+	Username         string
+	ProxmoxConnected bool
+	CSRFToken        string
+}
+
+// VueShellPage renders the layout with an empty server-side content area.
+// The Vue SPA mounts into the #vue-app div and handles all page rendering.
+templ VueShellPage(data VueShellData, T TranslationFunc) {
+	@Layout(LayoutProps{
+		Title:            data.Title,
+		Lang:             data.Lang,
+		CurrentPath:      data.CurrentPath,
+		IsAuthenticated:  data.IsAuthenticated,
+		IsAdmin:          data.IsAdmin,
+		Username:         data.Username,
+		ProxmoxConnected: data.ProxmoxConnected,
+		CSRFToken:        data.CSRFToken,
+		T:                T,
+		Content:          vueAppMount(data.Username, data.IsAdmin),
+	})
+}
+
+// vueAppMount renders the Vue SPA mount point inside <main>.
+templ vueAppMount(username string, isAdmin bool) {
+	<div
+		id="vue-app"
+		data-username={ username }
+		data-is-admin={ fmt.Sprintf("%t", isAdmin) }
+		x-ignore
+	></div>
+}

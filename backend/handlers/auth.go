@@ -146,13 +146,7 @@ func (h *AuthHandler) RegisterRoutes(router *httprouter.Router) {
 
 // ShowLoginForm renders the user login page.
 func (h *AuthHandler) ShowLoginForm(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	log := CreateHandlerLogger("AuthHandler.ShowLoginForm", r)
-	log.Debug().
-		Str("component", "auth").
-		Str("operation", "login_form").
-		Str("reason", "form_display").
-		Msg("Displaying login form")
-	h.renderLoginForm(w, r, "")
+	renderVueShell(w, r, "Login", "/login")
 }
 
 // LogoutHandler handles user logout
