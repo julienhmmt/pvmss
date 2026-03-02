@@ -1,15 +1,26 @@
-import { createApp } from 'vue';
+import { createApp, defineComponent, h } from 'vue';
 import { createPinia } from 'pinia';
-import { App } from './App.js';
+import { RouterView } from 'vue-router';
+import { router } from './router.js';
+import { AppToast } from './components/AppToast.js';
 import { useAuthStore } from './stores/auth.js';
+
+// root app: global toast + router-view
+const RootApp = defineComponent({
+  name: 'RootApp',
+  setup: () => () => h('div', null, [
+    h(AppToast),
+    h(RouterView),
+  ]),
+});
 
 const mountEl = document.getElementById('vue-app');
 if (mountEl) {
-  const app = createApp(App);
+  const app = createApp(RootApp);
   const pinia = createPinia();
   app.use(pinia);
+  app.use(router);
 
-  // Bootstrap auth state from data attributes + /api/v1/auth/me
   const authStore = useAuthStore();
   authStore.init(mountEl).then(() => {
     app.mount(mountEl);
