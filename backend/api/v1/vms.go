@@ -104,6 +104,60 @@ func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "not_found", "VM not found")
 }
 
+// MetricsResponse wraps VM resource usage metrics.
+type MetricsResponse struct {
+	VMID     int     `json:"vmid"`
+	CPUPct   float64 `json:"cpu_pct"`    // 0.0–100.0
+	MemMB    int64   `json:"mem_mb"`     // current memory in MB
+	MaxMemMB int64   `json:"max_mem_mb"` // allocated memory in MB
+	Uptime   int64   `json:"uptime"`     // seconds
+}
+
+// GetVMMetrics handles GET /api/v1/vms/:id/metrics
+func (h *VMHandler) GetVMMetrics(w http.ResponseWriter, r *http.Request) {
+	ps := httprouter.ParamsFromContext(r.Context())
+	vmid, err := strconv.Atoi(ps.ByName("id"))
+	if err != nil || vmid <= 0 {
+		errBadRequest(w, "invalid vm id")
+		return
+	}
+
+	if h.isOffline() {
+		errOffline(w)
+		return
+	}
+
+	client, err := restyClient()
+	if err != nil {
+		errInternal(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+
+	vms, err := proxmox.GetVMsResty(ctx, client)
+	if err != nil {
+		errInternal(w)
+		return
+	}
+
+	for _, vm := range vms {
+		if vm.VMID == vmid {
+			const bytesPerMB = int64(1024 * 1024)
+			writeJSON(w, MetricsResponse{
+				VMID:     vmid,
+				CPUPct:   vm.CPU * 100,
+				MemMB:    vm.Mem / bytesPerMB,
+				MaxMemMB: vm.MaxMem / bytesPerMB,
+				Uptime:   vm.Uptime,
+			})
+			return
+		}
+	}
+	writeError(w, http.StatusNotFound, "not_found", "VM not found")
+}
+
 // vmToSummary converts a proxmox.VM to the API VMSummary.
 // Proxmox reports Mem/MaxMem/MaxDisk in bytes; we convert to MB.
 func vmToSummary(vm proxmox.VM) VMSummary {

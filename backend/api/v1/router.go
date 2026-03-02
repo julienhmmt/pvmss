@@ -16,6 +16,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	vmHandler := NewVMHandler(s)
 	vmActionHandler := NewVMActionHandler(s)
 	searchHandler := NewSearchHandler(s)
+	profileHandler := NewProfileHandler(s)
 
 	// Auth routes — no JWT required (login/exchange issue tokens)
 	router.POST("/api/v1/auth/login", wrap(authHandler.Login))
@@ -33,6 +34,12 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 
 	// Search routes — JWT required
 	router.GET("/api/v1/search/vms", jwtWrap(s, searchHandler.SearchVMs))
+
+	// Profile routes — JWT required
+	router.GET("/api/v1/profile/vms", jwtWrap(s, profileHandler.ListMyVMs))
+
+	// VM metrics — JWT required
+	router.GET("/api/v1/vms/:id/metrics", jwtWrap(s, vmHandler.GetVMMetrics))
 }
 
 // wrap converts a plain http.HandlerFunc into the httprouter.Handle signature.
