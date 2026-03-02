@@ -59,59 +59,36 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// IndexHandler is a handler for the home page
-// This function is exported for use by other packages
-func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := NewHandlerContext(w, r, "IndexHandler")
-	ctx.Log.Debug().Msg("Processing request for home page")
+// renderVueShell renders the Vue SPA shell page for a given route.
+// All page-level content is handled by the Vue Router and components.
+func renderVueShell(w http.ResponseWriter, r *http.Request, ctx *HandlerContext, title string) {
+	setSecurityHeaders(w, r)
+	csrfToken, _ := ctx.GetCSRFToken()
+	data := components.VueShellData{
+		Title:            title,
+		Lang:             i18n.GetLanguage(r),
+		CurrentPath:      r.URL.Path,
+		IsAuthenticated:  ctx.IsAuthenticated(),
+		IsAdmin:          ctx.IsAdmin(),
+		Username:         ctx.GetUsername(),
+		ProxmoxConnected: IsProxmoxTicketValid(r),
+		CSRFToken:        csrfToken,
+	}
+	if err := components.VueShellPage(data, ctx.Translate).Render(r.Context(), w); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to render Vue shell page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
 
-	// If it's not the root, return a 404
+// IndexHandler is a handler for the home page
+func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-
-	// Get username and admin status from session
-	username := ""
-	isAdmin := false
-	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
-			username = user
-		}
-		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
-			isAdmin = admin
-		}
-	}
-
-	// Get CSRF token
-	csrfToken, _ := ctx.GetCSRFToken()
-
-	// Check authentication status
-	isAuthenticated := ctx.IsAuthenticated()
-	proxmoxConnected := IsProxmoxTicketValid(r)
-
-	// Prepare home data
-	homeData := components.HomeData{
-		Username:         username,
-		Lang:             i18n.GetLanguage(r),
-		CSRFToken:        csrfToken,
-		IsAdmin:          isAdmin,
-		IsAuthenticated:  isAuthenticated,
-		ProxmoxConnected: proxmoxConnected,
-	}
-
-	// Translation function wrapper
-	translateFunc := func(key string) string {
-		return ctx.Translate(key)
-	}
-
-	// Render with Templ
-	if err := components.HomePage(homeData, translateFunc).Render(r.Context(), w); err != nil {
-		ctx.Log.Error().Err(err).Msg("Failed to render home page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
+	ctx := NewHandlerContext(w, r, "IndexHandler")
+	ctx.Log.Debug().Msg("Rendering Vue home page shell")
+	renderVueShell(w, r, ctx, "Proxmox VM Self-Service")
 	ctx.Log.Info().Msg("Home page displayed successfully")
 }
 

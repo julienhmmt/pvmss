@@ -13,12 +13,14 @@ export const useAuthStore = defineStore('auth', () => {
       username.value = mountEl.dataset.username || '';
       isAdmin.value = mountEl.dataset.isAdmin === 'true';
     }
+    // Exchange session cookie for JWT tokens before any API calls
+    try { await fetch('/api/v1/auth/exchange', { method: 'POST', credentials: 'include' }); } catch (_) {}
     try {
       const { data } = await me();
       username.value = data.username;
       isAdmin.value = data.is_admin;
     } catch (_) {
-      // JWT not yet available — data-attributes are still valid for display
+      // Not authenticated or JWT unavailable
     }
     ready.value = true;
   }

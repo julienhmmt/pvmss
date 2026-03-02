@@ -1,7 +1,5 @@
 package components
 
-import "fmt"
-
 type LayoutProps struct {
 	Title            string
 	Lang             string
@@ -71,19 +69,6 @@ templ Layout(props LayoutProps) {
 			<script src="/js/alpine-init.js"></script>
 			<script src="/js/alpinejs.3.15.3.min.js" defer></script>
 			<script src="/js/accessibility.js" defer></script>
-			<!-- Vue 3 SPA mount point (x-ignore keeps Alpine from touching it) -->
-			<div
-				id="vue-app"
-				data-username={ props.Username }
-				data-is-admin={ fmt.Sprintf("%t", props.IsAdmin) }
-				x-ignore
-			></div>
-			<!-- Exchange the session cookie for JWT tokens, then load the Vue SPA -->
-			<script>
-				(async () => {
-					try { await fetch('/api/v1/auth/exchange', { method: 'POST', credentials: 'include' }); } catch (_) {}
-				})();
-			</script>
 			<script type="module" src="/src/main.js"></script>
 		</body>
 	</html>
