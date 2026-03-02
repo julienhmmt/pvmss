@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"pvmss/components"
+	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
@@ -48,6 +50,9 @@ func (h *SearchOptimizedHandler) RegisterRoutes(router *httprouter.Router) {
 		Msg("Registering optimized search routes")
 
 	router.GET("/search", RequireAuthHandle(h.SearchPageHandler))
+	router.POST("/search", SecureFormHandler("Search",
+		RequireAuthHandle(h.SearchPageHandler),
+	))
 
 	log.Info().
 		Strs("routes", []string{"GET /search", "POST /search"}).
@@ -79,10 +84,125 @@ func (h *SearchOptimizedHandler) RegisterAJAXRoutes(router *httprouter.Router) {
 		Msg("AJAX search routes registered successfully")
 }
 
-// SearchPageHandler handles GET requests for the search page (Vue SPA shell).
-// Search results are fetched client-side via /api/v1/search/vms.
+// SearchPageHandler handles both GET and POST requests for search page with optimizations
 func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	renderVueShell(w, r, "Search VMs", "/search")
+	log := CreateHandlerLogger("SearchPageHandler", r)
+
+	// Get user info from session
+	username := ""
+	isAdmin := false
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
+		}
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
+		}
+	}
+
+	log.Info().
+		Str("username", username).
+		Bool("is_admin", isAdmin).
+		Msg("Optimized search request started")
+
+	// Get CSRF token
+	ctx := NewHandlerContext(w, r, "SearchPageHandler")
+	csrfToken, err := ctx.GetCSRFToken()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get CSRF token")
+		csrfToken = ""
+	}
+
+	// Prepare search data
+	searchData := components.SearchData{
+		Lang:      i18n.GetLanguage(r),
+		Username:  username,
+		CSRFToken: csrfToken,
+		IsAdmin:   isAdmin,
+	}
+
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
+	}
+
+	// For GET requests, just show the search page
+	if r.Method != "POST" {
+		if err := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); err != nil {
+			log.Error().Err(err).Msg("Failed to render search page")
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Handle POST search requests
+	if r.Method == "POST" {
+		if err := r.ParseForm(); err != nil {
+			log.Error().Err(err).Msg("Failed to parse form")
+			if renderErr := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); renderErr != nil {
+				log.Error().Err(renderErr).Msg("Failed to render search page after parse error")
+			}
+			return
+		}
+
+		vmidQuery := strings.TrimSpace(r.FormValue("vmid"))
+		nameQuery := strings.TrimSpace(r.FormValue("name"))
+		tagQuery := strings.TrimSpace(r.FormValue("tag"))
+
+		// Parse tag query for multiple tags (space-separated)
+		var tagQueries []string
+		if tagQuery != "" {
+			// Split by spaces and filter out empty strings
+			tagParts := strings.Fields(strings.TrimSpace(tagQuery))
+			for _, tag := range tagParts {
+				if tag := strings.TrimSpace(tag); tag != "" {
+					tagQueries = append(tagQueries, strings.ToLower(tag))
+				}
+			}
+		}
+
+		log.Info().
+			Str("vmid_query", vmidQuery).
+			Str("name_query", nameQuery).
+			Strs("tag_queries", tagQueries).
+			Msg("Processing optimized search query")
+
+		// If no query provided, just render empty search page
+		if vmidQuery == "" && nameQuery == "" && len(tagQueries) == 0 {
+			if err := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); err != nil {
+				log.Error().Err(err).Msg("Failed to render search page")
+			}
+			return
+		}
+
+		// Get Proxmox client
+		client := h.stateManager.GetProxmoxClient()
+		if client == nil {
+			log.Error().Msg("Proxmox client not available")
+			if err := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); err != nil {
+				log.Error().Err(err).Msg("Failed to render search page")
+			}
+			return
+		}
+
+		// Perform optimized search (results handled via AJAX API)
+		_, err = h.searchVMsOptimized(r.Context(), client, vmidQuery, nameQuery, tagQueries, username, isAdmin)
+		if err != nil {
+			log.Error().Err(err).Msg("Optimized search failed")
+			if renderErr := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); renderErr != nil {
+				log.Error().Err(renderErr).Msg("Failed to render search page after search error")
+			}
+			return
+		}
+
+		log.Info().
+			Msg("Optimized search completed successfully - results handled by AJAX")
+	}
+
+	if err := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); err != nil {
+		log.Error().Err(err).Msg("Failed to render search page")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // searchVMsOptimized performs VM search with batch API calls and concurrent processing

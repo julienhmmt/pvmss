@@ -62,46 +62,57 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 // IndexHandler is a handler for the home page
 // This function is exported for use by other packages
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := NewHandlerContext(w, r, "IndexHandler")
+	ctx.Log.Debug().Msg("Processing request for home page")
+
+	// If it's not the root, return a 404
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
-	renderVueShell(w, r, "", "/")
-}
 
-// renderVueShell renders the Vue SPA shell layout for routes handled client-side.
-// It extracts auth session data and writes the shell page.
-func renderVueShell(w http.ResponseWriter, r *http.Request, title, currentPath string) {
-	ctx := NewHandlerContext(w, r, "renderVueShell")
+	// Get username and admin status from session
 	username := ""
 	isAdmin := false
-	if sm := security.GetSession(r); sm != nil {
-		if u, ok := sm.Get(r.Context(), "username").(string); ok {
-			username = u
+	if sessionManager := security.GetSession(r); sessionManager != nil {
+		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
+			username = user
 		}
-		if a, ok := sm.Get(r.Context(), "is_admin").(bool); ok {
-			isAdmin = a
+		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
+			isAdmin = admin
 		}
 	}
+
+	// Get CSRF token
 	csrfToken, _ := ctx.GetCSRFToken()
-	translateFunc := func(key string) string { return ctx.Translate(key) }
-	if title == "" {
-		title = translateFunc("UI.Header")
-	}
-	data := components.VueShellData{
-		Title:            title,
-		Lang:             i18n.GetLanguage(r),
-		CurrentPath:      currentPath,
-		IsAuthenticated:  ctx.IsAuthenticated(),
-		IsAdmin:          isAdmin,
+
+	// Check authentication status
+	isAuthenticated := ctx.IsAuthenticated()
+	proxmoxConnected := IsProxmoxTicketValid(r)
+
+	// Prepare home data
+	homeData := components.HomeData{
 		Username:         username,
-		ProxmoxConnected: IsProxmoxTicketValid(r),
+		Lang:             i18n.GetLanguage(r),
 		CSRFToken:        csrfToken,
+		IsAdmin:          isAdmin,
+		IsAuthenticated:  isAuthenticated,
+		ProxmoxConnected: proxmoxConnected,
 	}
-	if err := components.VueShellPage(data, translateFunc).Render(r.Context(), w); err != nil {
-		ctx.Log.Error().Err(err).Str("path", currentPath).Msg("Failed to render vue shell")
+
+	// Translation function wrapper
+	translateFunc := func(key string) string {
+		return ctx.Translate(key)
+	}
+
+	// Render with Templ
+	if err := components.HomePage(homeData, translateFunc).Render(r.Context(), w); err != nil {
+		ctx.Log.Error().Err(err).Msg("Failed to render home page")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
+
+	ctx.Log.Info().Msg("Home page displayed successfully")
 }
 
 // IndexRouterHandler is a handler for the home page compatible with httprouter
