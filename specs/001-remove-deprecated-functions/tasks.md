@@ -55,14 +55,17 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/auth.go` with `HandlerContextWith`
-- [ ] T009 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/profile.go` with `HandlerContextWith`
-- [ ] T010 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/search.go` with `HandlerContextWith`
-- [ ] T011 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_lifecycle.go` with `HandlerContextWith`
-- [ ] T012 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_misc.go` with `HandlerContextWith`
-- [ ] T013 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_resources.go` with `HandlerContextWith`
-- [ ] T014 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_delete.go` with `HandlerContextWith`
-- [ ] T015 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_details_info.go` with `HandlerContextWith`
+- [ ] T008 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/auth.go` with `HandlerContextWith` (3 call sites)
+- [ ] T009 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/profile.go` with `HandlerContextWith` (2 call sites)
+- [ ] T010 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/search.go` with `HandlerContextWith` (1 call site)
+- [ ] T011 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_lifecycle.go` with `HandlerContextWith` (8 call sites)
+- [ ] T012 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_misc.go` with `HandlerContextWith` (2 call sites)
+- [ ] T013 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_resources.go` with `HandlerContextWith` (2 call sites)
+- [ ] T014 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_delete.go` with `HandlerContextWith` (4 call sites)
+- [ ] T015 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_details_info.go` with `HandlerContextWith` (1 call site)
+- [ ] T015a [P] [US1] Replace deprecated handler context initialization in `backend/handlers/admin_cloudinit.go` with `HandlerContextWith` (1 call site)
+- [ ] T015b [P] [US1] Replace deprecated handler context initialization in `backend/handlers/disks.go` with `HandlerContextWith` (1 call site)
+- [ ] T015c [P] [US1] Replace deprecated handler context initialization in `backend/handlers/common.go` with `HandlerContextWith` (1 call site)
 - [ ] T016 [US1] Migrate any additional newly discovered maintained production call sites under `backend/handlers/` or `backend/` from `NewHandlerContext` to `HandlerContextWith`
 - [ ] T017 [US1] Re-run the maintained-source reference scan to confirm active backend code paths no longer reference `NewHandlerContext`
 
@@ -82,9 +85,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Replace deprecated handler context usage in maintained tests under `backend/tests/` or other in-scope `_test.go` files with `HandlerContextWith`
+- [ ] T019 [P] [US2] Replace deprecated handler context usage in maintained tests under `backend/tests/` or other in-scope `_test.go` files with `HandlerContextWith` — confirmed call site: `backend/handlers/security_test.go` (1 call site)
 - [ ] T020 [P] [US2] Replace deprecated handler context usage in maintained helper code under `backend/handlers/` or other in-scope Go files under `backend/` with `HandlerContextWith`
-- [ ] T021 [US2] Remove the deprecated `NewHandlerContext` wrapper from `backend/handlers/handler_context.go`
+- [ ] T021 [US2] Remove the deprecated `NewHandlerContext` wrapper from `backend/handlers/helpers.go` (lines 149–153 — the function is defined there, not in `handler_context.go` which contains the replacement `HandlerContextWith`)
 - [ ] T022 [US2] Update any compilation fallout from the wrapper removal in affected files under `backend/handlers/` and `backend/tests/`
 - [ ] T023 [US2] Verify the wrapper removal by confirming no maintained Go source under `backend/` still references `NewHandlerContext`
 
@@ -151,7 +154,7 @@
 
 - **Phase 1**: T003 can run in parallel with T001-T002.
 - **Phase 2**: T005 and T006 can run in parallel after T004 starts the inventory.
-- **US1**: T008-T015 can run in parallel because they target separate files.
+- **US1**: T008–T015c can run in parallel because they target separate files (11 files: auth.go, profile.go, search.go, vm_actions_lifecycle.go, vm_actions_misc.go, vm_actions_resources.go, vm_delete.go, vm_details_info.go, admin_cloudinit.go, disks.go, common.go).
 - **US2**: T019 and T020 can run in parallel if test and helper references are in different files.
 - **Polish**: T027-T029 can run in parallel once implementation is complete.
 
@@ -160,15 +163,20 @@
 ## Parallel Example: User Story 1
 
 ```bash
-# Migrate independent handler files in parallel:
-Task: "T008 [US1] Replace deprecated handler context initialization in backend/handlers/auth.go with HandlerContextWith"
-Task: "T009 [US1] Replace deprecated handler context initialization in backend/handlers/profile.go with HandlerContextWith"
-Task: "T010 [US1] Replace deprecated handler context initialization in backend/handlers/search.go with HandlerContextWith"
-Task: "T011 [US1] Replace deprecated handler context initialization in backend/handlers/vm_actions_lifecycle.go with HandlerContextWith"
-Task: "T012 [US1] Replace deprecated handler context initialization in backend/handlers/vm_actions_misc.go with HandlerContextWith"
-Task: "T013 [US1] Replace deprecated handler context initialization in backend/handlers/vm_actions_resources.go with HandlerContextWith"
-Task: "T014 [US1] Replace deprecated handler context initialization in backend/handlers/vm_delete.go with HandlerContextWith"
-Task: "T015 [US1] Replace deprecated handler context initialization in backend/handlers/vm_details_info.go with HandlerContextWith"
+# Migrate independent handler files in parallel (complete inventory — 25 call sites across 11 files):
+Task: "T008 [US1] backend/handlers/auth.go (3 call sites)"
+Task: "T009 [US1] backend/handlers/profile.go (2 call sites)"
+Task: "T010 [US1] backend/handlers/search.go (1 call site)"
+Task: "T011 [US1] backend/handlers/vm_actions_lifecycle.go (8 call sites)"
+Task: "T012 [US1] backend/handlers/vm_actions_misc.go (2 call sites)"
+Task: "T013 [US1] backend/handlers/vm_actions_resources.go (2 call sites)"
+Task: "T014 [US1] backend/handlers/vm_delete.go (4 call sites)"
+Task: "T015 [US1] backend/handlers/vm_details_info.go (1 call site)"
+Task: "T015a [US1] backend/handlers/admin_cloudinit.go (1 call site)"
+Task: "T015b [US1] backend/handlers/disks.go (1 call site)"
+Task: "T015c [US1] backend/handlers/common.go (1 call site)"
+# Test file handled separately in US2:
+Task: "T019 [US2] backend/handlers/security_test.go (1 call site)"
 ```
 
 ---
