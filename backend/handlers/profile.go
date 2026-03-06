@@ -60,7 +60,7 @@ func formatDescriptionMarkdown(description string) string {
 
 // ShowProfile renders the user profile page
 func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "ProfileHandler.ShowProfile")
+	ctx := HandlerContextWith(w, r, "ProfileHandler.ShowProfile")
 
 	// Require authentication
 	if !ctx.RequireAuthentication() {
@@ -166,7 +166,7 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 
 // GetProfileVMsAPI returns the user's VM list as JSON for asynchronous refreshes
 func (h *ProfileHandler) GetProfileVMsAPI(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "ProfileHandler.GetProfileVMsAPI")
+	ctx := HandlerContextWith(w, r, "ProfileHandler.GetProfileVMsAPI")
 
 	if ctx.IsAdmin() {
 		writeProfileAPIError(w, http.StatusForbidden, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.Error.AdminNoPersonalVMs"))
