@@ -1,0 +1,1109 @@
+openapi: 3.1.0
+info:
+  title: PVMSS Frontend SPA Rewrite API
+  version: 1.0.0
+  description: >-
+    Contract-first API surface for the frontend SPA rewrite. This contract covers
+    authentication, VM operations, snapshots, console access, search, health,
+    and administrator workflows required by the planning artifacts.
+servers:
+  - url: /api/v1
+    description: Versioned application API
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: VMs
+  - name: Snapshots
+  - name: Console
+  - name: Search
+  - name: Health
+  - name: Admin
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in a user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authenticated identity and access state returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Renew protected access state
+      security: []
+      responses:
+        '200':
+          description: Renewed access state returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Sign out the current user
+      responses:
+        '204':
+          description: Sign-out completed
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the current authenticated user
+      responses:
+        '200':
+          description: Current user profile returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/me/password:
+    put:
+      tags: [Auth]
+      summary: Change the current user password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+      responses:
+        '204':
+          description: Password updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /vms:
+    get:
+      tags: [VMs]
+      summary: List visible VMs for the authenticated user
+      responses:
+        '200':
+          description: VM collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VM'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [VMs]
+      summary: Create a new VM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMCreateRequest'
+      responses:
+        '202':
+          description: Creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /vms/{vmid}:
+    get:
+      tags: [VMs]
+      summary: Get detailed VM information
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      responses:
+        '200':
+          description: VM details returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VM'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [VMs]
+      summary: Delete a VM
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      responses:
+        '204':
+          description: VM deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /vms/{vmid}/action:
+    post:
+      tags: [VMs]
+      summary: Trigger a VM lifecycle action
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VMActionRequest'
+      responses:
+        '202':
+          description: Action accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /vms/{vmid}/description:
+    put:
+      tags: [VMs]
+      summary: Update a VM description
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DescriptionUpdateRequest'
+      responses:
+        '204':
+          description: Description updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /vms/{vmid}/tags:
+    put:
+      tags: [VMs]
+      summary: Update VM tags
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagUpdateRequest'
+      responses:
+        '204':
+          description: Tags updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /vms/{vmid}/resources:
+    put:
+      tags: [VMs]
+      summary: Update VM resources
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceUpdateRequest'
+      responses:
+        '204':
+          description: Resources updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /vms/{vmid}/network/{iface}/toggle:
+    post:
+      tags: [VMs]
+      summary: Toggle a VM network interface
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+        - $ref: '#/components/parameters/InterfaceName'
+      responses:
+        '204':
+          description: Interface toggled
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /vms/{vmid}/snapshots:
+    get:
+      tags: [Snapshots]
+      summary: List VM snapshots
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      responses:
+        '200':
+          description: Snapshot collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Snapshot'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Snapshots]
+      summary: Create a snapshot
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnapshotCreateRequest'
+      responses:
+        '202':
+          description: Snapshot creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /vms/{vmid}/snapshots/{snapshotName}:
+    delete:
+      tags: [Snapshots]
+      summary: Delete a snapshot
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+        - $ref: '#/components/parameters/SnapshotName'
+      responses:
+        '202':
+          description: Snapshot deletion accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /vms/{vmid}/snapshots/{snapshotName}/rollback:
+    post:
+      tags: [Snapshots]
+      summary: Roll back to a snapshot
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+        - $ref: '#/components/parameters/SnapshotName'
+      responses:
+        '202':
+          description: Snapshot rollback accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /vms/{vmid}/console/vnc-ticket:
+    post:
+      tags: [Console]
+      summary: Request temporary console authorization
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+      responses:
+        '200':
+          description: Console authorization returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsoleTicketResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /vms/{vmid}/console/websocket:
+    get:
+      tags: [Console]
+      summary: Establish console websocket session
+      parameters:
+        - $ref: '#/components/parameters/VmId'
+        - name: ticket
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: port
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '101':
+          description: Websocket upgrade established
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /search/vms:
+    get:
+      tags: [Search]
+      summary: Search visible VMs
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: filter
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [vmid, name, tags]
+      responses:
+        '200':
+          description: Matching VMs returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VM'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /health:
+    get:
+      tags: [Health]
+      summary: Get application health
+      security: []
+      responses:
+        '200':
+          description: Health status returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /health/proxmox:
+    get:
+      tags: [Health]
+      summary: Get Proxmox connectivity health
+      security: []
+      responses:
+        '200':
+          description: Proxmox health returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProxmoxHealthResponse'
+  /admin/nodes:
+    get:
+      tags: [Admin]
+      summary: List nodes
+      responses:
+        '200':
+          description: Node collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/storage:
+    get:
+      tags: [Admin]
+      summary: List storage resources
+      responses:
+        '200':
+          description: Storage collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/vms:
+    get:
+      tags: [Admin]
+      summary: List all VMs visible to admins
+      responses:
+        '200':
+          description: Admin VM collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VM'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/pools:
+    get:
+      tags: [Admin]
+      summary: List pools
+      responses:
+        '200':
+          description: Pool collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      summary: Create a pool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '201':
+          description: Pool created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/pools/{resourceId}:
+    delete:
+      tags: [Admin]
+      summary: Delete a pool
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: Pool deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/tags:
+    get:
+      tags: [Admin]
+      summary: List tags
+      responses:
+        '200':
+          description: Tag collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      summary: Create a tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/tags/{resourceId}:
+    delete:
+      tags: [Admin]
+      summary: Delete a tag
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: Tag deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/limits:
+    get:
+      tags: [Admin]
+      summary: Get limits configuration
+      responses:
+        '200':
+          description: Limits returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags: [Admin]
+      summary: Update limits configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '204':
+          description: Limits updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/vmbr:
+    get:
+      tags: [Admin]
+      summary: List network bridges
+      responses:
+        '200':
+          description: Bridge collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/cloudinit:
+    get:
+      tags: [Admin]
+      summary: List cloud-init templates
+      responses:
+        '200':
+          description: Cloud-init collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Admin]
+      summary: Create a cloud-init template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '201':
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/cloudinit/{resourceId}:
+    put:
+      tags: [Admin]
+      summary: Update a cloud-init template
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminMutationRequest'
+      responses:
+        '204':
+          description: Template updated
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [Admin]
+      summary: Delete a cloud-init template
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: Template deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/cloudinit/{resourceId}/toggle:
+    post:
+      tags: [Admin]
+      summary: Toggle a cloud-init template state
+      parameters:
+        - $ref: '#/components/parameters/ResourceId'
+      responses:
+        '204':
+          description: Template toggled
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/iso:
+    get:
+      tags: [Admin]
+      summary: List ISO assets
+      responses:
+        '200':
+          description: ISO collection returned
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/settings:
+    get:
+      tags: [Admin]
+      summary: Get administrative settings
+      responses:
+        '200':
+          description: Settings returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/appinfo:
+    get:
+      tags: [Admin]
+      summary: Get application diagnostic information
+      responses:
+        '200':
+          description: Application diagnostic information returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    VmId:
+      name: vmid
+      in: path
+      required: true
+      schema:
+        type: integer
+    InterfaceName:
+      name: iface
+      in: path
+      required: true
+      schema:
+        type: string
+    SnapshotName:
+      name: snapshotName
+      in: path
+      required: true
+      schema:
+        type: string
+    ResourceId:
+      name: resourceId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required or renewal failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Authenticated user is not allowed to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+    RefreshResponse:
+      type: object
+      required: [accessToken]
+      properties:
+        accessToken:
+          type: string
+    PasswordChangeRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+    User:
+      type: object
+      required: [username, isAdmin]
+      properties:
+        username:
+          type: string
+        isAdmin:
+          type: boolean
+        pool:
+          type: string
+        vmCount:
+          type: integer
+    VM:
+      type: object
+      required: [vmid, name, node, status]
+      properties:
+        vmid:
+          type: integer
+        name:
+          type: string
+        node:
+          type: string
+        status:
+          type: string
+        cpuUsage:
+          type: number
+        cpuCapacity:
+          type: number
+        memoryUsage:
+          type: integer
+        memoryCapacity:
+          type: integer
+        diskUsage:
+          type: integer
+        diskCapacity:
+          type: integer
+        uptime:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        pool:
+          type: string
+        disks:
+          type: array
+          items:
+            $ref: '#/components/schemas/VMDisk'
+        networkCards:
+          type: array
+          items:
+            $ref: '#/components/schemas/VMNetworkCard'
+        snapshots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Snapshot'
+        availableActions:
+          type: array
+          items:
+            type: string
+    VMDisk:
+      type: object
+      required: [deviceName, capacity]
+      properties:
+        deviceName:
+          type: string
+        label:
+          type: string
+        capacity:
+          type: integer
+        usage:
+          type: integer
+        storageTarget:
+          type: string
+        isBootable:
+          type: boolean
+    VMNetworkCard:
+      type: object
+      required: [interfaceName, bridge]
+      properties:
+        interfaceName:
+          type: string
+        bridge:
+          type: string
+        model:
+          type: string
+        macAddress:
+          type: string
+        enabled:
+          type: boolean
+        ipAddresses:
+          type: array
+          items:
+            type: string
+    VMCreateRequest:
+      type: object
+      required: [name, node, pool, cores, sockets, memory, disks, networks]
+      properties:
+        name:
+          type: string
+        vmid:
+          type: integer
+        node:
+          type: string
+        pool:
+          type: string
+        cores:
+          type: integer
+        sockets:
+          type: integer
+        memory:
+          type: integer
+        disks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        networks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        iso:
+          type: string
+        cloudInit:
+          type: object
+          additionalProperties: true
+        startOnCreate:
+          type: boolean
+        efiEnabled:
+          type: boolean
+        tpmEnabled:
+          type: boolean
+    VMActionRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [start, stop, shutdown, reboot]
+    DescriptionUpdateRequest:
+      type: object
+      required: [description]
+      properties:
+        description:
+          type: string
+    TagUpdateRequest:
+      type: object
+      required: [tags]
+      properties:
+        tags:
+          type: array
+          items:
+            type: string
+    ResourceUpdateRequest:
+      type: object
+      required: [cores, memory, disk]
+      properties:
+        cores:
+          type: integer
+        memory:
+          type: integer
+        disk:
+          type: integer
+    Snapshot:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        sourceState:
+          type: string
+        canRollback:
+          type: boolean
+        canDelete:
+          type: boolean
+    SnapshotCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+    ConsoleTicketResponse:
+      type: object
+      required: [ticket, port]
+      properties:
+        ticket:
+          type: string
+        port:
+          type: integer
+    TaskResponse:
+      type: object
+      required: [taskId]
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+    HealthResponse:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+    ProxmoxHealthResponse:
+      type: object
+      required: [connected]
+      properties:
+        connected:
+          type: boolean
+        url:
+          type: string
+    AdminResource:
+      type: object
+      required: [resourceType, displayName]
+      properties:
+        resourceType:
+          type: string
+        displayName:
+          type: string
+        status:
+          type: string
+        lastUpdatedAt:
+          type: string
+          format: date-time
+        data:
+          type: object
+          additionalProperties: true
+    AdminMutationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        data:
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+        code:
+          type: string
