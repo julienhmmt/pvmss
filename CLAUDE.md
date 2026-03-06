@@ -20,7 +20,7 @@ make down           # Stop dev container
 make logs           # Follow Docker dev container logs
 ```
 
-The dev container uses `docker-compose.dev.yml` and runs at http://localhost:50000.
+The dev container uses `docker-compose.dev.yml` and runs at <http://localhost:50000>.
 
 ### Testing
 
@@ -37,6 +37,7 @@ make coverage              # Generate coverage.out in backend/
 ```
 
 To run a single Go test directly:
+
 ```bash
 cd backend && PVMSS_SETTINGS_PATH=/tmp/settings.test.json GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestFunctionName ./...
 ```
@@ -50,6 +51,7 @@ make qualif     # fmt + lint + test-offline + dev (full quality gate)
 ```
 
 For templates (a-h/templ):
+
 ```bash
 make go-template   # Regenerate templ files
 ```
@@ -58,7 +60,7 @@ make go-template   # Regenerate templ files
 
 ### Directory Layout
 
-```
+```bash
 backend/          # Go application (module: pvmss)
   main.go         # Entry point: logger init, Proxmox client, templates, HTTP server
   api/v1/         # JWT-authenticated JSON API (/api/v1/auth/*, /api/v1/vms/*)
@@ -99,6 +101,7 @@ The `StateManager` interface (`backend/state/interface.go`) is the central depen
 ### Proxmox API Layer
 
 Two clients coexist during an ongoing migration:
+
 - **Telmate** (`proxmox/telmate_client.go`): legacy client, used for some operations. TODO comments mark migration points.
 - **Resty** (`proxmox/resty_client.go`): new REST client being adopted incrementally
 
@@ -113,7 +116,7 @@ Setting `PVMSS_OFFLINE=true` skips all Proxmox API calls. All tests use offline 
 `settings.json` (runtime) and `backend/settings.dev.json` (development/tests) configure available storages, ISOs, VMBRs, tags, VM resource limits, cloud-init SFTP, and the JWT signing key. All keys are mandatory.
 
 | Key | Purpose |
-|---|---|
+| --- | ------- |
 | `jwt_secret` | 32+ byte signing key for `/api/v1/` JWT tokens. Stored in `settings.json`, **not** an env var. |
 
 ### Internationalization
@@ -131,7 +134,7 @@ PVMSS_OFFLINE=true       # Skip Proxmox API calls
 ### Key Environment Variables (Runtime)
 
 | Variable | Purpose |
-|---|---|
+| -------- | ------- |
 | `PROXMOX_URL` | Full Proxmox API URL |
 | `PROXMOX_API_TOKEN_NAME` | `user@pve!token` |
 | `PROXMOX_API_TOKEN_VALUE` | Token secret |
