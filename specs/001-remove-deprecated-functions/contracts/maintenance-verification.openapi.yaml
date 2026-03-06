@@ -1,0 +1,47 @@
+openapi: 3.0.3
+info:
+  title: Remove Deprecated Functions Maintenance Contract
+  version: 1.0.0
+  description: |
+    This feature does not introduce or modify any external HTTP API contract.
+    The contract exists to record that the planned work is internal-only and
+    that verification is performed through repository quality checks.
+paths:
+  /internal/maintenance/remove-deprecated-functions/verification:
+    post:
+      summary: Record or execute maintenance verification for deprecated function cleanup
+      description: |
+        Documentation-only contract representing the maintainer workflow for
+        formatting, linting, offline tests, and deprecated reference scanning.
+        It is not a user-facing or production HTTP endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - formattingStatus
+                - lintStatus
+                - testStatus
+                - referenceScanStatus
+              properties:
+                formattingStatus:
+                  type: string
+                  enum: [pass, fail]
+                lintStatus:
+                  type: string
+                  enum: [pass, fail]
+                testStatus:
+                  type: string
+                  enum: [pass, fail]
+                referenceScanStatus:
+                  type: string
+                  enum: [pass, fail]
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Verification criteria satisfied for the maintenance cleanup
+        '409':
+          description: Verification failed and the cleanup is not ready for completion
