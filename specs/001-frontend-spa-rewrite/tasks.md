@@ -145,7 +145,7 @@ description: "Task list for frontend SPA rewrite implementation"
 
 ### Implementation for User Story 4
 
-- [ ] T045 [P] [US4] Implement backend console ticket and websocket endpoints aligned with the versioned API contract in `backend/api/v1/console_handlers.go`, `backend/handlers/vm_console_websocket.go`, and `backend/proxmox/console.go`
+- [ ] T045 [P] [US4] Implement backend console ticket and websocket endpoints aligned with the versioned API contract in `backend/api/v1/console_handlers.go` and `backend/handlers/vm_console_websocket.go`. The Proxmox VNC helper lives in `backend/proxmox/vnc_resty.go` — if spec `003-telmate-removal` has already run, that file exists; otherwise create it here as `backend/proxmox/vnc_resty.go` following the same Resty pattern.
 - [ ] T046 [P] [US4] Implement typed console session models and API helpers in `frontend-svelte/src/lib/types/console.ts` and `frontend-svelte/src/lib/api/console-api.ts`
 - [ ] T047 [P] [US4] Implement frontend console store with requesting, connecting, connected, retryable failure, and terminal failure states in `frontend-svelte/src/lib/stores/console-store.ts`
 - [ ] T048 [US4] Implement the console route and noVNC integration with retry/exit UX in `frontend-svelte/src/routes/vms/[vmid]/console/+page.svelte`, `frontend-svelte/src/lib/components/console/console-canvas.svelte`, and `frontend-svelte/src/lib/components/console/console-status-panel.svelte`

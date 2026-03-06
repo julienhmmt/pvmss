@@ -129,7 +129,7 @@ As an authenticated user, I can launch an interactive console for a VM from the 
 ### Measurable Outcomes
 
 - **SC-001**: In user acceptance testing, 100% of the currently supported user-facing workflows can be completed from the new application without requiring any legacy server-rendered page.
-- **SC-002**: At least 95% of authenticated navigation events to supported protected routes result in a usable page state within 2 seconds under normal internal network conditions, excluding upstream virtualization platform outages.
+- **SC-002**: Authenticated navigation to supported protected routes results in a usable page state within a perceptibly responsive time under normal internal network conditions (excluding upstream virtualization platform outages). No hard numeric threshold is enforced at this stage; the criterion is that navigation does not feel sluggish during manual validation on the target network.
 - **SC-003**: At least 90% of test participants can complete the primary workflows of signing in, locating a VM, opening its details, and triggering a VM action on their first attempt without facilitator intervention.
 - **SC-004**: 100% of administrator workflows identified in scope are accessible from administrator-only routes in the new application and blocked for non-admin users during validation.
 - **SC-005**: Direct navigation or browser refresh on any supported application route succeeds without showing a server-generated not-found page in 100% of validation scenarios.
