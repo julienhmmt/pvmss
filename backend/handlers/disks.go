@@ -20,7 +20,7 @@ func NewDiskHandler(sm state.StateManager) *DiskHandler {
 
 // UpdateDiskConfigHandler updates the maximum number of disks per VM
 func (h *DiskHandler) UpdateDiskConfigHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "UpdateDiskConfigHandler")
+	ctx := HandlerContextWith(w, r, "UpdateDiskConfigHandler")
 
 	if !ctx.RequireAdminAuth() {
 		return

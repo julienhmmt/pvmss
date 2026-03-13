@@ -43,7 +43,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if stateManager.IsOfflineMode() {
 		if action == "shutdown" {
 			log.Warn().Str("action", action).Str("node", node).Int("vmid", vmidInt).Str("result", "guest_agent_offline").Int64("duration_ms", time.Since(start).Milliseconds()).Msg("Shutdown aborted: Proxmox is offline or PVMSS offline mode active")
-			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx := HandlerContextWith(w, r, "VMActionHandler")
 			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentOffline")
 			return
 		}
@@ -61,7 +61,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		status := getGuestAgentStatus(r, node, vmidInt)
 		if status == agentStatusUnavailable {
 			log.Info().Str("action", action).Str("node", node).Int("vmid", vmidInt).Str("result", "guest_agent_unavailable_precheck").Int64("duration_ms", time.Since(start).Milliseconds()).Msg("Guest agent unavailable before shutdown, aborting graceful shutdown")
-			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx := HandlerContextWith(w, r, "VMActionHandler")
 			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentTimeout")
 			return
 		}
@@ -71,7 +71,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
-		ctx := NewHandlerContext(w, r, "VMActionHandler")
+		ctx := HandlerContextWith(w, r, "VMActionHandler")
 		ctx.RedirectWithError("/vm/details/"+vmid, "Error.InternalServer")
 		return
 	}
@@ -85,11 +85,11 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	if err != nil {
 		logger.VMFailure("vm_action", vmidInt, node, "proxmox_api_error").Err(err).Str("action", action).Str("username", username).Str("client_ip", r.RemoteAddr).Int64("duration_ms", time.Since(start).Milliseconds()).Msg("VM action failed")
 		if action == "shutdown" && strings.Contains(strings.ToLower(err.Error()), "guest-ping") && (strings.Contains(strings.ToLower(err.Error()), "timeout") || strings.Contains(strings.ToLower(err.Error()), "failed")) {
-			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx := HandlerContextWith(w, r, "VMActionHandler")
 			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentTimeout")
 			return
 		}
-		ctx := NewHandlerContext(w, r, "VMActionHandler")
+		ctx := HandlerContextWith(w, r, "VMActionHandler")
 		userMsg := ctx.Translate("Message.ActionFailed")
 		if detail := formatProxmoxDetail(extractProxmoxTaskError(err)); detail != "" {
 			userMsg = userMsg + ": " + detail
@@ -103,7 +103,7 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 	// If Proxmox accepted the action but returns a UPID, check task exit status for user-facing errors.
 	if upid != "" {
 		if exitStatus, failed := checkTaskFailure(r.Context(), restyClient, node, upid); failed {
-			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx := HandlerContextWith(w, r, "VMActionHandler")
 			userMsg := ctx.Translate("Message.ActionFailed")
 			if exitStatus != "" {
 				userMsg = userMsg + ": " + formatProxmoxDetail(exitStatus)
@@ -140,12 +140,12 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		}
 		if !vmStopped && r.Context().Err() == nil {
 			log.Warn().Str("action", action).Str("node", node).Int("vmid", vmidInt).Str("result", "guest_agent_shutdown_slow").Int64("duration_ms", time.Since(start).Milliseconds()).Msg("Guest agent shutdown did not complete within expected time window")
-			ctx := NewHandlerContext(w, r, "VMActionHandler")
+			ctx := HandlerContextWith(w, r, "VMActionHandler")
 			ctx.RedirectWithError(buildVMDetailsURL(vmid), "VMDetails.QemuGuestAgentShutdownSlow")
 			return
 		}
 	}
 	logger.VMEvent("vm_action", vmidInt, node).Str("action", action).Str("username", username).Str("client_ip", r.RemoteAddr).Int64("duration_ms", time.Since(start).Milliseconds()).Msg("VM action completed successfully")
-	ctx := NewHandlerContext(w, r, "VMActionHandler")
+	ctx := HandlerContextWith(w, r, "VMActionHandler")
 	ctx.RedirectWithParams(buildVMDetailsURL(vmid), map[string]string{"success": "1", "success_msg": ctx.Translate("VMDetails.Action.Success"), "action": action})
 }

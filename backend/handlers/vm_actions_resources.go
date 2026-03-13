@@ -16,7 +16,7 @@ import (
 
 // UpdateVMResourcesHandler updates VM resources (CPU sockets/cores, memory, network bridge).
 func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "UpdateVMResourcesHandler")
+	ctx := HandlerContextWith(w, r, "UpdateVMResourcesHandler")
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
@@ -309,7 +309,7 @@ func (h *VMHandler) UpdateVMResourcesHandler(w http.ResponseWriter, r *http.Requ
 
 // ToggleNetworkCardHandler toggles a single network card enable/disable state.
 func (h *VMHandler) ToggleNetworkCardHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "ToggleNetworkCardHandler")
+	ctx := HandlerContextWith(w, r, "ToggleNetworkCardHandler")
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
 	}

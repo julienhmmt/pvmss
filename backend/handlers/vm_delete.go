@@ -78,7 +78,7 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	handlerCtx := NewHandlerContext(w, r, "VMDeleteConfirmHandler")
+	handlerCtx := HandlerContextWith(w, r, "VMDeleteConfirmHandler")
 	csrfToken, _ := handlerCtx.GetCSRFToken()
 
 	// Get username from session
@@ -238,7 +238,7 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 
 		if !vmStopped {
 			log.Error().Int("vmid", vmidInt).Msg("VM did not stop after 30 seconds, cannot delete safely")
-			ctx := NewHandlerContext(w, r, "VMDeleteHandler")
+			ctx := HandlerContextWith(w, r, "VMDeleteHandler")
 			ctx.RedirectWithError("/vm/details/"+vmid, "VMDelete.Error")
 			return
 		}
@@ -266,7 +266,7 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 			Str("username", username).
 			Str("client_ip", r.RemoteAddr).
 			Msg("VM deletion failed")
-		ctx := NewHandlerContext(w, r, "VMDeleteHandler")
+		ctx := HandlerContextWith(w, r, "VMDeleteHandler")
 		ctx.RedirectWithError("/vm/details/"+vmid, "VMDelete.Error")
 		return
 	}
@@ -315,7 +315,7 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	log.Info().Str("node", node).Int("vmid", vmidInt).Msg("Invalidated node and VM caches after deletion")
 
 	// Redirect to profile page with success message and refresh parameter
-	ctx := NewHandlerContext(w, r, "VMDeleteHandler")
+	ctx := HandlerContextWith(w, r, "VMDeleteHandler")
 	ctx.RedirectWithParams("/profile", map[string]string{
 		"success":     "1",
 		"success_msg": ctx.Translate("VMDelete.Success"),

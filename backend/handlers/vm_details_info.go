@@ -346,7 +346,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			Msg("Unable to fetch VM config; description and tags may be empty")
 	}
 
-	handlerCtx := NewHandlerContext(w, r, "VMDetailsHandler")
+	handlerCtx := HandlerContextWith(w, r, "VMDetailsHandler")
 	csrfToken, _ := handlerCtx.GetCSRFToken()
 
 	showDescriptionEditor := r.URL.Query().Get("edit") == "description"

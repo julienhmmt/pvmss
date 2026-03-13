@@ -208,7 +208,7 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 }
 
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	ctx := NewHandlerContext(w, r, "AuthHandler.renderAdminLoginForm")
+	ctx := HandlerContextWith(w, r, "AuthHandler.renderAdminLoginForm")
 	ctx.Log.Debug().
 		Str("component", "auth").
 		Str("operation", "render_admin_login_form").
@@ -297,7 +297,7 @@ func validateCSRF(r *http.Request) error {
 
 // handleAdminLogin handles admin login form submission (password-only)
 func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "AuthHandler.handleAdminLogin")
+	ctx := HandlerContextWith(w, r, "AuthHandler.handleAdminLogin")
 
 	if !ctx.ValidateSessionManager() {
 		return
@@ -830,7 +830,7 @@ func ensureLocalPath(urlStr string) string {
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	ctx := NewHandlerContext(w, r, "AuthHandler.renderLoginForm")
+	ctx := HandlerContextWith(w, r, "AuthHandler.renderLoginForm")
 	ctx.Log.Debug().
 		Str("component", "auth").
 		Str("operation", "render_login_form").
