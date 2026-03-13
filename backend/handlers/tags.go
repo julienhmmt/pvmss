@@ -22,8 +22,8 @@ type TagsHandler struct {
 	stateManager state.StateManager
 }
 
-// NewTagsHandler creates a new instance of TagsHandler.
-func NewTagsHandler(sm state.StateManager) *TagsHandler {
+// MakeTagsHandler creates a new instance of TagsHandler.
+func MakeTagsHandler(sm state.StateManager) *TagsHandler {
 	return &TagsHandler{stateManager: sm}
 }
 
@@ -421,7 +421,7 @@ func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 // RegisterRoutes registers the routes for tag management.
 func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
-	routeHelpers := NewAdminPageRoutes()
+	routeHelpers := MakeAdminPageRoutes()
 
 	// Register admin tags routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/tags", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){

@@ -11,8 +11,8 @@ type ErrorWrapper struct {
 	log logger.Logger
 }
 
-// NewErrorWrapper creates a new ErrorWrapper with the given logger
-func NewErrorWrapper(l logger.Logger) *ErrorWrapper {
+// MakeErrorWrapper creates a new ErrorWrapper with the given logger
+func MakeErrorWrapper(l logger.Logger) *ErrorWrapper {
 	return &ErrorWrapper{log: l}
 }
 

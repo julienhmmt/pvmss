@@ -10,7 +10,7 @@ import (
 // getRestyClient creates a resty client with the specified timeout
 // This is a convenience function for handlers migrating from the old client
 func getRestyClient(timeout time.Duration) (*proxmox.RestyClient, error) {
-	client, err := proxmox.NewRestyClientFromEnv(timeout)
+	client, err := proxmox.MakeRestyClientFromEnv(timeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resty client: %w", err)
 	}

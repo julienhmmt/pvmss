@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// NewRestyClientFromEnv creates a RestyClient using environment variables
+// MakeRestyClientFromEnv creates a RestyClient using environment variables
 // This is a convenience function for handlers that need a quick resty client
-func NewRestyClientFromEnv(timeout time.Duration) (*RestyClient, error) {
+func MakeRestyClientFromEnv(timeout time.Duration) (*RestyClient, error) {
 	proxmoxURL := os.Getenv("PROXMOX_URL")
 	tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
 	tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
@@ -18,5 +18,5 @@ func NewRestyClientFromEnv(timeout time.Duration) (*RestyClient, error) {
 		return nil, fmt.Errorf("missing Proxmox environment variables")
 	}
 
-	return NewRestyClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify, timeout)
+	return MakeRestyClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify, timeout)
 }

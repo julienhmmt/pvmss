@@ -28,7 +28,7 @@ import (
 )
 
 func main() {
-	stateManager := state.NewAppState()
+	stateManager := state.MakeAppState()
 
 	initLogger()
 
@@ -215,7 +215,7 @@ func initProxmoxClient() (*proxmox.Client, error) {
 		return nil, fmt.Errorf("missing required Proxmox environment variables: PROXMOX_URL, PROXMOX_API_TOKEN_NAME, PROXMOX_API_TOKEN_VALUE")
 	}
 
-	client, err := proxmox.NewClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify)
+	client, err := proxmox.MakeClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Proxmox client: %w", err)
 	}

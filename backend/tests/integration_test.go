@@ -22,7 +22,7 @@ func TestUserPoolSelfCreationIntegration(t *testing.T) {
 	t.Setenv("PVMSS_OFFLINE", "true")
 
 	// Create test app
-	testApp := app.NewTestApp()
+	testApp := app.MakeTestApp()
 
 	// Create test server
 	ts := httptest.NewServer(testApp.Router)
@@ -140,7 +140,7 @@ func TestUserPoolStatusDetectionIntegration(t *testing.T) {
 	t.Setenv("PVMSS_OFFLINE", "true")
 
 	// Create test app
-	testApp := app.NewTestApp()
+	testApp := app.MakeTestApp()
 
 	// Create test server
 	ts := httptest.NewServer(testApp.Router)
@@ -202,7 +202,7 @@ func TestUserPoolSelfCreationCSRFIntegration(t *testing.T) {
 	t.Setenv("PVMSS_OFFLINE", "true")
 
 	// Create test app
-	testApp := app.NewTestApp()
+	testApp := app.MakeTestApp()
 
 	// Create test server
 	ts := httptest.NewServer(testApp.Router)
@@ -271,7 +271,7 @@ func TestOnlineMode(t *testing.T) {
 	t.Setenv("PVMSS_OFFLINE", "false")
 
 	// Create test app with minimal setup
-	testApp := app.NewTestApp()
+	testApp := app.MakeTestApp()
 
 	// Create test server
 	ts := httptest.NewServer(testApp.Router)
@@ -296,7 +296,7 @@ func TestPublicRoutes(t *testing.T) {
 		t.Setenv("PVMSS_OFFLINE", "true")
 	}
 
-	testApp := app.NewTestApp()
+	testApp := app.MakeTestApp()
 
 	ts := httptest.NewServer(testApp.Router)
 	defer ts.Close()
@@ -341,7 +341,7 @@ func TestProtectedRoutes(t *testing.T) {
 		t.Setenv("PVMSS_OFFLINE", "true")
 	}
 
-	testApp := app.NewTestApp()
+	testApp := app.MakeTestApp()
 
 	ts := httptest.NewServer(testApp.Router)
 	defer ts.Close()
@@ -404,7 +404,7 @@ func TestAPIEndpoints(t *testing.T) {
 		t.Setenv("PVMSS_OFFLINE", "true")
 	}
 
-	testApp := app.NewTestApp()
+	testApp := app.MakeTestApp()
 
 	ts := httptest.NewServer(testApp.Router)
 	defer ts.Close()

@@ -15,8 +15,8 @@ type CSSHandler struct {
 	basePath string
 }
 
-// NewCSSHandler creates a new CSS handler with the specified base path
-func NewCSSHandler(basePath string) *CSSHandler {
+// MakeCSSHandler creates a new CSS handler with the specified base path
+func MakeCSSHandler(basePath string) *CSSHandler {
 	return &CSSHandler{
 		basePath: filepath.Join(basePath, "css"),
 	}

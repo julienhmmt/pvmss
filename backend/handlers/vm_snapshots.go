@@ -19,8 +19,8 @@ type VMSnapshotsHandler struct {
 	stateManager state.StateManager
 }
 
-// NewVMSnapshotsHandler creates a new VMSnapshotsHandler
-func NewVMSnapshotsHandler(stateManager state.StateManager) *VMSnapshotsHandler {
+// MakeVMSnapshotsHandler creates a new VMSnapshotsHandler
+func MakeVMSnapshotsHandler(stateManager state.StateManager) *VMSnapshotsHandler {
 	return &VMSnapshotsHandler{
 		stateManager: stateManager,
 	}

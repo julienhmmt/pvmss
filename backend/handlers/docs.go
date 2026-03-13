@@ -32,8 +32,8 @@ type DocsHandler struct {
 	mu      sync.RWMutex
 }
 
-// NewDocsHandler creates a new instance of DocsHandler
-func NewDocsHandler() *DocsHandler {
+// MakeDocsHandler creates a new instance of DocsHandler
+func MakeDocsHandler() *DocsHandler {
 	log := logger.Get()
 
 	docsDir, err := findDocsDir()

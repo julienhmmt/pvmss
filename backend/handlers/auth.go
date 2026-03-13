@@ -100,8 +100,8 @@ func (h *AuthHandler) LogoutGet(w http.ResponseWriter, r *http.Request, _ httpro
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-// NewAuthHandler creates a new instance of AuthHandler
-func NewAuthHandler(sm state.StateManager) *AuthHandler {
+// MakeAuthHandler creates a new instance of AuthHandler
+func MakeAuthHandler(sm state.StateManager) *AuthHandler {
 	return &AuthHandler{stateManager: sm}
 }
 
@@ -447,7 +447,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	}
 
 	// We create a new cookie-based client for user/pass login
-	pxClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
+	pxClient, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkip)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client for user authentication")
 		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
@@ -587,7 +587,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	}
 
 	// We create a new cookie-based client for admin/pass login
-	pxClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkip)
+	pxClient, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkip)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client for admin authentication")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))

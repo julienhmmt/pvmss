@@ -22,8 +22,8 @@ type entry struct {
 	timestamp time.Time
 }
 
-// NewLRUCache creates a new LRU cache with the specified maximum entries and TTL
-func NewLRUCache(maxEntries int, ttl time.Duration) *LRUCache {
+// MakeLRUCache creates a new LRU cache with the specified maximum entries and TTL
+func MakeLRUCache(maxEntries int, ttl time.Duration) *LRUCache {
 	return &LRUCache{
 		maxEntries: maxEntries,
 		ttl:        ttl,

@@ -73,8 +73,8 @@ type SettingsHandler struct {
 	stateManager state.StateManager
 }
 
-// NewSettingsHandler creates a new instance of SettingsHandler
-func NewSettingsHandler(sm state.StateManager) *SettingsHandler {
+// MakeSettingsHandler creates a new instance of SettingsHandler
+func MakeSettingsHandler(sm state.StateManager) *SettingsHandler {
 	return &SettingsHandler{stateManager: sm}
 }
 

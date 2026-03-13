@@ -65,7 +65,7 @@ func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterf
 	}
 
 	// Create resty client
-	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
+	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
 		return nil, fmt.Errorf("failed to create resty client for resource usage: %w", err)
@@ -401,7 +401,7 @@ func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeNa
 	log := logger.Get().With().Str("function", "GetNodeCapacity").Logger()
 
 	// Create resty client
-	restyClient, err := proxmox.NewRestyClientFromEnv(10 * time.Second)
+	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
 		return nil, fmt.Errorf("failed to create resty client for node %s: %w", nodeName, err)
