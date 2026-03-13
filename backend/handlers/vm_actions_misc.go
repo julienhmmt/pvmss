@@ -14,7 +14,7 @@ import (
 // UpdateVMDescriptionHandler updates the VM description (Markdown supported on display).
 // TODO Telmate migration: this handler still uses Telmate-based VM config helpers. Replace with Resty UpdateVMConfigResty.
 func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "UpdateVMDescriptionHandler")
+	ctx := HandlerContextWith(w, r, "UpdateVMDescriptionHandler")
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return
@@ -62,7 +62,7 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 // UpdateVMTagsHandler updates the VM tags from selected checkboxes.
 // TODO Telmate migration: replace Telmate config update with Resty UpdateVMConfigResty.
 func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	ctx := NewHandlerContext(w, r, "UpdateVMTagsHandler")
+	ctx := HandlerContextWith(w, r, "UpdateVMTagsHandler")
 
 	if !ValidateMethodAndParseForm(w, r, http.MethodPost) {
 		return

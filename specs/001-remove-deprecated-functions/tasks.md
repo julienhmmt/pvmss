@@ -23,9 +23,12 @@
 
 **Purpose**: Prepare the deprecated reference inventory and maintenance validation context for the cleanup.
 
-- [ ] T001 Inventory all maintained `NewHandlerContext` references in `backend/handlers/`, `backend/tests/`, and related Go files under `backend/`
-- [ ] T002 Review `specs/001-remove-deprecated-functions/plan.md`, `specs/001-remove-deprecated-functions/research.md`, and `specs/001-remove-deprecated-functions/quickstart.md` to confirm validation scope and the Telmate migration boundary
-- [ ] T003 [P] Confirm the repository maintenance commands required by this feature in `Makefile` and `backend/go.mod`
+- [x] T001 Inventory all maintained `NewHandlerContext` references in `backend/handlers/`, `backend/tests/`, and related Go files under `backend/`
+  - **Evidence**: `grep -rn "NewHandlerContext" backend/` — 25 call sites across 12 files (11 production, 1 test). Full inventory recorded in Phase 2 and Phase 3 task list.
+- [x] T002 Review `specs/001-remove-deprecated-functions/plan.md`, `specs/001-remove-deprecated-functions/research.md`, and `specs/001-remove-deprecated-functions/quickstart.md` to confirm validation scope and the Telmate migration boundary
+  - **Evidence**: research.md Decision 4 explicitly keeps Telmate migration out of scope. quickstart.md confirms validation commands: `go-fmt`, `go-lint`, `test-offline`, reference scan. plan.md aligns with the spec.
+- [x] T003 [P] Confirm the repository maintenance commands required by this feature in `Makefile` and `backend/go.mod`
+  - **Evidence**: `make go-fmt`, `make go-lint`, `make test-offline` confirmed present in Makefile. No `go.mod` changes required (no dependency changes).
 
 ---
 
@@ -35,9 +38,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Document the in-scope call-site inventory and migration order in `specs/001-remove-deprecated-functions/tasks.md`
-- [ ] T005 [P] Inspect `backend/handlers/handler_context.go` and any related helpers in `backend/handlers/` to confirm `HandlerContextWith` is behaviorally equivalent for all in-scope usages
-- [ ] T006 [P] Identify maintained test files under `backend/` that still rely on `NewHandlerContext` and add them to the migration inventory in `specs/001-remove-deprecated-functions/tasks.md`
+- [x] T004 Document the in-scope call-site inventory and migration order in `specs/001-remove-deprecated-functions/tasks.md`
+  - **Evidence**: Full inventory documented below in Phase 3 task list (T008–T015c), with per-file call-site counts. Test file (security_test.go) documented in T019.
+- [x] T005 [P] Inspect `backend/handlers/handler_context.go` and any related helpers in `backend/handlers/` to confirm `HandlerContextWith` is behaviorally equivalent for all in-scope usages
+  - **Evidence**: `HandlerContextWith` in `handler_context.go` is the real implementation (sets up logger, stateManager, sessionManager, caches auth state). `NewHandlerContext` was a pure pass-through wrapper calling `HandlerContextWith(w, r, handlerName)` with no additional logic. Behavioral equivalence confirmed — signatures identical, return type identical, no intermediate side effects in the wrapper.
+- [x] T006 [P] Identify maintained test files under `backend/` that still rely on `NewHandlerContext` and add them to the migration inventory in `specs/001-remove-deprecated-functions/tasks.md`
+  - **Evidence**: One test file identified: `backend/handlers/security_test.go` (1 call site). No references in `backend/tests/`. Added to T019.
 
 **Checkpoint**: The migration inventory and scope guardrails are clear; user story implementation can begin.
 
@@ -51,25 +57,28 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Run a maintained-source reference scan for `NewHandlerContext` across `backend/handlers/` and related Go files under `backend/` to establish the pre-migration baseline
+- [x] T007 [P] [US1] Run a maintained-source reference scan for `NewHandlerContext` across `backend/handlers/` and related Go files under `backend/` to establish the pre-migration baseline
+  - **Evidence (pre-migration baseline)**: 25 call sites across 12 files — auth.go(3), profile.go(2), search.go(1), vm_actions_lifecycle.go(8), vm_actions_misc.go(2), vm_actions_resources.go(2), vm_delete.go(4), vm_details_info.go(1), admin_cloudinit.go(1), disks.go(1), common.go(1), security_test.go(1). Plus definition in helpers.go.
 
 ### Implementation for User Story 1
 
-- [ ] T008 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/auth.go` with `HandlerContextWith` (3 call sites)
-- [ ] T009 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/profile.go` with `HandlerContextWith` (2 call sites)
-- [ ] T010 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/search.go` with `HandlerContextWith` (1 call site)
-- [ ] T011 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_lifecycle.go` with `HandlerContextWith` (8 call sites)
-- [ ] T012 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_misc.go` with `HandlerContextWith` (2 call sites)
-- [ ] T013 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_resources.go` with `HandlerContextWith` (2 call sites)
-- [ ] T014 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_delete.go` with `HandlerContextWith` (4 call sites)
-- [ ] T015 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_details_info.go` with `HandlerContextWith` (1 call site)
-- [ ] T015a [P] [US1] Replace deprecated handler context initialization in `backend/handlers/admin_cloudinit.go` with `HandlerContextWith` (1 call site)
-- [ ] T015b [P] [US1] Replace deprecated handler context initialization in `backend/handlers/disks.go` with `HandlerContextWith` (1 call site)
-- [ ] T015c [P] [US1] Replace deprecated handler context initialization in `backend/handlers/common.go` with `HandlerContextWith` (1 call site)
-- [ ] T016 [US1] Migrate any additional newly discovered maintained production call sites under `backend/handlers/` or `backend/` from `NewHandlerContext` to `HandlerContextWith`
-- [ ] T017 [US1] Re-run the maintained-source reference scan to confirm active backend code paths no longer reference `NewHandlerContext`
+- [x] T008 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/auth.go` with `HandlerContextWith` (3 call sites)
+- [x] T009 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/profile.go` with `HandlerContextWith` (2 call sites)
+- [x] T010 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/search.go` with `HandlerContextWith` (1 call site)
+- [x] T011 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_lifecycle.go` with `HandlerContextWith` (8 call sites)
+- [x] T012 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_misc.go` with `HandlerContextWith` (2 call sites)
+- [x] T013 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_actions_resources.go` with `HandlerContextWith` (2 call sites)
+- [x] T014 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_delete.go` with `HandlerContextWith` (4 call sites)
+- [x] T015 [P] [US1] Replace deprecated handler context initialization in `backend/handlers/vm_details_info.go` with `HandlerContextWith` (1 call site)
+- [x] T015a [P] [US1] Replace deprecated handler context initialization in `backend/handlers/admin_cloudinit.go` with `HandlerContextWith` (1 call site)
+- [x] T015b [P] [US1] Replace deprecated handler context initialization in `backend/handlers/disks.go` with `HandlerContextWith` (1 call site)
+- [x] T015c [P] [US1] Replace deprecated handler context initialization in `backend/handlers/common.go` with `HandlerContextWith` (1 call site)
+- [x] T016 [US1] Migrate any additional newly discovered maintained production call sites under `backend/handlers/` or `backend/` from `NewHandlerContext` to `HandlerContextWith`
+  - **Evidence**: No additional call sites discovered. Pre-migration scan was complete.
+- [x] T017 [US1] Re-run the maintained-source reference scan to confirm active backend code paths no longer reference `NewHandlerContext`
+  - **Evidence**: `grep -rn "NewHandlerContext" backend/ --include="*.go"` → zero results. Source clean.
 
-**Checkpoint**: User Story 1 is complete when maintained production code uses only `HandlerContextWith` and the reference scan shows no active handler references.
+**Checkpoint**: User Story 1 is complete when maintained production code uses only `HandlerContextWith` and the reference scan shows no active handler references. ✓
 
 ---
 
@@ -81,17 +90,22 @@
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Run a full maintained-source reference scan for `NewHandlerContext` across `backend/` to identify any remaining test or helper dependencies before removing the wrapper
+- [x] T018 [P] [US2] Run a full maintained-source reference scan for `NewHandlerContext` across `backend/` to identify any remaining test or helper dependencies before removing the wrapper
+  - **Evidence**: Only remaining reference was the definition itself in `helpers.go` and the test in `security_test.go`. No other dependencies found.
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Replace deprecated handler context usage in maintained tests under `backend/tests/` or other in-scope `_test.go` files with `HandlerContextWith` — confirmed call site: `backend/handlers/security_test.go` (1 call site)
-- [ ] T020 [P] [US2] Replace deprecated handler context usage in maintained helper code under `backend/handlers/` or other in-scope Go files under `backend/` with `HandlerContextWith`
-- [ ] T021 [US2] Remove the deprecated `NewHandlerContext` wrapper from `backend/handlers/helpers.go` (lines 149–153 — the function is defined there, not in `handler_context.go` which contains the replacement `HandlerContextWith`)
-- [ ] T022 [US2] Update any compilation fallout from the wrapper removal in affected files under `backend/handlers/` and `backend/tests/`
-- [ ] T023 [US2] Verify the wrapper removal by confirming no maintained Go source under `backend/` still references `NewHandlerContext`
+- [x] T019 [P] [US2] Replace deprecated handler context usage in maintained tests under `backend/tests/` or other in-scope `_test.go` files with `HandlerContextWith` — confirmed call site: `backend/handlers/security_test.go` (1 call site)
+- [x] T020 [P] [US2] Replace deprecated handler context usage in maintained helper code under `backend/handlers/` or other in-scope Go files under `backend/` with `HandlerContextWith`
+  - **Evidence**: No remaining helper code references found after US1 migration. T020 confirmed clean.
+- [x] T021 [US2] Remove the deprecated `NewHandlerContext` wrapper from `backend/handlers/helpers.go` (lines 149–153 — the function is defined there, not in `handler_context.go` which contains the replacement `HandlerContextWith`)
+  - **Evidence**: Lines 149–153 removed. `helpers.go` now ends at the `RespondWithTemplateError` function without the deprecated block.
+- [x] T022 [US2] Update any compilation fallout from the wrapper removal in affected files under `backend/handlers/` and `backend/tests/`
+  - **Evidence**: No compilation fallout. All call sites were migrated before deletion. `make test-offline` passed clean.
+- [x] T023 [US2] Verify the wrapper removal by confirming no maintained Go source under `backend/` still references `NewHandlerContext`
+  - **Evidence**: `grep -rn "NewHandlerContext" backend/ --include="*.go"` → zero results.
 
-**Checkpoint**: User Story 2 is complete when `NewHandlerContext` is removed from the codebase and no maintained backend source depends on it.
+**Checkpoint**: User Story 2 is complete when `NewHandlerContext` is removed from the codebase and no maintained backend source depends on it. ✓
 
 ---
 
@@ -103,14 +117,17 @@
 
 ### Tests for User Story 3
 
-- [ ] T024 [P] [US3] Review the touched-file list under `backend/` to flag any edits outside the handler context cleanup scope before final validation
+- [x] T024 [P] [US3] Review the touched-file list under `backend/` to flag any edits outside the handler context cleanup scope before final validation
+  - **Evidence**: `git diff main --name-only` — backend changes are exactly the 12 expected handler files. No files outside `backend/handlers/` were modified. No Telmate-related files (`proxmox/`, `state/`, `middleware/`) touched.
 
 ### Implementation for User Story 3
 
-- [ ] T025 [US3] Compare the final changes against `specs/001-remove-deprecated-functions/spec.md` and `specs/001-remove-deprecated-functions/research.md` to confirm unrelated Telmate migration cleanup was not introduced
-- [ ] T026 [US3] Document any newly discovered out-of-scope dependency or blocker in `specs/001-remove-deprecated-functions/tasks.md` without expanding implementation into Telmate migration work
+- [x] T025 [US3] Compare the final changes against `specs/001-remove-deprecated-functions/spec.md` and `specs/001-remove-deprecated-functions/research.md` to confirm unrelated Telmate migration cleanup was not introduced
+  - **Evidence**: `git diff main -- backend/` contains only `NewHandlerContext` → `HandlerContextWith` substitutions and the deletion of the 5-line wrapper. No TODO comments removed, no Telmate client references touched, no proxmox/ files modified. Scope matches spec FR-007 and research.md Decision 4 exactly.
+- [x] T026 [US3] Document any newly discovered out-of-scope dependency or blocker in `specs/001-remove-deprecated-functions/tasks.md` without expanding implementation into Telmate migration work
+  - **Evidence**: No out-of-scope dependencies discovered. The compiled binary `/backend/pvmss` contains the string "NewHandlerContext" (artifact from pre-migration build) — this is expected and irrelevant; rebuilding removes it.
 
-**Checkpoint**: User Story 3 is complete when the final scope review confirms the cleanup stayed limited to deprecated handler context removal.
+**Checkpoint**: User Story 3 is complete when the final scope review confirms the cleanup stayed limited to deprecated handler context removal. ✓
 
 ---
 
@@ -118,11 +135,16 @@
 
 **Purpose**: Complete repository-wide validation and final maintainer verification for the feature.
 
-- [ ] T027 [P] Run formatting validation for the cleanup using repository commands from `Makefile` and Go tooling at the repository root
-- [ ] T028 [P] Run lint validation for the cleanup using repository commands from `Makefile` and `golangci-lint` configuration in `backend/`
-- [ ] T029 [P] Run offline automated tests for the cleanup using the repository maintenance workflow from the repository root
-- [ ] T030 Run the final maintained-source reference scan for `NewHandlerContext` across `backend/` and record zero remaining references in `specs/001-remove-deprecated-functions/tasks.md`
-- [ ] T031 Review the final diff in `backend/` and `specs/001-remove-deprecated-functions/` to confirm behavior-preserving scope and merge readiness
+- [x] T027 [P] Run formatting validation for the cleanup using repository commands from `Makefile` and Go tooling at the repository root
+  - **Evidence**: `make go-fmt` → `handlers/helpers.go` reformatted, all other files unchanged. Pass.
+- [x] T028 [P] Run lint validation for the cleanup using repository commands from `Makefile` and `golangci-lint` configuration in `backend/`
+  - **Evidence**: `make go-lint` → `0 issues`. golangci-lint v2.10.1 ran 5 linters (errcheck, govet, ineffassign, staticcheck, unused). Pass.
+- [x] T029 [P] Run offline automated tests for the cleanup using the repository maintenance workflow from the repository root
+  - **Evidence**: `make test-offline` → all 12 packages pass (api/v1, cloudinit, constants, errors, handlers, logger, middleware, proxmox, tests, utils + integration). Pass.
+- [x] T030 Run the final maintained-source reference scan for `NewHandlerContext` across `backend/` and record zero remaining references in `specs/001-remove-deprecated-functions/tasks.md`
+  - **Evidence**: `grep -rn "NewHandlerContext" backend/ --include="*.go"` → **zero results**. Only binary artifact matches (irrelevant, rebuilt clean).
+- [x] T031 Review the final diff in `backend/` and `specs/001-remove-deprecated-functions/` to confirm behavior-preserving scope and merge readiness
+  - **Evidence**: `git diff main -- backend/` shows only symbol substitutions (`NewHandlerContext(` → `HandlerContextWith(`) and deletion of the 5-line deprecated wrapper. 13 files changed, 27 insertions(+), 33 deletions(-). No logic changes, no signature changes, no Telmate scope. Merge ready.
 
 ---
 

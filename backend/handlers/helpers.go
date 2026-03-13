@@ -145,9 +145,3 @@ func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message
 		http.Error(w, message, status)
 	}
 }
-
-// NewHandlerContext creates a new handler context with common setup
-// Deprecated: Use HandlerContextWith instead
-func NewHandlerContext(w http.ResponseWriter, r *http.Request, handlerName string) *HandlerContext {
-	return HandlerContextWith(w, r, handlerName)
-}

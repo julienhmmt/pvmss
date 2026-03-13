@@ -531,7 +531,7 @@ func (h *CloudInitHandler) ToggleTemplateHandler(w http.ResponseWriter, r *http.
 // Helper functions
 
 func (h *CloudInitHandler) redirectWithError(w http.ResponseWriter, r *http.Request, messageKey string) {
-	ctx := NewHandlerContext(w, r, "CloudInitHandler")
+	ctx := HandlerContextWith(w, r, "CloudInitHandler")
 	ctx.RedirectWithError("/admin/cloudinit", messageKey)
 }
 
