@@ -23,8 +23,8 @@ type VMCreateOptimizedHandler struct {
 	stateManager state.StateManager
 }
 
-// NewVMCreateOptimizedHandler creates a new instance of VMCreateOptimizedHandler
-func NewVMCreateOptimizedHandler(sm state.StateManager) *VMCreateOptimizedHandler {
+// MakeVMCreateOptimizedHandler creates a new instance of VMCreateOptimizedHandler
+func MakeVMCreateOptimizedHandler(sm state.StateManager) *VMCreateOptimizedHandler {
 	return &VMCreateOptimizedHandler{stateManager: sm}
 }
 

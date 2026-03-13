@@ -13,8 +13,8 @@ import (
 // LanguageHandler handles language switching via cookies
 type LanguageHandler struct{}
 
-// NewLanguageHandler creates a new LanguageHandler instance
-func NewLanguageHandler() *LanguageHandler {
+// MakeLanguageHandler creates a new LanguageHandler instance
+func MakeLanguageHandler() *LanguageHandler {
 	return &LanguageHandler{}
 }
 

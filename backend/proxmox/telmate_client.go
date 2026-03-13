@@ -35,8 +35,8 @@ type Client struct {
 // ClientOption defines a function for applying configuration options to the Client.
 type ClientOption func(*Client)
 
-// NewClient creates a new Proxmox API client using an API token.
-func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
+// MakeClient creates a new Proxmox API client using an API token.
+func MakeClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
 	if apiURL == "" || apiTokenID == "" || apiTokenSecret == "" {
 		return nil, fmt.Errorf("apiURL, apiTokenID, and apiTokenSecret are required")
 	}
@@ -57,8 +57,8 @@ func NewClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify boo
 	return client, nil
 }
 
-// NewClientCookieAuth constructs a client for cookie-based authentication.
-func NewClientCookieAuth(apiURL string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
+// MakeClientCookieAuth constructs a client for cookie-based authentication.
+func MakeClientCookieAuth(apiURL string, insecureSkipVerify bool, opts ...ClientOption) (*Client, error) {
 	if apiURL == "" {
 		return nil, fmt.Errorf("apiURL is required")
 	}
@@ -84,7 +84,7 @@ func newBaseClient(apiURL string, insecureSkipVerify bool, opts ...ClientOption)
 		HttpClient: httpClient,
 		ApiUrl:     normalizedURL,
 		Timeout:    constants.ProxmoxDefaultTimeout,
-		lruCache:   NewLRUCache(100, constants.ProxmoxCacheTTL),
+		lruCache:   MakeLRUCache(100, constants.ProxmoxCacheTTL),
 		cacheTTL:   constants.ProxmoxCacheTTL,
 	}
 

@@ -15,8 +15,8 @@ type FormSession struct {
 	formName       string
 }
 
-// NewFormSession creates a new FormSession helper
-func NewFormSession(sessionManager *scs.SessionManager, ctx context.Context, formName string) *FormSession {
+// MakeFormSession creates a new FormSession helper
+func MakeFormSession(sessionManager *scs.SessionManager, ctx context.Context, formName string) *FormSession {
 	return &FormSession{
 		sessionManager: sessionManager,
 		ctx:            ctx,
@@ -132,5 +132,5 @@ func (fs *FormSession) RestoreField(fieldName string) (interface{}, bool) {
 
 // FormSessionHelper provides a convenient way to access FormSession from HandlerContext
 func (ctx *HandlerContext) FormSession(formName string) *FormSession {
-	return NewFormSession(ctx.SessionManager, ctx.Request.Context(), formName)
+	return MakeFormSession(ctx.SessionManager, ctx.Request.Context(), formName)
 }

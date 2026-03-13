@@ -26,7 +26,7 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	// Configure rate limiter (disabled in automated test environment to avoid
 	// interfering with functional route tests that perform repeated logins).
 	isTestEnv := os.Getenv("GO_TEST_ENVIRONMENT") == "1"
-	rateLimiter := middleware.NewRateLimiter(constants.RateLimitWindow, constants.RateLimitCleanup)
+	rateLimiter := middleware.MakeRateLimiter(constants.RateLimitWindow, constants.RateLimitCleanup)
 	if !isTestEnv {
 		rateLimiter.AddRule("POST", "/login", middleware.Rule{
 			Capacity: constants.LoginRateLimitCapacity,
@@ -52,23 +52,23 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	}
 
 	// Initialize all handlers
-	adminHandler := NewAdminOptimizedHandler(stateManager)
-	adminVMsHandler := NewAdminVMsHandler(stateManager)
-	authHandler := NewAuthHandler(stateManager)
-	cloudInitHandler := NewCloudInitHandler(stateManager)
-	diskHandler := NewDiskHandler(stateManager)
-	docsHandler := NewDocsHandler()
-	healthHandler := NewHealthHandler(stateManager)
-	languageHandler := NewLanguageHandler()
-	profileHandler := NewProfileHandler(stateManager)
-	searchHandler := NewSearchOptimizedHandler(stateManager)
-	settingsHandler := NewSettingsHandler(stateManager)
-	storageHandler := NewStorageHandler(stateManager)
-	tagsHandler := NewTagsHandler(stateManager)
-	userPoolHandler := NewUserPoolHandler(stateManager)
-	vmCreateHandler := NewVMCreateOptimizedHandler(stateManager)
-	vmHandler := NewVMHandler(stateManager)
-	vmbrHandler := NewVMBRHandler(stateManager)
+	adminHandler := MakeAdminOptimizedHandler(stateManager)
+	adminVMsHandler := MakeAdminVMsHandler(stateManager)
+	authHandler := MakeAuthHandler(stateManager)
+	cloudInitHandler := MakeCloudInitHandler(stateManager)
+	diskHandler := MakeDiskHandler(stateManager)
+	docsHandler := MakeDocsHandler()
+	healthHandler := MakeHealthHandler(stateManager)
+	languageHandler := MakeLanguageHandler()
+	profileHandler := MakeProfileHandler(stateManager)
+	searchHandler := MakeSearchOptimizedHandler(stateManager)
+	settingsHandler := MakeSettingsHandler(stateManager)
+	storageHandler := MakeStorageHandler(stateManager)
+	tagsHandler := MakeTagsHandler(stateManager)
+	userPoolHandler := MakeUserPoolHandler(stateManager)
+	vmCreateHandler := MakeVMCreateOptimizedHandler(stateManager)
+	vmHandler := MakeVMHandler(stateManager)
+	vmbrHandler := MakeVMBRHandler(stateManager)
 
 	// Configure routes
 	setupRoutes(
@@ -222,7 +222,7 @@ func setupStaticFiles(router *httprouter.Router, stateManager state.StateManager
 	basePath := getFrontendPath(stateManager)
 
 	// Create CSS handler for optimized CSS serving
-	cssHandler := NewCSSHandler(basePath)
+	cssHandler := MakeCSSHandler(basePath)
 
 	// Configure routes - CSS uses custom handler, others use file servers
 	registerStaticHandler(router, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))

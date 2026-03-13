@@ -24,8 +24,8 @@ type AdminOptimizedHandler struct {
 	stateManager state.StateManager
 }
 
-// NewAdminOptimizedHandler creates a new instance of AdminOptimizedHandler
-func NewAdminOptimizedHandler(sm state.StateManager) *AdminOptimizedHandler {
+// MakeAdminOptimizedHandler creates a new instance of AdminOptimizedHandler
+func MakeAdminOptimizedHandler(sm state.StateManager) *AdminOptimizedHandler {
 	return &AdminOptimizedHandler{stateManager: sm}
 }
 
@@ -132,7 +132,7 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 			insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
 			if proxmoxURL != "" && tokenID != "" && tokenValue != "" {
-				restyClient, err := proxmox.NewRestyClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify, constants.ShortContextTimeout)
+				restyClient, err := proxmox.MakeRestyClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify, constants.ShortContextTimeout)
 				if err != nil {
 					log.Error().Err(err).Msg("Failed to create resty client")
 					errMsg = "Failed to create API client"
@@ -195,7 +195,7 @@ func (h *AdminOptimizedHandler) NodesPageHandlerOptimized(w http.ResponseWriter,
 	// try to re-fetch only that node from Proxmox to update its metrics without
 	// waiting for the background cache worker.
 	if refreshNode != "" && proxmoxConnected {
-		restyClient, err := proxmox.NewRestyClientFromEnv(constants.ShortContextTimeout)
+		restyClient, err := proxmox.MakeRestyClientFromEnv(constants.ShortContextTimeout)
 		if err != nil {
 			log.Warn().
 				Err(err).

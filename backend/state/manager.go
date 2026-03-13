@@ -65,8 +65,8 @@ type appState struct {
 	cleanupMu             sync.RWMutex
 }
 
-// NewAppState creates a new instance of the application state manager
-func NewAppState() StateManager {
+// MakeAppState creates a new instance of the application state manager
+func MakeAppState() StateManager {
 	state := &appState{
 		settings:   &AppSettings{},
 		csrfTokens: make(map[string]time.Time),

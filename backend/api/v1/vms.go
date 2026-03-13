@@ -20,8 +20,8 @@ type VMHandler struct {
 	state state.StateManager
 }
 
-// NewVMHandler creates a new VMHandler.
-func NewVMHandler(s state.StateManager) *VMHandler {
+// MakeVMHandler creates a new VMHandler.
+func MakeVMHandler(s state.StateManager) *VMHandler {
 	return &VMHandler{state: s}
 }
 
@@ -33,7 +33,7 @@ func (h *VMHandler) isOffline() bool {
 
 // restyClient returns a fresh Resty client from env vars with a 30s timeout.
 func restyClient() (*proxmox.RestyClient, error) {
-	return proxmox.NewRestyClientFromEnv(30 * time.Second)
+	return proxmox.MakeRestyClientFromEnv(30 * time.Second)
 }
 
 // ListVMs handles GET /api/v1/vms.

@@ -26,8 +26,8 @@ type SearchOptimizedHandler struct {
 	stateManager state.StateManager
 }
 
-// NewSearchOptimizedHandler creates a new instance of SearchOptimizedHandler
-func NewSearchOptimizedHandler(sm state.StateManager) *SearchOptimizedHandler {
+// MakeSearchOptimizedHandler creates a new instance of SearchOptimizedHandler
+func MakeSearchOptimizedHandler(sm state.StateManager) *SearchOptimizedHandler {
 	return &SearchOptimizedHandler{stateManager: sm}
 }
 

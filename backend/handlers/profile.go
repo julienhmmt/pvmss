@@ -27,8 +27,8 @@ type ProfileHandler struct {
 	stateManager state.StateManager
 }
 
-// NewProfileHandler creates a new instance of ProfileHandler
-func NewProfileHandler(sm state.StateManager) *ProfileHandler {
+// MakeProfileHandler creates a new instance of ProfileHandler
+func MakeProfileHandler(sm state.StateManager) *ProfileHandler {
 	return &ProfileHandler{stateManager: sm}
 }
 
@@ -461,7 +461,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	proxmoxURL := client.GetApiUrl()
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
-	cookieClient, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkipVerify)
+	cookieClient, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkipVerify)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create cookie-based client")
 		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer")), http.StatusSeeOther)

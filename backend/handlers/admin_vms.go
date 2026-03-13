@@ -25,8 +25,8 @@ type AdminVMsHandler struct {
 	stateManager state.StateManager
 }
 
-// NewAdminVMsHandler creates a new instance of AdminVMsHandler
-func NewAdminVMsHandler(sm state.StateManager) *AdminVMsHandler {
+// MakeAdminVMsHandler creates a new instance of AdminVMsHandler
+func MakeAdminVMsHandler(sm state.StateManager) *AdminVMsHandler {
 	return &AdminVMsHandler{stateManager: sm}
 }
 

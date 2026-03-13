@@ -18,8 +18,8 @@ type BaseAdminHandler struct {
 	stateManager state.StateManager
 }
 
-// NewBaseAdminHandler creates a new BaseAdminHandler
-func NewBaseAdminHandler(sm state.StateManager) *BaseAdminHandler {
+// MakeBaseAdminHandler creates a new BaseAdminHandler
+func MakeBaseAdminHandler(sm state.StateManager) *BaseAdminHandler {
 	return &BaseAdminHandler{stateManager: sm}
 }
 
@@ -48,10 +48,10 @@ type BaseFormHandler struct {
 	*BaseAdminHandler
 }
 
-// NewBaseFormHandler creates a new BaseFormHandler
-func NewBaseFormHandler(sm state.StateManager) *BaseFormHandler {
+// MakeBaseFormHandler creates a new BaseFormHandler
+func MakeBaseFormHandler(sm state.StateManager) *BaseFormHandler {
 	return &BaseFormHandler{
-		BaseAdminHandler: NewBaseAdminHandler(sm),
+		BaseAdminHandler: MakeBaseAdminHandler(sm),
 	}
 }
 
@@ -112,10 +112,10 @@ type BaseAPIHandler struct {
 	*BaseAdminHandler
 }
 
-// NewBaseAPIHandler creates a new BaseAPIHandler
-func NewBaseAPIHandler(sm state.StateManager) *BaseAPIHandler {
+// MakeBaseAPIHandler creates a new BaseAPIHandler
+func MakeBaseAPIHandler(sm state.StateManager) *BaseAPIHandler {
 	return &BaseAPIHandler{
-		BaseAdminHandler: NewBaseAdminHandler(sm),
+		BaseAdminHandler: MakeBaseAdminHandler(sm),
 	}
 }
 

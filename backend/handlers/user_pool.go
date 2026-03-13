@@ -260,7 +260,7 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
-func NewUserPoolHandler(sm state.StateManager) *UserPoolHandler {
+func MakeUserPoolHandler(sm state.StateManager) *UserPoolHandler {
 	return &UserPoolHandler{stateManager: sm}
 }
 
@@ -291,7 +291,7 @@ func (h *UserPoolHandler) DeleteUserPoolConfirmHandler(w http.ResponseWriter, r 
 
 // RegisterRoutes registers routes for user/pool admin
 func (h *UserPoolHandler) RegisterRoutes(router *httprouter.Router) {
-	routeHelpers := NewAdminPageRoutes()
+	routeHelpers := MakeAdminPageRoutes()
 
 	// Register admin user pool routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/userpool", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
@@ -403,7 +403,7 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		opts = append(opts, WithError(errorMsg))
 	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
+	data := MakeTemplateDataWithOptions("", opts...).ToMap()
 
 	// Prepare structures for direct data passing
 	type poolTableRow struct {

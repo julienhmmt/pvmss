@@ -254,8 +254,8 @@ type StorageHandler struct {
 	stateManager state.StateManager
 }
 
-// NewStorageHandler creates a new instance of StorageHandler
-func NewStorageHandler(stateManager state.StateManager) *StorageHandler {
+// MakeStorageHandler creates a new instance of StorageHandler
+func MakeStorageHandler(stateManager state.StateManager) *StorageHandler {
 	return &StorageHandler{
 		stateManager: stateManager,
 	}
@@ -417,7 +417,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 
 // RegisterRoutes registers storage-related routes
 func (h *StorageHandler) RegisterRoutes(router *httprouter.Router) {
-	routeHelpers := NewAdminPageRoutes()
+	routeHelpers := MakeAdminPageRoutes()
 
 	// Register admin storage routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/storage", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){

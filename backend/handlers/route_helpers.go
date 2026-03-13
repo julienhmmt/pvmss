@@ -9,8 +9,8 @@ import (
 // RouteHelpers provides utility functions for common route registration patterns
 type RouteHelpers struct{}
 
-// NewRouteHelpers creates a new instance of RouteHelpers
-func NewRouteHelpers() *RouteHelpers {
+// MakeRouteHelpers creates a new instance of RouteHelpers
+func MakeRouteHelpers() *RouteHelpers {
 	return &RouteHelpers{}
 }
 
@@ -53,10 +53,10 @@ type AdminPageRoutes struct {
 	helpers *RouteHelpers
 }
 
-// NewAdminPageRoutes creates a new AdminPageRoutes helper
-func NewAdminPageRoutes() *AdminPageRoutes {
+// MakeAdminPageRoutes creates a new AdminPageRoutes helper
+func MakeAdminPageRoutes() *AdminPageRoutes {
 	return &AdminPageRoutes{
-		helpers: NewRouteHelpers(),
+		helpers: MakeRouteHelpers(),
 	}
 }
 

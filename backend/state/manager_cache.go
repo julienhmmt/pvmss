@@ -86,7 +86,7 @@ func (s *appState) refreshProxmoxSnapshot(trigger string) {
 		Str("trigger", trigger).
 		Logger()
 
-	client, err := proxmox.NewRestyClientFromEnv(constants.ClusterCacheRequestTimeout)
+	client, err := proxmox.MakeRestyClientFromEnv(constants.ClusterCacheRequestTimeout)
 	if err != nil {
 		log.Warn().
 			Err(err).
@@ -137,7 +137,7 @@ func (s *appState) refreshNodeCache(ctx context.Context) {
 		return
 	}
 
-	restyClient, err := proxmox.NewRestyClientFromEnv(constants.NodeCacheRequestTimeout)
+	restyClient, err := proxmox.MakeRestyClientFromEnv(constants.NodeCacheRequestTimeout)
 	if err != nil {
 		log.Warn().
 			Err(err).

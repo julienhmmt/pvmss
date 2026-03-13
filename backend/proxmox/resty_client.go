@@ -20,8 +20,8 @@ type RestyClient struct {
 	timeout time.Duration
 }
 
-// NewRestyClient creates a new resty-based Proxmox API client
-func NewRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, timeout time.Duration) (*RestyClient, error) {
+// MakeRestyClient creates a new resty-based Proxmox API client
+func MakeRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, timeout time.Duration) (*RestyClient, error) {
 	if apiURL == "" || apiTokenID == "" || apiTokenSecret == "" {
 		return nil, fmt.Errorf("apiURL, apiTokenID, and apiTokenSecret are required")
 	}

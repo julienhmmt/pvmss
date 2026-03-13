@@ -12,8 +12,8 @@ type TestApp struct {
 	Handlers *handlers.TestHandlerCollection
 }
 
-// NewTestApp creates a new test application instance with minimal setup
-func NewTestApp() *TestApp {
+// MakeTestApp creates a new test application instance with minimal setup
+func MakeTestApp() *TestApp {
 	// Create handlers
 	hc := &handlers.TestHandlerCollection{}
 
