@@ -1,7 +1,7 @@
 # Makefile pour PVMSS
 # Permet de construire, démarrer, arrêter, nettoyer et tester l'application
 
-.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt
+.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status
 
 # Couleurs pour l'affichage
 BLUE=\033[0;34m
@@ -56,7 +56,7 @@ build: ## Construit le binaire Go et le container docker
 	docker compose -f docker-compose.dev.yml up -d
 	@echo ""
 
-docker-build: ## Construit les images docker (arm64 et amd64) et push sur Docker Hub
+docker-build: buildkit-start ## Construit les images docker (arm64 et amd64) et push sur Docker Hub
 	@echo "Building Docker images for multiple architectures..."
 	@echo "Usage: make docker-build PVMSS_TAG=your-tag"
 	@echo "Default tag: latest"
@@ -179,6 +179,40 @@ go-fmt: ## Formate le code Go
 go-template: ## Génère les templates Go
 	@echo "$(BLUE)Génération des templates Go...$(NC)"
 	cd $(BACKEND_DIR) && ~/go/bin/templ generate && cd ..
+
+# =============================================================================
+# Commandes BuildKit (pour builds multi-architecture)
+
+buildkit-start: ## Démarre le conteneur buildkit pour les builds multi-architecture
+	@echo "$(BLUE)Démarrage de buildkit...$(NC)"
+	@if ! docker buildx ls | grep -q "pvmss-builder"; then \
+		echo "Création de l'instance buildkit pvmss-builder avec driver docker-container..."; \
+		docker buildx create --name pvmss-builder --driver docker-container --use --bootstrap; \
+	else \
+		echo "L'instance buildkit pvmss-builder existe déjà, vérification de l'état..."; \
+		docker buildx inspect --bootstrap; \
+	fi
+	@echo "$(GREEN)✓ Buildkit prêt pour les builds multi-architecture$(NC)"
+
+buildkit-stop: ## Arrête le conteneur buildkit
+	@echo "$(BLUE)Arrêt de buildkit...$(NC)"
+	@if docker buildx ls | grep -q "pvmss-builder"; then \
+		echo "Arrêt de l'instance buildkit pvmss-builder..."; \
+		docker buildx rm pvmss-builder; \
+		echo "$(GREEN)✓ Buildkit arrêté$(NC)"; \
+	else \
+		echo "Buildkit n'est pas démarré"; \
+	fi
+
+buildkit-status: ## Vérifie le statut de buildkit
+	@echo "$(BLUE)Statut de buildkit:$(NC)"
+	@if docker buildx ls | grep -q "pvmss-builder"; then \
+		echo "$(GREEN)✓ Buildkit est actif$(NC)"; \
+		docker buildx inspect pvmss-builder; \
+	else \
+		echo "$(RED)❌ Buildkit n'est pas démarré$(NC)"; \
+		echo "Lancez 'make buildkit-start' pour l'activer"; \
+	fi
 
 # =============================================================================
 # Commandes de développement rapide
