@@ -39,8 +39,8 @@ type RequestBuilder struct {
 	cookies []*http.Cookie
 }
 
-// NewRequest creates a new RequestBuilder.
-func NewRequest(t *testing.T, method, path string) *RequestBuilder {
+// MakeRequest creates a new RequestBuilder.
+func MakeRequest(t *testing.T, method, path string) *RequestBuilder {
 	t.Helper()
 	return &RequestBuilder{
 		t:       t,

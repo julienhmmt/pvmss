@@ -27,8 +27,8 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-// NewMiddlewareLogger creates a new contextual logger for a middleware component.
-func NewMiddlewareLogger(name string) *logger.Logger {
+// MakeMiddlewareLogger creates a new contextual logger for a middleware component.
+func MakeMiddlewareLogger(name string) *logger.Logger {
 	log := logger.Get().With().Str("middleware", name).Logger()
 	return &log
 }

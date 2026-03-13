@@ -21,7 +21,7 @@ func withVMID(req *http.Request, id string) *http.Request {
 func TestVMAction_InvalidAction(t *testing.T) {
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
 	sm.offline = true
-	h := NewVMActionHandler(sm)
+	h := MakeVMActionHandler(sm)
 
 	body, _ := json.Marshal(VMActionRequest{Action: "fly", Node: "node1"})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms/100/action", io.NopCloser(bytes.NewReader(body)))
@@ -40,7 +40,7 @@ func TestVMAction_InvalidAction(t *testing.T) {
 func TestVMAction_OfflineMode(t *testing.T) {
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
 	sm.offline = true
-	h := NewVMActionHandler(sm)
+	h := MakeVMActionHandler(sm)
 
 	body, _ := json.Marshal(VMActionRequest{Action: "start", Node: "node1"})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms/100/action", io.NopCloser(bytes.NewReader(body)))
@@ -59,7 +59,7 @@ func TestVMAction_OfflineMode(t *testing.T) {
 func TestVMAction_MissingNode(t *testing.T) {
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
 	sm.offline = true
-	h := NewVMActionHandler(sm)
+	h := MakeVMActionHandler(sm)
 
 	body, _ := json.Marshal(VMActionRequest{Action: "start", Node: ""})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms/100/action", io.NopCloser(bytes.NewReader(body)))

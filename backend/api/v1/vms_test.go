@@ -12,7 +12,7 @@ import (
 func TestListVMs_OfflineMode(t *testing.T) {
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
 	sm.offline = true
-	h := NewVMHandler(sm)
+	h := MakeVMHandler(sm)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vms", nil)
 	signed := signToken(t, "testsecretthatis32byteslongexact!!", "testuser", false, accessTokenTTL)
@@ -35,7 +35,7 @@ func TestListVMs_OfflineMode(t *testing.T) {
 
 func TestGetVM_BadID(t *testing.T) {
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
-	h := NewVMHandler(sm)
+	h := MakeVMHandler(sm)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vms/notanumber", nil)
 	signed := signToken(t, "testsecretthatis32byteslongexact!!", "testuser", false, accessTokenTTL)

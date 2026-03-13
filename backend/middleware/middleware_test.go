@@ -79,7 +79,7 @@ func TestClientIP(t *testing.T) {
 }
 
 func TestRateLimitMiddlewareRejectsAfterQuota(t *testing.T) {
-	limiter := NewRateLimiter(10*time.Second, 10*time.Second)
+	limiter := MakeRateLimiter(10*time.Second, 10*time.Second)
 	limiter.AddRule(http.MethodGet, "/test", Rule{Capacity: 1, Refill: time.Second})
 	calls := 0
 	handler := RateLimitMiddleware(limiter)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +111,7 @@ func TestRateLimitMiddlewareRejectsAfterQuota(t *testing.T) {
 }
 
 func TestRateLimitRefillAllowsAfterWait(t *testing.T) {
-	limiter := NewRateLimiter(10*time.Second, 10*time.Second)
+	limiter := MakeRateLimiter(10*time.Second, 10*time.Second)
 	limiter.AddRule(http.MethodGet, "/refill", Rule{Capacity: 1, Refill: 50 * time.Millisecond})
 	handler := RateLimitMiddleware(limiter)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

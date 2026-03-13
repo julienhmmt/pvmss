@@ -94,6 +94,6 @@
 // Example:
 //
 //	router := httprouter.New()
-//	vmHandler := handlers.NewVMCreateOptimizedHandler(stateManager)
+//	vmHandler := handlers.MakeVMCreateOptimizedHandler(stateManager)
 //	vmHandler.RegisterRoutes(router)
 package handlers

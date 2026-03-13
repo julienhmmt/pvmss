@@ -10,8 +10,8 @@ import (
 // InputSanitizer provides methods to sanitize and validate user input
 type InputSanitizer struct{}
 
-// NewInputSanitizer creates a new input sanitizer
-func NewInputSanitizer() *InputSanitizer {
+// MakeInputSanitizer creates a new input sanitizer
+func MakeInputSanitizer() *InputSanitizer {
 	return &InputSanitizer{}
 }
 

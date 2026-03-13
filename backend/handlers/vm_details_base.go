@@ -20,8 +20,8 @@ type VMHandler struct {
 	stateManager state.StateManager
 }
 
-// NewVMHandler creates a new VMHandler.
-func NewVMHandler(stateManager state.StateManager) *VMHandler {
+// MakeVMHandler creates a new VMHandler.
+func MakeVMHandler(stateManager state.StateManager) *VMHandler {
 	return &VMHandler{stateManager: stateManager}
 }
 
@@ -51,7 +51,7 @@ func (h *VMHandler) RegisterRoutes(router *httprouter.Router) {
 	))
 
 	// Snapshot routes
-	snapshotHandler := NewVMSnapshotsHandler(h.stateManager)
+	snapshotHandler := MakeVMSnapshotsHandler(h.stateManager)
 	router.POST("/vm/snapshot/create", SecureFormHandler("CreateVMSnapshot",
 		RequireAuthHandle(snapshotHandler.CreateVMSnapshotHandler),
 	))

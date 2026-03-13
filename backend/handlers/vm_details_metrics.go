@@ -41,7 +41,7 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
-	restyClient, err := proxmox.NewRestyClientFromEnv(30 * time.Second)
+	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusInternalServerError)

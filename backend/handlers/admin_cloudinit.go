@@ -25,8 +25,8 @@ type CloudInitHandler struct {
 	stateManager state.StateManager
 }
 
-// NewCloudInitHandler creates a new CloudInitHandler.
-func NewCloudInitHandler(stateManager state.StateManager) *CloudInitHandler {
+// MakeCloudInitHandler creates a new CloudInitHandler.
+func MakeCloudInitHandler(stateManager state.StateManager) *CloudInitHandler {
 	return &CloudInitHandler{stateManager: stateManager}
 }
 

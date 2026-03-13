@@ -27,8 +27,8 @@ type VMActionHandler struct {
 	state state.StateManager
 }
 
-// NewVMActionHandler creates a new VMActionHandler.
-func NewVMActionHandler(s state.StateManager) *VMActionHandler {
+// MakeVMActionHandler creates a new VMActionHandler.
+func MakeVMActionHandler(s state.StateManager) *VMActionHandler {
 	return &VMActionHandler{state: s}
 }
 
@@ -61,7 +61,7 @@ func (h *VMActionHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := proxmox.NewRestyClientFromEnv(60 * time.Second)
+	client, err := proxmox.MakeRestyClientFromEnv(60 * time.Second)
 	if err != nil {
 		logger.Get().Error().Err(err).Msg("api/v1: failed to create resty client for VMAction")
 		errInternal(w)

@@ -11,7 +11,7 @@ import (
 func TestLoginAdmin_WrongPassword(t *testing.T) {
 	t.Setenv("ADMIN_PASSWORD_HASH", "$2a$04$5oKeAhlTIjDWUd0y0/4n.OGhDyxUpExuFd.icOxoAMuDORhdebu3m")
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
-	h := NewAuthHandler(sm)
+	h := MakeAuthHandler(sm)
 
 	body, _ := json.Marshal(LoginRequest{Username: "admin", Password: "wrongpassword", Admin: true})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
@@ -27,7 +27,7 @@ func TestLoginAdmin_CorrectPassword(t *testing.T) {
 	// Hash of "testpass123" generated with bcrypt MinCost for fast tests
 	t.Setenv("ADMIN_PASSWORD_HASH", "$2a$04$5oKeAhlTIjDWUd0y0/4n.OGhDyxUpExuFd.icOxoAMuDORhdebu3m")
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
-	h := NewAuthHandler(sm)
+	h := MakeAuthHandler(sm)
 
 	body, _ := json.Marshal(LoginRequest{Username: "admin", Password: "testpass123", Admin: true})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
@@ -51,7 +51,7 @@ func TestLoginAdmin_CorrectPassword(t *testing.T) {
 
 func TestLoginAdmin_MissingSecret(t *testing.T) {
 	sm := newTestSM("") // no jwt_secret in settings
-	h := NewAuthHandler(sm)
+	h := MakeAuthHandler(sm)
 
 	body, _ := json.Marshal(LoginRequest{Username: "admin", Password: "1234", Admin: true})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
@@ -65,7 +65,7 @@ func TestLoginAdmin_MissingSecret(t *testing.T) {
 
 func TestLogout_ClearsCookies(t *testing.T) {
 	sm := newTestSM("testsecretthatis32byteslongexact!!")
-	h := NewAuthHandler(sm)
+	h := MakeAuthHandler(sm)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/logout", nil)
 	rr := httptest.NewRecorder()
 	h.Logout(rr, req)
@@ -89,7 +89,7 @@ func TestLogout_ClearsCookies(t *testing.T) {
 func TestMe_ReturnsUsername(t *testing.T) {
 	secret := "testsecretthatis32byteslongexact!!"
 	sm := newTestSM(secret)
-	h := NewAuthHandler(sm)
+	h := MakeAuthHandler(sm)
 
 	// Build a request with a valid JWT in context (simulating JWTMiddleware)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)

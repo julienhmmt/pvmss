@@ -50,7 +50,7 @@ func TestErrorHelper(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
-	helper := NewErrorHelper(w, req)
+	helper := MakeErrorHelper(w, req)
 
 	if helper == nil {
 		t.Fatal("Expected ErrorHelper to be created")
@@ -74,7 +74,7 @@ func TestErrorHelper_Send(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
-	helper := NewErrorHelper(w, req)
+	helper := MakeErrorHelper(w, req)
 	helper.Send(ErrBadRequest)
 
 	if w.Code != http.StatusBadRequest {

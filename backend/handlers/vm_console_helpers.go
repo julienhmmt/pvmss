@@ -50,7 +50,7 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 
 	// Create a temporary Proxmox client with the user's stored credentials
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
-	client, err := proxmox.NewClientCookieAuth(proxmoxURL, insecureSkipVerify)
+	client, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkipVerify)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client")
 		return "", 0, errors.WrapProxmox(err, "/api2/json/access/ticket", 0, "failed to create proxmox client")

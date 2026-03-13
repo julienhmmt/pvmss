@@ -79,7 +79,7 @@ func TestSessionFixationProtection(t *testing.T) {
 
 func TestRateLimitingBehavior(t *testing.T) {
 	// Test that rate limiting works correctly
-	limiter := middleware.NewRateLimiter(time.Minute, time.Minute*5)
+	limiter := middleware.MakeRateLimiter(time.Minute, time.Minute*5)
 
 	// Add a rate limiting rule
 	limiter.AddRule("GET", "/", middleware.Rule{Capacity: 10, Refill: time.Second})
@@ -99,7 +99,7 @@ func TestRateLimitingBehavior(t *testing.T) {
 }
 
 func TestInputSanitization(t *testing.T) {
-	sanitizer := NewInputSanitizer()
+	sanitizer := MakeInputSanitizer()
 
 	// Test XSS prevention
 	xssInput := "<script>alert('xss')</script>"

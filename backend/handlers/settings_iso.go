@@ -306,7 +306,7 @@ func (h *SettingsHandler) ISOPageHandler(w http.ResponseWriter, r *http.Request,
 		opts = append(opts, WithSuccess(successMsg))
 	}
 
-	data := NewTemplateDataWithOptions("", opts...).ToMap()
+	data := MakeTemplateDataWithOptions("", opts...).ToMap()
 
 	// Return early if Proxmox not connected
 	if !data["ProxmoxConnected"].(bool) {
@@ -531,7 +531,7 @@ func (h *SettingsHandler) ToggleISOHandler(w http.ResponseWriter, r *http.Reques
 
 // RegisterISORoutes registers ISO-related routes
 func (h *SettingsHandler) RegisterISORoutes(router *httprouter.Router) {
-	routeHelpers := NewAdminPageRoutes()
+	routeHelpers := MakeAdminPageRoutes()
 
 	// Register admin ISO routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/iso", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){

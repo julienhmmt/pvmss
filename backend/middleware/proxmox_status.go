@@ -22,7 +22,7 @@ const TemplateDataKey contextKey = "templateData"
 // under the key specified by TemplateDataKey.
 func ProxmoxStatusMiddlewareWithState(sm state.StateManager) func(http.Handler) http.Handler {
 	// Create logger once during middleware initialization instead of per-request
-	log := NewMiddlewareLogger("ProxmoxStatus")
+	log := MakeMiddlewareLogger("ProxmoxStatus")
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

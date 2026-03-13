@@ -23,7 +23,7 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 	node := strings.TrimSpace(r.FormValue("node"))
 	desc := r.FormValue("description")
 	{
-		s := NewInputSanitizer()
+		s := MakeInputSanitizer()
 		desc = s.RemoveScriptTags(s.SanitizeString(desc, 2000))
 	}
 	if !IsAuthenticated(r) {
@@ -81,7 +81,7 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 
 	selectedTags := r.Form["tags"]
 	if len(selectedTags) > 0 {
-		s := NewInputSanitizer()
+		s := MakeInputSanitizer()
 		cleaned := make([]string, 0, len(selectedTags))
 		for _, t := range selectedTags {
 			st := s.SanitizeString(strings.TrimSpace(t), 64)
