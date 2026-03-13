@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -84,6 +85,69 @@ func MakeRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVeri
 		baseURL: normalizedURL,
 		timeout: timeout,
 	}, nil
+}
+
+// MakeRestyClientCookieAuth creates a new resty-based Proxmox API client without API token auth.
+// This is used for operations that require cookie-based authentication (PVEAuthCookie + CSRFPreventionToken),
+// such as ticket creation, password updates, and VNC proxy.
+func MakeRestyClientCookieAuth(apiURL string, insecureSkipVerify bool, timeout time.Duration) (*RestyClient, error) {
+	if apiURL == "" {
+		return nil, fmt.Errorf("apiURL is required")
+	}
+
+	normalizedURL, err := normalizeBaseURL(apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Proxmox API URL: %w", err)
+	}
+
+	client := resty.New()
+	client.SetBaseURL(normalizedURL)
+	client.SetTimeout(timeout)
+
+	if insecureSkipVerify {
+		client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}) // #nosec G402 - Controlled by PROXMOX_VERIFY_SSL; allowed for dev/test
+	}
+
+	client.SetHeader("Accept", "application/json")
+	client.SetHeader("Content-Type", "application/json")
+
+	client.SetRetryCount(3).
+		SetRetryWaitTime(1 * time.Second).
+		SetRetryMaxWaitTime(5 * time.Second)
+
+	client.OnBeforeRequest(func(c *resty.Client, req *resty.Request) error {
+		logger.Get().Debug().
+			Str("method", req.Method).
+			Str("url", req.URL).
+			Msg("Resty API request (cookie auth)")
+		return nil
+	})
+
+	client.OnAfterResponse(func(c *resty.Client, resp *resty.Response) error {
+		logger.Get().Debug().
+			Str("method", resp.Request.Method).
+			Str("url", resp.Request.URL).
+			Int("status", resp.StatusCode()).
+			Dur("duration", resp.Time()).
+			Msg("Resty API response (cookie auth)")
+		return nil
+	})
+
+	return &RestyClient{
+		client:  client,
+		baseURL: normalizedURL,
+		timeout: timeout,
+	}, nil
+}
+
+// SetCookieAuth sets PVEAuthCookie and CSRFPreventionToken on the underlying resty client
+// for cookie-based authentication with the Proxmox API.
+func (rc *RestyClient) SetCookieAuth(ticket, csrfToken string) {
+	rc.client.SetCookie(&http.Cookie{
+		Name:  "PVEAuthCookie",
+		Value: ticket,
+	})
+	rc.client.SetHeader("CSRFPreventionToken", csrfToken)
 }
 
 // Get performs a GET request and unmarshals the response into target

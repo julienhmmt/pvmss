@@ -20,3 +20,16 @@ func MakeRestyClientFromEnv(timeout time.Duration) (*RestyClient, error) {
 
 	return MakeRestyClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify, timeout)
 }
+
+// MakeRestyClientCookieAuthFromEnv creates a cookie-auth RestyClient using environment variables.
+// Only requires PROXMOX_URL and PROXMOX_VERIFY_SSL (no API token needed).
+func MakeRestyClientCookieAuthFromEnv(timeout time.Duration) (*RestyClient, error) {
+	proxmoxURL := os.Getenv("PROXMOX_URL")
+	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
+
+	if proxmoxURL == "" {
+		return nil, fmt.Errorf("PROXMOX_URL environment variable is required")
+	}
+
+	return MakeRestyClientCookieAuth(proxmoxURL, insecureSkipVerify, timeout)
+}
