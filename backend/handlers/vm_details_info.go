@@ -43,27 +43,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 
 	stateManager := getStateManager(r)
 	client := stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
-		return
-	}
-
-	if r.URL.Query().Get("refresh") == "1" {
-		client.InvalidateCache("/nodes")
-		if nodes, err := proxmox.GetNodeNamesWithContext(r.Context(), client); err == nil {
-			for _, n := range nodes {
-				client.InvalidateCache("/nodes/" + n + "/qemu")
-			}
-		} else {
-			log.Warn().
-				Err(err).
-				Str("component", "vm_details").
-				Str("operation", "invalidate_cache_refresh").
-				Str("reason", "nodes_fetch_failed").
-				Msg("Unable to get nodes while invalidating cache for refresh")
-		}
-	}
 
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {

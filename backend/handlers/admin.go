@@ -339,9 +339,8 @@ func (h *AdminOptimizedHandler) AppInfoPageHandler(w http.ResponseWriter, r *htt
 		"nodeCount":   0,
 	}
 
-	if client := h.stateManager.GetProxmoxClient(); client != nil {
-		// Try to get cluster status using the new API method
-		if clusterStatus, err := proxmox.GetClusterStatus(r.Context(), client); err == nil {
+	if restyClient, err := getDefaultRestyClient(); err == nil {
+		if clusterStatus, err := proxmox.GetClusterStatusResty(r.Context(), restyClient); err == nil {
 			clusterInfo["isCluster"] = clusterStatus.IsCluster
 			clusterInfo["clusterName"] = clusterStatus.ClusterName
 			clusterInfo["nodeCount"] = clusterStatus.NodeCount
@@ -354,19 +353,11 @@ func (h *AdminOptimizedHandler) AppInfoPageHandler(w http.ResponseWriter, r *htt
 				log.Info().Msg("Proxmox standalone mode detected via /cluster/status")
 			}
 		} else {
-			// Fallback to the old method using cluster name from ticket
 			log.Warn().
 				Err(err).
 				Str("component", "admin_nodes").
 				Str("operation", "get_cluster_status").
-				Str("fallback", "cluster_name_detection").
-				Msg("Failed to get cluster status, using fallback")
-			clusterName := client.GetClusterName()
-			if clusterName != "" {
-				clusterInfo["isCluster"] = true
-				clusterInfo["clusterName"] = clusterName
-				log.Info().Str("cluster_name", clusterName).Msg("Proxmox cluster detected via fallback method")
-			}
+				Msg("Failed to get cluster status")
 		}
 	}
 

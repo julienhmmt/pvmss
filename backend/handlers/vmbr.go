@@ -217,8 +217,8 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 	// Get all nodes for the selector
 	var allNodes []string
-	if client != nil {
-		allNodes, _ = proxmox.GetNodeNames(client)
+	if restyClient, err := getDefaultRestyClient(); err == nil {
+		allNodes, _ = proxmox.GetNodeNamesResty(r.Context(), restyClient)
 		sort.Strings(allNodes)
 	}
 
