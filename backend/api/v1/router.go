@@ -12,9 +12,9 @@ import (
 // JWT-protected routes are wrapped with JWTMiddleware; the auth exchange
 // endpoint only needs a session (session is loaded by the API middleware chain).
 func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
-	authHandler := NewAuthHandler(s)
-	vmHandler := NewVMHandler(s)
-	vmActionHandler := NewVMActionHandler(s)
+	authHandler := MakeAuthHandler(s)
+	vmHandler := MakeVMHandler(s)
+	vmActionHandler := MakeVMActionHandler(s)
 
 	// Auth routes — no JWT required (login/exchange issue tokens)
 	router.POST("/api/v1/auth/login", wrap(authHandler.Login))

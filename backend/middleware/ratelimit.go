@@ -35,8 +35,8 @@ type Limiter struct {
 	buckets map[string]*bucket // Key: "METHOD /path|ip_address"
 }
 
-// NewRateLimiter creates a new Limiter and starts a background goroutine to clean up stale buckets.
-func NewRateLimiter(cleanupInterval, staleThreshold time.Duration) *Limiter {
+// MakeRateLimiter creates a new Limiter and starts a background goroutine to clean up stale buckets.
+func MakeRateLimiter(cleanupInterval, staleThreshold time.Duration) *Limiter {
 	l := &Limiter{
 		rules:   make(map[string]Rule),
 		buckets: make(map[string]*bucket),

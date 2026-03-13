@@ -64,8 +64,8 @@ func TestDocsFilesExist(t *testing.T) {
 	}
 }
 
-// TestNewDocsHandler tests that DocsHandler can be created
-func TestNewDocsHandler(t *testing.T) {
-	handler := handlers.NewDocsHandler()
+// TestMakeDocsHandler tests that DocsHandler can be created
+func TestMakeDocsHandler(t *testing.T) {
+	handler := handlers.MakeDocsHandler()
 	assert.NotNil(t, handler, "DocsHandler should be created successfully")
 }

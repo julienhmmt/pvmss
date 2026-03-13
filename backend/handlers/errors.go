@@ -161,8 +161,8 @@ type ErrorHelper struct {
 	Localizer *i18n_bundle.Localizer
 }
 
-// NewErrorHelper creates a new error helper
-func NewErrorHelper(w http.ResponseWriter, r *http.Request) *ErrorHelper {
+// MakeErrorHelper creates a new error helper
+func MakeErrorHelper(w http.ResponseWriter, r *http.Request) *ErrorHelper {
 	return &ErrorHelper{
 		Writer:    w,
 		Request:   r,

@@ -7,7 +7,7 @@ import (
 )
 
 func TestLRUCache_BasicOperations(t *testing.T) {
-	cache := NewLRUCache(3, 5*time.Second)
+	cache := MakeLRUCache(3, 5*time.Second)
 
 	// Test Set and Get
 	cache.Set("key1", []byte("value1"))
@@ -22,7 +22,7 @@ func TestLRUCache_BasicOperations(t *testing.T) {
 }
 
 func TestLRUCache_Eviction(t *testing.T) {
-	cache := NewLRUCache(2, 5*time.Second)
+	cache := MakeLRUCache(2, 5*time.Second)
 
 	cache.Set("key1", []byte("value1"))
 	cache.Set("key2", []byte("value2"))
@@ -40,7 +40,7 @@ func TestLRUCache_Eviction(t *testing.T) {
 }
 
 func TestLRUCache_LRUOrdering(t *testing.T) {
-	cache := NewLRUCache(2, 5*time.Second)
+	cache := MakeLRUCache(2, 5*time.Second)
 
 	cache.Set("key1", []byte("value1"))
 	cache.Set("key2", []byte("value2"))
@@ -60,7 +60,7 @@ func TestLRUCache_LRUOrdering(t *testing.T) {
 }
 
 func TestLRUCache_TTL(t *testing.T) {
-	cache := NewLRUCache(10, 100*time.Millisecond)
+	cache := MakeLRUCache(10, 100*time.Millisecond)
 
 	cache.Set("key1", []byte("value1"))
 
@@ -79,7 +79,7 @@ func TestLRUCache_TTL(t *testing.T) {
 }
 
 func TestLRUCache_Delete(t *testing.T) {
-	cache := NewLRUCache(10, 5*time.Second)
+	cache := MakeLRUCache(10, 5*time.Second)
 
 	cache.Set("key1", []byte("value1"))
 	cache.Delete("key1")
@@ -90,7 +90,7 @@ func TestLRUCache_Delete(t *testing.T) {
 }
 
 func TestLRUCache_Clear(t *testing.T) {
-	cache := NewLRUCache(10, 5*time.Second)
+	cache := MakeLRUCache(10, 5*time.Second)
 
 	cache.Set("key1", []byte("value1"))
 	cache.Set("key2", []byte("value2"))
@@ -107,7 +107,7 @@ func TestLRUCache_Clear(t *testing.T) {
 }
 
 func TestLRUCache_CleanExpired(t *testing.T) {
-	cache := NewLRUCache(10, 100*time.Millisecond)
+	cache := MakeLRUCache(10, 100*time.Millisecond)
 
 	cache.Set("key1", []byte("value1"))
 	cache.Set("key2", []byte("value2"))
@@ -130,7 +130,7 @@ func TestLRUCache_CleanExpired(t *testing.T) {
 }
 
 func TestLRUCache_Concurrency(t *testing.T) {
-	cache := NewLRUCache(100, 5*time.Second)
+	cache := MakeLRUCache(100, 5*time.Second)
 	var wg sync.WaitGroup
 
 	// Multiple goroutines writing
@@ -166,7 +166,7 @@ func TestLRUCache_Concurrency(t *testing.T) {
 }
 
 func TestLRUCache_UpdateExisting(t *testing.T) {
-	cache := NewLRUCache(10, 5*time.Second)
+	cache := MakeLRUCache(10, 5*time.Second)
 
 	cache.Set("key1", []byte("value1"))
 	cache.Set("key1", []byte("value2")) // Update

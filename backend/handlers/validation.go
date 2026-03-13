@@ -20,8 +20,8 @@ type ValidationHelper struct {
 	Localizer *i18n_bundle.Localizer
 }
 
-// NewValidationHelper creates a new validation helper
-func NewValidationHelper(w http.ResponseWriter, r *http.Request, log logger.Logger) *ValidationHelper {
+// MakeValidationHelper creates a new validation helper
+func MakeValidationHelper(w http.ResponseWriter, r *http.Request, log logger.Logger) *ValidationHelper {
 	return &ValidationHelper{
 		Log:       log,
 		Writer:    w,

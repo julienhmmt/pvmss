@@ -188,9 +188,9 @@ func WithAction(text, url string, primary bool) TemplateOption {
 	}
 }
 
-// NewTemplateDataWithOptions creates a new TemplateData with functional options
-// Usage: NewTemplateDataWithOptions("Title", WithAdminActive("section"), WithAuth(r), WithProxmoxStatus(sm)).ToMap()
-func NewTemplateDataWithOptions(title string, opts ...TemplateOption) *TemplateData {
+// MakeTemplateDataWithOptions creates a new TemplateData with functional options
+// Usage: MakeTemplateDataWithOptions("Title", WithAdminActive("section"), WithAuth(r), WithProxmoxStatus(sm)).ToMap()
+func MakeTemplateDataWithOptions(title string, opts ...TemplateOption) *TemplateData {
 	td := &TemplateData{
 		Title: title,
 		Data:  make(map[string]interface{}),
@@ -257,8 +257,8 @@ func (td *TemplateData) ToMap() map[string]interface{} {
 // MessageHelper provides utilities for standardized message handling
 type MessageHelper struct{}
 
-// NewMessageHelper creates a new MessageHelper
-func NewMessageHelper() *MessageHelper {
+// MakeMessageHelper creates a new MessageHelper
+func MakeMessageHelper() *MessageHelper {
 	return &MessageHelper{}
 }
 

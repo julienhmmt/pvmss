@@ -188,8 +188,8 @@ func (h *VMBRHandler) ToggleVMBRHandler(w http.ResponseWriter, r *http.Request, 
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
-// NewVMBRHandler creates a new instance of VMBRHandler.
-func NewVMBRHandler(sm state.StateManager) *VMBRHandler {
+// MakeVMBRHandler creates a new instance of VMBRHandler.
+func MakeVMBRHandler(sm state.StateManager) *VMBRHandler {
 	return &VMBRHandler{stateManager: sm}
 }
 
@@ -320,7 +320,7 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 // RegisterRoutes registers the routes for VMBR management.
 func (h *VMBRHandler) RegisterRoutes(router *httprouter.Router) {
-	routeHelpers := NewAdminPageRoutes()
+	routeHelpers := MakeAdminPageRoutes()
 
 	// Register admin VMBR routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/vmbr", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){

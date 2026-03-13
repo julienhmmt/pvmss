@@ -26,8 +26,8 @@ func sendJSONResponse(w http.ResponseWriter, statusCode int, data interface{}) {
 	}
 }
 
-// NewHealthHandler creates a new instance of HealthHandler
-func NewHealthHandler(stateManager state.StateManager) *HealthHandler {
+// MakeHealthHandler creates a new instance of HealthHandler
+func MakeHealthHandler(stateManager state.StateManager) *HealthHandler {
 	return &HealthHandler{
 		stateManager: stateManager,
 	}

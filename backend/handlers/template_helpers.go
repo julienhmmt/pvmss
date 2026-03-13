@@ -9,10 +9,10 @@ type MessageHandlers struct {
 	helper *MessageHelper
 }
 
-// NewMessageHandlers creates a new MessageHandlers instance
-func NewMessageHandlers() *MessageHandlers {
+// MakeMessageHandlers creates a new MessageHandlers instance
+func MakeMessageHandlers() *MessageHandlers {
 	return &MessageHandlers{
-		helper: NewMessageHelper(),
+		helper: MakeMessageHelper(),
 	}
 }
 
@@ -67,10 +67,10 @@ type ContextualMessageHelper struct {
 	messages *MessageHandlers
 }
 
-// NewContextualMessageHelper creates a new ContextualMessageHelper
-func NewContextualMessageHelper() *ContextualMessageHelper {
+// MakeContextualMessageHelper creates a new ContextualMessageHelper
+func MakeContextualMessageHelper() *ContextualMessageHelper {
 	return &ContextualMessageHelper{
-		messages: NewMessageHandlers(),
+		messages: MakeMessageHandlers(),
 	}
 }
 

@@ -30,8 +30,8 @@ type AuthHandler struct {
 	state state.StateManager
 }
 
-// NewAuthHandler creates a new AuthHandler.
-func NewAuthHandler(s state.StateManager) *AuthHandler {
+// MakeAuthHandler creates a new AuthHandler.
+func MakeAuthHandler(s state.StateManager) *AuthHandler {
 	return &AuthHandler{state: s}
 }
 
@@ -204,7 +204,7 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 
 // verifyProxmoxCredentials POSTs to /access/ticket to confirm user credentials.
 func verifyProxmoxCredentials(ctx context.Context, username, password string) error {
-	restyClient, err := proxmox.NewRestyClientFromEnv(10 * time.Second)
+	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
 		return fmt.Errorf("no proxmox client: %w", err)
 	}

@@ -13,8 +13,8 @@ type DiskHandler struct {
 	stateManager state.StateManager
 }
 
-// NewDiskHandler creates a new instance of DiskHandler
-func NewDiskHandler(sm state.StateManager) *DiskHandler {
+// MakeDiskHandler creates a new instance of DiskHandler
+func MakeDiskHandler(sm state.StateManager) *DiskHandler {
 	return &DiskHandler{stateManager: sm}
 }
 
@@ -68,6 +68,6 @@ func (h *DiskHandler) UpdateDiskConfigHandler(w http.ResponseWriter, r *http.Req
 
 // RegisterRoutes registers the routes for disk management
 func (h *DiskHandler) RegisterRoutes(router *httprouter.Router) {
-	routeHelpers := NewAdminPageRoutes()
+	routeHelpers := MakeAdminPageRoutes()
 	routeHelpers.helpers.RegisterAdminRoute(router, "POST", "/admin/storage/update-disk-config", h.UpdateDiskConfigHandler)
 }

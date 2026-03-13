@@ -512,7 +512,7 @@ func (h *SettingsHandler) UpdateUserLimitsHandler(w http.ResponseWriter, r *http
 
 // RegisterLimitsRoutes registers limits-related routes
 func (h *SettingsHandler) RegisterLimitsRoutes(router *httprouter.Router) {
-	routeHelpers := NewAdminPageRoutes()
+	routeHelpers := MakeAdminPageRoutes()
 
 	// Register admin limits routes using helper
 	routeHelpers.RegisterCRUDRoutes(router, "/admin/limits", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
