@@ -106,7 +106,7 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 		Msg("Optimized search request started")
 
 	// Get CSRF token
-	ctx := NewHandlerContext(w, r, "SearchPageHandler")
+	ctx := HandlerContextWith(w, r, "SearchPageHandler")
 	csrfToken, err := ctx.GetCSRFToken()
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get CSRF token")

@@ -124,7 +124,7 @@ func TestAuthenticationBypassAttempts(t *testing.T) {
 
 	// Add protected route
 	router.GET("/protected", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		ctx := NewHandlerContext(w, r, "test")
+		ctx := HandlerContextWith(w, r, "test")
 		if ctx == nil || !ctx.IsAuthenticated() {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

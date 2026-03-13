@@ -62,7 +62,7 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 // IndexHandler is a handler for the home page
 // This function is exported for use by other packages
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := NewHandlerContext(w, r, "IndexHandler")
+	ctx := HandlerContextWith(w, r, "IndexHandler")
 	ctx.Log.Debug().Msg("Processing request for home page")
 
 	// If it's not the root, return a 404
