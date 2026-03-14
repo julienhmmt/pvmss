@@ -1,12 +1,9 @@
 package proxmox
 
 import (
-	"context"
 	"fmt"
 	"strings"
-	"time"
 
-	"pvmss/constants"
 	"pvmss/logger"
 )
 
@@ -151,17 +148,6 @@ func normalizeUserID(username, realm string) string {
 
 func poolPath(poolID string) string {
 	return "/pool/" + poolID
-}
-
-// withDefaultTimeout wraps a context with a default timeout if it has no deadline.
-func withDefaultTimeout(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
-	if _, ok := ctx.Deadline(); ok {
-		return ctx, func() {} // No-op cancel
-	}
-	if d <= 0 {
-		d = constants.ProxmoxDefaultTimeout
-	}
-	return context.WithTimeout(ctx, d)
 }
 
 // isConflictError checks if an error message indicates a resource conflict (HTTP 409).
