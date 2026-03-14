@@ -579,7 +579,6 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 }
 
 // CreateUserPool handles POST to create a user in PVE realm, create pool pvmss_<username>, and grant ACL
-// TODO Telmate migration: this handler still relies on Telmate-based EnsureUser/EnsurePool/EnsurePoolACL; switch to the Resty-based admin helpers and remove the ClientInterface.
 func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("CreateUserPool", r)
 

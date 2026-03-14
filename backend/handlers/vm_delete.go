@@ -105,7 +105,6 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // VMDeleteHandler handles the actual VM deletion (force stop + delete)
-// TODO Telmate migration: this handler still uses the Telmate client for cache invalidation; remove this dependency or replace it with a Resty-based cache strategy.
 func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("VMDeleteHandler", r)
 

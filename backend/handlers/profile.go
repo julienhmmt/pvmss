@@ -343,7 +343,6 @@ func (h *ProfileHandler) getNodeNames(ctx context.Context) ([]string, error) {
 }
 
 // UpdatePassword handles user password change requests
-// TODO Telmate migration: this password change flow still depends on Telmate ticket creation; migrate it to the Resty-based access helpers.
 func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("ProfileHandler.UpdatePassword", r)
 

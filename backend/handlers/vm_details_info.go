@@ -19,7 +19,6 @@ import (
 )
 
 // VMDetailsHandler renders the VM details page with resource, network, disk and metadata information.
-// TODO Telmate migration: this handler still relies on Telmate-based helpers (guest agent data, cache invalidation). Replace them with Resty-based helpers and drop the Telmate cache.
 func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	log := CreateHandlerLogger("VMDetailsHandler", r)
 
