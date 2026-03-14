@@ -715,7 +715,14 @@ func establishSessionWithTicket(_ http.ResponseWriter, r *http.Request, isAdmin 
 // GetProxmoxTicketFromSession retrieves the stored Proxmox ticket from the user's session.
 // Returns the ticket, CSRF token, and creation timestamp. Returns empty strings if not found.
 func GetProxmoxTicketFromSession(r *http.Request) (ticket, csrfToken string, createdAt time.Time, ok bool) {
+	// Try context-injected session manager first (app middleware stack).
+	// Fall back to state manager for API routes that lack SessionMiddleware.
 	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		if sm := getStateManager(r); sm != nil {
+			sessionManager = sm.GetSessionManager()
+		}
+	}
 	if sessionManager == nil {
 		return "", "", time.Time{}, false
 	}
