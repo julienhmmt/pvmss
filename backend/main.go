@@ -21,7 +21,6 @@ import (
 	"pvmss/handlers"
 	"pvmss/i18n"
 	"pvmss/logger"
-	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
 	"pvmss/templates"
@@ -149,17 +148,18 @@ func initializeApp(stateManager state.StateManager) error {
 		logger.Get().Info().Msg("Environment variable PVMSS_OFFLINE is set to true. Starting in offline mode (Proxmox API calls disabled)")
 		stateManager.SetOfflineMode()
 	} else {
-		// TODO Telmate migration: stop passing a Telmate ClientInterface into the state manager; use Resty-based Proxmox status and health checks instead.
-		proxmoxClient, err := initProxmoxClient()
-		if err != nil {
-			return fmt.Errorf("failed to initialize Proxmox client: %w", err)
+		proxmoxURL := os.Getenv("PROXMOX_URL")
+		tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
+		tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+		if proxmoxURL == "" || tokenID == "" || tokenValue == "" {
+			return fmt.Errorf("missing required Proxmox environment variables: PROXMOX_URL, PROXMOX_API_TOKEN_NAME, PROXMOX_API_TOKEN_VALUE")
 		}
 
-		if err := stateManager.SetProxmoxClient(proxmoxClient); err != nil {
-			return fmt.Errorf("failed to set Proxmox client: %w", err)
+		if err := stateManager.StartOnlineMode(); err != nil {
+			return fmt.Errorf("failed to start online mode: %w", err)
 		}
 
-		if connected := stateManager.CheckProxmoxConnection(); !connected {
+		if connected, _ := stateManager.GetProxmoxStatus(); !connected {
 			_, errorMsg := stateManager.GetProxmoxStatus()
 			logger.Get().Warn().
 				Str("error", errorMsg).
@@ -192,53 +192,6 @@ func initializeApp(stateManager state.StateManager) error {
 	}
 
 	return nil
-}
-
-// initProxmoxClient initializes the Telmate-based Proxmox client from environment variables.
-// TODO Telmate migration: replace this bootstrap with a simple Resty-based health check and configuration validation.
-func initProxmoxClient() (*proxmox.Client, error) {
-	proxmoxURL := os.Getenv("PROXMOX_URL")
-	tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
-	tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
-
-	if proxmoxURL == "" || tokenID == "" || tokenValue == "" {
-		// Check if we're in test mode or if offline mode is enabled
-		testMode := os.Getenv("GO_TEST_ENVIRONMENT") != "" || strings.Contains(os.Args[0], ".test")
-		offlineMode := strings.ToLower(os.Getenv("PVMSS_OFFLINE")) == "true"
-
-		if testMode || offlineMode {
-			logger.Get().Info().Msg("Skipping Proxmox client initialization (test mode or offline mode)")
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("missing required Proxmox environment variables: PROXMOX_URL, PROXMOX_API_TOKEN_NAME, PROXMOX_API_TOKEN_VALUE")
-	}
-
-	client, err := proxmox.MakeClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Proxmox client: %w", err)
-	}
-
-	client.SetTimeout(30 * time.Second)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
-	if err != nil || len(nodes) == 0 {
-		logger.Get().Error().Err(err).Msg("Failed to connect to Proxmox, starting in read-only mode")
-		return client, nil
-	}
-
-	logger.Get().Info().
-		Str("url", proxmoxURL).
-		Str("token_id", tokenID).
-		Bool("insecure", insecureSkipVerify).
-		Strs("nodes", nodes).
-		Msg("Proxmox client initialized")
-
-	return client, nil
 }
 
 func initTemplates() (*template.Template, string, error) {

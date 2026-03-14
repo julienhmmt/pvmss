@@ -1,7 +1,5 @@
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Telmate/proxmox-api-go v0.0.0-20260201220834-d1b91f64e60f h1:GgvgPRwm4V22jRefiZBgUmLjz6QHNESA1iYBQ+3+O+E=
-github.com/Telmate/proxmox-api-go v0.0.0-20260201220834-d1b91f64e60f/go.mod h1:HGPbpwiVsrpYYuQAygnnU04ZdGLYc8fdP9qhJIBw2Bg=
 github.com/a-h/templ v0.3.977 h1:kiKAPXTZE2Iaf8JbtM21r54A8bCNsncrfnokZZSrSDg=
 github.com/a-h/templ v0.3.977/go.mod h1:oCZcnKRf5jjsGpf2yELzQfodLphd2mwecwG4Crk5HBo=
 github.com/alexedwards/scs/v2 v2.9.0 h1:xa05mVpwTBm1iLeTMNFfAWpKUm4fXAW7CeAViqBVS90=

@@ -4,10 +4,10 @@ go 1.24.4
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/Telmate/proxmox-api-go v0.0.0-20260201220834-d1b91f64e60f
 	github.com/a-h/templ v0.3.977
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/go-resty/resty/v2 v2.17.1
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
@@ -24,7 +24,6 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
