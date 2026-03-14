@@ -233,9 +233,10 @@ func buildAPIMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, 
 	}
 }
 
-// isAPIPath returns true when the request path is under /api/.
+// isAPIPath returns true when the request path is a JWT-authenticated API route (/api/v1/).
+// Routes under /api/vm/ and /api/settings/ are session-authenticated and handled by appHandler.
 func isAPIPath(p string) bool {
-	return strings.HasPrefix(p, "/api/")
+	return strings.HasPrefix(p, "/api/v1/")
 }
 
 // withStaticCaching wraps a static file handler to add strong caching headers.
