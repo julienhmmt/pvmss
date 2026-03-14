@@ -42,7 +42,6 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 	}
 
 	stateManager := getStateManager(r)
-	client := stateManager.GetProxmoxClient()
 
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
@@ -294,7 +293,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 			} else {
 				guestCtx, cancel := context.WithTimeout(r.Context(), constants.GuestAgentTimeout)
 				defer cancel()
-				if guestIfaces, err := proxmox.GetGuestAgentNetworkInterfaces(guestCtx, client, vm.Node, vm.VMID); err == nil {
+				if guestIfaces, err := proxmox.GetGuestAgentNetworkInterfacesResty(guestCtx, restyClient, vm.Node, vm.VMID); err == nil {
 					proxmox.EnrichNetworkInterfacesWithIPs(networkInterfaces, guestIfaces)
 					cacheGuestAgentIPs(vm.Node, vm.VMID, guestIfaces)
 					log.Debug().
@@ -462,7 +461,7 @@ func (h *VMHandler) VMDetailsHandler(w http.ResponseWriter, r *http.Request, ps 
 					Msg("Performing real-time guest agent status check (no cached data)")
 				guestCtx, cancel := context.WithTimeout(r.Context(), constants.GuestAgentTimeout)
 				defer cancel()
-				if _, err := proxmox.GetGuestAgentNetworkInterfaces(guestCtx, client, vm.Node, vm.VMID); err == nil {
+				if _, err := proxmox.GetGuestAgentNetworkInterfacesResty(guestCtx, restyClient, vm.Node, vm.VMID); err == nil {
 					log.Debug().
 						Int("vmid", vm.VMID).
 						Str("node", vm.Node).

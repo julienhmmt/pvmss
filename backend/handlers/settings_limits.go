@@ -83,18 +83,17 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 
 	// Get node names for dropdown
 	var nodeNames []string
-	client := h.stateManager.GetProxmoxClient()
 	offlineMode := h.stateManager.IsOfflineMode()
-	proxmoxConnected := client != nil && !offlineMode
+	proxmoxConnected := !offlineMode
 
 	if snapshot != nil && len(snapshot.NodeNames) > 0 {
 		nodeNames = append(nodeNames, snapshot.NodeNames...)
 	} else if proxmoxConnected {
-		pc, ok := client.(*proxmox.Client)
-		if ok {
-			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-			defer cancel()
-			nodes, err := proxmox.GetNodeNamesWithContext(ctx, pc)
+		restyClient, restyErr := getDefaultRestyClient()
+		if restyErr == nil {
+			ctx2, cancel2 := context.WithTimeout(r.Context(), 5*time.Second)
+			defer cancel2()
+			nodes, err := proxmox.GetNodeNamesResty(ctx2, restyClient)
 			if err != nil {
 				log.Warn().Err(err).Msg("Unable to retrieve Proxmox nodes for limits page")
 			} else {
@@ -123,7 +122,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 	if proxmoxConnected {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
-		if usage, err := CalculateNodeResourceUsage(ctx, client, h.stateManager); err != nil {
+		if usage, err := CalculateNodeResourceUsage(ctx, h.stateManager); err != nil {
 			log.Warn().Err(err).Msg("Failed to calculate node resource usage")
 		} else {
 			nodeUsage = usage
@@ -138,7 +137,7 @@ func (h *SettingsHandler) LimitsPageHandler(w http.ResponseWriter, r *http.Reque
 				if nodeCapacities[nodeName] != nil {
 					continue
 				}
-				if capacity, err := GetNodeCapacity(ctx, client, nodeName); err == nil {
+				if capacity, err := GetNodeCapacity(ctx, nodeName); err == nil {
 					nodeCapacities[nodeName] = capacity
 				}
 			}
@@ -296,11 +295,10 @@ func (h *SettingsHandler) UpdateLimitsFormHandler(w http.ResponseWriter, r *http
 		}
 
 		// Validate that limits don't exceed node physical capacity
-		client := h.stateManager.GetProxmoxClient()
-		if client != nil && coresMax > 0 && ramMax > 0 {
+		if !h.stateManager.IsOfflineMode() && coresMax > 0 && ramMax > 0 {
 			ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 			defer cancel()
-			if err := ValidateNodeLimitsAgainstCapacity(ctx, client, nodeName, coresMax, ramMax, localizer); err != nil {
+			if err := ValidateNodeLimitsAgainstCapacity(ctx, nodeName, coresMax, ramMax, localizer); err != nil {
 				log.Warn().Err(err).Str("node", nodeName).Msg("Node limits validation failed")
 				// Redirect back with error message
 				redirect := "/admin/limits?error=1&entity=nodes&node=" + url.QueryEscape(nodeName) + "&errorMsg=" + url.QueryEscape(err.Error())

@@ -36,11 +36,10 @@ func (b *BaseAdminHandler) ValidateAdminAccess(w http.ResponseWriter, r *http.Re
 	return true
 }
 
-// GetProxmoxStatus returns proxmox connection status and client
-func (b *BaseAdminHandler) GetProxmoxStatus() (bool, interface{}, string) {
+// GetProxmoxStatus returns proxmox connection status
+func (b *BaseAdminHandler) GetProxmoxStatus() (bool, string) {
 	connected, msg := b.stateManager.GetProxmoxStatus()
-	client := b.stateManager.GetProxmoxClient()
-	return connected, client, msg
+	return connected, msg
 }
 
 // BaseFormHandler provides common form processing functionality

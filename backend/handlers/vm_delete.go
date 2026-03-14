@@ -47,14 +47,6 @@ func (h *VMHandler) VMDeleteConfirmHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	stateManager := getStateManager(r)
-	client := stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
-		return
-	}
-
 	// Get all VMs and find the one we want using resty
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {
@@ -147,14 +139,6 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 	stateManager := getStateManager(r)
 	if stateManager == nil {
 		log.Error().Msg("state manager not available")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusInternalServerError)
-		return
-	}
-
-	client := stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		http.Error(w, i18n.Localize(localizer, "Error.Generic"), http.StatusInternalServerError)
 		return
@@ -295,24 +279,6 @@ func (h *VMHandler) VMDeleteHandler(w http.ResponseWriter, r *http.Request, _ ht
 				Msg("Cloud-init snippet deleted successfully")
 		}
 	}
-
-	// Invalidate caches to ensure UI shows fresh data
-	// 1) User pool cache (profile page)
-	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
-			poolName := "pvmss_" + username
-			client.InvalidateCache("/pools/" + poolName)
-			log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM deletion")
-		}
-	}
-
-	// 2) Nodes and per-node VM lists (details and listings)
-	client.InvalidateCache("/nodes")
-	client.InvalidateCache("/nodes/" + node + "/qemu")
-	// 3) Specific VM paths just in case some views cached them
-	client.InvalidateCache("/nodes/" + node + "/qemu/" + vmid)
-	client.InvalidateCache("/nodes/" + node + "/qemu/" + vmid + "/status/current")
-	log.Info().Str("node", node).Int("vmid", vmidInt).Msg("Invalidated node and VM caches after deletion")
 
 	// Redirect to profile page with success message and refresh parameter
 	ctx := HandlerContextWith(w, r, "VMDeleteHandler")

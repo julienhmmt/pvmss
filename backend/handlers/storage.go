@@ -265,7 +265,6 @@ func MakeStorageHandler(stateManager state.StateManager) *StorageHandler {
 func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("StorageHandler", r)
 
-	client := h.stateManager.GetProxmoxClient()
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	clusterSnapshot := h.stateManager.GetProxmoxSnapshot()
 
@@ -283,7 +282,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		log.Info().
 			Int("storage_total", len(allStorages)).
 			Msg("Serving storages from cached Proxmox snapshot")
-	} else if client == nil || !proxmoxConnected {
+	} else if !proxmoxConnected {
 		log.Warn().
 			Bool("connected", proxmoxConnected).
 			Str("component", "storage").

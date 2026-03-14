@@ -55,15 +55,9 @@ func buildUserPoolSuccessMessage(r *http.Request) string {
 	}
 }
 
-// invalidatePoolCaches invalidates pool-related caches
-func invalidatePoolCaches(client interface{}, poolID string) {
-	if c, ok := client.(*proxmox.Client); ok && c != nil {
-		c.InvalidateCache("/pools")
-		if poolID != "" {
-			c.InvalidateCache("/pools/" + poolID)
-		}
-	}
-}
+// invalidatePoolCaches is a no-op retained for API compatibility.
+// The Resty-based client has no cache layer to invalidate.
+func invalidatePoolCaches(_ interface{}, _ string) {}
 
 // UserPoolHandler handles Proxmox user/pool admin flows
 type UserPoolHandler struct {
@@ -71,7 +65,6 @@ type UserPoolHandler struct {
 }
 
 // DeleteUserPool deletes all VMs in the pool (purge), then the derived user, then the pool itself.
-// TODO Telmate migration: this handler still uses Telmate-based pool and user helpers (GetJSON/DeleteWithContext/InvalidateCache); migrate it to Resty-based access and pool helpers.
 func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("DeleteUserPool", r)
 
@@ -92,8 +85,8 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ClientUnavailable")
 		u, _ := url.Parse("/admin/userpool")
@@ -121,7 +114,7 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 			} `json:"members"`
 		} `json:"data"`
 	}
-	if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(poolID), &detailResp); err != nil {
+	if err := restyClient.Get(ctx, "/pools/"+url.PathEscape(poolID), &detailResp); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("Failed to get pool members before deletion")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ResolveMembers")
@@ -181,7 +174,7 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		switch strings.ToLower(m.Type) {
 		case "qemu":
 			path := "/nodes/" + url.PathEscape(m.Node) + "/qemu/" + url.PathEscape(strconv.Itoa(m.VMID)) + "?purge=1"
-			if _, err := client.DeleteWithContext(ctx, path, nil); err != nil {
+			if err := restyClient.Delete(ctx, path, nil); err != nil {
 				log.Error().Err(err).Str("path", path).Msg("Failed to delete VM")
 				localizer := i18n.GetLocalizerFromRequest(r)
 				errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.DeleteVM")
@@ -198,19 +191,16 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		}
 	}
 
-	// Verify pool is now empty before attempting to delete it (short polling with cache invalidation)
+	// Verify pool is now empty before attempting to delete it (short polling)
 	{
 		emptyDeadline := time.Now().Add(15 * time.Second)
 		for {
-			if c, ok := client.(*proxmox.Client); ok && c != nil {
-				c.InvalidateCache("/pools/" + poolID)
-			}
 			var check struct {
 				Data struct {
 					Members []any `json:"members"`
 				} `json:"data"`
 			}
-			if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(poolID), &check); err == nil {
+			if err := restyClient.Get(ctx, "/pools/"+url.PathEscape(poolID), &check); err == nil {
 				if len(check.Data.Members) == 0 {
 					break
 				}
@@ -224,7 +214,7 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 	}
 
 	// Delete the pool first
-	if _, err := client.DeleteWithContext(ctx, "/pools/"+url.PathEscape(poolID), nil); err != nil {
+	if err := restyClient.Delete(ctx, "/pools/"+url.PathEscape(poolID), nil); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("Failed to delete pool")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.DeletePool")
@@ -237,12 +227,12 @@ func (h *UserPoolHandler) DeleteUserPool(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	// Invalidate caches for fresh state after pool deletion
-	invalidatePoolCaches(client, poolID)
+	// No-op: Resty client has no cache layer to invalidate
+	invalidatePoolCaches(nil, poolID)
 
 	// Then attempt to delete the user (non-fatal)
 	if userID != "" {
-		if _, err := client.DeleteWithContext(ctx, "/access/users/"+url.PathEscape(userID), nil); err != nil {
+		if err := restyClient.Delete(ctx, "/access/users/"+url.PathEscape(userID), nil); err != nil {
 			log.Warn().Err(err).Str("user", userID).Msg("Failed to delete user; deletion completed without user removal")
 		}
 	}
@@ -423,8 +413,8 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 	var currentUserPoolStatus currentUserPoolStatusType
 
 	// Fetch pools that match pattern pvmss_*
-	client := h.stateManager.GetProxmoxClient()
-	if client != nil {
+	poolRestyClient, poolRestyErr := getDefaultRestyClient()
+	if poolRestyErr == nil {
 		type poolListItem struct {
 			PoolID  string `json:"poolid"`
 			Comment string `json:"comment"`
@@ -436,11 +426,8 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 
-		// Ensure we fetch fresh data for pool listing
-		invalidatePoolCaches(client, "")
-
 		// GET /pools to list all pools
-		if err := client.GetJSON(ctx, "/pools", &listResp); err == nil {
+		if err := poolRestyClient.Get(ctx, "/pools", &listResp); err == nil {
 			rows = make([]poolTableRow, 0)
 			var rowsMux sync.Mutex
 
@@ -468,9 +455,6 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 					}
 
 					// Fetch pool members to count VMs: GET /pools/{poolid}
-					if c, ok := client.(*proxmox.Client); ok && c != nil {
-						c.InvalidateCache("/pools/" + p.PoolID)
-					}
 					var detailResp struct {
 						Data struct {
 							Members []struct {
@@ -480,7 +464,7 @@ func (h *UserPoolHandler) UserPoolPage(w http.ResponseWriter, r *http.Request, _
 							} `json:"members"`
 						} `json:"data"`
 					}
-					if err := client.GetJSON(ctx, "/pools/"+url.PathEscape(p.PoolID), &detailResp); err == nil {
+					if err := poolRestyClient.Get(ctx, "/pools/"+url.PathEscape(p.PoolID), &detailResp); err == nil {
 						vmCount := 0
 						for _, m := range detailResp.Data.Members {
 							// Count QEMU or LXC guests (exclude storage and other types). Prefer presence of vmid>0.
@@ -642,8 +626,8 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
+	restyClient, restyErr := getDefaultRestyClient()
+	if restyErr != nil {
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ClientUnavailable")
 		u, _ := url.Parse("/admin/userpool")
@@ -660,7 +644,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 
 	// Ensure user (skip for self-creation since user already exists)
 	if !isSelfCreation {
-		if err := proxmox.EnsureUser(ctx, client, username, password, email, comment, "pve", true); err != nil {
+		if err := proxmox.EnsureUserResty(ctx, restyClient, username, password, email, comment, "pve", true); err != nil {
 			log.Error().Err(err).Str("username", username).Msg("EnsureUser failed")
 			localizer := i18n.GetLocalizerFromRequest(r)
 			errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureUser")
@@ -687,7 +671,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 			"Datastore.Audit", // View datastore status
 			"Pool.Audit",      // View pool status
 		}
-		if err := proxmox.EnsureRole(ctx, client, roleID, privileges); err != nil {
+		if err := proxmox.EnsureRoleResty(ctx, restyClient, roleID, privileges); err != nil {
 			log.Error().Err(err).Str("role", roleID).Msg("EnsureRole failed")
 			localizer := i18n.GetLocalizerFromRequest(r)
 			errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureRole")
@@ -705,7 +689,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 
 	// Ensure pool
 	poolID := "pvmss_" + sanitizeID(username)
-	if err := proxmox.EnsurePool(ctx, client, poolID, "PVMSS pool for "+username); err != nil {
+	if err := proxmox.EnsurePoolResty(ctx, restyClient, poolID, "PVMSS pool for "+username); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("EnsurePool failed")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsurePool")
@@ -740,7 +724,7 @@ func (h *UserPoolHandler) CreateUserPool(w http.ResponseWriter, r *http.Request,
 
 	// Assign pool permissions to user
 	propagate := r.FormValue("propagate") == "true" || r.FormValue("propagate") == "1" || strings.EqualFold(r.FormValue("propagate"), "on")
-	if err := proxmox.EnsurePoolACL(ctx, client, userID, poolID, finalRole, propagate); err != nil {
+	if err := proxmox.EnsurePoolACLResty(ctx, restyClient, userID, poolID, finalRole, propagate); err != nil {
 		log.Error().Err(err).
 			Str("user_id", userID).
 			Str("pool_id", poolID).
@@ -835,8 +819,8 @@ func (h *UserPoolHandler) CreateUserPoolSelf(w http.ResponseWriter, r *http.Requ
 	}
 	log.Info().Str("username", username).Msg("Authenticated user found")
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
+	restyClient, restyErr := getDefaultRestyClient()
+	if restyErr != nil {
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.ClientUnavailable")
 		u, _ := url.Parse("/admin/userpool")
@@ -859,7 +843,7 @@ func (h *UserPoolHandler) CreateUserPoolSelf(w http.ResponseWriter, r *http.Requ
 	// Ensure pool
 	poolID := "pvmss_" + sanitizeID(username)
 	log.Info().Str("pool", poolID).Msg("Attempting to create pool")
-	if err := proxmox.EnsurePool(ctx, client, poolID, comment); err != nil {
+	if err := proxmox.EnsurePoolResty(ctx, restyClient, poolID, comment); err != nil {
 		log.Error().Err(err).Str("pool", poolID).Msg("EnsurePool failed for self-created pool")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsurePool")
@@ -883,7 +867,7 @@ func (h *UserPoolHandler) CreateUserPoolSelf(w http.ResponseWriter, r *http.Requ
 		"Datastore.Audit", // View datastore status
 		"Pool.Audit",      // View pool contents
 	}
-	if err := proxmox.EnsureRole(ctx, client, roleID, privileges); err != nil {
+	if err := proxmox.EnsureRoleResty(ctx, restyClient, roleID, privileges); err != nil {
 		log.Error().Err(err).Str("role", roleID).Msg("EnsureRole failed for self-created pool")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureRole")
@@ -902,7 +886,7 @@ func (h *UserPoolHandler) CreateUserPoolSelf(w http.ResponseWriter, r *http.Requ
 		userID = userID + "@pve"
 	}
 	log.Info().Str("user", userID).Str("pool", poolID).Str("role", role).Msg("Attempting to grant ACL permissions")
-	if err := proxmox.EnsurePoolACL(ctx, client, userID, poolID, role, propagate); err != nil {
+	if err := proxmox.EnsurePoolACLResty(ctx, restyClient, userID, poolID, role, propagate); err != nil {
 		log.Error().Err(err).Str("user", userID).Str("pool", poolID).Str("role", role).Msg("EnsurePoolACL failed for self-created pool")
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.UserPool.Error.EnsureACL")

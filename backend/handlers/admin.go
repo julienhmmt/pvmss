@@ -398,12 +398,12 @@ func (h *AdminOptimizedHandler) AppInfoPageHandler(w http.ResponseWriter, r *htt
 // ProxmoxTicketTestPageHandler renders the Proxmox ticket test page
 func (h *AdminOptimizedHandler) ProxmoxTicketTestPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("ProxmoxTicketTestPageHandler", r)
-	// Get Proxmox host URL from client
+	// Get Proxmox host URL from environment
 	var proxmoxHost string
 	var authMethod string
-	client := h.stateManager.GetProxmoxClient()
-	if client != nil {
-		proxmoxHost = client.GetApiUrl()
+	rawURL := os.Getenv("PROXMOX_URL")
+	if rawURL != "" {
+		proxmoxHost = rawURL
 		// Remove protocol and port to get just the hostname
 		if strings.HasPrefix(proxmoxHost, "https://") {
 			proxmoxHost = strings.TrimPrefix(proxmoxHost, "https://")

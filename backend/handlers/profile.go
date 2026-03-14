@@ -85,29 +85,8 @@ func (h *ProfileHandler) ShowProfile(w http.ResponseWriter, r *http.Request, _ h
 	// Derive pool name from username
 	poolName := "pvmss_" + username
 
-	// Get Proxmox client
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		ctx.Log.Error().Msg("Proxmox client not available")
-		RespondWithError(w, r, ErrProxmoxConnection)
-		return
-	}
-
-	// If 'refresh=1' is present, invalidate pool and node caches for fresh data
-	if r.URL.Query().Get("refresh") == "1" {
-		ctx.Log.Info().Str("pool", poolName).Msg("Refreshing profile page - invalidating caches")
-		// Invalidate pool cache
-		client.InvalidateCache("/pools/" + url.PathEscape(poolName))
-		// Invalidate all node VM lists
-		if nodes, err := h.getNodeNames(r.Context(), client); err == nil {
-			for _, node := range nodes {
-				client.InvalidateCache("/nodes/" + url.PathEscape(node) + "/qemu")
-			}
-		}
-	}
-
 	// Fetch VMs from the user's pool
-	vms := h.fetchUserVMs(r.Context(), client, poolName)
+	vms := h.fetchUserVMs(r.Context(), poolName)
 	total, running, stopped, _, _ := computeVMStats(vms)
 
 	// Check for password update messages and form visibility
@@ -179,14 +158,8 @@ func (h *ProfileHandler) GetProfileVMsAPI(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		writeProfileAPIError(w, http.StatusServiceUnavailable, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxConnectionError"))
-		return
-	}
-
 	poolName := "pvmss_" + username
-	vms := h.fetchUserVMs(r.Context(), client, poolName)
+	vms := h.fetchUserVMs(r.Context(), poolName)
 	total, running, stopped, paused, unknown := computeVMStats(vms)
 
 	response := map[string]interface{}{
@@ -242,13 +215,18 @@ func writeProfileAPIError(w http.ResponseWriter, statusCode int, message string)
 }
 
 // fetchUserVMs retrieves all VMs in the user's pool with their status
-// TODO Telmate migration: this helper still uses the Telmate client for pool membership and node access; migrate these paths to the Resty helpers and remove the Telmate dependency.
-func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.ClientInterface, poolName string) []VMInfo {
+func (h *ProfileHandler) fetchUserVMs(ctx context.Context, poolName string) []VMInfo {
 	log := CreateHandlerLogger("fetchUserVMs", nil)
 
 	// Create context with timeout
 	fetchCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
+
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create resty client")
+		return []VMInfo{}
+	}
 
 	// First, get pool members to know which VMIDs belong to this pool
 	var poolResp struct {
@@ -261,7 +239,7 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 		} `json:"data"`
 	}
 
-	if err := client.GetJSON(fetchCtx, "/pools/"+url.PathEscape(poolName), &poolResp); err != nil {
+	if err := restyClient.Get(fetchCtx, "/pools/"+url.PathEscape(poolName), &poolResp); err != nil {
 		log.Error().Err(err).Str("pool", poolName).Msg("Failed to fetch pool members")
 		return []VMInfo{}
 	}
@@ -283,12 +261,6 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 	}
 
 	// Get all VMs with their status using resty
-	restyClient, err := getDefaultRestyClient()
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create resty client")
-		return []VMInfo{}
-	}
-
 	allVMs, err := proxmox.GetVMsResty(fetchCtx, restyClient)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get all VMs (resty)")
@@ -362,26 +334,12 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, client proxmox.Client
 }
 
 // getNodeNames retrieves the list of Proxmox node names
-func (h *ProfileHandler) getNodeNames(ctx context.Context, client interface {
-	GetJSON(ctx context.Context, path string, result interface{}) error
-}) ([]string, error) {
-	var nodeResp struct {
-		Data []struct {
-			Node string `json:"node"`
-		} `json:"data"`
+func (h *ProfileHandler) getNodeNames(ctx context.Context) ([]string, error) {
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create resty client: %w", err)
 	}
-
-	if err := client.GetJSON(ctx, "/nodes", &nodeResp); err != nil {
-		return nil, fmt.Errorf("failed to get node list from Proxmox: %w", err)
-	}
-
-	nodes := make([]string, 0, len(nodeResp.Data))
-	for _, n := range nodeResp.Data {
-		if n.Node != "" {
-			nodes = append(nodes, n.Node)
-		}
-	}
-	return nodes, nil
+	return proxmox.GetNodeNamesResty(ctx, restyClient)
 }
 
 // UpdatePassword handles user password change requests
@@ -445,23 +403,20 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	// Get Proxmox client
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available")
-		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")), http.StatusSeeOther)
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
 	// Proxmox password update requires cookie-based authentication
 	// First, verify current password by attempting to authenticate
-	proxmoxURL := client.GetApiUrl()
+	proxmoxURL := os.Getenv("PROXMOX_URL")
+	if proxmoxURL == "" {
+		log.Error().Msg("PROXMOX_URL not configured")
+		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer")), http.StatusSeeOther)
+		return
+	}
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 
-	cookieClient, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkipVerify)
+	cookieClient, err := proxmox.MakeRestyClientCookieAuth(proxmoxURL, insecureSkipVerify, 15*time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create cookie-based client")
 		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer")), http.StatusSeeOther)
@@ -469,7 +424,7 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Authenticate with current password to verify it's correct
-	ticketResp, err := proxmox.CreateTicket(ctx, cookieClient, username, currentPassword, &proxmox.CreateTicketOptions{
+	ticketResp, err := proxmox.CreateTicketResty(ctx, cookieClient, username, currentPassword, &proxmox.CreateTicketOptions{
 		Realm: "pve",
 	})
 	if err != nil {
@@ -479,11 +434,10 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 	}
 
 	// Set authentication credentials
-	cookieClient.PVEAuthCookie = ticketResp.Ticket
-	cookieClient.CSRFPreventionToken = ticketResp.CSRFPreventionToken
+	cookieClient.SetCookieAuth(ticketResp.Ticket, ticketResp.CSRFPreventionToken)
 
 	// Update password - Proxmox requires current password as confirmation
-	if err := proxmox.UpdateUserPassword(ctx, cookieClient, username, newPassword, currentPassword, "pve"); err != nil {
+	if err := proxmox.UpdateUserPasswordResty(ctx, cookieClient, username, newPassword, currentPassword, "pve"); err != nil {
 		log.Error().Err(err).Str("username", username).Msg("Failed to update password")
 		http.Redirect(w, r, "/profile?show_password_form=1&password_error="+url.QueryEscape(i18n.Localize(i18n.GetLocalizerFromRequest(r), "Profile.PasswordError.UpdateFailed")), http.StatusSeeOther)
 		return
@@ -491,14 +445,17 @@ func (h *ProfileHandler) UpdatePassword(w http.ResponseWriter, r *http.Request, 
 
 	log.Info().Str("username", username).Msg("Password updated successfully")
 
-	// Update session with new PVE credentials
-	newTicketResp, err := proxmox.CreateTicket(ctx, cookieClient, username, newPassword, &proxmox.CreateTicketOptions{
-		Realm: "pve",
-	})
-	if err == nil {
-		sessionManager.Put(r.Context(), "pve_auth_cookie", newTicketResp.Ticket)
-		sessionManager.Put(r.Context(), "pve_csrf_token", newTicketResp.CSRFPreventionToken)
-		sessionManager.Put(r.Context(), "pve_ticket_created", time.Now().Unix())
+	// Update session with new PVE credentials by re-authenticating with the new password
+	cookieClient2, err2 := proxmox.MakeRestyClientCookieAuth(proxmoxURL, insecureSkipVerify, 15*time.Second)
+	if err2 == nil {
+		newTicketResp, err2 := proxmox.CreateTicketResty(ctx, cookieClient2, username, newPassword, &proxmox.CreateTicketOptions{
+			Realm: "pve",
+		})
+		if err2 == nil {
+			sessionManager.Put(r.Context(), "pve_auth_cookie", newTicketResp.Ticket)
+			sessionManager.Put(r.Context(), "pve_csrf_token", newTicketResp.CSRFPreventionToken)
+			sessionManager.Put(r.Context(), "pve_ticket_created", time.Now().Unix())
+		}
 	}
 
 	// Redirect with success message
