@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -331,15 +330,6 @@ func (h *ProfileHandler) fetchUserVMs(ctx context.Context, poolName string) []VM
 		Msg("Successfully fetched user VMs")
 
 	return vms
-}
-
-// getNodeNames retrieves the list of Proxmox node names
-func (h *ProfileHandler) getNodeNames(ctx context.Context) ([]string, error) {
-	restyClient, err := getDefaultRestyClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resty client: %w", err)
-	}
-	return proxmox.GetNodeNamesResty(ctx, restyClient)
 }
 
 // UpdatePassword handles user password change requests
