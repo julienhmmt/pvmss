@@ -42,7 +42,7 @@ dev-logs: up logs ## Démarre et affiche les logs
 	@echo "$(GREEN)Logs de l'application$(NC)"
 	@echo ""
 
-build: ## Construit le binaire Go et le container docker
+build: frontend-build ## Construit le binaire Go et le frontend Svelte
 	@echo "Building binary" && go clean -cache && go build -C $(BACKEND_DIR) -o ../pvmss
 	@echo "Binary built successfully"
 	@echo ""

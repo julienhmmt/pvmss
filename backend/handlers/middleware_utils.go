@@ -292,6 +292,9 @@ func getFrontendPath(sm state.StateManager) string {
 // isSPAPath returns true for paths that should be served by the SvelteKit admin SPA.
 // API paths are excluded (handled earlier in the mux routing).
 func isSPAPath(p string) bool {
+	if p == "/admin/login" || p == "/admin/proxmox-login" {
+		return false
+	}
 	return strings.HasPrefix(p, "/admin/") || p == "/admin"
 }
 
