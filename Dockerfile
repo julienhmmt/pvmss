@@ -48,6 +48,19 @@ RUN set -eux; \
     find /app/frontend/components/noVNC-1.6.0/app/locale -type f ! -name 'en.json' ! -name 'fr.json' -delete; \
     apk del wget
 
+# Build SvelteKit admin SPA
+FROM node:22-alpine AS svelte-builder
+WORKDIR /app/frontend-svelte
+
+COPY frontend-svelte/package.json frontend-svelte/package-lock.json ./
+
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+
+COPY frontend-svelte/ ./
+
+RUN npm run build
+
 # Final stage - using distroless for minimal attack surface and size
 FROM gcr.io/distroless/static-debian13:nonroot
 
@@ -56,6 +69,7 @@ WORKDIR /app
 # Copy from builder and frontend stages
 COPY --from=builder --chown=nonroot:nonroot /app/pvmss-backend /app/pvmss-backend
 COPY --from=frontend --chown=nonroot:nonroot /app/frontend/ /app/frontend/
+COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend-svelte/build/ /app/frontend-svelte/build/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/i18n/ /app/backend/i18n/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/docs/ /app/backend/docs/
 
