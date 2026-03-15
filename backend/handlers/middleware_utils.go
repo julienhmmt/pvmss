@@ -308,8 +308,30 @@ func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath strin
 	}
 	// Try to serve the file directly (JS, CSS, images, etc.)
 	filePath := filepath.Join(spaDir, filepath.Clean(relPath))
-	if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
-		http.ServeFile(w, r, filePath)
+
+	// Ensure the resolved path stays within the SPA directory to prevent path traversal.
+	spaDirAbs, err := filepath.Abs(spaDir)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	filePathAbs, err := filepath.Abs(filePath)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	// Add path separator to avoid prefix confusion (e.g., /var/www vs /var/www2).
+	spaDirAbsWithSep := spaDirAbs
+	if !strings.HasSuffix(spaDirAbsWithSep, string(os.PathSeparator)) {
+		spaDirAbsWithSep += string(os.PathSeparator)
+	}
+	if filePathAbs != spaDirAbs && !strings.HasPrefix(filePathAbs, spaDirAbsWithSep) {
+		http.NotFound(w, r)
+		return
+	}
+
+	if info, err := os.Stat(filePathAbs); err == nil && !info.IsDir() {
+		http.ServeFile(w, r, filePathAbs)
 		return
 	}
 	// SPA fallback: serve index.html for all routes
