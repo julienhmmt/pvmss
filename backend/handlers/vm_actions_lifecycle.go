@@ -51,12 +51,6 @@ func (h *VMHandler) VMActionHandler(w http.ResponseWriter, r *http.Request, _ ht
 		RespondWithError(w, r, ErrProxmoxConnection)
 		return
 	}
-	client := stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available")
-		RespondWithError(w, r, ErrProxmoxConnection)
-		return
-	}
 	if action == "shutdown" {
 		status := getGuestAgentStatus(r, node, vmidInt)
 		if status == agentStatusUnavailable {

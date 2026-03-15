@@ -19,16 +19,15 @@ type mockStateManager struct {
 	message   string
 }
 
-func (m *mockStateManager) GetTemplates() *template.Template                  { return nil }
-func (m *mockStateManager) SetTemplates(t *template.Template) error           { return nil }
-func (m *mockStateManager) GetSessionManager() *scs.SessionManager            { return nil }
-func (m *mockStateManager) SetSessionManager(sm *scs.SessionManager) error    { return nil }
-func (m *mockStateManager) GetProxmoxClient() proxmox.ClientInterface         { return nil }
-func (m *mockStateManager) SetProxmoxClient(pc proxmox.ClientInterface) error { return nil }
-func (m *mockStateManager) SetOfflineMode()                                   {}
-func (m *mockStateManager) IsOfflineMode() bool                               { return false }
-func (m *mockStateManager) GetProxmoxStatus() (bool, string)                  { return m.connected, m.message }
-func (m *mockStateManager) CheckProxmoxConnection() bool                      { return m.connected }
+func (m *mockStateManager) GetTemplates() *template.Template               { return nil }
+func (m *mockStateManager) SetTemplates(t *template.Template) error        { return nil }
+func (m *mockStateManager) GetSessionManager() *scs.SessionManager         { return nil }
+func (m *mockStateManager) SetSessionManager(sm *scs.SessionManager) error { return nil }
+func (m *mockStateManager) StartOnlineMode() error                         { return nil }
+func (m *mockStateManager) SetOfflineMode()                                {}
+func (m *mockStateManager) IsOfflineMode() bool                            { return false }
+func (m *mockStateManager) GetProxmoxStatus() (bool, string)               { return m.connected, m.message }
+func (m *mockStateManager) CheckProxmoxConnection() bool                   { return m.connected }
 func (m *mockStateManager) GetNodeCache() ([]*proxmox.NodeDetails, time.Time) {
 	return nil, time.Time{}
 }

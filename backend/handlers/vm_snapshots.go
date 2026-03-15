@@ -131,14 +131,6 @@ func (h *VMSnapshotsHandler) CreateVMSnapshotHandler(w http.ResponseWriter, r *h
 		Bool("vmstate", includeVMState).
 		Msg("VM snapshot created successfully")
 
-	// Force refresh VM cache using the Proxmox client
-	proxmoxClient := h.stateManager.GetProxmoxClient()
-	if proxmoxClient != nil {
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu")
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu/" + vmidStr)
-		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
-	}
-
 	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_created&refresh=1&ts="+strconv.FormatInt(time.Now().Unix(), 10), http.StatusSeeOther)
 }
 
@@ -228,14 +220,6 @@ func (h *VMSnapshotsHandler) DeleteVMSnapshotHandler(w http.ResponseWriter, r *h
 		Str("snapshot_name", snapshotName).
 		Msg("VM snapshot deleted successfully")
 
-	// Force refresh VM cache using the Proxmox client
-	proxmoxClient := h.stateManager.GetProxmoxClient()
-	if proxmoxClient != nil {
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu")
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu/" + vmidStr)
-		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
-	}
-
 	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_deleted&refresh=1&ts="+strconv.FormatInt(time.Now().Unix(), 10), http.StatusSeeOther)
 }
 
@@ -279,14 +263,6 @@ func (h *VMSnapshotsHandler) RollbackVMSnapshotHandler(w http.ResponseWriter, r 
 		Str("node", node).
 		Str("snapshot_name", snapshotName).
 		Msg("VM rolled back to snapshot successfully")
-
-	// Force refresh VM cache using the Proxmox client
-	proxmoxClient := h.stateManager.GetProxmoxClient()
-	if proxmoxClient != nil {
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu")
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu/" + vmidStr)
-		log.Info().Str("node", node).Str("vmid", vmidStr).Msg("Invalidated VM caches after snapshot operation")
-	}
 
 	http.Redirect(w, r, "/vm/details/"+vmidStr+"?success=snapshot_rollback&refresh=1", http.StatusSeeOther)
 }

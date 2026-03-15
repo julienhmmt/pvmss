@@ -3,10 +3,9 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
-
-	"pvmss/proxmox"
 )
 
 // MAC address regex pattern - accepts both colon and hyphen separators.
@@ -45,34 +44,27 @@ var vmDiskCompatibleStorageTypes = map[string]bool{
 }
 
 // countVMsInPool counts the number of VMs in a user's pool (excludes templates).
-func countVMsInPool(ctx context.Context, client proxmox.ClientInterface, poolName string) (int, error) {
-	if client == nil {
-		return 0, fmt.Errorf("proxmox client not available")
+func countVMsInPool(ctx context.Context, poolName string) (int, error) {
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		return 0, fmt.Errorf("failed to create resty client: %w", err)
 	}
-
-	var poolResp struct {
+	var resp struct {
 		Data struct {
 			Members []struct {
-				Type     string `json:"type"`
-				VMID     int    `json:"vmid"`
-				Template int    `json:"template"`
+				Type string `json:"type"`
+				VMID int    `json:"vmid"`
 			} `json:"members"`
 		} `json:"data"`
 	}
-
-	if err := client.GetJSON(ctx, "/pools/"+poolName, &poolResp); err != nil {
-		return 0, fmt.Errorf("failed to fetch pool members: %w", err)
+	if err := restyClient.Get(ctx, "/pools/"+url.PathEscape(poolName), &resp); err != nil {
+		return 0, err
 	}
-
 	count := 0
-	for _, member := range poolResp.Data.Members {
-		if member.Template == 1 || member.VMID <= 0 {
-			continue
-		}
-		if strings.EqualFold(member.Type, "qemu") {
+	for _, m := range resp.Data.Members {
+		if m.VMID > 0 && (strings.EqualFold(m.Type, "qemu") || strings.EqualFold(m.Type, "lxc")) {
 			count++
 		}
 	}
-
 	return count, nil
 }

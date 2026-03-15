@@ -447,7 +447,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	}
 
 	// We create a new cookie-based client for user/pass login
-	pxClient, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkip)
+	pxClient, err := proxmox.MakeRestyClientCookieAuth(proxmoxURL, insecureSkip, 10*time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client for user authentication")
 		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
@@ -458,8 +458,8 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	// Use CreateTicket to get the authentication ticket with full response
-	ticketResp, err := proxmox.CreateTicket(ctx, pxClient, username, password, &proxmox.CreateTicketOptions{
+	// Use CreateTicketResty to get the authentication ticket with full response
+	ticketResp, err := proxmox.CreateTicketResty(ctx, pxClient, username, password, &proxmox.CreateTicketOptions{
 		Realm: "pve",
 	})
 	if err != nil {
@@ -587,7 +587,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	}
 
 	// We create a new cookie-based client for admin/pass login
-	pxClient, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkip)
+	pxClient, err := proxmox.MakeRestyClientCookieAuth(proxmoxURL, insecureSkip, 10*time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client for admin authentication")
 		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
@@ -598,8 +598,8 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	// Use CreateTicket to get the authentication ticket with full response
-	ticketResp, err := proxmox.CreateTicket(ctx, pxClient, username, password, &proxmox.CreateTicketOptions{
+	// Use CreateTicketResty to get the authentication ticket with full response
+	ticketResp, err := proxmox.CreateTicketResty(ctx, pxClient, username, password, &proxmox.CreateTicketOptions{
 		Realm: "pve",
 	})
 	if err != nil {
@@ -715,7 +715,14 @@ func establishSessionWithTicket(_ http.ResponseWriter, r *http.Request, isAdmin 
 // GetProxmoxTicketFromSession retrieves the stored Proxmox ticket from the user's session.
 // Returns the ticket, CSRF token, and creation timestamp. Returns empty strings if not found.
 func GetProxmoxTicketFromSession(r *http.Request) (ticket, csrfToken string, createdAt time.Time, ok bool) {
+	// Try context-injected session manager first (app middleware stack).
+	// Fall back to state manager for API routes that lack SessionMiddleware.
 	sessionManager := security.GetSession(r)
+	if sessionManager == nil {
+		if sm := getStateManager(r); sm != nil {
+			sessionManager = sm.GetSessionManager()
+		}
+	}
 	if sessionManager == nil {
 		return "", "", time.Time{}, false
 	}

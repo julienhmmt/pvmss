@@ -63,15 +63,16 @@ func getGuestAgentStatus(r *http.Request, node string, vmid int) agentStatus {
 		return agentStatusUnavailable
 	}
 
-	client := stateManager.GetProxmoxClient()
-	if client == nil {
+	restyClient, restyErr := getDefaultRestyClient()
+	if restyErr != nil {
 		log.Error().
+			Err(restyErr).
 			Str("operation", "guest_agent_health_check").
 			Str("node", node).
 			Int("vmid", vmid).
 			Str("result", "unknown").
 			Int64("duration_ms", time.Since(start).Milliseconds()).
-			Msg("Guest agent status: unknown (Proxmox client not available)")
+			Msg("Guest agent status: unknown (failed to create resty client)")
 		return agentStatusUnknown
 	}
 
@@ -83,7 +84,7 @@ func getGuestAgentStatus(r *http.Request, node string, vmid int) agentStatus {
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 
-	interfaces, err := proxmox.GetGuestAgentNetworkInterfaces(ctx, client, node, vmid)
+	interfaces, err := proxmox.GetGuestAgentNetworkInterfacesResty(ctx, restyClient, node, vmid)
 	if err != nil || len(interfaces) == 0 {
 		cacheGuestAgentUnavailable(node, vmid)
 		log.Warn().

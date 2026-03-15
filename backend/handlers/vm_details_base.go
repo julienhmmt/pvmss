@@ -1,16 +1,14 @@
 package handlers
 
 import (
-	"pvmss/proxmox"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
 )
 
 // VMStateManager defines the minimal state contract needed by VM details.
-// Provides access to Proxmox client and application settings.
+// Provides access to application settings and Proxmox connection status.
 type VMStateManager interface {
-	GetProxmoxClient() proxmox.ClientInterface
 	GetSettings() *state.AppSettings
 	GetProxmoxStatus() (bool, string)
 }

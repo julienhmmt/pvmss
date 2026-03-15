@@ -18,15 +18,9 @@ import (
 )
 
 // handleVMCreation processes the VM creation form submission.
-func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *http.Request, client proxmox.ClientInterface, data map[string]interface{}) {
+func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
 	log := CreateHandlerLogger("handleVMCreation", r)
 	ctx := r.Context()
-
-	if client == nil {
-		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")
-		renderVMCreateTempl(w, r, data)
-		return
-	}
 
 	bridgeName := strings.TrimSpace(r.FormValue("bridge_0"))
 	description := strings.TrimSpace(r.FormValue("description"))
@@ -188,7 +182,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	maxVMPerUser := settings.MaxVMPerUser
 	if maxVMPerUser > 0 && pool != "" {
-		currentVMCount, err := countVMsInPool(ctx, client, pool)
+		currentVMCount, err := countVMsInPool(ctx, pool)
 		if err != nil {
 			log.Warn().Err(err).Str("component", "vm_create").Str("operation", "check_pool_limit").Str("pool", pool).Str("reason", "pool_count_failed").Msg("Failed to count VMs in pool; skipping limit check")
 		} else {
@@ -462,7 +456,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	params.Set("agent", "1")
 
 	localizer := i18n.GetLocalizerFromRequest(r)
-	if err := ValidateVMResourcesAgainstNodeLimits(ctx, client, h.stateManager, node, cpuSockets, cpuCores, memoryMB, localizer); err != nil {
+	if err := ValidateVMResourcesAgainstNodeLimits(ctx, h.stateManager, node, cpuSockets, cpuCores, memoryMB, localizer); err != nil {
 		log.Warn().Err(err).Str("component", "vm_create").Str("operation", "validate_node_limits").Str("node", node).Str("reason", "resource_limits_exceeded").Msg("VM resources exceed aggregate node limits")
 		data["ValidationError"] = err.Error()
 		renderVMCreateTempl(w, r, data)
@@ -472,16 +466,18 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	path := "/nodes/" + url.PathEscape(node) + "/qemu"
 	log.Info().Str("path", path).Str("params", params.Encode()).Msg("Sending VM creation request to Proxmox API")
 
-	if _, err := client.PostFormWithContext(ctx, path, params); err != nil {
+	restyClient, restyErr := getDefaultRestyClient()
+	if restyErr != nil {
+		data["ValidationError"] = i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable")
+		renderVMCreateTempl(w, r, data)
+		return
+	}
+	var createResp interface{}
+	if err := restyClient.Post(ctx, path, params, &createResp); err != nil {
 		logger.VMFailure("vm_create", vmid, node, "proxmox_api_error").Err(err).Str("vm_name", name).Int("cpu_sockets", cpuSockets).Int("cpu_cores", cpuCores).Int("memory_mb", memoryMB).Int("disk_gb", diskSizeMB/1024).Str("storage", storage).Str("network_model", networkModel).Str("pool", pool).Str("client_ip", r.RemoteAddr).Msg("VM creation failed")
 		data["ValidationError"] = fmt.Sprintf("Failed to create VM: %v", err)
 		renderVMCreateTempl(w, r, data)
 		return
-	}
-
-	client.InvalidateCache("/nodes/" + url.PathEscape(node) + "/qemu")
-	if pool != "" {
-		client.InvalidateCache("/pools/" + url.PathEscape(pool))
 	}
 
 	cloudInitEnabled := r.FormValue("cloudinit_enable") == "1"
@@ -493,7 +489,7 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 	startVM := r.FormValue("start_vm") == "1"
 	if startVM {
 		log.Info().Int("vmid", vmid).Str("node", node).Msg("Starting VM after creation")
-		if err := h.startVM(ctx, client, node, vmid); err != nil {
+		if err := h.startVM(ctx, node, vmid); err != nil {
 			log.Warn().Err(err).Int("vmid", vmid).Str("node", node).Msg("Failed to start VM after creation")
 		} else {
 			log.Info().Int("vmid", vmid).Str("node", node).Msg("VM started successfully")
@@ -515,22 +511,6 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 
 	time.Sleep(2 * time.Second)
 
-	proxmoxClient := h.stateManager.GetProxmoxClient()
-	if proxmoxClient != nil {
-		if sessionManager := security.GetSession(r); sessionManager != nil {
-			if username, ok := sessionManager.Get(r.Context(), "username").(string); ok && username != "" {
-				poolName := "pvmss_" + username
-				proxmoxClient.InvalidateCache("/pools/" + poolName)
-				log.Info().Str("pool", poolName).Msg("Invalidated pool cache after VM creation")
-			}
-		}
-		proxmoxClient.InvalidateCache("/nodes")
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu")
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu/" + strconv.Itoa(vmid))
-		proxmoxClient.InvalidateCache("/nodes/" + node + "/qemu/" + strconv.Itoa(vmid) + "/status/current")
-		log.Info().Str("node", node).Int("vmid", vmid).Msg("Invalidated node and VM caches after creation")
-	}
-
 	redirectURL := fmt.Sprintf("/vm/details/%d?created=1&refresh=1", vmid)
 	if cloudInitWarning != "" {
 		redirectURL += "&ci_warning=" + url.QueryEscape(cloudInitWarning)
@@ -547,9 +527,12 @@ func (h *VMCreateOptimizedHandler) handleVMCreation(w http.ResponseWriter, r *ht
 }
 
 // startVM starts a VM after creation.
-func (h *VMCreateOptimizedHandler) startVM(ctx context.Context, client proxmox.ClientInterface, node string, vmid int) error {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/start", url.PathEscape(node), vmid)
-	_, err := client.PostFormWithContext(ctx, path, nil)
+func (h *VMCreateOptimizedHandler) startVM(ctx context.Context, node string, vmid int) error {
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		return fmt.Errorf("failed to create resty client: %w", err)
+	}
+	_, err = proxmox.VMActionResty(ctx, restyClient, node, strconv.Itoa(vmid), "start")
 	return err
 }
 

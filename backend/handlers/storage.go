@@ -265,7 +265,6 @@ func MakeStorageHandler(stateManager state.StateManager) *StorageHandler {
 func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("StorageHandler", r)
 
-	client := h.stateManager.GetProxmoxClient()
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 	clusterSnapshot := h.stateManager.GetProxmoxSnapshot()
 
@@ -283,7 +282,7 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 		log.Info().
 			Int("storage_total", len(allStorages)).
 			Msg("Serving storages from cached Proxmox snapshot")
-	} else if client == nil || !proxmoxConnected {
+	} else if !proxmoxConnected {
 		log.Warn().
 			Bool("connected", proxmoxConnected).
 			Str("component", "storage").
@@ -291,8 +290,11 @@ func (h *StorageHandler) StoragePageHandler(w http.ResponseWriter, r *http.Reque
 			Str("reason", "proxmox_unavailable").
 			Msg("Proxmox not available; rendering page with empty storage list")
 	} else {
-		// TODO Telmate migration: this fallback still uses Telmate-based node listing (GetNodeNames); replace it with a Resty-based node listing helper.
-		nodeNames, err := proxmox.GetNodeNames(client)
+		restyClient, err := getDefaultRestyClient()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to create resty client for node listing")
+		}
+		nodeNames, err := proxmox.GetNodeNamesResty(r.Context(), restyClient)
 		const MaxNodeCount = 1000
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting node names")
@@ -473,11 +475,11 @@ func canHoldVMDisks(s proxmox.Storage) bool {
 // - If refresh is true, bypass the short-lived cache.
 // - Falls back to cached data if all nodes are offline
 // Returns: storages (with Enabled already set from enabled list), enabledMap, chosenNode
-func FetchRenderableStorages(ctx context.Context, client proxmox.ClientInterface, node string, enabled []string, refresh bool) ([]map[string]interface{}, map[string]bool, string, error) {
+func FetchRenderableStorages(ctx context.Context, restyClient *proxmox.RestyClient, node string, enabled []string, refresh bool) ([]map[string]interface{}, map[string]bool, string, error) {
 	log := logger.Get().With().Str("component", "storage_utils").Logger()
 
 	// Get all available nodes
-	allNodes, err := proxmox.GetNodeNames(client)
+	allNodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
 		log.Warn().
 			Err(err).
