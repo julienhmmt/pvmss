@@ -100,12 +100,7 @@ The `StateManager` interface (`backend/state/interface.go`) is the central depen
 
 ### Proxmox API Layer
 
-Two clients coexist during an ongoing migration:
-
-- **Telmate** (`proxmox/telmate_client.go`): legacy client, used for some operations. TODO comments mark migration points.
-- **Resty** (`proxmox/resty_client.go`): new REST client being adopted incrementally
-
-Both implement `proxmox.ClientInterface`. New code should use the Resty-based approach.
+**Resty** (`proxmox/resty_client.go`): new REST client being adopted incrementally
 
 ### Offline Mode
 

@@ -182,8 +182,10 @@ func TestProxmoxStructure(t *testing.T) {
 	// Check for key proxmox files
 	keyFiles := []string{
 		"resty_client.go",
-		"telmate_client.go",
-		"interfaces.go",
+		"access.go",
+		"nodes.go",
+		"vms.go",
+		"helpers.go",
 	}
 
 	for _, file := range keyFiles {

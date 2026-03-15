@@ -62,14 +62,6 @@ func (h *VMHandler) ValidateVMIDHandler(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		if encodeErr := json.NewEncoder(w).Encode(ValidationResponse{Valid: false, Message: i18n.Localize(localizer, "Proxmox.ConnectionError")}); encodeErr != nil {
-			log.Error().Err(encodeErr).Msg("Failed to encode error response")
-		}
-		return
-	}
-
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 

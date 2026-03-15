@@ -75,63 +75,8 @@ func TestVMActionsHandlerMACValidationTests(t *testing.T) {
 	})
 }
 
-type fakeProxmoxClient struct{}
-
-func (c *fakeProxmoxClient) DeleteWithContext(_ context.Context, _ string, _ url.Values) (map[string]interface{}, error) {
-	return nil, nil
-}
-
-func (c *fakeProxmoxClient) Get(_ string) (map[string]interface{}, error) {
-	return nil, nil
-}
-
-func (c *fakeProxmoxClient) GetApiUrl() string {
-	return ""
-}
-
-func (c *fakeProxmoxClient) GetClusterName() string {
-	return ""
-}
-
-func (c *fakeProxmoxClient) GetCSRFPreventionToken() string {
-	return ""
-}
-
-func (c *fakeProxmoxClient) GetJSON(_ context.Context, _ string, _ interface{}) error {
-	return nil
-}
-
-func (c *fakeProxmoxClient) GetPVEAuthCookie() string {
-	return ""
-}
-
-func (c *fakeProxmoxClient) GetTimeout() time.Duration {
-	return 0
-}
-
-func (c *fakeProxmoxClient) GetWithContext(_ context.Context, _ string) (map[string]interface{}, error) {
-	return nil, nil
-}
-
-func (c *fakeProxmoxClient) InvalidateCache(_ string) {}
-
-func (c *fakeProxmoxClient) PostFormAndGetJSON(_ context.Context, _ string, _ url.Values, _ interface{}) error {
-	return nil
-}
-
-func (c *fakeProxmoxClient) PostFormWithContext(_ context.Context, _ string, _ url.Values) (map[string]interface{}, error) {
-	return nil, nil
-}
-
-func (c *fakeProxmoxClient) PutFormWithContext(_ context.Context, _ string, _ url.Values) (map[string]interface{}, error) {
-	return nil, nil
-}
-
-func (c *fakeProxmoxClient) SetTimeout(_ time.Duration) {}
-
 type fakeStateManager struct {
 	offline          bool
-	proxmoxClient    proxmox.ClientInterface
 	proxmoxConnected bool
 }
 
@@ -151,12 +96,7 @@ func (f *fakeStateManager) SetSessionManager(_ *scs.SessionManager) error {
 	return nil
 }
 
-func (f *fakeStateManager) GetProxmoxClient() proxmox.ClientInterface {
-	return f.proxmoxClient
-}
-
-func (f *fakeStateManager) SetProxmoxClient(pc proxmox.ClientInterface) error {
-	f.proxmoxClient = pc
+func (f *fakeStateManager) StartOnlineMode() error {
 	return nil
 }
 
@@ -257,7 +197,7 @@ func TestGetGuestAgentStatus_UnavailableCached(t *testing.T) {
 	defer InvalidateGuestAgentCache(node, vmid)
 
 	req := httptest.NewRequest(http.MethodPost, "/vm/action", nil)
-	fakeSM := &fakeStateManager{offline: false, proxmoxConnected: true, proxmoxClient: &fakeProxmoxClient{}}
+	fakeSM := &fakeStateManager{offline: false, proxmoxConnected: true}
 	ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
 	req = req.WithContext(ctx)
 
@@ -327,7 +267,6 @@ func TestVMActionHandler_ShutdownGuestAgentUnavailablePrecheck(t *testing.T) {
 
 	fakeSM := &fakeStateManager{
 		offline:          false,
-		proxmoxClient:    &fakeProxmoxClient{},
 		proxmoxConnected: true,
 	}
 	ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
@@ -483,8 +422,8 @@ func TestVMResourcesHandler_DiskResizeValidation(t *testing.T) {
 
 			// Setup fake state manager
 			fakeSM := &fakeStateManager{
-				offline:          false,
-				proxmoxClient:    &fakeProxmoxClient{},
+				offline: false,
+
 				proxmoxConnected: true,
 			}
 			ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
@@ -531,8 +470,8 @@ func TestVMResourcesHandler_DiskResizeEdgeCases(t *testing.T) {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		fakeSM := &fakeStateManager{
-			offline:          false,
-			proxmoxClient:    &fakeProxmoxClient{},
+			offline: false,
+
 			proxmoxConnected: true,
 		}
 		ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
@@ -562,8 +501,8 @@ func TestVMResourcesHandler_DiskResizeEdgeCases(t *testing.T) {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		fakeSM := &fakeStateManager{
-			offline:          false,
-			proxmoxClient:    &fakeProxmoxClient{},
+			offline: false,
+
 			proxmoxConnected: true,
 		}
 		ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))
@@ -595,8 +534,8 @@ func TestVMResourcesHandler_DiskResizeEdgeCases(t *testing.T) {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		fakeSM := &fakeStateManager{
-			offline:          false,
-			proxmoxClient:    &fakeProxmoxClient{},
+			offline: false,
+
 			proxmoxConnected: true,
 		}
 		ctx := context.WithValue(req.Context(), StateManagerKey, state.StateManager(fakeSM))

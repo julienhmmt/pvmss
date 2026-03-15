@@ -12,7 +12,6 @@ import (
 )
 
 // UpdateVMDescriptionHandler updates the VM description (Markdown supported on display).
-// TODO Telmate migration: this handler still uses Telmate-based VM config helpers. Replace with Resty UpdateVMConfigResty.
 func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := HandlerContextWith(w, r, "UpdateVMDescriptionHandler")
 
@@ -44,13 +43,13 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	client := ctx.StateManager.GetProxmoxClient()
-	if client == nil {
-		ctx.HandleError(nil, "Proxmox client not available", http.StatusInternalServerError)
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		ctx.HandleError(err, "Failed to create Proxmox client", http.StatusInternalServerError)
 		return
 	}
 
-	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"description": desc}); err != nil {
+	if err := proxmox.UpdateVMConfigResty(r.Context(), restyClient, node, vmidInt, map[string]string{"description": desc}); err != nil {
 		ctx.Log.Error().Err(err).Msg("update description failed")
 		ctx.RedirectWithError(buildVMDetailsURL(vmid), "Message.ActionFailed")
 		return
@@ -60,7 +59,6 @@ func (h *VMHandler) UpdateVMDescriptionHandler(w http.ResponseWriter, r *http.Re
 }
 
 // UpdateVMTagsHandler updates the VM tags from selected checkboxes.
-// TODO Telmate migration: replace Telmate config update with Resty UpdateVMConfigResty.
 func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	ctx := HandlerContextWith(w, r, "UpdateVMTagsHandler")
 
@@ -93,13 +91,13 @@ func (h *VMHandler) UpdateVMTagsHandler(w http.ResponseWriter, r *http.Request, 
 	}
 	tagsStr := strings.Join(selectedTags, ";")
 
-	client := ctx.StateManager.GetProxmoxClient()
-	if client == nil {
-		ctx.HandleError(nil, "Proxmox client not available", http.StatusInternalServerError)
+	restyClient, err := getDefaultRestyClient()
+	if err != nil {
+		ctx.HandleError(err, "Failed to create Proxmox client", http.StatusInternalServerError)
 		return
 	}
 
-	if err := proxmox.UpdateVMConfigWithContext(r.Context(), client, node, vmidInt, map[string]string{"tags": tagsStr}); err != nil {
+	if err := proxmox.UpdateVMConfigResty(r.Context(), restyClient, node, vmidInt, map[string]string{"tags": tagsStr}); err != nil {
 		ctx.Log.Error().Err(err).Msg("update tags failed")
 		ctx.RedirectWithError(buildVMDetailsURL(vmid), "Message.ActionFailed")
 		return

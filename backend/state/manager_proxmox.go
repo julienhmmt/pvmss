@@ -43,29 +43,19 @@ func (s *appState) startProxmoxMonitor() {
 	}()
 }
 
-// GetProxmoxClient returns the Proxmox client
-// TODO Telmate migration: this getter is only needed for the Telmate ClientInterface; delete it after the migration and rely on Resty-based helpers instead.
-func (s *appState) GetProxmoxClient() proxmox.ClientInterface {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.proxmoxClient
-}
-
-// SetProxmoxClient sets the Proxmox client
-// TODO Telmate migration: this setter is only needed for the Telmate ClientInterface; delete it after the migration and rely on Resty-based helpers instead.
-func (s *appState) SetProxmoxClient(pc proxmox.ClientInterface) error {
-	if pc == nil {
-		return fmt.Errorf("proxmox client cannot be nil")
-	}
+// StartOnlineMode transitions to online mode and starts background monitors.
+func (s *appState) StartOnlineMode() error {
 	s.mu.Lock()
-	s.proxmoxClient = pc
 	s.offlineMode = false
 	s.mu.Unlock()
 
-	// Check connection when setting a new client
-	s.CheckProxmoxConnection()
+	// Reset manual offline mode tracking
+	s.proxmoxMu.Lock()
+	s.proxmoxConnectionLostTime = time.Time{}
+	s.proxmoxConnectionFailureCount = 0
+	s.proxmoxMu.Unlock()
 
-	// Start background monitor (only once)
+	s.CheckProxmoxConnection()
 	s.startProxmoxMonitor()
 	s.startNodeCacheWorker()
 	s.startClusterSnapshotWorker()
@@ -105,10 +95,8 @@ func (s *appState) GetProxmoxStatus() (bool, string) {
 }
 
 // CheckProxmoxConnection checks the connection to the Proxmox server and updates the status
-// TODO Telmate migration: reimplement this Proxmox health check using only Resty-based helpers instead of the Telmate client.
 func (s *appState) CheckProxmoxConnection() bool {
 	s.mu.RLock()
-	client := s.proxmoxClient
 	offline := s.offlineMode
 	s.mu.RUnlock()
 
@@ -119,17 +107,21 @@ func (s *appState) CheckProxmoxConnection() bool {
 		return false
 	}
 
-	if client == nil {
-		s.updateProxmoxStatus(false, translateProxmoxMessage(constants.MsgProxmoxClientNil))
-		return false
-	}
-
 	// Try to get node names as a simple connection test
 	ctx, cancel := context.WithTimeout(context.Background(), constants.ProxmoxConnectionCheckTimeout)
 	defer cancel()
 
+	restyClient, err := proxmox.MakeRestyClientFromEnv(constants.ProxmoxConnectionCheckTimeout)
+	if err != nil {
+		logger.ProxmoxFailure("connection_check", "client_error").
+			Err(err).
+			Msg("Proxmox connection check failed: could not create resty client")
+		s.handleConnectionFailure()
+		return false
+	}
+
 	logger.Get().Debug().Msg("Starting Proxmox connection check")
-	nodes, err := proxmox.GetNodeNamesWithContext(ctx, client)
+	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 
 	if err != nil {
 		logger.ProxmoxFailure("connection_check", "api_error").

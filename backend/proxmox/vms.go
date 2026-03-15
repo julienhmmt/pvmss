@@ -9,6 +9,11 @@ import (
 	"pvmss/logger"
 )
 
+// NOTE: Telmate-based functions (GetVMConfigWithContext, UpdateVMConfigWithContext,
+// GetVMCurrentWithContext, VMActionWithContext, DeleteVMWithContext,
+// GetGuestAgentNetworkInterfaces) have been removed. Use the Resty-based
+// equivalents in this file instead.
+
 // VMInfo is a simplified, application-specific struct that holds curated information about a Virtual Machine.
 type VMInfo struct {
 	VMID     string `json:"vmid"`
@@ -19,48 +24,6 @@ type VMInfo struct {
 	Memory   int64  `json:"memory"`
 	Disk     int64  `json:"disk"`
 	Template bool   `json:"template"`
-}
-
-// GetVMConfigWithContext fetches the VM configuration from Proxmox:
-// GET /nodes/{node}/qemu/{vmid}/config
-// It returns the raw "data" map as provided by the API so callers can extract
-// fields such as description, tags, and network interfaces (net0/net1...).
-// TODO Telmate migration: replace this Telmate-based VM helper by the corresponding Resty helper (GetVMConfigResty) and drop the ClientInterface dependency.
-func GetVMConfigWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (map[string]interface{}, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
-	var resp struct {
-		Data map[string]interface{} `json:"data"`
-	}
-	if err := client.GetJSON(ctx, path, &resp); err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get VM config")
-		return nil, fmt.Errorf("failed to get config for vm %d on node %s: %w", vmid, node, err)
-	}
-	return resp.Data, nil
-}
-
-// UpdateVMConfigWithContext updates VM configuration fields (e.g., description, tags)
-// by POSTing form parameters to:
-//
-//	POST /nodes/{node}/qemu/{vmid}/config
-//
-// Params may include keys like "description" and "tags" (semicolon-separated).
-// TODO Telmate migration: replace this Telmate-based VM helper by the corresponding Resty helper (UpdateVMConfigResty) and drop the ClientInterface dependency.
-func UpdateVMConfigWithContext(ctx context.Context, client ClientInterface, node string, vmid int, params map[string]string) error {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
-	values := make(url.Values)
-	for k, v := range params {
-		values.Set(k, v)
-	}
-	_, err := client.PostFormWithContext(ctx, path, values)
-	if err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to update VM config")
-		return fmt.Errorf("failed to update config for vm %d on node %s: %w", vmid, node, err)
-	}
-	// Invalidate the cached GET for this VM's config so the next fetch returns fresh data
-	if c, ok := client.(*Client); ok && c != nil {
-		c.InvalidateCache(path)
-	}
-	return nil
 }
 
 // NetworkInterface represents a VM network interface configuration
@@ -209,22 +172,6 @@ type GuestAgentNetworkInterface struct {
 	Name string `json:"name"`
 }
 
-// GetGuestAgentNetworkInterfaces fetches network information from the QEMU guest agent
-// Returns nil if guest agent is not available or not running
-func GetGuestAgentNetworkInterfaces(ctx context.Context, client ClientInterface, node string, vmid int) ([]GuestAgentNetworkInterface, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/agent/network-get-interfaces", url.PathEscape(node), vmid)
-	var resp Response[struct {
-		Result []GuestAgentNetworkInterface `json:"result"`
-	}]
-
-	if err := client.GetJSON(ctx, path, &resp); err != nil {
-		// Guest agent not available is expected for VMs without it or when VM is stopped
-		return nil, fmt.Errorf("failed to get guest agent network for node %s, vmid %d: %w", node, vmid, err)
-	}
-
-	return resp.Data.Result, nil
-}
-
 // EnrichNetworkInterfacesWithIPs adds IP addresses from guest agent to network interfaces
 // Matches interfaces by MAC address
 func EnrichNetworkInterfacesWithIPs(interfaces []NetworkInterface, guestInterfaces []GuestAgentNetworkInterface) {
@@ -278,18 +225,6 @@ type VMCurrent struct {
 	QMPStatus string  `json:"qmpstatus"`
 }
 
-// GetVMCurrentWithContext fetches the current runtime metrics for a VM
-// TODO Telmate migration: replace this Telmate-based VM helper by the corresponding Resty helper (GetVMCurrentResty) and drop the ClientInterface dependency.
-func GetVMCurrentWithContext(ctx context.Context, client ClientInterface, node string, vmid int) (*VMCurrent, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid)
-	var resp Response[VMCurrent]
-	if err := client.GetJSON(ctx, path, &resp); err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get current VM status")
-		return nil, fmt.Errorf("failed to get current status for vm %d on node %s: %w", vmid, node, err)
-	}
-	return &resp.Data, nil
-}
-
 // VM represents a Proxmox virtual machine
 type VM struct {
 	CPU     float64 `json:"cpu"`
@@ -303,74 +238,6 @@ type VM struct {
 	Tags    string  `json:"tags"`
 	Uptime  int64   `json:"uptime"`
 	VMID    int     `json:"vmid"`
-}
-
-// LEGACY FUNCTIONS REMOVED - Use resty versions instead:
-// - GetVMsWithContext → GetVMsResty
-// - GetVMsForNodeWithContext → GetVMsForNodeResty
-// - GetVMConfigWithContext → GetVMConfigResty
-// - GetVMCurrentWithContext → GetVMCurrentResty
-// - UpdateVMConfigWithContext → UpdateVMConfigResty
-// - GetNextVMID → GetNextVMIDResty
-// - VMActionWithContext → VMActionResty
-// - DeleteVMWithContext → DeleteVMResty
-// See resty_vms.go for modern implementations
-
-// VMActionWithContext performs a lifecycle action on a VM via the Proxmox API.
-// Supported actions map to the following endpoints:
-//
-//	POST /nodes/{node}/qemu/{vmid}/status/{action}
-//
-// Where action is one of: start, stop, shutdown, reboot, reset
-// Returns the UPID string on success (for async tasks), or an empty string when not applicable.
-// TODO Telmate migration: replace this Telmate-based VM action by VMActionResty and remove the Telmate client usage.
-func VMActionWithContext(ctx context.Context, client ClientInterface, node string, vmid string, action string) (string, error) {
-	// Validate action
-	switch action {
-	case "start", "stop", "shutdown", "reboot", "reset":
-	default:
-		return "", fmt.Errorf("unsupported VM action: %s", action)
-	}
-
-	path := fmt.Sprintf("/nodes/%s/qemu/%s/status/%s", url.PathEscape(node), url.PathEscape(vmid), action)
-
-	// Proxmox typically responds with {"data":"UPID:..."}
-	var response Response[string]
-	if err := client.PostFormAndGetJSON(ctx, path, url.Values{}, &response); err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Str("vmid", vmid).Str("action", action).Msg("VM action failed")
-		return "", err
-	}
-
-	// The task ID (UPID) is returned in the 'data' field.
-	if response.Data == "" {
-		return "", fmt.Errorf("did not receive a task ID from Proxmox for action '%s' on VM %s", action, vmid)
-	}
-
-	return response.Data, nil
-}
-
-// DeleteVMWithContext deletes a VM from Proxmox.
-// This performs a DELETE request to /nodes/{node}/qemu/{vmid}
-// Note: The VM must be stopped before deletion. Use VMActionWithContext to stop it first if needed.
-// TODO Telmate migration: replace this Telmate-based VM action by DeleteVMResty and remove the Telmate client usage.
-func DeleteVMWithContext(ctx context.Context, client ClientInterface, node string, vmid int) error {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d", url.PathEscape(node), vmid)
-
-	// Proxmox DELETE typically responds with {"data":"UPID:..."}
-	_, err := client.DeleteWithContext(ctx, path, url.Values{})
-	if err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("VM deletion failed")
-		return fmt.Errorf("failed to delete VM %d on node %s: %w", vmid, node, err)
-	}
-
-	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM deleted successfully")
-
-	// Invalidate cache for this node's VM list
-	if c, ok := client.(*Client); ok && c != nil {
-		c.InvalidateCache(fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(node)))
-	}
-
-	return nil
 }
 
 // GetVMsResty retrieves a comprehensive list of all VMs across all available Proxmox nodes using resty.
