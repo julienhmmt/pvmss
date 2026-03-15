@@ -57,14 +57,29 @@ Dynamic values use `svelte-i18n` interpolation:
 
 Usage: `$t('admin.vms.pagination.showing', { values: { start, end, total } })`
 
+## Prerequisites
+
+**Dependency:** `svelte-i18n` must be installed:
+```bash
+npm install svelte-i18n
+```
+
 ## Initialization (`lib/i18n/index.ts`)
 
+**SSR compatibility:** SvelteKit runs SSR during `vite build` even with `adapter-static`. All browser-only APIs (`localStorage`, `document.cookie`, `navigator`) must be gated behind a `browser` check from `$app/environment`. Messages are registered unconditionally (safe for SSR), but `init()` with browser-based locale detection runs only client-side.
+
 ```typescript
-import { init, addMessages, getLocaleFromNavigator } from 'svelte-i18n';
+import { init, addMessages, getLocaleFromNavigator, locale } from 'svelte-i18n';
+import { browser } from '$app/environment';
 import en from './en.json';
 import fr from './fr.json';
 
+addMessages('en', en);
+addMessages('fr', fr);
+
 function getInitialLocale(): string {
+  if (!browser) return 'en';
+
   const stored = localStorage.getItem('pvmss_lang');
   if (stored === 'fr' || stored === 'en') return stored;
 
@@ -77,19 +92,22 @@ function getInitialLocale(): string {
 
 export function setLocale(lang: 'en' | 'fr') {
   locale.set(lang);
-  localStorage.setItem('pvmss_lang', lang);
-  document.cookie = `pvmss_lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
+  if (browser) {
+    localStorage.setItem('pvmss_lang', lang);
+    document.cookie = `pvmss_lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
+  }
 }
 
-addMessages('en', en);
-addMessages('fr', fr);
 init({ fallbackLocale: 'en', initialLocale: getInitialLocale() });
 ```
+
+**FOUC mitigation:** `svelte-i18n` exposes an `isLoading` store. The root `+layout.svelte` should gate rendering on `!$isLoading` (similar to the existing `auth.initialized` pattern) to avoid a flash of empty strings while the locale initializes.
 
 **Entry point:** Imported in root `+layout.svelte` before any rendering:
 
 ```typescript
 import '$lib/i18n';
+import { isLoading } from 'svelte-i18n';
 ```
 
 ## Navbar Language Selector
@@ -139,7 +157,7 @@ No page navigation, instant language switch.
 | `admin.appinfo.*` | ~15 |
 | `admin.userpool.*` | ~10 |
 
-## Files to Modify (13 pages + 2 layout components)
+## Files to Modify (11 pages + 4 layout/nav components)
 
 ### New files (3):
 - `src/lib/i18n/index.ts`
@@ -147,9 +165,10 @@ No page navigation, instant language switch.
 - `src/lib/i18n/fr.json`
 
 ### Modified files (15):
-- `src/routes/+layout.svelte` — import i18n init
+- `src/routes/+layout.svelte` — import i18n init, gate rendering on `!$isLoading`
 - `src/lib/components/layout/Navbar.svelte` — language selector + translated nav links
 - `src/lib/components/layout/AdminSidebar.svelte` — translated sidebar labels
+- `src/lib/components/layout/AppShell.svelte` — translate "Administration" breadcrumb text
 - `src/routes/(admin)/+page.svelte` — Dashboard
 - `src/routes/(admin)/nodes/+page.svelte`
 - `src/routes/(admin)/storage/+page.svelte`
