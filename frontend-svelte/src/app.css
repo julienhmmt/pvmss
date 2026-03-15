@@ -126,3 +126,9 @@
     @apply font-sans;
   }
 }
+
+/* Offset the fixed sidebar below the navbar (h-14 = 3.5rem) */
+[data-slot="sidebar-container"] {
+  top: 3.5rem !important;
+  height: calc(100svh - 3.5rem) !important;
+}
