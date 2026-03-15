@@ -13,17 +13,15 @@ import (
 	"pvmss/proxmox"
 )
 
-// NOTE: Proxmox client methods (GetProxmoxClient, SetProxmoxClient, SetOfflineMode, IsOfflineMode,
+// NOTE: Proxmox connection methods (StartOnlineMode, SetOfflineMode, IsOfflineMode,
 // GetProxmoxStatus, CheckProxmoxConnection, etc.) are in manager_proxmox.go
 
 // appState is the concrete implementation of StateManager
 type appState struct {
 	templates      *template.Template
 	sessionManager *scs.SessionManager
-	// TODO Telmate migration: this field stores the Telmate ClientInterface; remove it once all handlers use Resty-based helpers.
-	proxmoxClient proxmox.ClientInterface
-	settings      *AppSettings
-	mu            sync.RWMutex
+	settings       *AppSettings
+	mu             sync.RWMutex
 
 	// Proxmox connection status
 	proxmoxConnected bool

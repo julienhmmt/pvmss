@@ -25,10 +25,8 @@ type StateManager interface {
 	GetSessionManager() *scs.SessionManager
 	SetSessionManager(sm *scs.SessionManager) error
 
-	// Proxmox client management
-	// TODO Telmate migration: this interface exposes the Telmate ClientInterface; replace it by higher-level Proxmox status or API helpers once the migration to Resty is done.
-	GetProxmoxClient() proxmox.ClientInterface
-	SetProxmoxClient(pc proxmox.ClientInterface) error
+	// Proxmox connection management
+	StartOnlineMode() error
 	SetOfflineMode() // Enable offline mode (no Proxmox client)
 	IsOfflineMode() bool
 	GetProxmoxStatus() (bool, string) // Returns (connected, errorMessage)
@@ -63,12 +61,6 @@ type StateManager interface {
 // SettingsProvider exposes read access to application settings.
 type SettingsProvider interface {
 	GetSettings() *AppSettings
-}
-
-// ProxmoxClientProvider exposes access to the Proxmox API client.
-// TODO Telmate migration: this provider is tied to the Telmate ClientInterface; prefer exposing higher-level API helpers instead of the raw client once the migration is complete.
-type ProxmoxClientProvider interface {
-	GetProxmoxClient() proxmox.ClientInterface
 }
 
 // ProxmoxStatusProvider exposes the Proxmox connection status.

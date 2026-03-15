@@ -175,18 +175,8 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 			return
 		}
 
-		// Get Proxmox client
-		client := h.stateManager.GetProxmoxClient()
-		if client == nil {
-			log.Error().Msg("Proxmox client not available")
-			if err := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); err != nil {
-				log.Error().Err(err).Msg("Failed to render search page")
-			}
-			return
-		}
-
 		// Perform optimized search (results handled via AJAX API)
-		_, err = h.searchVMsOptimized(r.Context(), client, vmidQuery, nameQuery, tagQueries, username, isAdmin)
+		_, err = h.searchVMsOptimized(r.Context(), vmidQuery, nameQuery, tagQueries, username, isAdmin)
 		if err != nil {
 			log.Error().Err(err).Msg("Optimized search failed")
 			if renderErr := components.SearchPage(searchData, translateFunc).Render(r.Context(), w); renderErr != nil {
@@ -206,8 +196,7 @@ func (h *SearchOptimizedHandler) SearchPageHandler(w http.ResponseWriter, r *htt
 }
 
 // searchVMsOptimized performs VM search with batch API calls and concurrent processing
-// TODO Telmate migration: this search helper still calls GetVMConfigWithContext for tag and pvmss checks; switch to Resty-based VM config helpers and remove the Telmate ClientInterface.
-func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery string, tagQueries []string, username string, isAdmin bool) ([]map[string]interface{}, error) {
+func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, vmidQuery, nameQuery string, tagQueries []string, username string, isAdmin bool) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("function", "searchVMsOptimized").
 		Str("vmid_query", vmidQuery).
@@ -235,7 +224,7 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 	var userPoolVMIDs map[int]bool
 	if !isAdmin && username != "" {
 		poolName := "pvmss_" + username
-		userPoolVMIDs = h.getPoolVMIDs(ctx, client, poolName)
+		userPoolVMIDs = h.getPoolVMIDs(ctx, restyClient, poolName)
 		log.Info().
 			Str("pool", poolName).
 			Int("pool_vm_count", len(userPoolVMIDs)).
@@ -283,7 +272,7 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 			matchesTags := false
 			if len(tagQueries) > 0 {
 				// Get config to check tags
-				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+				cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 				if err != nil {
 					log.Debug().
 						Err(err).
@@ -317,7 +306,7 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 				}
 			} else {
 				// If no tag query, still require 'pvmss' tag
-				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+				cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 				if err != nil {
 					log.Debug().
 						Err(err).
@@ -358,7 +347,7 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 			}
 		} else {
 			// No search criteria provided, still require 'pvmss' tag
-			cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+			cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 			if err != nil {
 				log.Debug().
 					Err(err).
@@ -419,7 +408,7 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 			}
 
 			// Get config (we may already have it from tag filtering, but get it again for consistency)
-			cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vmInfo.Node, vmidInt)
+			cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vmInfo.Node, vmidInt)
 			if err != nil {
 				log.Debug().
 					Err(err).
@@ -528,8 +517,8 @@ func (h *SearchOptimizedHandler) searchVMsOptimized(ctx context.Context, client 
 	return results, nil
 }
 
-// getPoolVMIDs retrieves VM IDs from a Proxmox pool (same as original)
-func (h *SearchOptimizedHandler) getPoolVMIDs(ctx context.Context, client proxmox.ClientInterface, poolName string) map[int]bool {
+// getPoolVMIDs retrieves VM IDs from a Proxmox pool
+func (h *SearchOptimizedHandler) getPoolVMIDs(ctx context.Context, restyClient *proxmox.RestyClient, poolName string) map[int]bool {
 	log := logger.Get().With().
 		Str("function", "getPoolVMIDs").
 		Str("pool", poolName).
@@ -547,7 +536,7 @@ func (h *SearchOptimizedHandler) getPoolVMIDs(ctx context.Context, client proxmo
 		} `json:"data"`
 	}
 
-	if err := client.GetJSON(ctx, "/pools/"+poolName, &poolResp); err != nil {
+	if err := restyClient.Get(ctx, "/pools/"+poolName, &poolResp); err != nil {
 		log.Warn().
 			Err(err).
 			Str("component", "search").
@@ -644,21 +633,6 @@ func (h *SearchOptimizedHandler) SearchAPIHandler(w http.ResponseWriter, r *http
 		Int("limit", limit).
 		Msg("AJAX search request")
 
-	// Get Proxmox client
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": false,
-			"error":   "Proxmox connection not available",
-		}); err != nil {
-			log.Error().Err(err).Msg("Failed to encode Proxmox unavailable response")
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		}
-		return
-	}
-
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
@@ -676,7 +650,7 @@ func (h *SearchOptimizedHandler) SearchAPIHandler(w http.ResponseWriter, r *http
 	}
 
 	// Perform search
-	results, err := h.searchVMsAJAX(ctx, client, vmidQuery, nameQuery, tagsFilter, username, isAdmin, limit)
+	results, err := h.searchVMsAJAX(ctx, vmidQuery, nameQuery, tagsFilter, username, isAdmin, limit)
 	if err != nil {
 		log.Error().Err(err).Msg("AJAX search failed")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -706,8 +680,7 @@ func (h *SearchOptimizedHandler) SearchAPIHandler(w http.ResponseWriter, r *http
 }
 
 // searchVMsAJAX performs VM search for AJAX API with advanced filtering
-// TODO Telmate migration: this AJAX search helper still calls GetVMConfigWithContext for tag and pvmss checks; switch to Resty-based VM config helpers and remove the Telmate ClientInterface.
-func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxmox.ClientInterface, vmidQuery, nameQuery string, tagsFilter []string, username string, isAdmin bool, limit int) ([]map[string]interface{}, error) {
+func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, vmidQuery, nameQuery string, tagsFilter []string, username string, isAdmin bool, limit int) ([]map[string]interface{}, error) {
 	log := logger.Get().With().
 		Str("function", "searchVMsAJAX").
 		Str("vmid_query", vmidQuery).
@@ -735,7 +708,7 @@ func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxm
 	var userPoolVMIDs map[int]bool
 	if !isAdmin && username != "" {
 		poolName := "pvmss_" + username
-		userPoolVMIDs = h.getPoolVMIDs(ctx, client, poolName)
+		userPoolVMIDs = h.getPoolVMIDs(ctx, restyClient, poolName)
 		log.Info().
 			Str("pool", poolName).
 			Int("pool_vm_count", len(userPoolVMIDs)).
@@ -760,7 +733,7 @@ func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxm
 		}
 
 		// Check 2: Get VM config and check for "pvmss" tag
-		cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
 			log.Debug().
 				Err(err).
@@ -789,7 +762,7 @@ func (h *SearchOptimizedHandler) searchVMsAJAX(ctx context.Context, client proxm
 			matchesTags := false
 			if len(tagsFilter) > 0 {
 				// Get config to check tags
-				cfg, err := proxmox.GetVMConfigWithContext(ctx, client, vm.Node, vm.VMID)
+				cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 				if err != nil {
 					log.Debug().
 						Err(err).

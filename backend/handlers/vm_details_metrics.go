@@ -34,13 +34,6 @@ func (h *VMHandler) VMMetricsHandler(w http.ResponseWriter, r *http.Request, ps 
 		return
 	}
 
-	client := h.stateManager.GetProxmoxClient()
-	if client == nil {
-		log.Error().Msg("Proxmox client not available")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
-		return
-	}
-
 	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create resty client")

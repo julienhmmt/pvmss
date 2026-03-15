@@ -70,17 +70,6 @@ func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]s
 		return collectVMBRsFromCache(), nil
 	}
 
-	client := sm.GetProxmoxClient()
-	if client == nil {
-		log.Warn().
-			Str("component", "network_helpers").
-			Str("operation", "collect_vmb rs").
-			Str("reason", "client_not_initialized").
-			Str("fallback", "cache").
-			Msg("Proxmox client not initialized; using cache fallback")
-		return collectVMBRsFromCache(), nil
-	}
-
 	// Create resty client
 	restyClient, err := getDefaultRestyClient()
 	if err != nil {

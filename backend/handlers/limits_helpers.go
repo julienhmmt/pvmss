@@ -37,7 +37,7 @@ var (
 
 // CalculateNodeResourceUsage calculates the aggregated resources used by VMs with the "pvmss" tag
 // for each node in the Proxmox cluster using resty
-func CalculateNodeResourceUsage(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
+func CalculateNodeResourceUsage(ctx context.Context, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
 	log := logger.Get().With().Str("function", "CalculateNodeResourceUsage").Logger()
 
 	if cached, ok := getCachedNodeUsage(); ok {
@@ -397,7 +397,7 @@ type NodeCapacity struct {
 }
 
 // GetNodeCapacity retrieves the physical hardware capacity of a node using resty
-func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string) (*NodeCapacity, error) {
+func GetNodeCapacity(ctx context.Context, nodeName string) (*NodeCapacity, error) {
 	log := logger.Get().With().Str("function", "GetNodeCapacity").Logger()
 
 	// Create resty client
@@ -431,10 +431,10 @@ func GetNodeCapacity(ctx context.Context, client proxmox.ClientInterface, nodeNa
 }
 
 // ValidateNodeLimitsAgainstCapacity validates that configured limits don't exceed node physical capacity
-func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.ClientInterface, nodeName string, maxCores, maxRamGB int, localizer *goi18n.Localizer) error {
+func ValidateNodeLimitsAgainstCapacity(ctx context.Context, nodeName string, maxCores, maxRamGB int, localizer *goi18n.Localizer) error {
 	log := logger.Get().With().Str("function", "ValidateNodeLimitsAgainstCapacity").Logger()
 
-	capacity, err := GetNodeCapacity(ctx, client, nodeName)
+	capacity, err := GetNodeCapacity(ctx, nodeName)
 	if err != nil {
 		log.Warn().
 			Err(err).
@@ -477,14 +477,14 @@ func ValidateNodeLimitsAgainstCapacity(ctx context.Context, client proxmox.Clien
 }
 
 // ValidateVMResourcesAgainstNodeLimits validates that adding a new VM won't exceed node aggregate limits
-func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, client proxmox.ClientInterface, sm LimitsGetter, node string, sockets, cores int, memoryMB int, localizer *goi18n.Localizer) error {
+func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, sm LimitsGetter, node string, sockets, cores int, memoryMB int, localizer *goi18n.Localizer) error {
 	log := logger.Get().With().Str("function", "ValidateVMResourcesAgainstNodeLimits").Logger()
 
 	// Calculate current usage
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	usageMap, err := CalculateNodeResourceUsage(ctxWithTimeout, client, sm)
+	usageMap, err := CalculateNodeResourceUsage(ctxWithTimeout, sm)
 	if err != nil {
 		log.Warn().
 			Err(err).

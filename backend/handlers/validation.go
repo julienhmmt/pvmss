@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"pvmss/i18n"
 	"pvmss/logger"
-	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
 
@@ -30,41 +29,15 @@ func MakeValidationHelper(w http.ResponseWriter, r *http.Request, log logger.Log
 	}
 }
 
-// RequireProxmoxClient validates and returns Proxmox client or handles error
-func (v *ValidationHelper) RequireProxmoxClient(sm state.StateManager) proxmox.ClientInterface {
-	if sm == nil {
-		v.Log.Error().Msg("State manager is nil")
-		http.Error(v.Writer, i18n.Localize(v.Localizer, "Error.InternalServer"), http.StatusInternalServerError)
-		return nil
-	}
-
-	client := sm.GetProxmoxClient()
-	if client == nil {
-		v.Log.Error().Msg("Proxmox client not available")
-		http.Error(v.Writer, i18n.Localize(v.Localizer, "Proxmox.ConnectionError"), http.StatusServiceUnavailable)
-		return nil
-	}
-
-	return client
-}
-
 // RequireProxmoxConnection validates Proxmox connection with detailed status
-func (v *ValidationHelper) RequireProxmoxConnection(sm state.StateManager) (proxmox.ClientInterface, bool) {
+func (v *ValidationHelper) RequireProxmoxConnection(sm state.StateManager) bool {
 	connected, msg := sm.GetProxmoxStatus()
 	if !connected {
 		v.Log.Warn().Str("proxmox_status", msg).Msg("Proxmox not connected")
 		http.Error(v.Writer, fmt.Sprintf("%s: %s", i18n.Localize(v.Localizer, "Error.ProxmoxConnectionError"), msg), http.StatusServiceUnavailable)
-		return nil, false
+		return false
 	}
-
-	client := sm.GetProxmoxClient()
-	if client == nil {
-		v.Log.Error().Msg("Proxmox client is nil despite connection status")
-		http.Error(v.Writer, i18n.Localize(v.Localizer, "Error.ProxmoxClientUnavailable"), http.StatusServiceUnavailable)
-		return nil, false
-	}
-
-	return client, true
+	return true
 }
 
 // RequireFormParsed validates form parsing

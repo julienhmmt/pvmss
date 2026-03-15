@@ -197,13 +197,12 @@ func MakeVMBRHandler(sm state.StateManager) *VMBRHandler {
 func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	log := CreateHandlerLogger("VMBRPageHandler", r)
 
-	client := h.stateManager.GetProxmoxClient()
 	proxmoxConnected, _ := h.stateManager.GetProxmoxStatus()
 
 	// Collect all VMBRs using common helper when online; otherwise short-circuit
 	var allVMBRs []map[string]string
 	var err error
-	if client == nil || !proxmoxConnected {
+	if !proxmoxConnected {
 		// Proceed gracefully in offline/read-only mode like AdminPageHandler
 		log.Warn().Bool("connected", proxmoxConnected).Msg("Proxmox not available; rendering page with empty VMBR list")
 		allVMBRs = []map[string]string{}
@@ -217,8 +216,8 @@ func (h *VMBRHandler) VMBRPageHandler(w http.ResponseWriter, r *http.Request, _ 
 
 	// Get all nodes for the selector
 	var allNodes []string
-	if client != nil {
-		allNodes, _ = proxmox.GetNodeNames(client)
+	if restyClient, err := getDefaultRestyClient(); err == nil {
+		allNodes, _ = proxmox.GetNodeNamesResty(r.Context(), restyClient)
 		sort.Strings(allNodes)
 	}
 

@@ -63,14 +63,13 @@ func (h *AdminVMsHandler) VMsPageHandler(w http.ResponseWriter, r *http.Request,
 
 	// Proxmox connection status
 	proxmoxConnected, proxmoxMsg := h.stateManager.GetProxmoxStatus()
-	client := h.stateManager.GetProxmoxClient()
 	offlineMode := h.stateManager.IsOfflineMode()
 
 	var vms []AdminVMInfo
 	var totalVMs int
 	var errMsg string
 
-	if proxmoxConnected && client != nil {
+	if proxmoxConnected {
 		ctx, cancel := context.WithTimeout(r.Context(), constants.ShortContextTimeout)
 		defer cancel()
 

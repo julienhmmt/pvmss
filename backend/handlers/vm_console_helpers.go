@@ -26,8 +26,6 @@ import (
 //   - VNC ticket string
 //   - VNC port number
 //   - error if ticket creation fails
-//
-// TODO Telmate migration: stop building a Telmate cookie client here; use a Resty-based VNC proxy helper instead.
 func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port int, err error) {
 	log := CreateHandlerLogger("GetVNCProxyTicket", r).With().
 		Str("node", node).
@@ -50,15 +48,14 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 
 	// Create a temporary Proxmox client with the user's stored credentials
 	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
-	client, err := proxmox.MakeClientCookieAuth(proxmoxURL, insecureSkipVerify)
+	client, err := proxmox.MakeRestyClientCookieAuth(proxmoxURL, insecureSkipVerify, 10*time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client")
 		return "", 0, errors.WrapProxmox(err, "/api2/json/access/ticket", 0, "failed to create proxmox client")
 	}
 
 	// Set the user's authentication credentials
-	client.PVEAuthCookie = pveTicket
-	client.CSRFPreventionToken = pveCSRF
+	client.SetCookieAuth(pveTicket, pveCSRF)
 
 	// Parse vmid to integer
 	vmidInt := 0
@@ -73,7 +70,7 @@ func GetVNCProxyTicket(r *http.Request, node, vmid string) (ticket string, port 
 
 	// Use the proxmox package function to get VNC proxy
 	log.Debug().Msg("Requesting VNC proxy from Proxmox")
-	vncProxy, err := proxmox.GetVNCProxy(ctx, client, node, vmidInt, nil)
+	vncProxy, err := proxmox.GetVNCProxyResty(ctx, client, node, vmidInt, nil)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to get VNC proxy")
 		return "", 0, errors.WrapVM(err, vmidInt, node, "failed to get VNC proxy")

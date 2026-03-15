@@ -87,13 +87,12 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	settings := *settingsPtr
 
 	// Get Proxmox client and connection status
-	client := h.stateManager.GetProxmoxClient()
-	proxmoxConnected := client != nil && !h.stateManager.IsOfflineMode()
+	proxmoxConnected := !h.stateManager.IsOfflineMode()
 	clusterSnapshot := h.stateManager.GetProxmoxSnapshot()
 
 	// Get node information
 	log.Debug().Msg("Getting node information")
-	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), client, clusterSnapshot)
+	nodes, disabledNodes, activeNode, err := h.getOptimizedNodeInfo(r.Context(), clusterSnapshot)
 	if err != nil {
 		log.Warn().
 			Err(err).
@@ -122,7 +121,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 
 	// Get storages and bridges concurrently
 	log.Debug().Msg("Getting resources (storages and bridges)")
-	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), client, nodes, disabledNodes, settingsPtr, clusterSnapshot)
+	storages, storageNodes, bridgeDetails, err := h.getOptimizedResources(r.Context(), nodes, disabledNodes, settingsPtr, clusterSnapshot)
 	if err != nil {
 		log.Warn().
 			Err(err).
@@ -256,7 +255,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 	}
 
 	// Check for offline nodes and create notification
-	offlineNodesCount := h.getOfflineNodesCount(r.Context(), client, clusterSnapshot)
+	offlineNodesCount := h.getOfflineNodesCount(r.Context(), clusterSnapshot)
 	if offlineNodesCount > 0 {
 		title := i18n.Localize(localizer, "VM.Create.OfflineNodesTitle")
 		message := i18n.Localize(localizer, "VM.Create.OfflineNodesMessage", offlineNodesCount)
@@ -396,7 +395,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 		}
 
 		// Call the creation handler
-		h.handleVMCreation(w, r, client, data)
+		h.handleVMCreation(w, r, data)
 		return
 	}
 
@@ -405,7 +404,7 @@ func (h *VMCreateOptimizedHandler) VMCreatePageHandler(w http.ResponseWriter, r 
 }
 
 // getOptimizedNodeInfo retrieves node information with caching - only online nodes
-func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, client proxmox.ClientInterface, snapshot *state.ProxmoxClusterSnapshot) ([]string, map[string]bool, string, error) {
+func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, snapshot *state.ProxmoxClusterSnapshot) ([]string, map[string]bool, string, error) {
 	log := CreateHandlerLogger("getOptimizedNodeInfo", nil)
 
 	if snapshot != nil {
@@ -423,10 +422,6 @@ func (h *VMCreateOptimizedHandler) getOptimizedNodeInfo(ctx context.Context, cli
 			log.Info().Int("node_count", len(nodes)).Msg("Using cached Proxmox snapshot for node list")
 			return nodes, disabledNodes, nodes[0], nil
 		}
-	}
-
-	if client == nil {
-		return nil, nil, "", fmt.Errorf("proxmox client not available")
 	}
 
 	// Create resty client
@@ -597,7 +592,7 @@ func extractPrefix(identifier string) string {
 }
 
 // getOfflineNodesCount counts the number of offline/down nodes in the cluster
-func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, client proxmox.ClientInterface, snapshot *state.ProxmoxClusterSnapshot) int {
+func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, snapshot *state.ProxmoxClusterSnapshot) int {
 	log := CreateHandlerLogger("getOfflineNodesCount", nil)
 
 	if snapshot != nil {
@@ -614,10 +609,6 @@ func (h *VMCreateOptimizedHandler) getOfflineNodesCount(ctx context.Context, cli
 			log.Debug().Int("offline_nodes", offline).Msg("Offline node count served from snapshot")
 			return offline
 		}
-	}
-
-	if client == nil {
-		return 0
 	}
 
 	// Create resty client
@@ -699,7 +690,7 @@ func getNodeLimits(settings *state.AppSettings) map[string]interface{} {
 }
 
 // getOptimizedResources retrieves storages and bridges concurrently using errgroup pattern
-func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, client proxmox.ClientInterface, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings, snapshot *state.ProxmoxClusterSnapshot) ([]string, map[string]string, []map[string]string, error) {
+func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, nodes []string, disabledNodes map[string]bool, settings *state.AppSettings, snapshot *state.ProxmoxClusterSnapshot) ([]string, map[string]string, []map[string]string, error) {
 	log := CreateHandlerLogger("getOptimizedResources", nil)
 
 	if len(nodes) == 0 {
@@ -728,10 +719,6 @@ func (h *VMCreateOptimizedHandler) getOptimizedResources(ctx context.Context, cl
 				Str("fallback", "live_calls").
 				Msg("Storages unavailable in snapshot; using live calls fallback")
 		}
-	}
-
-	if client == nil {
-		return nil, nil, nil, fmt.Errorf("proxmox client not available and cached data missing")
 	}
 
 	// Create resty client
