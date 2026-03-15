@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -26,7 +27,7 @@
 	let startIndex = $derived((page - 1) * perPage);
 	let endIndex = $derived(Math.min(startIndex + perPage, vms.length));
 	let paginatedVMs = $derived(vms.slice(startIndex, endIndex));
-	let subtitle = $derived(vms.length > 0 ? `${vms.length} VMs` : undefined);
+	let subtitle = $derived(vms.length > 0 ? `${vms.length} ${$t('admin.vms.title')}` : undefined);
 
 	function parseTags(tags: string): string[] {
 		if (!tags) return [];
@@ -48,37 +49,37 @@
 	async function doAction(vm: VM, action: VMAction) {
 		try {
 			await vmAction(vm.vmid, action);
-			toast.success(`${action} sent to VM ${vm.vmid}`);
+			toast.success($t('admin.vms.toast.actionSent', { values: { action, vmid: vm.vmid } }));
 			await load();
 		} catch (e) {
-			toast.error(`Failed to ${action} VM ${vm.vmid}: ${(e as Error).message}`);
+			toast.error($t('admin.vms.toast.actionFailed', { values: { action, vmid: vm.vmid, error: (e as Error).message } }));
 		}
 	}
 
 	onMount(load);
 </script>
 
-<PageHeader title="Virtual Machines" description={subtitle} icon={Desktop} />
+<PageHeader title={$t('admin.vms.title')} description={subtitle} icon={Desktop} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />
 {:else if loading}
 	<LoadingSkeleton variant="table" rows={8} />
 {:else if vms.length === 0}
-	<EmptyState title="No virtual machines found" icon={Desktop} />
+	<EmptyState title={$t('admin.vms.noVms')} icon={Desktop} />
 {:else}
 	<div class="rounded-md border">
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head>VMID</Table.Head>
-					<Table.Head>Name</Table.Head>
-					<Table.Head>Node</Table.Head>
-					<Table.Head>Status</Table.Head>
-					<Table.Head>Tags</Table.Head>
-					<Table.Head>CPUs</Table.Head>
-					<Table.Head>RAM</Table.Head>
-					<Table.Head>Actions</Table.Head>
+					<Table.Head>{$t('admin.vms.vmid')}</Table.Head>
+					<Table.Head>{$t('common.name')}</Table.Head>
+					<Table.Head>{$t('common.node')}</Table.Head>
+					<Table.Head>{$t('common.status')}</Table.Head>
+					<Table.Head>{$t('admin.vms.tags')}</Table.Head>
+					<Table.Head>{$t('admin.vms.cpus')}</Table.Head>
+					<Table.Head>{$t('admin.vms.ram')}</Table.Head>
+					<Table.Head>{$t('common.actions')}</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -101,16 +102,16 @@
 							<DropdownMenu.Root>
 								<DropdownMenu.Trigger>
 									{#snippet child({ props })}
-										<Button variant="outline" size="sm" {...props}>Actions</Button>
+										<Button variant="outline" size="sm" {...props}>{$t('common.actions')}</Button>
 									{/snippet}
 								</DropdownMenu.Trigger>
 								<DropdownMenu.Content>
-									<DropdownMenu.Item onclick={() => doAction(vm, 'start')}>Start</DropdownMenu.Item>
-									<DropdownMenu.Item onclick={() => doAction(vm, 'shutdown')}>Shutdown</DropdownMenu.Item>
-									<DropdownMenu.Item onclick={() => doAction(vm, 'reboot')}>Reboot</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => doAction(vm, 'start')}>{$t('admin.vms.actions.start')}</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => doAction(vm, 'shutdown')}>{$t('admin.vms.actions.shutdown')}</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => doAction(vm, 'reboot')}>{$t('admin.vms.actions.reboot')}</DropdownMenu.Item>
 									<DropdownMenu.Separator />
 									<DropdownMenu.Item class="text-destructive" onclick={() => doAction(vm, 'stop')}>
-										Force Stop
+										{$t('admin.vms.actions.forceStop')}
 									</DropdownMenu.Item>
 								</DropdownMenu.Content>
 							</DropdownMenu.Root>
@@ -123,7 +124,7 @@
 
 	<div class="flex items-center justify-between pt-4">
 		<p class="text-sm text-muted-foreground">
-			Showing {startIndex + 1} to {endIndex} of {vms.length} VMs
+			{$t('admin.vms.pagination.showing', { values: { start: startIndex + 1, end: endIndex, total: vms.length } })}
 		</p>
 
 		<div class="flex items-center gap-4">
@@ -136,7 +137,7 @@
 				}}
 			>
 				<Select.Trigger class="w-[110px]">
-					{perPage} / page
+					{$t('admin.vms.pagination.perPage', { values: { count: perPage } })}
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Item value="10">10</Select.Item>
@@ -155,10 +156,10 @@
 						page = Math.max(1, page - 1);
 					}}
 				>
-					Previous
+					{$t('common.previous')}
 				</Button>
 				<span class="text-sm text-muted-foreground">
-					Page {page} of {totalPages}
+					{$t('common.pageOf', { values: { page, total: totalPages } })}
 				</span>
 				<Button
 					variant="outline"
@@ -168,7 +169,7 @@
 						page = Math.min(totalPages, page + 1);
 					}}
 				>
-					Next
+					{$t('common.next')}
 				</Button>
 			</div>
 		</div>

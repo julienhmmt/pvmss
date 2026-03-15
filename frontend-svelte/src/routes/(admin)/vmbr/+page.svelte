@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -48,22 +49,22 @@
 	onMount(load);
 </script>
 
-<PageHeader title="Network Bridges" icon={WifiHigh} />
+<PageHeader title={$t('admin.vmbr.title')} icon={WifiHigh} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />
 {:else if loading}
 	<LoadingSkeleton variant="table" rows={5} />
 {:else if vmbrs.length === 0}
-	<EmptyState title="No network bridges found" icon={WifiHigh} />
+	<EmptyState title={$t('admin.vmbr.noVmbr')} icon={WifiHigh} />
 {:else}
 	<div class="mb-4">
 		<Select.Root type="single" value={selectedNode} onValueChange={(v) => (selectedNode = v ?? '')}>
 			<Select.Trigger class="w-[200px]">
-				{selectedNode || 'All Nodes'}
+				{selectedNode || $t('admin.vmbr.allNodes')}
 			</Select.Trigger>
 			<Select.Content>
-				<Select.Item value="">All Nodes</Select.Item>
+				<Select.Item value="">{$t('admin.vmbr.allNodes')}</Select.Item>
 				{#each nodes as node}
 					<Select.Item value={node}>{node}</Select.Item>
 				{/each}
@@ -75,12 +76,12 @@
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head>Interface</Table.Head>
-					<Table.Head>Node</Table.Head>
-					<Table.Head>Type</Table.Head>
-					<Table.Head>Ports</Table.Head>
-					<Table.Head>Active</Table.Head>
-					<Table.Head>Enabled</Table.Head>
+					<Table.Head>{$t('admin.vmbr.iface')}</Table.Head>
+					<Table.Head>{$t('common.node')}</Table.Head>
+					<Table.Head>{$t('common.type')}</Table.Head>
+					<Table.Head>{$t('admin.vmbr.ports')}</Table.Head>
+					<Table.Head>{$t('common.status')}</Table.Head>
+					<Table.Head>{$t('common.enabled')}</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -92,7 +93,7 @@
 						<Table.Cell>{v.bridge_ports || '—'}</Table.Cell>
 						<Table.Cell>
 							<Badge variant={v.active ? 'default' : 'secondary'}>
-								{v.active ? 'Active' : 'Inactive'}
+								{v.active ? $t('admin.vmbr.active') : $t('admin.vmbr.inactive')}
 							</Badge>
 						</Table.Cell>
 						<Table.Cell>

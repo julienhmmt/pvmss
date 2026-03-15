@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import ResourceCard from '$lib/components/data/ResourceCard.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
@@ -40,7 +41,7 @@
 	onMount(load);
 </script>
 
-<PageHeader title="Dashboard" icon={House} />
+<PageHeader title={$t('admin.dashboard.title')} icon={House} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />
@@ -48,19 +49,19 @@
 	<LoadingSkeleton variant="card" rows={4} />
 {:else}
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-		<ResourceCard title="Nodes" value={String(nodeCount)} subtitle="Active" />
-		<ResourceCard title="Virtual Machines" value={String(vmCount)} subtitle="Total" />
+		<ResourceCard title={$t('admin.dashboard.nodes')} value={String(nodeCount)} subtitle={$t('admin.dashboard.activeSubtitle')} />
+		<ResourceCard title={$t('admin.dashboard.virtualMachines')} value={String(vmCount)} subtitle={$t('common.total')} />
 		<ResourceCard
-			title="Storage Used"
+			title={$t('admin.dashboard.storageUsed')}
 			value={formatBytes(storageUsed)}
-			subtitle={`of ${formatBytes(storageTotal)}`}
+			subtitle={$t('admin.dashboard.storageUsedSubtitle', { values: { total: formatBytes(storageTotal) } })}
 		/>
 		<ResourceCard
-			title="Storage Free"
+			title={$t('admin.dashboard.storageFree')}
 			value={formatBytes(storageTotal - storageUsed)}
 			subtitle={storageTotal > 0
-				? `${Math.round(((storageTotal - storageUsed) / storageTotal) * 100)}% available`
-				: '0% available'}
+				? $t('admin.dashboard.available', { values: { percent: Math.round(((storageTotal - storageUsed) / storageTotal) * 100) } })
+				: $t('admin.dashboard.available', { values: { percent: 0 } })}
 		/>
 	</div>
 {/if}

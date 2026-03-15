@@ -29,7 +29,16 @@
     "logout": "Logout",
     "saving": "Saving...",
     "size": "Size",
-    "pageOf": "Page {page} of {total}"
+    "pageOf": "Page {page} of {total}",
+    "addTag": "Add tag...",
+    "statusMap": {
+      "running": "Running",
+      "online": "Online",
+      "stopped": "Stopped",
+      "offline": "Offline",
+      "paused": "Paused",
+      "unknown": "Unknown"
+    }
   },
   "nav": {
     "home": "Home",

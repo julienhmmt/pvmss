@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -80,10 +81,10 @@
 		try {
 			if (editId) {
 				await updateCloudInit(editId, form);
-				toast.success('Template updated');
+				toast.success($t('admin.cloudinit.toast.updated'));
 			} else {
 				await createCloudInit(form);
-				toast.success('Template created');
+				toast.success($t('admin.cloudinit.toast.created'));
 			}
 			editOpen = false;
 			await load();
@@ -96,7 +97,7 @@
 		if (!deleteTarget) return;
 		try {
 			await deleteCloudInit(deleteTarget);
-			toast.success('Template deleted');
+			toast.success($t('admin.cloudinit.toast.deleted'));
 			deleteTarget = null;
 			await load();
 		} catch (e) {
@@ -116,9 +117,9 @@
 	onMount(load);
 </script>
 
-<PageHeader title="Cloud-Init Templates" icon={Cloud}>
+<PageHeader title={$t('admin.cloudinit.title')} icon={Cloud}>
 	{#snippet actions()}
-		<Button onclick={openCreate}>Create Template</Button>
+		<Button onclick={openCreate}>{$t('admin.cloudinit.createTemplate')}</Button>
 	{/snippet}
 </PageHeader>
 
@@ -131,31 +132,31 @@
 		<Card.Root class="mb-6 {statusColorClass}">
 			<Card.Header>
 				<Card.Title class="flex items-center gap-2">
-					SFTP Status
+					{$t('admin.cloudinit.sftpStatus')}
 					<Badge variant={badgeVariant}>{sftpStatus.status_text}</Badge>
 				</Card.Title>
 			</Card.Header>
 			<Card.Content>
 				<div class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
 					<div>
-						<span class="text-muted-foreground">Enabled</span>
-						<p class="font-medium">{sftpStatus.enabled ? 'Yes' : 'No'}</p>
+						<span class="text-muted-foreground">{$t('common.enabled')}</span>
+						<p class="font-medium">{sftpStatus.enabled ? $t('common.yes') : $t('common.no')}</p>
 					</div>
 					{#if sftpStatus.host}
 						<div>
-							<span class="text-muted-foreground">Host</span>
+							<span class="text-muted-foreground">{$t('admin.cloudinit.host')}</span>
 							<p class="font-medium">{sftpStatus.host}</p>
 						</div>
 					{/if}
 					{#if sftpStatus.username}
 						<div>
-							<span class="text-muted-foreground">Username</span>
+							<span class="text-muted-foreground">{$t('admin.cloudinit.username')}</span>
 							<p class="font-medium">{sftpStatus.username}</p>
 						</div>
 					{/if}
 					<div>
-						<span class="text-muted-foreground">Key Exists</span>
-						<p class="font-medium">{sftpStatus.key_exists ? 'Yes' : 'No'}</p>
+						<span class="text-muted-foreground">{$t('admin.cloudinit.keyExists')}</span>
+						<p class="font-medium">{sftpStatus.key_exists ? $t('common.yes') : $t('common.no')}</p>
 					</div>
 				</div>
 			</Card.Content>
@@ -163,33 +164,33 @@
 	{/if}
 
 	{#if templates.length === 0}
-		<EmptyState title="No cloud-init templates" icon={Cloud} description="Create a template to automate VM initialization" />
+		<EmptyState title={$t('admin.cloudinit.noTemplates')} icon={Cloud} description={$t('admin.cloudinit.noTemplatesDesc')} />
 	{:else}
 		<div class="rounded-md border">
 			<Table.Root>
 				<Table.Header>
 					<Table.Row>
-						<Table.Head>Name</Table.Head>
-						<Table.Head>Description</Table.Head>
-						<Table.Head>Storage</Table.Head>
-						<Table.Head>Enabled</Table.Head>
-						<Table.Head>Actions</Table.Head>
+						<Table.Head>{$t('common.name')}</Table.Head>
+						<Table.Head>{$t('common.description')}</Table.Head>
+						<Table.Head>{$t('common.storage')}</Table.Head>
+						<Table.Head>{$t('common.enabled')}</Table.Head>
+						<Table.Head>{$t('common.actions')}</Table.Head>
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
-					{#each templates as t}
+					{#each templates as template}
 						<Table.Row>
-							<Table.Cell class="font-medium">{t.name}</Table.Cell>
-							<Table.Cell>{t.description}</Table.Cell>
-							<Table.Cell>{t.storage}</Table.Cell>
+							<Table.Cell class="font-medium">{template.name}</Table.Cell>
+							<Table.Cell>{template.description}</Table.Cell>
+							<Table.Cell>{template.storage}</Table.Cell>
 							<Table.Cell>
-								<Switch checked={t.enabled} onCheckedChange={() => handleToggle(t.id)} />
+								<Switch checked={template.enabled} onCheckedChange={() => handleToggle(template.id)} />
 							</Table.Cell>
 							<Table.Cell>
 								<div class="flex gap-2">
-									<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-									<Button variant="destructive" size="sm" onclick={() => (deleteTarget = t.id)}>
-										Delete
+									<Button variant="outline" size="sm" onclick={() => openEdit(template)}>{$t('common.edit')}</Button>
+									<Button variant="destructive" size="sm" onclick={() => (deleteTarget = template.id)}>
+										{$t('common.delete')}
 									</Button>
 								</div>
 							</Table.Cell>
@@ -204,23 +205,23 @@
 <Dialog.Root bind:open={editOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>{editId ? 'Edit Template' : 'Create Template'}</Dialog.Title>
+			<Dialog.Title>{editId ? $t('admin.cloudinit.editTemplate') : $t('admin.cloudinit.createTemplate')}</Dialog.Title>
 		</Dialog.Header>
 		<div class="space-y-4">
 			<div class="space-y-2">
-				<Label>Name</Label>
-				<Input bind:value={form.name} placeholder="Template name" />
+				<Label>{$t('common.name')}</Label>
+				<Input bind:value={form.name} placeholder={$t('admin.cloudinit.namePlaceholder')} />
 			</div>
 			<div class="space-y-2">
-				<Label>Description</Label>
-				<Input bind:value={form.description} placeholder="Description" />
+				<Label>{$t('common.description')}</Label>
+				<Input bind:value={form.description} placeholder={$t('admin.cloudinit.descPlaceholder')} />
 			</div>
 			<div class="space-y-2">
-				<Label>Storage</Label>
+				<Label>{$t('common.storage')}</Label>
 				<Input bind:value={form.storage} placeholder="local" />
 			</div>
 			<div class="space-y-2">
-				<Label>YAML Content</Label>
+				<Label>{$t('admin.cloudinit.yamlContent')}</Label>
 				<textarea
 					class="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					bind:value={form.content}
@@ -229,17 +230,17 @@
 			</div>
 		</div>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (editOpen = false)}>Cancel</Button>
-			<Button onclick={handleSave} disabled={!form.name}>{editId ? 'Update' : 'Create'}</Button>
+			<Button variant="outline" onclick={() => (editOpen = false)}>{$t('common.cancel')}</Button>
+			<Button onclick={handleSave} disabled={!form.name}>{editId ? $t('common.update') : $t('common.create')}</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
 
 <ConfirmDialog
 	open={deleteTarget !== null}
-	title="Delete Template"
-	description="Are you sure you want to delete this cloud-init template?"
-	confirmLabel="Delete"
+	title={$t('admin.cloudinit.deleteTemplate')}
+	description={$t('admin.cloudinit.deleteTemplateDesc')}
+	confirmLabel={$t('common.delete')}
 	variant="destructive"
 	onConfirm={handleDelete}
 	onCancel={() => (deleteTarget = null)}

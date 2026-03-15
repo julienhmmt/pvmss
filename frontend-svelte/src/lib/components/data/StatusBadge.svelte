@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
 	import { Badge } from '$lib/components/ui/badge';
 
 	interface Props {
@@ -19,4 +20,4 @@
 	const variant = $derived(variantMap[status.toLowerCase()] ?? 'outline');
 </script>
 
-<Badge {variant}>{status}</Badge>
+<Badge {variant}>{$t(`common.statusMap.${status.toLowerCase()}`, { default: status })}</Badge>

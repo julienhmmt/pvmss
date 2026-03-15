@@ -11,7 +11,7 @@ Add full EN/FR internationalization to the Svelte admin panel using `svelte-i18n
 ## Decisions
 
 | Decision | Choice | Rationale |
-|----------|--------|-----------|
+| -------- | ------ | --------- |
 | Library | `svelte-i18n` | Mature, store-based, reactive, works with static adapter |
 | Loading strategy | Static imports (`addMessages`) | 2 languages, ~134 keys — no need for async loading |
 | Translation source | Written from scratch | Modern, professional wording adapted to the new UI |
@@ -21,7 +21,7 @@ Add full EN/FR internationalization to the Svelte admin panel using `svelte-i18n
 
 ## File Structure
 
-```
+```bash
 frontend-svelte/src/lib/i18n/
 ├── index.ts          # init(), locale detection, setLocale() export
 ├── en.json           # English translations
@@ -51,7 +51,7 @@ Flat keys with dot notation, organized by domain:
 
 Dynamic values use `svelte-i18n` interpolation:
 
-```
+```json
 "admin.vms.pagination.showing": "Showing {start} to {end} of {total} VMs"
 ```
 
@@ -60,6 +60,7 @@ Usage: `$t('admin.vms.pagination.showing', { values: { start, end, total } })`
 ## Prerequisites
 
 **Dependency:** `svelte-i18n` must be installed:
+
 ```bash
 npm install svelte-i18n
 ```
@@ -142,7 +143,7 @@ No page navigation, instant language switch.
 ## Estimated Key Count (~160 keys)
 
 | Namespace | Est. keys |
-|-----------|-----------|
+| --------- | --------- |
 | `common.*` | ~30 |
 | `nav.*` | ~15 |
 | `admin.dashboard.*` | ~5 |
@@ -161,12 +162,14 @@ Note: `common.*` includes shared component strings (Cancel, Confirm, Retry, erro
 
 ## Files to Modify (11 pages + 4 layout/nav + 3 shared components)
 
-### New files (3):
+### New files (3)
+
 - `src/lib/i18n/index.ts`
 - `src/lib/i18n/en.json`
 - `src/lib/i18n/fr.json`
 
-### Modified files (18):
+### Modified files (18)
+
 - `src/routes/+layout.svelte` — import i18n init, gate rendering on `!$isLoading`
 - `src/lib/components/layout/Navbar.svelte` — language selector + translated nav links
 - `src/lib/components/layout/AdminSidebar.svelte` — translated sidebar labels
@@ -188,12 +191,14 @@ Note: `common.*` includes shared component strings (Cancel, Confirm, Retry, erro
 
 ## Tests & Success Criteria
 
-### Tests:
+### Tests
+
 - **Key parity test:** Verify `en.json` and `fr.json` have exactly the same keys
 - **No hardcoded strings:** Post-migration grep for common English words in `.svelte` files
 - **Functional:** Language toggle switches all visible text instantly
 
-### Success criteria:
+### Success criteria
+
 1. All admin pages display translated text in FR and EN
 2. FR/EN selector in Navbar works (instant switch, no reload)
 3. Preference persists via localStorage + cookie across sessions

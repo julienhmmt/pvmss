@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -37,7 +38,7 @@
 		if (!newTagName.trim()) return;
 		try {
 			await createTag(newTagName.trim());
-			toast.success(`Tag "${newTagName.trim()}" created`);
+			toast.success($t('admin.tags.toast.created', { values: { tagName: newTagName.trim() } }));
 			newTagName = '';
 			createOpen = false;
 			await load();
@@ -50,7 +51,7 @@
 		if (!deleteTarget) return;
 		try {
 			await deleteTag(deleteTarget);
-			toast.success(`Tag "${deleteTarget}" deleted`);
+			toast.success($t('admin.tags.toast.deleted', { values: { tagName: deleteTarget } }));
 			deleteTarget = null;
 			await load();
 		} catch (e) {
@@ -61,9 +62,9 @@
 	onMount(load);
 </script>
 
-<PageHeader title="Tags" icon={Tag}>
+<PageHeader title={$t('admin.tags.title')} icon={Tag}>
 	{#snippet actions()}
-		<Button onclick={() => (createOpen = true)}>Add Tag</Button>
+		<Button onclick={() => (createOpen = true)}>{$t('admin.tags.addTag')}</Button>
 	{/snippet}
 </PageHeader>
 
@@ -72,13 +73,13 @@
 {:else if loading}
 	<LoadingSkeleton variant="card" rows={2} />
 {:else if tags.length === 0}
-	<EmptyState title="No tags configured" icon={Tag} description="Add tags to organize VMs" />
+	<EmptyState title={$t('admin.tags.noTags')} icon={Tag} description={$t('admin.tags.noTagsDesc')} />
 {:else}
 	<div class="flex flex-wrap gap-2">
 		{#each tags as tag}
 			<Badge variant="secondary" class="gap-2 px-3 py-1.5 text-sm">
 				{tag.name}
-				<span class="text-muted-foreground">({tag.vm_count} VMs)</span>
+				<span class="text-muted-foreground">({tag.vm_count} {$t('admin.tags.vms')})</span>
 				{#if tag.name === 'pvmss'}
 					<Lock class="ml-1 h-3 w-3 text-muted-foreground" />
 				{:else}
@@ -94,22 +95,22 @@
 <Dialog.Root bind:open={createOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Create Tag</Dialog.Title>
-			<Dialog.Description>Add a new tag for VM organization.</Dialog.Description>
+			<Dialog.Title>{$t('admin.tags.createTitle')}</Dialog.Title>
+			<Dialog.Description>{$t('admin.tags.createDesc')}</Dialog.Description>
 		</Dialog.Header>
-		<Input bind:value={newTagName} placeholder="Tag name" onkeydown={(e) => e.key === 'Enter' && handleCreate()} />
+		<Input bind:value={newTagName} placeholder={$t('admin.tags.namePlaceholder')} onkeydown={(e) => e.key === 'Enter' && handleCreate()} />
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (createOpen = false)}>Cancel</Button>
-			<Button onclick={handleCreate} disabled={!newTagName.trim()}>Create</Button>
+			<Button variant="outline" onclick={() => (createOpen = false)}>{$t('common.cancel')}</Button>
+			<Button onclick={handleCreate} disabled={!newTagName.trim()}>{$t('common.create')}</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
 
 <ConfirmDialog
 	open={deleteTarget !== null}
-	title="Delete Tag"
-	description={`Are you sure you want to delete the tag "${deleteTarget}"?`}
-	confirmLabel="Delete"
+	title={$t('admin.tags.deleteTitle')}
+	description={$t('admin.tags.deleteDesc', { values: { tagName: deleteTarget } })}
+	confirmLabel={$t('common.delete')}
 	variant="destructive"
 	onConfirm={handleDelete}
 	onCancel={() => (deleteTarget = null)}

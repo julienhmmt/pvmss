@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -38,7 +39,7 @@
 		if (!form.pool_name || !form.username || !form.password) return;
 		try {
 			await createPool(form);
-			toast.success(`Pool "${form.pool_name}" created`);
+			toast.success($t('admin.userpool.toast.created', { values: { poolName: form.pool_name } }));
 			form = { pool_name: '', username: '', password: '' };
 			createOpen = false;
 			await load();
@@ -51,7 +52,7 @@
 		if (!deleteTarget) return;
 		try {
 			await deletePool(deleteTarget);
-			toast.success(`Pool "${deleteTarget}" deleted`);
+			toast.success($t('admin.userpool.toast.deleted', { values: { poolName: deleteTarget } }));
 			deleteTarget = null;
 			await load();
 		} catch (e) {
@@ -62,9 +63,9 @@
 	onMount(load);
 </script>
 
-<PageHeader title="User Pools" icon={UsersThree}>
+<PageHeader title={$t('admin.userpool.title')} icon={UsersThree}>
 	{#snippet actions()}
-		<Button onclick={() => (createOpen = true)}>Create Pool</Button>
+		<Button onclick={() => (createOpen = true)}>{$t('admin.userpool.createPool')}</Button>
 	{/snippet}
 </PageHeader>
 
@@ -73,16 +74,16 @@
 {:else if loading}
 	<LoadingSkeleton variant="table" rows={5} />
 {:else if pools.length === 0}
-	<EmptyState title="No user pools" icon={UsersThree} description="Create a pool to manage user VMs" />
+	<EmptyState title={$t('admin.userpool.noPools')} icon={UsersThree} description={$t('admin.userpool.noPoolsDesc')} />
 {:else}
 	<div class="rounded-md border">
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head>Pool ID</Table.Head>
-					<Table.Head>Comment</Table.Head>
-					<Table.Head>Members</Table.Head>
-					<Table.Head>Actions</Table.Head>
+					<Table.Head>{$t('admin.userpool.poolId')}</Table.Head>
+					<Table.Head>{$t('admin.userpool.comment')}</Table.Head>
+					<Table.Head>{$t('admin.userpool.members')}</Table.Head>
+					<Table.Head>{$t('common.actions')}</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -93,7 +94,7 @@
 						<Table.Cell>{pool.members.length}</Table.Cell>
 						<Table.Cell>
 							<Button variant="destructive" size="sm" onclick={() => (deleteTarget = pool.poolid)}>
-								Delete
+								{$t('common.delete')}
 							</Button>
 						</Table.Cell>
 					</Table.Row>
@@ -106,27 +107,27 @@
 <Dialog.Root bind:open={createOpen}>
 	<Dialog.Content>
 		<Dialog.Header>
-			<Dialog.Title>Create User Pool</Dialog.Title>
-			<Dialog.Description>Set up a new Proxmox user pool with dedicated credentials.</Dialog.Description>
+			<Dialog.Title>{$t('admin.userpool.createTitle')}</Dialog.Title>
+			<Dialog.Description>{$t('admin.userpool.createDesc')}</Dialog.Description>
 		</Dialog.Header>
 		<div class="space-y-4">
 			<div class="space-y-2">
-				<Label>Pool Name</Label>
+				<Label>{$t('admin.userpool.poolName')}</Label>
 				<Input bind:value={form.pool_name} placeholder="my-pool" />
 			</div>
 			<div class="space-y-2">
-				<Label>Username</Label>
+				<Label>{$t('admin.userpool.username')}</Label>
 				<Input bind:value={form.username} placeholder="user@pve" />
 			</div>
 			<div class="space-y-2">
-				<Label>Password</Label>
+				<Label>{$t('admin.userpool.password')}</Label>
 				<Input type="password" bind:value={form.password} />
 			</div>
 		</div>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (createOpen = false)}>Cancel</Button>
+			<Button variant="outline" onclick={() => (createOpen = false)}>{$t('common.cancel')}</Button>
 			<Button onclick={handleCreate} disabled={!form.pool_name || !form.username || !form.password}>
-				Create
+				{$t('common.create')}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>
@@ -134,9 +135,9 @@
 
 <ConfirmDialog
 	open={deleteTarget !== null}
-	title="Delete Pool"
-	description={`Delete pool "${deleteTarget}"? This will remove the pool and associated user. VMs in the pool will NOT be deleted.`}
-	confirmLabel="Delete"
+	title={$t('admin.userpool.deleteTitle')}
+	description={$t('admin.userpool.deleteDesc', { values: { poolName: deleteTarget } })}
+	confirmLabel={$t('common.delete')}
 	variant="destructive"
 	onConfirm={handleDelete}
 	onCancel={() => (deleteTarget = null)}

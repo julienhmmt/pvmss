@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Input } from '$lib/components/ui/input';
 	import { X } from 'phosphor-svelte';
@@ -10,7 +11,7 @@
 		onRemove: (tag: string) => void;
 	}
 
-	let { tags, placeholder = 'Add tag...', onAdd, onRemove }: Props = $props();
+	let { tags, placeholder = undefined, onAdd, onRemove }: Props = $props();
 	let inputValue = $state('');
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -33,7 +34,7 @@
 	{/each}
 	<Input
 		bind:value={inputValue}
-		{placeholder}
+		placeholder={placeholder ?? $t('common.addTag')}
 		class="h-8 w-32"
 		onkeydown={handleKeydown}
 	/>

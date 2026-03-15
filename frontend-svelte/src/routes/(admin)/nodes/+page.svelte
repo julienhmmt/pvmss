@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -72,14 +73,14 @@
 	});
 </script>
 
-<PageHeader title="Nodes" icon={HardDrives}>
+<PageHeader title={$t('admin.nodes.title')} icon={HardDrives}>
 	{#snippet actions()}
 		<span class="text-muted-foreground text-xs">
-			Updated {lastUpdatedAgo}s ago
+			{$t('admin.nodes.updatedAgo', { values: { seconds: lastUpdatedAgo } })}
 		</span>
 		<Button variant="outline" size="sm" onclick={refresh} disabled={refreshing || loading}>
 			<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
-			Refresh
+			{$t('common.refresh')}
 		</Button>
 	{/snippet}
 </PageHeader>
@@ -89,7 +90,7 @@
 {:else if loading}
 	<LoadingSkeleton variant="card" rows={4} />
 {:else if nodes.length === 0}
-	<EmptyState title="No nodes found" icon={HardDrives} />
+	<EmptyState title={$t('admin.nodes.noNodes')} icon={HardDrives} />
 {:else}
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 		{#each nodes as node}
@@ -105,8 +106,8 @@
 				<!-- CPU -->
 				<div class="space-y-1">
 					<div class="flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">CPU</span>
-						<span class="font-medium">{formatCpu(node.cpu)} ({node.maxcpu} cores)</span>
+						<span class="text-muted-foreground">{$t('admin.nodes.cpu')}</span>
+						<span class="font-medium">{formatCpu(node.cpu)} ({$t('admin.nodes.cores', { values: { count: node.maxcpu } })})</span>
 					</div>
 					<div class="bg-muted h-2 w-full rounded-full">
 						<div
@@ -119,7 +120,7 @@
 				<!-- RAM -->
 				<div class="space-y-1">
 					<div class="flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">RAM</span>
+						<span class="text-muted-foreground">{$t('admin.nodes.ram')}</span>
 						<span class="font-medium"
 							>{formatBytes(node.memory)} / {formatBytes(node.max_memory)}</span
 						>
@@ -135,7 +136,7 @@
 				<!-- Disk -->
 				<div class="space-y-1">
 					<div class="flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">Disk</span>
+						<span class="text-muted-foreground">{$t('admin.nodes.disk')}</span>
 						<span class="font-medium"
 							>{formatBytes(node.disk)} / {formatBytes(node.max_disk)}</span
 						>
@@ -150,7 +151,7 @@
 
 				<!-- Uptime -->
 				<div class="flex items-center justify-between text-sm">
-					<span class="text-muted-foreground">Uptime</span>
+					<span class="text-muted-foreground">{$t('admin.nodes.uptime')}</span>
 					<span class="font-medium">{formatUptime(node.uptime)}</span>
 				</div>
 			</div>

@@ -29,7 +29,16 @@
     "logout": "Déconnexion",
     "saving": "Enregistrement…",
     "size": "Taille",
-    "pageOf": "Page {page} sur {total}"
+    "pageOf": "Page {page} sur {total}",
+    "addTag": "Ajouter un tag...",
+    "statusMap": {
+      "running": "En cours",
+      "online": "En ligne",
+      "stopped": "Arrêté",
+      "offline": "Hors ligne",
+      "paused": "En pause",
+      "unknown": "Inconnu"
+    }
   },
   "nav": {
     "home": "Accueil",

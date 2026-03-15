@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -40,23 +41,23 @@
 	onMount(load);
 </script>
 
-<PageHeader title="ISO Images" icon={Disc} />
+<PageHeader title={$t('admin.iso.title')} icon={Disc} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />
 {:else if loading}
 	<LoadingSkeleton variant="table" rows={5} />
 {:else if isos.length === 0}
-	<EmptyState title="No ISO images found" icon={Disc} />
+	<EmptyState title={$t('admin.iso.noIso')} icon={Disc} />
 {:else}
 	<div class="rounded-md border">
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					<Table.Head>Name</Table.Head>
-					<Table.Head>Storage</Table.Head>
-					<Table.Head>Size</Table.Head>
-					<Table.Head>Enabled</Table.Head>
+					<Table.Head>{$t('common.name')}</Table.Head>
+					<Table.Head>{$t('common.storage')}</Table.Head>
+					<Table.Head>{$t('common.size')}</Table.Head>
+					<Table.Head>{$t('common.enabled')}</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>

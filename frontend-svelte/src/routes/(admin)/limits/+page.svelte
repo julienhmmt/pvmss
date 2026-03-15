@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -66,7 +67,7 @@
 		saving = true;
 		try {
 			await updateLimits(coerceLimits(limits));
-			toast.success('Limits updated');
+			toast.success($t('admin.limits.toast.saved'));
 		} catch (e) {
 			toast.error((e as Error).message);
 		} finally {
@@ -77,10 +78,10 @@
 	onMount(load);
 </script>
 
-<PageHeader title="Resource Limits" icon={Sliders}>
+<PageHeader title={$t('admin.limits.title')} icon={Sliders}>
 	{#snippet actions()}
 		<Button onclick={save} disabled={saving || !limits}>
-			{saving ? 'Saving...' : 'Save'}
+			{saving ? $t('common.saving') : $t('common.save')}
 		</Button>
 	{/snippet}
 </PageHeader>
@@ -92,67 +93,67 @@
 {:else}
 	<div class="max-w-2xl space-y-8">
 		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">VM Resource Ranges</h2>
+			<h2 class="text-lg font-semibold">{$t('admin.limits.vmRanges')}</h2>
 			<div class="grid grid-cols-2 gap-4">
 				<div class="space-y-2">
-					<Label>CPU Sockets (min)</Label>
+					<Label>{$t('admin.limits.cpuSocketsMin')}</Label>
 					<Input type="number" bind:value={limits.vm.sockets.min} />
 				</div>
 				<div class="space-y-2">
-					<Label>CPU Sockets (max)</Label>
+					<Label>{$t('admin.limits.cpuSocketsMax')}</Label>
 					<Input type="number" bind:value={limits.vm.sockets.max} />
 				</div>
 				<div class="space-y-2">
-					<Label>CPU Cores (min)</Label>
+					<Label>{$t('admin.limits.cpuCoresMin')}</Label>
 					<Input type="number" bind:value={limits.vm.cores.min} />
 				</div>
 				<div class="space-y-2">
-					<Label>CPU Cores (max)</Label>
+					<Label>{$t('admin.limits.cpuCoresMax')}</Label>
 					<Input type="number" bind:value={limits.vm.cores.max} />
 				</div>
 				<div class="space-y-2">
-					<Label>RAM GB (min)</Label>
+					<Label>{$t('admin.limits.ramMin')}</Label>
 					<Input type="number" bind:value={limits.vm.ram.min} />
 				</div>
 				<div class="space-y-2">
-					<Label>RAM GB (max)</Label>
+					<Label>{$t('admin.limits.ramMax')}</Label>
 					<Input type="number" bind:value={limits.vm.ram.max} />
 				</div>
 				<div class="space-y-2">
-					<Label>Disk GB (min)</Label>
+					<Label>{$t('admin.limits.diskMin')}</Label>
 					<Input type="number" bind:value={limits.vm.disk.min} />
 				</div>
 				<div class="space-y-2">
-					<Label>Disk GB (max)</Label>
+					<Label>{$t('admin.limits.diskMax')}</Label>
 					<Input type="number" bind:value={limits.vm.disk.max} />
 				</div>
 			</div>
 		</section>
 
 		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">Global Limits</h2>
+			<h2 class="text-lg font-semibold">{$t('admin.limits.global')}</h2>
 			<div class="grid grid-cols-2 gap-4">
 				<div class="space-y-2">
-					<Label>Max VMs per User</Label>
+					<Label>{$t('admin.limits.maxVmsPerUser')}</Label>
 					<Input type="number" bind:value={limits.max_vm_per_user} />
 				</div>
 				<div class="space-y-2">
-					<Label>Max Snapshots per VM</Label>
+					<Label>{$t('admin.limits.maxSnapshots')}</Label>
 					<Input type="number" bind:value={limits.max_snapshots} />
 				</div>
 				<div class="space-y-2">
-					<Label>Max Network Cards</Label>
+					<Label>{$t('admin.limits.maxNetworkCards')}</Label>
 					<Input type="number" bind:value={limits.max_network_cards} />
 				</div>
 				<div class="space-y-2">
-					<Label>Max Disks per VM</Label>
+					<Label>{$t('admin.limits.maxDisksPerVm')}</Label>
 					<Input type="number" bind:value={limits.max_disk_per_vm} />
 				</div>
 			</div>
 		</section>
 
 		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">Node-Specific Limits</h2>
+			<h2 class="text-lg font-semibold">{$t('admin.limits.nodeSpecific')}</h2>
 			{#if nodeNames.length > 0}
 				<Tabs.Root value={selectedNode || nodeNames[0]} onValueChange={(v) => (selectedNode = v)}>
 					<Tabs.List>
@@ -164,35 +165,35 @@
 						<Tabs.Content value={name}>
 							<div class="grid grid-cols-2 gap-4 pt-4">
 								<div class="space-y-2">
-									<Label>CPU Sockets (min)</Label>
+									<Label>{$t('admin.limits.cpuSocketsMin')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].sockets.min} />
 								</div>
 								<div class="space-y-2">
-									<Label>CPU Sockets (max)</Label>
+									<Label>{$t('admin.limits.cpuSocketsMax')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].sockets.max} />
 								</div>
 								<div class="space-y-2">
-									<Label>CPU Cores (min)</Label>
+									<Label>{$t('admin.limits.cpuCoresMin')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].cores.min} />
 								</div>
 								<div class="space-y-2">
-									<Label>CPU Cores (max)</Label>
+									<Label>{$t('admin.limits.cpuCoresMax')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].cores.max} />
 								</div>
 								<div class="space-y-2">
-									<Label>RAM GB (min)</Label>
+									<Label>{$t('admin.limits.ramMin')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].ram.min} />
 								</div>
 								<div class="space-y-2">
-									<Label>RAM GB (max)</Label>
+									<Label>{$t('admin.limits.ramMax')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].ram.max} />
 								</div>
 								<div class="space-y-2">
-									<Label>Disk GB (min)</Label>
+									<Label>{$t('admin.limits.diskMin')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].disk.min} />
 								</div>
 								<div class="space-y-2">
-									<Label>Disk GB (max)</Label>
+									<Label>{$t('admin.limits.diskMax')}</Label>
 									<Input type="number" bind:value={limits.nodes[name].disk.max} />
 								</div>
 							</div>
@@ -200,9 +201,9 @@
 					{/each}
 				</Tabs.Root>
 			{:else}
-				<p class="text-sm text-muted-foreground">
-					No node-specific limits configured. Global VM limits apply to all nodes.
-				</p>
+					<p class="text-sm text-muted-foreground">
+						{$t('admin.limits.noNodeLimits')}
+					</p>
 			{/if}
 		</section>
 	</div>
