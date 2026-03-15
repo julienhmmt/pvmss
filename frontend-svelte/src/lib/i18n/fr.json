@@ -37,7 +37,8 @@
       "stopped": "Arrêté",
       "offline": "Hors ligne",
       "paused": "En pause",
-      "unknown": "Inconnu"
+      "unknown": "Inconnu",
+      "active": "Actif"
     }
   },
   "nav": {

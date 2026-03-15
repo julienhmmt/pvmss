@@ -37,7 +37,8 @@
       "stopped": "Stopped",
       "offline": "Offline",
       "paused": "Paused",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "active": "Active"
     }
   },
   "nav": {

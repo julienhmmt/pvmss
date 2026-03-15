@@ -8,9 +8,10 @@
 
 	let { status }: Props = $props();
 
-	const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-		running: 'default',
-		online: 'default',
+	const variantMap: Record<string, 'default' | 'success' | 'secondary' | 'destructive' | 'outline'> = {
+		running: 'success',
+		online: 'success',
+		active: 'success',
 		stopped: 'destructive',
 		offline: 'destructive',
 		paused: 'secondary',
