@@ -60,7 +60,7 @@ docker-build: buildkit-start ## Construit les images docker (arm64 et amd64) et 
 	@echo "Building Docker images for multiple architectures..."
 	@echo "Usage: make docker-build PVMSS_TAG=your-tag"
 	@echo "Default tag: latest"
-	@docker buildx build --platform linux/amd64,linux/arm64 -t jhmmt/pvmss:$(or $(PVMSS_TAG),latest) --push .
+	@docker buildx build --builder pvmss-builder --platform linux/amd64,linux/arm64 -t jhmmt/pvmss:$(or $(PVMSS_TAG),latest) --push .
 	@echo "Docker images built successfully"
 	@echo ""
 
