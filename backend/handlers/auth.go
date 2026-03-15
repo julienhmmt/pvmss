@@ -361,7 +361,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		Str("reason", "auth_success").
 		Msg("Admin authentication successful, creating session")
 
-	if err := establishSession(w, r, true, ""); err != nil {
+	if err := establishSession(w, r, true, "admin"); err != nil {
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
