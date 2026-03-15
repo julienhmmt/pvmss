@@ -126,6 +126,17 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	// Main App Middleware Chain (with session, CSRF, etc.)
 	appHandler := buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(router)
 
+	// SvelteKit admin SPA serving
+	spaDir := filepath.Join(getFrontendPath(stateManager), "..", "frontend-svelte", "build")
+	spaIndexPath := filepath.Join(spaDir, "index.html")
+	spaAvailable := false
+	if _, err := os.Stat(spaIndexPath); err == nil {
+		spaAvailable = true
+		log.Info().Str("path", spaDir).Msg("SvelteKit admin SPA build found")
+	} else {
+		log.Info().Msg("SvelteKit admin SPA build not found — /admin/ will fall through to templ pages")
+	}
+
 	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -133,6 +144,8 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 			publicHandler.ServeHTTP(w, r)
 		case isAPIPath(r.URL.Path):
 			apiHandler.ServeHTTP(w, r)
+		case spaAvailable && isSPAPath(r.URL.Path):
+			serveSPA(w, r, spaDir, spaIndexPath)
 		default:
 			appHandler.ServeHTTP(w, r)
 		}

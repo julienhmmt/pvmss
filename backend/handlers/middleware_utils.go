@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"pvmss/constants"
@@ -286,4 +287,28 @@ func getFrontendPath(sm state.StateManager) string {
 		return ""
 	}
 	return sm.GetFrontendPath()
+}
+
+// isSPAPath returns true for paths that should be served by the SvelteKit admin SPA.
+// API paths are excluded (handled earlier in the mux routing).
+func isSPAPath(p string) bool {
+	return strings.HasPrefix(p, "/admin/") || p == "/admin"
+}
+
+// serveSPA serves the SvelteKit SPA. Static assets (files with extensions) are served
+// directly from the build directory; all other paths get the fallback index.html.
+func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath string) {
+	// Strip /admin prefix to find the file in the build directory
+	relPath := strings.TrimPrefix(r.URL.Path, "/admin")
+	if relPath == "" {
+		relPath = "/"
+	}
+	// Try to serve the file directly (JS, CSS, images, etc.)
+	filePath := filepath.Join(spaDir, filepath.Clean(relPath))
+	if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+		http.ServeFile(w, r, filePath)
+		return
+	}
+	// SPA fallback: serve index.html for all routes
+	http.ServeFile(w, r, spaIndexPath)
 }
