@@ -12,6 +12,7 @@
 The current frontend is a Go templ + Alpine.js + HTMX + Vue 3 hybrid with Bulma CSS. The goal is to replace it with a modern, fluid, modular SPA starting with the admin section.
 
 **Phase 1 objectives:**
+
 - Build a reusable component library (admin-first, then reused for user pages in a later phase)
 - Make the application more reactive and visually modern
 - Expose a complete JSON API for all admin operations
@@ -22,7 +23,7 @@ The current frontend is a Go templ + Alpine.js + HTMX + Vue 3 hybrid with Bulma 
 ## Tech stack
 
 | Element | Choice | Version |
-|---------|--------|---------|
+| ------- | ------ | ------- |
 | Framework | SvelteKit (adapter-static, SPA mode) | 2.x latest |
 | Build tool | Vite | 5.x latest |
 | Language | Svelte 5 + TypeScript | 5.x latest |
@@ -34,9 +35,11 @@ The current frontend is a Go templ + Alpine.js + HTMX + Vue 3 hybrid with Bulma 
 | Border radius | Small | — |
 
 ### shadcn-svelte preset
+
 ```bash
 npx shadcn-svelte@latest init --preset a1DMDThI
 ```
+
 Pin the exact `shadcn-svelte` version used at scaffold time in `package.json` to prevent preset ID changes from breaking setup.
 
 ---
@@ -47,7 +50,7 @@ Pin the exact `shadcn-svelte` version used at scaffold time in `package.json` to
 
 The SvelteKit SPA and the legacy templ frontend coexist on the same Go server during this phase. Routing is handled at the top-level `ServeMux` level (not at the `httprouter` level) to avoid wildcard conflicts.
 
-```
+```bash
 Go :50000
   /api/v1/admin/*    → new Go JSON admin handlers (JWT cookie, isAdmin)
   /api/v1/*          → existing JSON handlers (unchanged)
@@ -102,7 +105,7 @@ JWT tokens are issued as **httpOnly cookies** by the existing backend. The SPA d
 
 ### Level 1 — UI primitives (shadcn-svelte CLI generated)
 
-```
+```bash
 src/lib/components/ui/
   button, card, dialog, table, form, input, select,
   badge, sidebar, sheet, sonner, skeleton, separator,
@@ -111,7 +114,7 @@ src/lib/components/ui/
 
 ### Level 2 — Reusable business components
 
-```
+```bash
 src/lib/components/
   layout/
     AppShell.svelte         ← navbar + sidebar + main content slot
@@ -158,12 +161,14 @@ interface DataTableProps<T> {
 ### Error response contract
 
 All API error responses use the existing `ErrorResponse` envelope from `backend/types.go`:
+
 ```typescript
 interface ApiError {
   code: string     // machine-readable error code
   message: string  // human-readable message
 }
 ```
+
 `client.ts` must parse this shape on non-2xx responses.
 
 ---
@@ -177,7 +182,7 @@ interface ApiError {
 ### 11 pages
 
 | Page | Route | Display | Actions |
-|------|-------|---------|---------|
+| ---- | ----- | ------- | ------- |
 | Dashboard | `/admin` | `ResourceCard` aggregate: node count, VM count, total storage used, Proxmox status — data fetched in parallel from nodes + vms + storage endpoints | — |
 | Nodes | `/admin/nodes` | Grid of `ResourceCard`: name, CPU%, RAM%, uptime, status | — (read-only) |
 | Storage | `/admin/storage` | `DataTable`: name, type, total/used/free + progress bar (snippet) | — (read-only) |
@@ -211,7 +216,7 @@ interface ApiError {
 
 ### New endpoints
 
-```
+```bash
 GET  /api/v1/admin/nodes
 GET  /api/v1/admin/storage
 GET  /api/v1/admin/vms
@@ -243,7 +248,7 @@ GET  /api/v1/admin/settings              ← alias of appinfo for settings subse
 
 ### New Go files
 
-```
+```bash
 backend/api/v1/
   admin_handlers.go     ← read-only handlers: nodes, storage, vmbr, iso, appinfo, settings
   admin_mutations.go    ← write handlers: userpool, tags, limits, cloudinit CRUD
@@ -275,7 +280,7 @@ mux.HandleFunc("/admin/", func(w http.ResponseWriter, r *http.Request) {
 
 ## frontend-svelte/ structure
 
-```
+```bash
 frontend-svelte/
   src/
     lib/
@@ -383,24 +388,24 @@ npm run dev               # Vite dev server on :5173
 
 ```makefile
 frontend-install:
-	cd frontend-svelte && npm ci
+ cd frontend-svelte && npm ci
 
 frontend-build:
-	cd frontend-svelte && npm run build
+ cd frontend-svelte && npm run build
 
 frontend-dev:
-	cd frontend-svelte && npm run dev
+ cd frontend-svelte && npm run dev
 
 dev-api:
-	go run ./backend
+ go run ./backend
 
 dev:
-	# Use overmind or concurrently — not bare & (orphans processes on Ctrl+C)
-	npx concurrently "make dev-api" "make frontend-dev"
+ # Use overmind or concurrently — not bare & (orphans processes on Ctrl+C)
+ npx concurrently "make dev-api" "make frontend-dev"
 
 build: frontend-build
-	go build -o pvmss-backend ./backend
-	docker build -t pvmss .
+ go build -o pvmss-backend ./backend
+ docker build -t pvmss .
 ```
 
 ### Dockerfile
