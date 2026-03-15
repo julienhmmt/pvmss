@@ -4,6 +4,8 @@
 	import { themeStore } from '$lib/stores/theme.svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
+	import { isLoading } from 'svelte-i18n';
+	import '$lib/i18n';
 	import '../app.css';
 
 	let { children } = $props();
@@ -14,7 +16,7 @@
 	});
 </script>
 
-{#if auth.initialized}
+{#if !$isLoading && auth.initialized}
 	<Navbar />
 	<div class="pt-14">
 		{@render children()}

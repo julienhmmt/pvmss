@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { base } from '$app/paths';
+	import { t } from 'svelte-i18n';
 	import {
 		Sidebar,
 		SidebarContent,
@@ -27,19 +28,19 @@
 		Info
 	} from 'phosphor-svelte';
 
-	const items = [
-		{ href: `${base}/`, icon: House, label: 'Dashboard' },
-		{ href: `${base}/nodes`, icon: HardDrives, label: 'Nodes' },
-		{ href: `${base}/storage`, icon: Database, label: 'Storage' },
-		{ href: `${base}/vms`, icon: Desktop, label: 'Virtual Machines' },
-		{ href: `${base}/userpool`, icon: UsersThree, label: 'User Pools' },
-		{ href: `${base}/tags`, icon: Tag, label: 'Tags' },
-		{ href: `${base}/limits`, icon: Sliders, label: 'Limits' },
-		{ href: `${base}/vmbr`, icon: WifiHigh, label: 'Network' },
-		{ href: `${base}/cloudinit`, icon: Cloud, label: 'Cloud-Init' },
-		{ href: `${base}/iso`, icon: Disc, label: 'ISO Images' },
-		{ href: `${base}/appinfo`, icon: Info, label: 'App Info' }
-	];
+	const items = $derived([
+		{ href: `${base}/`, icon: House, label: $t('nav.dashboard') },
+		{ href: `${base}/nodes`, icon: HardDrives, label: $t('nav.nodes') },
+		{ href: `${base}/storage`, icon: Database, label: $t('nav.storage') },
+		{ href: `${base}/vms`, icon: Desktop, label: $t('nav.vms') },
+		{ href: `${base}/userpool`, icon: UsersThree, label: $t('nav.userpool') },
+		{ href: `${base}/tags`, icon: Tag, label: $t('nav.tags') },
+		{ href: `${base}/limits`, icon: Sliders, label: $t('nav.limits') },
+		{ href: `${base}/vmbr`, icon: WifiHigh, label: $t('nav.network') },
+		{ href: `${base}/cloudinit`, icon: Cloud, label: $t('nav.cloudinit') },
+		{ href: `${base}/iso`, icon: Disc, label: $t('nav.iso') },
+		{ href: `${base}/appinfo`, icon: Info, label: $t('nav.appinfo') }
+	]);
 
 	function isActive(itemHref: string, currentPath: string): boolean {
 		if (itemHref === `${base}/`) return currentPath === `${base}` || currentPath === `${base}/`;
@@ -51,12 +52,12 @@
 	<SidebarHeader>
 		<div class="flex items-center gap-2 px-2 py-1">
 			<span class="text-lg font-bold">PVMSS</span>
-			<span class="text-xs text-muted-foreground">Admin</span>
+			<span class="text-xs text-muted-foreground">{$t('common.admin')}</span>
 		</div>
 	</SidebarHeader>
 	<SidebarContent>
 		<SidebarGroup>
-			<SidebarGroupLabel>Administration</SidebarGroupLabel>
+			<SidebarGroupLabel>{$t('nav.administration')}</SidebarGroupLabel>
 			<SidebarGroupContent>
 				<SidebarMenu>
 					{#each items as item}
@@ -79,7 +80,7 @@
 	</SidebarContent>
 	<SidebarFooter>
 		<div class="px-2 py-1 text-xs text-muted-foreground">
-			PVMSS Admin Panel
+			{$t('nav.sidebarFooter')}
 		</div>
 	</SidebarFooter>
 </Sidebar>

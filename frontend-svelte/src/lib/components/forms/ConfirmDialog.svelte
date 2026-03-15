@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Button } from '$lib/components/ui/button';
+	import { t } from 'svelte-i18n';
 
 	interface Props {
 		open: boolean;
@@ -16,7 +17,7 @@
 		open,
 		title,
 		description,
-		confirmLabel = 'Confirm',
+		confirmLabel,
 		variant = 'default',
 		onConfirm,
 		onCancel
@@ -32,12 +33,12 @@
 			{/if}
 		</Dialog.Header>
 		<Dialog.Footer>
-			<Button variant="outline" onclick={onCancel}>Cancel</Button>
+			<Button variant="outline" onclick={onCancel}>{$t('common.cancel')}</Button>
 			<Button
 				variant={variant === 'destructive' ? 'destructive' : 'default'}
 				onclick={onConfirm}
 			>
-				{confirmLabel}
+				{confirmLabel ?? $t('common.confirm')}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

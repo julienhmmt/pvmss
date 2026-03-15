@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { SidebarProvider, SidebarInset, SidebarTrigger } from '$lib/components/ui/sidebar';
 	import { Separator } from '$lib/components/ui/separator';
+	import { t } from 'svelte-i18n';
 
 	interface Props {
 		sidebar: Snippet;
@@ -17,7 +18,7 @@
 		<header class="flex h-10 shrink-0 items-center gap-2 border-b px-4">
 			<SidebarTrigger class="-ml-1" />
 			<Separator orientation="vertical" class="mr-2 h-4" />
-			<span class="text-muted-foreground text-xs">Administration</span>
+			<span class="text-muted-foreground text-xs">{$t('nav.administration')}</span>
 		</header>
 		<main class="flex-1 overflow-auto p-6">
 			{@render children()}

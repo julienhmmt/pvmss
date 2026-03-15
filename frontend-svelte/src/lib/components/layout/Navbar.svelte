@@ -6,6 +6,8 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import ThemeToggle from './ThemeToggle.svelte';
+	import { t } from 'svelte-i18n';
+	import { setLocale } from '$lib/i18n';
 	import {
 		House,
 		PlusSquare,
@@ -20,12 +22,12 @@
 
 	let mobileOpen = $state(false);
 
-	const navLinks = [
-		{ href: '/', icon: House, label: 'Home' },
-		{ href: '/vm/create', icon: PlusSquare, label: 'Create VM' },
-		{ href: '/search', icon: MagnifyingGlass, label: 'Search VM' },
-		{ href: '/docs/user', icon: BookOpen, label: 'Documentation' }
-	];
+	const navLinks = $derived([
+		{ href: '/', icon: House, label: $t('nav.home') },
+		{ href: '/vm/create', icon: PlusSquare, label: $t('nav.createVm') },
+		{ href: '/search', icon: MagnifyingGlass, label: $t('nav.searchVm') },
+		{ href: '/docs/user', icon: BookOpen, label: $t('nav.documentation') }
+	]);
 
 	function navigate(url: string) {
 		window.location.href = url;
@@ -55,10 +57,10 @@
 		<div class="flex items-center gap-1">
 			<!-- Language selector -->
 			<div class="hidden items-center sm:flex">
-				<Button variant="ghost" size="sm" href="/set-lang?lang=fr" class="px-2 text-xs">
+				<Button variant="ghost" size="sm" onclick={() => setLocale('fr')} class="px-2 text-xs">
 					FR
 				</Button>
-				<Button variant="ghost" size="sm" href="/set-lang?lang=en" class="px-2 text-xs">
+				<Button variant="ghost" size="sm" onclick={() => setLocale('en')} class="px-2 text-xs">
 					EN
 				</Button>
 			</div>
@@ -81,20 +83,20 @@
 						<DropdownMenu.Label class="font-normal">
 							<div class="flex flex-col space-y-1">
 								<p class="text-sm font-medium leading-none">{auth.username}</p>
-								<p class="text-muted-foreground text-xs leading-none">Administrator</p>
+								<p class="text-muted-foreground text-xs leading-none">{$t('nav.administrator')}</p>
 							</div>
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
 						{#if auth.isAdmin}
 							<DropdownMenu.Item onclick={() => navigate(`${base}/`)}>
 								<GearSix class="h-4 w-4" />
-								Admin
+								{$t('common.admin')}
 							</DropdownMenu.Item>
 							<DropdownMenu.Separator />
 						{/if}
 						<DropdownMenu.Item onclick={() => navigate('/logout')}>
 							<SignOut class="h-4 w-4" />
-							Logout
+							{$t('common.logout')}
 						</DropdownMenu.Item>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
@@ -109,14 +111,14 @@
 						{#snippet child({ props })}
 							<Button variant="ghost" size="icon" {...props}>
 								<List class="h-5 w-5" />
-								<span class="sr-only">Menu</span>
+								<span class="sr-only">{$t('nav.menu')}</span>
 							</Button>
 						{/snippet}
 					</Sheet.Trigger>
 					<Sheet.Content side="left">
 						<Sheet.Header>
 							<Sheet.Title>PVMSS</Sheet.Title>
-							<Sheet.Description class="sr-only">Navigation menu</Sheet.Description>
+							<Sheet.Description class="sr-only">{$t('nav.navigationMenu')}</Sheet.Description>
 						</Sheet.Header>
 						<div class="flex flex-col gap-1 py-4">
 							{#each navLinks as link}
@@ -132,18 +134,18 @@
 
 							<Separator class="my-2" />
 
-							<a
-								href="/set-lang?lang=fr"
-								class="hover:bg-accent flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
+							<button
+								class="hover:bg-accent flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium"
+								onclick={() => { setLocale('fr'); mobileOpen = false; }}
 							>
-								FR — Français
-							</a>
-							<a
-								href="/set-lang?lang=en"
-								class="hover:bg-accent flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
+								{$t('nav.languageFr')}
+							</button>
+							<button
+								class="hover:bg-accent flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium"
+								onclick={() => { setLocale('en'); mobileOpen = false; }}
 							>
-								EN — English
-							</a>
+								{$t('nav.languageEn')}
+							</button>
 
 							<Separator class="my-2" />
 
@@ -154,7 +156,7 @@
 									onclick={() => (mobileOpen = false)}
 								>
 									<GearSix class="h-4 w-4" />
-									Admin
+									{$t('common.admin')}
 								</a>
 							{/if}
 							<a
@@ -162,7 +164,7 @@
 								class="text-destructive hover:bg-accent flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium"
 							>
 								<SignOut class="h-4 w-4" />
-								Logout
+								{$t('common.logout')}
 							</a>
 						</div>
 					</Sheet.Content>

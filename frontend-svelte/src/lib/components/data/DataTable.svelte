@@ -4,6 +4,7 @@
 	import EmptyState from './EmptyState.svelte';
 	import LoadingSkeleton from './LoadingSkeleton.svelte';
 	import { Package } from 'phosphor-svelte';
+	import { t } from 'svelte-i18n';
 
 	interface Column<T> {
 		key: string;
@@ -20,7 +21,7 @@
 		onRowClick?: (row: T) => void;
 	}
 
-	let { data, columns, loading = false, emptyMessage = 'No data', onRowClick }: Props = $props();
+	let { data, columns, loading = false, emptyMessage = undefined, onRowClick }: Props = $props();
 
 	let sortKey = $state('');
 	let sortAsc = $state(true);
@@ -49,7 +50,7 @@
 {#if loading}
 	<LoadingSkeleton rows={5} variant="table" />
 {:else if data.length === 0}
-	<EmptyState title={emptyMessage} icon={Package} />
+	<EmptyState title={emptyMessage ?? $t('common.noData')} icon={Package} />
 {:else}
 	<div class="rounded-md border">
 		<Table.Root>
