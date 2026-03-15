@@ -298,6 +298,30 @@ func isSPAPath(p string) bool {
 	return strings.HasPrefix(p, "/admin/") || p == "/admin"
 }
 
+// resolveWithinBase resolves relPath against baseDir and ensures the resulting absolute
+// path stays within baseDir. It returns the absolute path and true on success, or
+// an empty string and false if the path escapes baseDir or cannot be resolved.
+func resolveWithinBase(baseDir, relPath string) (string, bool) {
+	baseAbs, err := filepath.Abs(baseDir)
+	if err != nil {
+		return "", false
+	}
+	joined := filepath.Join(baseAbs, filepath.Clean(relPath))
+	targetAbs, err := filepath.Abs(joined)
+	if err != nil {
+		return "", false
+	}
+	// Ensure the resolved path stays within the base directory to prevent path traversal.
+	baseWithSep := baseAbs
+	if !strings.HasSuffix(baseWithSep, string(os.PathSeparator)) {
+		baseWithSep += string(os.PathSeparator)
+	}
+	if targetAbs != baseAbs && !strings.HasPrefix(targetAbs, baseWithSep) {
+		return "", false
+	}
+	return targetAbs, true
+}
+
 // serveSPA serves the SvelteKit SPA. Static assets (files with extensions) are served
 // directly from the build directory; all other paths get the fallback index.html.
 func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath string) {
@@ -306,30 +330,14 @@ func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath strin
 	if relPath == "" {
 		relPath = "/"
 	}
+	// Resolve the requested path within the SPA directory and ensure it cannot escape.
+	filePathAbs, ok := resolveWithinBase(spaDir, relPath)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
 	// Try to serve the file directly (JS, CSS, images, etc.)
-	filePath := filepath.Join(spaDir, filepath.Clean(relPath))
-
-	// Ensure the resolved path stays within the SPA directory to prevent path traversal.
-	spaDirAbs, err := filepath.Abs(spaDir)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	filePathAbs, err := filepath.Abs(filePath)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	// Add path separator to avoid prefix confusion (e.g., /var/www vs /var/www2).
-	spaDirAbsWithSep := spaDirAbs
-	if !strings.HasSuffix(spaDirAbsWithSep, string(os.PathSeparator)) {
-		spaDirAbsWithSep += string(os.PathSeparator)
-	}
-	if filePathAbs != spaDirAbs && !strings.HasPrefix(filePathAbs, spaDirAbsWithSep) {
-		http.NotFound(w, r)
-		return
-	}
-
 	if info, err := os.Stat(filePathAbs); err == nil && !info.IsDir() {
 		http.ServeFile(w, r, filePathAbs)
 		return
