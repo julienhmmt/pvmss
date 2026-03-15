@@ -1,7 +1,7 @@
 # Makefile pour PVMSS
 # Permet de construire, démarrer, arrêter, nettoyer et tester l'application
 
-.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status frontend-install frontend-build frontend-dev
+.PHONY: help dev dev-svelte dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status frontend-install frontend-build frontend-dev
 
 # Couleurs pour l'affichage
 BLUE=\033[0;34m
@@ -232,6 +232,20 @@ qualif: ## Lance tous les contrôles qualité (format, lint, tests offline)
 	@echo "$(BLUE)Démarrage de l'application...$(NC)"
 	@$(MAKE) dev
 	@echo ""
+
+# =============================================================================
+# Développement SvelteKit (backend Go + Vite en parallèle)
+
+dev-svelte: ## Lance le backend Go + Vite SvelteKit en parallèle (Ctrl+C pour tout arrêter)
+	@echo "$(BLUE)Démarrage backend Go + SvelteKit Vite...$(NC)"
+	@echo "$(GREEN)  API Go    → http://localhost:50000$(NC)"
+	@echo "$(GREEN)  SvelteKit → http://localhost:5173/admin$(NC)"
+	@echo "$(GREEN)  Login via → http://localhost:5173/login$(NC)"
+	@echo ""
+	@trap 'kill 0' INT; \
+	  (cd backend && go run . -templates ../frontend 2>&1 | sed 's/^/[api] /') & \
+	  (cd frontend-svelte && npm run dev 2>&1 | sed 's/^/[vite] /') & \
+	  wait
 
 # =============================================================================
 # Commandes frontend SvelteKit
