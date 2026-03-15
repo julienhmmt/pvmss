@@ -9,7 +9,8 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"check:i18n": "node scripts/check-i18n-parity.mjs"
 	},
 	"devDependencies": {
 		"@internationalized/date": "^3.12.0",
@@ -24,6 +25,7 @@
 		"mode-watcher": "^1.1.0",
 		"svelte": "^5.51.0",
 		"svelte-check": "^4.4.2",
+		"svelte-i18n": "^4.0.1",
 		"svelte-sonner": "^1.1.0",
 		"tailwind-merge": "^3.5.0",
 		"tailwind-variants": "^3.2.2",
