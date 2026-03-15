@@ -24,6 +24,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 			if (retryRes.ok) {
 				return retryRes.status === 204 ? (undefined as T) : retryRes.json();
 			}
+			const retryError: ApiError = await retryRes.json().catch(() => ({
+				code: 'unknown',
+				message: retryRes.statusText
+			}));
+			throw new ApiRequestError(retryRes.status, retryError);
 		}
 		window.location.href = '/login';
 		throw new ApiRequestError(401, { code: 'unauthorized', message: 'Session expired' });

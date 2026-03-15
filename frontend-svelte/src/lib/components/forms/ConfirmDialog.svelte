@@ -13,7 +13,7 @@
 	}
 
 	let {
-		open = $bindable(),
+		open,
 		title,
 		description,
 		confirmLabel = 'Confirm',
@@ -23,7 +23,7 @@
 	}: Props = $props();
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root {open} onOpenChange={(v) => { if (!v) onCancel(); }}>
 	<Dialog.Content>
 		<Dialog.Header>
 			<Dialog.Title>{title}</Dialog.Title>

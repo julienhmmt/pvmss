@@ -1,3 +1,2 @@
-// SPA mode: disable SSR, enable prerendering for adapter-static
-export const prerender = true;
+export const prerender = false;
 export const ssr = false;
