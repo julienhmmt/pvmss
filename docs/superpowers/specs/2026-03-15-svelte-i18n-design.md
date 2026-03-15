@@ -139,36 +139,41 @@ No page navigation, instant language switch.
 3. **`common.*` keys are shared** across pages — no duplication
 4. **Page-specific keys** use `admin.<page>.*` namespace
 
-## Estimated Key Count (~134 keys)
+## Estimated Key Count (~160 keys)
 
 | Namespace | Est. keys |
 |-----------|-----------|
-| `common.*` | ~20 |
+| `common.*` | ~30 |
 | `nav.*` | ~15 |
 | `admin.dashboard.*` | ~5 |
 | `admin.nodes.*` | ~8 |
 | `admin.storage.*` | ~5 |
 | `admin.vmbr.*` | ~5 |
 | `admin.iso.*` | ~4 |
-| `admin.vms.*` | ~12 |
+| `admin.vms.*` | ~20 |
 | `admin.tags.*` | ~8 |
 | `admin.limits.*` | ~15 |
 | `admin.cloudinit.*` | ~12 |
 | `admin.appinfo.*` | ~15 |
 | `admin.userpool.*` | ~10 |
 
-## Files to Modify (11 pages + 4 layout/nav components)
+Note: `common.*` includes shared component strings (Cancel, Confirm, Retry, error fallback, No data, Loading, etc.) and toast messages for CRUD operations (created, updated, deleted). UI-generated toast messages are in scope; backend API error messages are not.
+
+## Files to Modify (11 pages + 4 layout/nav + 3 shared components)
 
 ### New files (3):
 - `src/lib/i18n/index.ts`
 - `src/lib/i18n/en.json`
 - `src/lib/i18n/fr.json`
 
-### Modified files (15):
+### Modified files (18):
 - `src/routes/+layout.svelte` — import i18n init, gate rendering on `!$isLoading`
 - `src/lib/components/layout/Navbar.svelte` — language selector + translated nav links
 - `src/lib/components/layout/AdminSidebar.svelte` — translated sidebar labels
 - `src/lib/components/layout/AppShell.svelte` — translate "Administration" breadcrumb text
+- `src/lib/components/forms/ConfirmDialog.svelte` — translate "Cancel" / default "Confirm" labels
+- `src/lib/components/feedback/ErrorBanner.svelte` — translate "Retry" / fallback error message
+- `src/lib/components/data/DataTable.svelte` — translate default "No data" empty message
 - `src/routes/(admin)/+page.svelte` — Dashboard
 - `src/routes/(admin)/nodes/+page.svelte`
 - `src/routes/(admin)/storage/+page.svelte`
