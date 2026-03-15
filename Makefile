@@ -243,7 +243,7 @@ dev-svelte: ## Lance le backend Go + Vite SvelteKit en parallèle (Ctrl+C pour t
 	@echo "$(GREEN)  Login via → http://localhost:5173/login$(NC)"
 	@echo ""
 	@trap 'kill 0' INT; \
-	  (cd backend && go run . -templates ../frontend 2>&1 | sed 's/^/[api] /') & \
+	  (set -a && . ./.env && set +a && cd backend && go run . -templates ../frontend 2>&1 | sed 's/^/[api] /') & \
 	  (cd frontend-svelte && npm run dev 2>&1 | sed 's/^/[vite] /') & \
 	  wait
 
