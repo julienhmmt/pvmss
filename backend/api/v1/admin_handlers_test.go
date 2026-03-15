@@ -88,48 +88,6 @@ func (m *adminTestSM) GetISOs() []string {
 	return nil
 }
 
-// helper to make an admin request with JWT cookie
-func adminRequest(t *testing.T, method, path, secret string, isAdmin bool) *httptest.ResponseRecorder {
-	t.Helper()
-	handler := makeAdminTestRouter(secret, isAdmin)
-	req := httptest.NewRequest(method, path, nil)
-	if secret != "" {
-		token := signToken(t, secret, "admin", isAdmin, 15*time.Minute)
-		req.AddCookie(&http.Cookie{Name: "access_token", Value: token})
-	}
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	return rr
-}
-
-func makeAdminTestRouter(secret string, _ bool) http.Handler {
-	sm := newAdminTestSM(secret, true) // offline mode for tests
-	sm.nodeCache = []*proxmox.NodeDetails{
-		{Node: "node1", Status: "online", CPU: 0.5, MaxCPU: 4, Memory: 1024, MaxMemory: 2048, Uptime: 3600},
-	}
-	sm.snapshot = &state.ProxmoxClusterSnapshot{
-		VMs: []state.SnapshotVM{
-			{VMID: 100, Name: "test-vm", Node: "node1", Status: "running", Tags: "pvmss"},
-		},
-	}
-
-	handler := MakeAdminHandler(sm)
-
-	// Wire up via middleware so context is properly set
-	return JWTAdminMiddleware(sm, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/admin/nodes":
-			handler.Nodes(w, r)
-		case "/api/v1/admin/appinfo":
-			handler.AppInfo(w, r)
-		case "/api/v1/admin/settings":
-			handler.Settings(w, r)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-}
-
 func TestAdminNodes_Offline(t *testing.T) {
 	secret := "testsecretthatis32byteslongexact!!"
 	sm := newAdminTestSM(secret, true)
