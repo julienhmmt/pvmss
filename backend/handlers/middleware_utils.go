@@ -313,11 +313,23 @@ func isSPAPath(p string) bool {
 // path stays within baseDir. It returns the absolute path and true on success, or
 // an empty string and false if the path escapes baseDir or cannot be resolved.
 func resolveWithinBase(baseDir, relPath string) (string, bool) {
-	baseAbs, err := filepath.Abs(baseDir)
+	// Normalize the base directory and ensure it is absolute.
+	baseClean := filepath.Clean(baseDir)
+	baseAbs, err := filepath.Abs(baseClean)
 	if err != nil {
 		return "", false
 	}
-	joined := filepath.Join(baseAbs, filepath.Clean(relPath))
+
+	// Normalize the relative path and ensure it is not absolute or volume-rooted.
+	cleanRel := filepath.Clean(relPath)
+	if cleanRel == "." {
+		cleanRel = ""
+	}
+	if cleanRel != "" && (filepath.IsAbs(cleanRel) || filepath.VolumeName(cleanRel) != "") {
+		return "", false
+	}
+
+	joined := filepath.Join(baseAbs, cleanRel)
 	targetAbs, err := filepath.Abs(joined)
 	if err != nil {
 		return "", false
