@@ -61,6 +61,10 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.PUT("/api/v1/admin/cloudinit/:id", adminJWTWrap(s, adminMutHandler.UpdateCloudInit))
 	router.DELETE("/api/v1/admin/cloudinit/:id", adminJWTWrap(s, adminMutHandler.DeleteCloudInit))
 	router.POST("/api/v1/admin/cloudinit/:id/toggle", adminJWTWrap(s, adminMutHandler.ToggleCloudInit))
+
+	router.POST("/api/v1/admin/storage/toggle", adminJWTWrap(s, adminMutHandler.ToggleStorage))
+	router.POST("/api/v1/admin/vmbr/toggle", adminJWTWrap(s, adminMutHandler.ToggleVMBR))
+	router.POST("/api/v1/admin/iso/toggle", adminJWTWrap(s, adminMutHandler.ToggleISO))
 }
 
 // wrap converts a plain http.HandlerFunc into the httprouter.Handle signature.

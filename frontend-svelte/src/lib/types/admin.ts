@@ -5,12 +5,15 @@ export interface Node {
 	maxcpu: number;
 	memory: number;
 	max_memory: number;
+	disk: number;
+	max_disk: number;
 	uptime: number;
 }
 
 export interface Storage {
 	storage: string;
 	type: string;
+	content: string;
 	total: number;
 	used: number;
 	free: number;
@@ -96,14 +99,33 @@ export interface ISO {
 	enabled: boolean;
 }
 
+export interface ClusterInfo {
+	is_cluster: boolean;
+	cluster_name: string;
+	node_count: number;
+}
+
+export interface SFTPStatus {
+	enabled: boolean;
+	host?: string;
+	username?: string;
+	key_exists: boolean;
+	status_text: string;
+	status_type: 'success' | 'warning' | 'danger';
+}
+
 export interface AppInfo {
 	version: string;
 	environment: string;
+	go_version: string;
+	platform: string;
 	proxmox_connected: boolean;
 	proxmox_url: string;
 	offline_mode: boolean;
 	total_nodes: number;
 	total_vms: number;
+	cluster_info?: ClusterInfo;
+	env_vars?: Record<string, string>;
 }
 
 export type VMAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset';

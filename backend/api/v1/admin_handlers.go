@@ -3,6 +3,7 @@ package apiv1
 import (
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -71,6 +72,7 @@ func (h *AdminHandler) Storage(w http.ResponseWriter, r *http.Request) {
 		result = append(result, AdminStorageResponse{
 			Storage: s.Storage,
 			Type:    s.Type,
+			Content: s.Content,
 			Total:   total,
 			Used:    used,
 			Free:    free,
@@ -192,7 +194,7 @@ func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 }
 
 // AppInfo handles GET /api/v1/admin/appinfo.
-func (h *AdminHandler) AppInfo(w http.ResponseWriter, _ *http.Request) {
+func (h *AdminHandler) AppInfo(w http.ResponseWriter, r *http.Request) {
 	connected, _ := h.state.GetProxmoxStatus()
 	nodes, _ := h.state.GetNodeCache()
 
@@ -202,15 +204,61 @@ func (h *AdminHandler) AppInfo(w http.ResponseWriter, _ *http.Request) {
 		totalVMs = len(snap.VMs)
 	}
 
-	writeJSON(w, AdminAppInfoResponse{
+	resp := AdminAppInfoResponse{
 		Version:          os.Getenv("PVMSS_VERSION"),
 		Environment:      os.Getenv("PVMSS_ENV"),
+		GoVersion:        runtime.Version(),
+		Platform:         runtime.GOOS + "/" + runtime.GOARCH,
 		ProxmoxConnected: connected,
 		ProxmoxURL:       os.Getenv("PM_API_URL"),
 		OfflineMode:      h.state.IsOfflineMode(),
 		TotalNodes:       len(nodes),
 		TotalVMs:         totalVMs,
-	})
+		ClusterInfo:      fetchClusterInfo(r, h.state.IsOfflineMode()),
+		EnvVars:          collectSafeEnvVars(),
+	}
+
+	writeJSON(w, resp)
+}
+
+// fetchClusterInfo retrieves cluster information from Proxmox.
+// Returns nil if in offline mode or on error.
+func fetchClusterInfo(r *http.Request, offlineMode bool) *AdminClusterInfoResponse {
+	if offlineMode {
+		return nil
+	}
+	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	if err != nil {
+		return nil
+	}
+	info, err := proxmox.GetClusterStatusResty(r.Context(), restyClient)
+	if err != nil || info == nil {
+		return nil
+	}
+	return &AdminClusterInfoResponse{
+		IsCluster:   info.IsCluster,
+		ClusterName: info.ClusterName,
+		NodeCount:   info.NodeCount,
+	}
+}
+
+// collectSafeEnvVars returns a map of safe, non-empty environment variables.
+func collectSafeEnvVars() map[string]string {
+	safeKeys := []string{
+		"LOG_LEVEL", "LOG_FORMAT", "LOG_OUTPUT",
+		"PROXMOX_URL", "PROXMOX_VERIFY_SSL",
+		"PVMSS_ENV", "PVMSS_OFFLINE", "PVMSS_SETTINGS_PATH",
+	}
+	vars := make(map[string]string, len(safeKeys))
+	for _, key := range safeKeys {
+		if val := os.Getenv(key); val != "" {
+			vars[key] = val
+		}
+	}
+	if len(vars) == 0 {
+		return nil
+	}
+	return vars
 }
 
 // Settings handles GET /api/v1/admin/settings.

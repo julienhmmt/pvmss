@@ -4,9 +4,11 @@
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
-	import { getISOs } from '$lib/api/admin/iso';
+	import { Switch } from '$lib/components/ui/switch';
+	import { getISOs, toggleISO } from '$lib/api/admin/iso';
 	import { formatBytes } from '$lib/utils/format';
 	import { Disc } from 'phosphor-svelte';
+	import { toast } from 'svelte-sonner';
 	import type { ISO } from '$lib/types/admin';
 	import * as Table from '$lib/components/ui/table';
 
@@ -23,6 +25,15 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function handleToggle(volid: string) {
+		try {
+			await toggleISO(volid);
+			await load();
+		} catch (e) {
+			toast.error((e as Error).message);
 		}
 	}
 
@@ -45,6 +56,7 @@
 					<Table.Head>Name</Table.Head>
 					<Table.Head>Storage</Table.Head>
 					<Table.Head>Size</Table.Head>
+					<Table.Head>Enabled</Table.Head>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -53,6 +65,12 @@
 						<Table.Cell class="font-medium">{iso.name}</Table.Cell>
 						<Table.Cell>{iso.storage}</Table.Cell>
 						<Table.Cell>{formatBytes(iso.size)}</Table.Cell>
+						<Table.Cell>
+							<Switch
+								checked={iso.enabled}
+								onCheckedChange={() => handleToggle(iso.volid)}
+							/>
+						</Table.Cell>
 					</Table.Row>
 				{/each}
 			</Table.Body>

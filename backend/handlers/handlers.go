@@ -137,6 +137,17 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		log.Info().Msg("SvelteKit admin SPA build not found — /admin/ will fall through to templ pages")
 	}
 
+	// Build the SPA page handler: admin auth check → serve SPA.
+	// This goes through the app middleware chain so sessions are loaded.
+	var spaPageHandler http.Handler
+	if spaAvailable {
+		spaPageHandler = buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(
+			http.HandlerFunc(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+				serveSPA(w, r, spaDir, spaIndexPath)
+			})),
+		)
+	}
+
 	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -144,8 +155,10 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 			publicHandler.ServeHTTP(w, r)
 		case isAPIPath(r.URL.Path):
 			apiHandler.ServeHTTP(w, r)
-		case spaAvailable && isSPAPath(r.URL.Path):
+		case spaAvailable && isSPAStaticAsset(r.URL.Path):
 			serveSPA(w, r, spaDir, spaIndexPath)
+		case spaAvailable && isSPAPath(r.URL.Path):
+			spaPageHandler.ServeHTTP(w, r)
 		default:
 			appHandler.ServeHTTP(w, r)
 		}

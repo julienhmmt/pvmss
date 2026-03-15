@@ -289,10 +289,21 @@ func getFrontendPath(sm state.StateManager) string {
 	return sm.GetFrontendPath()
 }
 
-// isSPAPath returns true for paths that should be served by the SvelteKit admin SPA.
-// API paths are excluded (handled earlier in the mux routing).
+// isSPAStaticAsset returns true for SvelteKit build assets (JS, CSS, etc.)
+// that should be served without authentication (needed by the login page).
+func isSPAStaticAsset(p string) bool {
+	return strings.HasPrefix(p, "/admin/_app/")
+}
+
+// isSPAPath returns true for admin page routes that should be served by the
+// SvelteKit admin SPA (after authentication). Login routes are excluded so the
+// server-rendered login form is used.
 func isSPAPath(p string) bool {
 	if p == "/admin/login" || p == "/admin/proxmox-login" {
+		return false
+	}
+	// Static assets are handled separately without auth.
+	if isSPAStaticAsset(p) {
 		return false
 	}
 	return strings.HasPrefix(p, "/admin/") || p == "/admin"

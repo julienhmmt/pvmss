@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import * as Tabs from '$lib/components/ui/tabs';
 	import { getLimits, updateLimits } from '$lib/api/admin/limits';
 	import { Sliders } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
@@ -15,6 +16,9 @@
 	let error = $state<Error | null>(null);
 	let saving = $state(false);
 	let limits = $state<Limits | null>(null);
+
+	let nodeNames = $derived(limits ? Object.keys(limits.nodes).sort() : []);
+	let selectedNode = $state('');
 
 	async function load() {
 		loading = true;
@@ -145,6 +149,61 @@
 					<Input type="number" bind:value={limits.max_disk_per_vm} />
 				</div>
 			</div>
+		</section>
+
+		<section class="space-y-4">
+			<h2 class="text-lg font-semibold">Node-Specific Limits</h2>
+			{#if nodeNames.length > 0}
+				<Tabs.Root value={selectedNode || nodeNames[0]} onValueChange={(v) => (selectedNode = v)}>
+					<Tabs.List>
+						{#each nodeNames as name}
+							<Tabs.Trigger value={name}>{name}</Tabs.Trigger>
+						{/each}
+					</Tabs.List>
+					{#each nodeNames as name}
+						<Tabs.Content value={name}>
+							<div class="grid grid-cols-2 gap-4 pt-4">
+								<div class="space-y-2">
+									<Label>CPU Sockets (min)</Label>
+									<Input type="number" bind:value={limits.nodes[name].sockets.min} />
+								</div>
+								<div class="space-y-2">
+									<Label>CPU Sockets (max)</Label>
+									<Input type="number" bind:value={limits.nodes[name].sockets.max} />
+								</div>
+								<div class="space-y-2">
+									<Label>CPU Cores (min)</Label>
+									<Input type="number" bind:value={limits.nodes[name].cores.min} />
+								</div>
+								<div class="space-y-2">
+									<Label>CPU Cores (max)</Label>
+									<Input type="number" bind:value={limits.nodes[name].cores.max} />
+								</div>
+								<div class="space-y-2">
+									<Label>RAM GB (min)</Label>
+									<Input type="number" bind:value={limits.nodes[name].ram.min} />
+								</div>
+								<div class="space-y-2">
+									<Label>RAM GB (max)</Label>
+									<Input type="number" bind:value={limits.nodes[name].ram.max} />
+								</div>
+								<div class="space-y-2">
+									<Label>Disk GB (min)</Label>
+									<Input type="number" bind:value={limits.nodes[name].disk.min} />
+								</div>
+								<div class="space-y-2">
+									<Label>Disk GB (max)</Label>
+									<Input type="number" bind:value={limits.nodes[name].disk.max} />
+								</div>
+							</div>
+						</Tabs.Content>
+					{/each}
+				</Tabs.Root>
+			{:else}
+				<p class="text-sm text-muted-foreground">
+					No node-specific limits configured. Global VM limits apply to all nodes.
+				</p>
+			{/if}
 		</section>
 	</div>
 {/if}

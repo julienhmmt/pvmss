@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -351,9 +352,9 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 // ListCloudInit handles GET /api/v1/admin/cloudinit.
 func (h *AdminMutationsHandler) ListCloudInit(w http.ResponseWriter, _ *http.Request) {
 	settings := h.state.GetSettings()
-	result := make([]AdminCloudInitResponse, 0, len(settings.CloudInitTemplates))
+	templates := make([]AdminCloudInitResponse, 0, len(settings.CloudInitTemplates))
 	for _, t := range settings.CloudInitTemplates {
-		result = append(result, AdminCloudInitResponse{
+		templates = append(templates, AdminCloudInitResponse{
 			ID:          t.ID,
 			Name:        t.Name,
 			Description: t.Description,
@@ -362,7 +363,52 @@ func (h *AdminMutationsHandler) ListCloudInit(w http.ResponseWriter, _ *http.Req
 			Enabled:     t.Enabled,
 		})
 	}
-	writeJSON(w, result)
+	writeJSON(w, AdminCloudInitListResponse{
+		Templates:  templates,
+		SFTPStatus: buildSFTPStatus(settings),
+	})
+}
+
+// buildSFTPStatus constructs SFTP status from settings without i18n (API returns machine-readable status).
+func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
+	if settings == nil {
+		return &AdminSFTPStatusResponse{
+			Enabled:    false,
+			StatusText: "settings unavailable",
+			StatusType: "danger",
+		}
+	}
+	cfg := settings.CloudInitSFTP
+	if !cfg.Enabled {
+		return &AdminSFTPStatusResponse{
+			Enabled:    false,
+			StatusText: "disabled",
+			StatusType: "warning",
+		}
+	}
+	keyExists := false
+	if cfg.PrivateKeyPath != "" {
+		if _, err := os.Stat(cfg.PrivateKeyPath); err == nil {
+			keyExists = true
+		}
+	}
+	status := &AdminSFTPStatusResponse{
+		Enabled:   true,
+		Host:      cfg.Host,
+		Username:  cfg.Username,
+		KeyExists: keyExists,
+	}
+	if !keyExists {
+		status.StatusText = "private key not found"
+		status.StatusType = "danger"
+	} else if cfg.Host == "" {
+		status.StatusText = "host not configured"
+		status.StatusType = "danger"
+	} else {
+		status.StatusText = "configured"
+		status.StatusType = "success"
+	}
+	return status
 }
 
 // CreateCloudInit handles POST /api/v1/admin/cloudinit.
@@ -509,6 +555,157 @@ func (h *AdminMutationsHandler) ToggleCloudInit(w http.ResponseWriter, r *http.R
 		return
 	}
 	newSettings.CloudInitTemplates = newTemplates
+	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	if err := h.state.SetSettings(&newSettings); err != nil {
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- Storage Toggle ---
+
+// ToggleStorage handles POST /api/v1/admin/storage/toggle.
+func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Request) {
+	var req ToggleStorageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	if req.Storage == "" || req.Node == "" {
+		errBadRequest(w, "storage and node are required")
+		return
+	}
+
+	uniqueID := req.Node + ":" + req.Storage
+
+	settings := h.state.GetSettings()
+	newSettings := *settings
+	newStorages := make([]string, len(settings.EnabledStorages))
+	copy(newStorages, settings.EnabledStorages)
+
+	// Check if currently enabled
+	found := false
+	for _, s := range newStorages {
+		if s == uniqueID {
+			found = true
+			break
+		}
+	}
+
+	if found {
+		// Remove (disable)
+		filtered := make([]string, 0, len(newStorages))
+		for _, s := range newStorages {
+			if s != uniqueID {
+				filtered = append(filtered, s)
+			}
+		}
+		newStorages = filtered
+	} else {
+		// Add (enable)
+		newStorages = append(newStorages, uniqueID)
+	}
+
+	newSettings.EnabledStorages = newStorages
+	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	if err := h.state.SetSettings(&newSettings); err != nil {
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- VMBR Toggle ---
+
+// ToggleVMBR handles POST /api/v1/admin/vmbr/toggle.
+func (h *AdminMutationsHandler) ToggleVMBR(w http.ResponseWriter, r *http.Request) {
+	var req ToggleVMBRRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	if req.VMBR == "" || req.Node == "" {
+		errBadRequest(w, "vmbr and node are required")
+		return
+	}
+
+	uniqueID := req.Node + ":" + req.VMBR
+
+	settings := h.state.GetSettings()
+	newSettings := *settings
+	newVMBRs := make([]string, len(settings.VMBRs))
+	copy(newVMBRs, settings.VMBRs)
+
+	found := false
+	for _, v := range newVMBRs {
+		if v == uniqueID {
+			found = true
+			break
+		}
+	}
+
+	if found {
+		filtered := make([]string, 0, len(newVMBRs))
+		for _, v := range newVMBRs {
+			if v != uniqueID {
+				filtered = append(filtered, v)
+			}
+		}
+		newVMBRs = filtered
+	} else {
+		newVMBRs = append(newVMBRs, uniqueID)
+	}
+
+	newSettings.VMBRs = newVMBRs
+	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	if err := h.state.SetSettings(&newSettings); err != nil {
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- ISO Toggle ---
+
+// ToggleISO handles POST /api/v1/admin/iso/toggle.
+func (h *AdminMutationsHandler) ToggleISO(w http.ResponseWriter, r *http.Request) {
+	var req ToggleISORequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	if req.VolID == "" {
+		errBadRequest(w, "volid is required")
+		return
+	}
+
+	settings := h.state.GetSettings()
+	newSettings := *settings
+	newISOs := make([]string, len(settings.ISOs))
+	copy(newISOs, settings.ISOs)
+
+	found := false
+	for _, iso := range newISOs {
+		if iso == req.VolID {
+			found = true
+			break
+		}
+	}
+
+	if found {
+		filtered := make([]string, 0, len(newISOs))
+		for _, iso := range newISOs {
+			if iso != req.VolID {
+				filtered = append(filtered, iso)
+			}
+		}
+		newISOs = filtered
+	} else {
+		newISOs = append(newISOs, req.VolID)
+	}
+
+	newSettings.ISOs = newISOs
 	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 	if err := h.state.SetSettings(&newSettings); err != nil {
 		errInternal(w)

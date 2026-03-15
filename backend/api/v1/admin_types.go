@@ -17,6 +17,7 @@ type AdminNodeResponse struct {
 type AdminStorageResponse struct {
 	Storage string `json:"storage"`
 	Type    string `json:"type"`
+	Content string `json:"content"`
 	Total   int64  `json:"total"`
 	Used    int64  `json:"used"`
 	Free    int64  `json:"free"`
@@ -141,16 +142,59 @@ type AdminISOResponse struct {
 	Enabled bool   `json:"enabled"`
 }
 
+// --- Toggle Requests ---
+
+type ToggleStorageRequest struct {
+	Storage string `json:"storage"`
+	Node    string `json:"node"`
+}
+
+type ToggleVMBRRequest struct {
+	VMBR string `json:"vmbr"`
+	Node string `json:"node"`
+}
+
+type ToggleISORequest struct {
+	VolID string `json:"volid"`
+}
+
 // --- App Info ---
 
 type AdminAppInfoResponse struct {
-	Version          string `json:"version"`
-	Environment      string `json:"environment"`
-	ProxmoxConnected bool   `json:"proxmox_connected"`
-	ProxmoxURL       string `json:"proxmox_url"`
-	OfflineMode      bool   `json:"offline_mode"`
-	TotalNodes       int    `json:"total_nodes"`
-	TotalVMs         int    `json:"total_vms"`
+	Version          string                    `json:"version"`
+	Environment      string                    `json:"environment"`
+	GoVersion        string                    `json:"go_version"`
+	Platform         string                    `json:"platform"`
+	ProxmoxConnected bool                      `json:"proxmox_connected"`
+	ProxmoxURL       string                    `json:"proxmox_url"`
+	OfflineMode      bool                      `json:"offline_mode"`
+	TotalNodes       int                       `json:"total_nodes"`
+	TotalVMs         int                       `json:"total_vms"`
+	ClusterInfo      *AdminClusterInfoResponse `json:"cluster_info,omitempty"`
+	EnvVars          map[string]string         `json:"env_vars,omitempty"`
+}
+
+// AdminClusterInfoResponse represents Proxmox cluster information.
+type AdminClusterInfoResponse struct {
+	IsCluster   bool   `json:"is_cluster"`
+	ClusterName string `json:"cluster_name"`
+	NodeCount   int    `json:"node_count"`
+}
+
+// AdminSFTPStatusResponse represents SFTP configuration status for cloud-init uploads.
+type AdminSFTPStatusResponse struct {
+	Enabled    bool   `json:"enabled"`
+	Host       string `json:"host,omitempty"`
+	Username   string `json:"username,omitempty"`
+	KeyExists  bool   `json:"key_exists"`
+	StatusText string `json:"status_text"`
+	StatusType string `json:"status_type"` // "success", "warning", "danger"
+}
+
+// AdminCloudInitListResponse wraps cloud-init templates with SFTP status.
+type AdminCloudInitListResponse struct {
+	Templates  []AdminCloudInitResponse `json:"templates"`
+	SFTPStatus *AdminSFTPStatusResponse `json:"sftp_status,omitempty"`
 }
 
 // --- Admin Action ---

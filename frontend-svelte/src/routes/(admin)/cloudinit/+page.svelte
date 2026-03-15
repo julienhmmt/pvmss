@@ -9,6 +9,8 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
+	import { Badge } from '$lib/components/ui/badge';
+	import * as Card from '$lib/components/ui/card';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Table from '$lib/components/ui/table';
 	import {
@@ -20,21 +22,40 @@
 	} from '$lib/api/admin/cloudinit';
 	import { Cloud } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
-	import type { CloudInitTemplate } from '$lib/types/admin';
+	import type { CloudInitTemplate, SFTPStatus } from '$lib/types/admin';
 
 	let loading = $state(true);
 	let error = $state<Error | null>(null);
 	let templates = $state<CloudInitTemplate[]>([]);
+	let sftpStatus = $state<SFTPStatus | undefined>(undefined);
 	let editOpen = $state(false);
 	let editId = $state<string | null>(null);
 	let deleteTarget = $state<string | null>(null);
 	let form = $state({ name: '', description: '', storage: '', content: '' });
 
+	let statusColorClass = $derived(
+		sftpStatus?.status_type === 'success'
+			? 'text-green-600 border-green-300'
+			: sftpStatus?.status_type === 'warning'
+				? 'text-yellow-600 border-yellow-300'
+				: 'text-red-600 border-red-300'
+	);
+
+	let badgeVariant = $derived<'default' | 'secondary' | 'destructive' | 'outline'>(
+		sftpStatus?.status_type === 'success'
+			? 'default'
+			: sftpStatus?.status_type === 'warning'
+				? 'secondary'
+				: 'destructive'
+	);
+
 	async function load() {
 		loading = true;
 		error = null;
 		try {
-			templates = await getCloudInits();
+			const data = await getCloudInits();
+			templates = data.templates;
+			sftpStatus = data.sftp_status;
 		} catch (e) {
 			error = e as Error;
 		} finally {
@@ -105,42 +126,79 @@
 	<ErrorBanner {error} onRetry={load} />
 {:else if loading}
 	<LoadingSkeleton variant="table" rows={5} />
-{:else if templates.length === 0}
-	<EmptyState title="No cloud-init templates" icon={Cloud} description="Create a template to automate VM initialization" />
 {:else}
-	<div class="rounded-md border">
-		<Table.Root>
-			<Table.Header>
-				<Table.Row>
-					<Table.Head>Name</Table.Head>
-					<Table.Head>Description</Table.Head>
-					<Table.Head>Storage</Table.Head>
-					<Table.Head>Enabled</Table.Head>
-					<Table.Head>Actions</Table.Head>
-				</Table.Row>
-			</Table.Header>
-			<Table.Body>
-				{#each templates as t}
+	{#if sftpStatus}
+		<Card.Root class="mb-6 {statusColorClass}">
+			<Card.Header>
+				<Card.Title class="flex items-center gap-2">
+					SFTP Status
+					<Badge variant={badgeVariant}>{sftpStatus.status_text}</Badge>
+				</Card.Title>
+			</Card.Header>
+			<Card.Content>
+				<div class="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+					<div>
+						<span class="text-muted-foreground">Enabled</span>
+						<p class="font-medium">{sftpStatus.enabled ? 'Yes' : 'No'}</p>
+					</div>
+					{#if sftpStatus.host}
+						<div>
+							<span class="text-muted-foreground">Host</span>
+							<p class="font-medium">{sftpStatus.host}</p>
+						</div>
+					{/if}
+					{#if sftpStatus.username}
+						<div>
+							<span class="text-muted-foreground">Username</span>
+							<p class="font-medium">{sftpStatus.username}</p>
+						</div>
+					{/if}
+					<div>
+						<span class="text-muted-foreground">Key Exists</span>
+						<p class="font-medium">{sftpStatus.key_exists ? 'Yes' : 'No'}</p>
+					</div>
+				</div>
+			</Card.Content>
+		</Card.Root>
+	{/if}
+
+	{#if templates.length === 0}
+		<EmptyState title="No cloud-init templates" icon={Cloud} description="Create a template to automate VM initialization" />
+	{:else}
+		<div class="rounded-md border">
+			<Table.Root>
+				<Table.Header>
 					<Table.Row>
-						<Table.Cell class="font-medium">{t.name}</Table.Cell>
-						<Table.Cell>{t.description}</Table.Cell>
-						<Table.Cell>{t.storage}</Table.Cell>
-						<Table.Cell>
-							<Switch checked={t.enabled} onCheckedChange={() => handleToggle(t.id)} />
-						</Table.Cell>
-						<Table.Cell>
-							<div class="flex gap-2">
-								<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
-								<Button variant="destructive" size="sm" onclick={() => (deleteTarget = t.id)}>
-									Delete
-								</Button>
-							</div>
-						</Table.Cell>
+						<Table.Head>Name</Table.Head>
+						<Table.Head>Description</Table.Head>
+						<Table.Head>Storage</Table.Head>
+						<Table.Head>Enabled</Table.Head>
+						<Table.Head>Actions</Table.Head>
 					</Table.Row>
-				{/each}
-			</Table.Body>
-		</Table.Root>
-	</div>
+				</Table.Header>
+				<Table.Body>
+					{#each templates as t}
+						<Table.Row>
+							<Table.Cell class="font-medium">{t.name}</Table.Cell>
+							<Table.Cell>{t.description}</Table.Cell>
+							<Table.Cell>{t.storage}</Table.Cell>
+							<Table.Cell>
+								<Switch checked={t.enabled} onCheckedChange={() => handleToggle(t.id)} />
+							</Table.Cell>
+							<Table.Cell>
+								<div class="flex gap-2">
+									<Button variant="outline" size="sm" onclick={() => openEdit(t)}>Edit</Button>
+									<Button variant="destructive" size="sm" onclick={() => (deleteTarget = t.id)}>
+										Delete
+									</Button>
+								</div>
+							</Table.Cell>
+						</Table.Row>
+					{/each}
+				</Table.Body>
+			</Table.Root>
+		</div>
+	{/if}
 {/if}
 
 <Dialog.Root bind:open={editOpen}>

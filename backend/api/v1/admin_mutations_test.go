@@ -147,12 +147,15 @@ func TestAdminListCloudInit(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
-	var items []AdminCloudInitResponse
-	if err := json.NewDecoder(rr.Body).Decode(&items); err != nil {
+	var listResp AdminCloudInitListResponse
+	if err := json.NewDecoder(rr.Body).Decode(&listResp); err != nil {
 		t.Fatalf("failed to decode: %v", err)
 	}
-	if len(items) != 0 {
-		t.Errorf("expected 0 cloud-init templates, got %d", len(items))
+	if len(listResp.Templates) != 0 {
+		t.Errorf("expected 0 cloud-init templates, got %d", len(listResp.Templates))
+	}
+	if listResp.SFTPStatus == nil {
+		t.Fatal("expected sftp_status to be present")
 	}
 }
 

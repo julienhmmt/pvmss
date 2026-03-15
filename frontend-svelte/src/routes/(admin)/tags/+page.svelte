@@ -10,7 +10,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { getTags, createTag, deleteTag } from '$lib/api/admin/tags';
-	import { Tag, X } from 'phosphor-svelte';
+	import { Tag, X, Lock } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { Tag as TagType } from '$lib/types/admin';
 
@@ -79,9 +79,13 @@
 			<Badge variant="secondary" class="gap-2 px-3 py-1.5 text-sm">
 				{tag.name}
 				<span class="text-muted-foreground">({tag.vm_count} VMs)</span>
-				<button class="ml-1 hover:text-destructive" onclick={() => (deleteTarget = tag.name)}>
-					<X class="h-3 w-3" />
-				</button>
+				{#if tag.name === 'pvmss'}
+					<Lock class="ml-1 h-3 w-3 text-muted-foreground" />
+				{:else}
+					<button class="ml-1 hover:text-destructive" onclick={() => (deleteTarget = tag.name)}>
+						<X class="h-3 w-3" />
+					</button>
+				{/if}
 			</Badge>
 		{/each}
 	</div>

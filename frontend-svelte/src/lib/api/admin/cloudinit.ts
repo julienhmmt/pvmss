@@ -1,7 +1,12 @@
 import { api } from '$lib/api/client';
-import type { CloudInitTemplate } from '$lib/types/admin';
+import type { CloudInitTemplate, SFTPStatus } from '$lib/types/admin';
 
-export function getCloudInits(): Promise<CloudInitTemplate[]> {
+interface CloudInitListResponse {
+	templates: CloudInitTemplate[];
+	sftp_status?: SFTPStatus;
+}
+
+export function getCloudInits(): Promise<CloudInitListResponse> {
 	return api.get('/api/v1/admin/cloudinit');
 }
 
