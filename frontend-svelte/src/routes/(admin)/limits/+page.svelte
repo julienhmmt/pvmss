@@ -93,7 +93,7 @@
 {:else}
 	<div class="max-w-2xl space-y-8">
 		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">{$t('admin.limits.vmRanges')}</h2>
+			<h2 class="text-lg font-semibold">{$t('admin.limits.vmResourceRanges')}</h2>
 			<div class="grid grid-cols-2 gap-4">
 				<div class="space-y-2">
 					<Label>{$t('admin.limits.cpuSocketsMin')}</Label>
@@ -112,26 +112,26 @@
 					<Input type="number" bind:value={limits.vm.cores.max} />
 				</div>
 				<div class="space-y-2">
-					<Label>{$t('admin.limits.ramMin')}</Label>
+					<Label>{$t('admin.limits.ramGbMin')}</Label>
 					<Input type="number" bind:value={limits.vm.ram.min} />
 				</div>
 				<div class="space-y-2">
-					<Label>{$t('admin.limits.ramMax')}</Label>
+					<Label>{$t('admin.limits.ramGbMax')}</Label>
 					<Input type="number" bind:value={limits.vm.ram.max} />
 				</div>
 				<div class="space-y-2">
-					<Label>{$t('admin.limits.diskMin')}</Label>
+					<Label>{$t('admin.limits.diskGbMin')}</Label>
 					<Input type="number" bind:value={limits.vm.disk.min} />
 				</div>
 				<div class="space-y-2">
-					<Label>{$t('admin.limits.diskMax')}</Label>
+					<Label>{$t('admin.limits.diskGbMax')}</Label>
 					<Input type="number" bind:value={limits.vm.disk.max} />
 				</div>
 			</div>
 		</section>
 
 		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">{$t('admin.limits.global')}</h2>
+			<h2 class="text-lg font-semibold">{$t('admin.limits.globalLimits')}</h2>
 			<div class="grid grid-cols-2 gap-4">
 				<div class="space-y-2">
 					<Label>{$t('admin.limits.maxVmsPerUser')}</Label>
@@ -153,7 +153,7 @@
 		</section>
 
 		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">{$t('admin.limits.nodeSpecific')}</h2>
+			<h2 class="text-lg font-semibold">{$t('admin.limits.nodeSpecificLimits')}</h2>
 			{#if nodeNames.length > 0}
 				<Tabs.Root value={selectedNode || nodeNames[0]} onValueChange={(v) => (selectedNode = v)}>
 					<Tabs.List>
