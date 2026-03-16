@@ -348,11 +348,9 @@ func resolveWithinBase(baseDir, relPath string) (string, bool) {
 // serveSPA serves the SvelteKit SPA. Static assets (files with extensions) are served
 // directly from the build directory; all other paths get the fallback index.html.
 func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath string) {
-	// Strip /admin prefix to find the file in the build directory
-	relPath := strings.TrimPrefix(r.URL.Path, "/admin")
-	if relPath == "" {
-		relPath = "/"
-	}
+	// Strip /admin prefix and leading slash to get a relative path within the build directory.
+	// e.g. "/admin" → "", "/admin/nodes" → "nodes", "/admin/_app/x.js" → "_app/x.js"
+	relPath := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/admin"), "/")
 	// Resolve the requested path within the SPA directory and ensure it cannot escape.
 	filePathAbs, ok := resolveWithinBase(spaDir, relPath)
 	if !ok {
