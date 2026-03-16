@@ -79,7 +79,7 @@
 		{#each tags as tag}
 			<Badge variant="secondary" class="gap-2 px-3 py-1.5 text-sm">
 				{tag.name}
-				<span class="text-muted-foreground">({tag.vm_count} {$t('admin.tags.vms')})</span>
+				<span class="text-muted-foreground">({tag.vm_count} {$t('admin.tags.vmCount')})</span>
 				{#if tag.name === 'pvmss'}
 					<Lock class="ml-1 h-3 w-3 text-muted-foreground" />
 				{:else}
