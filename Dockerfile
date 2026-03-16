@@ -1,5 +1,5 @@
 # Build stage - Go
-FROM golang:1.25.5-alpine3.23 AS builder
+FROM golang:1.26.1-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -25,10 +25,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
-# Copy frontend files in a separate stage to keep builder image smaller.
-# Vue 3 SPA uses vendored ESM (frontend/vendor/) — no npm/Node build step needed.
-# Airgap-compatible: all JS dependencies are committed to the repository.
-FROM alpine:3.23 AS frontend
+# Copy frontend files.
+FROM alpine:3.23.3 AS frontend
 WORKDIR /app
 
 COPY frontend/ /app/frontend/
@@ -49,7 +47,7 @@ RUN set -eux; \
     apk del wget
 
 # Build SvelteKit admin SPA
-FROM node:22-alpine AS svelte-builder
+FROM node:lts-alpine3.22 AS svelte-builder
 WORKDIR /app/frontend-svelte
 
 COPY frontend-svelte/package.json frontend-svelte/package-lock.json ./
