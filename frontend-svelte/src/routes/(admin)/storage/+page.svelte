@@ -72,9 +72,7 @@
 <div class="pv-header -mx-6 -mt-6 mb-6">
 	<div class="pv-header-flex">
 		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
 			<h1 class="pv-title">{$t('admin.storage.title')}</h1>
-			<p class="pv-subtitle">{$t('admin.storage.subtitle', { default: '' })}</p>
 		</div>
 
 		{#if !loading}

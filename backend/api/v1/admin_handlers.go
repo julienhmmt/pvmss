@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"pvmss/proxmox"
@@ -52,6 +54,8 @@ func (h *AdminHandler) Nodes(w http.ResponseWriter, r *http.Request) {
 }
 
 // Storage handles GET /api/v1/admin/storage.
+// It queries each node in parallel to obtain disk usage stats (used/total/avail),
+// which are only available from the per-node endpoint /nodes/{node}/storage.
 func (h *AdminHandler) Storage(w http.ResponseWriter, r *http.Request) {
 	if h.state.IsOfflineMode() {
 		writeJSON(w, []AdminStorageResponse{})
@@ -62,7 +66,7 @@ func (h *AdminHandler) Storage(w http.ResponseWriter, r *http.Request) {
 		errInternal(w)
 		return
 	}
-	storages, err := proxmox.GetStoragesResty(r.Context(), restyClient)
+	nodeNames, err := proxmox.GetNodeNamesResty(r.Context(), restyClient)
 	if err != nil {
 		errInternal(w)
 		return
@@ -72,21 +76,53 @@ func (h *AdminHandler) Storage(w http.ResponseWriter, r *http.Request) {
 	for _, s := range enabled {
 		enabledSet[s] = true
 	}
-	result := make([]AdminStorageResponse, 0, len(storages))
-	for _, s := range storages {
-		total, _ := s.Total.Int64()
-		used, _ := s.Used.Int64()
-		free, _ := s.Avail.Int64()
-		result = append(result, AdminStorageResponse{
-			Storage: s.Storage,
-			Type:    s.Type,
-			Content: s.Content,
-			Total:   total,
-			Used:    used,
-			Free:    free,
-			Node:    s.Nodes,
-			Enabled: enabledSet[s.Storage],
-		})
+
+	type nodeResult struct {
+		node     string
+		storages []proxmox.Storage
+	}
+	ch := make(chan nodeResult, len(nodeNames))
+	var wg sync.WaitGroup
+	for _, node := range nodeNames {
+		wg.Add(1)
+		go func(n string) {
+			defer wg.Done()
+			storages, err := proxmox.GetNodeStoragesResty(r.Context(), restyClient, n)
+			if err != nil {
+				return
+			}
+			ch <- nodeResult{node: n, storages: storages}
+		}(node)
+	}
+	wg.Wait()
+	close(ch)
+
+	var result []AdminStorageResponse
+	for nr := range ch {
+		for _, s := range nr.storages {
+			total, _ := s.Total.Int64()
+			used, _ := s.Used.Int64()
+			free, _ := s.Avail.Int64()
+			result = append(result, AdminStorageResponse{
+				Storage: s.Storage,
+				Type:    s.Type,
+				Content: s.Content,
+				Total:   total,
+				Used:    used,
+				Free:    free,
+				Node:    nr.node,
+				Enabled: enabledSet[nr.node+":"+s.Storage],
+			})
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Node != result[j].Node {
+			return result[i].Node < result[j].Node
+		}
+		return result[i].Storage < result[j].Storage
+	})
+	if result == nil {
+		result = []AdminStorageResponse{}
 	}
 	writeJSON(w, result)
 }
