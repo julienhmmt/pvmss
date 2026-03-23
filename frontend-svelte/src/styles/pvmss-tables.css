@@ -76,7 +76,7 @@
 }
 
 .pv-resource-icon--node {
-  background: linear-gradient(135deg, oklch(0.65 0.15 200), oklch(0.50 0.15 200));
+  background: linear-gradient(135deg, hsl(var(--blaze-orange-600)), hsl(var(--blaze-orange-800)));
 }
 
 .pv-resource-icon--storage {

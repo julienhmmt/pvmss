@@ -4,12 +4,13 @@
 .pv-action-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  border-radius: 6px;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 /* VM / resource status */
@@ -45,10 +46,28 @@
   color: #15803d;
   border: 1px solid #86efac;
 }
+.pv-badge--online::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  flex-shrink: 0;
+}
 .pv-badge--offline {
   background: #fef2f2;
   color: #dc2626;
   border: 1px solid #fca5a5;
+}
+.pv-badge--offline::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #dc2626;
+  flex-shrink: 0;
 }
 .pv-badge--warn {
   background: #fffbeb;
@@ -56,15 +75,41 @@
   border: 1px solid #fcd34d;
 }
 
+/* Dark mode overrides */
+.dark .pv-badge--online {
+  background: #052e16;
+  color: #4ade80;
+  border-color: #166534;
+}
+.dark .pv-badge--online::before {
+  background: #4ade80;
+}
+.dark .pv-status-badge--running {
+  background: #052e16;
+  color: #4ade80;
+  border-color: #166534;
+}
+.dark .pv-status-badge--stopped {
+  background: #1e293b;
+  color: #94a3b8;
+  border-color: #334155;
+}
+.dark .pv-badge--offline {
+  background: #450a0a;
+  color: #f87171;
+  border-color: #7f1d1d;
+}
+
 /* Action / type badges (uppercase, spaced) */
 .pv-action-badge {
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  border-radius: 6px;
 }
 .pv-action-badge--vm {
-  background: oklch(0.97 0.02 45);
-  color: oklch(0.45 0.15 45);
-  border: 1px solid oklch(0.88 0.06 45);
+  background: hsl(var(--blaze-orange-50));
+  color: hsl(var(--blaze-orange-800));
+  border: 1px solid hsl(var(--blaze-orange-200));
 }
 .pv-action-badge--template {
   background: #f5f3ff;

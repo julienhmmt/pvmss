@@ -28,6 +28,12 @@ func (h *AdminHandler) Nodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cached, _ := h.state.GetNodeCache()
+	if len(cached) == 0 {
+		// Cache not yet populated — trigger a synchronous refresh so the first
+		// page load returns real data instead of an empty list.
+		h.state.RefreshNodeCache(r.Context())
+		cached, _ = h.state.GetNodeCache()
+	}
 	result := make([]AdminNodeResponse, 0, len(cached))
 	for _, details := range cached {
 		result = append(result, AdminNodeResponse{
@@ -37,6 +43,8 @@ func (h *AdminHandler) Nodes(w http.ResponseWriter, r *http.Request) {
 			MaxCPU:    details.MaxCPU,
 			Memory:    details.Memory,
 			MaxMemory: details.MaxMemory,
+			Disk:      details.Disk,
+			MaxDisk:   details.MaxDisk,
 			Uptime:    details.Uptime,
 		})
 	}

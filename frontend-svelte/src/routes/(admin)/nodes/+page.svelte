@@ -1,30 +1,38 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
-	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
-	import StatusBadge from '$lib/components/data/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { getNodes } from '$lib/api/admin/nodes';
 	import { formatBytes, formatCpu, formatUptime, formatPercent } from '$lib/utils/format';
-	import { HardDrives, ArrowsClockwise } from 'phosphor-svelte';
+	import { HardDrives, ArrowsClockwise, Database, Cpu, Memory } from 'phosphor-svelte';
 	import type { Node } from '$lib/types/admin';
 
 	const AUTO_REFRESH_INTERVAL = 30_000;
 	const AGE_TICK_INTERVAL = 1_000;
+	const EMPTY_RETRY_INTERVAL = 5_000;
+	const EMPTY_RETRY_MAX = 6; // 30 s max
 
 	let loading = $state(true);
 	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let nodes = $state<Node[]>([]);
 	let lastUpdatedAgo = $state(0);
+	let emptyRetryCount = $state(0);
 
-	function progressColor(percent: number): string {
-		if (percent >= 80) return 'bg-destructive';
-		if (percent >= 60) return 'bg-chart-2';
-		return 'bg-primary';
+	let runningCount = $derived(nodes.filter((n) => n.status === 'online').length);
+	let offlineCount = $derived(nodes.filter((n) => n.status !== 'online').length);
+
+	function usageBarClass(percent: number): string {
+		if (percent >= 80) return 'pv-usage-bar-fill--danger';
+		if (percent >= 60) return 'pv-usage-bar-fill--warn';
+		return '';
+	}
+
+	function hasDisk(node: Node): boolean {
+		return node.max_disk > 0;
 	}
 
 	async function load() {
@@ -33,6 +41,7 @@
 		try {
 			nodes = await getNodes();
 			lastUpdatedAgo = 0;
+			emptyRetryCount = 0;
 		} catch (e) {
 			error = e as Error;
 		} finally {
@@ -62,6 +71,13 @@
 			}
 		}, AUTO_REFRESH_INTERVAL);
 
+		const emptyRetryTimer = setInterval(() => {
+			if (!loading && !refreshing && !error && nodes.length === 0 && emptyRetryCount < EMPTY_RETRY_MAX) {
+				emptyRetryCount += 1;
+				refresh();
+			}
+		}, EMPTY_RETRY_INTERVAL);
+
 		const ageTicker = setInterval(() => {
 			lastUpdatedAgo = lastUpdatedAgo + 1;
 		}, AGE_TICK_INTERVAL);
@@ -69,90 +85,167 @@
 		return () => {
 			clearInterval(autoRefreshTimer);
 			clearInterval(ageTicker);
+			clearInterval(emptyRetryTimer);
 		};
 	});
 </script>
 
-<PageHeader title={$t('admin.nodes.title')} icon={HardDrives}>
-	{#snippet actions()}
-		<span class="text-muted-foreground text-xs">
-			{$t('admin.nodes.updatedAgo', { values: { seconds: lastUpdatedAgo } })}
-		</span>
-		<Button variant="outline" size="sm" onclick={refresh} disabled={refreshing || loading}>
-			<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
-			{$t('common.refresh')}
-		</Button>
-	{/snippet}
-</PageHeader>
+<!-- Gradient page header -->
+<div class="pv-header -mx-6 -mt-6 mb-6">
+	<div class="pv-header-flex">
+		<div>
+			<p class="pv-eyebrow">{$t('nav.administration')}</p>
+			<h1 class="pv-title">{$t('admin.nodes.title')}</h1>
+			<p class="pv-subtitle">
+				{$t('admin.nodes.updatedAgo', { values: { seconds: lastUpdatedAgo } })}
+			</p>
+		</div>
+
+		{#if !loading}
+			<div class="flex items-center gap-3 flex-wrap">
+				<div class="pv-header-stats">
+					<div class="pv-header-stat">
+						<div class="pv-header-stat-label">{$t('admin.nodes.title')}</div>
+						<div class="pv-header-stat-value">{nodes.length}</div>
+					</div>
+					{#if runningCount > 0}
+						<div class="pv-header-stat">
+							<div class="pv-header-stat-label">{$t('common.statusMap.online')}</div>
+							<div class="pv-header-stat-value">{runningCount}</div>
+						</div>
+					{/if}
+					{#if offlineCount > 0}
+						<div class="pv-header-stat pv-header-stat--danger">
+							<div class="pv-header-stat-label">{$t('common.statusMap.offline')}</div>
+							<div class="pv-header-stat-value">{offlineCount}</div>
+						</div>
+					{/if}
+				</div>
+				<Button
+					class="pv-header-btn"
+					variant="outline"
+					size="sm"
+					onclick={refresh}
+					disabled={refreshing || loading}
+				>
+					<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
+					{$t('common.refresh')}
+				</Button>
+			</div>
+		{/if}
+	</div>
+</div>
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />
 {:else if loading}
 	<LoadingSkeleton variant="card" rows={4} />
 {:else if nodes.length === 0}
-	<EmptyState title={$t('admin.nodes.noNodes')} icon={HardDrives} />
+	{#if emptyRetryCount < EMPTY_RETRY_MAX}
+		<LoadingSkeleton variant="card" rows={3} />
+	{:else}
+		<EmptyState title={$t('admin.nodes.noNodes')} icon={HardDrives} />
+	{/if}
 {:else}
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 		{#each nodes as node}
 			{@const cpuPercent = Math.round(node.cpu * 100)}
 			{@const ramPercent = formatPercent(node.memory, node.max_memory)}
-			{@const diskPercent = formatPercent(node.disk, node.max_disk)}
-			<div class="space-y-4 rounded-lg border p-4">
-				<div class="flex items-center justify-between">
-					<h3 class="font-semibold">{node.name}</h3>
-					<StatusBadge status={node.status} />
+			{@const diskPercent = hasDisk(node) ? formatPercent(node.disk, node.max_disk) : 0}
+
+			<div class="pv-table-wrap p-5 space-y-4">
+				<!-- Node header -->
+				<div class="flex items-start justify-between gap-2">
+					<div class="pv-resource-cell">
+						<div class="pv-resource-icon pv-resource-icon--node">
+							{node.name.slice(0, 2).toUpperCase()}
+						</div>
+						<div>
+							<div class="pv-resource-name">{node.name}</div>
+							<div class="pv-td-muted text-xs">
+								{$t('admin.nodes.cores', { values: { count: node.maxcpu } })}
+							</div>
+						</div>
+					</div>
+					<span class="pv-badge {node.status === 'online' ? 'pv-badge--online' : 'pv-badge--offline'} mt-0.5">
+						{$t(`common.statusMap.${node.status}`, { default: node.status })}
+					</span>
 				</div>
 
+				<div class="border-t border-border"></div>
+
 				<!-- CPU -->
-				<div class="space-y-1">
-					<div class="flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">{$t('admin.nodes.cpu')}</span>
-						<span class="font-medium">{formatCpu(node.cpu)} ({$t('admin.nodes.cores', { values: { count: node.maxcpu } })})</span>
+				<div class="space-y-1.5">
+					<div class="flex items-center justify-between">
+						<span class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+							<Cpu class="h-3.5 w-3.5" />
+							{$t('admin.nodes.cpu')}
+						</span>
+						<span class="text-sm font-semibold tabular-nums">{formatCpu(node.cpu)}</span>
 					</div>
-					<div class="bg-muted h-2 w-full rounded-full">
-						<div
-							class="h-2 rounded-full {progressColor(cpuPercent)}"
-							style="width: {cpuPercent}%"
-						></div>
+					<div class="pv-usage-bar">
+						<div class="pv-usage-bar-track">
+							<div
+								class="pv-usage-bar-fill {usageBarClass(cpuPercent)}"
+								style="width: {cpuPercent}%"
+							></div>
+						</div>
+						<span class="pv-usage-label">{cpuPercent}%</span>
 					</div>
 				</div>
 
 				<!-- RAM -->
-				<div class="space-y-1">
-					<div class="flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">{$t('admin.nodes.ram')}</span>
-						<span class="font-medium"
-							>{formatBytes(node.memory)} / {formatBytes(node.max_memory)}</span
-						>
+				<div class="space-y-1.5">
+					<div class="flex items-center justify-between">
+						<span class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+							<Memory class="h-3.5 w-3.5" />
+							{$t('admin.nodes.ram')}
+						</span>
+						<span class="text-sm tabular-nums">
+							<span class="font-semibold">{formatBytes(node.memory)}</span>
+							<span class="text-muted-foreground text-xs"> / {formatBytes(node.max_memory)}</span>
+						</span>
 					</div>
-					<div class="bg-muted h-2 w-full rounded-full">
-						<div
-							class="h-2 rounded-full {progressColor(ramPercent)}"
-							style="width: {ramPercent}%"
-						></div>
+					<div class="pv-usage-bar">
+						<div class="pv-usage-bar-track">
+							<div
+								class="pv-usage-bar-fill {usageBarClass(ramPercent)}"
+								style="width: {ramPercent}%"
+							></div>
+						</div>
+						<span class="pv-usage-label">{ramPercent}%</span>
 					</div>
 				</div>
 
-				<!-- Disk -->
-				<div class="space-y-1">
-					<div class="flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">{$t('admin.nodes.disk')}</span>
-						<span class="font-medium"
-							>{formatBytes(node.disk)} / {formatBytes(node.max_disk)}</span
-						>
+				<!-- Disk (only if data available) -->
+				{#if hasDisk(node)}
+					<div class="space-y-1.5">
+						<div class="flex items-center justify-between">
+							<span class="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+								<Database class="h-3.5 w-3.5" />
+								{$t('admin.nodes.disk')}
+							</span>
+							<span class="text-sm tabular-nums">
+								<span class="font-semibold">{formatBytes(node.disk)}</span>
+								<span class="text-muted-foreground text-xs"> / {formatBytes(node.max_disk)}</span>
+							</span>
+						</div>
+						<div class="pv-usage-bar">
+							<div class="pv-usage-bar-track">
+								<div
+									class="pv-usage-bar-fill {usageBarClass(diskPercent)}"
+									style="width: {diskPercent}%"
+								></div>
+							</div>
+							<span class="pv-usage-label">{diskPercent}%</span>
+						</div>
 					</div>
-					<div class="bg-muted h-2 w-full rounded-full">
-						<div
-							class="h-2 rounded-full {progressColor(diskPercent)}"
-							style="width: {diskPercent}%"
-						></div>
-					</div>
-				</div>
+				{/if}
 
 				<!-- Uptime -->
-				<div class="flex items-center justify-between text-sm">
+				<div class="flex items-center justify-between text-xs border-t border-border pt-3">
 					<span class="text-muted-foreground">{$t('admin.nodes.uptime')}</span>
-					<span class="font-medium">{formatUptime(node.uptime)}</span>
+					<span class="font-medium tabular-nums">{formatUptime(node.uptime)}</span>
 				</div>
 			</div>
 		{/each}

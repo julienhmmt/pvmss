@@ -34,6 +34,7 @@ func (m *mockStateManager) SetOfflineMode()                                {}
 func (m *mockStateManager) IsOfflineMode() bool                            { return false }
 func (m *mockStateManager) GetProxmoxStatus() (bool, string)               { return true, "" }
 func (m *mockStateManager) CheckProxmoxConnection() bool                   { return true }
+func (m *mockStateManager) RefreshNodeCache(_ context.Context)                  {}
 func (m *mockStateManager) GetNodeCache() ([]*proxmox.NodeDetails, time.Time) {
 	return nil, time.Time{}
 }

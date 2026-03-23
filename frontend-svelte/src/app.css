@@ -41,6 +41,17 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
+  --blaze-orange-50: 34 100% 97%;
+  --blaze-orange-100: 28 100% 95%;
+  --blaze-orange-200: 23 100% 92%;
+  --blaze-orange-300: 21 100% 87%;
+  --blaze-orange-400: 20 100% 81%;
+  --blaze-orange-500: 19 100% 72%;
+  --blaze-orange-600: 23 100% 55%;
+  --blaze-orange-700: 24 100% 50%;
+  --blaze-orange-800: 20 100% 37%;
+  --blaze-orange-900: 17 100% 28%;
+  --blaze-orange-950: 12 100% 21%;
 }
 
 .dark {

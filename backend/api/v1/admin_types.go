@@ -9,6 +9,8 @@ type AdminNodeResponse struct {
 	MaxCPU    int     `json:"maxcpu"`
 	Memory    float64 `json:"memory"`
 	MaxMemory float64 `json:"max_memory"`
+	Disk      float64 `json:"disk"`
+	MaxDisk   float64 `json:"max_disk"`
 	Uptime    int64   `json:"uptime"`
 }
 
