@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@fontsource-variable/noto-sans";
+@import "./styles/pvmss-badges.css";
+@import "./styles/pvmss-tables.css";
+@import "./styles/pvmss-overview.css";
+@import "./styles/pvmss-modals.css";
 
 @custom-variant dark (&:is(.dark *));
 

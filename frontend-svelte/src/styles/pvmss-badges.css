@@ -1,0 +1,114 @@
+/* PVMSS status badges */
+.pv-badge,
+.pv-status-badge,
+.pv-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* VM / resource status */
+.pv-status-badge--running {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.pv-status-badge--stopped {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+.pv-status-badge--paused {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fcd34d;
+}
+.pv-status-badge--error {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.pv-status-badge--unknown {
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+}
+
+/* Node health badges */
+.pv-badge--online {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.pv-badge--offline {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.pv-badge--warn {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fcd34d;
+}
+
+/* Action / type badges (uppercase, spaced) */
+.pv-action-badge {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pv-action-badge--vm {
+  background: oklch(0.97 0.02 45);
+  color: oklch(0.45 0.15 45);
+  border: 1px solid oklch(0.88 0.06 45);
+}
+.pv-action-badge--template {
+  background: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+}
+.pv-action-badge--lxc {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+/* Feedback banners */
+.pv-error-banner,
+.pv-warn-banner,
+.pv-success-banner {
+  border-radius: 9px;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+}
+.pv-error-banner {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+}
+.pv-warn-banner {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+.pv-success-banner {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+/* Danger box (destructive confirmations) */
+.pv-danger-box {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #7f1d1d;
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border-radius: 9px;
+}

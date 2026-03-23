@@ -1,0 +1,156 @@
+/* PVMSS resource tables */
+.pv-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.pv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.pv-table thead tr {
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.pv-table th {
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.pv-th-num {
+  text-align: right;
+}
+
+.pv-row {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.pv-row:last-child {
+  border-bottom: none;
+}
+
+.pv-row:hover {
+  background: oklch(0.985 0.01 45);
+}
+
+.dark .pv-row:hover {
+  background: oklch(0.22 0.01 45);
+}
+
+.pv-table td {
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+
+/* Resource name cell with icon */
+.pv-resource-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pv-resource-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, oklch(0.72 0.19 45), oklch(0.58 0.19 45));
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pv-resource-icon--node {
+  background: linear-gradient(135deg, oklch(0.65 0.15 200), oklch(0.50 0.15 200));
+}
+
+.pv-resource-icon--storage {
+  background: linear-gradient(135deg, oklch(0.65 0.15 270), oklch(0.50 0.15 270));
+}
+
+.pv-resource-name {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Monospace IDs and technical values */
+.pv-td-mono {
+  font-family: 'Geist Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+.pv-td-muted {
+  color: var(--muted-foreground);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.pv-td-num {
+  text-align: right;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.pv-td-actions {
+  white-space: nowrap;
+  text-align: right;
+  padding-right: 10px;
+}
+
+/* Usage bar inside table cells */
+.pv-usage-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.pv-usage-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--muted);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.pv-usage-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: oklch(0.68 0.19 45);
+  transition: width 0.3s ease;
+}
+
+.pv-usage-bar-fill--warn {
+  background: oklch(0.75 0.18 80);
+}
+
+.pv-usage-bar-fill--danger {
+  background: oklch(0.577 0.245 27.325);
+}
+
+.pv-usage-label {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+  min-width: 38px;
+  text-align: right;
+}

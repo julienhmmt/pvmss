@@ -1,0 +1,171 @@
+/* PVMSS page headers and overview sections */
+:root {
+  --pv-header-from: oklch(0.35 0.12 45);
+  --pv-header-to: oklch(0.60 0.19 45);
+  --pv-header-from-danger: #7f1d1d;
+  --pv-header-to-danger: #dc2626;
+  --pv-header-from-warn: #78350f;
+  --pv-header-to-warn: #d97706;
+  --pv-header-stat-bg: rgba(255, 255, 255, 0.12);
+  --pv-header-stat-border: rgba(255, 255, 255, 0.18);
+  --pv-header-stat-label: rgba(255, 255, 255, 0.7);
+}
+
+/* Gradient page header */
+.pv-header {
+  background: linear-gradient(135deg, var(--pv-header-from), var(--pv-header-to));
+  color: white;
+  padding: 28px 32px 24px;
+}
+
+.pv-header--danger {
+  background: linear-gradient(135deg, var(--pv-header-from-danger), var(--pv-header-to-danger));
+}
+
+.pv-header--warn {
+  background: linear-gradient(135deg, var(--pv-header-from-warn), var(--pv-header-to-warn));
+}
+
+.pv-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* Header text */
+.pv-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+  margin: 0 0 4px;
+}
+
+.pv-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: white;
+  letter-spacing: -0.01em;
+}
+
+.pv-subtitle {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin: 0;
+}
+
+/* Stat chips inside header */
+.pv-header-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pv-header-stat {
+  background: var(--pv-header-stat-bg);
+  border: 1px solid var(--pv-header-stat-border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  min-width: 100px;
+}
+
+.pv-header-stat--danger {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.pv-header-stat--warn {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.pv-header-stat-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pv-header-stat-label);
+  margin-bottom: 2px;
+}
+
+.pv-header-stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+/* White button on colored header */
+.pv-header-btn {
+  background: white !important;
+  color: var(--pv-header-from) !important;
+  border: none !important;
+}
+
+.pv-header-btn:hover {
+  background: #f1f5f9 !important;
+}
+
+/* Section titles inside content areas */
+.pv-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  margin-bottom: 12px;
+}
+
+/* Toolbar row above tables */
+.pv-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.pv-toolbar-info {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+}
+
+/* Back link inside headers */
+.pv-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  margin-bottom: 12px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: background 0.15s, color 0.15s;
+}
+
+.pv-back:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: white;
+}
+
+/* Empty state */
+.pv-empty {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 24px;
+}
