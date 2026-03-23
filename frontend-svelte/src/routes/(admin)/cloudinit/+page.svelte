@@ -3,6 +3,7 @@
 	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
@@ -26,6 +27,7 @@
 	import type { CloudInitTemplate, SFTPStatus } from '$lib/types/admin';
 
 	let loading = $state(true);
+	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let templates = $state<CloudInitTemplate[]>([]);
 	let sftpStatus = $state<SFTPStatus | undefined>(undefined);
@@ -51,7 +53,11 @@
 	);
 
 	async function load() {
-		loading = true;
+		if (templates.length > 0) {
+			refreshing = true;
+		} else {
+			loading = true;
+		}
 		error = null;
 		try {
 			const data = await getCloudInits();
@@ -61,6 +67,7 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+			refreshing = false;
 		}
 	}
 
@@ -122,6 +129,8 @@
 		<Button onclick={openCreate}>{$t('admin.cloudinit.createTemplate')}</Button>
 	{/snippet}
 </PageHeader>
+
+<LoadingToast visible={refreshing} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />

@@ -3,6 +3,7 @@
 	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -14,6 +15,7 @@
 	import type { Limits, ResourceRange } from '$lib/types/admin';
 
 	let loading = $state(true);
+	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let saving = $state(false);
 	let limits = $state<Limits | null>(null);
@@ -22,7 +24,11 @@
 	let selectedNode = $state('');
 
 	async function load() {
-		loading = true;
+		if (limits !== null) {
+			refreshing = true;
+		} else {
+			loading = true;
+		}
 		error = null;
 		try {
 			limits = await getLimits();
@@ -30,6 +36,7 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+			refreshing = false;
 		}
 	}
 
@@ -85,6 +92,8 @@
 		</Button>
 	{/snippet}
 </PageHeader>
+
+<LoadingToast visible={refreshing} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />

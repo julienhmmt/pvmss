@@ -3,12 +3,14 @@
 	import { t } from 'svelte-i18n';
 	import ResourceCard from '$lib/components/data/ResourceCard.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { getAppInfo } from '$lib/api/admin/appinfo';
 	import { Info, CheckCircle, XCircle, HardDrives, Desktop } from 'phosphor-svelte';
 	import type { AppInfo } from '$lib/types/admin';
 
 	let loading = $state(true);
+	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let info = $state<AppInfo | null>(null);
 
@@ -17,7 +19,11 @@
 	);
 
 	async function load() {
-		loading = true;
+		if (info !== null) {
+			refreshing = true;
+		} else {
+			loading = true;
+		}
 		error = null;
 		try {
 			info = await getAppInfo();
@@ -25,6 +31,7 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+			refreshing = false;
 		}
 	}
 
@@ -72,6 +79,8 @@
 		{/if}
 	</div>
 </div>
+
+<LoadingToast visible={refreshing} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />

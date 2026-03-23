@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import { Switch } from '$lib/components/ui/switch';
@@ -14,6 +15,7 @@
 	import * as Select from '$lib/components/ui/select';
 
 	let loading = $state(true);
+	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let storages = $state<Storage[]>([]);
 	let selectedNode = $state<string>('');
@@ -39,7 +41,11 @@
 	}
 
 	async function load() {
-		loading = true;
+		if (storages.length > 0) {
+			refreshing = true;
+		} else {
+			loading = true;
+		}
 		error = null;
 		try {
 			storages = await getStorages();
@@ -47,6 +53,7 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+			refreshing = false;
 		}
 	}
 
@@ -109,6 +116,8 @@
 		{/if}
 	</div>
 </div>
+
+<LoadingToast visible={refreshing} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />

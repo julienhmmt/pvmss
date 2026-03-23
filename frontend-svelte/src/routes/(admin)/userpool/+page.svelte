@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
@@ -15,6 +16,7 @@
 	import type { Pool } from '$lib/types/admin';
 
 	let loading = $state(true);
+	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let pools = $state<Pool[]>([]);
 	let createOpen = $state(false);
@@ -22,7 +24,11 @@
 	let form = $state({ pool_name: '', username: '', password: '' });
 
 	async function load() {
-		loading = true;
+		if (pools.length > 0) {
+			refreshing = true;
+		} else {
+			loading = true;
+		}
 		error = null;
 		try {
 			pools = await getPools();
@@ -30,6 +36,7 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+			refreshing = false;
 		}
 	}
 
@@ -92,6 +99,8 @@
 		{/if}
 	</div>
 </div>
+
+<LoadingToast visible={refreshing} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />

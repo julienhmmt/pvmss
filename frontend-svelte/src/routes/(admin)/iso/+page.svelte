@@ -3,6 +3,7 @@
 	import { t } from 'svelte-i18n';
 	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import { Switch } from '$lib/components/ui/switch';
@@ -14,11 +15,16 @@
 	import * as Table from '$lib/components/ui/table';
 
 	let loading = $state(true);
+	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let isos = $state<ISO[]>([]);
 
 	async function load() {
-		loading = true;
+		if (isos.length > 0) {
+			refreshing = true;
+		} else {
+			loading = true;
+		}
 		error = null;
 		try {
 			isos = await getISOs();
@@ -26,6 +32,7 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+			refreshing = false;
 		}
 	}
 
@@ -42,6 +49,8 @@
 </script>
 
 <PageHeader title={$t('admin.iso.title')} icon={Disc} />
+
+<LoadingToast visible={refreshing} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />
