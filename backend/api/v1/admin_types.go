@@ -203,4 +203,5 @@ type AdminCloudInitListResponse struct {
 
 type AdminVMActionRequest struct {
 	Action string `json:"action"`
+	Node   string `json:"node,omitempty"` // optional: skips VM list lookup if provided
 }

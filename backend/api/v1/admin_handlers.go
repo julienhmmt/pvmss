@@ -100,6 +100,10 @@ func (h *AdminHandler) Storage(w http.ResponseWriter, r *http.Request) {
 	var result []AdminStorageResponse
 	for nr := range ch {
 		for _, s := range nr.storages {
+			// Only include storages that can hold VM disk images.
+			if !strings.Contains(s.Content, "images") {
+				continue
+			}
 			total, _ := s.Total.Int64()
 			used, _ := s.Used.Int64()
 			free, _ := s.Avail.Int64()

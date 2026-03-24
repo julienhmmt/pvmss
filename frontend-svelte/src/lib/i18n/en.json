@@ -116,6 +116,9 @@
       "tags": "Tags",
       "cpus": "CPUs",
       "ram": "RAM",
+      "cpu": "CPU",
+      "uptime": "Uptime",
+      "allNodes": "All Nodes",
       "pagination": {
         "showing": "Showing {start} to {end} of {total} VMs",
         "perPage": "{count} / page"
@@ -124,6 +127,7 @@
         "start": "Start",
         "shutdown": "Shutdown",
         "reboot": "Reboot",
+        "reset": "Reset",
         "forceStop": "Force Stop"
       },
       "toast": {

@@ -3,7 +3,9 @@ package apiv1
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -11,6 +13,16 @@ import (
 	"pvmss/proxmox"
 	"pvmss/state"
 )
+
+// hasPVMSSTag reports whether the semicolon-separated tags string contains "pvmss".
+func hasPVMSSTag(tags string) bool {
+	for _, tag := range strings.Split(tags, ";") {
+		if strings.TrimSpace(tag) == "pvmss" {
+			return true
+		}
+	}
+	return false
+}
 
 // AdminVMsAPIHandler handles admin VM endpoints.
 type AdminVMsAPIHandler struct {
@@ -40,6 +52,9 @@ func (h *AdminVMsAPIHandler) ListAllVMs(w http.ResponseWriter, r *http.Request) 
 	}
 	result := make([]AdminVMResponse, 0, len(vms))
 	for _, vm := range vms {
+		if !hasPVMSSTag(vm.Tags) {
+			continue
+		}
 		result = append(result, AdminVMResponse{
 			VMID:    vm.VMID,
 			Name:    vm.Name,
@@ -54,6 +69,7 @@ func (h *AdminVMsAPIHandler) ListAllVMs(w http.ResponseWriter, r *http.Request) 
 			Tags:    vm.Tags,
 		})
 	}
+	slices.SortFunc(result, func(a, b AdminVMResponse) int { return a.VMID - b.VMID })
 	writeJSON(w, result)
 }
 
@@ -86,23 +102,25 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 		errInternal(w)
 		return
 	}
-	// Find VM node
-	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
-	if err != nil {
-		errInternal(w)
-		return
-	}
-	vmidInt, _ := strconv.Atoi(vmid)
-	var node string
-	for _, vm := range vms {
-		if vm.VMID == vmidInt {
-			node = vm.Node
-			break
-		}
-	}
+	node := req.Node
 	if node == "" {
-		errBadRequest(w, "VM not found")
-		return
+		// node not provided by client: look it up from the VM list
+		vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
+		if err != nil {
+			errInternal(w)
+			return
+		}
+		vmidInt, _ := strconv.Atoi(vmid)
+		for _, vm := range vms {
+			if vm.VMID == vmidInt {
+				node = vm.Node
+				break
+			}
+		}
+		if node == "" {
+			errBadRequest(w, "VM not found")
+			return
+		}
 	}
 	taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, req.Action)
 	if err != nil {
