@@ -1,6 +1,7 @@
 package apiv1
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"runtime"
@@ -184,6 +185,32 @@ func (h *AdminHandler) VMBR(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, result)
 }
 
+const isoPerStorageTimeout = 15 * time.Second
+
+// isoStorageSupportsISO checks if a storage content field includes "iso" as a proper content type.
+func isoStorageSupportsISO(content string) bool {
+	for _, part := range strings.Split(content, ",") {
+		if strings.TrimSpace(part) == "iso" {
+			return true
+		}
+	}
+	return false
+}
+
+// isoStorageAvailableOnNode returns true if the storage is available on the given node.
+// An empty Nodes field means the storage is shared across all nodes.
+func isoStorageAvailableOnNode(nodesField, nodeName string) bool {
+	if nodesField == "" {
+		return true
+	}
+	for _, n := range strings.Split(nodesField, ",") {
+		if strings.TrimSpace(n) == nodeName {
+			return true
+		}
+	}
+	return false
+}
+
 // ISO handles GET /api/v1/admin/iso.
 func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 	if h.state.IsOfflineMode() {
@@ -210,26 +237,34 @@ func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 		errInternal(w)
 		return
 	}
-	// Find storages that support ISO content
-	var isoStorages []string
-	for _, s := range storages {
-		if strings.Contains(s.Content, "iso") {
-			isoStorages = append(isoStorages, s.Storage)
-		}
-	}
+	seen := make(map[string]bool)
 	var result []AdminISOResponse
 	for _, node := range nodeNames {
-		for _, storage := range isoStorages {
-			isos, err := proxmox.GetISOListResty(r.Context(), restyClient, node, storage)
+		for _, s := range storages {
+			if !isoStorageSupportsISO(s.Content) || !isoStorageAvailableOnNode(s.Nodes, node) {
+				continue
+			}
+			storageCtx, storageCancel := context.WithTimeout(context.Background(), isoPerStorageTimeout)
+			isos, err := proxmox.GetISOListResty(storageCtx, restyClient, node, s.Storage)
+			storageCancel()
 			if err != nil {
 				continue
 			}
 			for _, iso := range isos {
+				if iso.VolID == "" || seen[iso.VolID] {
+					continue
+				}
+				seen[iso.VolID] = true
+				name := iso.VolID
+				if idx := strings.LastIndex(name, "/"); idx >= 0 {
+					name = name[idx+1:]
+				}
 				result = append(result, AdminISOResponse{
 					VolID:   iso.VolID,
-					Name:    iso.VolID,
+					Name:    name,
 					Size:    iso.Size,
-					Storage: storage,
+					Storage: s.Storage,
+					Node:    node,
 					Enabled: enabledSet[iso.VolID],
 				})
 			}

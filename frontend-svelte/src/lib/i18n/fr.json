@@ -115,7 +115,14 @@
     },
     "iso": {
       "title": "Images ISO",
-      "noIso": "Aucune image ISO trouvée"
+      "noIso": "Aucune image ISO trouvée",
+      "noIsoDesc": "Aucune image ISO détectée sur les nœuds Proxmox",
+      "allNodes": "Tous les nœuds",
+      "enabledCount": "{count} activée(s)",
+      "toast": {
+        "enabled": "ISO {name} activée",
+        "disabled": "ISO {name} désactivée"
+      }
     },
     "vms": {
       "title": "Machines virtuelles",

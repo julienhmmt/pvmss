@@ -115,7 +115,14 @@
     },
     "iso": {
       "title": "ISO images",
-      "noIso": "No ISO images found"
+      "noIso": "No ISO images found",
+      "noIsoDesc": "No ISO images were detected on the Proxmox nodes",
+      "allNodes": "All nodes",
+      "enabledCount": "{count} enabled",
+      "toast": {
+        "enabled": "ISO {name} enabled",
+        "disabled": "ISO {name} disabled"
+      }
     },
     "vms": {
       "title": "Virtual machines",

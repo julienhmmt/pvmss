@@ -141,6 +141,7 @@ type AdminISOResponse struct {
 	Name    string `json:"name"`
 	Size    int64  `json:"size"`
 	Storage string `json:"storage"`
+	Node    string `json:"node"`
 	Enabled bool   `json:"enabled"`
 }
 

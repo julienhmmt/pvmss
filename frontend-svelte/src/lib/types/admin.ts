@@ -97,6 +97,7 @@ export interface ISO {
 	name: string;
 	size: number;
 	storage: string;
+	node: string;
 	enabled: boolean;
 }
 
