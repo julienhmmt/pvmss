@@ -14,6 +14,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/cloudinit"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -482,6 +483,7 @@ func (h *AdminMutationsHandler) ListCloudInit(w http.ResponseWriter, _ *http.Req
 			Description: t.Description,
 			Storage:     t.Storage,
 			Filename:    t.Filename,
+			YAMLContent: t.YAMLContent,
 			Enabled:     t.Enabled,
 		})
 	}
@@ -533,6 +535,23 @@ func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
 	return status
 }
 
+// generateCloudInitID generates a safe ID from a template name (lowercase, alphanumeric, hyphens).
+func generateCloudInitID(name string) string {
+	id := strings.ToLower(name)
+	id = strings.ReplaceAll(id, " ", "-")
+	id = strings.ReplaceAll(id, "_", "-")
+	safeRe := regexp.MustCompile(`[^a-z0-9-]`)
+	id = safeRe.ReplaceAllString(id, "")
+	for strings.Contains(id, "--") {
+		id = strings.ReplaceAll(id, "--", "-")
+	}
+	id = strings.Trim(id, "-")
+	if len(id) < 2 {
+		id = "template-" + id
+	}
+	return id
+}
+
 // CreateCloudInit handles POST /api/v1/admin/cloudinit.
 func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.Request) {
 	var req CreateCloudInitRequest
@@ -540,13 +559,25 @@ func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.R
 		errBadRequest(w, "invalid JSON body")
 		return
 	}
-	if req.Name == "" {
-		errBadRequest(w, "name is required")
+	if req.Name == "" || req.YAMLContent == "" {
+		errBadRequest(w, "name and yaml_content are required")
+		return
+	}
+	if err := cloudinit.ValidateCloudInitYAMLStrict(req.YAMLContent); err != nil {
+		errBadRequest(w, "invalid YAML: "+err.Error())
 		return
 	}
 
-	id := strings.ToLower(strings.ReplaceAll(req.Name, " ", "-"))
-	filename := "pvmss-" + id + ".yml"
+	id := generateCloudInitID(req.Name)
+	filename := state.CloudInitTemplatePrefix + id + ".yml"
+
+	settings := h.state.GetSettings()
+	for _, t := range settings.CloudInitTemplates {
+		if t.ID == id {
+			errBadRequest(w, "a template with this name already exists")
+			return
+		}
+	}
 
 	template := state.CloudInitTemplate{
 		ID:          id,
@@ -558,7 +589,6 @@ func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.R
 		Enabled:     true,
 	}
 
-	settings := h.state.GetSettings()
 	newSettings := *settings
 	newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates), len(settings.CloudInitTemplates)+1)
 	copy(newTemplates, settings.CloudInitTemplates)
@@ -572,7 +602,7 @@ func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, AdminCloudInitResponse{
 		ID: id, Name: req.Name, Description: req.Description,
-		Storage: req.Storage, Filename: filename, Enabled: true,
+		Storage: req.Storage, Filename: filename, YAMLContent: req.YAMLContent, Enabled: true,
 	})
 }
 
@@ -590,6 +620,13 @@ func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	if req.YAMLContent != "" {
+		if err := cloudinit.ValidateCloudInitYAMLStrict(req.YAMLContent); err != nil {
+			errBadRequest(w, "invalid YAML: "+err.Error())
+			return
+		}
+	}
+
 	settings := h.state.GetSettings()
 	newSettings := *settings
 	newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates))
@@ -597,10 +634,16 @@ func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.R
 	found := false
 	for i, t := range newTemplates {
 		if t.ID == id {
-			newTemplates[i].Name = req.Name
-			newTemplates[i].Description = req.Description
-			newTemplates[i].Storage = req.Storage
-			newTemplates[i].YAMLContent = req.YAMLContent
+			updated := t
+			if req.Name != "" {
+				updated.Name = req.Name
+			}
+			updated.Description = req.Description
+			updated.Storage = req.Storage
+			if req.YAMLContent != "" {
+				updated.YAMLContent = req.YAMLContent
+			}
+			newTemplates[i] = updated
 			found = true
 			break
 		}

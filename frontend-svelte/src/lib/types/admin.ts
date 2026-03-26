@@ -89,6 +89,7 @@ export interface CloudInitTemplate {
 	description: string;
 	storage: string;
 	filename: string;
+	yaml_content: string;
 	enabled: boolean;
 }
 

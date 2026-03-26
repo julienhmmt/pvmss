@@ -56,6 +56,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/admin/limits", adminJWTWrap(s, adminMutHandler.GetLimits))
 	router.PUT("/api/v1/admin/limits", adminJWTWrap(s, adminMutHandler.UpdateLimits))
 
+	router.GET("/api/v1/admin/cloudinit/storages", adminJWTWrap(s, adminHandler.CloudInitStorages))
 	router.GET("/api/v1/admin/cloudinit", adminJWTWrap(s, adminMutHandler.ListCloudInit))
 	router.POST("/api/v1/admin/cloudinit", adminJWTWrap(s, adminMutHandler.CreateCloudInit))
 	router.PUT("/api/v1/admin/cloudinit/:id", adminJWTWrap(s, adminMutHandler.UpdateCloudInit))

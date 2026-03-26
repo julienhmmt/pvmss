@@ -117,6 +117,7 @@ type AdminCloudInitResponse struct {
 	Description string `json:"description"`
 	Storage     string `json:"storage"`
 	Filename    string `json:"filename"`
+	YAMLContent string `json:"yaml_content"`
 	Enabled     bool   `json:"enabled"`
 }
 

@@ -193,18 +193,27 @@
       "createTemplate": "Créer un modèle",
       "noTemplates": "Aucun modèle cloud-init",
       "noTemplatesDesc": "Créez un modèle pour automatiser l'initialisation des VMs",
+      "templateCount": "{count} modèle(s)",
       "sftpStatus": "Statut SFTP",
       "host": "Hôte",
       "username": "Nom d'utilisateur",
       "keyExists": "Clé présente",
       "editTemplate": "Modifier le modèle",
       "templateName": "Nom du modèle",
+      "namePlaceholder": "ex. debian-base",
+      "descPlaceholder": "Description optionnelle",
       "yamlContent": "Contenu YAML",
+      "selectStorage": "Choisir un stockage...",
+      "noSnippetStorages": "Aucun stockage snippets trouvé — saisir manuellement",
       "deleteTitle": "Supprimer le modèle",
-      "deleteDesc": "Êtes-vous sûr de vouloir supprimer ce modèle cloud-init ?",
-      "createSuccess": "Modèle créé",
-      "updateSuccess": "Modèle mis à jour",
-      "deleteSuccess": "Modèle supprimé"
+      "deleteDesc": "Supprimer le modèle « {name} » ? Cette action est irrémédiable.",
+      "toast": {
+        "created": "Modèle « {name} » créé",
+        "updated": "Modèle « {name} » mis à jour",
+        "deleted": "Modèle « {name} » supprimé",
+        "enabled": "Modèle « {name} » activé",
+        "disabled": "Modèle « {name} » désactivé"
+      }
     },
     "appinfo": {
       "title": "Infos application",

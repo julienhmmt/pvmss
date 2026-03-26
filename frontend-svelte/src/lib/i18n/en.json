@@ -193,18 +193,27 @@
       "createTemplate": "Create template",
       "noTemplates": "No cloud-init templates",
       "noTemplatesDesc": "Create a template to automate VM initialization",
+      "templateCount": "{count} template(s)",
       "sftpStatus": "SFTP status",
       "host": "Host",
       "username": "Username",
       "keyExists": "Key exists",
       "editTemplate": "Edit template",
       "templateName": "Template name",
+      "namePlaceholder": "e.g. debian-base",
+      "descPlaceholder": "Optional description",
       "yamlContent": "YAML content",
+      "selectStorage": "Select a storage...",
+      "noSnippetStorages": "No snippet storages found — enter manually",
       "deleteTitle": "Delete template",
-      "deleteDesc": "Are you sure you want to delete this cloud-init template?",
-      "createSuccess": "Template created",
-      "updateSuccess": "Template updated",
-      "deleteSuccess": "Template deleted"
+      "deleteDesc": "Delete template \"{name}\"? This action cannot be undone.",
+      "toast": {
+        "created": "Template \"{name}\" created",
+        "updated": "Template \"{name}\" updated",
+        "deleted": "Template \"{name}\" deleted",
+        "enabled": "Template \"{name}\" enabled",
+        "disabled": "Template \"{name}\" disabled"
+      }
     },
     "appinfo": {
       "title": "App info",

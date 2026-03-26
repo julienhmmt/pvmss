@@ -10,18 +10,22 @@ export function getCloudInits(): Promise<CloudInitListResponse> {
 	return api.get('/api/v1/admin/cloudinit');
 }
 
+export function getCloudInitStorages(): Promise<string[]> {
+	return api.get('/api/v1/admin/cloudinit/storages');
+}
+
 export function createCloudInit(data: {
 	name: string;
 	description: string;
 	storage: string;
-	content: string;
+	yaml_content: string;
 }): Promise<void> {
 	return api.post('/api/v1/admin/cloudinit', data);
 }
 
 export function updateCloudInit(
 	id: string,
-	data: { name: string; description: string; storage: string; content: string }
+	data: { name: string; description: string; storage: string; yaml_content: string }
 ): Promise<void> {
 	return api.put(`/api/v1/admin/cloudinit/${encodeURIComponent(id)}`, data);
 }

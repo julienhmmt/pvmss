@@ -276,6 +276,30 @@ func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, result)
 }
 
+// CloudInitStorages handles GET /api/v1/admin/cloudinit/storages.
+// Returns storages that support snippets content type.
+func (h *AdminHandler) CloudInitStorages(w http.ResponseWriter, r *http.Request) {
+	if h.state.IsOfflineMode() {
+		writeJSON(w, []string{})
+		return
+	}
+	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	if err != nil {
+		errInternal(w)
+		return
+	}
+	storages, err := proxmox.GetSnippetsStoragesResty(r.Context(), restyClient)
+	if err != nil {
+		writeJSON(w, []string{})
+		return
+	}
+	names := make([]string, 0, len(storages))
+	for _, s := range storages {
+		names = append(names, s.Storage)
+	}
+	writeJSON(w, names)
+}
+
 // AppInfo handles GET /api/v1/admin/appinfo.
 func (h *AdminHandler) AppInfo(w http.ResponseWriter, r *http.Request) {
 	connected, _ := h.state.GetProxmoxStatus()
