@@ -31,6 +31,7 @@
     "size": "Taille",
     "pageOf": "Page {page} sur {total}",
     "addTag": "Ajouter un tag...",
+    "value": "Valeur",
     "statusMap": {
       "running": "En cours",
       "online": "En ligne",

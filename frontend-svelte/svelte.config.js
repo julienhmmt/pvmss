@@ -11,6 +11,9 @@ const config = {
 		paths: {
 			base: '/admin'
 		}
+	},
+	compilerOptions: {
+		runes: true
 	}
 };
 
