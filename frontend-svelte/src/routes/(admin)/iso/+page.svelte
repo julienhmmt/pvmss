@@ -20,8 +20,8 @@
 	let selectedNode = $state<string>('');
 	let toggling = $state<string | null>(null);
 
-	const nodes = $derived([...new Set(isos.map((i) => (i as any).node))].sort());
-	const filteredISOs = $derived(selectedNode ? isos.filter((i) => (i as any).node === selectedNode) : isos);
+	const nodes = $derived([...new Set(isos.map((i) => i.node))].sort());
+	const filteredISOs = $derived(selectedNode ? isos.filter((i) => i.node === selectedNode) : isos);
 	const enabledCount = $derived(isos.filter((i) => i.enabled).length);
 
 	async function load() {

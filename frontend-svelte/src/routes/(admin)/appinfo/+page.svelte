@@ -157,8 +157,8 @@
 					<ResourceCard
 						title={$t('admin.appinfo.clusterMode')}
 						value={info.cluster_info.is_cluster
-							? $t('admin.appinfo.clusterDetected')
-							: $t('admin.appinfo.standaloneMode')}
+							? $t('admin.appinfo.clustered')
+							: $t('admin.appinfo.standalone')}
 					/>
 					<ResourceCard
 						title={$t('admin.appinfo.clusterName')}

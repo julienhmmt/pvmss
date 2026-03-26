@@ -97,7 +97,7 @@
 					{/if}
 					{#if nodes.length > 1}
 						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.nodes', { default: 'Nœuds' })}</div>
+							<div class="pv-header-stat-label">{$t('nav.nodes')}</div>
 							<div class="pv-header-stat-value">{nodes.length}</div>
 						</div>
 					{/if}

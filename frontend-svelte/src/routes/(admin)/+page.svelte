@@ -198,7 +198,7 @@
 					{#if info.cluster_info?.is_cluster}
 						<div class="text-xs text-muted-foreground flex items-center gap-1">
 							<GitBranch class="h-3 w-3" />
-							{info.cluster_info.cluster_name} · {info.cluster_info.node_count} nœuds
+							{info.cluster_info.cluster_name} · {info.cluster_info.node_count} {$t('nav.nodes').toLowerCase()}
 						</div>
 					{/if}
 					<div class="pv-td-mono text-[0.65rem] truncate">{info.proxmox_url}</div>

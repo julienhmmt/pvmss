@@ -43,7 +43,6 @@
 	async function handleCreate() {
 		if (!form.pool_name || !form.password) return;
 		try {
-			// @ts-ignore - Temporairement ignorer le type pour contourner le problème
 			await createPool({
 				pool_name: form.pool_name,
 				password: form.password
