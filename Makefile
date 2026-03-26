@@ -253,7 +253,7 @@ dev-svelte: ## Lance le backend Go + Vite SvelteKit en parallèle (Ctrl+C pour t
 frontend-install: ## Installe les dépendances npm du frontend SvelteKit
 	cd frontend-svelte && npm ci
 
-frontend-build: ## Compile le frontend SvelteKit (génère frontend-svelte/build/)
+frontend-build: ## Compile le frontend SvelteKit (génère frontend-svelte/build/ — copié vers /app/frontend/admin/ par Docker)
 	cd frontend-svelte && npm run build
 
 frontend-dev: ## Lance le serveur de développement SvelteKit (proxy vers :50000)
