@@ -174,7 +174,7 @@ func (h *AdminHandler) VMBR(w http.ResponseWriter, r *http.Request) {
 				Active:      active,
 				BridgePorts: b.BridgePorts,
 				Node:        node,
-				Enabled:     enabledSet[b.Iface],
+				Enabled:     enabledSet[node+":"+b.Iface],
 			})
 		}
 	}

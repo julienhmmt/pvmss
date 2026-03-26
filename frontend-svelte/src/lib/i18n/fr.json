@@ -99,11 +99,19 @@
     "vmbr": {
       "title": "Ponts réseau",
       "noVmbr": "Aucun pont réseau trouvé",
+      "noVmbrDesc": "Aucun pont détecté sur les nœuds Proxmox",
       "allNodes": "Tous les nœuds",
       "iface": "Interface",
       "ports": "Ports",
       "active": "Actif",
-      "inactive": "Inactif"
+      "inactive": "Inactif",
+      "enabled": "Activé",
+      "enabledCount": "{count} activé(s)",
+      "filterNode": "Filtrer par nœud",
+      "toast": {
+        "enabled": "Pont {iface} activé sur {node}",
+        "disabled": "Pont {iface} désactivé sur {node}"
+      }
     },
     "iso": {
       "title": "Images ISO",

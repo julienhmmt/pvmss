@@ -99,11 +99,19 @@
     "vmbr": {
       "title": "Network Bridges",
       "noVmbr": "No network bridges found",
-      "allNodes": "All Nodes",
+      "noVmbrDesc": "No bridges were detected on the Proxmox nodes",
+      "allNodes": "All nodes",
       "iface": "Interface",
       "ports": "Ports",
       "active": "Active",
-      "inactive": "Inactive"
+      "inactive": "Inactive",
+      "enabled": "Enabled",
+      "enabledCount": "{count} enabled",
+      "filterNode": "Filter by node",
+      "toast": {
+        "enabled": "Bridge {iface} enabled on {node}",
+        "disabled": "Bridge {iface} disabled on {node}"
+      }
     },
     "iso": {
       "title": "ISO images",
