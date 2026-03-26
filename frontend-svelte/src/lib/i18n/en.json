@@ -216,16 +216,19 @@
       "poolId": "Pool ID",
       "comment": "Comment",
       "members": "Members",
+      "vmCount": "VMs",
       "createPool": "Create pool",
       "createPoolTitle": "Create user pool",
       "createPoolDesc": "Set up a new Proxmox user pool with dedicated credentials.",
       "poolName": "Pool name",
-      "username": "Username",
       "password": "Password",
+      "usernameHint": "Proxmox user will be: {username}",
       "deleteTitle": "Delete pool",
-      "deleteDesc": "Delete pool \"{name}\"? This will remove the pool and associated user. VMs in the pool will NOT be deleted.",
-      "createSuccess": "Pool \"{name}\" created",
-      "deleteSuccess": "Pool \"{name}\" deleted"
+      "deleteDesc": "Delete pool \"{poolName}\"? The pool, its associated user, and all VMs in the pool will be permanently deleted. This action is irreversible.",
+      "toast": {
+        "created": "Pool \"{poolName}\" created",
+        "deleted": "Pool \"{poolName}\" deleted"
+      }
     }
   },
   "user": {}

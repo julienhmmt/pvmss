@@ -7,7 +7,6 @@ export function getPools(): Promise<Pool[]> {
 
 export function createPool(data: {
 	pool_name: string;
-	username: string;
 	password: string;
 }): Promise<void> {
 	return api.post('/api/v1/admin/userpool', data);

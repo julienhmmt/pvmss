@@ -216,16 +216,19 @@
       "poolId": "ID du pool",
       "comment": "Commentaire",
       "members": "Membres",
+      "vmCount": "VMs",
       "createPool": "Créer un pool",
       "createPoolTitle": "Créer un pool d'utilisateurs",
       "createPoolDesc": "Configurez un nouveau pool Proxmox avec des identifiants dédiés.",
       "poolName": "Nom du pool",
-      "username": "Nom d'utilisateur",
       "password": "Mot de passe",
+      "usernameHint": "L'utilisateur Proxmox sera : {username}",
       "deleteTitle": "Supprimer le pool",
-      "deleteDesc": "Supprimer le pool « {name} » ? Le pool et son utilisateur associé seront supprimés. Les VMs du pool ne seront PAS supprimées.",
-      "createSuccess": "Pool « {name} » créé",
-      "deleteSuccess": "Pool « {name} » supprimé"
+      "deleteDesc": "Supprimer le pool « {poolName} » ? Le pool, son utilisateur associé et toutes les VMs du pool seront définitivement supprimés. Cette action est irrémédiable.",
+      "toast": {
+        "created": "Pool « {poolName} » créé",
+        "deleted": "Pool « {poolName} » supprimé"
+      }
     }
   },
   "user": {}

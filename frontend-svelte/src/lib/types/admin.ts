@@ -39,6 +39,7 @@ export interface Pool {
 	poolid: string;
 	comment: string;
 	members: string[];
+	vm_count: number;
 }
 
 export interface Tag {

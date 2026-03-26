@@ -49,11 +49,11 @@ type AdminPoolResponse struct {
 	PoolID  string   `json:"poolid"`
 	Comment string   `json:"comment"`
 	Members []string `json:"members"`
+	VMCount int      `json:"vm_count"`
 }
 
 type CreatePoolRequest struct {
-	Pool     string `json:"pool"`
-	Username string `json:"username"`
+	Pool     string `json:"pool_name"`
 	Password string `json:"password"`
 }
 

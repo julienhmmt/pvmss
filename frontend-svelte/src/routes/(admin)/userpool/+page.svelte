@@ -11,7 +11,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { getPools, createPool, deletePool } from '$lib/api/admin/userpool';
-	import { UsersThree, Trash } from 'phosphor-svelte';
+	import { TrashIcon, UsersThreeIcon } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { Pool } from '$lib/types/admin';
 
@@ -21,7 +21,7 @@
 	let pools = $state<Pool[]>([]);
 	let createOpen = $state(false);
 	let deleteTarget = $state<string | null>(null);
-	let form = $state({ pool_name: '', username: '', password: '' });
+	let form = $state({ pool_name: '', password: '' });
 
 	async function load() {
 		if (pools.length > 0) {
@@ -41,11 +41,15 @@
 	}
 
 	async function handleCreate() {
-		if (!form.pool_name || !form.username || !form.password) return;
+		if (!form.pool_name || !form.password) return;
 		try {
-			await createPool(form);
+			// @ts-ignore - Temporairement ignorer le type pour contourner le problème
+			await createPool({
+				pool_name: form.pool_name,
+				password: form.password
+			});
 			toast.success($t('admin.userpool.toast.created', { values: { poolName: form.pool_name } }));
-			form = { pool_name: '', username: '', password: '' };
+			form = { pool_name: '', password: '' };
 			createOpen = false;
 			await load();
 		} catch (e) {
@@ -109,7 +113,7 @@
 {:else if pools.length === 0}
 	<EmptyState
 		title={$t('admin.userpool.noPools')}
-		icon={UsersThree}
+		icon={UsersThreeIcon}
 		description={$t('admin.userpool.noPoolsDesc')}
 	/>
 {:else}
@@ -119,7 +123,7 @@
 				<tr>
 					<th>{$t('admin.userpool.poolId')}</th>
 					<th>{$t('admin.userpool.comment')}</th>
-					<th class="pv-th-num">{$t('admin.userpool.members')}</th>
+					<th class="pv-th-num">{$t('admin.userpool.vmCount')}</th>
 					<th class="pv-td-actions">{$t('common.actions')}</th>
 				</tr>
 			</thead>
@@ -136,7 +140,7 @@
 						</td>
 						<td class="pv-td-muted">{pool.comment || '—'}</td>
 						<td class="pv-td-num">
-							<span class="pv-action-badge pv-action-badge--vm">{pool.members.length}</span>
+							<span class="pv-action-badge pv-action-badge--vm">{pool.vm_count}</span>
 						</td>
 						<td class="pv-td-actions">
 							<Button
@@ -145,7 +149,7 @@
 								class="text-destructive hover:text-destructive hover:bg-destructive/10"
 								onclick={() => (deleteTarget = pool.poolid)}
 							>
-								<Trash class="h-4 w-4" />
+								<TrashIcon class="h-4 w-4" />
 							</Button>
 						</td>
 					</tr>
@@ -159,17 +163,16 @@
 <Dialog.Root bind:open={createOpen}>
 	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
-			<Dialog.Title>{$t('admin.userpool.createTitle')}</Dialog.Title>
-			<Dialog.Description>{$t('admin.userpool.createDesc')}</Dialog.Description>
+			<Dialog.Title>{$t('admin.userpool.createPoolTitle')}</Dialog.Title>
+			<Dialog.Description>{$t('admin.userpool.createPoolDesc')}</Dialog.Description>
 		</Dialog.Header>
 		<div class="space-y-4 py-2">
 			<div class="space-y-2">
 				<Label>{$t('admin.userpool.poolName')}</Label>
 				<Input bind:value={form.pool_name} placeholder="my-pool" />
-			</div>
-			<div class="space-y-2">
-				<Label>{$t('admin.userpool.username')}</Label>
-				<Input bind:value={form.username} placeholder="user@pve" />
+				{#if form.pool_name}
+					<p class="text-xs text-muted-foreground">{$t('admin.userpool.usernameHint', { values: { username: form.pool_name + '@pve' } })}</p>
+				{/if}
 			</div>
 			<div class="space-y-2">
 				<Label>{$t('admin.userpool.password')}</Label>
@@ -180,7 +183,7 @@
 			<Button variant="outline" onclick={() => (createOpen = false)}>{$t('common.cancel')}</Button>
 			<Button
 				onclick={handleCreate}
-				disabled={!form.pool_name || !form.username || !form.password}
+				disabled={!form.pool_name || !form.password}
 			>
 				{$t('common.create')}
 			</Button>
