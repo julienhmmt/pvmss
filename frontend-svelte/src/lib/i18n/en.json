@@ -141,13 +141,17 @@
       "noTagsDesc": "Add tags to organize VMs",
       "vmCount": "{count} VMs",
       "addTag": "Add Tag",
-      "createTag": "Create Tag",
-      "tagDescription": "Add a new tag for VM organization.",
+      "createTitle": "Add tag",
+      "createDesc": "Tags are used to label VMs. Only letters, digits, hyphens and underscores (max 50 chars).",
       "tagName": "Tag name",
-      "deleteTitle": "Delete Tag",
-      "deleteDesc": "Are you sure you want to delete the tag \"{name}\"?",
-      "createSuccess": "Tag \"{name}\" created",
-      "deleteSuccess": "Tag \"{name}\" deleted"
+      "vmCountLabel": "VMs",
+      "namePlaceholder": "e.g. production",
+      "deleteTitle": "Delete tag",
+      "deleteDesc": "Delete tag \"{tagName}\"? This will not affect VMs that already have this tag.",
+      "toast": {
+        "created": "Tag \"{tagName}\" created",
+        "deleted": "Tag \"{tagName}\" deleted"
+      }
     },
     "limits": {
       "title": "Resource limits",

@@ -1,18 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
-	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
 	import { Input } from '$lib/components/ui/input';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { getTags, createTag, deleteTag } from '$lib/api/admin/tags';
-	import { Tag, X, Lock } from 'phosphor-svelte';
+	import { TagIcon, TrashIcon, LockIcon } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { Tag as TagType } from '$lib/types/admin';
 
@@ -69,45 +67,110 @@
 	onMount(load);
 </script>
 
-<PageHeader title={$t('admin.tags.title')} icon={Tag}>
-	{#snippet actions()}
-		<Button onclick={() => (createOpen = true)}>{$t('admin.tags.addTag')}</Button>
-	{/snippet}
-</PageHeader>
+<!-- Gradient page header -->
+<div class="pv-header -mx-6 -mt-6 mb-6">
+	<div class="pv-header-flex">
+		<div>
+			<p class="pv-eyebrow">{$t('nav.administration')}</p>
+			<h1 class="pv-title">{$t('admin.tags.title')}</h1>
+			{#if !loading}
+				<p class="pv-subtitle">
+					{tags.length}
+					{$t('admin.tags.title').toLowerCase()}
+				</p>
+			{/if}
+		</div>
+
+		{#if !loading}
+			<div class="flex items-center gap-3">
+				{#if tags.length > 0}
+					<div class="pv-header-stats">
+						<div class="pv-header-stat">
+							<div class="pv-header-stat-label">{$t('admin.tags.title')}</div>
+							<div class="pv-header-stat-value">{tags.length}</div>
+						</div>
+					</div>
+				{/if}
+				<Button class="pv-header-btn" variant="outline" onclick={() => (createOpen = true)}>
+					{$t('admin.tags.addTag')}
+				</Button>
+			</div>
+		{/if}
+	</div>
+</div>
 
 <LoadingToast visible={refreshing} />
 
 {#if error}
 	<ErrorBanner {error} onRetry={load} />
 {:else if loading}
-	<LoadingSkeleton variant="card" rows={2} />
+	<LoadingSkeleton variant="table" rows={5} />
 {:else if tags.length === 0}
-	<EmptyState title={$t('admin.tags.noTags')} icon={Tag} description={$t('admin.tags.noTagsDesc')} />
+	<EmptyState
+		title={$t('admin.tags.noTags')}
+		icon={TagIcon}
+		description={$t('admin.tags.noTagsDesc')}
+	/>
 {:else}
-	<div class="flex flex-wrap gap-2">
-		{#each tags as tag}
-			<Badge variant="secondary" class="gap-2 px-3 py-1.5 text-sm">
-				{tag.name}
-				<span class="text-muted-foreground">({tag.vm_count} {$t('admin.tags.vmCount')})</span>
-				{#if tag.name === 'pvmss'}
-					<Lock class="ml-1 h-3 w-3 text-muted-foreground" />
-				{:else}
-					<button class="ml-1 hover:text-destructive" onclick={() => (deleteTarget = tag.name)}>
-						<X class="h-3 w-3" />
-					</button>
-				{/if}
-			</Badge>
-		{/each}
+	<div class="pv-table-wrap">
+		<table class="pv-table">
+			<thead>
+				<tr>
+					<th>{$t('admin.tags.tagName')}</th>
+					<th class="pv-th-num">{$t('admin.tags.vmCountLabel')}</th>
+					<th class="pv-td-actions">{$t('common.actions')}</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each tags as tag}
+					<tr class="pv-row">
+						<td>
+							<div class="pv-resource-cell">
+								<div class="pv-resource-icon" style="width:28px;height:28px;font-size:0.65rem">
+									<TagIcon class="h-3.5 w-3.5" />
+								</div>
+								<span class="pv-td-mono">{tag.name}</span>
+								{#if tag.name === 'pvmss'}
+									<LockIcon class="h-3 w-3 text-muted-foreground" />
+								{/if}
+							</div>
+						</td>
+						<td class="pv-td-num">
+							<span class="pv-action-badge pv-action-badge--vm">{tag.vm_count}</span>
+						</td>
+						<td class="pv-td-actions">
+							{#if tag.name !== 'pvmss'}
+								<Button
+									variant="ghost"
+									size="sm"
+									class="text-destructive hover:text-destructive hover:bg-destructive/10"
+									onclick={() => (deleteTarget = tag.name)}
+								>
+									<TrashIcon class="h-4 w-4" />
+								</Button>
+							{/if}
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
 	</div>
 {/if}
 
+<!-- Create tag dialog -->
 <Dialog.Root bind:open={createOpen}>
-	<Dialog.Content>
+	<Dialog.Content class="sm:max-w-md">
 		<Dialog.Header>
 			<Dialog.Title>{$t('admin.tags.createTitle')}</Dialog.Title>
 			<Dialog.Description>{$t('admin.tags.createDesc')}</Dialog.Description>
 		</Dialog.Header>
-		<Input bind:value={newTagName} placeholder={$t('admin.tags.namePlaceholder')} onkeydown={(e) => e.key === 'Enter' && handleCreate()} />
+		<div class="py-2">
+			<Input
+				bind:value={newTagName}
+				placeholder={$t('admin.tags.namePlaceholder')}
+				onkeydown={(e) => e.key === 'Enter' && handleCreate()}
+			/>
+		</div>
 		<Dialog.Footer>
 			<Button variant="outline" onclick={() => (createOpen = false)}>{$t('common.cancel')}</Button>
 			<Button onclick={handleCreate} disabled={!newTagName.trim()}>{$t('common.create')}</Button>

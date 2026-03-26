@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,6 +18,8 @@ import (
 	"pvmss/proxmox"
 	"pvmss/state"
 )
+
+var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
 
 // AdminMutationsHandler handles admin write operations.
 type AdminMutationsHandler struct {
@@ -333,6 +336,10 @@ func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request
 		errBadRequest(w, "name is required")
 		return
 	}
+	if !tagNameRegex.MatchString(req.Name) {
+		errBadRequest(w, "invalid tag name: use only letters, digits, hyphens, underscores (max 50 chars)")
+		return
+	}
 
 	settings := h.state.GetSettings()
 	// Check for duplicate
@@ -364,6 +371,10 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 	name := ps.ByName("name")
 	if name == "" {
 		errBadRequest(w, "missing tag name")
+		return
+	}
+	if strings.EqualFold(name, "pvmss") {
+		errBadRequest(w, "cannot delete the default 'pvmss' tag")
 		return
 	}
 

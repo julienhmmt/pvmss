@@ -141,13 +141,17 @@
       "noTagsDesc": "Ajoutez des tags pour organiser les VMs",
       "vmCount": "{count} VMs",
       "addTag": "Ajouter un tag",
-      "createTag": "Créer un tag",
-      "tagDescription": "Ajoutez un nouveau tag pour l'organisation des VMs.",
+      "createTitle": "Ajouter un tag",
+      "createDesc": "Les tags permettent d'étiqueter les VMs. Lettres, chiffres, tirets et underscores uniquement (max 50 caractères).",
       "tagName": "Nom du tag",
+      "vmCountLabel": "VMs",
+      "namePlaceholder": "ex. production",
       "deleteTitle": "Supprimer le tag",
-      "deleteDesc": "Êtes-vous sûr de vouloir supprimer le tag « {name} » ?",
-      "createSuccess": "Tag « {name} » créé",
-      "deleteSuccess": "Tag « {name} » supprimé"
+      "deleteDesc": "Supprimer le tag « {tagName} » ? Les VMs qui ont déjà ce tag ne seront pas affectées.",
+      "toast": {
+        "created": "Tag « {tagName} » créé",
+        "deleted": "Tag « {tagName} » supprimé"
+      }
     },
     "limits": {
       "title": "Limites de ressources",
