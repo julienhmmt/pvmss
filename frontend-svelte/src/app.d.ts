@@ -1,5 +1,4 @@
-/// <reference types="svelte" />
-// See https://svelte.dev/docs/kit/types#app.d.ts
+// See https://svelte.dev/docs/kit/types#app
 // for information about these interfaces
 declare global {
 	namespace App {
@@ -8,6 +7,10 @@ declare global {
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}
+	}
+	
+	namespace svelte.JSX {
+		interface HTMLAttributes<T> {}
 	}
 }
 

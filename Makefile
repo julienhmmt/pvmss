@@ -165,6 +165,11 @@ quick-test: ## Lance les tests rapides en mode offline
 	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -short ./...
 	@echo "$(GREEN)✓ Tests rapides terminés$(NC)"
 
+test-svelte: ## Lance les tests Svelte
+	@echo "$(BLUE)Lancement des tests Svelte...$(NC)"
+	cd frontend-svelte && npx svelte-check --tsconfig ./tsconfig.json
+	@echo "$(GREEN)✓ Tests Svelte terminés$(NC)"
+
 # =============================================================================
 # Commandes Go
 
@@ -232,31 +237,5 @@ qualif: ## Lance tous les contrôles qualité (format, lint, tests offline)
 	@echo "$(BLUE)Démarrage de l'application...$(NC)"
 	@$(MAKE) dev
 	@echo ""
-
-# =============================================================================
-# Développement SvelteKit (backend Go + Vite en parallèle)
-
-dev-svelte: ## Lance le backend Go + Vite SvelteKit en parallèle (Ctrl+C pour tout arrêter)
-	@echo "$(BLUE)Démarrage backend Go + SvelteKit Vite...$(NC)"
-	@echo "$(GREEN)  API Go    → http://localhost:50000$(NC)"
-	@echo "$(GREEN)  SvelteKit → http://localhost:5173/admin$(NC)"
-	@echo "$(GREEN)  Login via → http://localhost:5173/login$(NC)"
-	@echo ""
-	@trap 'kill 0' INT; \
-	  (set -a && . ./.env && set +a && export PVMSS_SETTINGS_PATH=$$PWD/backend/settings.dev.json && cd backend && go run . -templates ../frontend 2>&1 | sed 's/^/[api] /') & \
-	  (cd frontend-svelte && npm run dev 2>&1 | sed 's/^/[vite] /') & \
-	  wait
-
-# =============================================================================
-# Commandes frontend SvelteKit
-
-frontend-install: ## Installe les dépendances npm du frontend SvelteKit
-	cd frontend-svelte && npm ci
-
-frontend-build: ## Compile le frontend SvelteKit (génère frontend-svelte/build/ — copié vers /app/frontend/admin/ par Docker)
-	cd frontend-svelte && npm run build
-
-frontend-dev: ## Lance le serveur de développement SvelteKit (proxy vers :50000)
-	cd frontend-svelte && npm run dev
 
 .DEFAULT_GOAL := help
