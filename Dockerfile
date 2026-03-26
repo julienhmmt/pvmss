@@ -67,7 +67,7 @@ WORKDIR /app
 # Copy from builder and frontend stages
 COPY --from=builder --chown=nonroot:nonroot /app/pvmss-backend /app/pvmss-backend
 COPY --from=frontend --chown=nonroot:nonroot /app/frontend/ /app/frontend/
-COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend-svelte/build/ /app/frontend-svelte/build/
+COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend-svelte/build/ /app/frontend/admin/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/i18n/ /app/backend/i18n/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/docs/ /app/backend/docs/
 

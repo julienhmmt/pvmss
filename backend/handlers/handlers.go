@@ -52,8 +52,6 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	}
 
 	// Initialize all handlers
-	adminHandler := MakeAdminOptimizedHandler(stateManager)
-	adminVMsHandler := MakeAdminVMsHandler(stateManager)
 	authHandler := MakeAuthHandler(stateManager)
 	cloudInitHandler := MakeCloudInitHandler(stateManager)
 	diskHandler := MakeDiskHandler(stateManager)
@@ -63,17 +61,12 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	profileHandler := MakeProfileHandler(stateManager)
 	searchHandler := MakeSearchOptimizedHandler(stateManager)
 	settingsHandler := MakeSettingsHandler(stateManager)
-	storageHandler := MakeStorageHandler(stateManager)
 	tagsHandler := MakeTagsHandler(stateManager)
-	userPoolHandler := MakeUserPoolHandler(stateManager)
 	vmCreateHandler := MakeVMCreateOptimizedHandler(stateManager)
 	vmHandler := MakeVMHandler(stateManager)
-	vmbrHandler := MakeVMBRHandler(stateManager)
 
 	// Configure routes
 	setupRoutes(
-		adminHandler,
-		adminVMsHandler,
 		authHandler,
 		cloudInitHandler,
 		diskHandler,
@@ -84,12 +77,9 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		router,
 		searchHandler,
 		settingsHandler,
-		storageHandler,
 		tagsHandler,
-		userPoolHandler,
 		vmCreateHandler,
 		vmHandler,
-		vmbrHandler,
 	)
 
 	// Friendly NotFound and MethodNotAllowed handlers (when state is available)
@@ -127,14 +117,14 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	appHandler := buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(router)
 
 	// SvelteKit admin SPA serving
-	spaDir := filepath.Join(getFrontendPath(stateManager), "..", "frontend-svelte", "build")
+	spaDir := filepath.Join(getFrontendPath(stateManager), "admin")
 	spaIndexPath := filepath.Join(spaDir, "index.html")
 	spaAvailable := false
 	if _, err := os.Stat(spaIndexPath); err == nil {
 		spaAvailable = true
 		log.Info().Str("path", spaDir).Msg("SvelteKit admin SPA build found")
 	} else {
-		log.Info().Msg("SvelteKit admin SPA build not found — /admin/ will fall through to templ pages")
+		log.Info().Msg("SvelteKit admin SPA build not found — /admin/ will fall through to router")
 	}
 
 	// Build the SPA page handler: admin auth check → serve SPA.
@@ -177,8 +167,6 @@ type handlerRegistrar interface {
 
 // setupRoutes configures all application routes
 func setupRoutes(
-	adminHandler *AdminOptimizedHandler,
-	adminVMsHandler *AdminVMsHandler,
 	authHandler *AuthHandler,
 	cloudInitHandler *CloudInitHandler,
 	diskHandler *DiskHandler,
@@ -189,17 +177,12 @@ func setupRoutes(
 	router *httprouter.Router,
 	searchHandler *SearchOptimizedHandler,
 	settingsHandler *SettingsHandler,
-	storageHandler *StorageHandler,
 	tagsHandler *TagsHandler,
-	userPoolHandler *UserPoolHandler,
 	vmCreateHandler *VMCreateOptimizedHandler,
 	vmHandler *VMHandler,
-	vmbrHandler *VMBRHandler,
 ) {
 	// Register routes for all handlers
 	handlers := []handlerRegistrar{
-		adminHandler,
-		adminVMsHandler,
 		authHandler,
 		cloudInitHandler,
 		diskHandler,
@@ -209,21 +192,14 @@ func setupRoutes(
 		profileHandler,
 		searchHandler,
 		settingsHandler,
-		storageHandler,
 		tagsHandler,
-		userPoolHandler,
 		vmCreateHandler,
 		vmHandler,
-		vmbrHandler,
 	}
 
 	for _, h := range handlers {
 		h.RegisterRoutes(router)
 	}
-
-	// Register additional routes for settings handler
-	settingsHandler.RegisterISORoutes(router)
-	settingsHandler.RegisterLimitsRoutes(router)
 
 	// Register AJAX routes for search handler
 	searchHandler.RegisterAJAXRoutes(router)
