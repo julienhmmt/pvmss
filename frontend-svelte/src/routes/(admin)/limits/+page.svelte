@@ -1,27 +1,42 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
-	import PageHeader from '$lib/components/layout/PageHeader.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
-	import * as Tabs from '$lib/components/ui/tabs';
 	import { getLimits, updateLimits } from '$lib/api/admin/limits';
-	import { Sliders } from 'phosphor-svelte';
+	import { getNodes } from '$lib/api/admin/nodes';
+	import { SlidersIcon, GlobeIcon, HardDriveIcon } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
-	import type { Limits, ResourceRange } from '$lib/types/admin';
+	import type { Limits, ResourceRange, Node } from '$lib/types/admin';
 
 	let loading = $state(true);
 	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
-	let saving = $state(false);
+	let savingVm = $state(false);
+	let savingGlobal = $state(false);
+	let savingNodes = $state(false);
 	let limits = $state<Limits | null>(null);
+	let allNodes = $state<Node[]>([]);
 
-	let nodeNames = $derived(limits ? Object.keys(limits.nodes).sort() : []);
-	let selectedNode = $state('');
+	// Ensure all known nodes always have an entry in limits.nodes
+	function ensureAllNodes(lim: Limits, nodes: Node[]): Limits {
+		const populated = { ...lim.nodes };
+		for (const node of nodes) {
+			if (!populated[node.name]) {
+				populated[node.name] = {
+					sockets: { min: lim.vm.sockets.min, max: lim.vm.sockets.max },
+					cores: { min: lim.vm.cores.min, max: lim.vm.cores.max },
+					ram: { min: lim.vm.ram.min, max: lim.vm.ram.max },
+					disk: { min: lim.vm.disk.min, max: lim.vm.disk.max }
+				};
+			}
+		}
+		return { ...lim, nodes: populated };
+	}
 
 	async function load() {
 		if (limits !== null) {
@@ -31,7 +46,9 @@
 		}
 		error = null;
 		try {
-			limits = await getLimits();
+			const [lim, nodes] = await Promise.all([getLimits(), getNodes()]);
+			allNodes = nodes;
+			limits = ensureAllNodes(lim, nodes);
 		} catch (e) {
 			error = e as Error;
 		} finally {
@@ -69,29 +86,66 @@
 		};
 	}
 
-	async function save() {
+	async function saveSection(setSaving: (v: boolean) => void) {
 		if (!limits) return;
-		saving = true;
+		setSaving(true);
 		try {
 			await updateLimits(coerceLimits(limits));
-			toast.success($t('admin.limits.toast.saved'));
+			toast.success($t('admin.limits.saveSuccess'));
 		} catch (e) {
 			toast.error((e as Error).message);
 		} finally {
-			saving = false;
+			setSaving(false);
 		}
+	}
+
+	const NODES_PER_PAGE = 6;
+	let nodePage = $state(1);
+
+	// Sorted node names: online nodes first, then offline
+	let sortedNodes = $derived(
+		allNodes
+			.slice()
+			.sort((a, b) => {
+				if (a.status === b.status) return a.name.localeCompare(b.name);
+				return a.status === 'online' ? -1 : 1;
+			})
+			.map((n) => n.name)
+	);
+
+	let totalNodePages = $derived(Math.ceil(sortedNodes.length / NODES_PER_PAGE));
+	let visibleNodes = $derived(sortedNodes.slice((nodePage - 1) * NODES_PER_PAGE, nodePage * NODES_PER_PAGE));
+
+	function nodeStatus(name: string): 'online' | 'offline' | 'unknown' {
+		const n = allNodes.find((n) => n.name === name);
+		if (!n) return 'unknown';
+		return n.status === 'online' ? 'online' : 'offline';
 	}
 
 	onMount(load);
 </script>
 
-<PageHeader title={$t('admin.limits.title')} icon={Sliders}>
-	{#snippet actions()}
-		<Button onclick={save} disabled={saving || !limits}>
-			{saving ? $t('common.saving') : $t('common.save')}
-		</Button>
-	{/snippet}
-</PageHeader>
+<!-- Gradient page header -->
+<div class="pv-header -mx-6 -mt-6 mb-6">
+	<div class="pv-header-flex">
+		<div>
+			<p class="pv-eyebrow">{$t('nav.administration')}</p>
+			<h1 class="pv-title">{$t('admin.limits.title')}</h1>
+		</div>
+		{#if !loading && limits}
+			<div class="pv-header-stats">
+				<div class="pv-header-stat">
+					<div class="pv-header-stat-label">{$t('common.node')}</div>
+					<div class="pv-header-stat-value">{allNodes.length}</div>
+				</div>
+				<div class="pv-header-stat">
+					<div class="pv-header-stat-label">{$t('admin.limits.maxVmsPerUser')}</div>
+					<div class="pv-header-stat-value">{limits.max_vm_per_user}</div>
+				</div>
+			</div>
+		{/if}
+	</div>
+</div>
 
 <LoadingToast visible={refreshing} />
 
@@ -100,120 +154,164 @@
 {:else if loading || !limits}
 	<LoadingSkeleton variant="form" rows={6} />
 {:else}
-	<div class="max-w-2xl space-y-8">
-		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">{$t('admin.limits.vmResourceRanges')}</h2>
-			<div class="grid grid-cols-2 gap-4">
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.cpuSocketsMin')}</Label>
-					<Input type="number" bind:value={limits.vm.sockets.min} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.cpuSocketsMax')}</Label>
-					<Input type="number" bind:value={limits.vm.sockets.max} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.cpuCoresMin')}</Label>
-					<Input type="number" bind:value={limits.vm.cores.min} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.cpuCoresMax')}</Label>
-					<Input type="number" bind:value={limits.vm.cores.max} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.ramGbMin')}</Label>
-					<Input type="number" bind:value={limits.vm.ram.min} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.ramGbMax')}</Label>
-					<Input type="number" bind:value={limits.vm.ram.max} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.diskGbMin')}</Label>
-					<Input type="number" bind:value={limits.vm.disk.min} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.diskGbMax')}</Label>
-					<Input type="number" bind:value={limits.vm.disk.max} />
-				</div>
-			</div>
-		</section>
+	<div class="max-w-3xl space-y-6">
 
-		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">{$t('admin.limits.globalLimits')}</h2>
-			<div class="grid grid-cols-2 gap-4">
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.maxVmsPerUser')}</Label>
-					<Input type="number" bind:value={limits.max_vm_per_user} />
+		<!-- VM Resource Ranges -->
+		<div class="rounded-lg border">
+			<div class="flex items-center justify-between border-b px-4 py-3">
+				<div class="flex items-center gap-2">
+					<SlidersIcon class="h-4 w-4 text-muted-foreground" />
+					<h2 class="text-sm font-semibold">{$t('admin.limits.vmResourceRanges')}</h2>
 				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.maxSnapshots')}</Label>
-					<Input type="number" bind:value={limits.max_snapshots} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.maxNetworkCards')}</Label>
-					<Input type="number" bind:value={limits.max_network_cards} />
-				</div>
-				<div class="space-y-2">
-					<Label>{$t('admin.limits.maxDisksPerVm')}</Label>
-					<Input type="number" bind:value={limits.max_disk_per_vm} />
-				</div>
+				<Button size="sm" disabled={savingVm} onclick={() => saveSection((v) => (savingVm = v))}>
+					{savingVm ? $t('common.saving') : $t('common.save')}
+				</Button>
 			</div>
-		</section>
-
-		<section class="space-y-4">
-			<h2 class="text-lg font-semibold">{$t('admin.limits.nodeSpecificLimits')}</h2>
-			{#if nodeNames.length > 0}
-				<Tabs.Root value={selectedNode || nodeNames[0]} onValueChange={(v) => (selectedNode = v)}>
-					<Tabs.List>
-						{#each nodeNames as name}
-							<Tabs.Trigger value={name}>{name}</Tabs.Trigger>
-						{/each}
-					</Tabs.List>
-					{#each nodeNames as name}
-						<Tabs.Content value={name}>
-							<div class="grid grid-cols-2 gap-4 pt-4">
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.cpuSocketsMin')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].sockets.min} />
-								</div>
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.cpuSocketsMax')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].sockets.max} />
-								</div>
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.cpuCoresMin')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].cores.min} />
-								</div>
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.cpuCoresMax')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].cores.max} />
-								</div>
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.ramMin')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].ram.min} />
-								</div>
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.ramMax')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].ram.max} />
-								</div>
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.diskMin')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].disk.min} />
-								</div>
-								<div class="space-y-2">
-									<Label>{$t('admin.limits.diskMax')}</Label>
-									<Input type="number" bind:value={limits.nodes[name].disk.max} />
-								</div>
-							</div>
-						</Tabs.Content>
+			<div class="p-4">
+				<!-- Column headers -->
+				<div class="mb-2 grid grid-cols-[1fr_80px_80px] gap-x-3 px-1">
+					<div></div>
+					<div class="text-center text-xs font-medium text-muted-foreground">{$t('admin.limits.min')}</div>
+					<div class="text-center text-xs font-medium text-muted-foreground">{$t('admin.limits.max')}</div>
+				</div>
+				<div class="space-y-2">
+					{#each [
+						{ label: $t('admin.limits.cpuSockets'), min: limits.vm.sockets.min, max: limits.vm.sockets.max, bindMin: (v: number) => (limits!.vm.sockets.min = v), bindMax: (v: number) => (limits!.vm.sockets.max = v) },
+						{ label: $t('admin.limits.cpuCores'),   min: limits.vm.cores.min,   max: limits.vm.cores.max,   bindMin: (v: number) => (limits!.vm.cores.min = v),   bindMax: (v: number) => (limits!.vm.cores.max = v) },
+						{ label: $t('admin.limits.ramGb'),       min: limits.vm.ram.min,     max: limits.vm.ram.max,     bindMin: (v: number) => (limits!.vm.ram.min = v),     bindMax: (v: number) => (limits!.vm.ram.max = v) },
+						{ label: $t('admin.limits.diskGb'),      min: limits.vm.disk.min,    max: limits.vm.disk.max,    bindMin: (v: number) => (limits!.vm.disk.min = v),    bindMax: (v: number) => (limits!.vm.disk.max = v) },
+					] as row}
+						<div class="grid grid-cols-[1fr_80px_80px] items-center gap-x-3">
+							<Label class="text-xs">{row.label}</Label>
+							<Input type="number" min="1" class="h-8 text-center text-sm" value={row.min} oninput={(e) => row.bindMin(Number((e.target as HTMLInputElement).value))} />
+							<Input type="number" min="1" class="h-8 text-center text-sm" value={row.max} oninput={(e) => row.bindMax(Number((e.target as HTMLInputElement).value))} />
+						</div>
 					{/each}
-				</Tabs.Root>
-			{:else}
-					<p class="text-sm text-muted-foreground">
-						{$t('admin.limits.noNodeLimits')}
-					</p>
-			{/if}
-		</section>
+				</div>
+			</div>
+		</div>
+
+		<!-- Global Limits -->
+		<div class="rounded-lg border">
+			<div class="flex items-center justify-between border-b px-4 py-3">
+				<div class="flex items-center gap-2">
+					<GlobeIcon class="h-4 w-4 text-muted-foreground" />
+					<h2 class="text-sm font-semibold">{$t('admin.limits.globalLimits')}</h2>
+				</div>
+				<Button size="sm" disabled={savingGlobal} onclick={() => saveSection((v) => (savingGlobal = v))}>
+					{savingGlobal ? $t('common.saving') : $t('common.save')}
+				</Button>
+			</div>
+			<div class="p-4">
+				<div class="grid grid-cols-2 gap-3">
+					<div class="space-y-1.5">
+						<Label class="text-xs">{$t('admin.limits.maxVmsPerUser')}</Label>
+						<Input type="number" min="0" bind:value={limits.max_vm_per_user} />
+					</div>
+					<div class="space-y-1.5">
+						<Label class="text-xs">{$t('admin.limits.maxSnapshots')}</Label>
+						<Input type="number" min="0" bind:value={limits.max_snapshots} />
+					</div>
+					<div class="space-y-1.5">
+						<Label class="text-xs">{$t('admin.limits.maxNetworkCards')}</Label>
+						<Input type="number" min="1" bind:value={limits.max_network_cards} />
+					</div>
+					<div class="space-y-1.5">
+						<Label class="text-xs">{$t('admin.limits.maxDisksPerVm')}</Label>
+						<Input type="number" min="1" bind:value={limits.max_disk_per_vm} />
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Node-Specific Limits -->
+		{#if sortedNodes.length > 0}
+			<div class="rounded-lg border">
+				<div class="flex items-center justify-between border-b px-4 py-3">
+					<div class="flex items-center gap-2">
+						<HardDriveIcon class="h-4 w-4 text-muted-foreground" />
+						<h2 class="text-sm font-semibold">{$t('admin.limits.nodeSpecificLimits')}</h2>
+						<span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+							{sortedNodes.length}
+						</span>
+					</div>
+					<Button size="sm" disabled={savingNodes} onclick={() => saveSection((v) => (savingNodes = v))}>
+						{savingNodes ? $t('common.saving') : $t('common.save')}
+					</Button>
+				</div>
+
+				<div class="divide-y">
+					{#each visibleNodes as name}
+						{@const status = nodeStatus(name)}
+						{@const nodeLimits = limits.nodes[name]}
+						<div class="px-4 py-3">
+							<!-- Node header -->
+							<div class="mb-3 flex items-center gap-2">
+								<span class="h-2 w-2 rounded-full {status === 'online' ? 'bg-green-500' : 'bg-muted-foreground/40'}"></span>
+								<span class="text-sm font-medium">{name}</span>
+								<span class="text-xs text-muted-foreground">{$t(`common.statusMap.${status}`)}</span>
+							</div>
+
+							<!-- Resource grid -->
+							<div class="grid grid-cols-[1fr_80px_80px] gap-x-3 gap-y-1.5">
+								<!-- header row -->
+								<div></div>
+								<div class="text-center text-[11px] font-medium text-muted-foreground">{$t('admin.limits.min')}</div>
+								<div class="text-center text-[11px] font-medium text-muted-foreground">{$t('admin.limits.max')}</div>
+
+								<!-- Sockets -->
+								<Label class="flex items-center text-xs">{$t('admin.limits.cpuSockets')}</Label>
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.sockets.min} />
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.sockets.max} />
+
+								<!-- Cores -->
+								<Label class="flex items-center text-xs">{$t('admin.limits.cpuCores')}</Label>
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.cores.min} />
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.cores.max} />
+
+								<!-- RAM -->
+								<Label class="flex items-center text-xs">{$t('admin.limits.ramGb')}</Label>
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.ram.min} />
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.ram.max} />
+
+								<!-- Disk -->
+								<Label class="flex items-center text-xs">{$t('admin.limits.diskGb')}</Label>
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.disk.min} />
+								<Input type="number" min="1" class="h-7 text-center text-xs" bind:value={nodeLimits.disk.max} />
+							</div>
+						</div>
+					{/each}
+				</div>
+
+				{#if totalNodePages > 1}
+					<div class="flex items-center justify-between border-t px-4 py-2">
+						<span class="text-xs text-muted-foreground">
+							{$t('common.pageOf', { values: { page: nodePage, total: totalNodePages } })}
+						</span>
+						<div class="flex items-center gap-1">
+							<Button
+								size="sm"
+								variant="ghost"
+								class="h-7 px-2 text-xs"
+								disabled={nodePage <= 1}
+								onclick={() => nodePage--}
+							>
+								{$t('common.previous')}
+							</Button>
+							<Button
+								size="sm"
+								variant="ghost"
+								class="h-7 px-2 text-xs"
+								disabled={nodePage >= totalNodePages}
+								onclick={() => nodePage++}
+							>
+								{$t('common.next')}
+							</Button>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
+
 	</div>
 {/if}

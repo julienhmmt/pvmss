@@ -186,7 +186,13 @@
       "maxSnapshots": "Snapshots max par VM",
       "maxNetworkCards": "Cartes réseau max",
       "maxDisksPerVm": "Disques max par VM",
-      "saveSuccess": "Limites mises à jour"
+      "saveSuccess": "Limites mises à jour",
+      "min": "Min",
+      "max": "Max",
+      "cpuSockets": "Sockets CPU",
+      "cpuCores": "Cœurs CPU",
+      "ramGb": "RAM (Go)",
+      "diskGb": "Disque (Go)"
     },
     "cloudinit": {
       "title": "Modèles Cloud-Init",
