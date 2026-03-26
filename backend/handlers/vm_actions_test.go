@@ -116,7 +116,7 @@ func (f *fakeStateManager) CheckProxmoxConnection() bool {
 	return f.proxmoxConnected
 }
 
-func (f *fakeStateManager) RefreshNodeCache(_ context.Context)                  {}
+func (f *fakeStateManager) RefreshNodeCache(_ context.Context) {}
 func (f *fakeStateManager) GetNodeCache() ([]*proxmox.NodeDetails, time.Time) {
 	return nil, time.Time{}
 }

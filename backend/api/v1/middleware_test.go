@@ -37,7 +37,7 @@ func (m *testStateManager) StartOnlineMode() error                        { retu
 func (m *testStateManager) SetOfflineMode()                               { m.offline = true }
 func (m *testStateManager) GetProxmoxStatus() (bool, string)              { return true, "" }
 func (m *testStateManager) CheckProxmoxConnection() bool                  { return true }
-func (m *testStateManager) RefreshNodeCache(_ context.Context)                  {}
+func (m *testStateManager) RefreshNodeCache(_ context.Context)            {}
 func (m *testStateManager) GetNodeCache() ([]*proxmox.NodeDetails, time.Time) {
 	return nil, time.Time{}
 }
