@@ -18,7 +18,7 @@
 </script>
 
 {#if !$isLoading && auth.initialized}
-	{#if $page.url.pathname !== '/login'}
+	{#if $page.url.pathname !== '/login' && $page.url.pathname !== '/console'}
 		<Navbar />
 		<div class="pt-14">
 			{@render children()}

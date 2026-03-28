@@ -375,6 +375,7 @@
     "sshKeys": "SSH keys",
     "efi": "EFI",
     "tpm": "TPM",
+    "openConsole": "Open console",
     "delete": "Delete VM",
     "deleteConfirmTitle": "Delete virtual machine?",
     "deleteConfirmMessage": "This will permanently delete VM {name} (ID {vmid}) and all its associated disk files. This action cannot be undone.",

@@ -48,6 +48,11 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/vms/:id/settings", jwtWrap(s, vmDetailsHandler.GetVMSettings))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(s, vmHandler.DeleteVM))
 
+	// VNC console routes — JWT required
+	vncHandler := MakeVNCHandler(s)
+	router.POST("/api/v1/vms/:id/vnc-ticket", jwtWrap(s, vncHandler.GetVNCTicket))
+	router.GET("/api/v1/vms/:id/console/websocket", jwtWrap(s, vncHandler.ConsoleWebSocket))
+
 	// Docs routes — public; auth checked inside handler for admin-only types
 	docsHandler := MakeDocsAPIHandler(s)
 	router.GET("/api/v1/docs/:type", wrap(docsHandler.GetDoc))
