@@ -16,6 +16,7 @@
 		BookOpenIcon,
 		UserCircleIcon,
 		GearSixIcon,
+		SignInIcon,
 		SignOutIcon,
 		ListIcon,
 		CaretDownIcon,
@@ -24,43 +25,28 @@
 
 	let mobileOpen = $state(false);
 
-	// Define the type for nav links
 	interface NavLink {
 		href: string;
 		icon: any;
 		label: string;
+		authRequired: boolean;
 	}
 
-	// Initialize with proper typing
-	const initialNavLinks: NavLink[] = [
-		{ href: '/', icon: HouseIcon, label: $t('nav.home') },
-		{ href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm') },
-		{ href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm') },
-		{ href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation') }
-	];
-
-	let navLinks = $state<NavLink[]>(initialNavLinks);
-
-	// Update navLinks when translations change
-	$effect(() => {
-		navLinks[0] = { href: '/', icon: HouseIcon, label: $t('nav.home') };
-		navLinks[1] = { href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm') };
-		navLinks[2] = { href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm') };
-		navLinks[3] = { href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation') };
-	});
+	const navLinks = $derived<NavLink[]>([
+		{ href: '/', icon: HouseIcon, label: $t('nav.home'), authRequired: false },
+		{ href: '/home', icon: HouseIcon, label: $t('nav.myVms'), authRequired: true },
+		{ href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm'), authRequired: true },
+		{ href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm'), authRequired: true },
+		{ href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation'), authRequired: false }
+	].filter(link => !link.authRequired || auth.username));
 
 	function isActive(href: string, pathname: string): boolean {
-		if (href === '/') return pathname === '/' || pathname === '';
+		if (href === '/') return pathname === '/';
 		return pathname.startsWith(href);
 	}
 
 	function navigate(url: string) {
 		window.location.href = url;
-	}
-
-	// Helper function to safely access link properties
-	function getLinkData(link: unknown): NavLink {
-		return link as NavLink;
 	}
 
 	async function handleLogout() {
@@ -124,7 +110,15 @@
 			<!-- Vertical divider -->
 			<div class="pv-navbar-divider hidden sm:block"></div>
 
-			<!-- User dropdown -->
+			<!-- Sign in button (unauthenticated) -->
+			{#if auth.initialized && !auth.username}
+				<a href="/login" class="pv-navbar-signin-btn">
+					<SignInIcon class="h-4 w-4" />
+					<span class="hidden sm:inline">{$t('landing.signIn')}</span>
+				</a>
+			{/if}
+
+			<!-- User dropdown (authenticated) -->
 			{#if auth.initialized && auth.username}
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger>
@@ -386,5 +380,23 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+	}
+
+	:global(.pv-navbar-signin-btn) {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 12px;
+		border-radius: 8px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--foreground);
+		text-decoration: none;
+		border: 1px solid var(--border);
+		transition: background 0.12s, color 0.12s;
+	}
+
+	:global(.pv-navbar-signin-btn:hover) {
+		background: var(--accent);
 	}
 </style>

@@ -5,7 +5,7 @@
 
 	$effect(() => {
 		if (auth.initialized && !auth.username) {
-			window.location.href = '/login';
+			window.location.href = '/';
 		}
 	});
 </script>

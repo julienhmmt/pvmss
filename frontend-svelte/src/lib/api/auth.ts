@@ -5,8 +5,15 @@ export interface AuthUser {
 	is_admin: boolean;
 }
 
+// Use raw fetch so a 401 (unauthenticated) doesn't trigger the client's
+// redirect-to-login logic. Failing exchange is normal for logged-out users.
 export async function exchange(): Promise<AuthUser> {
-	return api.post<AuthUser>('/api/v1/auth/exchange');
+	const res = await fetch('/api/v1/auth/exchange', {
+		method: 'POST',
+		credentials: 'same-origin'
+	});
+	if (!res.ok) throw new Error('not authenticated');
+	return res.json();
 }
 
 export async function me(): Promise<AuthUser> {
