@@ -26,10 +26,18 @@ func getTestBaseURL() string {
 	return "http://localhost:50000"
 }
 
+func skipUnlessManualUserPoolRouteTestsEnabled(t *testing.T) {
+	t.Helper()
+	if os.Getenv("RUN_MANUAL_USERPOOL_ROUTE_TESTS") != "1" {
+		t.Skip("Skipping manual userpool route test. Set RUN_MANUAL_USERPOOL_ROUTE_TESTS=1 to enable.")
+	}
+}
+
 // Note: User pool route tests are covered by integration_test.go which uses httptest.NewServer
 
 // TestUserPoolSelfCreationRoute tests the /userpool/create-self endpoint
 func TestUserPoolSelfCreationRoute(t *testing.T) {
+	skipUnlessManualUserPoolRouteTestsEnabled(t)
 	baseURL := getTestBaseURL()
 	if !waitForServer(baseURL, 5*time.Second) {
 		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolSelfCreationRoute (manual test)", baseURL)
@@ -146,6 +154,7 @@ func TestUserPoolSelfCreationRoute(t *testing.T) {
 
 // TestUserPoolSelfCreationWithAuth tests authentication requirements
 func TestUserPoolSelfCreationWithAuth(t *testing.T) {
+	skipUnlessManualUserPoolRouteTestsEnabled(t)
 	baseURL := getTestBaseURL()
 	if !waitForServer(baseURL, 5*time.Second) {
 		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolSelfCreationWithAuth (manual test)", baseURL)
@@ -211,6 +220,7 @@ func TestUserPoolSelfCreationWithAuth(t *testing.T) {
 
 // TestUserPoolPageWithCurrentUserPoolStatus tests that the user pool page shows current user's pool status
 func TestUserPoolPageWithCurrentUserPoolStatus(t *testing.T) {
+	skipUnlessManualUserPoolRouteTestsEnabled(t)
 	baseURL := getTestBaseURL()
 	if !waitForServer(baseURL, 5*time.Second) {
 		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolPageWithCurrentUserPoolStatus (manual test)", baseURL)
@@ -256,6 +266,7 @@ func TestUserPoolPageWithCurrentUserPoolStatus(t *testing.T) {
 
 // TestUserPoolSelfCreationCSRFProtection tests CSRF protection on the endpoint
 func TestUserPoolSelfCreationCSRFProtection(t *testing.T) {
+	skipUnlessManualUserPoolRouteTestsEnabled(t)
 	baseURL := getTestBaseURL()
 	if !waitForServer(baseURL, 5*time.Second) {
 		t.Skipf("PVMSS server not reachable at %s; skipping TestUserPoolSelfCreationCSRFProtection (manual test)", baseURL)
