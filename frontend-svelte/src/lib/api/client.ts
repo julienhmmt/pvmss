@@ -30,7 +30,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 			}));
 			throw new ApiRequestError(retryRes.status, retryError);
 		}
-		window.location.href = '/login';
+		if (window.location.pathname !== '/login') {
+			window.location.href = '/login';
+		}
 		throw new ApiRequestError(401, { code: 'unauthorized', message: 'Session expired' });
 	}
 

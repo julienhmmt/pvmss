@@ -6,7 +6,17 @@ interface AuthState {
 	initialized: boolean;
 }
 
-function createAuthStore() {
+interface AuthStore {
+	username: string;
+	isAdmin: boolean;
+	initialized: boolean;
+	exchange(): Promise<void>;
+	refresh(): Promise<void>;
+	setUser(username: string, isAdmin: boolean): void;
+	clear(): void;
+}
+
+function createAuthStore(): AuthStore {
 	let state = $state<AuthState>({
 		username: '',
 		isAdmin: false,
@@ -30,7 +40,9 @@ function createAuthStore() {
 				state = { username: user.username, isAdmin: user.is_admin, initialized: true };
 			} catch {
 				state = { username: '', isAdmin: false, initialized: true };
-				window.location.href = '/login';
+				if (window.location.pathname !== '/login') {
+					window.location.href = '/login';
+				}
 			}
 		},
 
@@ -41,6 +53,10 @@ function createAuthStore() {
 			} catch {
 				// Token expired, exchange will handle redirect
 			}
+		},
+
+		setUser(username: string, isAdmin: boolean) {
+			state = { username, isAdmin, initialized: true };
 		},
 
 		clear() {

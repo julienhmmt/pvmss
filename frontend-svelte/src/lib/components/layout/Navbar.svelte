@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { base } from '$app/paths';
+	
 	import { auth } from '$lib/stores/auth.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -113,7 +113,7 @@
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
 						{#if auth.isAdmin}
-							<DropdownMenu.Item onclick={() => navigate(`${base}/`)}>
+							<DropdownMenu.Item onclick={() => navigate('/admin/')}>
 								<GearSix class="h-4 w-4" />
 								{$t('common.admin')}
 							</DropdownMenu.Item>
@@ -181,7 +181,7 @@
 
 							{#if auth.isAdmin}
 								<a
-									href="{base}/"
+									href="/admin/"
 									class="pv-sidebar-item"
 									onclick={() => (mobileOpen = false)}
 								>

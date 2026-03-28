@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { base } from '$app/paths';
 	import { t } from 'svelte-i18n';
 	import {
 		Sidebar,
@@ -24,20 +23,20 @@
 	} from 'phosphor-svelte';
 
 	const items = $derived([
-		{ href: `${base}/`, icon: House, label: $t('nav.dashboard') },
-		{ href: `${base}/nodes`, icon: HardDrives, label: $t('nav.nodes') },
-		{ href: `${base}/storage`, icon: Database, label: $t('nav.storage') },
-		{ href: `${base}/vms`, icon: Desktop, label: $t('nav.vms') },
-		{ href: `${base}/userpool`, icon: UsersThree, label: $t('nav.userpool') },
-		{ href: `${base}/tags`, icon: Tag, label: $t('nav.tags') },
-		{ href: `${base}/limits`, icon: Sliders, label: $t('nav.limits') },
-		{ href: `${base}/vmbr`, icon: WifiHigh, label: $t('nav.network') },
-		{ href: `${base}/cloudinit`, icon: Cloud, label: $t('nav.cloudinit') },
-		{ href: `${base}/iso`, icon: Disc, label: $t('nav.iso') }
+		{ href: `/admin/`, icon: House, label: $t('nav.dashboard') },
+		{ href: `/admin/nodes`, icon: HardDrives, label: $t('nav.nodes') },
+		{ href: `/admin/storage`, icon: Database, label: $t('nav.storage') },
+		{ href: `/admin/vms`, icon: Desktop, label: $t('nav.vms') },
+		{ href: `/admin/userpool`, icon: UsersThree, label: $t('nav.userpool') },
+		{ href: `/admin/tags`, icon: Tag, label: $t('nav.tags') },
+		{ href: `/admin/limits`, icon: Sliders, label: $t('nav.limits') },
+		{ href: `/admin/vmbr`, icon: WifiHigh, label: $t('nav.network') },
+		{ href: `/admin/cloudinit`, icon: Cloud, label: $t('nav.cloudinit') },
+		{ href: `/admin/iso`, icon: Disc, label: $t('nav.iso') }
 	]);
 
 	function isActive(itemHref: string, currentPath: string): boolean {
-		if (itemHref === `${base}/`) return currentPath === `${base}` || currentPath === `${base}/`;
+		if (itemHref === `/admin/`) return currentPath === '/admin' || currentPath === '/admin/';
 		return currentPath.startsWith(itemHref);
 	}
 </script>
