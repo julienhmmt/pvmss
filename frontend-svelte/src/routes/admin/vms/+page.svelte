@@ -10,7 +10,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as Select from '$lib/components/ui/select';
-	import { getAllVMs, vmAction } from '$lib/api/admin/vms';
+	import { getAllVMs, vmAction, deleteVM } from '$lib/api/admin/vms';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { formatBytes, formatCpu, formatUptime, formatPercent } from '$lib/utils/format';
 	import { Desktop, ArrowsClockwise } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
@@ -25,6 +26,9 @@
 	let selectedNode = $state<string>('');
 	let page = $state(1);
 	let perPage = $state(25);
+
+	let deleteTarget = $state<VM | null>(null);
+	let deleting = $state(false);
 
 	const nodes = $derived([...new Set(vms.map((v) => v.node))].sort());
 
@@ -78,6 +82,22 @@
 					values: { action, vmid: vm.vmid, error: (e as Error).message }
 				})
 			);
+		}
+	}
+
+	async function confirmDelete() {
+		if (!deleteTarget) return;
+		const vm = deleteTarget;
+		deleting = true;
+		try {
+			await deleteVM(vm.vmid);
+			toast.success($t('admin.vms.toast.deleteSuccess', { values: { name: vm.name, vmid: vm.vmid } }));
+			deleteTarget = null;
+			await load();
+		} catch (e) {
+			toast.error($t('admin.vms.toast.deleteFailed', { values: { vmid: vm.vmid, error: (e as Error).message } }));
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -302,6 +322,13 @@
 											{$t('admin.vms.actions.forceStop')}
 										</DropdownMenu.Item>
 									{/if}
+									<DropdownMenu.Separator />
+									<DropdownMenu.Item
+										class="text-destructive"
+										onclick={() => { deleteTarget = vm; }}
+									>
+										{$t('admin.vms.actions.delete')}
+									</DropdownMenu.Item>
 								</DropdownMenu.Content>
 							</DropdownMenu.Root>
 						</td>
@@ -363,3 +390,30 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Delete confirmation dialog -->
+<AlertDialog.Root open={!!deleteTarget} onOpenChange={(o) => { if (!o) deleteTarget = null; }}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>{$t('vm.deleteConfirmTitle')}</AlertDialog.Title>
+			<AlertDialog.Description>
+				{#if deleteTarget}
+					{$t('vm.deleteConfirmMessage', { values: { name: deleteTarget.name, vmid: deleteTarget.vmid } })}
+					{#if deleteTarget.status === 'running'}
+						<p class="mt-2 font-medium text-destructive">{$t('vm.deleteConfirmRunning')}</p>
+					{/if}
+				{/if}
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={deleting}>{$t('common.cancel')}</AlertDialog.Cancel>
+			<AlertDialog.Action
+				class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+				disabled={deleting}
+				onclick={confirmDelete}
+			>
+				{deleting ? $t('common.loading') : $t('common.delete')}
+			</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>

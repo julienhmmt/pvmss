@@ -159,6 +159,64 @@ func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
 	writeError(w, http.StatusNotFound, "not_found", "VM not found")
 }
 
+// DeleteVM handles DELETE /api/v1/vms/:id.
+// Admins may delete any pvmss-tagged VM; regular users may only delete VMs in their pool.
+func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
+	if h.isOffline() {
+		errOffline(w)
+		return
+	}
+	ps := httprouter.ParamsFromContext(r.Context())
+	vmid, err := strconv.Atoi(ps.ByName("id"))
+	if err != nil || vmid <= 0 {
+		errBadRequest(w, "invalid vm id")
+		return
+	}
+	username := usernameFromCtx(r)
+	isAdmin := isAdminFromCtx(r)
+
+	client, err := restyClient()
+	if err != nil {
+		errInternal(w)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	allVMs, err := proxmox.GetVMsResty(ctx, client)
+	if err != nil {
+		errInternal(w)
+		return
+	}
+
+	var targetNode string
+	for _, vm := range allVMs {
+		if vm.VMID == vmid && hasTag(vm.Tags, "pvmss") {
+			targetNode = vm.Node
+			break
+		}
+	}
+	if targetNode == "" {
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		return
+	}
+
+	// Non-admin: verify VM is in the user's pool.
+	if !isAdmin {
+		poolVMIDs := fetchPoolVMIDs(ctx, client, "pvmss_"+username)
+		if !poolVMIDs[vmid] {
+			errForbidden(w)
+			return
+		}
+	}
+
+	if err := proxmox.DeleteVMResty(ctx, client, targetNode, vmid); err != nil {
+		writeError(w, http.StatusInternalServerError, "delete_failed", err.Error())
+		return
+	}
+	writeJSON(w, map[string]bool{"success": true})
+}
+
 // fetchPoolVMIDs returns the set of QEMU VM IDs in the given Proxmox pool.
 // Returns an empty map on error so callers can treat it as "no VMs".
 func fetchPoolVMIDs(ctx context.Context, client *proxmox.RestyClient, poolName string) map[int]bool {

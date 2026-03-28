@@ -73,6 +73,47 @@ func (h *AdminVMsAPIHandler) ListAllVMs(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, result)
 }
 
+// DeleteVM handles DELETE /api/v1/admin/vms/:id.
+// Permanently deletes the VM and all its associated disk files from Proxmox.
+func (h *AdminVMsAPIHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
+	if h.state.IsOfflineMode() {
+		errOffline(w)
+		return
+	}
+	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	vmid, err := strconv.Atoi(ps.ByName("id"))
+	if err != nil || vmid <= 0 {
+		errBadRequest(w, "invalid VM ID")
+		return
+	}
+	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
+	if err != nil {
+		errInternal(w)
+		return
+	}
+	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
+	if err != nil {
+		errInternal(w)
+		return
+	}
+	var node string
+	for _, vm := range vms {
+		if vm.VMID == vmid && hasPVMSSTag(vm.Tags) {
+			node = vm.Node
+			break
+		}
+	}
+	if node == "" {
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		return
+	}
+	if err := proxmox.DeleteVMResty(r.Context(), restyClient, node, vmid); err != nil {
+		writeError(w, http.StatusInternalServerError, "delete_failed", err.Error())
+		return
+	}
+	writeJSON(w, map[string]bool{"success": true})
+}
+
 // VMAction handles POST /api/v1/admin/vms/:id/action.
 func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 	if h.state.IsOfflineMode() {
