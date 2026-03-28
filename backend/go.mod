@@ -14,7 +14,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/pkg/sftp v1.13.10
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.49.0
 	golang.org/x/sync v0.20.0

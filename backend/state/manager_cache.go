@@ -123,6 +123,12 @@ func (s *appState) refreshProxmoxSnapshot(trigger string) {
 		Msg("Proxmox snapshot updated")
 }
 
+// RefreshNodeCache is the public entry point for an on-demand synchronous cache refresh.
+// It is a no-op when offline mode is active or Proxmox is not reachable.
+func (s *appState) RefreshNodeCache(ctx context.Context) {
+	s.refreshNodeCache(ctx)
+}
+
 // refreshNodeCache fetches node information from Proxmox and stores it for fast access.
 func (s *appState) refreshNodeCache(ctx context.Context) {
 	log := logger.Get().With().Str("component", "NodeCacheWorker").Logger()

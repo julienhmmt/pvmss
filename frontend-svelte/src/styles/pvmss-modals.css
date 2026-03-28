@@ -1,0 +1,139 @@
+/* PVMSS modal patterns */
+.pv-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(3px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.pv-modal {
+  background: var(--card);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pv-modal--sm {
+  max-width: 460px;
+}
+
+.pv-modal--lg {
+  max-width: 800px;
+}
+
+.pv-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 24px 24px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Colored modal header (gradient) */
+.pv-modal-header--primary {
+  background: linear-gradient(135deg, oklch(0.35 0.12 45), oklch(0.60 0.19 45));
+  color: white;
+  border-bottom: none;
+}
+
+.pv-modal-header--danger {
+  background: linear-gradient(135deg, #7f1d1d, #dc2626);
+  color: white;
+  border-bottom: none;
+}
+
+.pv-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+  flex: 1;
+}
+
+.pv-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pv-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.pv-modal-close {
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+
+.pv-modal-close:hover {
+  background: var(--muted);
+}
+
+/* Close button on colored header */
+.pv-modal-header--primary .pv-modal-close,
+.pv-modal-header--danger .pv-modal-close {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+.pv-modal-header--primary .pv-modal-close:hover,
+.pv-modal-header--danger .pv-modal-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Form field inside modal */
+.pv-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pv-modal-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.pv-modal-hint {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .pv-overlay {
+    padding: 16px;
+    align-items: flex-end;
+  }
+
+  .pv-modal {
+    border-radius: 20px 20px 0 0;
+    max-width: 100%;
+  }
+}

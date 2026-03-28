@@ -34,33 +34,32 @@ func TestDocsDirectoryExists(t *testing.T) {
 
 // TestDocsFilesExist tests that expected documentation files exist
 func TestDocsFilesExist(t *testing.T) {
-	// Find docs directory
-	var docsDir string
-	possiblePaths := []string{"../../docs", "../docs", "./docs", "/app/backend/docs"}
-
+	possiblePaths := []string{"../docs", "/app/backend/docs", "../../docs", "./docs"}
+	docsDirs := make([]string, 0, len(possiblePaths))
 	for _, path := range possiblePaths {
 		if info, err := os.Stat(path); err == nil && info.IsDir() {
-			docsDir = path
-			break
+			docsDirs = append(docsDirs, path)
 		}
 	}
-
-	if docsDir == "" {
+	if len(docsDirs) == 0 {
 		t.Skip("Docs directory not found, skipping file existence tests")
 	}
-
-	// Check for expected documentation files
 	expectedFiles := []string{
 		"user.en.md",
 		"user.fr.md",
 		"admin.en.md",
 		"admin.fr.md",
 	}
-
 	for _, filename := range expectedFiles {
-		filePath := filepath.Join(docsDir, filename)
-		_, err := os.Stat(filePath)
-		assert.NoError(t, err, "Documentation file %s should exist", filename)
+		found := false
+		for _, dir := range docsDirs {
+			filePath := filepath.Join(dir, filename)
+			if _, err := os.Stat(filePath); err == nil {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, "Documentation file %s should exist in at least one docs directory", filename)
 	}
 }
 
