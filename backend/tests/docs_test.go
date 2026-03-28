@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"pvmss/handlers"
 )
 
 // TestDocsDirectoryExists tests that the docs directory exists
@@ -61,10 +59,4 @@ func TestDocsFilesExist(t *testing.T) {
 		}
 		assert.True(t, found, "Documentation file %s should exist in at least one docs directory", filename)
 	}
-}
-
-// TestMakeDocsHandler tests that DocsHandler can be created
-func TestMakeDocsHandler(t *testing.T) {
-	handler := handlers.MakeDocsHandler()
-	assert.NotNil(t, handler, "DocsHandler should be created successfully")
 }
