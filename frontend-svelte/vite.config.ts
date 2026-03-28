@@ -10,6 +10,12 @@ export default defineConfig({
 			$lib: path.resolve('./src/lib')
 		}
 	},
+	build: {
+		rollupOptions: {
+			// Paths served as static assets (noVNC, old frontend /components/) must not be bundled.
+			external: [/^\/components\//]
+		}
+	},
 	server: {
 		host: true,
 		proxy: {
