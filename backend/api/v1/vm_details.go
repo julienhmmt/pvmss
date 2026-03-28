@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -746,10 +745,7 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 	}
 
 	// settings.Tags is []string
-	tags := make([]string, 0, len(settings.Tags))
-	for _, t := range settings.Tags {
-		tags = append(tags, t)
-	}
+	tags := append([]string(nil), settings.Tags...)
 
 	resp := VMSettingsResponse{
 		AvailableISOs:  isos,
@@ -767,6 +763,3 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 	}
 	writeJSON(w, resp)
 }
-
-// snapshotNameRe validates snapshot names.
-var snapshotNameRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,40}$`)

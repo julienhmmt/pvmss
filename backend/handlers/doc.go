@@ -66,12 +66,10 @@
 //
 //   - health.go - Health check endpoints
 //   - search.go - Search functionality
-//   - profile.go - User profile management
 //   - storage.go - Storage management
 //   - tags.go - Tag management
 //   - vmbr.go - Network bridge management
 //   - disks.go - Disk management
-//   - docs.go - Documentation endpoints
 //   - language.go - Language/i18n handling
 //   - css.go - CSS serving
 //
