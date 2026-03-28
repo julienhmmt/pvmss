@@ -311,7 +311,8 @@ func isSPAPath(p string) bool {
 	}
 	return strings.HasPrefix(p, "/admin/") || p == "/admin" ||
 		p == "/" || p == "/home" || p == "/search" ||
-		strings.HasPrefix(p, "/vm/")
+		strings.HasPrefix(p, "/vm/") ||
+		p == "/docs" || strings.HasPrefix(p, "/docs/")
 }
 
 // resolveWithinBase resolves relPath against baseDir and ensures the resulting absolute

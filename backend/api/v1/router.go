@@ -42,6 +42,10 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(s, vmDetailsHandler.RollbackSnapshot))
 	router.GET("/api/v1/vms/:id/settings", jwtWrap(s, vmDetailsHandler.GetVMSettings))
 
+	// Docs routes — public; auth checked inside handler for admin-only types
+	docsHandler := MakeDocsAPIHandler(s)
+	router.GET("/api/v1/docs/:type", wrap(docsHandler.GetDoc))
+
 	// Admin API routes — JWT + isAdmin required
 	adminHandler := MakeAdminHandler(s)
 	adminVMsHandler := MakeAdminVMsAPIHandler(s)
