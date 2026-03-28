@@ -292,18 +292,21 @@ func getFrontendPath(sm state.StateManager) string {
 // isSPAStaticAsset returns true for SvelteKit build assets (JS, CSS, etc.)
 // that should be served without authentication (needed by the login page).
 func isSPAStaticAsset(p string) bool {
-	return strings.HasPrefix(p, "/admin/_app/")
+	// Without SvelteKit base path, assets are at /_app/.
+	// Keep /admin/_app/ support for backward compatibility during transition.
+	return strings.HasPrefix(p, "/_app/") || strings.HasPrefix(p, "/admin/_app/")
+}
+
+// isSPALoginPath returns true for paths that serve the SPA login page (no auth required).
+func isSPALoginPath(p string) bool {
+	return p == "/login" || p == "/admin/login"
 }
 
 // isSPAPath returns true for admin page routes that should be served by the
-// SvelteKit admin SPA (after authentication). Login routes are excluded so the
-// server-rendered login form is used.
+// SvelteKit admin SPA (after authentication).
 func isSPAPath(p string) bool {
-	if p == "/admin/login" || p == "/admin/proxmox-login" {
-		return false
-	}
-	// Static assets are handled separately without auth.
-	if isSPAStaticAsset(p) {
+	// Static assets and login pages are handled separately.
+	if isSPAStaticAsset(p) || isSPALoginPath(p) {
 		return false
 	}
 	return strings.HasPrefix(p, "/admin/") || p == "/admin"
@@ -348,9 +351,9 @@ func resolveWithinBase(baseDir, relPath string) (string, bool) {
 // serveSPA serves the SvelteKit SPA. Static assets (files with extensions) are served
 // directly from the build directory; all other paths get the fallback index.html.
 func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath string) {
-	// Strip /admin prefix and leading slash to get a relative path within the build directory.
-	// e.g. "/admin" → "", "/admin/nodes" → "nodes", "/admin/_app/x.js" → "_app/x.js"
-	relPath := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/admin"), "/")
+	// Strip leading slash to get a relative path within the build directory.
+	// e.g. "/login" → "login", "/_app/x.js" → "_app/x.js", "/admin/nodes" → "admin/nodes"
+	relPath := strings.TrimPrefix(r.URL.Path, "/")
 	// Resolve the requested path within the SPA directory and ensure it cannot escape.
 	filePathAbs, ok := resolveWithinBase(spaDir, relPath)
 	if !ok {

@@ -8,9 +8,7 @@ const config = {
 		adapter: adapter({
 			fallback: 'index.html'
 		}),
-		paths: {
-			base: '/admin'
-		}
+
 	},
 	compilerOptions: {
 		runes: true
