@@ -46,6 +46,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.DELETE("/api/v1/vms/:id/snapshots/:name", jwtWrap(s, vmDetailsHandler.DeleteSnapshot))
 	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(s, vmDetailsHandler.RollbackSnapshot))
 	router.GET("/api/v1/vms/:id/settings", jwtWrap(s, vmDetailsHandler.GetVMSettings))
+	router.DELETE("/api/v1/vms/:id", jwtWrap(s, vmHandler.DeleteVM))
 
 	// Docs routes — public; auth checked inside handler for admin-only types
 	docsHandler := MakeDocsAPIHandler(s)
@@ -65,6 +66,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 
 	router.GET("/api/v1/admin/vms", adminJWTWrap(s, adminVMsHandler.ListAllVMs))
 	router.POST("/api/v1/admin/vms/:id/action", adminJWTWrap(s, adminVMsHandler.VMAction))
+	router.DELETE("/api/v1/admin/vms/:id", adminJWTWrap(s, adminVMsHandler.DeleteVM))
 
 	router.GET("/api/v1/admin/userpool", adminJWTWrap(s, adminMutHandler.ListPools))
 	router.POST("/api/v1/admin/userpool", adminJWTWrap(s, adminMutHandler.CreatePool))
