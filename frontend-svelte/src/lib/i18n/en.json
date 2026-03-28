@@ -326,6 +326,13 @@
       "reboot": "Reboot"
     }
   },
+  "docs": {
+    "user": "User guide",
+    "admin": "Administrator guide",
+    "cloudInit": "Cloud-init",
+    "proxmoxPerms": "Proxmox permissions",
+    "onThisPage": "On this page"
+  },
   "search": {
     "placeholder": "Search by name or VM ID…",
     "allStatuses": "All statuses",

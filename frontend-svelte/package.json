@@ -39,6 +39,7 @@
 		"@fontsource-variable/noto-sans": "^5.2.10",
 		"@fontsource/geist-mono": "^5.2.7",
 		"@fontsource/geist-sans": "^5.2.5",
+		"marked": "^17.0.5",
 		"phosphor-svelte": "^3.1.0"
 	}
 }
