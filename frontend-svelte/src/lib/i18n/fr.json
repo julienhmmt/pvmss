@@ -44,6 +44,7 @@
   },
   "nav": {
     "home": "Accueil",
+    "myVms": "Mes VMs",
     "createVm": "Créer une VM",
     "searchVm": "Rechercher une VM",
     "documentation": "Documentation",
@@ -298,5 +299,19 @@
       "description": "Bienvenue, {username}",
       "migrationNote": "Vos VMs apparaîtront ici. Utilisez la navigation ci-dessus pour les gérer."
     }
+  },
+  "landing": {
+    "headline": "Gérez vos machines virtuelles",
+    "subheadline": "PVMSS vous donne un accès en libre-service à vos VMs Proxmox — démarrez, arrêtez, créez et surveillez vos machines sans accès direct à l'interface Proxmox.",
+    "feature1Title": "Vos VMs en un coup d'œil",
+    "feature1Desc": "Visualisez le statut, l'utilisation des ressources et l'uptime de toutes vos machines virtuelles en un seul endroit.",
+    "feature2Title": "Contrôle total",
+    "feature2Desc": "Démarrez, arrêtez, redémarrez et créez des machines virtuelles avec une interface simple et intuitive.",
+    "feature3Title": "Accès sécurisé",
+    "feature3Desc": "Chaque utilisateur n'accède qu'à ses propres machines, dans les limites de ressources définies par l'administrateur.",
+    "signIn": "Se connecter",
+    "documentation": "Documentation",
+    "welcomeBack": "Bon retour, {username}",
+    "goToMyVms": "Mes machines virtuelles"
   }
 }
