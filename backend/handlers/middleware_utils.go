@@ -310,7 +310,7 @@ func isSPAPath(p string) bool {
 		return false
 	}
 	return strings.HasPrefix(p, "/admin/") || p == "/admin" ||
-		p == "/" || p == "/home" ||
+		p == "/" || p == "/home" || p == "/search" ||
 		strings.HasPrefix(p, "/vm/")
 }
 
