@@ -31,6 +31,11 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/vms/:id", jwtWrap(s, vmHandler.GetVM))
 	router.POST("/api/v1/vms/:id/action", jwtWrap(s, vmActionHandler.VMAction))
 
+	// VM creation routes — JWT required
+	vmCreateHandler := MakeVMCreateHandler(s)
+	router.GET("/api/v1/vm-create/settings", jwtWrap(s, vmCreateHandler.GetSettings))
+	router.POST("/api/v1/vms", jwtWrap(s, vmCreateHandler.CreateVM))
+
 	// VM detail routes — JWT required
 	vmDetailsHandler := MakeVMDetailsHandler(s)
 	router.GET("/api/v1/vms/:id/config", jwtWrap(s, vmDetailsHandler.GetVMConfig))
