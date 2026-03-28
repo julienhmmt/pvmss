@@ -153,13 +153,29 @@ func (h *AdminHandler) VMBR(w http.ResponseWriter, r *http.Request) {
 	for _, v := range enabledVMBRs {
 		enabledSet[v] = true
 	}
-	var result []AdminVMBRResponse
+	type nodeResult struct {
+		node    string
+		bridges []proxmox.VMBR
+	}
+	ch := make(chan nodeResult, len(nodeNames))
+	var wg sync.WaitGroup
 	for _, node := range nodeNames {
-		bridges, err := proxmox.GetVMBRsResty(r.Context(), restyClient, node)
-		if err != nil {
-			continue
-		}
-		for _, b := range bridges {
+		wg.Add(1)
+		go func(n string) {
+			defer wg.Done()
+			bridges, err := proxmox.GetVMBRsResty(r.Context(), restyClient, n)
+			if err != nil {
+				return
+			}
+			ch <- nodeResult{node: n, bridges: bridges}
+		}(node)
+	}
+	wg.Wait()
+	close(ch)
+
+	var result []AdminVMBRResponse
+	for nr := range ch {
+		for _, b := range nr.bridges {
 			active := false
 			if b.Active != nil {
 				switch v := b.Active.(type) {
@@ -174,8 +190,8 @@ func (h *AdminHandler) VMBR(w http.ResponseWriter, r *http.Request) {
 				Type:        b.Type,
 				Active:      active,
 				BridgePorts: b.BridgePorts,
-				Node:        node,
-				Enabled:     enabledSet[node+":"+b.Iface],
+				Node:        nr.node,
+				Enabled:     enabledSet[nr.node+":"+b.Iface],
 			})
 		}
 	}
@@ -244,7 +260,7 @@ func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 			if !isoStorageSupportsISO(s.Content) || !isoStorageAvailableOnNode(s.Nodes, node) {
 				continue
 			}
-			storageCtx, storageCancel := context.WithTimeout(context.Background(), isoPerStorageTimeout)
+			storageCtx, storageCancel := context.WithTimeout(r.Context(), isoPerStorageTimeout)
 			isos, err := proxmox.GetISOListResty(storageCtx, restyClient, node, s.Storage)
 			storageCancel()
 			if err != nil {
@@ -317,7 +333,7 @@ func (h *AdminHandler) AppInfo(w http.ResponseWriter, r *http.Request) {
 		GoVersion:        runtime.Version(),
 		Platform:         runtime.GOOS + "/" + runtime.GOARCH,
 		ProxmoxConnected: connected,
-		ProxmoxURL:       os.Getenv("PM_API_URL"),
+		ProxmoxURL:       os.Getenv("PROXMOX_URL"),
 		OfflineMode:      h.state.IsOfflineMode(),
 		TotalNodes:       len(nodes),
 		TotalVMs:         totalVMs,
