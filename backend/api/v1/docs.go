@@ -48,10 +48,10 @@ func (h *DocsAPIHandler) GetDoc(w http.ResponseWriter, r *http.Request) {
 	docType := ps.ByName("type")
 
 	allowed := map[string]bool{
-		"user":                  true,
-		"admin":                 true,
-		"proxmox-permissions":   true,
-		"cloud-init":            true,
+		"user":                true,
+		"admin":               true,
+		"proxmox-permissions": true,
+		"cloud-init":          true,
 	}
 	if !allowed[docType] {
 		errBadRequest(w, "invalid doc type")

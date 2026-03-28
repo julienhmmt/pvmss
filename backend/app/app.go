@@ -44,7 +44,6 @@ func registerTestRoutes(router *http.ServeMux, hc *handlers.TestHandlerCollectio
 	// User endpoints
 	router.HandleFunc("/", hc.HomeHandler)
 	router.HandleFunc("/search", hc.SearchHandler)
-	router.HandleFunc("/profile", hc.ProfileHandler)
 	router.HandleFunc("/vm/create", hc.VMCreateHandler)
 	router.HandleFunc("/userpool/create-self", hc.UserPoolSelfCreateHandler)
 
@@ -63,11 +62,6 @@ func registerTestRoutes(router *http.ServeMux, hc *handlers.TestHandlerCollectio
 	router.HandleFunc("/api/settings", hc.SettingsHandler)
 	router.HandleFunc("/api/settings/all", hc.AllSettingsHandler)
 	router.HandleFunc("/api/vmbr/all", hc.AllVMBRHandler)
-
-	// Documentation
-	router.HandleFunc("/docs", hc.DocsHandler)
-	router.HandleFunc("/docs/user", hc.UserDocsHandler)
-	router.HandleFunc("/docs/admin", hc.AdminDocsHandler)
 
 	// Static files (simplified)
 	router.HandleFunc("/favicon.ico", hc.FaviconHandler)

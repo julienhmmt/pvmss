@@ -92,13 +92,6 @@ func (hc *TestHandlerCollection) LogoutHandler(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusSeeOther)
 }
 
-// ProfileHandler handles profile requests
-func (hc *TestHandlerCollection) ProfileHandler(w http.ResponseWriter, r *http.Request) {
-	// Redirect to login if not authenticated
-	w.Header().Set("Location", "/login")
-	w.WriteHeader(http.StatusSeeOther)
-}
-
 // VMCreateHandler handles VM creation requests
 func (hc *TestHandlerCollection) VMCreateHandler(w http.ResponseWriter, r *http.Request) {
 	// Redirect to login if not authenticated
@@ -227,24 +220,6 @@ func (hc *TestHandlerCollection) AllVMBRHandler(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode([]string{"vmbr0"})
-}
-
-// DocsHandler handles documentation
-func (hc *TestHandlerCollection) DocsHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("<html><body>Documentation</body></html>"))
-}
-
-// UserDocsHandler handles user documentation
-func (hc *TestHandlerCollection) UserDocsHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("<html><body>User Documentation</body></html>"))
-}
-
-// AdminDocsHandler handles admin documentation
-func (hc *TestHandlerCollection) AdminDocsHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("<html><body>Admin Documentation</body></html>"))
 }
 
 // FaviconHandler handles favicon requests

@@ -55,10 +55,8 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	authHandler := MakeAuthHandler(stateManager)
 	cloudInitHandler := MakeCloudInitHandler(stateManager)
 	diskHandler := MakeDiskHandler(stateManager)
-	docsHandler := MakeDocsHandler()
 	healthHandler := MakeHealthHandler(stateManager)
 	languageHandler := MakeLanguageHandler()
-	profileHandler := MakeProfileHandler(stateManager)
 	searchHandler := MakeSearchOptimizedHandler(stateManager)
 	settingsHandler := MakeSettingsHandler(stateManager)
 	tagsHandler := MakeTagsHandler(stateManager)
@@ -70,10 +68,8 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		authHandler,
 		cloudInitHandler,
 		diskHandler,
-		docsHandler,
 		healthHandler,
 		languageHandler,
-		profileHandler,
 		router,
 		searchHandler,
 		settingsHandler,
@@ -172,10 +168,8 @@ func setupRoutes(
 	authHandler *AuthHandler,
 	cloudInitHandler *CloudInitHandler,
 	diskHandler *DiskHandler,
-	docsHandler *DocsHandler,
 	healthHandler *HealthHandler,
 	languageHandler *LanguageHandler,
-	profileHandler *ProfileHandler,
 	router *httprouter.Router,
 	searchHandler *SearchOptimizedHandler,
 	settingsHandler *SettingsHandler,
@@ -188,10 +182,8 @@ func setupRoutes(
 		authHandler,
 		cloudInitHandler,
 		diskHandler,
-		docsHandler,
 		healthHandler,
 		languageHandler,
-		profileHandler,
 		searchHandler,
 		settingsHandler,
 		tagsHandler,

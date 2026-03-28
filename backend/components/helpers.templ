@@ -2,6 +2,9 @@ package components
 
 import "fmt"
 
+// TranslationFunc is a function that translates a key to a localized string.
+type TranslationFunc func(key string) string
+
 // ProgressClass returns the appropriate Bulma class based on percentage
 func ProgressClass(percent float64) string {
 	if percent < 70.0 {
