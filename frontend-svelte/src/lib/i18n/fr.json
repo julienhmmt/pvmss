@@ -49,6 +49,7 @@
     "documentation": "Documentation",
     "administration": "Administration",
     "administrator": "Administrateur",
+    "user": "Utilisateur",
     "languageFr": "FR — Français",
     "languageEn": "EN — English",
     "menu": "Menu",
@@ -266,7 +267,6 @@
       }
     }
   },
-  "user": {},
   "login": {
     "title": "Connexion",
     "subtitle": "Proxmox VM Self-Service",
@@ -290,6 +290,13 @@
       "invalidCredentials": "Identifiants invalides",
       "serviceUnavailable": "Service indisponible, veuillez réessayer",
       "unknown": "Une erreur est survenue, veuillez réessayer"
+    }
+  },
+  "user": {
+    "home": {
+      "title": "Mes machines virtuelles",
+      "description": "Bienvenue, {username}",
+      "migrationNote": "Vos VMs apparaîtront ici. Utilisez la navigation ci-dessus pour les gérer."
     }
   }
 }
