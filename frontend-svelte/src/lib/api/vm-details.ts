@@ -130,3 +130,7 @@ export async function updateVMConfig(
 export async function getVMSettings(vmid: number): Promise<VMSettings> {
 	return api.get<VMSettings>(`/api/v1/vms/${vmid}/settings`);
 }
+
+export function deleteVM(vmid: number): Promise<void> {
+	return api.delete(`/api/v1/vms/${vmid}`);
+}

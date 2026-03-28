@@ -146,11 +146,14 @@
         "shutdown": "Shutdown",
         "reboot": "Reboot",
         "reset": "Reset",
-        "forceStop": "Force Stop"
+        "forceStop": "Force Stop",
+        "delete": "Delete VM"
       },
       "toast": {
         "actionSent": "{action} sent to VM {vmid}",
-        "actionFailed": "Failed to {action} VM {vmid}: {error}"
+        "actionFailed": "Failed to {action} VM {vmid}: {error}",
+        "deleteSuccess": "VM {name} (ID {vmid}) deleted",
+        "deleteFailed": "Failed to delete VM {vmid}: {error}"
       }
     },
     "tags": {
@@ -371,7 +374,13 @@
     "nameserver": "Nameserver",
     "sshKeys": "SSH keys",
     "efi": "EFI",
-    "tpm": "TPM"
+    "tpm": "TPM",
+    "delete": "Delete VM",
+    "deleteConfirmTitle": "Delete virtual machine?",
+    "deleteConfirmMessage": "This will permanently delete VM {name} (ID {vmid}) and all its associated disk files. This action cannot be undone.",
+    "deleteConfirmRunning": "Warning: the VM is currently running and will be forcibly stopped before deletion.",
+    "deleteSuccess": "VM {name} deleted successfully",
+    "deleteFailed": "Failed to delete VM"
   },
   "vmCreate": {
     "title": "Create Virtual Machine",

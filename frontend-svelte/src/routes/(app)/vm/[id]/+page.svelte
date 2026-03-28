@@ -13,11 +13,13 @@
 		deleteSnapshot,
 		rollbackSnapshot,
 		updateVMConfig,
+		deleteVM,
 		type VMConfig,
 		type VMMetrics,
 		type Snapshot,
 		type SnapshotList
 	} from '$lib/api/vm-details';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import {
@@ -53,6 +55,10 @@
 	let editingDescription = $state(false);
 	let descriptionDraft = $state('');
 	let savingDescription = $state(false);
+
+	// Delete VM
+	let showDeleteDialog = $state(false);
+	let deleting = $state(false);
 
 	// Snapshot creation
 	let showSnapshotForm = $state(false);
@@ -135,6 +141,19 @@
 			snapshotData = await getVMSnapshots(vmid);
 		} catch {
 			toast.error($t('common.error'));
+		}
+	}
+
+	async function confirmDeleteVM() {
+		deleting = true;
+		try {
+			await deleteVM(vmid);
+			toast.success($t('vm.deleteSuccess', { values: { name: config?.name ?? String(vmid) } }));
+			goto('/home');
+		} catch {
+			toast.error($t('vm.deleteFailed'));
+			deleting = false;
+			showDeleteDialog = false;
 		}
 	}
 
@@ -236,6 +255,14 @@
 						<ArrowCounterClockwise class="h-4 w-4" />
 					</button>
 				{/if}
+			<button
+				class="pv-action-btn pv-action-btn--stop"
+				onclick={() => (showDeleteDialog = true)}
+				disabled={actionLoading}
+				title={$t('vm.delete')}
+			>
+				<Trash class="h-4 w-4" />
+			</button>
 			</div>
 		{/if}
 	</div>
@@ -634,6 +661,31 @@
 		{/if}
 	{/if}
 </div>
+
+<!-- Delete VM confirmation dialog -->
+<AlertDialog.Root bind:open={showDeleteDialog}>
+	<AlertDialog.Content>
+		<AlertDialog.Header>
+			<AlertDialog.Title>{$t('vm.deleteConfirmTitle')}</AlertDialog.Title>
+			<AlertDialog.Description>
+				{$t('vm.deleteConfirmMessage', { values: { name: config?.name ?? String(vmid), vmid } })}
+				{#if (metrics?.status ?? config?.status) === 'running'}
+					<p class="mt-2 font-medium text-destructive">{$t('vm.deleteConfirmRunning')}</p>
+				{/if}
+			</AlertDialog.Description>
+		</AlertDialog.Header>
+		<AlertDialog.Footer>
+			<AlertDialog.Cancel disabled={deleting}>{$t('common.cancel')}</AlertDialog.Cancel>
+			<AlertDialog.Action
+				class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+				disabled={deleting}
+				onclick={confirmDeleteVM}
+			>
+				{deleting ? $t('common.loading') : $t('common.delete')}
+			</AlertDialog.Action>
+		</AlertDialog.Footer>
+	</AlertDialog.Content>
+</AlertDialog.Root>
 
 <style>
 	:global(.pv-stat-card) {

@@ -146,11 +146,14 @@
         "shutdown": "Arrêter",
         "reboot": "Redémarrer",
         "reset": "Réinitialiser",
-        "forceStop": "Arrêt forcé"
+        "forceStop": "Arrêt forcé",
+        "delete": "Supprimer la VM"
       },
       "toast": {
         "actionSent": "{action} envoyé à la VM {vmid}",
-        "actionFailed": "Échec de {action} sur la VM {vmid} : {error}"
+        "actionFailed": "Échec de {action} sur la VM {vmid} : {error}",
+        "deleteSuccess": "VM {name} (ID {vmid}) supprimée",
+        "deleteFailed": "Échec de la suppression de la VM {vmid} : {error}"
       }
     },
     "tags": {
@@ -371,7 +374,13 @@
     "nameserver": "Serveur DNS",
     "sshKeys": "Clés SSH",
     "efi": "EFI",
-    "tpm": "TPM"
+    "tpm": "TPM",
+    "delete": "Supprimer la VM",
+    "deleteConfirmTitle": "Supprimer la machine virtuelle ?",
+    "deleteConfirmMessage": "Cette action supprimera définitivement la VM {name} (ID {vmid}) ainsi que tous ses fichiers disques associés. Cette opération est irréversible.",
+    "deleteConfirmRunning": "Attention : la VM est en cours d'exécution et sera arrêtée de force avant la suppression.",
+    "deleteSuccess": "VM {name} supprimée avec succès",
+    "deleteFailed": "Échec de la suppression de la VM"
   },
   "vmCreate": {
     "title": "Créer une machine virtuelle",

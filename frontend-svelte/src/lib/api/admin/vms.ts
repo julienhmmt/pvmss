@@ -8,3 +8,7 @@ export function getAllVMs(): Promise<VM[]> {
 export function vmAction(vmid: number, node: string, action: VMAction): Promise<void> {
 	return api.post(`/api/v1/admin/vms/${vmid}/action`, { action, node });
 }
+
+export function deleteVM(vmid: number): Promise<void> {
+	return api.delete(`/api/v1/admin/vms/${vmid}`);
+}
