@@ -110,6 +110,10 @@
 				<p class="pv-login-brand-name">PVMSS</p>
 				<p class="pv-login-brand-sub">{$t('login.subtitle')}</p>
 			</div>
+			<a href="/" class="pv-login-home-btn" aria-label={$t('login.backHome')}>
+				<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M224,115.55V208a16,16,0,0,1-16,16H168a16,16,0,0,1-16-16V168a8,8,0,0,0-8-8H112a8,8,0,0,0-8,8v40a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V115.55a16,16,0,0,1,5.17-11.78l80-75.48.11-.11a16,16,0,0,1,21.53,0,1.14,1.14,0,0,0,.11.11l80,75.48A16,16,0,0,1,224,115.55Z"></path></svg>
+				{$t('login.backHome')}
+			</a>
 		</div>
 
 		<Card.Root class="pv-login-card">
@@ -344,7 +348,27 @@
 		display: flex;
 		align-items: center;
 		gap: 0.875rem;
-		justify-content: center;
+		justify-content: space-between;
+	}
+
+	.pv-login-home-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.375rem;
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--muted-foreground);
+		text-decoration: none;
+		padding: 0.375rem 0.625rem;
+		border-radius: var(--radius);
+		transition: background 0.12s, color 0.12s;
+		margin-left: auto;
+		flex-shrink: 0;
+	}
+
+	.pv-login-home-btn:hover {
+		background: var(--accent);
+		color: var(--accent-foreground);
 	}
 
 	.pv-login-logo {

@@ -127,15 +127,14 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		log.Info().Msg("SvelteKit admin SPA build not found — /admin/ will fall through to router")
 	}
 
-	// Build the SPA page handler: admin auth check → serve SPA.
-	// This goes through the app middleware chain so sessions are loaded.
+	// Build the SPA page handler: serve SPA without Go-level session auth.
+	// The SvelteKit SPA handles its own authentication via JWT (auth.exchange()).
+	// If the JWT is invalid or missing, the SPA redirects to /login itself.
 	var spaPageHandler http.Handler
 	if spaAvailable {
-		spaPageHandler = buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(
-			http.HandlerFunc(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-				serveSPA(w, r, spaDir, spaIndexPath)
-			})),
-		)
+		spaPageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			serveSPA(w, r, spaDir, spaIndexPath)
+		})
 	}
 
 	// Route requests to the appropriate middleware chain.

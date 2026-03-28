@@ -270,6 +270,7 @@
   "login": {
     "title": "Connexion",
     "subtitle": "Proxmox VM Self-Service",
+    "backHome": "Retour à l'accueil",
     "userTab": "Utilisateur",
     "adminTab": "Administrateur",
     "localAdminTab": "Local (PVMSS)",
