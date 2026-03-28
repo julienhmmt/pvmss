@@ -40,9 +40,6 @@ function createAuthStore(): AuthStore {
 				state = { username: user.username, isAdmin: user.is_admin, initialized: true };
 			} catch {
 				state = { username: '', isAdmin: false, initialized: true };
-				if (window.location.pathname !== '/login') {
-					window.location.href = '/login';
-				}
 			}
 		},
 

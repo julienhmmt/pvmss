@@ -44,6 +44,7 @@
   },
   "nav": {
     "home": "Home",
+    "myVms": "My VMs",
     "createVm": "Create VM",
     "searchVm": "Search VM",
     "documentation": "Documentation",
@@ -298,5 +299,19 @@
       "description": "Welcome, {username}",
       "migrationNote": "Your VMs will appear here. Use the navigation above to manage them."
     }
+  },
+  "landing": {
+    "headline": "Manage your virtual machines",
+    "subheadline": "PVMSS gives you self-service access to your Proxmox VMs — start, stop, create and monitor your machines without needing direct access to the Proxmox interface.",
+    "feature1Title": "Your VMs at a glance",
+    "feature1Desc": "See the status, resource usage and uptime of all your virtual machines in one place.",
+    "feature2Title": "Full control",
+    "feature2Desc": "Start, stop, reboot and create virtual machines with a simple and intuitive interface.",
+    "feature3Title": "Secure access",
+    "feature3Desc": "Each user has access only to their own machines, within the resource limits set by the administrator.",
+    "signIn": "Sign in",
+    "documentation": "Documentation",
+    "welcomeBack": "Welcome back, {username}",
+    "goToMyVms": "My virtual machines"
   }
 }
