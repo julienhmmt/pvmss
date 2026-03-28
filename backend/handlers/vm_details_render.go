@@ -6,7 +6,6 @@ import (
 	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/proxmox"
-	"pvmss/security"
 )
 
 func renderVMDetailsTempl(w http.ResponseWriter, r *http.Request, data map[string]interface{}) {
@@ -182,44 +181,4 @@ func getLangFromRequest(r *http.Request) string {
 		lang = "en"
 	}
 	return lang
-}
-
-func getCSRFTokenFromContext(r *http.Request) string {
-	if token, ok := security.CSRFTokenFromContext(r.Context()); ok {
-		return token
-	}
-	return ""
-}
-
-func getTranslationFunc(r *http.Request) components.TranslationFunc {
-	localizer := i18n.GetLocalizerFromRequest(r)
-	return func(key string) string {
-		return i18n.Localize(localizer, key)
-	}
-}
-
-func getInt64FromMap(data map[string]interface{}, key string) int64 {
-	if val, ok := data[key].(int64); ok {
-		return val
-	}
-	if val, ok := data[key].(float64); ok {
-		return int64(val)
-	}
-	if val, ok := data[key].(int); ok {
-		return int64(val)
-	}
-	return 0
-}
-
-func getFloat64FromMap(data map[string]interface{}, key string) float64 {
-	if val, ok := data[key].(float64); ok {
-		return val
-	}
-	if val, ok := data[key].(int64); ok {
-		return float64(val)
-	}
-	if val, ok := data[key].(int); ok {
-		return float64(val)
-	}
-	return 0
 }

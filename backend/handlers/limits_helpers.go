@@ -35,8 +35,27 @@ var (
 	nodeUsageCacheExp   time.Time
 )
 
+// LimitsGetter defines the minimal interface needed to get settings
+type LimitsGetter interface {
+	GetSettings() *state.AppSettings
+}
+
+// splitTags splits a tag string by semicolons and commas
+func splitTags(tagsStr string) []string {
+	var tags []string
+	for _, part := range strings.Split(tagsStr, ";") {
+		for _, tag := range strings.Split(part, ",") {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				tags = append(tags, tag)
+			}
+		}
+	}
+	return tags
+}
+
 // CalculateNodeResourceUsage calculates the aggregated resources used by VMs with the "pvmss" tag
-// for each node in the Proxmox cluster using resty
+// for each node in the Proxmox cluster.
 func CalculateNodeResourceUsage(ctx context.Context, sm LimitsGetter) (map[string]*NodeResourceUsage, error) {
 	log := logger.Get().With().Str("function", "CalculateNodeResourceUsage").Logger()
 
@@ -45,9 +64,7 @@ func CalculateNodeResourceUsage(ctx context.Context, sm LimitsGetter) (map[strin
 		return cached, nil
 	}
 
-	// Prefer using the cached Proxmox cluster snapshot when available to avoid
-	// repeated VM and config lookups. This keeps limits pages responsive while
-	// relying on the background snapshot worker.
+	// Prefer using the cached Proxmox cluster snapshot when available
 	if snapshotProvider, ok := sm.(interface {
 		GetProxmoxSnapshot() *state.ProxmoxClusterSnapshot
 	}); ok {
@@ -64,93 +81,62 @@ func CalculateNodeResourceUsage(ctx context.Context, sm LimitsGetter) (map[strin
 		}
 	}
 
-	// Create resty client
 	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to create resty client")
 		return nil, fmt.Errorf("failed to create resty client for resource usage: %w", err)
 	}
 
-	// Get all nodes
 	nodes, err := proxmox.GetNodeNamesResty(ctx, restyClient)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get nodes")
 		return nil, fmt.Errorf("failed to get node names for resource usage: %w", err)
 	}
 
-	usage := make(map[string]*NodeResourceUsage)
-
-	// Initialize usage for each node
+	usage := make(map[string]*NodeResourceUsage, len(nodes))
 	for _, node := range nodes {
-		usage[node] = &NodeResourceUsage{
-			Node: node,
-		}
+		usage[node] = &NodeResourceUsage{Node: node}
 	}
 
-	// Get all VMs
 	vms, err := proxmox.GetVMsResty(ctx, restyClient)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to get VMs")
-		return usage, nil // Return empty usage instead of error
+		return usage, nil
 	}
 
-	// Iterate through VMs and accumulate resources for pvmss-tagged VMs
 	for _, vm := range vms {
-		// Get VM config to check tags
 		cfg, err := proxmox.GetVMConfigResty(ctx, restyClient, vm.Node, vm.VMID)
 		if err != nil {
-			log.Warn().
-				Err(err).
-				Str("component", "limits_helpers").
-				Str("operation", "fetch_vm_config").
-				Str("reason", "vm_config_failed").
-				Str("node", vm.Node).
-				Int("vmid", vm.VMID).
-				Msg("Failed to get VM config")
 			continue
 		}
 
-		// Check if VM has pvmss tag
 		hasPvmssTag := false
 		if tagsStr, ok := cfg["tags"].(string); ok && tagsStr != "" {
-			// Parse tags (can be separated by semicolon or comma)
-			tags := parseTags(tagsStr)
-			for _, tag := range tags {
+			for _, tag := range splitTags(tagsStr) {
 				if strings.EqualFold(strings.TrimSpace(tag), "pvmss") {
 					hasPvmssTag = true
 					break
 				}
 			}
 		}
-
 		if !hasPvmssTag {
 			continue
 		}
 
-		// Get node usage tracker
 		nodeUsage := usage[vm.Node]
 		nodeUsage.TotalVMs++
 
-		// Extract CPU configuration (sockets and cores)
 		vmSockets := 1
-		vmCores := 1
-
 		if socketsRaw, ok := cfg["sockets"]; ok {
 			if socketsFloat, ok := socketsRaw.(float64); ok {
 				vmSockets = int(socketsFloat)
 			}
 		}
-
+		vmCores := 1
 		if coresRaw, ok := cfg["cores"]; ok {
 			if coresFloat, ok := coresRaw.(float64); ok {
 				vmCores = int(coresFloat)
 			}
 		}
-
-		// Total cores for this VM = sockets * cores
 		nodeUsage.Cores += vmSockets * vmCores
 
-		// Extract memory (stored in MB in Proxmox)
 		if memRaw, ok := cfg["memory"]; ok {
 			if memFloat, ok := memRaw.(float64); ok {
 				nodeUsage.RamMB += int64(memFloat)
@@ -158,19 +144,15 @@ func CalculateNodeResourceUsage(ctx context.Context, sm LimitsGetter) (map[strin
 		}
 	}
 
-	// Convert RAM from MB to GB for display
 	for _, nodeUsage := range usage {
 		nodeUsage.RamGB = int(MBToGB(nodeUsage.RamMB))
 	}
 
-	// Get limits from settings to populate max values
 	settings := sm.GetSettings()
 	if settings != nil {
 		for nodeName, nodeUsage := range usage {
 			if nodeLimits, ok := settings.Limits.Nodes[nodeName]; ok {
-				// Extract max cores
 				nodeUsage.MaxCores = nodeLimits.Cores.Max
-				// Extract max RAM
 				nodeUsage.MaxRamGB = nodeLimits.RAM.Max
 			}
 		}
@@ -180,12 +162,10 @@ func CalculateNodeResourceUsage(ctx context.Context, sm LimitsGetter) (map[strin
 	if cached, ok := getCachedNodeUsage(); ok {
 		return cached, nil
 	}
-
 	return usage, nil
 }
 
-// buildNodeUsageFromSnapshot aggregates resource usage per node for VMs with the
-// "pvmss" tag using the cached ProxmoxClusterSnapshot VMs slice.
+// buildNodeUsageFromSnapshot aggregates resource usage per node from a cached snapshot.
 func buildNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings) map[string]*NodeResourceUsage {
 	if snapshot == nil {
 		return map[string]*NodeResourceUsage{}
@@ -193,20 +173,17 @@ func buildNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot, settings
 
 	usage := make(map[string]*NodeResourceUsage, len(snapshot.NodeNames))
 	for _, node := range snapshot.NodeNames {
-		if node == "" {
-			continue
+		if node != "" {
+			usage[node] = &NodeResourceUsage{Node: node}
 		}
-		usage[node] = &NodeResourceUsage{Node: node}
 	}
 
 	for _, vm := range snapshot.VMs {
 		if vm.Node == "" || vm.Tags == "" {
 			continue
 		}
-		// Check if VM has pvmss tag (semicolon and comma separated tags).
-		parsedTags := parseTags(vm.Tags)
 		hasPvmss := false
-		for _, tag := range parsedTags {
+		for _, tag := range splitTags(vm.Tags) {
 			if strings.EqualFold(strings.TrimSpace(tag), "pvmss") {
 				hasPvmss = true
 				break
@@ -221,7 +198,6 @@ func buildNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot, settings
 			nodeUsage = &NodeResourceUsage{Node: vm.Node}
 			usage[vm.Node] = nodeUsage
 		}
-
 		nodeUsage.TotalVMs++
 		if vm.Sockets <= 0 {
 			vm.Sockets = 1
@@ -235,12 +211,10 @@ func buildNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot, settings
 		}
 	}
 
-	// Convert RAM from MB to GB for display
 	for _, nodeUsage := range usage {
 		nodeUsage.RamGB = int(MBToGB(nodeUsage.RamMB))
 	}
 
-	// Populate max limits from settings when available
 	if settings != nil {
 		for nodeName, nodeUsage := range usage {
 			if nodeLimits, ok := settings.Limits.Nodes[nodeName]; ok {
@@ -259,7 +233,6 @@ func getCachedNodeUsage() (map[string]*NodeResourceUsage, bool) {
 	if !nodeUsageCacheReady || time.Now().After(nodeUsageCacheExp) || len(nodeUsageCache) == 0 {
 		return nil, false
 	}
-
 	copied := make(map[string]*NodeResourceUsage, len(nodeUsageCache))
 	for k, v := range nodeUsageCache {
 		if v == nil {
@@ -274,7 +247,6 @@ func getCachedNodeUsage() (map[string]*NodeResourceUsage, bool) {
 func storeNodeUsageCache(usage map[string]*NodeResourceUsage) {
 	nodeUsageCacheMu.Lock()
 	defer nodeUsageCacheMu.Unlock()
-
 	copied := make(map[string]*NodeResourceUsage, len(usage))
 	for k, v := range usage {
 		if v == nil {
@@ -283,275 +255,12 @@ func storeNodeUsageCache(usage map[string]*NodeResourceUsage) {
 		copyVal := *v
 		copied[k] = &copyVal
 	}
-
 	nodeUsageCache = copied
 	nodeUsageCacheExp = time.Now().Add(nodeUsageCacheTTL)
 	nodeUsageCacheReady = true
 }
 
-// parseTags splits a tag string by semicolons and commas
-func parseTags(tagsStr string) []string {
-	var tags []string
-	// First split by semicolon
-	semiParts := strings.Split(tagsStr, ";")
-	for _, part := range semiParts {
-		// Then split by comma
-		commaParts := strings.Split(part, ",")
-		for _, tag := range commaParts {
-			tag = strings.TrimSpace(tag)
-			if tag != "" {
-				tags = append(tags, tag)
-			}
-		}
-	}
-	return tags
-}
-
-// readMinMax extracts integer min/max values for a given key from a generic map
-// representation typically loaded from JSON settings.
-// func readMinMax(entry map[string]interface{}, key string) (int, int, bool) {
-// 	raw, exists := entry[key]
-// 	if !exists {
-// 		return 0, 0, false
-// 	}
-
-// 	limitMap, ok := raw.(map[string]interface{})
-// 	if !ok {
-// 		return 0, 0, false
-// 	}
-
-// 	var minVal int
-// 	if minRaw, exists := limitMap["min"]; exists {
-// 		parsedMin, ok := parseNumericValue(minRaw)
-// 		if !ok {
-// 			return 0, 0, false
-// 		}
-// 		minVal = parsedMin
-// 	}
-
-// 	maxRaw, exists := limitMap["max"]
-// 	if !exists {
-// 		return 0, 0, false
-// 	}
-
-// 	parsedMax, ok := parseNumericValue(maxRaw)
-// 	if !ok {
-// 		return 0, 0, false
-// 	}
-
-// 	return minVal, parsedMax, true
-// }
-
-// parseNumericValue converts different numeric representations (float64, int, string)
-// into an int, returning false when parsing is not possible.
-// func parseNumericValue(value interface{}) (int, bool) {
-// 	switch v := value.(type) {
-// 	case float64:
-// 		return int(v), true
-// 	case float32:
-// 		return int(v), true
-// 	case int:
-// 		return v, true
-// 	case int32:
-// 		return int(v), true
-// 	case int64:
-// 		return int(v), true
-// 	case uint:
-// 		return int(v), true
-// 	case uint32:
-// 		return int(v), true
-// 	case uint64:
-// 		return int(v), true
-// 	case json.Number:
-// 		i64, err := v.Int64()
-// 		if err != nil {
-// 			return 0, false
-// 		}
-// 		return int(i64), true
-// 	case string:
-// 		s := strings.TrimSpace(v)
-// 		if s == "" {
-// 			return 0, false
-// 		}
-// 		i, err := strconv.Atoi(s)
-// 		if err != nil {
-// 			return 0, false
-// 		}
-// 		return i, true
-// 	default:
-// 		return 0, false
-// 	}
-// }
-
-// LimitsGetter defines the minimal interface needed to get settings
-type LimitsGetter interface {
-	GetSettings() *state.AppSettings
-}
-
-// NodeCapacity represents the physical hardware capacity of a Proxmox node
-type NodeCapacity struct {
-	Node     string
-	CPUs     int   // Total physical CPU cores
-	MemoryGB int   // Total RAM in GB
-	MemoryMB int64 // Total RAM in MB
-}
-
-// GetNodeCapacity retrieves the physical hardware capacity of a node using resty
-func GetNodeCapacity(ctx context.Context, nodeName string) (*NodeCapacity, error) {
-	log := logger.Get().With().Str("function", "GetNodeCapacity").Logger()
-
-	// Create resty client
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create resty client")
-		return nil, fmt.Errorf("failed to create resty client for node %s: %w", nodeName, err)
-	}
-
-	nodeDetails, err := proxmox.GetNodeDetailsResty(ctx, restyClient, nodeName)
-	if err != nil {
-		log.Error().Err(err).Str("node", nodeName).Msg("Failed to get node details")
-		return nil, fmt.Errorf("failed to get details for node %s: %w", nodeName, err)
-	}
-
-	memoryMB := int64(nodeDetails.MaxMemory)
-	capacity := &NodeCapacity{
-		Node:     nodeName,
-		CPUs:     nodeDetails.MaxCPU,
-		MemoryMB: memoryMB,
-		MemoryGB: int(memoryMB / (1024 * 1024 * 1024)), // MaxMemory is in bytes
-	}
-
-	log.Debug().
-		Str("node", nodeName).
-		Int("cpus", capacity.CPUs).
-		Int("memory_gb", capacity.MemoryGB).
-		Msg("Retrieved node capacity")
-
-	return capacity, nil
-}
-
-// ValidateNodeLimitsAgainstCapacity validates that configured limits don't exceed node physical capacity
-func ValidateNodeLimitsAgainstCapacity(ctx context.Context, nodeName string, maxCores, maxRamGB int, localizer *goi18n.Localizer) error {
-	log := logger.Get().With().Str("function", "ValidateNodeLimitsAgainstCapacity").Logger()
-
-	capacity, err := GetNodeCapacity(ctx, nodeName)
-	if err != nil {
-		log.Warn().
-			Err(err).
-			Str("component", "limits_helpers").
-			Str("operation", "validate_node_limits").
-			Str("reason", "node_capacity_failed").
-			Msg("Could not retrieve node capacity, skipping validation")
-		return nil // Don't block if we can't get capacity
-	}
-
-	// Validate cores
-	if maxCores > capacity.CPUs {
-		if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresExceed", map[string]interface{}{
-			"Limit":    maxCores,
-			"Capacity": capacity.CPUs,
-		}, "aggregate cores limit (%d) exceeds node physical capacity (%d CPUs)", maxCores, capacity.CPUs); err != nil {
-			return err
-		}
-	}
-
-	// Validate RAM
-	if maxRamGB > capacity.MemoryGB {
-		if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamExceed", map[string]interface{}{
-			"Limit":    maxRamGB,
-			"Capacity": capacity.MemoryGB,
-		}, "aggregate RAM limit (%d GB) exceeds node physical capacity (%d GB)", maxRamGB, capacity.MemoryGB); err != nil {
-			return err
-		}
-	}
-
-	log.Info().
-		Str("node", nodeName).
-		Int("max_cores", maxCores).
-		Int("max_ram_gb", maxRamGB).
-		Int("node_cpus", capacity.CPUs).
-		Int("node_ram_gb", capacity.MemoryGB).
-		Msg("Node limits validated against physical capacity")
-
-	return nil
-}
-
-// ValidateVMResourcesAgainstNodeLimits validates that adding a new VM won't exceed node aggregate limits
-func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, sm LimitsGetter, node string, sockets, cores int, memoryMB int, localizer *goi18n.Localizer) error {
-	log := logger.Get().With().Str("function", "ValidateVMResourcesAgainstNodeLimits").Logger()
-
-	// Calculate current usage
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	usageMap, err := CalculateNodeResourceUsage(ctxWithTimeout, sm)
-	if err != nil {
-		log.Warn().
-			Err(err).
-			Str("component", "limits_helpers").
-			Str("operation", "validate_vm_resources").
-			Str("reason", "usage_calculation_failed").
-			Msg("Failed to calculate node resource usage, skipping aggregate validation")
-		return nil // Don't block VM creation if we can't calculate usage
-	}
-
-	nodeUsage, exists := usageMap[node]
-	if !exists {
-		log.Warn().Str("node", node).Msg("Node not found in usage map")
-		return nil // Don't block if node not found
-	}
-
-	// Check if limits are configured for this node
-	if nodeUsage.MaxCores == 0 && nodeUsage.MaxRamGB == 0 {
-		// No aggregate limits configured for this node
-		return nil
-	}
-
-	memoryGB := int(MBToGB(int64(memoryMB)))
-
-	// Validate cores
-	if nodeUsage.MaxCores > 0 {
-		totalCores := sockets * cores
-		newTotal := nodeUsage.Cores + totalCores
-		if newTotal > nodeUsage.MaxCores {
-			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresVMExceed", map[string]interface{}{
-				"Node":      node,
-				"Current":   nodeUsage.Cores,
-				"Requested": totalCores,
-				"Limit":     nodeUsage.MaxCores,
-			}, "adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
-				node, nodeUsage.Cores, totalCores, nodeUsage.MaxCores); err != nil {
-				return err
-			}
-		}
-	}
-
-	// Validate RAM
-	if nodeUsage.MaxRamGB > 0 {
-		newTotal := nodeUsage.RamGB + memoryGB
-		if newTotal > nodeUsage.MaxRamGB {
-			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamVMExceed", map[string]interface{}{
-				"Node":      node,
-				"Current":   nodeUsage.RamGB,
-				"Requested": memoryGB,
-				"Limit":     nodeUsage.MaxRamGB,
-			}, "adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
-				node, nodeUsage.RamGB, memoryGB, nodeUsage.MaxRamGB); err != nil {
-				return err
-			}
-		}
-	}
-
-	log.Info().
-		Str("node", node).
-		Int("current_cores", nodeUsage.Cores).
-		Int("current_ram_gb", nodeUsage.RamGB).
-		Msg("VM creation validated against aggregate node limits")
-
-	return nil
-}
-
-// returnLocalizedError returns a localized error message or falls back to formatted message
+// returnLocalizedError returns a localized error or a formatted fallback
 func returnLocalizedError(localizer *goi18n.Localizer, messageID string, templateData map[string]interface{}, fallbackFormat string, args ...interface{}) error {
 	localized, err := localizer.Localize(&goi18n.LocalizeConfig{
 		MessageID:    messageID,
@@ -561,4 +270,58 @@ func returnLocalizedError(localizer *goi18n.Localizer, messageID string, templat
 		return errors.New(localized)
 	}
 	return fmt.Errorf(fallbackFormat, args...)
+}
+
+// ValidateVMResourcesAgainstNodeLimits validates that adding a new VM won't exceed node aggregate limits.
+func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, sm LimitsGetter, node string, sockets, cores int, memoryMB int, localizer *goi18n.Localizer) error {
+	log := logger.Get().With().Str("function", "ValidateVMResourcesAgainstNodeLimits").Logger()
+
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	usageMap, err := CalculateNodeResourceUsage(ctxWithTimeout, sm)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to calculate node resource usage, skipping aggregate validation")
+		return nil
+	}
+
+	nodeUsage, exists := usageMap[node]
+	if !exists {
+		log.Warn().Str("node", node).Msg("Node not found in usage map")
+		return nil
+	}
+
+	if nodeUsage.MaxCores == 0 && nodeUsage.MaxRamGB == 0 {
+		return nil
+	}
+
+	memoryGB := int(MBToGB(int64(memoryMB)))
+
+	if nodeUsage.MaxCores > 0 {
+		totalCores := sockets * cores
+		newTotal := nodeUsage.Cores + totalCores
+		if newTotal > nodeUsage.MaxCores {
+			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresVMExceed", map[string]interface{}{
+				"Node": node, "Current": nodeUsage.Cores, "Requested": totalCores, "Limit": nodeUsage.MaxCores,
+			}, "adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
+				node, nodeUsage.Cores, totalCores, nodeUsage.MaxCores); err != nil {
+				return err
+			}
+		}
+	}
+
+	if nodeUsage.MaxRamGB > 0 {
+		newTotal := nodeUsage.RamGB + memoryGB
+		if newTotal > nodeUsage.MaxRamGB {
+			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamVMExceed", map[string]interface{}{
+				"Node": node, "Current": nodeUsage.RamGB, "Requested": memoryGB, "Limit": nodeUsage.MaxRamGB,
+			}, "adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
+				node, nodeUsage.RamGB, memoryGB, nodeUsage.MaxRamGB); err != nil {
+				return err
+			}
+		}
+	}
+
+	log.Info().Str("node", node).Int("current_cores", nodeUsage.Cores).Int("current_ram_gb", nodeUsage.RamGB).Msg("VM creation validated against aggregate node limits")
+	return nil
 }

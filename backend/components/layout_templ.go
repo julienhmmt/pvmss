@@ -8,8 +8,6 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "fmt"
-
 type LayoutProps struct {
 	Title            string
 	Lang             string
@@ -51,7 +49,7 @@ func Layout(props LayoutProps) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(props.Lang)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 20, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 19, Col: 24}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -64,7 +62,7 @@ func Layout(props LayoutProps) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(props.CSRFToken)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 25, Col: 52}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 24, Col: 52}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -77,13 +75,13 @@ func Layout(props LayoutProps) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(props.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 30, Col: 23}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 29, Col: 23}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " - PVMSS</title><style>\n\t\t\t\tbody { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; margin: 0; line-height: 1.5; }\n\t\t\t\t.navbar { background: #fff; border-bottom: 1px solid #e1e5e9; }\n\t\t\t\t.section { padding: 3rem 1.5rem; }\n\t\t\t\t.container { max-width: 1344px; margin: 0 auto; }\n\t\t\t\t.notification { padding: 1.25rem; margin-bottom: 1.5rem; }\n\t\t\t\t.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }\n\t\t\t</style><link rel=\"stylesheet\" href=\"/css/main.css\"><link rel=\"stylesheet\" href=\"/css/fontawesome.min.css\"><link rel=\"stylesheet\" href=\"/css/solid.min.css\"><link rel=\"preconnect\" href=\"/webfonts/\"><link rel=\"preload\" href=\"/webfonts/fa-solid-900.woff2\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\"><script type=\"importmap\">\n\t\t\t\t{\n\t\t\t\t\t\"imports\": {\n\t\t\t\t\t\t\"vue\":   \"/vendor/vue.esm-browser.prod.js\",\n\t\t\t\t\t\t\"pinia\": \"/vendor/pinia.esm-browser.prod.js\",\n\t\t\t\t\t\t\"axios\": \"/vendor/axios.min.mjs\"\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t</script></head><body class=\"app-body\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " - PVMSS</title><style>\n\t\t\t\tbody { font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif; margin: 0; line-height: 1.5; }\n\t\t\t\t.navbar { background: #fff; border-bottom: 1px solid #e1e5e9; }\n\t\t\t\t.section { padding: 3rem 1.5rem; }\n\t\t\t\t.container { max-width: 1344px; margin: 0 auto; }\n\t\t\t\t.notification { padding: 1.25rem; margin-bottom: 1.5rem; }\n\t\t\t\t.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important; }\n\t\t\t</style><link rel=\"stylesheet\" href=\"/css/main.css\"><link rel=\"stylesheet\" href=\"/css/fontawesome.min.css\"><link rel=\"stylesheet\" href=\"/css/solid.min.css\"><link rel=\"preconnect\" href=\"/webfonts/\"><link rel=\"preload\" href=\"/webfonts/fa-solid-900.woff2\" as=\"font\" type=\"font/woff2\" crossorigin=\"anonymous\"></head><body class=\"app-body\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -114,33 +112,7 @@ func Layout(props LayoutProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<script src=\"/js/htmx.2.0.7.min.js\"></script><script src=\"/js/alpine-init.js\"></script><script src=\"/js/alpinejs.3.15.3.min.js\" defer></script><script src=\"/js/accessibility.js\" defer></script><!-- Vue 3 SPA mount point (x-ignore keeps Alpine from touching it) --><div id=\"vue-app\" data-username=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(props.Username)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 74, Col: 34}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" data-is-admin=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%t", props.IsAdmin))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `components/layout.templ`, Line: 75, Col: 52}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" x-ignore></div><!-- Exchange the session cookie for JWT tokens, then load the Vue SPA --><script>\n\t\t\t\t(async () => {\n\t\t\t\t\ttry { await fetch('/api/v1/auth/exchange', { method: 'POST', credentials: 'include' }); } catch (_) {}\n\t\t\t\t})();\n\t\t\t</script><script type=\"module\" src=\"/src/main.js\"></script></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<script src=\"/js/htmx.2.0.7.min.js\"></script><script src=\"/js/alpine-init.js\"></script><script src=\"/js/alpinejs.3.15.3.min.js\" defer></script><script src=\"/js/accessibility.js\" defer></script></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
