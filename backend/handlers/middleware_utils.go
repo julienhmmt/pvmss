@@ -309,7 +309,9 @@ func isSPAPath(p string) bool {
 	if isSPAStaticAsset(p) || isSPALoginPath(p) {
 		return false
 	}
-	return strings.HasPrefix(p, "/admin/") || p == "/admin" || p == "/" || p == "/home"
+	return strings.HasPrefix(p, "/admin/") || p == "/admin" ||
+		p == "/" || p == "/home" ||
+		strings.HasPrefix(p, "/vm/")
 }
 
 // resolveWithinBase resolves relPath against baseDir and ensures the resulting absolute

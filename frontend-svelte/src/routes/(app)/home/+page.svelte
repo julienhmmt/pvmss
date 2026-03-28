@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
 	import { Button } from '$lib/components/ui/button';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
@@ -101,7 +102,7 @@
 				<tbody>
 					{#each vms as vm (vm.vmid)}
 						{@const busy = actionLoading[vm.vmid] ?? false}
-						<tr class="pv-row">
+						<tr class="pv-row pv-row--clickable" onclick={() => goto(`/vm/${vm.vmid}`)}>
 							<td class="pv-td-mono text-sm">{vm.vmid}</td>
 							<td>
 								<div class="pv-resource-cell">
@@ -139,7 +140,7 @@
 								{/if}
 							</td>
 							<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
-							<td>
+							<td onclick={(e) => e.stopPropagation()}>
 								<div class="flex items-center gap-1">
 									{#if vm.status === 'stopped'}
 										<button
@@ -179,6 +180,12 @@
 </div>
 
 <style>
+	:global(.pv-row--clickable) {
+		cursor: pointer;
+	}
+	:global(.pv-row--clickable:hover td) {
+		background: var(--accent);
+	}
 	:global(.pv-action-btn) {
 		display: inline-flex;
 		align-items: center;
