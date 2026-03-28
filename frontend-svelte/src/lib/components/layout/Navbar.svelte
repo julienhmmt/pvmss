@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	
 	import { auth } from '$lib/stores/auth.svelte';
+	import { logout } from '$lib/api/auth';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as Sheet from '$lib/components/ui/sheet';
@@ -9,26 +10,44 @@
 	import { t } from 'svelte-i18n';
 	import { setLocale } from '$lib/i18n';
 	import {
-		House,
-		PlusSquare,
-		MagnifyingGlass,
-		BookOpen,
-		UserCircle,
-		GearSix,
-		SignOut,
-		List,
-		CaretDown,
-		Globe
+		HouseIcon,
+		PlusSquareIcon,
+		MagnifyingGlassIcon,
+		BookOpenIcon,
+		UserCircleIcon,
+		GearSixIcon,
+		SignOutIcon,
+		ListIcon,
+		CaretDownIcon,
+		GlobeIcon
 	} from 'phosphor-svelte';
 
 	let mobileOpen = $state(false);
 
-	const navLinks = $derived([
-		{ href: '/', icon: House, label: $t('nav.home') },
-		{ href: '/vm/create', icon: PlusSquare, label: $t('nav.createVm') },
-		{ href: '/search', icon: MagnifyingGlass, label: $t('nav.searchVm') },
-		{ href: '/docs/user', icon: BookOpen, label: $t('nav.documentation') }
-	]);
+	// Define the type for nav links
+	interface NavLink {
+		href: string;
+		icon: any;
+		label: string;
+	}
+
+	// Initialize with proper typing
+	const initialNavLinks: NavLink[] = [
+		{ href: '/', icon: HouseIcon, label: $t('nav.home') },
+		{ href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm') },
+		{ href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm') },
+		{ href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation') }
+	];
+
+	let navLinks = $state<NavLink[]>(initialNavLinks);
+
+	// Update navLinks when translations change
+	$effect(() => {
+		navLinks[0] = { href: '/', icon: HouseIcon, label: $t('nav.home') };
+		navLinks[1] = { href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm') };
+		navLinks[2] = { href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm') };
+		navLinks[3] = { href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation') };
+	});
 
 	function isActive(href: string, pathname: string): boolean {
 		if (href === '/') return pathname === '/' || pathname === '';
@@ -37,6 +56,20 @@
 
 	function navigate(url: string) {
 		window.location.href = url;
+	}
+
+	// Helper function to safely access link properties
+	function getLinkData(link: unknown): NavLink {
+		return link as NavLink;
+	}
+
+	async function handleLogout() {
+		try {
+			await logout();
+		} finally {
+			auth.clear();
+			window.location.href = '/login';
+		}
 	}
 </script>
 
@@ -50,11 +83,12 @@
 
 		<!-- Desktop navigation -->
 		<div class="pv-navbar-links hidden md:flex">
-			{#each navLinks as link}
-				{@const active = isActive(link.href, $page.url.pathname)}
-				<a href={link.href} class="pv-navbar-link {active ? 'pv-navbar-link--active' : ''}">
-					<link.icon weight={active ? 'fill' : 'regular'} class="h-4 w-4 flex-shrink-0" />
-					{link.label}
+			{#each navLinks as link (link.href)}
+				{@const active = isActive((link as NavLink).href, $page.url.pathname)}
+				{@const linkData = link as NavLink}
+				<a href={linkData.href} class="pv-navbar-link {active ? 'pv-navbar-link--active' : ''}">
+					<linkData.icon weight={active ? 'fill' : 'regular'} class="h-4 w-4 flex-shrink-0" />
+					{linkData.label}
 				</a>
 			{/each}
 		</div>
@@ -69,7 +103,7 @@
 					<DropdownMenu.Trigger>
 						{#snippet child({ props })}
 							<button class="pv-navbar-icon-btn" {...props} aria-label="Language">
-								<Globe class="h-4 w-4" />
+								<GlobeIcon class="h-4 w-4" />
 							</button>
 						{/snippet}
 					</DropdownMenu.Trigger>
@@ -100,7 +134,7 @@
 									{auth.username.slice(0, 1).toUpperCase()}
 								</div>
 								<span class="hidden sm:inline">{auth.username}</span>
-								<CaretDown class="h-3 w-3 opacity-50" />
+								<CaretDownIcon class="h-3 w-3 opacity-50" />
 							</button>
 						{/snippet}
 					</DropdownMenu.Trigger>
@@ -108,22 +142,22 @@
 						<DropdownMenu.Label class="font-normal">
 							<div class="flex flex-col space-y-0.5">
 								<p class="text-sm font-semibold leading-none">{auth.username}</p>
-								<p class="text-muted-foreground text-xs leading-none">{$t('nav.administrator')}</p>
+								<p class="text-muted-foreground text-xs leading-none">{auth.isAdmin ? $t('nav.administrator') : $t('nav.user')}</p>
 							</div>
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
 						{#if auth.isAdmin}
 							<DropdownMenu.Item onclick={() => navigate('/admin/')}>
-								<GearSix class="h-4 w-4" />
+								<GearSixIcon class="h-4 w-4" />
 								{$t('common.admin')}
 							</DropdownMenu.Item>
 							<DropdownMenu.Separator />
 						{/if}
 						<DropdownMenu.Item
 							class="text-destructive focus:text-destructive"
-							onclick={() => navigate('/logout')}
+							onclick={handleLogout}
 						>
-							<SignOut class="h-4 w-4" />
+							<SignOutIcon class="h-4 w-4" />
 							{$t('common.logout')}
 						</DropdownMenu.Item>
 					</DropdownMenu.Content>
@@ -136,7 +170,7 @@
 					<Sheet.Trigger>
 						{#snippet child({ props })}
 							<button class="pv-navbar-icon-btn" {...props} aria-label={$t('nav.menu')}>
-								<List class="h-5 w-5" />
+								<ListIcon class="h-5 w-5" />
 							</button>
 						{/snippet}
 					</Sheet.Trigger>
@@ -146,17 +180,18 @@
 							<span class="text-base font-bold tracking-tight">PVMSS</span>
 						</div>
 						<div class="flex flex-col gap-0.5 p-3">
-							{#each navLinks as link}
-								{@const active = isActive(link.href, $page.url.pathname)}
+							{#each navLinks as link (link.href)}
+								{@const active = isActive((link as NavLink).href, $page.url.pathname)}
+								{@const linkData = link as NavLink}
 								<a
-									href={link.href}
+									href={linkData.href}
 									class="pv-sidebar-item {active ? 'pv-sidebar-item--active' : ''}"
 									onclick={() => (mobileOpen = false)}
 								>
 									<span class="pv-sidebar-icon-wrap {active ? 'pv-sidebar-icon-wrap--active' : ''}">
-										<link.icon weight={active ? 'fill' : 'regular'} class="h-4 w-4" />
+										<linkData.icon weight={active ? 'fill' : 'regular'} class="h-4 w-4" />
 									</span>
-									{link.label}
+									{linkData.label}
 								</a>
 							{/each}
 
@@ -185,20 +220,20 @@
 									class="pv-sidebar-item"
 									onclick={() => (mobileOpen = false)}
 								>
-									<span class="pv-sidebar-icon-wrap"><GearSix class="h-4 w-4" /></span>
+									<span class="pv-sidebar-icon-wrap"><GearSixIcon class="h-4 w-4" /></span>
 									{$t('common.admin')}
 								</a>
 							{/if}
-							<a
-								href="/logout"
-								class="pv-sidebar-item text-destructive"
-							>
-								<span class="pv-sidebar-icon-wrap"><SignOut class="h-4 w-4" /></span>
-								{$t('common.logout')}
-							</a>
-						</div>
-					</Sheet.Content>
-				</Sheet.Root>
+							<button
+							class="pv-sidebar-item text-destructive"
+							onclick={handleLogout}
+						>
+							<span class="pv-sidebar-icon-wrap"><SignOutIcon class="h-4 w-4" /></span>
+							{$t('common.logout')}
+						</button>
+					</div>
+				</Sheet.Content>
+			</Sheet.Root>
 			</div>
 		</div>
 	</div>
