@@ -31,6 +31,17 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/vms/:id", jwtWrap(s, vmHandler.GetVM))
 	router.POST("/api/v1/vms/:id/action", jwtWrap(s, vmActionHandler.VMAction))
 
+	// VM detail routes — JWT required
+	vmDetailsHandler := MakeVMDetailsHandler(s)
+	router.GET("/api/v1/vms/:id/config", jwtWrap(s, vmDetailsHandler.GetVMConfig))
+	router.GET("/api/v1/vms/:id/metrics", jwtWrap(s, vmDetailsHandler.GetVMMetrics))
+	router.PATCH("/api/v1/vms/:id/config", jwtWrap(s, vmDetailsHandler.UpdateVMConfig))
+	router.GET("/api/v1/vms/:id/snapshots", jwtWrap(s, vmDetailsHandler.GetVMSnapshots))
+	router.POST("/api/v1/vms/:id/snapshots", jwtWrap(s, vmDetailsHandler.CreateSnapshot))
+	router.DELETE("/api/v1/vms/:id/snapshots/:name", jwtWrap(s, vmDetailsHandler.DeleteSnapshot))
+	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(s, vmDetailsHandler.RollbackSnapshot))
+	router.GET("/api/v1/vms/:id/settings", jwtWrap(s, vmDetailsHandler.GetVMSettings))
+
 	// Admin API routes — JWT + isAdmin required
 	adminHandler := MakeAdminHandler(s)
 	adminVMsHandler := MakeAdminVMsAPIHandler(s)

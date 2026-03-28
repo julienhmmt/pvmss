@@ -14,7 +14,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
 
-	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -208,50 +207,8 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 }
 
 func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	ctx := HandlerContextWith(w, r, "AuthHandler.renderAdminLoginForm")
-	ctx.Log.Debug().
-		Str("component", "auth").
-		Str("operation", "render_admin_login_form").
-		Str("reason", "form_render").
-		Msg("Rendering admin login form")
-
-	if !ctx.ValidateSessionManager() {
-		return
-	}
-
-	csrfToken, err := ctx.GetCSRFToken()
-	if err != nil {
-		ctx.HandleError(err, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Optional friendly warning (e.g., session expired)
-	warning := ""
-	if r.URL.Query().Get("warning") == "session_expired" {
-		warning = ctx.Translate("Login.Warning.SessionExpired")
-	}
-
-	// Prepare admin login data
-	loginData := components.LoginData{
-		Warning:     warning,
-		Error:       errorMsg,
-		CSRFToken:   csrfToken,
-		ReturnURL:   r.URL.Query().Get("return"),
-		RedirectURL: r.URL.Query().Get("redirect"),
-		Lang:        i18n.GetLanguage(r),
-		IsAdmin:     true,
-	}
-
-	// Translation function wrapper
-	translateFunc := func(key string) string {
-		return ctx.Translate(key)
-	}
-
-	// Render with Templ
-	if err := components.LoginPage(loginData, translateFunc).Render(r.Context(), w); err != nil {
-		ctx.Log.Error().Err(err).Msg("Failed to render admin login page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+	// Login is now handled by the SvelteKit SPA at /login.
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
 // validateCSRF checks the CSRF token from the form against the one in the session.
@@ -837,52 +794,6 @@ func ensureLocalPath(urlStr string) string {
 }
 
 func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
-	ctx := HandlerContextWith(w, r, "AuthHandler.renderLoginForm")
-	ctx.Log.Debug().
-		Str("component", "auth").
-		Str("operation", "render_login_form").
-		Str("reason", "form_render").
-		Msg("Rendering login form")
-
-	if !ctx.ValidateSessionManager() {
-		return
-	}
-
-	csrfToken, err := ctx.GetCSRFToken()
-	if err != nil {
-		ctx.HandleError(err, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	// Optional friendly warning (e.g., redirected from VM details to login)
-	warning := ""
-	if r.URL.Query().Get("warning") == "login_required" {
-		warningKey := "Login.Warning.General"
-		if r.URL.Query().Get("context") == "update_description" {
-			warningKey = "Login.Warning.UpdateDescription"
-		}
-		warning = ctx.Translate(warningKey)
-	}
-
-	// Prepare login data
-	loginData := components.LoginData{
-		Warning:     warning,
-		Error:       errorMsg,
-		CSRFToken:   csrfToken,
-		ReturnURL:   r.URL.Query().Get("return"),
-		RedirectURL: r.URL.Query().Get("redirect"),
-		Lang:        i18n.GetLanguage(r),
-		IsAdmin:     false,
-	}
-
-	// Translation function wrapper
-	translateFunc := func(key string) string {
-		return ctx.Translate(key)
-	}
-
-	// Render with Templ
-	if err := components.LoginPage(loginData, translateFunc).Render(r.Context(), w); err != nil {
-		ctx.Log.Error().Err(err).Msg("Failed to render login page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
+	// Login is now handled by the SvelteKit SPA at /login.
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }

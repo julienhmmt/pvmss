@@ -318,6 +318,43 @@
     "vmid": "ID VM",
     "cpu": "CPU",
     "ram": "RAM",
-    "uptime": "Uptime"
+    "uptime": "Uptime",
+    "noVms": "Aucune machine virtuelle trouvée",
+    "actions": {
+      "start": "Démarrer",
+      "shutdown": "Arrêter",
+      "reboot": "Redémarrer"
+    }
+  },
+  "vm": {
+    "cores": "cœurs",
+    "interfaces": "interfaces",
+    "tabOverview": "Aperçu",
+    "tabDisks": "Disques",
+    "tabNetwork": "Réseau",
+    "tabSnapshots": "Snapshots",
+    "tabCloudInit": "Cloud-init",
+    "noDescription": "Aucune description",
+    "noDisks": "Aucun disque trouvé",
+    "noNetworks": "Aucune interface réseau",
+    "noISO": "Aucune ISO montée",
+    "noSnapshots": "Aucun snapshot",
+    "noCloudInit": "Aucune configuration cloud-init",
+    "interface": "Interface",
+    "model": "Modèle",
+    "snapshots": "snapshots",
+    "createSnapshot": "Créer un snapshot",
+    "snapshotNamePlaceholder": "Nom du snapshot",
+    "snapshotCreated": "Snapshot « {name} » créé",
+    "snapshotDeleted": "Snapshot « {name} » supprimé",
+    "snapshotRolledBack": "Retour au snapshot « {name} »",
+    "snapshotDate": "Date",
+    "rollback": "Revenir à ce snapshot",
+    "descriptionSaved": "Description enregistrée",
+    "ipConfig": "Config IP",
+    "nameserver": "Serveur DNS",
+    "sshKeys": "Clés SSH",
+    "efi": "EFI",
+    "tpm": "TPM"
   }
 }
