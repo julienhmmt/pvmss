@@ -90,8 +90,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Exchange handles POST /api/v1/auth/exchange.
-// Reads the SCS session cookie, validates it, and issues JWT tokens.
-// Used by the Vue app on load to exchange an existing session for JWT tokens.
+// Checks for an existing valid JWT access token cookie first.
+// Falls back to reading the SCS session cookie (legacy Vue app path).
+// Used by the SvelteKit SPA on load to verify authentication state.
 func (h *AuthHandler) Exchange(w http.ResponseWriter, r *http.Request) {
 	secret := h.state.GetSettings().JWTSecret
 	if secret == "" {
@@ -99,9 +100,25 @@ func (h *AuthHandler) Exchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Fast path: validate existing JWT access token cookie.
+	if cookie, err := r.Cookie(accessTokenCookie); err == nil {
+		claims := &JWTClaims{}
+		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrSignatureInvalid
+			}
+			return []byte(secret), nil
+		})
+		if err == nil && token.Valid && claims.Username != "" {
+			writeJSON(w, AuthResponse{Username: claims.Username, IsAdmin: claims.IsAdmin})
+			return
+		}
+	}
+
+	// Legacy path: exchange SCS session for JWT tokens (Vue app).
 	sm := h.state.GetSessionManager()
 	if sm == nil {
-		errInternal(w)
+		errUnauthorized(w)
 		return
 	}
 
@@ -257,8 +274,10 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 }
 
 // verifyProxmoxCredentials POSTs to /access/ticket to confirm user credentials.
+// Uses a cookie-auth client (no API token headers) because /access/ticket is a
+// public endpoint that rejects requests with conflicting Authorization headers.
 func verifyProxmoxCredentials(ctx context.Context, username, password string) error {
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	restyClient, err := proxmox.MakeRestyClientCookieAuthFromEnv(10 * time.Second)
 	if err != nil {
 		return fmt.Errorf("no proxmox client: %w", err)
 	}
