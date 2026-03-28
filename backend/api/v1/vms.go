@@ -71,6 +71,11 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 		poolVMIDs = fetchPoolVMIDs(ctx, client, "pvmss_"+username)
 	}
 
+	// Optional search/filter params: ?q= (name or VMID), ?status=, ?node=
+	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	filterStatus := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
+	filterNode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("node")))
+
 	summaries := make([]VMSummary, 0, len(allVMs))
 	for _, vm := range allVMs {
 		// Pool filter: non-admin users see only their pool's VMs.
@@ -79,6 +84,21 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 		}
 		// Tag filter: VM must carry the "pvmss" tag.
 		if !hasTag(vm.Tags, "pvmss") {
+			continue
+		}
+		// Search filter: match name or VMID substring.
+		if q != "" {
+			vmidStr := strconv.Itoa(vm.VMID)
+			if !strings.Contains(strings.ToLower(vm.Name), q) && !strings.Contains(vmidStr, q) {
+				continue
+			}
+		}
+		// Status filter.
+		if filterStatus != "" && !strings.EqualFold(vm.Status, filterStatus) {
+			continue
+		}
+		// Node filter.
+		if filterNode != "" && !strings.EqualFold(vm.Node, filterNode) {
 			continue
 		}
 		summaries = append(summaries, vmToSummary(vm))

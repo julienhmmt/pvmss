@@ -29,25 +29,25 @@ func MakeVMDetailsHandler(s state.StateManager) *VMDetailsHandler {
 // ── Response types ────────────────────────────────────────────────────────────
 
 type VMConfigResponse struct {
-	VMID        int                       `json:"vmid"`
-	Name        string                    `json:"name"`
-	Node        string                    `json:"node"`
-	Status      string                    `json:"status"`
-	CPU         float64                   `json:"cpu"`
-	CPUs        int                       `json:"cpus"`
-	MemMB       int64                     `json:"mem_mb"`
-	MaxMemMB    int64                     `json:"max_mem_mb"`
-	DiskMB      int64                     `json:"disk_mb"`
-	Uptime      int64                     `json:"uptime"`
-	Tags        string                    `json:"tags"`
-	Description string                    `json:"description"`
+	VMID        int                        `json:"vmid"`
+	Name        string                     `json:"name"`
+	Node        string                     `json:"node"`
+	Status      string                     `json:"status"`
+	CPU         float64                    `json:"cpu"`
+	CPUs        int                        `json:"cpus"`
+	MemMB       int64                      `json:"mem_mb"`
+	MaxMemMB    int64                      `json:"max_mem_mb"`
+	DiskMB      int64                      `json:"disk_mb"`
+	Uptime      int64                      `json:"uptime"`
+	Tags        string                     `json:"tags"`
+	Description string                     `json:"description"`
 	Networks    []proxmox.NetworkInterface `json:"networks"`
-	Disks       []DiskInfo                `json:"disks"`
-	HasCDROM    bool                      `json:"has_cdrom"`
-	CurrentISO  string                    `json:"current_iso"`
-	EFIEnabled  bool                      `json:"efi_enabled"`
-	TPMEnabled  bool                      `json:"tpm_enabled"`
-	CloudInit   *CloudInitInfo            `json:"cloud_init,omitempty"`
+	Disks       []DiskInfo                 `json:"disks"`
+	HasCDROM    bool                       `json:"has_cdrom"`
+	CurrentISO  string                     `json:"current_iso"`
+	EFIEnabled  bool                       `json:"efi_enabled"`
+	TPMEnabled  bool                       `json:"tpm_enabled"`
+	CloudInit   *CloudInitInfo             `json:"cloud_init,omitempty"`
 }
 
 type DiskInfo struct {
@@ -87,11 +87,11 @@ type SnapshotListResponse struct {
 }
 
 type VMSettingsResponse struct {
-	AvailableISOs    []ISOOption    `json:"available_isos"`
-	AvailableVMBRs   []VMBROption   `json:"available_vmbrs"`
-	AvailableTags    []string       `json:"available_tags"`
-	Limits           LimitsInfo     `json:"limits"`
-	MaxSnapshots     int            `json:"max_snapshots"`
+	AvailableISOs  []ISOOption  `json:"available_isos"`
+	AvailableVMBRs []VMBROption `json:"available_vmbrs"`
+	AvailableTags  []string     `json:"available_tags"`
+	Limits         LimitsInfo   `json:"limits"`
+	MaxSnapshots   int          `json:"max_snapshots"`
 }
 
 type ISOOption struct {
