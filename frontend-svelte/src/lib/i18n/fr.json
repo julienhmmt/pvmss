@@ -313,5 +313,11 @@
     "documentation": "Documentation",
     "welcomeBack": "Bon retour, {username}",
     "goToMyVms": "Mes machines virtuelles"
+  },
+  "vms": {
+    "vmid": "ID VM",
+    "cpu": "CPU",
+    "ram": "RAM",
+    "uptime": "Uptime"
   }
 }
