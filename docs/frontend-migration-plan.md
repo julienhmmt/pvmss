@@ -185,7 +185,7 @@ Once a route is live in SvelteKit, remove the corresponding Go-templ handler and
 ## Priority Order
 
 | Phase | Route | Value | Effort | New API endpoints |
-|-------|-------|-------|--------|-------------------|
+| ----- | ----- | ----- | ------ | ----------------- |
 | 1 | `/` — VM list | High | Low | 0 |
 | 2 | `/vm/:id` — VM details | High | Medium | 2 |
 | 3 | `/vm/create` — VM creation | High | High | 2 |
