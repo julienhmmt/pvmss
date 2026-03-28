@@ -302,14 +302,14 @@ func isSPALoginPath(p string) bool {
 	return p == "/login" || p == "/admin/login"
 }
 
-// isSPAPath returns true for admin page routes that should be served by the
-// SvelteKit admin SPA (after authentication).
+// isSPAPath returns true for page routes that should be served by the
+// SvelteKit SPA (after authentication).
 func isSPAPath(p string) bool {
 	// Static assets and login pages are handled separately.
 	if isSPAStaticAsset(p) || isSPALoginPath(p) {
 		return false
 	}
-	return strings.HasPrefix(p, "/admin/") || p == "/admin"
+	return strings.HasPrefix(p, "/admin/") || p == "/admin" || p == "/"
 }
 
 // resolveWithinBase resolves relPath against baseDir and ensures the resulting absolute
