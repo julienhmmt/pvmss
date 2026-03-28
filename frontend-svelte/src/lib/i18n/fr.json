@@ -375,6 +375,7 @@
     "sshKeys": "Clés SSH",
     "efi": "EFI",
     "tpm": "TPM",
+    "openConsole": "Ouvrir la console",
     "delete": "Supprimer la VM",
     "deleteConfirmTitle": "Supprimer la machine virtuelle ?",
     "deleteConfirmMessage": "Cette action supprimera définitivement la VM {name} (ID {vmid}) ainsi que tous ses fichiers disques associés. Cette opération est irréversible.",

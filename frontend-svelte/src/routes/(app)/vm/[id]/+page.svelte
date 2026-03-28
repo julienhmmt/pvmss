@@ -36,7 +36,9 @@
 		Desktop,
 		Network,
 		Lock,
-		CloudArrowUp
+		CloudArrowUp,
+		Monitor,
+		ArrowSquareOut
 	} from 'phosphor-svelte';
 
 	const vmid = $derived(parseInt($page.params.id, 10));
@@ -255,6 +257,15 @@
 						<ArrowCounterClockwise class="h-4 w-4" />
 					</button>
 				{/if}
+			{#if (metrics?.status ?? config.status) === 'running'}
+				<button
+					class="pv-action-btn"
+					onclick={() => window.open(`/console?vmid=${config?.vmid}&name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
+					title={$t('vm.openConsole')}
+				>
+					<Monitor class="h-4 w-4" />
+				</button>
+			{/if}
 			<button
 				class="pv-action-btn pv-action-btn--stop"
 				onclick={() => (showDeleteDialog = true)}
@@ -320,6 +331,18 @@
 				</div>
 			</div>
 		</div>
+
+		<!-- Console banner (running VMs only) -->
+		{#if (metrics?.status ?? config.status) === 'running'}
+			<button
+				class="pv-console-banner mb-4"
+				onclick={() => window.open(`/console?vmid=${config?.vmid}&name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
+			>
+				<Monitor class="h-5 w-5" />
+				<span>{$t('vm.openConsole')}</span>
+				<ArrowSquareOut class="pv-console-banner-arrow h-4 w-4" />
+			</button>
+		{/if}
 
 		<!-- Description -->
 		<div class="pv-table-wrap mb-4 p-4">
@@ -738,6 +761,30 @@
 		font-size: 0.8rem;
 		color: var(--muted-foreground);
 		white-space: nowrap;
+	}
+	:global(.pv-console-banner) {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+		width: 100%;
+		padding: 0.875rem 1.25rem;
+		background: hsl(217 91% 60% / 0.08);
+		border: 1px solid hsl(217 91% 60% / 0.25);
+		border-radius: 0.5rem;
+		color: hsl(217 91% 55%);
+		font-size: 0.9375rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.15s, border-color 0.15s;
+		text-align: left;
+	}
+	:global(.pv-console-banner:hover) {
+		background: hsl(217 91% 60% / 0.15);
+		border-color: hsl(217 91% 60% / 0.5);
+	}
+	:global(.pv-console-banner-arrow) {
+		margin-left: auto;
+		opacity: 0.6;
 	}
 	:global(.pv-btn-primary) {
 		display: inline-flex;
