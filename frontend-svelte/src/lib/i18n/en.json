@@ -326,6 +326,15 @@
       "reboot": "Reboot"
     }
   },
+  "search": {
+    "placeholder": "Search by name or VM ID…",
+    "allStatuses": "All statuses",
+    "allNodes": "All nodes",
+    "search": "Search",
+    "hint": "Enter a name, VM ID, or use the filters to search your virtual machines.",
+    "noResults": "No virtual machines match your search.",
+    "resultsCount": "{count} result(s)"
+  },
   "vm": {
     "cores": "cores",
     "interfaces": "interfaces",
