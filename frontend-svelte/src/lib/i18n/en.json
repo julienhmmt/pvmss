@@ -318,6 +318,43 @@
     "vmid": "VM ID",
     "cpu": "CPU",
     "ram": "RAM",
-    "uptime": "Uptime"
+    "uptime": "Uptime",
+    "noVms": "No virtual machines found",
+    "actions": {
+      "start": "Start",
+      "shutdown": "Shutdown",
+      "reboot": "Reboot"
+    }
+  },
+  "vm": {
+    "cores": "cores",
+    "interfaces": "interfaces",
+    "tabOverview": "Overview",
+    "tabDisks": "Disks",
+    "tabNetwork": "Network",
+    "tabSnapshots": "Snapshots",
+    "tabCloudInit": "Cloud-init",
+    "noDescription": "No description",
+    "noDisks": "No disks found",
+    "noNetworks": "No network interfaces",
+    "noISO": "No ISO mounted",
+    "noSnapshots": "No snapshots",
+    "noCloudInit": "No cloud-init configuration",
+    "interface": "Interface",
+    "model": "Model",
+    "snapshots": "snapshots",
+    "createSnapshot": "Create snapshot",
+    "snapshotNamePlaceholder": "Snapshot name",
+    "snapshotCreated": "Snapshot \"{name}\" created",
+    "snapshotDeleted": "Snapshot \"{name}\" deleted",
+    "snapshotRolledBack": "Rolled back to \"{name}\"",
+    "snapshotDate": "Date",
+    "rollback": "Rollback to this snapshot",
+    "descriptionSaved": "Description saved",
+    "ipConfig": "IP config",
+    "nameserver": "Nameserver",
+    "sshKeys": "SSH keys",
+    "efi": "EFI",
+    "tpm": "TPM"
   }
 }
