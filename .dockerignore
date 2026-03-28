@@ -4,9 +4,15 @@
 # Allow files and directories
 !backend/
 !frontend/
+!frontend-svelte/
 !.gitkeep
 !go.mod
 !go.sum
+
+# Exclude heavy frontend-svelte dev artifacts (built inside Docker by svelte-builder stage)
+frontend-svelte/node_modules/
+frontend-svelte/.svelte-kit/
+frontend-svelte/build/
 
 # But ignore git and other temporary files
 .git

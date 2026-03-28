@@ -7,6 +7,7 @@
 package state
 
 import (
+	"context"
 	"html/template"
 	"time"
 
@@ -32,6 +33,7 @@ type StateManager interface {
 	GetProxmoxStatus() (bool, string) // Returns (connected, errorMessage)
 	CheckProxmoxConnection() bool
 	GetNodeCache() ([]*proxmox.NodeDetails, time.Time)
+	RefreshNodeCache(ctx context.Context)
 	GetProxmoxSnapshot() *ProxmoxClusterSnapshot
 	RequestSnapshotRefresh()
 

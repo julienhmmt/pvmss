@@ -1,7 +1,7 @@
 # Makefile pour PVMSS
 # Permet de construire, démarrer, arrêter, nettoyer et tester l'application
 
-.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status
+.PHONY: help dev dev-svelte dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status frontend-install frontend-build frontend-dev
 
 # Couleurs pour l'affichage
 BLUE=\033[0;34m
@@ -42,7 +42,7 @@ dev-logs: up logs ## Démarre et affiche les logs
 	@echo "$(GREEN)Logs de l'application$(NC)"
 	@echo ""
 
-build: ## Construit le binaire Go et le container docker
+build: frontend-build ## Construit le binaire Go et le frontend Svelte
 	@echo "Building binary" && go clean -cache && go build -C $(BACKEND_DIR) -o ../pvmss
 	@echo "Binary built successfully"
 	@echo ""
@@ -60,7 +60,7 @@ docker-build: buildkit-start ## Construit les images docker (arm64 et amd64) et 
 	@echo "Building Docker images for multiple architectures..."
 	@echo "Usage: make docker-build PVMSS_TAG=your-tag"
 	@echo "Default tag: latest"
-	@docker buildx build --platform linux/amd64,linux/arm64 -t jhmmt/pvmss:$(or $(PVMSS_TAG),latest) --push .
+	@docker buildx build --builder pvmss-builder --platform linux/amd64,linux/arm64 -t jhmmt/pvmss:$(or $(PVMSS_TAG),latest) --push .
 	@echo "Docker images built successfully"
 	@echo ""
 
@@ -164,6 +164,11 @@ quick-test: ## Lance les tests rapides en mode offline
 	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
 	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -short ./...
 	@echo "$(GREEN)✓ Tests rapides terminés$(NC)"
+
+test-svelte: ## Lance les tests Svelte
+	@echo "$(BLUE)Lancement des tests Svelte...$(NC)"
+	cd frontend-svelte && npx svelte-check --tsconfig ./tsconfig.json
+	@echo "$(GREEN)✓ Tests Svelte terminés$(NC)"
 
 # =============================================================================
 # Commandes Go

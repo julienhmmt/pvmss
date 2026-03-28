@@ -4,13 +4,10 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 
-	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
-	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
 
@@ -28,25 +25,6 @@ func MakeTagsHandler(sm state.StateManager) *TagsHandler {
 }
 
 var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
-
-// buildTagSuccessMessage creates success message from query parameters
-func buildTagSuccessMessage(r *http.Request) string {
-	if r.URL.Query().Get("success") == "" {
-		return ""
-	}
-
-	action := r.URL.Query().Get("action")
-	tag := r.URL.Query().Get("tag")
-
-	switch action {
-	case "create":
-		return "Tag '" + tag + "' created"
-	case "delete":
-		return "Tag '" + tag + "' deleted"
-	default:
-		return "Tags updated"
-	}
-}
 
 // tagExists checks if a tag exists in the tags list (case-insensitive)
 func tagExists(tags []string, tagName string) bool {
@@ -117,10 +95,8 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if !validateTagName(tagName) {
 		log.Warn().Str("tag", tagName).Msg("Invalid tag name")
-		// Redirect back to tags page with localized error notification
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.InvalidFormat")
-		// Build URL with error parameters
 		u, _ := url.Parse("/admin/tags")
 		q := u.Query()
 		q.Set("error", "1")
@@ -139,7 +115,6 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if tagExists(settings.Tags, tagName) {
 		log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
-		// Redirect with localized "exists" error
 		localizer := i18n.GetLocalizerFromRequest(r)
 		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.Exists")
 		u, _ := url.Parse("/admin/tags")
@@ -151,9 +126,6 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	if settings.Tags == nil {
-		settings.Tags = []string{}
-	}
 	settings.Tags = append(settings.Tags, tagName)
 	if err := h.stateManager.SetSettings(settings); err != nil {
 		log.Error().Err(err).Msg("Failed to save settings")
@@ -161,7 +133,6 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	// Audit log for tag creation
 	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
 		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
@@ -174,8 +145,6 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		Msg("Tag created")
 
 	localizer := i18n.GetLocalizerFromRequest(r)
-
-	// If you have a parameterized translation, keep it simple for now
 	successMsg := i18n.Localize(localizer, "Admin.Tags.Success.Created")
 	u, _ := url.Parse("/admin/tags")
 	q := u.Query()
@@ -206,7 +175,6 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	// Remove the tag from settings
 	settings.Tags = removeTag(settings.Tags, tagName)
 
 	if err := h.stateManager.SetSettings(settings); err != nil {
@@ -215,7 +183,6 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	// Audit log for tag deletion
 	username := ""
 	if sessionManager := security.GetSession(r); sessionManager != nil {
 		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
@@ -230,217 +197,16 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 	http.Redirect(w, r, "/admin/tags?success=1&action=delete&tag="+url.QueryEscape(tagName), http.StatusSeeOther)
 }
 
-// DeleteTagConfirmHandler handles the GET request for tag deletion confirmation page.
-func (h *TagsHandler) DeleteTagConfirmHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	tagName, valid := h.validateTagDeletion(r.URL.Query().Get("tag"), true)
-	if !valid {
-		http.Redirect(w, r, "/admin/tags", http.StatusSeeOther)
-		return
-	}
-
-	// Build Templ data
-	tagDeleteData := components.AdminTagDeleteData{
-		Username:  getUsernameFromSession(r),
-		Lang:      i18n.GetLanguage(r),
-		CSRFToken: getCSRFTokenFromContext(r),
-		Tag:       tagName,
-	}
-
-	T := getTranslationFunc(r)
-	if err := components.AdminTagDeletePage(tagDeleteData, T).Render(r.Context(), w); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to render admin tag delete page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
-}
-
-// TagsPageHandler handles the rendering of the admin tags page.
-func (h *TagsHandler) TagsPageHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	settings := h.stateManager.GetSettings()
-
-	sortOrder := r.URL.Query().Get("sort") // "asc" or "desc"
-	if sortOrder != "desc" {
-		sortOrder = "asc" // default to ascending
-	}
-
-	// Prefer explicit localized messages from params when present
-	q := r.URL.Query()
-	successMsg := q.Get("success_msg")
-	if successMsg == "" {
-		successMsg = buildTagSuccessMessage(r)
-	}
-	// Determine error message (supports both new and legacy styles)
-	var errorMsg string
-	if q.Get("error") != "" {
-		// New style: error=1 with error_msg
-		if q.Get("error") == "1" {
-			errorMsg = q.Get("error_msg")
-		}
-		// Legacy style: error=exists
-		if errorMsg == "" && q.Get("error") == "exists" {
-			localizer := i18n.GetLocalizerFromRequest(r)
-			errorMsg = i18n.Localize(localizer, "Admin.Tags.Error.Exists")
-		}
-	}
-
-	// Build usage counts per tag by inspecting VMs' tags when Proxmox is available using resty
-	// Proxmox typically separates tags with ';' but some environments may contain
-	// comma-separated lists inside a single part (e.g. "pvmss,test"). We split on
-	// both ';' and ',' to ensure each individual tag is counted.
-	log := logger.Get()
-	tagCounts := make(map[string]int)
-
-	// Prefer cached snapshot VMs when available to avoid N+1 config fetches.
-	if snapshot := h.stateManager.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.VMs) > 0 {
-		for _, vm := range snapshot.VMs {
-			if vm.Tags == "" {
-				continue
-			}
-			semiParts := strings.Split(vm.Tags, ";")
-			for _, sp := range semiParts {
-				sp = strings.TrimSpace(sp)
-				if sp == "" {
-					continue
-				}
-				commaParts := strings.Split(sp, ",")
-				for _, cp := range commaParts {
-					t := strings.TrimSpace(cp)
-					if t != "" {
-						tagCounts[t]++
-					}
-				}
-			}
-		}
-		log.Debug().
-			Int("vm_snapshot_count", len(snapshot.VMs)).
-			Str("component", "tags").
-			Str("operation", "calculate_tag_counts").
-			Str("reason", "snapshot_calculated").
-			Msg("Tag counts calculated from snapshot")
-	} else {
-		if h.stateManager.IsOfflineMode() {
-			log.Debug().
-				Str("component", "tags").
-				Str("operation", "tag_usage_lookup").
-				Str("reason", "offline_mode").
-				Msg("Offline mode enabled; skipping tag usage lookup")
-		} else if restyClient, err := getDefaultRestyClient(); err == nil {
-			if vms, err := proxmox.GetVMsResty(r.Context(), restyClient); err == nil {
-				for i := range vms {
-					if cfg, err := proxmox.GetVMConfigResty(r.Context(), restyClient, vms[i].Node, vms[i].VMID); err == nil {
-						if v, ok := cfg["tags"].(string); ok && v != "" {
-							semiParts := strings.Split(v, ";")
-							for _, sp := range semiParts {
-								sp = strings.TrimSpace(sp)
-								if sp == "" {
-									continue
-								}
-								commaParts := strings.Split(sp, ",")
-								for _, cp := range commaParts {
-									t := strings.TrimSpace(cp)
-									if t != "" {
-										tagCounts[t]++
-									}
-								}
-							}
-						}
-					}
-				}
-			} else {
-				log.Debug().
-					Err(err).
-					Str("component", "tags").
-					Str("operation", "tag_usage_lookup").
-					Str("reason", "vm_list_failed").
-					Msg("Failed to retrieve VM list for tag usage lookup")
-			}
-		} else {
-			log.Debug().
-				Err(err).
-				Str("component", "tags").
-				Str("operation", "tag_usage_lookup").
-				Str("reason", "resty_client_failed").
-				Msg("Failed to create resty client for tag usage lookup")
-		}
-	}
-
-	// Debug logging for tag counts
-	log.Info().Interface("tag_counts", tagCounts).Msg("Tag counts calculated")
-
-	// Filter and sort tags by name for display
-	var tags []string
-	if settings != nil && settings.Tags != nil {
-		tags = make([]string, 0, len(settings.Tags))
-		tags = append(tags, settings.Tags...)
-	} else {
-		tags = []string{}
-	}
-
-	// Sort based on requested order
-	if sortOrder == "desc" {
-		sort.Sort(sort.Reverse(sort.StringSlice(tags)))
-	} else {
-		sort.Strings(tags)
-	}
-
-	opts := []TemplateOption{
-		WithAdminActive("tags"),
-		WithAuth(r),
-		WithProxmoxStatus(h.stateManager),
-		WithMessages(r),
-		WithData("TitleKey", "Admin.Tags.Title"),
-		WithData("Tags", tags),
-		WithData("SortOrder", sortOrder),
-		WithData("TotalTags", len(settings.Tags)),
-		WithData("FilteredTags", len(tags)),
-		WithData("TagCounts", tagCounts),
-	}
-
-	if successMsg != "" {
-		opts = append(opts, WithSuccess(successMsg))
-	}
-	if errorMsg != "" {
-		_ = append(opts, WithError(errorMsg))
-	}
-
-	// Build Templ data
-	tagsTemplData := components.AdminTagsData{
-		Username:    getUsernameFromSession(r),
-		Lang:        i18n.GetLanguage(r),
-		CSRFToken:   getCSRFTokenFromContext(r),
-		CurrentPath: "/admin/tags",
-		Tags:        tags,
-		TagCounts:   tagCounts,
-	}
-
-	T := getTranslationFunc(r)
-	if err := components.AdminTagsPage(tagsTemplData, T).Render(r.Context(), w); err != nil {
-		log.Error().Err(err).Msg("Failed to render admin tags page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}
-}
-
 // RegisterRoutes registers the routes for tag management.
 func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
-	routeHelpers := MakeAdminPageRoutes()
-
-	// Register admin tags routes using helper
-	routeHelpers.RegisterCRUDRoutes(router, "/admin/tags", map[string]func(w http.ResponseWriter, r *http.Request, ps httprouter.Params){
-		"page": h.TagsPageHandler,
-	})
-
-	// Register delete confirmation page
-	router.GET("/admin/tags/delete", HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-		h.DeleteTagConfirmHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-	})))
-
-	// Admin tag creation with CSRF protection
+	// Tag creation with CSRF protection
 	router.POST("/tags", SecureFormHandler("CreateTag",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
 		})),
 	))
 
-	// Admin tag deletion with CSRF protection
+	// Tag deletion with CSRF protection
 	router.POST("/tags/delete", SecureFormHandler("DeleteTag",
 		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
 			h.DeleteTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
@@ -452,20 +218,18 @@ func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
 func EnsureDefaultTag(sm state.StateManager) error {
 	settings := sm.GetSettings()
 	if settings == nil {
-		return nil // Settings not yet loaded
+		return nil
 	}
 
-	// Initialize Tags if nil
 	if settings.Tags == nil {
 		settings.Tags = []string{}
 	}
 
 	defaultTag := "pvmss"
 	if tagExists(settings.Tags, defaultTag) {
-		return nil // Tag already exists
+		return nil
 	}
 
-	// Add the default tag and save
 	settings.Tags = append(settings.Tags, defaultTag)
 	logger.Get().Info().Msg("Default tag 'pvmss' added to settings.")
 	return sm.SetSettings(settings)

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"pvmss/constants"
@@ -286,4 +287,82 @@ func getFrontendPath(sm state.StateManager) string {
 		return ""
 	}
 	return sm.GetFrontendPath()
+}
+
+// isSPAStaticAsset returns true for SvelteKit build assets (JS, CSS, etc.)
+// that should be served without authentication (needed by the login page).
+func isSPAStaticAsset(p string) bool {
+	return strings.HasPrefix(p, "/admin/_app/")
+}
+
+// isSPAPath returns true for admin page routes that should be served by the
+// SvelteKit admin SPA (after authentication). Login routes are excluded so the
+// server-rendered login form is used.
+func isSPAPath(p string) bool {
+	if p == "/admin/login" || p == "/admin/proxmox-login" {
+		return false
+	}
+	// Static assets are handled separately without auth.
+	if isSPAStaticAsset(p) {
+		return false
+	}
+	return strings.HasPrefix(p, "/admin/") || p == "/admin"
+}
+
+// resolveWithinBase resolves relPath against baseDir and ensures the resulting absolute
+// path stays within baseDir. It returns the absolute path and true on success, or
+// an empty string and false if the path escapes baseDir or cannot be resolved.
+func resolveWithinBase(baseDir, relPath string) (string, bool) {
+	// Normalize the base directory and ensure it is absolute.
+	baseClean := filepath.Clean(baseDir)
+	baseAbs, err := filepath.Abs(baseClean)
+	if err != nil {
+		return "", false
+	}
+
+	// Normalize the relative path and ensure it is not absolute or volume-rooted.
+	cleanRel := filepath.Clean(relPath)
+	if cleanRel == "." {
+		cleanRel = ""
+	}
+	if cleanRel != "" && (filepath.IsAbs(cleanRel) || filepath.VolumeName(cleanRel) != "") {
+		return "", false
+	}
+
+	joined := filepath.Join(baseAbs, cleanRel)
+	targetAbs, err := filepath.Abs(joined)
+	if err != nil {
+		return "", false
+	}
+	// Ensure the resolved path stays within the base directory to prevent path traversal.
+	baseWithSep := baseAbs
+	if !strings.HasSuffix(baseWithSep, string(os.PathSeparator)) {
+		baseWithSep += string(os.PathSeparator)
+	}
+	if targetAbs != baseAbs && !strings.HasPrefix(targetAbs, baseWithSep) {
+		return "", false
+	}
+	return targetAbs, true
+}
+
+// serveSPA serves the SvelteKit SPA. Static assets (files with extensions) are served
+// directly from the build directory; all other paths get the fallback index.html.
+func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath string) {
+	// Strip /admin prefix and leading slash to get a relative path within the build directory.
+	// e.g. "/admin" → "", "/admin/nodes" → "nodes", "/admin/_app/x.js" → "_app/x.js"
+	relPath := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/admin"), "/")
+	// Resolve the requested path within the SPA directory and ensure it cannot escape.
+	filePathAbs, ok := resolveWithinBase(spaDir, relPath)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Try to serve the file directly (JS, CSS, images, etc.)
+	if info, err := os.Stat(filePathAbs); err == nil && !info.IsDir() {
+		http.ServeFile(w, r, filePathAbs)
+		return
+	}
+	// SPA fallback: serve index.html for all routes
+	http.ServeFile(w, r, spaIndexPath)
 }

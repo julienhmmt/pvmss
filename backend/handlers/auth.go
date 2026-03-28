@@ -361,7 +361,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		Str("reason", "auth_success").
 		Msg("Admin authentication successful, creating session")
 
-	if err := establishSession(w, r, true, ""); err != nil {
+	if err := establishSession(w, r, true, "admin"); err != nil {
 		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
 		return
 	}
@@ -377,7 +377,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		Msg("Admin login successful via password hash")
 
 	// Persist language selection in cookie and append to redirect
-	redirectURL := getRedirectURL(r, "/admin/nodes")
+	redirectURL := getRedirectURL(r, "/admin")
 	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
@@ -513,7 +513,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	// Persist language selection in cookie and append to redirect
 	var defaultURL string
 	if isAdmin {
-		defaultURL = "/admin/nodes"
+		defaultURL = "/admin"
 	} else {
 		defaultURL = "/vm/create"
 	}
@@ -648,7 +648,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	}
 
 	// Persist language selection in cookie and append to redirect
-	redirectURL := getRedirectURL(r, "/admin/nodes")
+	redirectURL := getRedirectURL(r, "/admin")
 	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
