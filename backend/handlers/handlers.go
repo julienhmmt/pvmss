@@ -147,6 +147,9 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 			apiHandler.ServeHTTP(w, r)
 		case spaAvailable && isSPAStaticAsset(r.URL.Path):
 			serveSPA(w, r, spaDir, spaIndexPath)
+		case spaAvailable && isSPALoginPath(r.URL.Path):
+			// Login pages are part of the SPA but require no session auth.
+			serveSPA(w, r, spaDir, spaIndexPath)
 		case spaAvailable && isSPAPath(r.URL.Path):
 			spaPageHandler.ServeHTTP(w, r)
 		default:

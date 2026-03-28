@@ -168,6 +168,60 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]bool{"ok": true})
 }
 
+// ProxmoxAdminLogin handles POST /api/v1/auth/proxmox-admin-login.
+// Body: {"username":"user@pve","password":"..."}
+// Authenticates via Proxmox @pve realm, requires PVEAdmin or PVMSS_Admin role, issues admin JWT.
+func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) {
+	secret := h.state.GetSettings().JWTSecret
+	if secret == "" {
+		errNotConfigured(w)
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	if req.Username == "" || req.Password == "" {
+		errBadRequest(w, "username and password are required")
+		return
+	}
+
+	pxClient, err := proxmox.MakeRestyClientCookieAuthFromEnv(10 * time.Second)
+	if err != nil {
+		errInternal(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	ticketResp, err := proxmox.CreateTicketResty(ctx, pxClient, req.Username, req.Password, &proxmox.CreateTicketOptions{Realm: "pve"})
+	if err != nil {
+		logger.SecurityEvent("api_auth_pve_admin_fail").Str("username", req.Username).Msg("PVE admin login failed")
+		errUnauthorized(w)
+		return
+	}
+
+	if !proxmox.HasRole(ticketResp.Cap, "PVEAdmin") && !proxmox.HasRole(ticketResp.Cap, "PVMSS_Admin") {
+		logger.SecurityEvent("api_auth_pve_admin_role_denied").Str("username", req.Username).Msg("PVE admin login denied: no admin role")
+		errUnauthorized(w)
+		return
+	}
+
+	if err := issueTokens(w, secret, ticketResp.Username, true); err != nil {
+		errInternal(w)
+		return
+	}
+
+	logger.AuthEvent("api_pve_admin_login").Str("username", ticketResp.Username).Msg("PVE admin login successful")
+	writeJSON(w, AuthResponse{Username: ticketResp.Username, IsAdmin: true})
+}
+
 // issueTokens creates and sets both access_token and refresh_token cookies.
 func issueTokens(w http.ResponseWriter, secret, username string, isAdmin bool) error {
 	setTokenCookie(w, secret, accessTokenCookie, username, isAdmin, accessTokenTTL)

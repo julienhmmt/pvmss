@@ -266,5 +266,29 @@
       }
     }
   },
-  "user": {}
+  "user": {},
+  "login": {
+    "title": "Connexion",
+    "subtitle": "Proxmox VM Self-Service",
+    "userTab": "Utilisateur",
+    "adminTab": "Administrateur",
+    "localAdminTab": "Local (PVMSS)",
+    "pveAdminTab": "Proxmox (@pve)",
+    "username": "Nom d'utilisateur",
+    "usernamePlaceholder": "user@pve",
+    "password": "Mot de passe",
+    "passwordPlaceholder": "Mot de passe",
+    "adminPasswordPlaceholder": "Mot de passe administrateur",
+    "signIn": "Se connecter",
+    "signingIn": "Connexion en cours...",
+    "userHint": "Connectez-vous avec votre compte Proxmox",
+    "localAdminHint": "Connectez-vous avec le mot de passe administrateur PVMSS",
+    "pveAdminHint": "Connectez-vous avec un compte Proxmox ayant le rôle PVEAdmin",
+    "addRealm": "Le domaine @pve sera ajouté automatiquement si absent",
+    "error": {
+      "invalidCredentials": "Identifiants invalides",
+      "serviceUnavailable": "Service indisponible, veuillez réessayer",
+      "unknown": "Une erreur est survenue, veuillez réessayer"
+    }
+  }
 }

@@ -266,5 +266,29 @@
       }
     }
   },
-  "user": {}
+  "user": {},
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Proxmox VM Self-Service",
+    "userTab": "User",
+    "adminTab": "Administrator",
+    "localAdminTab": "Local (PVMSS)",
+    "pveAdminTab": "Proxmox (@pve)",
+    "username": "Username",
+    "usernamePlaceholder": "user@pve",
+    "password": "Password",
+    "passwordPlaceholder": "Password",
+    "adminPasswordPlaceholder": "Admin password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "userHint": "Sign in with your Proxmox account",
+    "localAdminHint": "Sign in with the PVMSS admin password",
+    "pveAdminHint": "Sign in with a Proxmox account that has PVEAdmin role",
+    "addRealm": "Realm @pve will be added automatically if missing",
+    "error": {
+      "invalidCredentials": "Invalid credentials",
+      "serviceUnavailable": "Service unavailable, please try again",
+      "unknown": "An error occurred, please try again"
+    }
+  }
 }

@@ -18,6 +18,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 
 	// Auth routes — no JWT required (login/exchange issue tokens)
 	router.POST("/api/v1/auth/login", wrap(authHandler.Login))
+	router.POST("/api/v1/auth/proxmox-admin-login", wrap(authHandler.ProxmoxAdminLogin))
 	router.POST("/api/v1/auth/exchange", wrap(authHandler.Exchange))
 	router.POST("/api/v1/auth/refresh", wrap(authHandler.Refresh))
 	router.POST("/api/v1/auth/logout", wrap(authHandler.Logout))
