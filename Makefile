@@ -181,10 +181,6 @@ go-fmt: ## Formate le code Go
 	@echo "$(BLUE)Formatage du code Go...$(NC)"
 	cd $(BACKEND_DIR) && go fmt ./...
 
-go-template: ## Génère les templates Go
-	@echo "$(BLUE)Génération des templates Go...$(NC)"
-	cd $(BACKEND_DIR) && ~/go/bin/templ generate && cd ..
-
 # =============================================================================
 # Commandes BuildKit (pour builds multi-architecture)
 
