@@ -341,11 +341,17 @@ func (h *VMCreateHandler) resolveStorages(ctx context.Context, snapshot *state.P
 		log.Debug().Int("index", i).Str("enabled_storage", s).Msg("resolveStorages: configured in settings")
 	}
 
+	nodeStoragesCount := 0
+	globalStoragesCount := 0
+	if snapshot != nil {
+		nodeStoragesCount = len(snapshot.NodeStorages)
+		globalStoragesCount = len(snapshot.GlobalStorages)
+	}
 	log.Debug().
 		Int("enabled_storages_count", len(settings.EnabledStorages)).
 		Bool("allow_all", allowAll).
-		Int("node_storages_count", len(snapshot.NodeStorages)).
-		Int("global_storages_count", len(snapshot.GlobalStorages)).
+		Int("node_storages_count", nodeStoragesCount).
+		Int("global_storages_count", globalStoragesCount).
 		Msg("resolveStorages: starting storage resolution")
 
 	// Build global storage info map for content/type enrichment
