@@ -729,18 +729,14 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		params.Set("pool", pool)
 	}
 
-	// Tags
-	if len(req.Tags) > 0 {
-		cleanedTags := make([]string, 0, len(req.Tags))
-		for _, tag := range req.Tags {
-			if cleaned := strings.TrimSpace(tag); cleaned != "" {
-				cleanedTags = append(cleanedTags, cleaned)
-			}
-		}
-		if len(cleanedTags) > 0 {
-			params.Set("tags", strings.Join(cleanedTags, ";"))
+	// Tags — always include the "pvmss" tag so ListVMs/GetVM can find the VM.
+	cleanedTags := []string{"pvmss"}
+	for _, tag := range req.Tags {
+		if cleaned := strings.TrimSpace(tag); cleaned != "" && !strings.EqualFold(cleaned, "pvmss") {
+			cleanedTags = append(cleanedTags, cleaned)
 		}
 	}
+	params.Set("tags", strings.Join(cleanedTags, ";"))
 
 	// ISO
 	if req.ISO != "" {

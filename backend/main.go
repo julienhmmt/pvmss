@@ -69,9 +69,6 @@ func main() {
 		logger.Get().Fatal().Err(err).Msg("Failed to set session manager")
 	}
 
-	// Register guest agent cache cleanup function
-	stateManager.SetGuestAgentCleanupFunc(handlers.CleanExpiredGuestAgentCache)
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = constants.DefaultPort

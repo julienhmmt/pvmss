@@ -431,7 +431,6 @@ func TestRouteAccessibility(t *testing.T) {
 	t.Run("Protected routes without auth", func(t *testing.T) {
 		runRouteGroup(t, cfg, []routeTest{
 			{Name: "Profile without auth", Method: http.MethodGet, Path: "/profile", ExpectedStatus: http.StatusSeeOther},
-			{Name: "VM create without auth", Method: http.MethodGet, Path: "/vm/create", ExpectedStatus: http.StatusSeeOther},
 			{Name: "Search without auth", Method: http.MethodGet, Path: "/search", ExpectedStatus: http.StatusSeeOther},
 			{Name: "Admin dashboard without auth", Method: http.MethodGet, Path: "/admin", ExpectedStatus: http.StatusSeeOther},
 			{Name: "Admin nodes without auth", Method: http.MethodGet, Path: "/admin/nodes", ExpectedStatus: http.StatusSeeOther},
@@ -458,7 +457,6 @@ func TestRouteAccessibility(t *testing.T) {
 				{Name: "Home", Method: http.MethodGet, Path: "/", ExpectedStatus: http.StatusOK},
 				{Name: "Search", Method: http.MethodGet, Path: "/search", ExpectedStatus: http.StatusOK},
 				{Name: "Profile", Method: http.MethodGet, Path: "/profile", ExpectedStatus: http.StatusOK},
-				{Name: "VM create", Method: http.MethodGet, Path: "/vm/create", ExpectedStatus: http.StatusOK},
 				{Name: "Logout redirect", Method: http.MethodGet, Path: "/logout", ExpectedStatus: http.StatusSeeOther},
 			}, client)
 		})

@@ -16,6 +16,7 @@ import (
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
+	"pvmss/utils"
 )
 
 const (
@@ -177,8 +178,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles POST /api/v1/auth/logout. Clears both token cookies.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	env := os.Getenv("PVMSS_ENV")
-	secure := env == "production" || env == "prod"
+	secure := utils.IsProduction()
 
 	http.SetCookie(w, &http.Cookie{Name: accessTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
 	http.SetCookie(w, &http.Cookie{Name: refreshTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
@@ -259,8 +259,7 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, _ := tok.SignedString([]byte(secret))
 
-	env := os.Getenv("PVMSS_ENV")
-	secure := env == "production" || env == "prod"
+	secure := utils.IsProduction()
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,

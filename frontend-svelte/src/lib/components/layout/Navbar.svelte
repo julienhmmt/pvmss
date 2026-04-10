@@ -69,7 +69,7 @@
 
 		<!-- Desktop navigation -->
 		<div class="pv-navbar-links hidden md:flex">
-			{#each navLinks as link (link.href)}
+			{#each navLinks as link, i (i)}
 				{@const active = isActive((link as NavLink).href, $page.url.pathname)}
 				{@const linkData = link as NavLink}
 				<a href={linkData.href} class="pv-navbar-link {active ? 'pv-navbar-link--active' : ''}">
@@ -174,7 +174,7 @@
 							<span class="text-base font-bold tracking-tight">PVMSS</span>
 						</div>
 						<div class="flex flex-col gap-0.5 p-3">
-							{#each navLinks as link (link.href)}
+							{#each navLinks as link, i (i)}
 								{@const active = isActive((link as NavLink).href, $page.url.pathname)}
 								{@const linkData = link as NavLink}
 								<a
@@ -206,6 +206,7 @@
 								{$t('nav.languageEn')}
 							</button>
 
+							{#if auth.initialized && auth.username}
 							<div class="border-border my-2 border-t"></div>
 
 							{#if auth.isAdmin}
@@ -219,12 +220,24 @@
 								</a>
 							{/if}
 							<button
-							class="pv-sidebar-item text-destructive"
-							onclick={handleLogout}
-						>
-							<span class="pv-sidebar-icon-wrap"><SignOutIcon class="h-4 w-4" /></span>
-							{$t('common.logout')}
-						</button>
+								class="pv-sidebar-item text-destructive"
+								onclick={handleLogout}
+							>
+								<span class="pv-sidebar-icon-wrap"><SignOutIcon class="h-4 w-4" /></span>
+								{$t('common.logout')}
+							</button>
+						{:else if auth.initialized}
+							<div class="border-border my-2 border-t"></div>
+
+							<a
+								href="/login"
+								class="pv-sidebar-item"
+								onclick={() => (mobileOpen = false)}
+							>
+								<span class="pv-sidebar-icon-wrap"><SignInIcon class="h-4 w-4" /></span>
+								{$t('landing.signIn')}
+							</a>
+						{/if}
 					</div>
 				</Sheet.Content>
 			</Sheet.Root>
