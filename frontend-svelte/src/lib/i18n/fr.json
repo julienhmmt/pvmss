@@ -300,7 +300,18 @@
     "home": {
       "title": "Mes machines virtuelles",
       "description": "Bienvenue, {username}",
-      "migrationNote": "Vos VMs apparaîtront ici. Utilisez la navigation ci-dessus pour les gérer."
+      "migrationNote": "Vos VMs apparaîtront ici. Utilisez la navigation ci-dessus pour les gérer.",
+      "emptyTitle": "Aucune machine virtuelle pour l'instant",
+      "emptyDesc": "Créez votre première VM pour accéder en libre-service à votre infrastructure.",
+      "emptyAction": "Créer une VM",
+      "activity": "Activité récente",
+      "noActivity": "Aucune action effectuée lors de cette session.",
+      "stats": {
+        "total": "VMs totales",
+        "running": "En cours",
+        "stopped": "Arrêtées",
+        "avgCpu": "CPU moy."
+      }
     }
   },
   "landing": {
@@ -323,6 +334,8 @@
     "ram": "RAM",
     "uptime": "Uptime",
     "noVms": "Aucune machine virtuelle trouvée",
+    "selected": "{count} sélectionnée(s)",
+    "clearSelection": "Effacer",
     "actions": {
       "start": "Démarrer",
       "shutdown": "Arrêter",

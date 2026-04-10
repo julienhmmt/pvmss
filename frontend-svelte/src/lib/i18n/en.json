@@ -300,7 +300,18 @@
     "home": {
       "title": "My Virtual Machines",
       "description": "Welcome, {username}",
-      "migrationNote": "Your VMs will appear here. Use the navigation above to manage them."
+      "migrationNote": "Your VMs will appear here. Use the navigation above to manage them.",
+      "emptyTitle": "No virtual machines yet",
+      "emptyDesc": "Create your first VM to get self-service access to your infrastructure.",
+      "emptyAction": "Create a VM",
+      "activity": "Recent activity",
+      "noActivity": "No actions taken yet this session.",
+      "stats": {
+        "total": "Total VMs",
+        "running": "Running",
+        "stopped": "Stopped",
+        "avgCpu": "Avg CPU"
+      }
     }
   },
   "landing": {
@@ -323,6 +334,8 @@
     "ram": "RAM",
     "uptime": "Uptime",
     "noVms": "No virtual machines found",
+    "selected": "{count} selected",
+    "clearSelection": "Clear",
     "actions": {
       "start": "Start",
       "shutdown": "Shutdown",
