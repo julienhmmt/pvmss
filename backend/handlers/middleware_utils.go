@@ -240,6 +240,13 @@ func isAPIPath(p string) bool {
 	return strings.HasPrefix(p, "/api/v1/")
 }
 
+// isLegacyAPIPath returns true for session-authenticated API routes that live
+// outside /api/v1/ (e.g. /api/settings, /api/vmbr, /api/health). These must
+// be routed through appHandler even when the SvelteKit SPA is available.
+func isLegacyAPIPath(p string) bool {
+	return strings.HasPrefix(p, "/api/") && !strings.HasPrefix(p, "/api/v1/")
+}
+
 // withStaticCaching wraps a static file handler to add strong caching headers.
 func withStaticCaching(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -255,7 +262,7 @@ func isStaticPath(p string) bool {
 	if p == "/favicon.ico" {
 		return true
 	}
-	for _, prefix := range []string{"/css/", "/js/", "/webfonts/", "/components/", "/vendor/", "/src/"} {
+	for _, prefix := range []string{"/components/"} {
 		if strings.HasPrefix(p, prefix) {
 			return true
 		}
@@ -287,33 +294,6 @@ func getFrontendPath(sm state.StateManager) string {
 		return ""
 	}
 	return sm.GetFrontendPath()
-}
-
-// isSPAStaticAsset returns true for SvelteKit build assets (JS, CSS, etc.)
-// that should be served without authentication (needed by the login page).
-func isSPAStaticAsset(p string) bool {
-	// Without SvelteKit base path, assets are at /_app/.
-	// Keep /admin/_app/ support for backward compatibility during transition.
-	return strings.HasPrefix(p, "/_app/") || strings.HasPrefix(p, "/admin/_app/")
-}
-
-// isSPALoginPath returns true for paths that serve the SPA login page (no auth required).
-func isSPALoginPath(p string) bool {
-	return p == "/login" || p == "/admin/login"
-}
-
-// isSPAPath returns true for page routes that should be served by the
-// SvelteKit SPA (after authentication).
-func isSPAPath(p string) bool {
-	// Static assets and login pages are handled separately.
-	if isSPAStaticAsset(p) || isSPALoginPath(p) {
-		return false
-	}
-	return strings.HasPrefix(p, "/admin/") || p == "/admin" ||
-		p == "/" || p == "/home" || p == "/search" ||
-		strings.HasPrefix(p, "/vm/") ||
-		p == "/docs" || strings.HasPrefix(p, "/docs/") ||
-		p == "/console"
 }
 
 // resolveWithinBase resolves relPath against baseDir and ensures the resulting absolute
@@ -354,7 +334,20 @@ func resolveWithinBase(baseDir, relPath string) (string, bool) {
 
 // serveSPA serves the SvelteKit SPA. Static assets (files with extensions) are served
 // directly from the build directory; all other paths get the fallback index.html.
+// It includes panic recovery and basic security headers since it bypasses the
+// normal middleware stack.
 func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath string) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			logger.Get().Error().Interface("panic", rec).Str("path", r.URL.Path).Msg("Panic recovered in serveSPA")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+	}()
+
+	// Set security headers for SPA responses.
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+
 	// Strip leading slash to get a relative path within the build directory.
 	// e.g. "/login" → "login", "/_app/x.js" → "_app/x.js", "/admin/nodes" → "admin/nodes"
 	relPath := strings.TrimPrefix(r.URL.Path, "/")

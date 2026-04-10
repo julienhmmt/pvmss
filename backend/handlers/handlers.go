@@ -53,29 +53,19 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 
 	// Initialize all handlers
 	authHandler := MakeAuthHandler(stateManager)
-	cloudInitHandler := MakeCloudInitHandler(stateManager)
-	diskHandler := MakeDiskHandler(stateManager)
 	healthHandler := MakeHealthHandler(stateManager)
 	languageHandler := MakeLanguageHandler()
-	searchHandler := MakeSearchOptimizedHandler(stateManager)
 	settingsHandler := MakeSettingsHandler(stateManager)
 	tagsHandler := MakeTagsHandler(stateManager)
-	vmCreateHandler := MakeVMCreateOptimizedHandler(stateManager)
-	vmHandler := MakeVMHandler(stateManager)
 
 	// Configure routes
 	setupRoutes(
 		authHandler,
-		cloudInitHandler,
-		diskHandler,
 		healthHandler,
 		languageHandler,
 		router,
-		searchHandler,
 		settingsHandler,
 		tagsHandler,
-		vmCreateHandler,
-		vmHandler,
 	)
 
 	// Friendly NotFound and MethodNotAllowed handlers (when state is available)
@@ -123,16 +113,6 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		log.Info().Msg("SvelteKit admin SPA build not found — /admin/ will fall through to router")
 	}
 
-	// Build the SPA page handler: serve SPA without Go-level session auth.
-	// The SvelteKit SPA handles its own authentication via JWT (auth.exchange()).
-	// If the JWT is invalid or missing, the SPA redirects to /login itself.
-	var spaPageHandler http.Handler
-	if spaAvailable {
-		spaPageHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			serveSPA(w, r, spaDir, spaIndexPath)
-		})
-	}
-
 	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -140,14 +120,15 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 			publicHandler.ServeHTTP(w, r)
 		case isAPIPath(r.URL.Path):
 			apiHandler.ServeHTTP(w, r)
-		case spaAvailable && isSPAStaticAsset(r.URL.Path):
+		case isLegacyAPIPath(r.URL.Path):
+			// Session-authenticated API routes (/api/settings, /api/vmbr, /api/health)
+			// must go through the app middleware even when the SPA is available.
+			appHandler.ServeHTTP(w, r)
+		case spaAvailable:
+			// Serve SvelteKit SPA for all other paths when available
 			serveSPA(w, r, spaDir, spaIndexPath)
-		case spaAvailable && isSPALoginPath(r.URL.Path):
-			// Login pages are part of the SPA but require no session auth.
-			serveSPA(w, r, spaDir, spaIndexPath)
-		case spaAvailable && isSPAPath(r.URL.Path):
-			spaPageHandler.ServeHTTP(w, r)
 		default:
+			// Fallback to legacy app handler only if SPA not available
 			appHandler.ServeHTTP(w, r)
 		}
 	})
@@ -166,40 +147,23 @@ type handlerRegistrar interface {
 // setupRoutes configures all application routes
 func setupRoutes(
 	authHandler *AuthHandler,
-	cloudInitHandler *CloudInitHandler,
-	diskHandler *DiskHandler,
 	healthHandler *HealthHandler,
 	languageHandler *LanguageHandler,
 	router *httprouter.Router,
-	searchHandler *SearchOptimizedHandler,
 	settingsHandler *SettingsHandler,
 	tagsHandler *TagsHandler,
-	vmCreateHandler *VMCreateOptimizedHandler,
-	vmHandler *VMHandler,
 ) {
-	// Register routes for all handlers
 	handlers := []handlerRegistrar{
 		authHandler,
-		cloudInitHandler,
-		diskHandler,
 		healthHandler,
 		languageHandler,
-		searchHandler,
 		settingsHandler,
 		tagsHandler,
-		vmCreateHandler,
-		vmHandler,
 	}
 
 	for _, h := range handlers {
 		h.RegisterRoutes(router)
 	}
-
-	// Register AJAX routes for search handler
-	searchHandler.RegisterAJAXRoutes(router)
-
-	// Home route
-	router.GET("/", IndexRouterHandler)
 }
 
 // setupStaticFiles configures the static file server
@@ -217,23 +181,11 @@ func createCachedFileServer(basePath, subdir string) http.Handler {
 func setupStaticFiles(router *httprouter.Router, stateManager state.StateManager) {
 	basePath := getFrontendPath(stateManager)
 
-	// Create CSS handler for optimized CSS serving
-	cssHandler := MakeCSSHandler(basePath)
-
-	// Configure routes - CSS uses custom handler, others use file servers
-	registerStaticHandler(router, "/css/*filepath", http.HandlerFunc(cssHandler.ServeCSS))
-	registerStaticHandler(router, "/js/*filepath", http.StripPrefix("/js/", createCachedFileServer(basePath, "js")))
-	registerStaticHandler(router, "/webfonts/*filepath", http.StripPrefix("/webfonts/", createCachedFileServer(basePath, "webfonts")))
+	// noVNC library for the Svelte console component
 	registerStaticHandler(router, "/components/*filepath", http.StripPrefix("/components/", createCachedFileServer(basePath, "components")))
 	registerStaticHandler(router, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
-	// Vendored ESM libraries (vue, pinia, axios) — strong caching, content is immutable
-	registerStaticHandler(router, "/vendor/*filepath", http.StripPrefix("/vendor/", createCachedFileServer(basePath, "vendor")))
-
-	// Vue SPA source files — no aggressive caching during development
-	registerStaticHandler(router, "/src/*filepath", http.StripPrefix("/src/", http.FileServer(http.Dir(filepath.Join(basePath, "src")))))
-
-	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured for css, js, components, webfonts, vendor, src")
+	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured")
 }
 
 // setupStaticFiles configures the static file server

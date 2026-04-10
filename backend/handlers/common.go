@@ -4,8 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"pvmss/components"
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
 	"pvmss/state"
@@ -57,68 +55,6 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 	if token, ok := security.CSRFTokenFromContext(r.Context()); ok {
 		w.Header().Set("X-CSRF-Token", token)
 	}
-}
-
-// IndexHandler is a handler for the home page
-// This function is exported for use by other packages
-func IndexHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := HandlerContextWith(w, r, "IndexHandler")
-	ctx.Log.Debug().Msg("Processing request for home page")
-
-	// If it's not the root, return a 404
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-
-	// Get username and admin status from session
-	username := ""
-	isAdmin := false
-	if sessionManager := security.GetSession(r); sessionManager != nil {
-		if user, ok := sessionManager.Get(r.Context(), "username").(string); ok {
-			username = user
-		}
-		if admin, ok := sessionManager.Get(r.Context(), "is_admin").(bool); ok {
-			isAdmin = admin
-		}
-	}
-
-	// Get CSRF token
-	csrfToken, _ := ctx.GetCSRFToken()
-
-	// Check authentication status
-	isAuthenticated := ctx.IsAuthenticated()
-	proxmoxConnected := IsProxmoxTicketValid(r)
-
-	// Prepare home data
-	homeData := components.HomeData{
-		Username:         username,
-		Lang:             i18n.GetLanguage(r),
-		CSRFToken:        csrfToken,
-		IsAdmin:          isAdmin,
-		IsAuthenticated:  isAuthenticated,
-		ProxmoxConnected: proxmoxConnected,
-	}
-
-	// Translation function wrapper
-	translateFunc := func(key string) string {
-		return ctx.Translate(key)
-	}
-
-	// Render with Templ
-	if err := components.HomePage(homeData, translateFunc).Render(r.Context(), w); err != nil {
-		ctx.Log.Error().Err(err).Msg("Failed to render home page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	ctx.Log.Info().Msg("Home page displayed successfully")
-}
-
-// IndexRouterHandler is a handler for the home page compatible with httprouter
-func IndexRouterHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// Delegates processing to the main handler
-	IndexHandler(w, r)
 }
 
 // HandlerFuncToHTTPrHandle adapts an http.HandlerFunc to an httprouter.Handle function.

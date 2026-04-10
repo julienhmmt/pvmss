@@ -216,11 +216,28 @@ func loadAllTranslations(bundle *i18n.Bundle) {
 
 	sort.Strings(files)
 
+	// Load files with timeout to prevent hanging
 	for _, file := range files {
-		if _, err := bundle.LoadMessageFile(file); err != nil {
+		done := make(chan bool, 1)
+		errChan := make(chan error, 1)
+
+		go func() {
+			_, err := bundle.LoadMessageFile(file)
+			if err != nil {
+				errChan <- err
+			} else {
+				done <- true
+			}
+		}()
+
+		select {
+		case <-done:
+			logger.Get().Info().Str("file", file).Msg("Translation file loaded successfully")
+		case err := <-errChan:
 			logger.Get().Error().Err(err).Str("file", file).Msg("Failed to load translation file")
+		case <-time.After(5 * time.Second):
+			logger.Get().Warn().Str("file", file).Msg("Translation file loading timed out after 5 seconds, skipping")
 		}
-		logger.Get().Info().Str("file", file).Msg("Translation file loaded successfully")
 	}
 }
 
