@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/julienschmidt/httprouter"
 	"pvmss/i18n"
 	"pvmss/state"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 // HealthHandler handles health and API endpoints
@@ -96,8 +97,4 @@ func (h *HealthHandler) RegisterRoutes(router *httprouter.Router) {
 	router.GET("/health", h.HealthCheckHandler)
 	router.GET("/api/health", h.HealthCheckHandler)
 	router.GET("/api/health/proxmox", h.ProxmoxStatusHandler)
-
-	// Error handlers
-	router.NotFound = http.HandlerFunc(h.NotFoundHandler)
-	router.MethodNotAllowed = http.HandlerFunc(h.MethodNotAllowedHandler)
 }

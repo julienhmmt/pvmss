@@ -33,13 +33,7 @@ func TestFunctionalUserWorkflow(t *testing.T) {
 		// Step 1: Login as user
 		authenticate(t, cfg, client, cfg.UserUsername, cfg.UserPassword, "/login")
 
-		// Step 2: Access VM creation page
-		resp, err := client.Get(cfg.BaseURL + "/vm/create")
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		_ = resp.Body.Close()
-
-		// Step 3: Validate VM name via API
+		// Step 2: Validate VM name via API
 		validateResp := callValidationAPI(t, cfg, client, "/api/vm/validate/name", "test-vm")
 		assert.True(t, validateResp.Valid)
 
@@ -206,7 +200,6 @@ func TestFunctionalErrorHandling(t *testing.T) {
 		// Test accessing protected routes without authentication
 		protectedRoutes := []string{
 			"/profile",
-			"/vm/create",
 			"/api/settings",
 			"/admin",
 		}

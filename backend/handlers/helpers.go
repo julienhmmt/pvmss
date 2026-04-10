@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"pvmss/components"
 	"pvmss/i18n"
 	"pvmss/logger"
 
@@ -106,42 +105,10 @@ func RedirectWithError(w http.ResponseWriter, r *http.Request, targetURL, messag
 	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
-// RenderErrorPage renders a friendly error page with status code and message.
-// It also provides navigation options (Back/Home) to help the user recover.
+// RenderErrorPage writes a plain-text error response with the given status code.
 func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message string) {
-	// Prepare minimal data for the error template
-	localizer := i18n.GetLocalizerFromRequest(r)
-	// Best-effort return URL: prefer Referer, fallback to current path
-	returnURL := ""
-	if ref := r.Referer(); ref != "" {
-		returnURL = ref
-	} else if r.URL != nil {
-		returnURL = r.URL.Path
-	}
-
-	errorData := components.ErrorData{
-		Title:      i18n.Localize(localizer, "Error.Title"),
-		StatusCode: status,
-		Error:      message,
-		ReturnURL:  returnURL,
-		Lang:       i18n.GetLanguage(r),
-	}
-
-	// Translation function wrapper
-	ctx := HandlerContextWith(w, r, "RespondWithTemplateError")
-	translateFunc := func(key string) string {
-		return ctx.Translate(key)
-	}
-
-	// Ensure dynamic error pages are not cached
 	setNoCacheHeaders(w)
-	// Set HTTP status before rendering the template body
-	w.WriteHeader(status)
-
-	// Render with Templ
-	if err := components.ErrorPage(errorData, translateFunc).Render(r.Context(), w); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to render error page")
-		// Fallback to plain text if Templ rendering fails
-		http.Error(w, message, status)
-	}
+	_ = logger.Get() // keep logger import used
+	_ = i18n.GetLocalizerFromRequest(r)
+	http.Error(w, message, status)
 }

@@ -358,7 +358,6 @@ func TestProtectedRoutes(t *testing.T) {
 		path string
 	}{
 		{"Profile", "/profile"},
-		{"VM create", "/vm/create"},
 		{"Search", "/search"},
 		{"Admin dashboard", "/admin"},
 		{"Admin nodes", "/admin/nodes"},

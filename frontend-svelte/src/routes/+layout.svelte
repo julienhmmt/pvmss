@@ -5,30 +5,26 @@
 	import { themeStore } from '$lib/stores/theme.svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
-	import { isLoading } from 'svelte-i18n';
 	import '$lib/i18n';
 	import '../app.css';
 
 	let { children } = $props();
 
-	onMount(async () => {
+	onMount(() => {
 		themeStore.init();
-		await auth.exchange();
+		// Run auth in background, don't wait
+		auth.exchange().catch(err => {
+			console.error('Auth exchange failed:', err);
+		});
 	});
 </script>
 
-{#if !$isLoading && auth.initialized}
-	{#if $page.url.pathname !== '/login' && $page.url.pathname !== '/console'}
-		<Navbar />
-		<div class="pt-14">
-			{@render children()}
-		</div>
-	{:else}
+{#if $page.url.pathname !== '/login' && $page.url.pathname !== '/console'}
+	<Navbar />
+	<div class="pt-14">
 		{@render children()}
-	{/if}
-{:else}
-	<div class="flex h-screen items-center justify-center">
-		<p class="text-muted-foreground">Loading...</p>
 	</div>
+{:else}
+	{@render children()}
 {/if}
 <Toaster />

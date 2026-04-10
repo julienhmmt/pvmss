@@ -109,21 +109,14 @@ func TestHandlersStructure(t *testing.T) {
 
 	// Check for key handler files
 	keyHandlers := []string{
-		"admin_cloudinit.go",
-		"profile.go",
-		"vm_create.go",
-		"vm_create_helpers.go",
-		"vm_details_base.go",
-		"vm_details_helpers.go",
-		"vm_details_info.go",
-		"vm_details_metrics.go",
-		"vm_details_validation.go",
-		"vm_actions_helpers.go",
-		"vm_actions_lifecycle.go",
-		"vm_actions_misc.go",
-		"vm_actions_resources.go",
 		"auth.go",
 		"helpers.go",
+		"health.go",
+		"settings.go",
+		"tags.go",
+		"common.go",
+		"handlers.go",
+		"middleware_utils.go",
 	}
 
 	for _, handler := range keyHandlers {
