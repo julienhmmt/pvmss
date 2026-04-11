@@ -10,12 +10,6 @@ export default defineConfig({
 			$lib: path.resolve('./src/lib')
 		}
 	},
-	build: {
-		rollupOptions: {
-			// Paths served as static assets (noVNC, old frontend /components/) must not be bundled.
-			external: [/^\/components\//]
-		}
-	},
 	server: {
 		host: '0.0.0.0',
 		port: 5173,
@@ -30,7 +24,7 @@ export default defineConfig({
 			clientPort: 5173
 		},
 		proxy: {
-			'/api': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
+			'/api': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true, ws: true },
 			'/logout': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
 			'/css': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
 			'/js': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },

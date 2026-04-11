@@ -41,13 +41,23 @@
 		statusMessage = 'Connecting to console…';
 
 		try {
-			// Load noVNC RFB from the backend-served /components/ static directory.
-			// The vite config marks /components/* as external so rolldown skips resolution.
-			const { default: RFB } = await import('/components/noVNC-1.6.0/core/rfb.js');
+			// noVNC lives in static/ — loaded at runtime, never bundled.
+			// Variable import prevents Vite/rolldown static analysis from trying to resolve the path.
+			const rfbUrl = '/noVNC-1.6.0/core/rfb.js';
+			// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+			// @ts-ignore
+			const { default: RFB } = await import(/* @vite-ignore */ rfbUrl);
 
+			if (!RFB) {
+				throw new Error('noVNC RFB module failed to load');
+			}
+
+			// Construct full WebSocket URL using backend host
+			// In dev, backend is on port 50000; in production, use current host
+			const backendHost = import.meta.env.DEV ? 'localhost:50000' : window.location.host;
 			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 			const wsUrl =
-				`${protocol}//${window.location.host}/api/v1/vms/${vmid}/console/websocket` +
+				`${protocol}//${backendHost}/api/v1/vms/${vmid}/console/websocket` +
 				`?port=${port}&node=${encodeURIComponent(node)}&vncticket=${encodeURIComponent(ticket)}`;
 
 			rfb = new (RFB as { new (...args: unknown[]): unknown })(container, wsUrl, {

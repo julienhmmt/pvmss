@@ -170,9 +170,21 @@ func proxyVNCWebSocketWithToken(w http.ResponseWriter, r *http.Request, proxmoxW
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
 			if origin == "" {
+				return true // Allow direct connections (no Origin header)
+			}
+			// Allow localhost connections regardless of port (for development)
+			// In production, this should be more restrictive
+			host := r.Host
+			originURL, err := url.Parse(origin)
+			if err != nil {
+				return false
+			}
+			// Allow if same host (ignore port for localhost)
+			if originURL.Hostname() == host || originURL.Hostname() == "localhost" {
 				return true
 			}
-			return origin == "http://"+r.Host || origin == "https://"+r.Host
+			// Allow exact match (same host and port)
+			return origin == "http://"+host || origin == "https://"+host
 		},
 	}
 	clientConn, err := upgrader.Upgrade(w, r, nil)
