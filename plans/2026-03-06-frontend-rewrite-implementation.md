@@ -6,7 +6,7 @@
 
 ### 1.1 Scaffold SvelteKit Project
 
-- [ ] `npm create svelte@latest frontend-svelte -- --template skeleton --types typescript`
+- [ ] `npm create svelte@latest frontend -- --template skeleton --types typescript`
 - [ ] Install adapter-static: `npm i -D @sveltejs/adapter-static`
 - [ ] Configure `svelte.config.js` with adapter-static and SPA fallback
 - [ ] Configure `vite.config.ts` with API proxy to `localhost:50000`
@@ -51,7 +51,7 @@
 
 ### 1.6 Go Backend: SPA Static Server
 
-- [ ] Add static file handler serving `frontend-svelte/build/` (or embedded)
+- [ ] Add static file handler serving `frontend/build/` (or embedded)
 - [ ] Add catch-all route: non-API, non-static paths → `index.html`
 - [ ] Ensure `/api/v1/*` routes take priority over catch-all
 
@@ -196,7 +196,7 @@
 - [ ] Move `frontend/` → `frontend-legacy/`
 - [ ] Update Makefile: `make frontend-build`, `make dev` runs both
 - [ ] Update `docker-compose.dev.yml` for new build
-- [ ] Update Dockerfile to include `frontend-svelte/build/`
+- [ ] Update Dockerfile to include `frontend/build/`
 - [ ] Remove dead Go code:
   - [ ] All templ components (`backend/components/`)
   - [ ] Template loading (`backend/templates/`)

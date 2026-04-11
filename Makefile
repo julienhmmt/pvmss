@@ -167,7 +167,7 @@ quick-test: ## Lance les tests rapides en mode offline
 
 test-svelte: ## Lance les tests Svelte
 	@echo "$(BLUE)Lancement des tests Svelte...$(NC)"
-	cd frontend-svelte && npx svelte-check --tsconfig ./tsconfig.json
+	cd frontend && npx svelte-check --tsconfig ./tsconfig.json
 	@echo "$(GREEN)✓ Tests Svelte terminés$(NC)"
 
 # =============================================================================

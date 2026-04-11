@@ -100,12 +100,12 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 
 ### 5.1 Auto-stop VM before delete
 
-- **File**: `frontend-svelte/src/routes/(app)/vm/[id]/+page.svelte`
+- **File**: `frontend/src/routes/(app)/vm/[id]/+page.svelte`
 - **Fix**: If VM is running and user confirms delete, call `shutdown` action first, wait for stopped state (poll), then delete. Show progress in the confirmation dialog.
 
 ### 5.2 Remove debug comment
 
-- **File**: `frontend-svelte/src/routes/docs/[type]/+page.svelte:203`
+- **File**: `frontend/src/routes/docs/[type]/+page.svelte:203`
 - **Fix**: Remove `<!-- DEBUG: html length = {html.length} -->`
 
 ---

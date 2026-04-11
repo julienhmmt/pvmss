@@ -52,7 +52,7 @@ export function autofocus(node) { ... }
 export function intersect(node, callback) { ... }
 ```
 
-**Fichiers à créer** : `frontend-svelte/src/lib/actions/index.ts`
+**Fichiers à créer** : `frontend/src/lib/actions/index.ts`
 
 ### 1.2 Styles globaux partagés
 
@@ -60,8 +60,8 @@ Les classes `.pv-*` (badge, table, tab, action-btn…) sont dupliquées dans le 
 
 **Fichiers** :
 
-- Créer `frontend-svelte/src/lib/styles/pv-components.css`
-- Modifier `frontend-svelte/src/routes/+layout.svelte` pour l'importer
+- Créer `frontend/src/lib/styles/pv-components.css`
+- Modifier `frontend/src/routes/+layout.svelte` pour l'importer
 - Supprimer les blocs `<style>` dupliqués dans chaque page
 
 ### 1.3 Remplacer `onMount`/`onDestroy` par `$effect`
@@ -181,7 +181,7 @@ import { page } from "$app/state"; // Svelte 5 / SvelteKit 2
 - `animate:flip` sur les lignes lors du rechargement
 - Indicateur de chargement inline dans le bouton search (spinner)
 
-**Fichier** : `frontend-svelte/src/routes/(app)/search/+page.svelte`
+**Fichier** : `frontend/src/routes/(app)/search/+page.svelte`
 **Taille estimée finale** : ~150 lignes (vs 241 actuellement)
 
 ---
@@ -383,40 +383,40 @@ Post-rendu : scanner les `<pre><code>` dans l'article et injecter un bouton copi
 ### Nouveaux fichiers
 
 ```
-frontend-svelte/src/lib/actions/index.ts
-frontend-svelte/src/lib/styles/pv-components.css
-frontend-svelte/src/lib/stores/vm-create.svelte.ts
-frontend-svelte/src/routes/(app)/vm/[id]/_tabs/TabOverview.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_tabs/TabDisks.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_tabs/TabNetwork.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_tabs/TabSnapshots.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_tabs/TabCloudInit.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_components/VMActionBar.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_components/VMStatCards.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_components/ConsoleBanner.svelte
-frontend-svelte/src/routes/(app)/vm/[id]/_components/EditableDescription.svelte
-frontend-svelte/src/routes/(app)/vm/create/_steps/StepBase.svelte
-frontend-svelte/src/routes/(app)/vm/create/_steps/StepHardware.svelte
-frontend-svelte/src/routes/(app)/vm/create/_steps/StepDisk.svelte
-frontend-svelte/src/routes/(app)/vm/create/_steps/StepNetwork.svelte
-frontend-svelte/src/routes/(app)/vm/create/_steps/StepCloudInit.svelte
-frontend-svelte/src/routes/(app)/vm/create/_steps/StepReview.svelte
-frontend-svelte/src/routes/(app)/vm/create/_components/WizardProgress.svelte
-frontend-svelte/src/routes/(app)/vm/create/_components/DiskCard.svelte
-frontend-svelte/src/routes/(app)/vm/create/_components/NetworkCard.svelte
+frontend/src/lib/actions/index.ts
+frontend/src/lib/styles/pv-components.css
+frontend/src/lib/stores/vm-create.svelte.ts
+frontend/src/routes/(app)/vm/[id]/_tabs/TabOverview.svelte
+frontend/src/routes/(app)/vm/[id]/_tabs/TabDisks.svelte
+frontend/src/routes/(app)/vm/[id]/_tabs/TabNetwork.svelte
+frontend/src/routes/(app)/vm/[id]/_tabs/TabSnapshots.svelte
+frontend/src/routes/(app)/vm/[id]/_tabs/TabCloudInit.svelte
+frontend/src/routes/(app)/vm/[id]/_components/VMActionBar.svelte
+frontend/src/routes/(app)/vm/[id]/_components/VMStatCards.svelte
+frontend/src/routes/(app)/vm/[id]/_components/ConsoleBanner.svelte
+frontend/src/routes/(app)/vm/[id]/_components/EditableDescription.svelte
+frontend/src/routes/(app)/vm/create/_steps/StepBase.svelte
+frontend/src/routes/(app)/vm/create/_steps/StepHardware.svelte
+frontend/src/routes/(app)/vm/create/_steps/StepDisk.svelte
+frontend/src/routes/(app)/vm/create/_steps/StepNetwork.svelte
+frontend/src/routes/(app)/vm/create/_steps/StepCloudInit.svelte
+frontend/src/routes/(app)/vm/create/_steps/StepReview.svelte
+frontend/src/routes/(app)/vm/create/_components/WizardProgress.svelte
+frontend/src/routes/(app)/vm/create/_components/DiskCard.svelte
+frontend/src/routes/(app)/vm/create/_components/NetworkCard.svelte
 ```
 
 ### Fichiers modifiés
 
 ```
-frontend-svelte/tsconfig.json                          ← strict: true
-frontend-svelte/src/routes/+layout.svelte              ← import pv-components.css
-frontend-svelte/src/routes/(app)/+layout.svelte        ← transition:fade sur navigation
-frontend-svelte/src/routes/(app)/home/+page.svelte     ← $effect, transitions
-frontend-svelte/src/routes/(app)/search/+page.svelte   ← $effect, debounce, transitions
-frontend-svelte/src/routes/(app)/vm/[id]/+page.svelte  ← orchestrateur (< 150 lignes)
-frontend-svelte/src/routes/(app)/vm/create/+page.svelte ← orchestrateur (< 200 lignes)
-frontend-svelte/src/routes/docs/[type]/+page.svelte    ← DOMPurify, TOC actif
+frontend/tsconfig.json                          ← strict: true
+frontend/src/routes/+layout.svelte              ← import pv-components.css
+frontend/src/routes/(app)/+layout.svelte        ← transition:fade sur navigation
+frontend/src/routes/(app)/home/+page.svelte     ← $effect, transitions
+frontend/src/routes/(app)/search/+page.svelte   ← $effect, debounce, transitions
+frontend/src/routes/(app)/vm/[id]/+page.svelte  ← orchestrateur (< 150 lignes)
+frontend/src/routes/(app)/vm/create/+page.svelte ← orchestrateur (< 200 lignes)
+frontend/src/routes/docs/[type]/+page.svelte    ← DOMPurify, TOC actif
 ```
 
 ---
