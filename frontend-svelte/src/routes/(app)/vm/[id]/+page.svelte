@@ -5,6 +5,7 @@
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api/client';
+	import { ApiRequestError } from '$lib/types/api';
 	import {
 		getVMConfig,
 		getVMMetrics,
@@ -53,6 +54,15 @@
 	let actionLoading = $state(false);
 	let metricsInterval: ReturnType<typeof setInterval> | null = null;
 
+	// Provisioning retry state: when the VM was just created it may not yet be
+	// visible in the backend cache. We retry silently up to MAX_RETRIES times.
+	const MAX_RETRIES = 6;
+	const RETRY_DELAY_MS = 2000;
+	let provisioning = $state(false);
+	let retryCount = $state(0);
+	let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+	let isLoading = $state(false);
+
 	// Edit states
 	let editingDescription = $state(false);
 	let descriptionDraft = $state('');
@@ -69,14 +79,37 @@
 	let creatingSnapshot = $state(false);
 
 	async function load() {
+		if (isLoading) return; // Prevent concurrent calls
+		isLoading = true;
 		loading = true;
 		error = null;
+
+		// Clear any existing retry timeout
+		if (retryTimeout) {
+			clearTimeout(retryTimeout);
+			retryTimeout = null;
+		}
+
 		try {
 			[config, snapshotData] = await Promise.all([getVMConfig(vmid), getVMSnapshots(vmid)]);
 			metrics = await getVMMetrics(vmid);
+			provisioning = false;
+			retryCount = 0;
 		} catch (e) {
-			error = e as Error;
+			const isNotFound = e instanceof ApiRequestError && e.status === 404;
+			if (isNotFound && retryCount < MAX_RETRIES) {
+				provisioning = true;
+				retryCount += 1;
+				retryTimeout = setTimeout(() => {
+					isLoading = false;
+					load();
+				}, RETRY_DELAY_MS);
+			} else {
+				provisioning = false;
+				error = e as Error;
+			}
 		} finally {
+			isLoading = false;
 			loading = false;
 		}
 	}
@@ -196,6 +229,7 @@
 
 	onDestroy(() => {
 		if (metricsInterval) clearInterval(metricsInterval);
+		if (retryTimeout) clearTimeout(retryTimeout);
 	});
 </script>
 
@@ -278,8 +312,14 @@
 		{/if}
 	</div>
 
-	{#if error}
-		<ErrorBanner {error} onRetry={() => load()} />
+	{#if provisioning || (loading && retryCount > 0)}
+		<div class="flex flex-col items-center gap-4 py-16 text-center">
+			<div class="pv-provisioning-spinner"></div>
+			<p class="text-sm font-medium">{$t('vm.provisioning')}</p>
+			<p class="text-xs text-muted-foreground">{$t('vm.provisioningHint')}</p>
+		</div>
+	{:else if error}
+		<ErrorBanner {error} onRetry={() => { retryCount = 0; load(); }} />
 	{:else if loading}
 		<LoadingSkeleton variant="card" rows={6} />
 	{:else if config}
@@ -785,6 +825,17 @@
 	:global(.pv-console-banner-arrow) {
 		margin-left: auto;
 		opacity: 0.6;
+	}
+	:global(.pv-provisioning-spinner) {
+		width: 2.5rem;
+		height: 2.5rem;
+		border: 3px solid var(--border);
+		border-top-color: var(--primary);
+		border-radius: 50%;
+		animation: pv-spin 0.8s linear infinite;
+	}
+	@keyframes pv-spin {
+		to { transform: rotate(360deg); }
 	}
 	:global(.pv-btn-primary) {
 		display: inline-flex;

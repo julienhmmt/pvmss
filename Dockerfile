@@ -25,26 +25,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
-# Copy frontend files.
+# Copy frontend files (old Vue SPA — no noVNC needed here; console uses the SvelteKit static build).
 FROM alpine:3.23.3 AS frontend
 WORKDIR /app
 
 COPY frontend/ /app/frontend/
-
-RUN set -eux; \
-    apk add --no-cache wget; \
-    mkdir -p /app/frontend/components/noVNC-1.6.0; \
-    wget -O /tmp/noVNC.tar.gz "https://github.com/novnc/noVNC/archive/refs/tags/v1.6.0.tar.gz"; \
-    tar -xzf /tmp/noVNC.tar.gz --strip-components=1 -C /app/frontend/components/noVNC-1.6.0; \
-    rm /tmp/noVNC.tar.gz; \
-    rm -rf /app/frontend/components/noVNC-1.6.0/tests \
-           /app/frontend/components/noVNC-1.6.0/docs \
-           /app/frontend/components/noVNC-1.6.0/po \
-           /app/frontend/components/noVNC-1.6.0/utils \
-           /app/frontend/components/noVNC-1.6.0/snap \
-           /app/frontend/components/noVNC-1.6.0/README.md; \
-    find /app/frontend/components/noVNC-1.6.0/app/locale -type f ! -name 'en.json' ! -name 'fr.json' -delete; \
-    apk del wget
 
 # Build SvelteKit admin SPA
 FROM node:lts-alpine3.22 AS svelte-builder
