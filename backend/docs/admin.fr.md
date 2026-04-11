@@ -21,10 +21,10 @@ L'administrateur de l'application PVMSS dispose d'un accès complet à toutes le
 1. Accédez au panneau d'administration sur `/admin` (mot de passe administrateur requis)
 2. Créez des tags pour catégoriser les machines virtuelles
 3. Examinez et configurez options suivantes que vous souhaitez mettre à disposition lors de la création des machines virtuelles :
-    - les stockages qui seront disponibles
-    - les images ISO
-    - les ponts réseau (vmbr)
-    - les limites de ressources (processeur, ram, et taille de disque)
+   - les stockages qui seront disponibles
+   - les images ISO
+   - les ponts réseau (vmbr)
+   - les limites de ressources (processeur, ram, et taille de disque)
 4. Créer autant de comptes utilisateurs que nécessaire
 5. Communiquez à vos utilisateurs l'accessibilité de l'application PVMSS pour qu'ils commencent à créer leurs VMs
 6. Surveillez les logs de l'application PVMSS pour détecter tout problème
@@ -72,7 +72,7 @@ En complément de ce rafraîchissement automatique :
 
 - Chaque carte de nœud dans `/admin/nodes` affiche un **bouton de rafraîchissement** dédié qui permet de mettre à jour immédiatement les métriques d'un nœud particulier sans attendre le worker.
 - La carte de chaque nœud affiche également la **date/heure de dernière mise à jour des ressources**, formatée selon le fuseau horaire déterminé par `TZ`.
-- Lorsque Proxmox signale un nœud comme **hors ligne**, PVMSS continue d'afficher les **dernières valeurs de ressources connues** (CPU, RAM, disque) pour ce nœud tant qu'une mesure a déjà été collectée, tout en indiquant clairement l'état *Hors ligne*.
+- Lorsque Proxmox signale un nœud comme **hors ligne**, PVMSS continue d'afficher les **dernières valeurs de ressources connues** (CPU, RAM, disque) pour ce nœud tant qu'une mesure a déjà été collectée, tout en indiquant clairement l'état _Hors ligne_.
 
 ### Gestion des tags
 
@@ -86,11 +86,11 @@ Les paramètres sont enregistrés dans un fichier au format JSON (chemin : `{"ta
 
 Cette rubrique permet de gérer les stockages Proxmox utilisés pour héberger les disques des machines virtuelles. Tous les backends de stockage capables de contenir des disques VM sont affichés, regroupés par nœud lorsque PVMSS est connecté à un cluster.
 
-Un bouton "Activer" ou "Désactiver" permet de sélectionner quelles paires `(nœud, stockage)` seront proposées sur la page *Créer une VM*. Activer un stockage ici ne modifie pas la configuration Proxmox sous-jacente ; cela contrôle uniquement ce que l'interface PVMSS expose aux utilisateurs.
+Un bouton "Activer" ou "Désactiver" permet de sélectionner quelles paires `(nœud, stockage)` seront proposées sur la page _Créer une VM_. Activer un stockage ici ne modifie pas la configuration Proxmox sous-jacente ; cela contrôle uniquement ce que l'interface PVMSS expose aux utilisateurs.
 
 Les paramètres sont enregistrés dans un fichier au format JSON (chemin : `{"enabled_storages": ["nom-noeud:nom_stockage"]}`).
 
-En bas de la page, une section **Configuration des disques** permet de définir le **nombre maximum de disques par VM** (`MaxDiskPerVM`). Cette valeur contrôle le nombre d'emplacements de disque disponibles dans le formulaire *Créer une VM*, en complément des limites techniques de chaque bus disque (VirtIO, SCSI, SATA, IDE).
+En bas de la page, une section **Configuration des disques** permet de définir le **nombre maximum de disques par VM** (`MaxDiskPerVM`). Cette valeur contrôle le nombre d'emplacements de disque disponibles dans le formulaire _Créer une VM_, en complément des limites techniques de chaque bus disque (VirtIO, SCSI, SATA, IDE).
 
 ### Gestion des ISO
 
@@ -108,11 +108,11 @@ Un bouton "Activer" ou "Désactiver" permet de sélectionner quelles paires `(n�
 
 Les paramètres sont enregistrés dans un fichier au format JSON (chemin : `{"vmbrs": ["nom-noeud:nom_pont_reseau"]}`).
 
-En haut de la page, une section **Configuration des cartes réseau** permet de définir le **nombre maximum de cartes réseau par VM** (`MaxNetworkCards`). Cette valeur contrôle le nombre de sections de carte réseau affichées sur la page *Créer une VM*. Elle est actuellement bornée entre 1 et 10.
+En haut de la page, une section **Configuration des cartes réseau** permet de définir le **nombre maximum de cartes réseau par VM** (`MaxNetworkCards`). Cette valeur contrôle le nombre de sections de carte réseau affichées sur la page _Créer une VM_. Elle est actuellement bornée entre 1 et 10.
 
 #### Vitesse des cartes réseau (Network Speed)
 
-Les utilisateurs peuvent, de façon optionnelle, spécifier une **vitesse réseau** pour chaque carte réseau virtuelle dans les formulaires *Créer une VM* et *Modifier les ressources*. Ce réglage est implémenté via le paramètre `rate` de Proxmox sur la carte (par exemple : `net0=virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000`).
+Les utilisateurs peuvent, de façon optionnelle, spécifier une **vitesse réseau** pour chaque carte réseau virtuelle dans les formulaires _Créer une VM_ et _Modifier les ressources_. Ce réglage est implémenté via le paramètre `rate` de Proxmox sur la carte (par exemple : `net0=virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000`).
 
 - Si le champ est **laissé vide**, PVMSS ne définit pas de `rate` et la carte réseau fonctionne à **vitesse illimitée** (comportement par défaut de Proxmox).
 - Si une valeur est fournie, elle est interprétée en **Mégaoctets par seconde (Mo/s)**.
@@ -146,7 +146,7 @@ Ce réglage permet de limiter légèrement la bande passante de certaines VMs, m
 
 #### Considérations pour la configuration du MTU
 
-Les utilisateurs peuvent, de façon optionnelle, spécifier un **MTU (Maximum Transmission Unit)** pour chaque carte réseau virtuelle dans les formulaires *Créer une VM* et *Modifier les ressources*.
+Les utilisateurs peuvent, de façon optionnelle, spécifier un **MTU (Maximum Transmission Unit)** pour chaque carte réseau virtuelle dans les formulaires _Créer une VM_ et _Modifier les ressources_.
 
 - Si le **champ MTU est laissé vide**, PVMSS ne transmet **aucun** paramètre explicite `mtu=` à Proxmox et l'interface utilise le **MTU par défaut de 1500**.
 - Si une valeur est fournie, elle est interprétée comme un MTU en **octets** et doit se situer dans la plage **576–9000**.
@@ -166,7 +166,7 @@ Du point de vue administrateur :
 
 Cette rubrique permet de gérer des limites pour les machines virtuelles, pour les nœuds et pour les utilisateurs.
 
-Le formulaire **Limites des VMs** permet de définir le minimum et le maximum de sockets CPU, de cœurs CPU, de mémoire vive et de taille de disque virtuel qu'une nouvelle machine virtuelle peut avoir. Ces limites sont appliquées à la fois sur la page *Créer une VM* et sur le formulaire *Modifier les ressources* de la page de détails de la VM.
+Le formulaire **Limites des VMs** permet de définir le minimum et le maximum de sockets CPU, de cœurs CPU, de mémoire vive et de taille de disque virtuel qu'une nouvelle machine virtuelle peut avoir. Ces limites sont appliquées à la fois sur la page _Créer une VM_ et sur le formulaire _Modifier les ressources_ de la page de détails de la VM.
 
 Un second formulaire, dédié aux **limites des nœuds**, permet de définir des limites agrégées pour chaque nœud (nombre total de cœurs et quantité totale de mémoire que l'ensemble des VMs gérées par PVMSS peuvent consommer sur ce nœud). La page d'administration affiche également l'utilisation agrégée actuelle par nœud avec des barres de progression, afin de repérer rapidement les nœuds proches de leur capacité configurée.
 
@@ -268,7 +268,7 @@ Après création, l'utilisateur peut se connecter à PVMSS avec les identifiants
 - Pour créer des VMs en self‑service, un administrateur doit soit :
   - Se connecter en tant qu'utilisateur PVMSS classique (avec son propre pool `pvmss_*`), soit
   - Créer et gérer les VMs directement depuis l'interface Proxmox.
-- Depuis l'interface admin PVMSS, les administrateurs peuvent **voir et gérer les VMs des utilisateurs** via la page *Recherche* et la page *Admin VMs* :
+- Depuis l'interface admin PVMSS, les administrateurs peuvent **voir et gérer les VMs des utilisateurs** via la page _Recherche_ et la page _Admin VMs_ :
   - Ouvrir la page de détails de n'importe quelle VM.
   - Utiliser les mêmes actions de cycle de vie et de modification de ressources que celles exposées aux utilisateurs finaux (sous réserve des permissions Proxmox).
 
@@ -276,18 +276,18 @@ Après création, l'utilisateur peut se connecter à PVMSS avec les identifiants
 
 PVMSS est une interface self‑service ciblée construite au‑dessus de Proxmox VE. Le tableau suivant résume où réaliser les actions les plus courantes :
 
-| Action | PVMSS | Interface Proxmox VE |
-| --- | --- | --- |
-| Créer une VM KVM/QEMU | Oui (self‑service, contraintes par les limites et presets définis par les admins) | Oui (toutes les options de configuration) |
-| Créer un conteneur LXC | Non | Oui |
-| Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options) |
-| Gérer les snapshots | Oui (créer, éditer, supprimer, restaurer) | Oui (gestion complète des snapshots) |
-| Lancer des sauvegardes / restaurations | Non | Oui |
-| Migrer des VMs entre nœuds (migration à chaud) | Non | Oui |
-| Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.) | Partiellement (choix du pont et du modèle de carte uniquement) | Oui (pile réseau complète) |
-| Gérer des templates de VM / clonage | Non | Oui |
-| Configurer cloud-init | Non | Oui |
-| Gérer les utilisateurs et permissions | Oui (création/suppression d'utilisateurs PVMSS et de pools ; s'appuie sur les rôles Proxmox) | Oui (RBAC complet, royaumes, rôles, ACLs) |
+| Action                                                                                            | PVMSS                                                                                                | Interface Proxmox VE                      |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Créer une VM KVM/QEMU                                                                             | Oui (self‑service, contraintes par les limites et presets définis par les admins)                    | Oui (toutes les options de configuration) |
+| Créer un conteneur LXC                                                                            | Non                                                                                                  | Oui                                       |
+| Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options)          |
+| Gérer les snapshots                                                                               | Oui (créer, éditer, supprimer, restaurer)                                                            | Oui (gestion complète des snapshots)      |
+| Lancer des sauvegardes / restaurations                                                            | Non                                                                                                  | Oui                                       |
+| Migrer des VMs entre nœuds (migration à chaud)                                                    | Non                                                                                                  | Oui                                       |
+| Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.)                            | Partiellement (choix du pont et du modèle de carte uniquement)                                       | Oui (pile réseau complète)                |
+| Gérer des templates de VM / clonage                                                               | Non                                                                                                  | Oui                                       |
+| Configurer cloud-init                                                                             | Non                                                                                                  | Oui                                       |
+| Gérer les utilisateurs et permissions                                                             | Oui (création/suppression d'utilisateurs PVMSS et de pools ; s'appuie sur les rôles Proxmox)         | Oui (RBAC complet, royaumes, rôles, ACLs) |
 
 Ce comparatif n'est pas exhaustif mais met en avant le fait que PVMSS expose volontairement un sous‑ensemble sécurisé des fonctionnalités Proxmox pour les utilisateurs finaux.
 
@@ -368,7 +368,7 @@ Pour investiguer un problème, combinez toujours les informations de `/admin/app
 
 PVMSS ne gère pas l'installation de l'**agent invité QEMU** dans les machines virtuelles, mais il expose et consomme son statut à plusieurs endroits :
 
-- Sur la page **Détails de la VM**, un petit badge intitulé *« Agent invité QEMU »* affiche l'état connu de l'agent (Disponible / Indisponible / Inconnu / Hors ligne).
+- Sur la page **Détails de la VM**, un petit badge intitulé _« Agent invité QEMU »_ affiche l'état connu de l'agent (Disponible / Indisponible / Inconnu / Hors ligne).
 - L'action **Arrêt** utilise un court contrôle de santé de l'agent :
   - Si l'agent est clairement indisponible, PVMSS échoue rapidement avec un message convivial et suggère d'utiliser **Arrêter** au lieu d'attendre de longs timeouts.
   - Si l'agent est disponible, PVMSS envoie une requête d'arrêt gracieux et interroge brièvement l'état de la VM pour confirmer qu'elle s'arrête.
@@ -414,7 +414,7 @@ Les administrateurs doivent surveiller ces journaux pour détecter les problème
   - L'URL Proxmox et les paramètres de vérification SSL.
   - La détection cluster vs standalone et le nombre de nœuds visibles.
 - Configurez, dans l'ordre :
-  - Les nœuds et stockages exposés sur la page *Créer une VM*.
+  - Les nœuds et stockages exposés sur la page _Créer une VM_.
   - Les images ISO disponibles pour les utilisateurs.
   - Les ponts réseau (VMBR) et le nombre maximum de cartes réseau.
   - Les limites de VM, de nœud et d'utilisateur dans la rubrique **Limites**.

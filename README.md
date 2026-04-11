@@ -71,7 +71,7 @@ Before using PVMSS in production, you **must**:
 - Create a `PVMSS_Admin` user (human admin to manage PVMSS app and PVMSS users).
 - Create the ACLs for the `PVMSS_Service` and `PVMSS_Admin` users.
 
-In your Proxmox cluster, you can create the roles and ACLs using the `pveum` command-line tool. You can also create them using the Proxmox web interface. As *root*, create the roles and privileges:
+In your Proxmox cluster, you can create the roles and ACLs using the `pveum` command-line tool. You can also create them using the Proxmox web interface. As _root_, create the roles and privileges:
 
 ```bash
 # PVMSS_Service
@@ -129,10 +129,10 @@ You can now use the API token in the environment variables `PROXMOX_API_TOKEN_NA
   "limits": {
     "nodes": {},
     "vm": {
-      "sockets": {"min": 1, "max": 1},
-      "cores":   {"min": 1, "max": 2},
-      "ram":     {"min": 1, "max": 4},
-      "disk":    {"min": 6, "max": 12}
+      "sockets": { "min": 1, "max": 1 },
+      "cores": { "min": 1, "max": 2 },
+      "ram": { "min": 1, "max": 4 },
+      "disk": { "min": 6, "max": 12 }
     },
     "max_snapshot": 8
   }
@@ -149,22 +149,22 @@ The tag `pvmss` is used by default for VMs created via PVMSS, it cannot and shou
 
 You can rely on `.env` + `env_file` or inline `environment:` entries, but **not both**. The needed variables are listed below:
 
-| Variable | Description | Required | Default |
-| --- | --- | :---: | --- |
-| `ADMIN_PASSWORD_HASH` | Bcrypt hash for the admin UI login | ✅ | — |
-| `SESSION_SECRET` | 32+ byte secret to encrypt sessions/cookies | ✅ | — |
-| `PROXMOX_API_TOKEN_NAME` | Proxmox token name (`user@pve!token`) used by the backend | ✅ | — |
-| `PROXMOX_API_TOKEN_VALUE` | Token secret that matches the name above | ✅ | — |
-| `PROXMOX_URL` | Full API URL (`https://host:8006/api2/json`) | ✅ | — |
-| `PROXMOX_VERIFY_SSL` | `true` for trusted certs, `false` for self-signed labs | ❌ | `false` |
-| `PVMSS_ENV` | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` | ❌ | `production` |
-| `PVMSS_OFFLINE` | `true` disables all Proxmox calls (demo mode) | ❌ | `false` |
-| `PVMSS_SETTINGS_PATH` | Inside-container path to `settings.json` | ❌ | `/app/settings.json` |
-| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`) | ❌ | `INFO` |
-| `LOG_OUTPUT` | Log destination: `stdout`, `file`, or `both` | ❌ | `stdout` |
-| `LOG_FILE_PATH` | File path when `LOG_OUTPUT` is `file` or `both` | ❌ | — |
-| `LOG_FORMAT` | `console` (human readable) or `json` (machine/SIEM) | ❌ | `console` |
-| `TZ` | Container timezone | ❌ | `UTC` |
+| Variable                  | Description                                                                  | Required | Default              |
+| ------------------------- | ---------------------------------------------------------------------------- | :------: | -------------------- |
+| `ADMIN_PASSWORD_HASH`     | Bcrypt hash for the admin UI login                                           |    ✅    | —                    |
+| `SESSION_SECRET`          | 32+ byte secret to encrypt sessions/cookies                                  |    ✅    | —                    |
+| `PROXMOX_API_TOKEN_NAME`  | Proxmox token name (`user@pve!token`) used by the backend                    |    ✅    | —                    |
+| `PROXMOX_API_TOKEN_VALUE` | Token secret that matches the name above                                     |    ✅    | —                    |
+| `PROXMOX_URL`             | Full API URL (`https://host:8006/api2/json`)                                 |    ✅    | —                    |
+| `PROXMOX_VERIFY_SSL`      | `true` for trusted certs, `false` for self-signed labs                       |    ❌    | `false`              |
+| `PVMSS_ENV`               | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` |    ❌    | `production`         |
+| `PVMSS_OFFLINE`           | `true` disables all Proxmox calls (demo mode)                                |    ❌    | `false`              |
+| `PVMSS_SETTINGS_PATH`     | Inside-container path to `settings.json`                                     |    ❌    | `/app/settings.json` |
+| `LOG_LEVEL`               | Log verbosity (`debug`, `info`, `warn`, `error`)                             |    ❌    | `INFO`               |
+| `LOG_OUTPUT`              | Log destination: `stdout`, `file`, or `both`                                 |    ❌    | `stdout`             |
+| `LOG_FILE_PATH`           | File path when `LOG_OUTPUT` is `file` or `both`                              |    ❌    | —                    |
+| `LOG_FORMAT`              | `console` (human readable) or `json` (machine/SIEM)                          |    ❌    | `console`            |
+| `TZ`                      | Container timezone                                                           |    ❌    | `UTC`                |
 
 > Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
 
@@ -201,11 +201,11 @@ The JSON format is line-delimited and includes fields such as `component`, `oper
 
 ## Deployment options
 
-| Platform | Notes |
-| --- | --- |
-| **Docker / Podman** | Recommended for quick trials or single-node installs. Mount `settings.json` and expose port `50000`. |
-| **Docker Compose** | Best experience: one service, reproducible environment, easy env var management. |
-| **Kubernetes** | Use [`pvmss-deployment.yaml`](pvmss-deployment.yaml) for namespace + secret + configmap + PVC + Deployment + Service. Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute (see `pvmss-httproute.yml`). |
+| Platform            | Notes                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Docker / Podman** | Recommended for quick trials or single-node installs. Mount `settings.json` and expose port `50000`.                                                                                                                                       |
+| **Docker Compose**  | Best experience: one service, reproducible environment, easy env var management.                                                                                                                                                           |
+| **Kubernetes**      | Use [`pvmss-deployment.yaml`](pvmss-deployment.yaml) for namespace + secret + configmap + PVC + Deployment + Service. Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute (see `pvmss-httproute.yml`). |
 
 ## Quick start with Docker run
 
@@ -280,7 +280,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 64M
 ```
 

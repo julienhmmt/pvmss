@@ -84,7 +84,7 @@ The VM details page provides comprehensive management and monitoring capabilitie
 
 #### QEMU guest agent
 
-On the *VM details* page, a small badge labelled **“QEMU guest agent”** indicates the last known status of the QEMU agent inside the guest:
+On the _VM details_ page, a small badge labelled **“QEMU guest agent”** indicates the last known status of the QEMU agent inside the guest:
 
 - **Available**: PVMSS has recently received data from the agent (for example IP addresses). Graceful shutdowns are expected to work.
 - **Unavailable**: The guest agent is not installed, not running, or did not respond in time. In this case:
@@ -117,7 +117,7 @@ Review detailed configuration information:
 
 ### Profile management
 
-You can update certain VM properties from the *VM details* page:
+You can update certain VM properties from the _VM details_ page:
 
 - **Description**: Update the VM description (plain text or simple Markdown, depending on administrator configuration)
 - **Tags**: Add or remove tags for better organization
@@ -126,7 +126,7 @@ Your **Profile** page shows a summary of your VMs (total, running, stopped) and 
 
 ### Editing virtual machine resources
 
-In addition to description and tags, you can modify some resources of an existing VM from the *VM details* page, as long as the VM is **stopped**:
+In addition to description and tags, you can modify some resources of an existing VM from the _VM details_ page, as long as the VM is **stopped**:
 
 - **CPU**: Number of sockets and cores (within the limits defined by administrators)
 - **Memory (RAM)**: Allocated memory in MB/GB (within the limits defined by administrators)
@@ -275,18 +275,18 @@ The PVMSS application is maintained by your organization's IT team. Contact your
 
 PVMSS provides a simplified self‑service interface on top of Proxmox VE. The table below summarizes where common actions are performed:
 
-| Action | PVMSS | Proxmox VE GUI |
-| --- | --- | --- |
-| Create KVM/QEMU VM | Yes (self‑service creation within administrator‑defined limits) | Yes (full configuration options) |
-| Create LXC container | No | Yes |
-| Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options) |
-| Manage snapshots | Yes (create, edit, delete, rollback) | Yes (full snapshot management) |
-| Run backups / restores | No | Yes |
-| Live migrate VMs between nodes | No | Yes |
-| Configure advanced networking (VLANs, firewall rules, etc.) | Partially (choose bridge and NIC model only) | Yes (full networking stack) |
-| Manage VM templates / cloning | No | Yes |
-| Configure cloud-init | No | Yes |
-| Manage users and permissions | Indirectly (your account and pool are managed by administrators) | Yes (full RBAC, realms, roles, ACLs) |
+| Action                                                                  | PVMSS                                                                   | Proxmox VE GUI                       |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------ |
+| Create KVM/QEMU VM                                                      | Yes (self‑service creation within administrator‑defined limits)         | Yes (full configuration options)     |
+| Create LXC container                                                    | No                                                                      | Yes                                  |
+| Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options)            |
+| Manage snapshots                                                        | Yes (create, edit, delete, rollback)                                    | Yes (full snapshot management)       |
+| Run backups / restores                                                  | No                                                                      | Yes                                  |
+| Live migrate VMs between nodes                                          | No                                                                      | Yes                                  |
+| Configure advanced networking (VLANs, firewall rules, etc.)             | Partially (choose bridge and NIC model only)                            | Yes (full networking stack)          |
+| Manage VM templates / cloning                                           | No                                                                      | Yes                                  |
+| Configure cloud-init                                                    | No                                                                      | Yes                                  |
+| Manage users and permissions                                            | Indirectly (your account and pool are managed by administrators)        | Yes (full RBAC, realms, roles, ACLs) |
 
 If you need a feature that is only available in Proxmox VE, contact your administrators so they can perform the operation directly or adjust your environment.
 

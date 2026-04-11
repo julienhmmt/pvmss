@@ -8,13 +8,13 @@
 
 ## État résumé
 
-| Phase | Description | État |
-|-------|-------------|------|
-| 1 — Foundation | SvelteKit + API client + auth | ✅ Fait (partiel, voir gaps) |
-| 2 — Core user pages | Home, VM details, VM create, Search, Profile | 🔶 Partiel |
-| 3 — VM Console | noVNC intégré | 🔶 Partiel |
-| 4 — Admin pages | Toutes les pages admin | ✅ Fait (structure présente) |
-| 5 — Polish & Cutover | Migration finale, suppression legacy | ❌ Non démarré |
+| Phase                | Description                                  | État                         |
+| -------------------- | -------------------------------------------- | ---------------------------- |
+| 1 — Foundation       | SvelteKit + API client + auth                | ✅ Fait (partiel, voir gaps) |
+| 2 — Core user pages  | Home, VM details, VM create, Search, Profile | 🔶 Partiel                   |
+| 3 — VM Console       | noVNC intégré                                | 🔶 Partiel                   |
+| 4 — Admin pages      | Toutes les pages admin                       | ✅ Fait (structure présente) |
+| 5 — Polish & Cutover | Migration finale, suppression legacy         | ❌ Non démarré               |
 
 ---
 
@@ -95,8 +95,8 @@ let loading = $state(false);
 let error = $state<string | null>(null);
 
 // Méthodes attendues
-async function fetchVMs(): Promise<void>
-async function vmAction(id: number, action: VMAction): Promise<void>
+async function fetchVMs(): Promise<void>;
+async function vmAction(id: number, action: VMAction): Promise<void>;
 ```
 
 Actuellement la liste VM est rechargée localement dans chaque page.
@@ -107,7 +107,7 @@ Cache des settings applicatifs (nodes, storages, VMBRs, limites) pour éviter de
 
 ```typescript
 let settings = $state<AppSettings | null>(null);
-async function fetchSettings(): Promise<void>
+async function fetchSettings(): Promise<void>;
 ```
 
 ---
@@ -120,13 +120,23 @@ Type `VM` général (list + details) absent en tant que fichier dédié. Actuell
 
 ```typescript
 interface VM {
-  vmid: number; name: string; node: string;
-  status: 'running' | 'stopped' | 'paused';
-  cpu: number; maxcpu: number;
-  mem: number; maxmem: number;
-  disk: number; maxdisk: number;
-  uptime: number; tags: string[]; description: string; pool: string;
-  disks: Disk[]; networks: NetworkCard[]; cloudinit?: CloudInitConfig;
+  vmid: number;
+  name: string;
+  node: string;
+  status: "running" | "stopped" | "paused";
+  cpu: number;
+  maxcpu: number;
+  mem: number;
+  maxmem: number;
+  disk: number;
+  maxdisk: number;
+  uptime: number;
+  tags: string[];
+  description: string;
+  pool: string;
+  disks: Disk[];
+  networks: NetworkCard[];
+  cloudinit?: CloudInitConfig;
 }
 ```
 
@@ -135,15 +145,31 @@ interface VM {
 Types d'authentification absents :
 
 ```typescript
-interface User { username: string; isAdmin: boolean; pool?: string; vmCount?: number; }
-interface LoginRequest { username: string; password: string; }
-interface LoginResponse { access_token: string; user: User; }
+interface User {
+  username: string;
+  isAdmin: boolean;
+  pool?: string;
+  vmCount?: number;
+}
+interface LoginRequest {
+  username: string;
+  password: string;
+}
+interface LoginResponse {
+  access_token: string;
+  user: User;
+}
 ```
 
 ### 4.3 `src/lib/types/settings.ts`
 
 ```typescript
-interface AppSettings { nodes: string[]; storages: Storage[]; vmbrs: VMBR[]; limits: Limits; }
+interface AppSettings {
+  nodes: string[];
+  storages: Storage[];
+  vmbrs: VMBR[];
+  limits: Limits;
+}
 ```
 
 ---
@@ -197,12 +223,12 @@ Actuellement la protection est probablement dans les layouts mais sans composant
 
 Ces composants sont inlinés dans les pages (monolithiques). Le plan de modernisation `2026-04-10-frontend-modernisation.md` couvre la découpe de VM Create et VM Details. Le présent document note que les composants réutilisables entre pages sont également absents :
 
-| Composant | Usage |
-| --------- | ----- |
-| `VmCard.svelte` | Home + Profile + Search |
-| `VmStatusBadge.svelte` | Partout où le statut est affiché |
-| `VmActionButtons.svelte` | Home + VM Details |
-| `VmConsole.svelte` | Route console |
+| Composant                | Usage                            |
+| ------------------------ | -------------------------------- |
+| `VmCard.svelte`          | Home + Profile + Search          |
+| `VmStatusBadge.svelte`   | Partout où le statut est affiché |
+| `VmActionButtons.svelte` | Home + VM Details                |
+| `VmConsole.svelte`       | Route console                    |
 
 ---
 

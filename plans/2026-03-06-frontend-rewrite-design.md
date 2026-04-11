@@ -9,16 +9,16 @@ Replace the existing Go templ + Alpine.js + HTMX + Vue 3 hybrid frontend with a 
 
 ## Decisions
 
-| Decision | Choice | Rationale |
-| -------- | ------ | --------- |
-| Architecture | Full SPA (adapter-static) | Internal tool, no SEO needed, keeps single-binary deploy |
-| API | Full REST `/api/v1/*` | Clean SPA needs complete JSON API surface |
-| Auth | JWT-only | No server-rendered pages need sessions; simplifies backend |
-| noVNC | npm package `@novnc/novnc` | Same library, properly bundled by Vite |
-| i18n | English-only (deferred) | Simplifies initial migration |
-| Migration | Big bang | Auth model changes fundamentally; coexistence too complex |
-| Admin | Same SPA, guarded routes | One app, one build, route-level protection |
-| Legacy frontend | Moved to `frontend-legacy/` | Preserved for reference during migration |
+| Decision        | Choice                      | Rationale                                                  |
+| --------------- | --------------------------- | ---------------------------------------------------------- |
+| Architecture    | Full SPA (adapter-static)   | Internal tool, no SEO needed, keeps single-binary deploy   |
+| API             | Full REST `/api/v1/*`       | Clean SPA needs complete JSON API surface                  |
+| Auth            | JWT-only                    | No server-rendered pages need sessions; simplifies backend |
+| noVNC           | npm package `@novnc/novnc`  | Same library, properly bundled by Vite                     |
+| i18n            | English-only (deferred)     | Simplifies initial migration                               |
+| Migration       | Big bang                    | Auth model changes fundamentally; coexistence too complex  |
+| Admin           | Same SPA, guarded routes    | One app, one build, route-level protection                 |
+| Legacy frontend | Moved to `frontend-legacy/` | Preserved for reference during migration                   |
 
 ## Design System
 
@@ -179,111 +179,111 @@ frontend-svelte/
 
 ### Auth (`/api/v1/auth/`)
 
-| Method | Path | Body / Params | Response | Notes |
-|--------|------|---------------|----------|-------|
-| POST | `/login` | `{ username, password }` | `{ access_token, user }` + httpOnly refresh cookie | |
-| POST | `/refresh` | (httpOnly cookie) | `{ access_token }` | Silent refresh |
-| POST | `/logout` | — | 204 | Clears refresh cookie |
-| GET | `/me` | — | `{ username, isAdmin, pool }` | JWT required |
-| PUT | `/me/password` | `{ current, new }` | 204 | JWT required |
+| Method | Path           | Body / Params            | Response                                           | Notes                 |
+| ------ | -------------- | ------------------------ | -------------------------------------------------- | --------------------- |
+| POST   | `/login`       | `{ username, password }` | `{ access_token, user }` + httpOnly refresh cookie |                       |
+| POST   | `/refresh`     | (httpOnly cookie)        | `{ access_token }`                                 | Silent refresh        |
+| POST   | `/logout`      | —                        | 204                                                | Clears refresh cookie |
+| GET    | `/me`          | —                        | `{ username, isAdmin, pool }`                      | JWT required          |
+| PUT    | `/me/password` | `{ current, new }`       | 204                                                | JWT required          |
 
 ### VMs (`/api/v1/vms/`)
 
-| Method | Path | Body / Params | Response | Notes |
-|--------|------|---------------|----------|-------|
-| GET | `/vms` | — | `[VM]` | User's VMs |
-| GET | `/vms/:id` | — | `VM` (full details) | |
-| POST | `/vms` | `VMCreateRequest` | `{ vmid, task }` | Create VM |
-| DELETE | `/vms/:id` | — | 204 | Delete VM |
-| POST | `/vms/:id/action` | `{ action }` | `{ task }` | start/stop/shutdown/reboot |
-| PUT | `/vms/:id/description` | `{ description }` | 204 | |
-| PUT | `/vms/:id/tags` | `{ tags[] }` | 204 | |
-| PUT | `/vms/:id/resources` | `{ cores, memory, disk }` | 204 | |
-| POST | `/vms/:id/network/:iface/toggle` | — | 204 | Enable/disable NIC |
+| Method | Path                             | Body / Params             | Response            | Notes                      |
+| ------ | -------------------------------- | ------------------------- | ------------------- | -------------------------- |
+| GET    | `/vms`                           | —                         | `[VM]`              | User's VMs                 |
+| GET    | `/vms/:id`                       | —                         | `VM` (full details) |                            |
+| POST   | `/vms`                           | `VMCreateRequest`         | `{ vmid, task }`    | Create VM                  |
+| DELETE | `/vms/:id`                       | —                         | 204                 | Delete VM                  |
+| POST   | `/vms/:id/action`                | `{ action }`              | `{ task }`          | start/stop/shutdown/reboot |
+| PUT    | `/vms/:id/description`           | `{ description }`         | 204                 |                            |
+| PUT    | `/vms/:id/tags`                  | `{ tags[] }`              | 204                 |                            |
+| PUT    | `/vms/:id/resources`             | `{ cores, memory, disk }` | 204                 |                            |
+| POST   | `/vms/:id/network/:iface/toggle` | —                         | 204                 | Enable/disable NIC         |
 
 ### Snapshots (`/api/v1/vms/:id/snapshots/`)
 
-| Method | Path | Body / Params | Response |
-|--------|------|---------------|----------|
-| GET | `/vms/:id/snapshots` | — | `[Snapshot]` |
-| POST | `/vms/:id/snapshots` | `{ name, description }` | `{ task }` |
-| DELETE | `/vms/:id/snapshots/:name` | — | `{ task }` |
-| POST | `/vms/:id/snapshots/:name/rollback` | — | `{ task }` |
+| Method | Path                                | Body / Params           | Response     |
+| ------ | ----------------------------------- | ----------------------- | ------------ |
+| GET    | `/vms/:id/snapshots`                | —                       | `[Snapshot]` |
+| POST   | `/vms/:id/snapshots`                | `{ name, description }` | `{ task }`   |
+| DELETE | `/vms/:id/snapshots/:name`          | —                       | `{ task }`   |
+| POST   | `/vms/:id/snapshots/:name/rollback` | —                       | `{ task }`   |
 
 ### Console (`/api/v1/vms/:id/console/`)
 
-| Method | Path | Body / Params | Response |
-|--------|------|---------------|----------|
-| POST | `/vms/:id/console/vnc-ticket` | — | `{ ticket, port }` |
-| WS | `/vms/:id/console/websocket` | query: `ticket, port` | WebSocket stream |
+| Method | Path                          | Body / Params         | Response           |
+| ------ | ----------------------------- | --------------------- | ------------------ |
+| POST   | `/vms/:id/console/vnc-ticket` | —                     | `{ ticket, port }` |
+| WS     | `/vms/:id/console/websocket`  | query: `ticket, port` | WebSocket stream   |
 
 ### Search (`/api/v1/search/`)
 
-| Method | Path | Params | Response |
-|--------|------|--------|----------|
-| GET | `/search/vms` | `?q=&filter=vmid\|name\|tags` | `[VM]` |
+| Method | Path          | Params                        | Response |
+| ------ | ------------- | ----------------------------- | -------- |
+| GET    | `/search/vms` | `?q=&filter=vmid\|name\|tags` | `[VM]`   |
 
 ### Admin (`/api/v1/admin/`) — all require `isAdmin` JWT claim
 
-| Method | Path | Body / Params | Response |
-|--------|------|---------------|----------|
-| GET | `/admin/nodes` | — | `[Node]` |
-| GET | `/admin/storage` | — | `[Storage]` |
-| GET | `/admin/vms` | — | `[VM]` (all VMs) |
-| GET | `/admin/pools` | — | `[Pool]` |
-| POST | `/admin/pools` | `{ name, ... }` | `Pool` |
-| DELETE | `/admin/pools/:id` | — | 204 |
-| GET | `/admin/tags` | — | `[Tag]` |
-| POST | `/admin/tags` | `{ name }` | `Tag` |
-| DELETE | `/admin/tags/:name` | — | 204 |
-| GET | `/admin/limits` | — | `Limits` |
-| PUT | `/admin/limits` | `Limits` | 204 |
-| GET | `/admin/vmbr` | — | `[VMBR]` |
-| GET | `/admin/cloudinit` | — | `[CloudInitTemplate]` |
-| POST | `/admin/cloudinit` | `CloudInitTemplate` | `CloudInitTemplate` |
-| PUT | `/admin/cloudinit/:id` | `CloudInitTemplate` | 204 |
-| DELETE | `/admin/cloudinit/:id` | — | 204 |
-| POST | `/admin/cloudinit/:id/toggle` | — | 204 |
-| GET | `/admin/iso` | — | `[ISO]` |
-| GET | `/admin/settings` | — | `Settings` |
-| GET | `/admin/appinfo` | — | `AppInfo` |
+| Method | Path                          | Body / Params       | Response              |
+| ------ | ----------------------------- | ------------------- | --------------------- |
+| GET    | `/admin/nodes`                | —                   | `[Node]`              |
+| GET    | `/admin/storage`              | —                   | `[Storage]`           |
+| GET    | `/admin/vms`                  | —                   | `[VM]` (all VMs)      |
+| GET    | `/admin/pools`                | —                   | `[Pool]`              |
+| POST   | `/admin/pools`                | `{ name, ... }`     | `Pool`                |
+| DELETE | `/admin/pools/:id`            | —                   | 204                   |
+| GET    | `/admin/tags`                 | —                   | `[Tag]`               |
+| POST   | `/admin/tags`                 | `{ name }`          | `Tag`                 |
+| DELETE | `/admin/tags/:name`           | —                   | 204                   |
+| GET    | `/admin/limits`               | —                   | `Limits`              |
+| PUT    | `/admin/limits`               | `Limits`            | 204                   |
+| GET    | `/admin/vmbr`                 | —                   | `[VMBR]`              |
+| GET    | `/admin/cloudinit`            | —                   | `[CloudInitTemplate]` |
+| POST   | `/admin/cloudinit`            | `CloudInitTemplate` | `CloudInitTemplate`   |
+| PUT    | `/admin/cloudinit/:id`        | `CloudInitTemplate` | 204                   |
+| DELETE | `/admin/cloudinit/:id`        | —                   | 204                   |
+| POST   | `/admin/cloudinit/:id/toggle` | —                   | 204                   |
+| GET    | `/admin/iso`                  | —                   | `[ISO]`               |
+| GET    | `/admin/settings`             | —                   | `Settings`            |
+| GET    | `/admin/appinfo`              | —                   | `AppInfo`             |
 
 ### Health (public, no auth)
 
-| Method | Path | Response |
-|--------|------|----------|
-| GET | `/api/v1/health` | `{ status, version }` |
-| GET | `/api/v1/health/proxmox` | `{ connected, url }` |
+| Method | Path                     | Response              |
+| ------ | ------------------------ | --------------------- |
+| GET    | `/api/v1/health`         | `{ status, version }` |
+| GET    | `/api/v1/health/proxmox` | `{ connected, url }`  |
 
 ## Pages & Features Mapping
 
 ### User Pages
 
-| Page | Current (templ) | New (Svelte) | Key Components |
-|------|----------------|--------------|----------------|
-| Login | `login.templ` | `routes/login/+page.svelte` | shadcn Form, Input, Button |
-| Home/Dashboard | `home.templ` + Vue SPA | `routes/+page.svelte` | VmCard grid, VmActionButtons |
-| VM Create | `vm_create.templ` (giant form) | `routes/vm/create/+page.svelte` | Multi-step wizard (Tabs/Stepper), Form validation |
-| VM Details | `vm_details.templ` + Alpine | `routes/vm/[id]/+page.svelte` | Metrics auto-refresh, inline edit, snapshot manager |
-| VM Console | `vm-console.js` + noVNC | `routes/vm/[id]/console/+page.svelte` | VmConsole component wrapping @novnc/novnc |
-| Search | `search.templ` + Alpine | `routes/search/+page.svelte` | Debounced search, filter chips |
-| Profile | `profile.templ` + Alpine | `routes/profile/+page.svelte` | User info card, password form, VM list |
+| Page           | Current (templ)                | New (Svelte)                          | Key Components                                      |
+| -------------- | ------------------------------ | ------------------------------------- | --------------------------------------------------- |
+| Login          | `login.templ`                  | `routes/login/+page.svelte`           | shadcn Form, Input, Button                          |
+| Home/Dashboard | `home.templ` + Vue SPA         | `routes/+page.svelte`                 | VmCard grid, VmActionButtons                        |
+| VM Create      | `vm_create.templ` (giant form) | `routes/vm/create/+page.svelte`       | Multi-step wizard (Tabs/Stepper), Form validation   |
+| VM Details     | `vm_details.templ` + Alpine    | `routes/vm/[id]/+page.svelte`         | Metrics auto-refresh, inline edit, snapshot manager |
+| VM Console     | `vm-console.js` + noVNC        | `routes/vm/[id]/console/+page.svelte` | VmConsole component wrapping @novnc/novnc           |
+| Search         | `search.templ` + Alpine        | `routes/search/+page.svelte`          | Debounced search, filter chips                      |
+| Profile        | `profile.templ` + Alpine       | `routes/profile/+page.svelte`         | User info card, password form, VM list              |
 
 ### Admin Pages
 
-| Page | Current (templ) | New (Svelte) | Key Components |
-|------|----------------|--------------|----------------|
-| Dashboard | `admin_layout.templ` | `routes/admin/+page.svelte` | Overview cards |
-| Nodes | `admin_nodes.templ` | `routes/admin/nodes/+page.svelte` | NodeCard grid, status indicators |
-| Storage | `admin_storage.templ` | `routes/admin/storage/+page.svelte` | DataTable |
-| VMs (all) | `admin_vms.templ` | `routes/admin/vms/+page.svelte` | DataTable with actions |
-| Pools | `admin_userpool.templ` | `routes/admin/pools/+page.svelte` | PoolManager (CRUD) |
-| Tags | `admin_tags.templ` | `routes/admin/tags/+page.svelte` | TagManager (create/delete) |
-| Limits | `admin_limits.templ` | `routes/admin/limits/+page.svelte` | LimitsEditor form |
-| VMBR | `admin_vmbr.templ` | `routes/admin/vmbr/+page.svelte` | DataTable |
+| Page       | Current (templ)         | New (Svelte)                          | Key Components                   |
+| ---------- | ----------------------- | ------------------------------------- | -------------------------------- |
+| Dashboard  | `admin_layout.templ`    | `routes/admin/+page.svelte`           | Overview cards                   |
+| Nodes      | `admin_nodes.templ`     | `routes/admin/nodes/+page.svelte`     | NodeCard grid, status indicators |
+| Storage    | `admin_storage.templ`   | `routes/admin/storage/+page.svelte`   | DataTable                        |
+| VMs (all)  | `admin_vms.templ`       | `routes/admin/vms/+page.svelte`       | DataTable with actions           |
+| Pools      | `admin_userpool.templ`  | `routes/admin/pools/+page.svelte`     | PoolManager (CRUD)               |
+| Tags       | `admin_tags.templ`      | `routes/admin/tags/+page.svelte`      | TagManager (create/delete)       |
+| Limits     | `admin_limits.templ`    | `routes/admin/limits/+page.svelte`    | LimitsEditor form                |
+| VMBR       | `admin_vmbr.templ`      | `routes/admin/vmbr/+page.svelte`      | DataTable                        |
 | Cloud-Init | `admin_cloudinit.templ` | `routes/admin/cloudinit/+page.svelte` | CloudInitManager (CRUD + toggle) |
-| ISO | `admin_iso.templ` | `routes/admin/iso/+page.svelte` | DataTable |
-| App Info | `admin_appinfo.templ` | `routes/admin/appinfo/+page.svelte` | Diagnostic cards |
+| ISO        | `admin_iso.templ`       | `routes/admin/iso/+page.svelte`       | DataTable                        |
+| App Info   | `admin_appinfo.templ`   | `routes/admin/appinfo/+page.svelte`   | Diagnostic cards                 |
 
 ## noVNC Console Integration
 
@@ -381,48 +381,48 @@ make build                           # Builds Go + copies dist/ into Docker
 
 ```typescript
 interface VM {
-  vmid: number
-  name: string
-  node: string
-  status: 'running' | 'stopped' | 'paused'
-  cpu: number          // usage fraction 0-1
-  maxcpu: number       // core count
-  mem: number          // bytes used
-  maxmem: number       // bytes total
-  disk: number         // bytes used
-  maxdisk: number      // bytes total
-  uptime: number       // seconds
-  tags: string[]
-  description: string
-  pool: string
-  disks: Disk[]
-  networks: NetworkCard[]
-  cloudinit?: CloudInitConfig
+  vmid: number;
+  name: string;
+  node: string;
+  status: "running" | "stopped" | "paused";
+  cpu: number; // usage fraction 0-1
+  maxcpu: number; // core count
+  mem: number; // bytes used
+  maxmem: number; // bytes total
+  disk: number; // bytes used
+  maxdisk: number; // bytes total
+  uptime: number; // seconds
+  tags: string[];
+  description: string;
+  pool: string;
+  disks: Disk[];
+  networks: NetworkCard[];
+  cloudinit?: CloudInitConfig;
 }
 
 interface VMCreateRequest {
-  name: string
-  vmid?: number        // auto-assign if omitted
-  node: string
-  pool: string
-  cores: number
-  sockets: number
-  memory: number       // MB
-  disks: DiskConfig[]
-  networks: NetworkConfig[]
-  iso?: string
-  cloudinit?: CloudInitConfig
-  start: boolean
-  efi: boolean
-  tpm: boolean
+  name: string;
+  vmid?: number; // auto-assign if omitted
+  node: string;
+  pool: string;
+  cores: number;
+  sockets: number;
+  memory: number; // MB
+  disks: DiskConfig[];
+  networks: NetworkConfig[];
+  iso?: string;
+  cloudinit?: CloudInitConfig;
+  start: boolean;
+  efi: boolean;
+  tpm: boolean;
 }
 
-type VMAction = 'start' | 'stop' | 'shutdown' | 'reboot'
+type VMAction = "start" | "stop" | "shutdown" | "reboot";
 
 interface User {
-  username: string
-  isAdmin: boolean
-  pool?: string
-  vmCount?: number
+  username: string;
+  isAdmin: boolean;
+  pool?: string;
+  vmCount?: number;
 }
 ```
