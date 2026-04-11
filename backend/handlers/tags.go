@@ -6,12 +6,11 @@ import (
 	"regexp"
 	"strings"
 
-	"pvmss/i18n"
+	"github.com/julienschmidt/httprouter"
+
 	"pvmss/logger"
 	"pvmss/security"
 	"pvmss/state"
-
-	"github.com/julienschmidt/httprouter"
 )
 
 // TagsHandler handles tag-related operations.
@@ -95,13 +94,10 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if !validateTagName(tagName) {
 		log.Warn().Str("tag", tagName).Msg("Invalid tag name")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.InvalidFormat")
 		u, _ := url.Parse("/admin/tags")
 		q := u.Query()
 		q.Set("error", "1")
-		q.Set("error_msg", errMsg)
-		u.RawQuery = q.Encode()
+		q.Set("error_msg", "INVALID_TAG_FORMAT")
 		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
@@ -115,13 +111,10 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 
 	if tagExists(settings.Tags, tagName) {
 		log.Warn().Str("tag", tagName).Msg("Attempted to add an existing tag")
-		localizer := i18n.GetLocalizerFromRequest(r)
-		errMsg := i18n.Localize(localizer, "Admin.Tags.Error.Exists")
 		u, _ := url.Parse("/admin/tags")
 		q := u.Query()
 		q.Set("error", "1")
-		q.Set("error_msg", errMsg)
-		u.RawQuery = q.Encode()
+		q.Set("error_msg", "TAG_ALREADY_EXISTS")
 		http.Redirect(w, r, u.String(), http.StatusSeeOther)
 		return
 	}
@@ -144,12 +137,10 @@ func (h *TagsHandler) CreateTagHandler(w http.ResponseWriter, r *http.Request, _
 		Str("client_ip", r.RemoteAddr).
 		Msg("Tag created")
 
-	localizer := i18n.GetLocalizerFromRequest(r)
-	successMsg := i18n.Localize(localizer, "Admin.Tags.Success.Created")
 	u, _ := url.Parse("/admin/tags")
 	q := u.Query()
 	q.Set("success", "1")
-	q.Set("success_msg", successMsg)
+	q.Set("success_msg", "TAG_CREATED")
 	u.RawQuery = q.Encode()
 	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }

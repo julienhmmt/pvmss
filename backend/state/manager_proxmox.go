@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"pvmss/constants"
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
 
 func translateProxmoxMessage(messageID string) string {
-	return i18n.Localize(i18n.GetLocalizer(i18n.DefaultLang), messageID)
+	return messageID
 }
 
 // startProxmoxMonitor starts a non-blocking background goroutine that periodically

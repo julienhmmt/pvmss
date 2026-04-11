@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strings"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
 	"pvmss/state"
@@ -56,15 +55,6 @@ func HandlerContextWith(w http.ResponseWriter, r *http.Request, handlerName stri
 	}
 
 	return ctx
-}
-
-// Translate looks up a translation key using the request's locale, falling back to the key.
-func (ctx *HandlerContext) Translate(key string) string {
-	localizer := i18n.GetLocalizerFromRequest(ctx.Request)
-	if localizer == nil {
-		return key
-	}
-	return i18n.Localize(localizer, key)
 }
 
 // IsAuthenticated checks if the current request is authenticated
@@ -160,8 +150,7 @@ func (ctx *HandlerContext) RequireAdminAuth() bool {
 		ctx.Log.Info().Msg("Admin authentication required")
 		if ctx.IsAuthenticated() {
 			ctx.Log.Warn().Msg("Authenticated user attempted to access admin area without privileges")
-			localizer := i18n.GetLocalizerFromRequest(ctx.Request)
-			http.Error(ctx.ResponseWriter, i18n.Localize(localizer, "Error.AccessDenied"), http.StatusForbidden)
+			http.Error(ctx.ResponseWriter, "ACCESS_DENIED", http.StatusForbidden)
 			return false
 		}
 
@@ -213,29 +202,25 @@ func (ctx *HandlerContext) Redirect(path string) {
 }
 
 // RedirectWithSuccess redirects with a success message
-func (ctx *HandlerContext) RedirectWithSuccess(path, messageKey string) {
-	msg := ctx.Translate(messageKey)
+func (ctx *HandlerContext) RedirectWithSuccess(path, msg string) {
 	params := url.Values{}
 	params.Set("success", "1")
 	params.Set("success_msg", msg)
-	params.Set("lang", i18n.GetLanguage(ctx.Request))
 
 	fullURL := path
-	if strings.Contains(path, "?") {
-		fullURL += "&" + params.Encode()
-	} else {
-		fullURL += "?" + params.Encode()
+	if params.Encode() != "" {
+		fullURL = path + "?" + params.Encode()
 	}
-	ctx.Redirect(fullURL)
+
+	http.Redirect(ctx.ResponseWriter, ctx.Request, fullURL, http.StatusSeeOther)
 }
 
 // RedirectWithError redirects with an error message
 func (ctx *HandlerContext) RedirectWithError(path, messageKey string) {
-	msg := ctx.Translate(messageKey)
+	msg := messageKey
 	params := url.Values{}
 	params.Set("error", "1")
 	params.Set("error_msg", msg)
-	params.Set("lang", i18n.GetLanguage(ctx.Request))
 
 	fullURL := path
 	if strings.Contains(path, "?") {
@@ -243,16 +228,15 @@ func (ctx *HandlerContext) RedirectWithError(path, messageKey string) {
 	} else {
 		fullURL += "?" + params.Encode()
 	}
-	ctx.Redirect(fullURL)
+	http.Redirect(ctx.ResponseWriter, ctx.Request, fullURL, http.StatusSeeOther)
 }
 
 // RedirectWithWarning redirects with a warning message
 func (ctx *HandlerContext) RedirectWithWarning(path, messageKey string) {
-	msg := ctx.Translate(messageKey)
+	msg := messageKey
 	params := url.Values{}
 	params.Set("warning", "1")
 	params.Set("warning_msg", msg)
-	params.Set("lang", i18n.GetLanguage(ctx.Request))
 
 	fullURL := path
 	if strings.Contains(path, "?") {
@@ -260,7 +244,7 @@ func (ctx *HandlerContext) RedirectWithWarning(path, messageKey string) {
 	} else {
 		fullURL += "?" + params.Encode()
 	}
-	ctx.Redirect(fullURL)
+	http.Redirect(ctx.ResponseWriter, ctx.Request, fullURL, http.StatusSeeOther)
 }
 
 // RedirectWithParams redirects with custom URL parameters
@@ -269,8 +253,6 @@ func (ctx *HandlerContext) RedirectWithParams(path string, params map[string]str
 	for k, v := range params {
 		urlParams.Set(k, v)
 	}
-	// Always include language
-	urlParams.Set("lang", i18n.GetLanguage(ctx.Request))
 
 	fullURL := path
 	if strings.Contains(path, "?") {
@@ -278,5 +260,5 @@ func (ctx *HandlerContext) RedirectWithParams(path string, params map[string]str
 	} else {
 		fullURL += "?" + urlParams.Encode()
 	}
-	ctx.Redirect(fullURL)
+	http.Redirect(ctx.ResponseWriter, ctx.Request, fullURL, http.StatusSeeOther)
 }

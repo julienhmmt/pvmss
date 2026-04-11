@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"html"
 	"html/template"
 	"net/http"
 	"os"
@@ -14,16 +13,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
-
 	apiv1 "pvmss/api/v1"
 	"pvmss/constants"
 	"pvmss/handlers"
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
 	"pvmss/state"
 	"pvmss/templates"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -166,8 +164,6 @@ func initializeApp(stateManager state.StateManager) error {
 		}
 	}
 
-	i18n.InitI18n()
-
 	templates, frontendPath, err := initTemplates()
 	if err != nil {
 		return fmt.Errorf("failed to initialize templates: %w", err)
@@ -194,13 +190,6 @@ func initializeApp(stateManager state.StateManager) error {
 func initTemplates() (*template.Template, string, error) {
 	logger.Get().Debug().Msg("Starting template initialization")
 	funcMap := templates.GetBaseFuncMap()
-
-	funcMap["T"] = func(messageID string, args ...interface{}) template.HTML {
-		localizer := i18n.GetLocalizer(i18n.DefaultLang)
-		localized := i18n.Localize(localizer, messageID)
-		// Trusted i18n bundle; still escape to avoid gosec G203 and ensure safety
-		return template.HTML(html.EscapeString(localized)) // #nosec G203 -- trusted i18n key, escaped content; wrapper marks as HTML for templates
-	}
 
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
