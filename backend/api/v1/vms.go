@@ -71,8 +71,9 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 		poolVMIDs = fetchPoolVMIDs(ctx, client, "pvmss_"+username)
 	}
 
-	// Optional search/filter params: ?q= (name or VMID), ?status=, ?node=
+	// Optional search/filter params: ?q=, ?type=name|tag|vmid, ?status=, ?node=
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	filterType := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("type")))
 	filterStatus := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
 	filterNode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("node")))
 
@@ -86,10 +87,23 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 		if !hasTag(vm.Tags, "pvmss") {
 			continue
 		}
-		// Search filter: match name or VMID substring.
+		// Search filter: match by type (name|tag|vmid) or all three when unspecified.
 		if q != "" {
 			vmidStr := strconv.Itoa(vm.VMID)
-			if !strings.Contains(strings.ToLower(vm.Name), q) && !strings.Contains(vmidStr, q) {
+			var matched bool
+			switch filterType {
+			case "name":
+				matched = strings.Contains(strings.ToLower(vm.Name), q)
+			case "tag":
+				matched = containsTagSubstring(vm.Tags, q)
+			case "vmid":
+				matched = strings.Contains(vmidStr, q)
+			default:
+				matched = strings.Contains(strings.ToLower(vm.Name), q) ||
+					strings.Contains(vmidStr, q) ||
+					containsTagSubstring(vm.Tags, q)
+			}
+			if !matched {
 				continue
 			}
 		}
@@ -249,6 +263,21 @@ func fetchPoolVMIDs(ctx context.Context, client *proxmox.RestyClient, poolName s
 func hasTag(tags, target string) bool {
 	for _, t := range strings.Split(tags, ";") {
 		if strings.EqualFold(strings.TrimSpace(t), target) {
+			return true
+		}
+	}
+	return false
+}
+
+// containsTagSubstring returns true if any tag in the semicolon-separated list
+// contains the given substring (case-insensitive).
+func containsTagSubstring(tags, sub string) bool {
+	for _, t := range strings.Split(tags, ";") {
+		trimmed := strings.TrimSpace(t)
+		if strings.EqualFold(trimmed, "pvmss") {
+			continue
+		}
+		if strings.Contains(strings.ToLower(trimmed), sub) {
 			return true
 		}
 	}

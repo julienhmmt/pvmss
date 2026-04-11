@@ -350,13 +350,26 @@
     "onThisPage": "Sur cette page"
   },
   "search": {
-    "placeholder": "Rechercher par nom ou ID de VM…",
+    "placeholder": "Rechercher…",
+    "placeholderUnified": "Nom de VM, tag:prod ou #tag, ou ID de VM (ex. 101)",
+    "placeholderName": "Nom de VM (ex. mon-serveur)",
+    "placeholderTag": "Tag (ex. prod)",
+    "placeholderVmid": "ID de VM (ex. 101)",
     "allStatuses": "Tous les statuts",
     "allNodes": "Tous les nœuds",
     "search": "Rechercher",
-    "hint": "Saisissez un nom, un ID de VM ou utilisez les filtres pour rechercher vos machines virtuelles.",
+    "hint": "Sélectionnez un type de recherche puis saisissez une valeur pour trouver vos machines virtuelles.",
+    "hintUnified": "Entrez un nom de VM, utilisez le préfixe tag: ou # pour les tags, ou entrez un ID de VM numérique.",
+    "tooltip": "Par nom : correspondance partielle sur le nom de la VM.\nPar tag : correspondance partielle sur n'importe quel tag (sauf pvmss).\nPar ID de VM : correspondance partielle sur l'identifiant numérique.\nLa recherche est insensible à la casse.",
+    "slowLoading": "L'API Proxmox prend plus de temps que d'habitude…",
     "noResults": "Aucune machine virtuelle ne correspond à votre recherche.",
-    "resultsCount": "{count} résultat(s)"
+    "resultsCount": "{count} résultat(s)",
+    "searchType": "Type de recherche",
+    "typeByName": "Par nom",
+    "typeByTag": "Par tag",
+    "typeByVmid": "Par ID de VM",
+    "sortAsc": "Tri croissant",
+    "sortDesc": "Tri décroissant"
   },
   "vm": {
     "cores": "cœurs",

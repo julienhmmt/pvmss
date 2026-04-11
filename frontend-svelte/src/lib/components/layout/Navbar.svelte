@@ -13,7 +13,6 @@
 	import { t } from 'svelte-i18n';
 	import { setLocale } from '$lib/i18n';
 	import { notifications } from '$lib/stores/notifications.svelte';
-	import { statusStore } from '$lib/stores/status.svelte';
 	import type { NavLink, KeyboardShortcut } from '$lib/types/navbar';
 	import {
 		HouseIcon,
@@ -27,11 +26,7 @@
 		ListIcon,
 		CaretDownIcon,
 		GlobeIcon,
-		BellIcon,
-		CheckCircleIcon,
-		WarningCircleIcon,
-		XCircleIcon,
-		DotsThreeOutlineIcon
+		BellIcon
 	} from 'phosphor-svelte';
 
 	let mobileOpen = $state(false);
@@ -41,10 +36,6 @@
 	let skipLinkFocused = $state(false);
 
 	// Refs for keyboard navigation (not reactive, just DOM references)
-	let langDropdownTrigger: HTMLButtonElement;
-	let userDropdownTrigger: HTMLButtonElement;
-	let mobileMenuTrigger: HTMLButtonElement;
-	let notificationTrigger: HTMLButtonElement;
 	let mobileSheetContent: HTMLElement;
 
 	// Keyboard shortcuts
@@ -160,37 +151,11 @@
 	// Lifecycle hooks
 	onMount(() => {
 		window.addEventListener('keydown', handleKeyboard);
-		document.addEventListener('click', handleClickOutside);
-		// TODO: Replace with actual API call to fetch Proxmox status
-		// statusStore.updateProxmoxConnection('connected', 'Connected to Proxmox');
-		// statusStore.updateClusterHealth('connected', 'Cluster healthy');
 	});
 
 	onDestroy(() => {
 		window.removeEventListener('keydown', handleKeyboard);
-		document.removeEventListener('click', handleClickOutside);
 	});
-
-	// Close dropdowns when clicking outside
-	function handleClickOutside(event: MouseEvent) {
-		if (!event.target) return;
-		const target = event.target as HTMLElement;
-
-		// Close language dropdown
-		if (langDropdownTrigger && !langDropdownTrigger.contains(target)) {
-			langDropdownOpen = false;
-		}
-
-		// Close user dropdown
-		if (userDropdownTrigger && !userDropdownTrigger.contains(target)) {
-			userDropdownOpen = false;
-		}
-
-		// Close notification dropdown
-		if (notificationTrigger && !notificationTrigger.contains(target)) {
-			notificationOpen = false;
-		}
-	}
 </script>
 
 <nav class="pv-navbar">
@@ -250,7 +215,6 @@
 					<DropdownMenu.Trigger>
 						{#snippet child({ props })}
 							<button
-								bind:this={langDropdownTrigger}
 								class="pv-navbar-icon-btn"
 								{...props}
 								aria-label="Language"
@@ -285,36 +249,6 @@
 			<!-- Theme toggle -->
 			<ThemeToggle />
 
-			<!-- Status indicators -->
-			<div class="hidden items-center gap-2 sm:flex">
-				<Tooltip.Root>
-					<Tooltip.Trigger>
-						{#snippet child({ props })}
-							<div
-								class="pv-status-indicator"
-								class:pv-status-indicator--connected={statusStore.proxmoxConnection.status === 'connected'}
-								class:pv-status-indicator--disconnected={statusStore.proxmoxConnection.status === 'disconnected'}
-								class:pv-status-indicator--warning={statusStore.proxmoxConnection.status === 'warning'}
-								{...props}
-							>
-								{#if statusStore.proxmoxConnection.status === 'connected'}
-									<CheckCircleIcon class="h-3 w-3" />
-								{:else if statusStore.proxmoxConnection.status === 'disconnected'}
-									<XCircleIcon class="h-3 w-3" />
-								{:else if statusStore.proxmoxConnection.status === 'warning'}
-									<WarningCircleIcon class="h-3 w-3" />
-								{:else}
-									<DotsThreeOutlineIcon class="h-3 w-3" />
-								{/if}
-							</div>
-						{/snippet}
-					</Tooltip.Trigger>
-					<Tooltip.Content>
-						{statusStore.proxmoxConnection.tooltip}
-					</Tooltip.Content>
-				</Tooltip.Root>
-			</div>
-
 			<!-- Vertical divider -->
 			<div class="pv-navbar-divider hidden sm:block"></div>
 
@@ -324,7 +258,6 @@
 					<DropdownMenu.Trigger>
 						{#snippet child({ props })}
 							<button
-								bind:this={notificationTrigger}
 								class="pv-navbar-icon-btn pv-navbar-icon-btn--relative"
 								{...props}
 								aria-label="Notifications"
@@ -394,7 +327,6 @@
 					<DropdownMenu.Trigger>
 						{#snippet child({ props })}
 							<button
-								bind:this={userDropdownTrigger}
 								class="pv-navbar-user-btn"
 								{...props}
 								aria-label="User menu"
@@ -446,7 +378,6 @@
 					<Sheet.Trigger>
 						{#snippet child({ props })}
 							<button
-								bind:this={mobileMenuTrigger}
 								class="pv-navbar-icon-btn"
 								{...props}
 								aria-label={$t('nav.menu')}
@@ -760,30 +691,6 @@
 		50% {
 			opacity: 0.5;
 		}
-	}
-
-	/* Status indicators */
-	:global(.pv-status-indicator) {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 20px;
-		height: 20px;
-		border-radius: 50%;
-		color: var(--muted-foreground);
-		transition: color 0.2s;
-	}
-
-	:global(.pv-status-indicator--connected) {
-		color: hsl(142 76% 36%);
-	}
-
-	:global(.pv-status-indicator--disconnected) {
-		color: hsl(0 84% 60%);
-	}
-
-	:global(.pv-status-indicator--warning) {
-		color: hsl(38 92% 50%);
 	}
 
 	/* Notification badge */

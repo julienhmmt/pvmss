@@ -350,13 +350,26 @@
     "onThisPage": "On this page"
   },
   "search": {
-    "placeholder": "Search by name or VM ID…",
+    "placeholder": "Search…",
+    "placeholderUnified": "VM name, tag:prod, or #tag, or VM ID (e.g. 101)",
+    "placeholderName": "VM name (e.g. my-server)",
+    "placeholderTag": "Tag (e.g. prod)",
+    "placeholderVmid": "VM ID (e.g. 101)",
     "allStatuses": "All statuses",
     "allNodes": "All nodes",
     "search": "Search",
-    "hint": "Enter a name, VM ID, or use the filters to search your virtual machines.",
+    "hint": "Select a search type then enter a value to find your virtual machines.",
+    "hintUnified": "Enter a VM name, use tag: or # prefix for tags, or enter a numeric VM ID.",
+    "tooltip": "Search by Name: partial match on the VM name.\nSearch by Tag: partial match on any tag (except pvmss).\nSearch by VM ID: exact or partial match on the numeric VM ID.\nSearch is case-insensitive.",
+    "slowLoading": "The Proxmox API is taking longer than usual…",
     "noResults": "No virtual machines match your search.",
-    "resultsCount": "{count} result(s)"
+    "resultsCount": "{count} result(s)",
+    "searchType": "Search type",
+    "typeByName": "By name",
+    "typeByTag": "By tag",
+    "typeByVmid": "By VM ID",
+    "sortAsc": "Sort ascending",
+    "sortDesc": "Sort descending"
   },
   "vm": {
     "cores": "cores",

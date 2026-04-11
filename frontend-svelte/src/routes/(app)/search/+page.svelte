@@ -1,66 +1,121 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
-	import { api } from '$lib/api/client';
-	import { searchVMs, type VMSummary } from '$lib/api/vms';
+	import { searchVMs, type VMSummary, type SearchType } from '$lib/api/vms';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
-	import { MagnifyingGlass, Play, Stop, ArrowCounterClockwise, Desktop } from 'phosphor-svelte';
-	import { toast } from 'svelte-sonner';
+	import { MagnifyingGlass, Desktop, ArrowUp, ArrowDown } from 'phosphor-svelte';
 
-	// --- filters (synced with URL query string) ---
+	const PAGE_SIZE = 10;
+
+	// Auto-detect search type based on input pattern
+	function detectSearchType(query: string): SearchType {
+		if (!query) return 'name';
+		const trimmed = query.trim();
+		
+		// If starts with "tag:" or "#", search by tag
+		if (trimmed.startsWith('tag:') || trimmed.startsWith('#')) {
+			return 'tag';
+		}
+		
+		// If all digits, search by VMID
+		if (/^\d+$/.test(trimmed)) {
+			return 'vmid';
+		}
+		
+		// Otherwise search by name
+		return 'name';
+	}
+
+	function extractSearchQuery(query: string): string {
+		const trimmed = query.trim();
+		// Remove "tag:" prefix if present
+		if (trimmed.startsWith('tag:')) {
+			return trimmed.substring(4).trim();
+		}
+		// Remove "#" prefix if present
+		if (trimmed.startsWith('#')) {
+			return trimmed.substring(1).trim();
+		}
+		return trimmed;
+	}
+
+	// --- state ---
 	let q = $state($page.url.searchParams.get('q') ?? '');
-	let filterStatus = $state($page.url.searchParams.get('status') ?? '');
-	let filterNode = $state($page.url.searchParams.get('node') ?? '');
+	let validationError = $state<string | null>(null);
 
 	let loading = $state(false);
 	let searched = $state(false);
 	let error = $state<Error | null>(null);
 	let results = $state<VMSummary[]>([]);
-	let actionLoading = $state<Record<number, boolean>>({});
+	// Sorting
+	let sortCol = $state<'name' | 'vmid'>('vmid');
+	let sortDir = $state<'asc' | 'desc'>('asc');
 
-	// Unique node list derived from results
-	let knownNodes = $state<string[]>([]);
+	// Pagination
+	let currentPage = $state(1);
+
+	// Slow-loading hint
+	let slowLoadingVisible = $state(false);
+	let slowTimer: ReturnType<typeof setTimeout> | null = null;
+
+	// --- derived ---
+	let sortedResults = $derived.by(() => {
+		const copy = [...results];
+		copy.sort((a, b) => {
+			const cmp = sortCol === 'name'
+				? (a.name || '').localeCompare(b.name || '')
+				: a.vmid - b.vmid;
+			return sortDir === 'asc' ? cmp : -cmp;
+		});
+		return copy;
+	});
+
+	let totalPages = $derived(Math.max(1, Math.ceil(sortedResults.length / PAGE_SIZE)));
+
+	let pagedResults = $derived(
+		sortedResults.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+	);
+
+	$effect(() => {
+		sortedResults;
+		currentPage = 1;
+	});
+
+	function onInputChange(e: Event) {
+		const value = (e.target as HTMLInputElement).value;
+		q = value;
+		// No validation - backend handles it
+		validationError = null;
+	}
 
 	async function doSearch() {
 		loading = true;
 		searched = true;
 		error = null;
-		// Sync URL
+		slowLoadingVisible = false;
+
+		if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
+		slowTimer = setTimeout(() => { slowLoadingVisible = true; }, 2500);
+
+		const detectedType = detectSearchType(q);
+		const extractedQuery = extractSearchQuery(q);
+		
 		const params = new URLSearchParams();
-		if (q) params.set('q', q);
-		if (filterStatus) params.set('status', filterStatus);
-		if (filterNode) params.set('node', filterNode);
+		if (extractedQuery) params.set('q', extractedQuery);
+		params.set('type', detectedType);
 		goto(`/search${params.toString() ? '?' + params.toString() : ''}`, { replaceState: true, noScroll: true });
+
 		try {
-			results = await searchVMs({ q: q || undefined, status: filterStatus || undefined, node: filterNode || undefined });
-			// Collect nodes seen for the node filter dropdown
-			const nodeSet = new Set(results.map((v) => v.node).filter(Boolean));
-			if (knownNodes.length === 0) {
-				knownNodes = [...nodeSet];
-			} else {
-				// Merge without losing previously known nodes
-				for (const n of nodeSet) knownNodes = knownNodes.includes(n) ? knownNodes : [...knownNodes, n];
-			}
+			results = await searchVMs({ q: extractedQuery || undefined, type: detectedType });
 		} catch (e) {
 			error = e as Error;
 		} finally {
 			loading = false;
-		}
-	}
-
-	async function doAction(vm: VMSummary, action: string) {
-		actionLoading = { ...actionLoading, [vm.vmid]: true };
-		try {
-			await api.post(`/api/v1/vms/${vm.vmid}/action`, { action, node: vm.node });
-			toast.success(`${action} sent to ${vm.name || vm.vmid}`);
-			setTimeout(() => doSearch(), 2000);
-		} catch {
-			toast.error(`Failed to ${action} VM ${vm.vmid}`);
-		} finally {
-			actionLoading = { ...actionLoading, [vm.vmid]: false };
+			slowLoadingVisible = false;
+			if (slowTimer) { clearTimeout(slowTimer); slowTimer = null; }
 		}
 	}
 
@@ -74,9 +129,21 @@
 		if (e.key === 'Enter') doSearch();
 	}
 
-	// Run search immediately if URL already has params
+	function toggleSort(col: 'name' | 'vmid') {
+		if (sortCol === col) {
+			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortCol = col;
+			sortDir = 'asc';
+		}
+	}
+
 	onMount(() => {
-		if (q || filterStatus || filterNode) doSearch();
+		if (q) doSearch();
+	});
+
+	onDestroy(() => {
+		if (slowTimer) clearTimeout(slowTimer);
 	});
 </script>
 
@@ -84,40 +151,22 @@
 	<h1 class="mb-5 text-2xl font-bold">{$t('nav.searchVm')}</h1>
 
 	<!-- Search bar -->
-	<div class="mb-4 flex flex-col gap-2 sm:flex-row">
-		<div class="relative flex-1">
-			<MagnifyingGlass class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-			<input
-				class="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-				placeholder={$t('search.placeholder')}
-				bind:value={q}
-				onkeydown={handleKey}
-			/>
+	<div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
+		<div class="flex flex-1 flex-col gap-1">
+			<div class="relative">
+				<MagnifyingGlass class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+				<input
+					class="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+					placeholder={$t('search.placeholderUnified')}
+					value={q}
+					oninput={onInputChange}
+					onkeydown={handleKey}
+					autocomplete="off"
+					spellcheck="false"
+				/>
+			</div>
+			<p class="text-xs text-muted-foreground">{$t('search.hintUnified')}</p>
 		</div>
-
-		<!-- Status filter -->
-		<select
-			class="rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-			bind:value={filterStatus}
-		>
-			<option value="">{$t('search.allStatuses')}</option>
-			<option value="running">{$t('common.statusMap.running')}</option>
-			<option value="stopped">{$t('common.statusMap.stopped')}</option>
-			<option value="paused">{$t('common.statusMap.paused')}</option>
-		</select>
-
-		<!-- Node filter (populated after first search) -->
-		{#if knownNodes.length > 0}
-			<select
-				class="rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-				bind:value={filterNode}
-			>
-				<option value="">{$t('search.allNodes')}</option>
-				{#each knownNodes as node (node)}
-					<option value={node}>{node}</option>
-				{/each}
-			</select>
-		{/if}
 
 		<button
 			class="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
@@ -128,6 +177,14 @@
 			{loading ? $t('common.loading') : $t('search.search')}
 		</button>
 	</div>
+
+	<!-- Slow-loading hint -->
+	{#if slowLoadingVisible}
+		<div class="mb-3 flex items-center gap-2 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300">
+			<span>⏳</span>
+			{$t('search.slowLoading')}
+		</div>
+	{/if}
 
 	<!-- Results -->
 	{#if error}
@@ -148,25 +205,35 @@
 		<div class="mb-2 text-sm text-muted-foreground">
 			{$t('search.resultsCount', { values: { count: results.length } })}
 		</div>
+
 		<div class="pv-table-wrap">
 			<table class="pv-table">
 				<thead>
 					<tr>
-						<th>{$t('vms.vmid')}</th>
-						<th>{$t('common.name')}</th>
+						<th>
+							<button class="sort-btn" onclick={() => toggleSort('vmid')}>
+								{$t('vms.vmid')}
+								{#if sortCol === 'vmid'}
+									{#if sortDir === 'asc'}<ArrowUp class="sort-icon" />{:else}<ArrowDown class="sort-icon" />{/if}
+								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
+							</button>
+						</th>
+						<th>
+							<button class="sort-btn" onclick={() => toggleSort('name')}>
+								{$t('common.name')}
+								{#if sortCol === 'name'}
+									{#if sortDir === 'asc'}<ArrowUp class="sort-icon" />{:else}<ArrowDown class="sort-icon" />{/if}
+								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
+							</button>
+						</th>
 						<th>{$t('common.node')}</th>
 						<th>{$t('common.status')}</th>
 						<th>{$t('admin.vms.tags')}</th>
-						<th></th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each results as vm (vm.vmid)}
-						{@const busy = actionLoading[vm.vmid] ?? false}
-						<tr
-							class="pv-row pv-row--clickable"
-							onclick={() => goto(`/vm/${vm.vmid}`)}
-						>
+					{#each pagedResults as vm (vm.vmid)}
+						<tr class="pv-row pv-row--clickable" onclick={() => goto(`/vm/${vm.vmid}`)}>
 							<td class="pv-td-mono text-sm">{vm.vmid}</td>
 							<td>
 								<div class="pv-resource-cell">
@@ -183,7 +250,7 @@
 							<td>
 								{#if vm.tags}
 									<div class="flex flex-wrap gap-1">
-										{#each vm.tags.split(';').filter((t) => t.trim() && t.trim() !== 'pvmss') as tag (tag)}
+										{#each vm.tags.split(';').filter((tag) => tag.trim() && tag.trim() !== 'pvmss') as tag (tag)}
 											<span class="pv-badge text-xs">{tag.trim()}</span>
 										{/each}
 									</div>
@@ -191,50 +258,68 @@
 									<span class="text-muted-foreground">—</span>
 								{/if}
 							</td>
-							<td onclick={(e) => e.stopPropagation()}>
-								<div class="flex items-center gap-1">
-									{#if vm.status === 'stopped'}
-										<button
-											class="pv-action-btn pv-action-btn--start"
-											onclick={() => doAction(vm, 'start')}
-											disabled={busy}
-											title={$t('vms.actions.start')}
-										>
-											<Play class="h-3.5 w-3.5" weight="fill" />
-										</button>
-									{:else if vm.status === 'running'}
-										<button
-											class="pv-action-btn pv-action-btn--stop"
-											onclick={() => doAction(vm, 'shutdown')}
-											disabled={busy}
-											title={$t('vms.actions.shutdown')}
-										>
-											<Stop class="h-3.5 w-3.5" weight="fill" />
-										</button>
-										<button
-											class="pv-action-btn"
-											onclick={() => doAction(vm, 'reboot')}
-											disabled={busy}
-											title={$t('vms.actions.reboot')}
-										>
-											<ArrowCounterClockwise class="h-3.5 w-3.5" />
-										</button>
-									{/if}
-								</div>
-							</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
 		</div>
+
+		<!-- Pagination -->
+		{#if totalPages > 1}
+			<div class="mt-4 flex items-center justify-center gap-1">
+				<button class="pagination-btn" onclick={() => (currentPage = Math.max(1, currentPage - 1))} disabled={currentPage === 1}>&lsaquo;</button>
+				{#each Array.from({ length: totalPages }, (_, i) => i + 1) as p (p)}
+					<button class="pagination-btn {p === currentPage ? 'pagination-btn--active' : ''}" onclick={() => (currentPage = p)}>{p}</button>
+				{/each}
+				<button class="pagination-btn" onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>&rsaquo;</button>
+			</div>
+			<p class="mt-1 text-center text-xs text-muted-foreground">
+				{currentPage} / {totalPages}
+			</p>
+		{/if}
 	{/if}
 </div>
 
 <style>
-	:global(.pv-row--clickable) {
+	:global(.pv-row--clickable) { cursor: pointer; }
+	:global(.pv-row--clickable:hover td) { background: var(--accent); }
+
+	.sort-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+		font-weight: 600;
+		font-size: inherit;
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		color: inherit;
+		white-space: nowrap;
+	}
+	.sort-btn:hover { opacity: 0.7; }
+	.sort-icon { width: 0.75rem; height: 0.75rem; }
+	.sort-icon--inactive { opacity: 0.35; font-size: 0.7rem; }
+
+	.pagination-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 2rem;
+		height: 2rem;
+		padding: 0 0.4rem;
+		border-radius: 0.375rem;
+		border: 1px solid var(--border);
+		background: var(--background);
+		color: var(--foreground);
+		font-size: 0.8rem;
 		cursor: pointer;
 	}
-	:global(.pv-row--clickable:hover td) {
-		background: var(--accent);
+	.pagination-btn:disabled { opacity: 0.4; cursor: default; }
+	.pagination-btn:not(:disabled):hover { background: var(--accent); }
+	.pagination-btn--active {
+		background: var(--primary);
+		color: var(--primary-foreground);
+		border-color: var(--primary);
 	}
 </style>
