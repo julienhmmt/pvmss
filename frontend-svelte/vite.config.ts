@@ -31,7 +31,6 @@ export default defineConfig({
 		},
 		proxy: {
 			'/api': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
-			'/login': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
 			'/logout': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
 			'/css': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
 			'/js': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
