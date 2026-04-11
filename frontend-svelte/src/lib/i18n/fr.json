@@ -409,7 +409,37 @@
     "deleteConfirmMessage": "Cette action supprimera définitivement la VM {name} (ID {vmid}) ainsi que tous ses fichiers disques associés. Cette opération est irréversible.",
     "deleteConfirmRunning": "Attention : la VM est en cours d'exécution et sera arrêtée de force avant la suppression.",
     "deleteSuccess": "VM {name} supprimée avec succès",
-    "deleteFailed": "Échec de la suppression de la VM"
+    "deleteFailed": "Échec de la suppression de la VM",
+    "hardware": {
+      "modifyHardware": "Modifier le matériel",
+      "title": "Modifier le matériel",
+      "description": "Ajustez le CPU et la mémoire de la VM {vmid}.",
+      "warningRunning": "La VM sera arrêtée et redémarrée automatiquement.",
+      "sockets": "Sockets CPU",
+      "cores": "Cœurs CPU (par socket)",
+      "memory": "RAM (Go)",
+      "applying": "Application…",
+      "applyChanges": "Appliquer les modifications",
+      "updatedRestarted": "Matériel mis à jour — VM redémarrée",
+      "updated": "Matériel mis à jour",
+      "failed": "Échec de la mise à jour du matériel",
+      "tags": "Tags",
+      "tagsHint": "\"pvmss\" est toujours inclus",
+      "tagsSaved": "Tags enregistrés"
+    },
+    "network": {
+      "addCard": "Ajouter une carte réseau",
+      "model": "Modèle",
+      "bridge": "Bridge",
+      "vlan": "Tag VLAN",
+      "rate": "Débit limite (Mo/s)",
+      "firewall": "Pare-feu",
+      "vlanHint": "0 = aucun",
+      "rateHint": "vide = illimité",
+      "noVmbr": "Aucun bridge disponible",
+      "deleteCard": "Retirer cette carte",
+      "newCard": "Nouvelle carte"
+    }
   },
   "vmCreate": {
     "title": "Créer une machine virtuelle",
