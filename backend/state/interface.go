@@ -8,7 +8,6 @@ package state
 
 import (
 	"context"
-	"html/template"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
@@ -18,10 +17,6 @@ import (
 
 // StateManager defines the interface for managing application state
 type StateManager interface {
-	// Templates management
-	GetTemplates() *template.Template
-	SetTemplates(t *template.Template) error
-
 	// Session management
 	GetSessionManager() *scs.SessionManager
 	SetSessionManager(sm *scs.SessionManager) error

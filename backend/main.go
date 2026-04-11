@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"html/template"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,7 +18,6 @@ import (
 	"pvmss/logger"
 	"pvmss/security"
 	"pvmss/state"
-	"pvmss/templates"
 
 	"github.com/joho/godotenv"
 )
@@ -164,16 +162,13 @@ func initializeApp(stateManager state.StateManager) error {
 		}
 	}
 
-	templates, frontendPath, err := initTemplates()
-	if err != nil {
-		return fmt.Errorf("failed to initialize templates: %w", err)
-	}
-
-	if err := stateManager.SetTemplates(templates); err != nil {
-		return fmt.Errorf("failed to set templates: %w", err)
-	}
-
 	// Set frontend path in state manager
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return fmt.Errorf("could not get current file path")
+	}
+	rootDir := filepath.Dir(filepath.Dir(filename))
+	frontendPath := filepath.Join(rootDir, "frontend")
 	stateManager.SetFrontendPath(frontendPath)
 
 	if modified {
@@ -185,42 +180,4 @@ func initializeApp(stateManager state.StateManager) error {
 	}
 
 	return nil
-}
-
-func initTemplates() (*template.Template, string, error) {
-	logger.Get().Debug().Msg("Starting template initialization")
-	funcMap := templates.GetBaseFuncMap()
-
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return nil, "", fmt.Errorf("could not get current file path")
-	}
-
-	rootDir := filepath.Dir(filepath.Dir(filename))
-	frontendPath := filepath.Join(rootDir, "frontend")
-	logger.Get().Debug().Str("frontend_path", frontendPath).Msg("Frontend path determined")
-
-	templateFiles, err := templates.FindTemplateFiles(frontendPath)
-	if err != nil {
-		return nil, "", fmt.Errorf("error finding template files: %w", err)
-	}
-	logger.Get().Debug().Int("template_count", len(templateFiles)).Msg("Template files found")
-
-	logger.Get().Debug().Msg("Starting to parse templates")
-	tmpl, err := template.New("main").Funcs(funcMap).ParseFiles(templateFiles...)
-	if err != nil {
-		return nil, "", fmt.Errorf("error parsing templates: %w", err)
-	}
-	logger.Get().Debug().Msg("Templates parsed successfully")
-
-	var templateCount int
-	for _, t := range tmpl.Templates() {
-		if t.Name() != "" && strings.HasSuffix(t.Name(), ".html") {
-			templateCount++
-		}
-	}
-
-	logger.Get().Info().Int("count", templateCount).Msg("Templates loaded")
-
-	return tmpl, frontendPath, nil
 }
