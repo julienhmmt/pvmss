@@ -4,10 +4,8 @@
 	
 	import { auth } from '$lib/stores/auth.svelte';
 	import { logout } from '$lib/api/auth';
-	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as Sheet from '$lib/components/ui/sheet';
-	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { Badge } from '$lib/components/ui/badge';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import { t } from 'svelte-i18n';
@@ -19,7 +17,6 @@
 		PlusSquareIcon,
 		MagnifyingGlassIcon,
 		BookOpenIcon,
-		UserCircleIcon,
 		GearSixIcon,
 		SignInIcon,
 		SignOutIcon,
@@ -177,8 +174,10 @@
 	<div class="pv-navbar-inner">
 		<!-- Brand -->
 		<a href="/" class="pv-navbar-brand">
-			<div class="pv-navbar-logo">PV</div>
-			<span class="pv-navbar-brand-name">PVMSS</span>
+			<div class="pv-navbar-brand-text">
+				<span class="pv-navbar-brand-title">Proxmox</span>
+				<span class="pv-navbar-brand-subtitle">VM Self Service</span>
+			</div>
 		</a>
 
 		<!-- Loading skeleton -->
@@ -521,11 +520,24 @@
 		letter-spacing: 0.02em;
 	}
 
-	:global(.pv-navbar-brand-name) {
+	:global(.pv-navbar-brand-text) {
+		display: flex;
+		flex-direction: column;
+		line-height: 1.1;
+	}
+
+	:global(.pv-navbar-brand-title) {
 		font-size: 0.95rem;
 		font-weight: 700;
 		letter-spacing: -0.01em;
 		color: var(--foreground);
+	}
+
+	:global(.pv-navbar-brand-subtitle) {
+		font-size: 0.75rem;
+		font-weight: 500;
+		letter-spacing: 0.01em;
+		color: var(--muted-foreground);
 	}
 
 	:global(.pv-navbar-links) {
