@@ -139,6 +139,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>PVMSS — {$t(`docs.${docType === 'cloud-init' ? 'cloudInit' : docType === 'proxmox-permissions' ? 'proxmoxPerms' : docType}`)}</title>
+</svelte:head>
+
 <!-- Scroll Progress Bar -->
 <div class="pv-scroll-progress-bar" style="width: {scrollProgress}%"></div>
 

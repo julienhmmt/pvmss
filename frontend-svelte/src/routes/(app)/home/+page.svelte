@@ -175,6 +175,10 @@
 	onMount(() => load());
 </script>
 
+<svelte:head>
+	<title>PVMSS — {$t('user.home.title')}</title>
+</svelte:head>
+
 {#snippet sortIcon(key: SortKey)}
 	{#if sortKey === key}
 		{#if sortDir === 'asc'}

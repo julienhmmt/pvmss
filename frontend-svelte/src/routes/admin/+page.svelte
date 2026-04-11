@@ -78,6 +78,10 @@
 	onMount(load);
 </script>
 
+<svelte:head>
+	<title>PVMSS — {$t('admin.dashboard.title')}</title>
+</svelte:head>
+
 <!-- Header -->
 <div class="pv-header -mx-6 -mt-6 mb-6 {info && !info.proxmox_connected ? 'pv-header--danger' : ''}">
 	<div class="pv-header-flex">

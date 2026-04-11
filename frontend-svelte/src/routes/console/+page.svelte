@@ -130,7 +130,7 @@
 </script>
 
 <svelte:head>
-	<title>Console — {vmName}</title>
+	<title>PVMSS — Console — {vmName}</title>
 </svelte:head>
 
 <div class="console-root">

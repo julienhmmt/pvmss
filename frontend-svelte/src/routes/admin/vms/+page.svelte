@@ -114,6 +114,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>PVMSS — {$t('admin.vms.title')}</title>
+</svelte:head>
+
 <!-- Gradient page header -->
 <div class="pv-header -mx-6 -mt-6 mb-6">
 	<div class="pv-header-flex">
