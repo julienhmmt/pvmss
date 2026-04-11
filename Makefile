@@ -110,49 +110,37 @@ test-unit: ## Lance les tests unitaires Go (offline-compatible)
 test-integration: ## Lance les tests d'intégration (offline-compatible)
 	@echo "$(BLUE)Lancement des tests d'intégration...$(NC)"
 	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -tags=integration -timeout=5m ./tests/...
+	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -race -timeout=5m ./tests
 	@echo "$(GREEN)✓ Tests d'intégration terminés$(NC)"
-
-test-routes: ## Lance les tests de routes (offline-compatible)
-	@echo "$(BLUE)Lancement des tests de routes...$(NC)"
-	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -run TestRouteAccessibility ./tests
-	@echo "$(GREEN)✓ Tests de routes terminés$(NC)"
 
 test-offline: ## Lance tous les tests en mode offline (rapide, pour GitHub Actions)
 	@echo "$(BLUE)Lancement de tous les tests en mode offline (optimisé)...$(NC)"
 	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
 	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -timeout=5m ./...
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests offline terminés$(NC)"
 
 test-offline-verbose: ## Lance tous les tests offline avec sortie détaillée
 	@echo "$(BLUE)Lancement de tous les tests en mode offline (verbose)...$(NC)"
 	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
 	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -timeout=5m ./...
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -v -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests offline verbose terminés$(NC)"
 
 test-offline-race: ## Lance tous les tests offline avec race detector (lent mais complet)
 	@echo "$(BLUE)Lancement de tous les tests en mode offline avec race detector...$(NC)"
 	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
 	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -timeout=10m ./...
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -race -tags=integration -timeout=10m ./tests/...
 	@echo "$(GREEN)✓ Tests offline avec race detector terminés$(NC)"
 
 test-offline-parallel: ## Lance tous les tests offline en parallèle (maximum vitesse)
 	@echo "$(BLUE)Lancement de tous les tests en mode offline (parallèle)...$(NC)"
 	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
 	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -timeout=5m ./...
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test -p 4 -parallel 4 -tags=integration -timeout=5m ./tests/...
 	@echo "$(GREEN)✓ Tests offline parallèles terminés$(NC)"
 
 test-online: ## Lance tous les tests en mode online (requiert Proxmox)
 	@echo "$(BLUE)Lancement de tous les tests en mode online...$(NC)"
 	@cp $(BACKEND_DIR)/settings.dev.json $(TEST_SETTINGS_PATH) 2>/dev/null || true
 	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -coverprofile=coverage.out ./...
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -race -tags=integration -timeout=5m ./tests/...
-	cd $(BACKEND_DIR) && PVMSS_SETTINGS_PATH=$(TEST_SETTINGS_PATH) GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=false go test -v -run TestRouteAccessibility ./tests
 	@echo "$(GREEN)✓ Tests online terminés$(NC)"
 
 test-all: test-offline ## Lance tous les tests (mode offline par défaut)
