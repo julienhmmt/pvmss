@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -94,6 +93,8 @@ func (h *DocsAPIHandler) GetDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Get().Debug().Str("type", docType).Str("lang", lang).Str("used_lang", usedLang).Int("html_length", len(htmlContent)).Msg("api/v1/docs: doc rendered successfully")
+
 	// Cache under both the requested key and the resolved key.
 	h.mu.Lock()
 	h.cache[cacheKey] = htmlContent
@@ -131,51 +132,43 @@ func (h *DocsAPIHandler) renderDoc(docType, lang string) (string, string, error)
 // addExternalLinkAttrs post-processes HTML to add target="_blank" and rel="noopener noreferrer"
 // to external links (those that start with http:// or https://), leaving internal
 // anchor links (#...) and relative paths untouched.
-// Uses regex to match <a> tags with external hrefs and add attributes if not present.
 func addExternalLinkAttrs(htmlContent string) string {
-	// Match <a href="http..."> or <a href="https..."> tags
-	// This regex matches the opening tag and captures attributes to check for existing target/rel
-	re := regexp.MustCompile(`(<a\s+[^>]*href=["'](https?:[^"']*)["'][^>]*>)`)
-
-	return re.ReplaceAllStringFunc(htmlContent, func(match string) string {
-		// Check if target or rel already exist
-		hasTarget := regexp.MustCompile(`\starget\s*=`).MatchString(match)
-		hasRel := regexp.MustCompile(`\srel\s*=`).MatchString(match)
-
-		// Insert attributes after href attribute
-		if !hasTarget && !hasRel {
-			// Insert both after the href attribute
-			return regexp.MustCompile(`(href=["'][^"']*["'])`).ReplaceAllString(match, `$1 target="_blank" rel="noopener noreferrer"`)
-		} else if !hasTarget {
-			return regexp.MustCompile(`(href=["'][^"']*["'])`).ReplaceAllString(match, `$1 target="_blank"`)
-		} else if !hasRel {
-			return regexp.MustCompile(`(href=["'][^"']*["'])`).ReplaceAllString(match, `$1 rel="noopener noreferrer"`)
-		}
-		return match
-	})
+	return strings.ReplaceAll(
+		htmlContent,
+		`<a href="http`,
+		`<a target="_blank" rel="noopener noreferrer" href="http`,
+	)
 }
 
 // findFile returns the absolute path to the doc file, falling back to English.
 func (h *DocsAPIHandler) findFile(docType, lang string) (string, string) {
+	logger.Get().Debug().Str("docsDir", h.docsDir).Str("docType", docType).Str("lang", lang).Msg("api/v1/docs: finding file")
 	if h.docsDir == "" {
+		logger.Get().Warn().Msg("api/v1/docs: docsDir is empty")
 		return "", ""
 	}
 	absDir, err := filepath.Abs(h.docsDir)
 	if err != nil {
+		logger.Get().Warn().Err(err).Msg("api/v1/docs: failed to get absolute path for docsDir")
 		return "", ""
 	}
+	logger.Get().Debug().Str("absDir", absDir).Msg("api/v1/docs: absolute docs directory")
 	tryLang := func(l string) string {
 		name := docType + "." + l + ".md"
 		abs, err := filepath.Abs(filepath.Join(h.docsDir, name))
 		if err != nil {
+			logger.Get().Debug().Str("lang", l).Err(err).Msg("api/v1/docs: failed to get absolute path for file")
 			return ""
 		}
 		if !strings.HasPrefix(abs, absDir+string(os.PathSeparator)) {
+			logger.Get().Warn().Str("path", abs).Msg("api/v1/docs: path traversal attempt blocked")
 			return "" // path traversal guard
 		}
 		if _, err := os.Stat(abs); err == nil {
+			logger.Get().Debug().Str("file", abs).Str("lang", l).Msg("api/v1/docs: file found")
 			return abs
 		}
+		logger.Get().Debug().Str("file", abs).Str("lang", l).Err(err).Msg("api/v1/docs: file not found")
 		return ""
 	}
 	if f := tryLang(lang); f != "" {
@@ -186,6 +179,7 @@ func (h *DocsAPIHandler) findFile(docType, lang string) (string, string) {
 			return f, "en"
 		}
 	}
+	logger.Get().Warn().Str("docType", docType).Str("lang", lang).Msg("api/v1/docs: file not found for any language")
 	return "", ""
 }
 
