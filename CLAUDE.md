@@ -39,20 +39,20 @@ make docker-build
 
 Go stateless REST API — no database, all state from Proxmox APIs.
 
-| Package | Role |
-| ------- | ---- |
-| `main.go` | Entry point; wires all packages |
-| `api/v1/` | RESTful JSON endpoints (`/api/v1/*`), route registration, JWT middleware |
-| `handlers/` | HTTP handlers for both API and server-rendered pages |
-| `proxmox/` | Proxmox API client (go-resty), caching, multi-node aggregation |
-| `security/` | Session management (alexedwards/scs), CSRF, input validation |
-| `middleware/` | Rate limiting, Proxmox health checks |
-| `state/` | Central `StateManager` — shared session manager, settings, cache |
-| `logger/` | Structured logging via zerolog |
-| `i18n/` | EN + FR translations |
-| `components/` | Templ components (server-side templating) |
-| `cloudinit/` | SFTP upload of cloud-init snippets |
-| `tests/` | Integration tests |
+| Package       | Role                                                                     |
+| ------------- | ------------------------------------------------------------------------ |
+| `main.go`     | Entry point; wires all packages                                          |
+| `api/v1/`     | RESTful JSON endpoints (`/api/v1/*`), route registration, JWT middleware |
+| `handlers/`   | HTTP handlers for both API and server-rendered pages                     |
+| `proxmox/`    | Proxmox API client (go-resty), caching, multi-node aggregation           |
+| `security/`   | Session management (alexedwards/scs), CSRF, input validation             |
+| `middleware/` | Rate limiting, Proxmox health checks                                     |
+| `state/`      | Central `StateManager` — shared session manager, settings, cache         |
+| `logger/`     | Structured logging via zerolog                                           |
+| `i18n/`       | EN + FR translations                                                     |
+| `components/` | Templ components (server-side templating)                                |
+| `cloudinit/`  | SFTP upload of cloud-init snippets                                       |
+| `tests/`      | Integration tests                                                        |
 
 **Dependency direction:** `api/v1` → `handlers` → `proxmox`, `security`, `state`
 

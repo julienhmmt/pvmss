@@ -84,7 +84,7 @@ La page de détails de la VM fournit des capacités complètes de gestion et de 
 
 #### QEMU guest agent
 
-Sur la page *Détails de la VM*, un petit badge intitulé **“QEMU guest agent”** indique l'état connu de l'agent QEMU à l'intérieur de la machine virtuelle :
+Sur la page _Détails de la VM_, un petit badge intitulé **“QEMU guest agent”** indique l'état connu de l'agent QEMU à l'intérieur de la machine virtuelle :
 
 - **Disponible** : PVMSS a récemment reçu des données de l'agent (par exemple les adresses IP). Les arrêts gracieux devraient fonctionner.
 - **Indisponible** : L'agent invité n'est pas installé, n'est pas en cours d'exécution, ou n'a pas répondu à temps. Dans ce cas :
@@ -117,7 +117,7 @@ Consultez les informations de configuration détaillées :
 
 ### Gestion du profil
 
-Vous pouvez modifier certaines propriétés de la VM depuis la page *Détails de la VM* :
+Vous pouvez modifier certaines propriétés de la VM depuis la page _Détails de la VM_ :
 
 - **Description** : Mettre à jour la description de la VM (texte simple ou Markdown léger, selon la configuration choisie par l'administrateur)
 - **Tags** : Ajouter ou supprimer des tags pour une meilleure organisation
@@ -126,7 +126,7 @@ Votre **profil** affiche un résumé de vos VMs (nombre total, en cours d'exécu
 
 ### Modification des ressources d'une machine virtuelle
 
-En plus de la description et des tags, vous pouvez modifier certaines ressources d'une VM existante depuis la page *Détails de la VM*, à condition que la VM soit **arrêtée** :
+En plus de la description et des tags, vous pouvez modifier certaines ressources d'une VM existante depuis la page _Détails de la VM_, à condition que la VM soit **arrêtée** :
 
 - **CPU** : Nombre de sockets et de cœurs (dans les limites définies par les administrateurs)
 - **Mémoire (RAM)** : Mémoire allouée en Mo/Go (dans les limites définies par les administrateurs)
@@ -275,18 +275,18 @@ L'application PVMSS est gérée par l'équipe informatique de votre organisation
 
 PVMSS fournit une interface self‑service simplifiée au‑dessus de Proxmox VE. Le tableau ci‑dessous résume où réaliser les actions les plus courantes :
 
-| Action | PVMSS | Interface Proxmox VE |
-| --- | --- | --- |
-| Créer une VM KVM/QEMU | Oui (création self‑service dans les limites définies par les administrateurs) | Oui (toutes les options de configuration) |
-| Créer un conteneur LXC | Non | Oui |
-| Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options) |
-| Gérer les snapshots | Oui (créer, éditer, supprimer, restaurer) | Oui (gestion complète des snapshots) |
-| Lancer des sauvegardes / restaurations | Non | Oui |
-| Migrer des VMs entre nœuds (migration à chaud) | Non | Oui |
-| Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.) | Partiellement (choix du pont et du modèle de carte uniquement) | Oui (pile réseau complète) |
-| Gérer des templates de VM / clonage | Non | Oui |
-| Configurer cloud-init | Non | Oui |
-| Gérer les utilisateurs et permissions | Indirectement (votre compte et votre pool sont gérés par les administrateurs) | Oui (RBAC complet, royaumes, rôles, ACLs) |
+| Action                                                                                            | PVMSS                                                                                                | Interface Proxmox VE                      |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Créer une VM KVM/QEMU                                                                             | Oui (création self‑service dans les limites définies par les administrateurs)                        | Oui (toutes les options de configuration) |
+| Créer un conteneur LXC                                                                            | Non                                                                                                  | Oui                                       |
+| Modifier les ressources de base d'une VM (CPU, RAM, nombre/taille de disques, cartes réseau, ISO) | Oui (dans les limites de l'UI et de la politique ; certaines opérations disque ne sont pas exposées) | Oui (ensemble complet d'options)          |
+| Gérer les snapshots                                                                               | Oui (créer, éditer, supprimer, restaurer)                                                            | Oui (gestion complète des snapshots)      |
+| Lancer des sauvegardes / restaurations                                                            | Non                                                                                                  | Oui                                       |
+| Migrer des VMs entre nœuds (migration à chaud)                                                    | Non                                                                                                  | Oui                                       |
+| Configurer la mise en réseau avancée (VLANs, règles de pare‑feu, etc.)                            | Partiellement (choix du pont et du modèle de carte uniquement)                                       | Oui (pile réseau complète)                |
+| Gérer des templates de VM / clonage                                                               | Non                                                                                                  | Oui                                       |
+| Configurer cloud-init                                                                             | Non                                                                                                  | Oui                                       |
+| Gérer les utilisateurs et permissions                                                             | Indirectement (votre compte et votre pool sont gérés par les administrateurs)                        | Oui (RBAC complet, royaumes, rôles, ACLs) |
 
 Si vous avez besoin d'une fonctionnalité disponible uniquement dans Proxmox VE, contactez vos administrateurs pour qu'ils réalisent l'opération directement ou ajustent votre environnement.
 

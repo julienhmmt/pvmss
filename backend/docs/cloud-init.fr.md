@@ -177,14 +177,14 @@ Dans votre `settings.json`, activer SFTP et configurer la connexion :
 
 ### Options de configuration
 
-| Option | Description | Exemple |
-|--------|-------------|--------|
-| `enabled` | Activer/désactiver les uploads SFTP | `true` |
-| `host` | IP ou hostname du nœud Proxmox | `"192.168.1.100"` |
-| `port` | Port SSH | `22` |
-| `username` | Utilisateur PAM pour SFTP | `"pvmss-snippets"` |
-| `privateKeyPath` | Chemin vers la clé privée dans le conteneur | `"/app/pvmss_snippets_ed25519"` |
-| `snippetBaseDir` | Répertoire des snippets (relatif au chroot si utilisé) | `"/snippets"` |
+| Option           | Description                                            | Exemple                         |
+| ---------------- | ------------------------------------------------------ | ------------------------------- |
+| `enabled`        | Activer/désactiver les uploads SFTP                    | `true`                          |
+| `host`           | IP ou hostname du nœud Proxmox                         | `"192.168.1.100"`               |
+| `port`           | Port SSH                                               | `22`                            |
+| `username`       | Utilisateur PAM pour SFTP                              | `"pvmss-snippets"`              |
+| `privateKeyPath` | Chemin vers la clé privée dans le conteneur            | `"/app/pvmss_snippets_ed25519"` |
+| `snippetBaseDir` | Répertoire des snippets (relatif au chroot si utilisé) | `"/snippets"`                   |
 
 ### Désactiver SFTP (cloud-init basique uniquement)
 
