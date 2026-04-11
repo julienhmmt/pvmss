@@ -33,14 +33,14 @@ COPY frontend/ /app/frontend/
 
 # Build SvelteKit admin SPA
 FROM node:lts-alpine3.22 AS svelte-builder
-WORKDIR /app/frontend-svelte
+WORKDIR /app/frontend
 
-COPY frontend-svelte/package.json frontend-svelte/package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json ./
 
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
-COPY frontend-svelte/ ./
+COPY frontend/ ./
 
 RUN npm run build
 
@@ -52,7 +52,7 @@ WORKDIR /app
 # Copy from builder and frontend stages
 COPY --from=builder --chown=nonroot:nonroot /app/pvmss-backend /app/pvmss-backend
 COPY --from=frontend --chown=nonroot:nonroot /app/frontend/ /app/frontend/
-COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend-svelte/build/ /app/frontend/admin/
+COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend/build/ /app/frontend/admin/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/i18n/ /app/backend/i18n/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/docs/ /app/backend/docs/
 
