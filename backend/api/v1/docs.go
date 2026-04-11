@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -115,11 +116,43 @@ func (h *DocsAPIHandler) renderDoc(docType, lang string) (string, string, error)
 
 	extensions := parser.CommonExtensions | parser.AutoHeadingIDs
 	p := parser.NewWithExtensions(extensions)
-	opts := html.RendererOptions{Flags: html.CommonFlags | html.HrefTargetBlank}
+	// HrefTargetBlank is intentionally omitted: it would apply target="_blank" to
+	// internal anchor links (#section) as well, breaking in-page navigation.
+	// External links get target="_blank" via post-processing below.
+	opts := html.RendererOptions{Flags: html.CommonFlags}
 	renderer := html.NewRenderer(opts)
 	rendered := markdown.ToHTML(content, p, renderer)
 
-	return string(rendered), usedLang, nil
+	// Add target="_blank" rel="noopener noreferrer" to external links only.
+	out := addExternalLinkAttrs(string(rendered))
+	return out, usedLang, nil
+}
+
+// addExternalLinkAttrs post-processes HTML to add target="_blank" and rel="noopener noreferrer"
+// to external links (those that start with http:// or https://), leaving internal
+// anchor links (#...) and relative paths untouched.
+// Uses regex to match <a> tags with external hrefs and add attributes if not present.
+func addExternalLinkAttrs(htmlContent string) string {
+	// Match <a href="http..."> or <a href="https..."> tags
+	// This regex matches the opening tag and captures attributes to check for existing target/rel
+	re := regexp.MustCompile(`(<a\s+[^>]*href=["'](https?:[^"']*)["'][^>]*>)`)
+
+	return re.ReplaceAllStringFunc(htmlContent, func(match string) string {
+		// Check if target or rel already exist
+		hasTarget := regexp.MustCompile(`\starget\s*=`).MatchString(match)
+		hasRel := regexp.MustCompile(`\srel\s*=`).MatchString(match)
+
+		// Insert attributes after href attribute
+		if !hasTarget && !hasRel {
+			// Insert both after the href attribute
+			return regexp.MustCompile(`(href=["'][^"']*["'])`).ReplaceAllString(match, `$1 target="_blank" rel="noopener noreferrer"`)
+		} else if !hasTarget {
+			return regexp.MustCompile(`(href=["'][^"']*["'])`).ReplaceAllString(match, `$1 target="_blank"`)
+		} else if !hasRel {
+			return regexp.MustCompile(`(href=["'][^"']*["'])`).ReplaceAllString(match, `$1 rel="noopener noreferrer"`)
+		}
+		return match
+	})
 }
 
 // findFile returns the absolute path to the doc file, falling back to English.
