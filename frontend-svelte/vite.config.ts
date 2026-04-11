@@ -17,7 +17,18 @@ export default defineConfig({
 		}
 	},
 	server: {
-		host: true,
+		host: '0.0.0.0',
+		port: 5173,
+		strictPort: true,
+		watch: {
+			usePolling: true,
+			interval: 1000
+		},
+		hmr: {
+			host: 'localhost',
+			port: 5173,
+			clientPort: 5173
+		},
 		proxy: {
 			'/api': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
 			'/login': { target: process.env.VITE_BACKEND_URL ?? 'http://localhost:50000', changeOrigin: true },
