@@ -184,14 +184,14 @@ In your `settings.json`, enable SFTP and configure the connection:
 
 ### Configuration options
 
-| Option | Description | Example |
-|--------|-------------|--------|
-| `enabled` | Enable/disable SFTP uploads | `true` |
-| `host` | Proxmox node IP or hostname | `"192.168.1.100"` |
-| `port` | SSH port | `22` |
-| `username` | PAM user for SFTP | `"pvmss-snippets"` |
-| `privateKeyPath` | Path to private key inside container | `"/app/pvmss_snippets_ed25519"` |
-| `snippetBaseDir` | Snippets directory (relative to chroot if used) | `"/snippets"` |
+| Option           | Description                                     | Example                         |
+| ---------------- | ----------------------------------------------- | ------------------------------- |
+| `enabled`        | Enable/disable SFTP uploads                     | `true`                          |
+| `host`           | Proxmox node IP or hostname                     | `"192.168.1.100"`               |
+| `port`           | SSH port                                        | `22`                            |
+| `username`       | PAM user for SFTP                               | `"pvmss-snippets"`              |
+| `privateKeyPath` | Path to private key inside container            | `"/app/pvmss_snippets_ed25519"` |
+| `snippetBaseDir` | Snippets directory (relative to chroot if used) | `"/snippets"`                   |
 
 ### Disabling SFTP (basic cloud-init only)
 

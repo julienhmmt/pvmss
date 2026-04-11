@@ -2,15 +2,15 @@
 
 But : que le backend Proxmox ne dépende plus de `github.com/Telmate/proxmox-api-go`, en s’appuyant uniquement sur :
 
-- [RestyClient](/pvmss/backend/proxmox/client.go:355:0-359:1) + fonctions `*Resty` déjà en place  
+- [RestyClient](/pvmss/backend/proxmox/client.go:355:0-359:1) + fonctions `*Resty` déjà en place
 - éventuellement un petit client HTTP pour les flux basés sur cookies (tickets, password, VNC)
 
 Le tout **sans casser** :
 
-- profils utilisateurs / pools / ACL  
-- console noVNC  
-- changement de mot de passe PVE  
-- recherche avancée (tags, pool)  
+- profils utilisateurs / pools / ACL
+- console noVNC
+- changement de mot de passe PVE
+- recherche avancée (tags, pool)
 - limites / monitoring / offline mode
 
 ---
@@ -55,29 +55,29 @@ Remplacer partout :
 
 ### 2.3. Plan concret
 
-1. **VM configs & status**  
+1. **VM configs & status**
    - Dans les handlers qui utilisent [GetVMConfigWithContext](/pvmss/backend/proxmox/vms.go:23:0-37:1) / [GetVMCurrentWithContext](/pvmss/backend/proxmox/vms.go:272:0-281:1), remplacer par :
-     - [GetVMConfigResty(ctx, restyClient, node, vmid)](/pvmss/backend/proxmox/vms.go:410:0-427:1)  
+     - [GetVMConfigResty(ctx, restyClient, node, vmid)](/pvmss/backend/proxmox/vms.go:410:0-427:1)
      - [GetVMCurrentResty(ctx, restyClient, node, vmid)](/pvmss/backend/proxmox/vms.go:429:0-441:1)
    - Si un handler n’a pas encore de `restyClient`, utiliser `getDefaultRestyClient()`.
 
-2. **Node lists & details**  
+2. **Node lists & details**
    - Remplacer [GetNodeNamesWithContext(ctx, client)](/pvmss/backend/proxmox/nodes.go:131:0-150:1) par :
      - soit [GetNodeNamesResty(ctx, restyClient)](/pvmss/backend/proxmox/nodes.go:175:0-196:1),
      - soit, si le code n’a besoin que de “test de connexion”, une fonction dédiée type `CheckConnectionResty(...)`.
    - Pour les usages dans [settings_limits.go](/pvmss/backend/handlers/settings_limits.go:0:0-0:0), [storage.go](/pvmss/backend/proxmox/storage.go:0:0-0:0), [vm_details.go](/pvmss/backend/handlers/vm_details.go:0:0-0:0) → créer/partager un helper qui renvoie une liste de nodes via Resty.
 
-3. **Update config / actions / delete**  
+3. **Update config / actions / delete**
    - Assurer que tous les write-paths VM (actions, mise à jour config, delete) utilisent uniquement :
      - [UpdateVMConfigResty](/pvmss/backend/proxmox/vms.go:443:0-465:1)
      - [VMActionResty](/pvmss/backend/proxmox/vms.go:467:0-501:1)
      - [DeleteVMResty](/pvmss/backend/proxmox/vms.go:503:0-517:1)
    - Supprimer ensuite les fonctions [VMActionWithContext](/pvmss/backend/proxmox/vms.go:309:0-339:1) / [DeleteVMWithContext](/pvmss/backend/proxmox/vms.go:341:0-362:1) une fois plus utilisées.
 
-4. **Cache invalidation**  
+4. **Cache invalidation**
    - Là où tu appelles aujourd’hui [client.InvalidateCache("/nodes/...")](/pvmss/backend/proxmox/client.go:245:0-251:1), décider :
      - soit de supprimer ces invalidations (les `*Resty` ne s’appuient pas sur le cache Telmate),
-     - soit de les remplacer par une future couche de cache Resty (facultatif).  
+     - soit de les remplacer par une future couche de cache Resty (facultatif).
    - Dans un premier temps, **tu peux simplement garder l’invalidation mais la rendre no-op** (voir phase 3).
 
 ### 2.4. Commentaires à ajouter dans le code
@@ -135,13 +135,11 @@ Ce sont les usages les plus “profonds” de Telmate, mais bien localisés.
 #### Plan
 
 1. Créer un **client HTTP orienté cookies** :
-
    - Option A : étendre [RestyClient](/pvmss/backend/proxmox/client.go:355:0-359:1) :
      - ajouter des méthodes `SetCookieAuth(PVEAuthCookie, CSRF)` et `PostFormWithCookies(...)`.
    - Option B : ajouter un petit `SessionClient` basé sur `net/http` pour les endpoints `/access/...`, `/nodes/...` qui nécessitent cookies.
 
 2. Réécrire dans [access.go](/pvmss/backend/proxmox/access.go:0:0-0:0) :
-
    - [CreateTicket(ctx, client, ...)](/pvmss/backend/proxmox/access.go:34:0-108:1) → utiliser Resty/HTTP directement :
      - `POST /access/ticket` avec `username/password/realm` dans `url.Values`.
      - parser la réponse JSON en [TicketResponse](/pvmss/backend/proxmox/access.go:14:0-20:1) (déjà défini).
@@ -149,7 +147,6 @@ Ce sont les usages les plus “profonds” de Telmate, mais bien localisés.
      - `SetFormDataFromValues` + headers `CSRFPreventionToken` & cookie `PVEAuthCookie`.
 
 3. Adapter `profile.go / UpdatePassword` :
-
    - Remplacer [NewClientCookieAuth](/pvmss/backend/proxmox/client.go:55:0-61:1) + [CreateTicket](/pvmss/backend/proxmox/access.go:34:0-108:1) (Telmate) par une version basée sur ton nouveau client Resty/HTTP.
    - Stocker ticket + CSRF dans la session comme aujourd’hui.
 
@@ -296,7 +293,6 @@ Quand :
 alors :
 
 1. **Supprimer le code Telmate-wrapper** :
-
    - Dans [proxmox/client.go](/pvmss/backend/proxmox/client.go:0:0-0:0) :
      - retirer l’import `px "github.com/Telmate/proxmox-api-go/proxmox"`,
      - supprimer le type [Client](/pvmss/backend/proxmox/client.go:21:0-33:1) et les fonctions associées ([NewClient](/pvmss/backend/proxmox/client.go:38:0-53:1), [NewClientCookieAuth](/pvmss/backend/proxmox/client.go:55:0-61:1), [GetRawWithContext](/pvmss/backend/proxmox/client.go:152:0-177:1), etc.),
@@ -307,13 +303,11 @@ alors :
      - soit le re-définir pour être implémenté par une version Resty si tu veux conserver une abstraction.
 
 2. **Nettoyer les fichiers proxmox** :
-
    - Supprimer les fonctions `*WithContext` devenues mortes.
    - Renommer éventuellement les fichiers :
      - par ex. [vms.go](/pvmss/backend/proxmox/vms.go:0:0-0:0) ne contenant que les versions `*Resty`, ou scinder si nécessaire.
 
 3. **Mise à jour [go.mod](/pvmss/backend/go.mod:0:0-0:0) / [go.sum](/pvmss/backend/go.sum:0:0-0:0)** :
-
    - Supprimer la ligne :
 
      ```go
@@ -323,7 +317,6 @@ alors :
    - Lancer `go mod tidy` (en local / via Makefile) pour nettoyer [go.sum](/pvmss/backend/go.sum:0:0-0:0).
 
 4. **Re-run QA** :
-
    - `go build ./backend/...`
    - tests unitaires / intégration existants (`make test-all` si dispo),
    - `gosec`, `golangci-lint` si tu les utilises encore.

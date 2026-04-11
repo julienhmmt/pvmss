@@ -21,10 +21,10 @@ The PVMSS application administrator has complete access to all application featu
 1. Access the administration panel on `/admin` (administrator password required)
 2. Create tags to categorize virtual machines
 3. Review and configure the following options that you want to make available when creating virtual machines:
-    - available storage
-    - ISO images
-    - network bridges (vmbr)
-    - resource limits (CPU, RAM, and disk size)
+   - available storage
+   - ISO images
+   - network bridges (vmbr)
+   - resource limits (CPU, RAM, and disk size)
 4. Create as many user accounts as needed
 5. Communicate to your users the availability of the PVMSS application so they can start creating their VMs
 6. Monitor PVMSS application logs to detect any issues
@@ -72,7 +72,7 @@ In addition to this automatic refresh:
 
 - Each node card on `/admin/nodes` exposes a **per-node refresh button** that lets you immediately refresh metrics for a specific node without waiting for the background worker.
 - Each node card also shows the **last resource update date/time** for that node, formatted according to the timezone derived from `TZ`.
-- When Proxmox reports a node as **offline**, PVMSS keeps displaying the **last known resource values** (CPU, RAM, disk) for that node as long as at least one measurement was previously collected, while clearly indicating the *Offline* status.
+- When Proxmox reports a node as **offline**, PVMSS keeps displaying the **last known resource values** (CPU, RAM, disk) for that node as long as at least one measurement was previously collected, while clearly indicating the _Offline_ status.
 
 ### Tag management
 
@@ -86,11 +86,11 @@ Parameters are saved in a JSON format file (path: `{"tags": ["pvmss","tag"]}`).
 
 This section allows you to manage Proxmox storage used to store virtual machines. All storage backends that can host VM disk images are displayed, grouped by node when PVMSS is connected to a cluster.
 
-An "Enable" or "Disable" button allows you to select which `(node, storage)` pairs will be offered on the *Create VM* page. Enabling a storage here does not modify the underlying Proxmox configuration; it only controls what the self‑service UI exposes to users.
+An "Enable" or "Disable" button allows you to select which `(node, storage)` pairs will be offered on the _Create VM_ page. Enabling a storage here does not modify the underlying Proxmox configuration; it only controls what the self‑service UI exposes to users.
 
 Parameters are saved in a JSON format file (path: `{"enabled_storages": ["node-name:storage_name"]}`).
 
-At the bottom of the page, a **Disk configuration** section lets you define the **maximum number of disks per VM** (`MaxDiskPerVM`). This value controls how many disk slots are available on the *Create VM* page, in addition to the technical limits of each disk bus (VirtIO, SCSI, SATA, IDE).
+At the bottom of the page, a **Disk configuration** section lets you define the **maximum number of disks per VM** (`MaxDiskPerVM`). This value controls how many disk slots are available on the _Create VM_ page, in addition to the technical limits of each disk bus (VirtIO, SCSI, SATA, IDE).
 
 ### ISO management
 
@@ -108,11 +108,11 @@ An "Enable" or "Disable" button allows you to select which `(node, bridge)` pair
 
 Parameters are saved in a JSON format file (path: `{"vmbrs": ["node-name:network_bridge_name"]}`).
 
-At the top of the page, a **Network cards configuration** section lets you define the **maximum number of network cards per VM** (`MaxNetworkCards`). This value controls how many network card sections are displayed on the *Create VM* page. It is currently clamped between 1 and 10.
+At the top of the page, a **Network cards configuration** section lets you define the **maximum number of network cards per VM** (`MaxNetworkCards`). This value controls how many network card sections are displayed on the _Create VM_ page. It is currently clamped between 1 and 10.
 
 #### Network card speed (Network Speed)
 
-End-users can optionally specify a **Network Speed** for each virtual network card on the *Create VM* and *Edit resources* pages. This setting is implemented using the Proxmox `rate` parameter on the NIC (for example: `net0=virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000`).
+End-users can optionally specify a **Network Speed** for each virtual network card on the _Create VM_ and _Edit resources_ pages. This setting is implemented using the Proxmox `rate` parameter on the NIC (for example: `net0=virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,rate=1000`).
 
 - If the field is **left empty**, PVMSS does not set `rate` and the network card runs at **unlimited speed** (this is the Proxmox default).
 - If a value is provided, it is interpreted as **Megabytes per second (MB/s)**.
@@ -146,7 +146,7 @@ You can use this setting to gently cap the bandwidth of specific VMs, but it sho
 
 #### MTU configuration considerations
 
-End-users can optionally specify an **MTU (Maximum Transmission Unit)** per virtual network card on the *Create VM* and *Edit resources* pages.
+End-users can optionally specify an **MTU (Maximum Transmission Unit)** per virtual network card on the _Create VM_ and _Edit resources_ pages.
 
 - If the **MTU field is left empty**, PVMSS does **not** send any explicit `mtu=` parameter to Proxmox and the interface uses the **default MTU of 1500**.
 - If a value is provided, it is interpreted as the MTU in **bytes** and must be in the range **576–9000**.
@@ -166,7 +166,7 @@ From an administrator perspective:
 
 This section allows you to manage limits for virtual machines, nodes, and users.
 
-The **virtual machine limits** form allows you to define the minimum and maximum CPU sockets, CPU cores, memory amount, and virtual storage size that a new virtual machine can have. These limits are enforced both on the *Create VM* page and on the *Edit resources* form of the VM details page.
+The **virtual machine limits** form allows you to define the minimum and maximum CPU sockets, CPU cores, memory amount, and virtual storage size that a new virtual machine can have. These limits are enforced both on the _Create VM_ page and on the _Edit resources_ form of the VM details page.
 
 A second form, dedicated to **node limits**, allows you to define aggregate limits for each node (maximum total cores and memory that all VMs managed by PVMSS should consume on that node). The admin page also displays current aggregate usage per node with progress bars so you can quickly see when a node is close to its configured capacity.
 
@@ -268,7 +268,7 @@ After creation, the user can log in to PVMSS using `admin-user@pve` credentials 
 - To create self‑service VMs, administrators must either:
   - Log in as a regular PVMSS user (with its own `pvmss_*` pool), or
   - Create and manage VMs directly from the Proxmox interface.
-- From the PVMSS admin interface, administrators can **view and manage user VMs** via the *Search* page and the *Admin VMs* page:
+- From the PVMSS admin interface, administrators can **view and manage user VMs** via the _Search_ page and the _Admin VMs_ page:
   - Open the VM details page for any VM.
   - Use the same lifecycle and resource actions exposed to end‑users (subject to Proxmox permissions).
 
@@ -276,18 +276,18 @@ After creation, the user can log in to PVMSS using `admin-user@pve` credentials 
 
 PVMSS is a focused self‑service interface on top of Proxmox VE. The table below summarizes where common actions are performed:
 
-| Action | PVMSS | Proxmox VE GUI |
-| --- | --- | --- |
-| Create KVM/QEMU VM | Yes (self‑service, constrained by admin‑defined limits and presets) | Yes (full configuration options) |
-| Create LXC container | No | Yes |
-| Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options) |
-| Manage snapshots | Yes (create, edit, delete, rollback) | Yes (full snapshot management) |
-| Run backups / restores | No | Yes |
-| Live migrate VMs between nodes | No | Yes |
-| Configure advanced networking (VLANs, firewall rules, etc.) | Partially (choose bridge and NIC model only) | Yes (full networking stack) |
-| Manage VM templates / cloning | No | Yes |
-| Configure cloud-init | No | Yes |
-| Manage users and permissions | Yes (create/delete PVMSS users and pools; relies on Proxmox roles) | Yes (full RBAC, realms, roles, ACLs) |
+| Action                                                                  | PVMSS                                                                   | Proxmox VE GUI                       |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------ |
+| Create KVM/QEMU VM                                                      | Yes (self‑service, constrained by admin‑defined limits and presets)     | Yes (full configuration options)     |
+| Create LXC container                                                    | No                                                                      | Yes                                  |
+| Edit basic VM resources (CPU, RAM, disk count/size, network cards, ISO) | Yes (within UI and policy limits; some disk operations are not exposed) | Yes (full set of options)            |
+| Manage snapshots                                                        | Yes (create, edit, delete, rollback)                                    | Yes (full snapshot management)       |
+| Run backups / restores                                                  | No                                                                      | Yes                                  |
+| Live migrate VMs between nodes                                          | No                                                                      | Yes                                  |
+| Configure advanced networking (VLANs, firewall rules, etc.)             | Partially (choose bridge and NIC model only)                            | Yes (full networking stack)          |
+| Manage VM templates / cloning                                           | No                                                                      | Yes                                  |
+| Configure cloud-init                                                    | No                                                                      | Yes                                  |
+| Manage users and permissions                                            | Yes (create/delete PVMSS users and pools; relies on Proxmox roles)      | Yes (full RBAC, realms, roles, ACLs) |
 
 This comparison is not exhaustive but highlights that PVMSS intentionally exposes only a safe subset of Proxmox features for end‑users.
 
@@ -368,7 +368,7 @@ When investigating issues, always combine `/admin/appinfo`, the **Nodes** and **
 
 PVMSS does not manage the installation of the **QEMU Guest Agent** inside VMs, but it exposes and consumes its status in several places:
 
-- On the **VM details** page, a small badge labelled *“QEMU Guest Agent”* shows the last known agent state (Available / Unavailable / Unknown / Offline).
+- On the **VM details** page, a small badge labelled _“QEMU Guest Agent”_ shows the last known agent state (Available / Unavailable / Unknown / Offline).
 - The **Shutdown** action uses a short health check against the agent:
   - If the agent is clearly unavailable, PVMSS fails fast with a user-friendly message and suggests using **Stop** instead of waiting for long timeouts.
   - If the agent is available, PVMSS sends a graceful shutdown request and briefly polls the VM status to confirm that it stops.
@@ -412,7 +412,7 @@ Administrators should monitor these logs to detect recurring problems with guest
   - Proxmox URL and SSL verification settings.
   - Cluster vs standalone detection and visible node count.
 - Configure, in order:
-  - Nodes and storages to expose on the *Create VM* page.
+  - Nodes and storages to expose on the _Create VM_ page.
   - ISO images available to users.
   - Network bridges (VMBR) and maximum number of network cards.
   - VM, node, and user limits on the **Limits** page.
