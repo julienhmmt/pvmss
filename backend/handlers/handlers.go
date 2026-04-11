@@ -54,7 +54,6 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	// Initialize all handlers
 	authHandler := MakeAuthHandler(stateManager)
 	healthHandler := MakeHealthHandler(stateManager)
-	languageHandler := MakeLanguageHandler()
 	settingsHandler := MakeSettingsHandler(stateManager)
 	tagsHandler := MakeTagsHandler(stateManager)
 
@@ -62,7 +61,6 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	setupRoutes(
 		authHandler,
 		healthHandler,
-		languageHandler,
 		router,
 		settingsHandler,
 		tagsHandler,
@@ -148,7 +146,6 @@ type handlerRegistrar interface {
 func setupRoutes(
 	authHandler *AuthHandler,
 	healthHandler *HealthHandler,
-	languageHandler *LanguageHandler,
 	router *httprouter.Router,
 	settingsHandler *SettingsHandler,
 	tagsHandler *TagsHandler,
@@ -156,7 +153,6 @@ func setupRoutes(
 	handlers := []handlerRegistrar{
 		authHandler,
 		healthHandler,
-		languageHandler,
 		settingsHandler,
 		tagsHandler,
 	}

@@ -1,31 +1,25 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
 	"pvmss/state"
-
-	i18n_bundle "github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 // ValidationHelper provides common validation methods for handlers
 type ValidationHelper struct {
-	Log       logger.Logger
-	Writer    http.ResponseWriter
-	Request   *http.Request
-	Localizer *i18n_bundle.Localizer
+	Log     logger.Logger
+	Writer  http.ResponseWriter
+	Request *http.Request
 }
 
 // MakeValidationHelper creates a new validation helper
 func MakeValidationHelper(w http.ResponseWriter, r *http.Request, log logger.Logger) *ValidationHelper {
 	return &ValidationHelper{
-		Log:       log,
-		Writer:    w,
-		Request:   r,
-		Localizer: i18n.GetLocalizerFromRequest(r),
+		Log:     log,
+		Writer:  w,
+		Request: r,
 	}
 }
 
@@ -34,7 +28,7 @@ func (v *ValidationHelper) RequireProxmoxConnection(sm state.StateManager) bool 
 	connected, msg := sm.GetProxmoxStatus()
 	if !connected {
 		v.Log.Warn().Str("proxmox_status", msg).Msg("Proxmox not connected")
-		http.Error(v.Writer, fmt.Sprintf("%s: %s", i18n.Localize(v.Localizer, "Error.ProxmoxConnectionError"), msg), http.StatusServiceUnavailable)
+		http.Error(v.Writer, "PROXMOX_CONNECTION_ERROR", http.StatusServiceUnavailable)
 		return false
 	}
 	return true
@@ -102,7 +96,7 @@ func (v *ValidationHelper) RequireAdmin() bool {
 		authenticated, _ := session.Get(v.Request.Context(), "authenticated").(bool)
 		if authenticated {
 			v.Log.Warn().Msg("Non-admin user attempted to access admin area")
-			http.Error(v.Writer, i18n.Localize(v.Localizer, "Error.AccessDenied"), http.StatusForbidden)
+			http.Error(v.Writer, "ACCESS_DENIED", http.StatusForbidden)
 		} else {
 			v.Log.Info().Msg("Unauthenticated admin access attempt, redirecting")
 			returnURL := v.Request.URL.Path
@@ -132,7 +126,7 @@ func (v *ValidationHelper) RequireFormValues(fields ...string) (map[string]strin
 
 	if len(missing) > 0 {
 		v.Log.Warn().Strs("missing_fields", missing).Msg("Required form fields missing")
-		http.Error(v.Writer, fmt.Sprintf("%s: %v", i18n.Localize(v.Localizer, "Error.MissingRequiredFields"), missing), http.StatusBadRequest)
+		http.Error(v.Writer, "MISSING_REQUIRED_FIELDS", http.StatusBadRequest)
 		return nil, false
 	}
 

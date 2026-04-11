@@ -26,7 +26,7 @@ func TestErrorResponse_StandardErrors(t *testing.T) {
 				t.Errorf("Expected status code %d, got %d", tt.wantCode, tt.errResp.Code)
 			}
 			if tt.errResp.Key == "" {
-				t.Error("Error response should have an i18n key")
+				t.Error("Error response should have an error code")
 			}
 			if tt.errResp.Message == "" {
 				t.Error("Error response should have a fallback message")
@@ -62,10 +62,6 @@ func TestErrorHelper(t *testing.T) {
 	}
 	if helper.Request == nil {
 		t.Error("ErrorHelper should have Request set")
-		return
-	}
-	if helper.Localizer == nil {
-		t.Error("ErrorHelper should have Localizer set")
 		return
 	}
 }

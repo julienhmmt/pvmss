@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"pvmss/constants"
-	"pvmss/i18n"
 	"pvmss/utils"
 )
 
@@ -211,26 +210,6 @@ func GetFuncMap(r *http.Request) template.FuncMap {
 				return "/"
 			}
 			return r.URL.Path
-		}
-
-		// Add translation function
-		funcMap["T"] = func(key string, args ...interface{}) string {
-			localizer := i18n.GetLocalizerFromRequest(r)
-
-			var count []int
-			if len(args) > 0 {
-				// The template engine might pass numbers as int, int64 or float64
-				switch c := args[0].(type) {
-				case int:
-					count = append(count, c)
-				case int64:
-					count = append(count, int(c))
-				case float64:
-					count = append(count, int(c))
-				}
-			}
-
-			return i18n.Localize(localizer, key, count...)
 		}
 	}
 

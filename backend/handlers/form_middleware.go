@@ -1,13 +1,13 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/constants"
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/security"
 )
@@ -26,8 +26,12 @@ func WithFormValidation(handler httprouter.Handle) httprouter.Handle {
 				!strings.Contains(contentType, "application/x-www-form-urlencoded") &&
 				!strings.Contains(contentType, "multipart/form-data") {
 				logger.Get().Warn().Str("content_type", contentType).Msg("Invalid content type for form")
-				localizer := i18n.GetLocalizerFromRequest(r)
-				http.Error(w, i18n.Localize(localizer, "Error.InvalidContentType"), http.StatusUnsupportedMediaType)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnsupportedMediaType)
+				_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+					Code:    "INVALID_CONTENT_TYPE",
+					Message: "Invalid content type",
+				})
 				return
 			}
 		}
@@ -35,8 +39,12 @@ func WithFormValidation(handler httprouter.Handle) httprouter.Handle {
 		// Parse form data
 		if err := r.ParseForm(); err != nil {
 			logger.Get().Error().Err(err).Msg("Failed to parse form data")
-			localizer := i18n.GetLocalizerFromRequest(r)
-			http.Error(w, i18n.Localize(localizer, "Error.InvalidFormData"), http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+				Code:    "INVALID_FORM_DATA",
+				Message: "Invalid form data",
+			})
 			return
 		}
 
@@ -104,8 +112,12 @@ func WithCSRFValidation(handler httprouter.Handle) httprouter.Handle {
 					Str("username", u).
 					Bool("token_present", token != "").
 					Msg("CSRF validation failed")
-				localizer := i18n.GetLocalizerFromRequest(r)
-				http.Error(w, i18n.Localize(localizer, "Error.InvalidCSRFToken"), http.StatusForbidden)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusForbidden)
+				_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+					Code:    "INVALID_CSRF_TOKEN",
+					Message: "Invalid CSRF token",
+				})
 				return
 			}
 		} else {
@@ -113,8 +125,12 @@ func WithCSRFValidation(handler httprouter.Handle) httprouter.Handle {
 				Str("ip", r.RemoteAddr).
 				Str("path", r.URL.Path).
 				Msg("Session not available for CSRF validation")
-			localizer := i18n.GetLocalizerFromRequest(r)
-			http.Error(w, i18n.Localize(localizer, "Error.SessionError"), http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+				Code:    "SESSION_ERROR",
+				Message: "Session error",
+			})
 			return
 		}
 
@@ -145,8 +161,12 @@ func WithMethodCheck(allowedMethods ...string) func(httprouter.Handle) httproute
 		return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 			if !methodMap[r.Method] {
 				w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
-				localizer := i18n.GetLocalizerFromRequest(r)
-				http.Error(w, i18n.Localize(localizer, "Error.MethodNotAllowed"), http.StatusMethodNotAllowed)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+					Code:    "METHOD_NOT_ALLOWED",
+					Message: "Method not allowed",
+				})
 				return
 			}
 			handler(w, r, ps)

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -340,7 +341,12 @@ func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath strin
 	defer func() {
 		if rec := recover(); rec != nil {
 			logger.Get().Error().Interface("panic", rec).Str("path", r.URL.Path).Msg("Panic recovered in serveSPA")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+				Code:    "INTERNAL_SERVER_ERROR",
+				Message: "Internal server error",
+			})
 		}
 	}()
 

@@ -3,8 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-
-	"pvmss/i18n"
+	"strings"
 )
 
 // FormatBytes formats byte values to human-readable format (MB/GB)
@@ -72,61 +71,46 @@ func MBToGB(mb int64) int64 {
 	return mb / 1024
 }
 
-// FormatUptime formats uptime in seconds to human-readable format (days, hours, minutes, seconds)
-// with i18n support
+// FormatUptime formats uptime duration (simple English, no i18n)
 func FormatUptime(seconds int64, r *http.Request) string {
-	localizer := i18n.GetLocalizerFromRequest(r)
-
 	if seconds == 0 {
-		return i18n.Localize(localizer, "Uptime.NotRunning")
+		return "Not running"
 	}
 
+	var parts []string
 	days := seconds / 86400
 	hours := (seconds % 86400) / 3600
 	minutes := (seconds % 3600) / 60
 	secs := seconds % 60
 
-	var parts []string
 	if days > 0 {
 		if days == 1 {
-			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Day")))
+			parts = append(parts, "1 day")
 		} else {
-			parts = append(parts, fmt.Sprintf("%d %s", days, i18n.Localize(localizer, "Uptime.Days")))
+			parts = append(parts, fmt.Sprintf("%d days", days))
 		}
 	}
 	if hours > 0 {
 		if hours == 1 {
-			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Hour")))
+			parts = append(parts, "1 hour")
 		} else {
-			parts = append(parts, fmt.Sprintf("%d %s", hours, i18n.Localize(localizer, "Uptime.Hours")))
+			parts = append(parts, fmt.Sprintf("%d hours", hours))
 		}
 	}
 	if minutes > 0 {
 		if minutes == 1 {
-			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Minute")))
+			parts = append(parts, "1 minute")
 		} else {
-			parts = append(parts, fmt.Sprintf("%d %s", minutes, i18n.Localize(localizer, "Uptime.Minutes")))
+			parts = append(parts, fmt.Sprintf("%d minutes", minutes))
 		}
 	}
 	if secs > 0 || len(parts) == 0 {
 		if secs == 1 {
-			parts = append(parts, fmt.Sprintf("1 %s", i18n.Localize(localizer, "Uptime.Second")))
+			parts = append(parts, "1 second")
 		} else {
-			parts = append(parts, fmt.Sprintf("%d %s", secs, i18n.Localize(localizer, "Uptime.Seconds")))
+			parts = append(parts, fmt.Sprintf("%d seconds", secs))
 		}
 	}
 
-	// Join parts with commas - simple format for all languages
-	if len(parts) == 1 {
-		return parts[0]
-	}
-	result := ""
-	for i, part := range parts {
-		if i == 0 {
-			result = part
-		} else {
-			result += ", " + part
-		}
-	}
-	return result
+	return strings.Join(parts, " ")
 }

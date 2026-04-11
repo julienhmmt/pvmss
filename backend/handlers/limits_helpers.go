@@ -2,13 +2,10 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
-
-	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -260,20 +257,13 @@ func storeNodeUsageCache(usage map[string]*NodeResourceUsage) {
 	nodeUsageCacheReady = true
 }
 
-// returnLocalizedError returns a localized error or a formatted fallback
-func returnLocalizedError(localizer *goi18n.Localizer, messageID string, templateData map[string]interface{}, fallbackFormat string, args ...interface{}) error {
-	localized, err := localizer.Localize(&goi18n.LocalizeConfig{
-		MessageID:    messageID,
-		TemplateData: templateData,
-	})
-	if err == nil && localized != "" {
-		return errors.New(localized)
-	}
+// returnLocalizedError returns a simple error (no i18n)
+func returnLocalizedError(messageID string, templateData map[string]interface{}, fallbackFormat string, args ...interface{}) error {
 	return fmt.Errorf(fallbackFormat, args...)
 }
 
 // ValidateVMResourcesAgainstNodeLimits validates that adding a new VM won't exceed node aggregate limits.
-func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, sm LimitsGetter, node string, sockets, cores int, memoryMB int, localizer *goi18n.Localizer) error {
+func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, sm LimitsGetter, node string, sockets, cores int, memoryMB int) error {
 	log := logger.Get().With().Str("function", "ValidateVMResourcesAgainstNodeLimits").Logger()
 
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -301,9 +291,7 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, sm LimitsGetter, 
 		totalCores := sockets * cores
 		newTotal := nodeUsage.Cores + totalCores
 		if newTotal > nodeUsage.MaxCores {
-			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.CoresVMExceed", map[string]interface{}{
-				"Node": node, "Current": nodeUsage.Cores, "Requested": totalCores, "Limit": nodeUsage.MaxCores,
-			}, "adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
+			if err := returnLocalizedError("", nil, "adding this VM would exceed node '%s' aggregate cores limit (current: %d, requested: %d, max: %d)",
 				node, nodeUsage.Cores, totalCores, nodeUsage.MaxCores); err != nil {
 				return err
 			}
@@ -313,9 +301,7 @@ func ValidateVMResourcesAgainstNodeLimits(ctx context.Context, sm LimitsGetter, 
 	if nodeUsage.MaxRamGB > 0 {
 		newTotal := nodeUsage.RamGB + memoryGB
 		if newTotal > nodeUsage.MaxRamGB {
-			if err := returnLocalizedError(localizer, "Admin.Limits.NodeCapacity.RamVMExceed", map[string]interface{}{
-				"Node": node, "Current": nodeUsage.RamGB, "Requested": memoryGB, "Limit": nodeUsage.MaxRamGB,
-			}, "adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
+			if err := returnLocalizedError("", nil, "adding this VM would exceed node '%s' aggregate RAM limit (current: %d GB, requested: %d GB, max: %d GB)",
 				node, nodeUsage.RamGB, memoryGB, nodeUsage.MaxRamGB); err != nil {
 				return err
 			}

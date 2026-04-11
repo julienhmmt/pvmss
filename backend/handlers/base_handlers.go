@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/state"
 )
@@ -30,7 +29,12 @@ func (b *BaseAdminHandler) GetStateManager() state.StateManager {
 // ValidateAdminAccess checks if the user has admin access
 func (b *BaseAdminHandler) ValidateAdminAccess(w http.ResponseWriter, r *http.Request) bool {
 	if !IsAdmin(r) {
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.AccessDenied"), http.StatusForbidden)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+			Code:    "ACCESS_DENIED",
+			Message: "Access denied",
+		})
 		return false
 	}
 	return true
@@ -81,7 +85,12 @@ func (b *BaseFormHandler) ParseBoolField(r *http.Request, fieldName string) bool
 func (b *BaseFormHandler) ValidateRequiredFields(w http.ResponseWriter, r *http.Request, fields []string) bool {
 	for _, field := range fields {
 		if strings.TrimSpace(r.FormValue(field)) == "" {
-			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MissingRequiredFields"), http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+				Code:    "MISSING_REQUIRED_FIELDS",
+				Message: "Missing required fields",
+			})
 			return false
 		}
 	}
@@ -128,13 +137,13 @@ func (b *BaseAPIHandler) WriteJSONResponse(w http.ResponseWriter, data interface
 	return nil
 }
 
-// WriteJSONError writes a JSON error response
+// WriteJSONError writes a JSON error response with consistent format
 func (b *BaseAPIHandler) WriteJSONError(w http.ResponseWriter, message string, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "error",
-		"message": message,
+	if err := json.NewEncoder(w).Encode(JSONErrorResponse{
+		Code:    message,
+		Message: message,
 	}); err != nil {
 		logger.Get().Error().Err(err).Msg("failed to write JSON error response")
 	}
@@ -165,12 +174,12 @@ func (b *BaseAPIHandler) WriteJSONSuccess(w http.ResponseWriter, data interface{
 func (b *BaseAPIHandler) ValidateAPIAccess(w http.ResponseWriter, r *http.Request, requireAdmin bool) bool {
 	if requireAdmin {
 		if !IsAdmin(r) {
-			b.WriteJSONError(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.AccessDenied"), http.StatusForbidden)
+			b.WriteJSONError(w, "ACCESS_DENIED", http.StatusForbidden)
 			return false
 		}
 	} else {
 		if !IsAuthenticated(r) {
-			b.WriteJSONError(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Unauthorized"), http.StatusUnauthorized)
+			b.WriteJSONError(w, "UNAUTHORIZED", http.StatusUnauthorized)
 			return false
 		}
 	}
@@ -180,11 +189,9 @@ func (b *BaseAPIHandler) ValidateAPIAccess(w http.ResponseWriter, r *http.Reques
 // HandleOfflineMode handles cases when Proxmox is offline
 func (b *BaseAPIHandler) HandleOfflineMode(w http.ResponseWriter, fallbackData interface{}) {
 	logger.Get().Warn().Msg("Proxmox offline; returning fallback data")
-	// Use default language localizer since we don't have an http.Request here
-	loc := i18n.GetLocalizer("")
 	response := map[string]interface{}{
 		"status":  "offline",
-		"message": i18n.Localize(loc, "Error.ProxmoxConnectionError"),
+		"message": "PROXMOX_CONNECTION_ERROR",
 	}
 
 	if fallbackData != nil {
