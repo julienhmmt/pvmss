@@ -380,6 +380,8 @@
     "tabSnapshots": "Snapshots",
     "tabCloudInit": "Cloud-init",
     "noDescription": "Aucune description",
+    "provisioning": "La VM est en cours de provisionnement…",
+    "provisioningHint": "Cela prend généralement quelques secondes. La page se mettra à jour automatiquement.",
     "noDisks": "Aucun disque trouvé",
     "noNetworks": "Aucune interface réseau",
     "noISO": "Aucune ISO montée",

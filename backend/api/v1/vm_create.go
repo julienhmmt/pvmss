@@ -271,6 +271,8 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 // resolveNodes returns node options from snapshot or live data.
+// A node is disabled when its current pvmss aggregate usage leaves no room
+// for even a minimum-sized VM, according to the limits defined in settings.
 func (h *VMCreateHandler) resolveNodes(ctx context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings) ([]VMCreateNodeOption, map[string]bool) {
 	disabledNodes := make(map[string]bool)
 	var nodeNames []string
@@ -287,19 +289,31 @@ func (h *VMCreateHandler) resolveNodes(ctx context.Context, snapshot *state.Prox
 		}
 	}
 
-	// Check per-node VM limits
-	if settings.MaxVMPerUser > 0 && snapshot != nil {
-		nodeCounts := make(map[string]int)
-		for _, vm := range snapshot.VMs {
-			nodeCounts[vm.Node]++
-		}
-		for node, count := range nodeCounts {
-			if lim, ok := settings.Limits.Nodes[node]; ok {
-				if count >= lim.Cores.Max*2 {
-					disabledNodes[node] = true
+	// Compute per-node aggregate usage from pvmss-tagged VMs in the snapshot,
+	// then disable any node whose remaining capacity (per settings limits) cannot
+	// accommodate the smallest possible VM.
+	if snapshot != nil && settings != nil && len(settings.Limits.Nodes) > 0 {
+		// Validate VM limits are properly initialized before capacity check
+		if settings.Limits.VM.Sockets.Min > 0 && settings.Limits.VM.Cores.Min > 0 && settings.Limits.VM.RAM.Min > 0 {
+			nodeUsage := computeNodeUsageFromSnapshot(snapshot)
+			minCores := settings.Limits.VM.Sockets.Min * settings.Limits.VM.Cores.Min
+			minRAMGB := settings.Limits.VM.RAM.Min
+			// Ensure minimum values are at least 1 to prevent zero-value issues
+			if minCores <= 0 {
+				minCores = 1
+			}
+			if minRAMGB <= 0 {
+				minRAMGB = 1
+			}
+			for nodeName, nodeLimits := range settings.Limits.Nodes {
+				usage := nodeUsage[nodeName]
+				if nodeLimits.Cores.Max > 0 && usage.cores+minCores > nodeLimits.Cores.Max {
+					disabledNodes[nodeName] = true
+				}
+				if nodeLimits.RAM.Max > 0 && usage.ramGB+minRAMGB > nodeLimits.RAM.Max {
+					disabledNodes[nodeName] = true
 				}
 			}
-			_ = count
 		}
 	}
 
@@ -313,6 +327,52 @@ func (h *VMCreateHandler) resolveNodes(ctx context.Context, snapshot *state.Prox
 		options = append(options, opt)
 	}
 	return options, disabledNodes
+}
+
+// nodeAggregateUsage holds the aggregate cores and RAM (in GB) used by pvmss VMs on a node.
+type nodeAggregateUsage struct {
+	cores int
+	ramGB int
+}
+
+// computeNodeUsageFromSnapshot sums cores and RAM for pvmss-tagged VMs per node.
+func computeNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) map[string]nodeAggregateUsage {
+	usage := make(map[string]nodeAggregateUsage)
+	for _, vm := range snapshot.VMs {
+		if vm.Node == "" || vm.Tags == "" {
+			continue
+		}
+		hasPvmss := false
+		// Try semicolon delimiter first (Proxmox standard)
+		tagParts := strings.Split(vm.Tags, ";")
+		// If only one part, try space delimiter (alternative format)
+		if len(tagParts) == 1 {
+			tagParts = strings.Fields(vm.Tags)
+		}
+		for _, tag := range tagParts {
+			if strings.EqualFold(strings.TrimSpace(tag), "pvmss") {
+				hasPvmss = true
+				break
+			}
+		}
+		if !hasPvmss {
+			continue
+		}
+		sockets := vm.Sockets
+		if sockets <= 0 {
+			sockets = 1
+		}
+		cores := vm.Cores
+		if cores <= 0 {
+			cores = 1
+		}
+		u := usage[vm.Node]
+		u.cores += sockets * cores
+		// Round to nearest GB to avoid truncation errors
+		u.ramGB += int((vm.MemoryMB + 512) / 1024) //nolint:gosec
+		usage[vm.Node] = u
+	}
+	return usage
 }
 
 // vmDiskCompatibleStorageTypes defines storage types that support VM disk images.
@@ -620,7 +680,8 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, fmt.Sprintf("Cores must be between %d and %d", limits.Cores.Min, limits.Cores.Max))
 		return
 	}
-	ramGB := req.MemoryMB / 1024
+	// Round to nearest GB to avoid truncation errors
+	ramGB := (req.MemoryMB + 512) / 1024
 	if ramGB < limits.RAM.Min || ramGB > limits.RAM.Max {
 		errBadRequest(w, fmt.Sprintf("RAM must be between %d and %d GB", limits.RAM.Min, limits.RAM.Max))
 		return
