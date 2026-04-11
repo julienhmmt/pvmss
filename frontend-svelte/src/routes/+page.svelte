@@ -5,6 +5,10 @@
 	import { Desktop, PlusSquare, ShieldCheck, SignIn, BookOpen } from 'phosphor-svelte';
 </script>
 
+<svelte:head>
+	<title>PVMSS</title>
+</svelte:head>
+
 <div class="mx-auto max-w-4xl px-6 py-16 md:py-24">
 
 	<!-- Hero -->

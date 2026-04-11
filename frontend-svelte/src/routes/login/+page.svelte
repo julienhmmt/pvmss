@@ -101,6 +101,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>PVMSS — {$t('login.title')}</title>
+</svelte:head>
+
 <div class="pv-login-bg">
 	<div class="pv-login-wrap">
 		<!-- Brand -->
