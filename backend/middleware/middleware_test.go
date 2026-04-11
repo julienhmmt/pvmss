@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,8 +18,6 @@ type mockStateManager struct {
 	message   string
 }
 
-func (m *mockStateManager) GetTemplates() *template.Template               { return nil }
-func (m *mockStateManager) SetTemplates(t *template.Template) error        { return nil }
 func (m *mockStateManager) GetSessionManager() *scs.SessionManager         { return nil }
 func (m *mockStateManager) SetSessionManager(sm *scs.SessionManager) error { return nil }
 func (m *mockStateManager) StartOnlineMode() error                         { return nil }
