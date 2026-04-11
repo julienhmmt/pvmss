@@ -14,33 +14,11 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"golang.org/x/crypto/bcrypt"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/security"
 	"pvmss/state"
 )
-
-// setLanguageCookieAndRedirect sets language cookie without modifying the URL
-func setLanguageCookieAndRedirect(w http.ResponseWriter, r *http.Request, baseURL string) string {
-	lang := i18n.GetLanguage(r)
-	if lang == "" {
-		return baseURL
-	}
-
-	// Set language cookie for persistence
-	http.SetCookie(w, &http.Cookie{
-		Name:     i18n.CookieNameLang,
-		Value:    lang,
-		Path:     "/",
-		MaxAge:   int(i18n.CookieMaxAge / time.Second),
-		HttpOnly: false,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
-
-	return baseURL
-}
 
 // AuthHandler handles authentication routes
 type AuthHandler struct {
@@ -261,10 +239,9 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	}
 
 	if err := validateCSRF(r); err != nil {
-		loc := i18n.GetLocalizerFromRequest(r)
-		errMsg := i18n.Localize(loc, "Login.Error.InvalidRequest")
+		errMsg := "INVALID_REQUEST"
 		if err.Error() == "session expired" {
-			errMsg = i18n.Localize(loc, "Login.Error.SessionExpired")
+			errMsg = "SESSION_EXPIRED"
 		}
 		h.renderAdminLoginForm(w, r, errMsg)
 		return
@@ -274,7 +251,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 	adminHash := os.Getenv("ADMIN_PASSWORD_HASH")
 	if adminHash == "" {
 		ctx.Log.Error().Msg("ADMIN_PASSWORD_HASH is not set in environment variables")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.ServerConfigError"), http.StatusInternalServerError)
+		http.Error(w, "SERVER_CONFIG_ERROR", http.StatusInternalServerError)
 		return
 	}
 
@@ -286,7 +263,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 			Str("operation", "admin_login").
 			Str("reason", "empty_password").
 			Msg("Admin login attempt with empty password")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.EmptyPassword"))
+		h.renderAdminLoginForm(w, r, "EMPTY_PASSWORD")
 		return
 	}
 
@@ -298,7 +275,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 			Str("operation", "admin_login").
 			Str("reason", "password_too_long").
 			Msg("Admin login attempt with too long password")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
+		h.renderAdminLoginForm(w, r, "INVALID_CREDENTIALS")
 		return
 	}
 
@@ -308,7 +285,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 			Str("auth_method", "password_hash").
 			Str("client_ip", r.RemoteAddr).
 			Msg("Admin login failed - incorrect password")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "AdminLogin.Error.InvalidCredentials"))
+		h.renderAdminLoginForm(w, r, "INVALID_CREDENTIALS")
 		return
 	}
 
@@ -319,7 +296,7 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		Msg("Admin authentication successful, creating session")
 
 	if err := establishSession(w, r, true, "admin"); err != nil {
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
+		http.Error(w, "INTERNAL_SERVER_ERROR", http.StatusInternalServerError)
 		return
 	}
 
@@ -335,7 +312,6 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 
 	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/admin")
-	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -352,15 +328,14 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
 		log.Error().Msg("Session manager not available")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"), http.StatusInternalServerError)
+		http.Error(w, "SERVICE_UNAVAILABLE", http.StatusInternalServerError)
 		return
 	}
 
 	if err := validateCSRF(r); err != nil {
-		loc := i18n.GetLocalizerFromRequest(r)
-		errMsg := i18n.Localize(loc, "Login.Error.InvalidRequest")
+		errMsg := "INVALID_REQUEST"
 		if err.Error() == "session expired" {
-			errMsg = i18n.Localize(loc, "Login.Error.SessionExpired")
+			errMsg = "SESSION_EXPIRED"
 		}
 		h.renderLoginForm(w, r, errMsg)
 		return
@@ -377,7 +352,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 			Str("client_ip", r.RemoteAddr).
 			Str("auth_type", "user").
 			Msg("Login attempt with empty username or password")
-		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
+		h.renderLoginForm(w, r, "MISSING_CREDENTIALS")
 		return
 	}
 
@@ -389,7 +364,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 			Int("username_length", len(username)).
 			Int("password_length", len(password)).
 			Msg("User login attempt with too long credentials")
-		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		h.renderLoginForm(w, r, "INVALID_CREDENTIALS")
 		return
 	}
 
@@ -399,7 +374,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL is not configured")
-		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
+		h.renderLoginForm(w, r, "SERVICE_UNAVAILABLE")
 		return
 	}
 
@@ -407,7 +382,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	pxClient, err := proxmox.MakeRestyClientCookieAuth(proxmoxURL, insecureSkip, 10*time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client for user authentication")
-		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
+		h.renderLoginForm(w, r, "SERVICE_UNAVAILABLE")
 		return
 	}
 
@@ -426,7 +401,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 			Str("realm", "pve").
 			Str("client_ip", r.RemoteAddr).
 			Msg("User login failed - Proxmox authentication failed")
-		h.renderLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		h.renderLoginForm(w, r, "INVALID_CREDENTIALS")
 		return
 	}
 
@@ -463,7 +438,7 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 
 	// Establish session and store Proxmox ticket for later use (console access, API calls)
 	if err := establishSessionWithTicket(w, r, isAdmin, username, ticketResp); err != nil {
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
+		http.Error(w, "INTERNAL_SERVER_ERROR", http.StatusInternalServerError)
 		return
 	}
 
@@ -475,7 +450,6 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 		defaultURL = "/vm/create"
 	}
 	redirectURL := getRedirectURL(r, defaultURL)
-	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 
@@ -492,15 +466,14 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	sessionManager := security.GetSession(r)
 	if sessionManager == nil {
 		log.Error().Msg("Session manager not available")
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"), http.StatusInternalServerError)
+		http.Error(w, "SERVICE_UNAVAILABLE", http.StatusInternalServerError)
 		return
 	}
 
 	if err := validateCSRF(r); err != nil {
-		loc := i18n.GetLocalizerFromRequest(r)
-		errMsg := i18n.Localize(loc, "Login.Error.InvalidRequest")
+		errMsg := "INVALID_REQUEST"
 		if err.Error() == "session expired" {
-			errMsg = i18n.Localize(loc, "Login.Error.SessionExpired")
+			errMsg = "SESSION_EXPIRED"
 		}
 		h.renderAdminLoginForm(w, r, errMsg)
 		return
@@ -517,7 +490,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 			Str("client_ip", r.RemoteAddr).
 			Str("auth_type", "admin").
 			Msg("Admin login attempt with empty username or password")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.MissingCredentials"))
+		h.renderAdminLoginForm(w, r, "MISSING_CREDENTIALS")
 		return
 	}
 
@@ -529,7 +502,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 			Int("username_length", len(username)).
 			Int("password_length", len(password)).
 			Msg("Admin login attempt with too long credentials")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		h.renderAdminLoginForm(w, r, "INVALID_CREDENTIALS")
 		return
 	}
 
@@ -539,7 +512,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL is not configured")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
+		h.renderAdminLoginForm(w, r, "SERVICE_UNAVAILABLE")
 		return
 	}
 
@@ -547,7 +520,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	pxClient, err := proxmox.MakeRestyClientCookieAuth(proxmoxURL, insecureSkip, 10*time.Second)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create Proxmox client for admin authentication")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.ServiceUnavailable"))
+		h.renderAdminLoginForm(w, r, "SERVICE_UNAVAILABLE")
 		return
 	}
 
@@ -564,7 +537,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 			Str("ip", r.RemoteAddr).
 			Str("username", username).
 			Msg("Admin login failed - Proxmox authentication failed")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		h.renderAdminLoginForm(w, r, "INVALID_CREDENTIALS")
 		return
 	}
 
@@ -583,7 +556,7 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 			Str("username", username).
 			Str("proxmox_username", ticketResp.Username).
 			Msg("Admin login denied - User does not have PVEAdmin role")
-		h.renderAdminLoginForm(w, r, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Login.Error.InvalidCredentials"))
+		h.renderAdminLoginForm(w, r, "INVALID_CREDENTIALS")
 		return
 	}
 
@@ -600,13 +573,12 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 
 	// Establish session and store Proxmox ticket for later use (console access, API calls)
 	if err := establishSessionWithTicket(w, r, true, username, ticketResp); err != nil {
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
+		http.Error(w, "INTERNAL_SERVER_ERROR", http.StatusInternalServerError)
 		return
 	}
 
 	// Persist language selection in cookie and append to redirect
 	redirectURL := getRedirectURL(r, "/admin")
-	redirectURL = setLanguageCookieAndRedirect(w, r, redirectURL)
 	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 }
 

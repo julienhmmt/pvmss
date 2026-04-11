@@ -8,7 +8,6 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 )
 
@@ -129,14 +128,14 @@ func RequireAuthHandleWS(h httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		stateManager := getStateManager(r)
 		if stateManager == nil {
-			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InternalServer"), http.StatusInternalServerError)
+			http.Error(w, "INTERNAL_SERVER_ERROR", http.StatusInternalServerError)
 			return
 		}
-		sessionManager := stateManager.GetSessionManager()
-		if sessionManager == nil || !sessionManager.GetBool(r.Context(), "authenticated") {
+
+		if !IsAuthenticated(r) {
 			log := CreateHandlerLogger("RequireAuthHandleWS", r)
 			log.Warn().Msg("WebSocket connection rejected: not authenticated")
-			http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.Unauthorized"), http.StatusUnauthorized)
+			http.Error(w, "UNAUTHORIZED", http.StatusUnauthorized)
 			return
 		}
 		h(w, r, ps)

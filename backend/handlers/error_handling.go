@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	stderrors "errors"
 	"net/http"
 
@@ -18,7 +19,7 @@ func ErrorHandlerWith(log logger.Logger) *ErrorHandler {
 	return &ErrorHandler{log: log}
 }
 
-// HandleError logs an error and writes an appropriate HTTP response.
+// HandleError logs an error and writes an appropriate HTTP response as JSON.
 func (eh *ErrorHandler) HandleError(w http.ResponseWriter, err error, defaultMessage string) {
 	if err == nil {
 		return
@@ -33,10 +34,15 @@ func (eh *ErrorHandler) HandleError(w http.ResponseWriter, err error, defaultMes
 		Int("status", statusCode).
 		Msg("Handler error")
 
-	http.Error(w, defaultMessage, statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+		Code:    string(code),
+		Message: defaultMessage,
+	})
 }
 
-// HandleErrorWithContext logs an error with additional context and writes an HTTP response.
+// HandleErrorWithContext logs an error with additional context and writes an HTTP response as JSON.
 func (eh *ErrorHandler) HandleErrorWithContext(w http.ResponseWriter, err error, defaultMessage string, context map[string]interface{}) {
 	if err == nil {
 		return
@@ -56,7 +62,12 @@ func (eh *ErrorHandler) HandleErrorWithContext(w http.ResponseWriter, err error,
 
 	logCtx.Msg("Handler error with context")
 
-	http.Error(w, defaultMessage, statusCode)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+		Code:    string(code),
+		Message: defaultMessage,
+	})
 }
 
 // codeToHTTPStatus converts an error code to an HTTP status code.

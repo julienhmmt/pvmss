@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strings"
 
-	"pvmss/i18n"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -87,7 +86,12 @@ func (h *HealthHandler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.R
 			"message": "The requested method is not allowed for this resource",
 		})
 	} else {
-		http.Error(w, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MethodNotAllowed"), http.StatusMethodNotAllowed)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+			Code:    "METHOD_NOT_ALLOWED",
+			Message: "Method not allowed",
+		})
 	}
 }
 

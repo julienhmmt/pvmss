@@ -1,10 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 
-	"pvmss/i18n"
 	"pvmss/logger"
 
 	"github.com/julienschmidt/httprouter"
@@ -13,12 +13,12 @@ import (
 // ValidateMethodAndParseForm validates HTTP method and parses form data
 func ValidateMethodAndParseForm(w http.ResponseWriter, r *http.Request, requiredMethod string) bool {
 	if r.Method != requiredMethod {
-		RenderErrorPage(w, r, http.StatusMethodNotAllowed, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MethodNotAllowed"))
+		RenderErrorPage(w, r, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED")
 		return false
 	}
 
 	if err := r.ParseForm(); err != nil {
-		RenderErrorPage(w, r, http.StatusBadRequest, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"))
+		RenderErrorPage(w, r, http.StatusBadRequest, "INVALID_FORM_DATA")
 		return false
 	}
 
@@ -42,7 +42,7 @@ func CreateHandlerLogger(handlerName string, r *http.Request) logger.Logger {
 func PostOnlyHandler(handler httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if r.Method != http.MethodPost {
-			RenderErrorPage(w, r, http.StatusMethodNotAllowed, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.MethodNotAllowed"))
+			RenderErrorPage(w, r, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED")
 			return
 		}
 		handler(w, r, ps)
@@ -53,7 +53,7 @@ func PostOnlyHandler(handler httprouter.Handle) httprouter.Handle {
 func ParseFormMiddleware(handler httprouter.Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		if err := r.ParseForm(); err != nil {
-			RenderErrorPage(w, r, http.StatusBadRequest, i18n.Localize(i18n.GetLocalizerFromRequest(r), "Error.InvalidFormData"))
+			RenderErrorPage(w, r, http.StatusBadRequest, "INVALID_FORM_DATA")
 			return
 		}
 		handler(w, r, ps)
@@ -105,10 +105,14 @@ func RedirectWithError(w http.ResponseWriter, r *http.Request, targetURL, messag
 	http.Redirect(w, r, u.String(), http.StatusSeeOther)
 }
 
-// RenderErrorPage writes a plain-text error response with the given status code.
+// RenderErrorPage writes a JSON error response with the given status code.
 func RenderErrorPage(w http.ResponseWriter, r *http.Request, status int, message string) {
 	setNoCacheHeaders(w)
 	_ = logger.Get() // keep logger import used
-	_ = i18n.GetLocalizerFromRequest(r)
-	http.Error(w, message, status)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(JSONErrorResponse{
+		Code:    message,
+		Message: message,
+	})
 }
