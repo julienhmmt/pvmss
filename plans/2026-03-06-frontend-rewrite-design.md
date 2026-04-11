@@ -70,7 +70,7 @@ Reference: <https://ui.shadcn.com/create?base=base&style=mira&baseColor=stone&th
 ## Frontend Directory Structure
 
 ```bash
-frontend-svelte/
+frontend/
   src/
     lib/
       api/                    # Typed fetch-based API client
@@ -311,7 +311,7 @@ The `VmConsole.svelte` component:
 
 ## What Gets Added
 
-- `frontend-svelte/` — full SvelteKit project
+- `frontend/` — full SvelteKit project
 - Expanded `/api/v1/` handlers in `backend/api/v1/`
 - Admin API middleware (JWT isAdmin check)
 - Go static file server for SPA (`dist/` directory)
@@ -321,11 +321,11 @@ The `VmConsole.svelte` component:
 
 ```bash
 # Development
-cd frontend-svelte && npm run dev    # Vite dev server with proxy to Go API
+cd frontend && npm run dev    # Vite dev server with proxy to Go API
 cd backend && go run main.go         # API server on :50000
 
 # Production build
-cd frontend-svelte && npm run build  # Outputs to dist/
+cd frontend && npm run build  # Outputs to dist/
 # Go binary embeds dist/ or serves from filesystem
 make build                           # Builds Go + copies dist/ into Docker
 ```

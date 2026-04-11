@@ -238,7 +238,7 @@ Ces composants sont inlinés dans les pages (monolithiques). Le plan de modernis
 
 Le backend Go ne sert pas encore le build SvelteKit. Il faut :
 
-- [ ] Handler Go qui sert `frontend-svelte/build/` comme assets statiques
+- [ ] Handler Go qui sert `frontend/build/` comme assets statiques
 - [ ] Catch-all route : tout chemin non-API → `index.html`
 - [ ] S'assurer que `/api/v1/*` a priorité sur le catch-all
 
@@ -246,7 +246,7 @@ Le backend Go ne sert pas encore le build SvelteKit. Il faut :
 
 - [ ] Renommer `frontend/` → `frontend-legacy/`
 - [ ] Mettre à jour Makefile : cibles `frontend-build`, `frontend-dev`, `dev`, `build`
-- [ ] Mettre à jour `Dockerfile` pour inclure `frontend-svelte/build/`
+- [ ] Mettre à jour `Dockerfile` pour inclure `frontend/build/`
 
 ### 7.3 Suppression code mort Go
 

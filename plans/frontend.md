@@ -36,8 +36,8 @@ preset : `--preset a1DMDThI`.
 
 ```bash
 # Scaffold
-npm create svelte@latest frontend-svelte -- --template skeleton --types typescript
-cd frontend-svelte
+npm create svelte@latest frontend -- --template skeleton --types typescript
+cd frontend
 npx shadcn-svelte@latest init --preset a1DMDThI
 npx shadcn-svelte@latest add button card dialog table form input select tabs sidebar badge dropdown-menu sheet sonner
 
