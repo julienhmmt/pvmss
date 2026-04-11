@@ -1,31 +1,32 @@
 #!/bin/sh
 
-# Format Markdown files with Prettier for PVMSS project
-echo "Formatting Markdown files with Prettier..."
+# Format Markdown and TypeScript files with Prettier for PVMSS project
+echo "Formatting Markdown and TypeScript files with Prettier..."
 
-# Check if any Markdown files exist (excluding node_modules)
-if [ -z "$(find . -name '*.md' -type f -not -path '*/node_modules/*' 2>/dev/null)" ]; then
-    echo "⚠️  No Markdown files found in project"
+# Check if any files exist (excluding node_modules, build, .svelte-kit)
+md_count=$(find . -name '*.md' -type f -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -not -path '*/build/*' 2>/dev/null | wc -l)
+ts_count=$(find . -name '*.ts' -type f -not -path '*/node_modules/*' -not -path '*/.svelte-kit/*' -not -path '*/build/*' 2>/dev/null | wc -l)
+total_count=$((md_count + ts_count))
+
+if [ "$total_count" -eq 0 ]; then
+    echo "⚠️  No Markdown or TypeScript files found in project"
     exit 0
 fi
 
-echo "✅ Found Markdown files:"
-find . -name '*.md' -type f -not -path '*/node_modules/*' | head -10
-total_count=$(find . -name '*.md' -type f -not -path '*/node_modules/*' | wc -l)
-if [ "$total_count" -gt 10 ]; then
-    echo "... and $(( total_count - 10 )) more files"
-fi
-echo "Total: $total_count files"
+echo "✅ Found files:"
+echo "  Markdown: $md_count files"
+echo "  TypeScript: $ts_count files"
+echo "  Total: $total_count files"
 
 # Run Prettier and capture output
-echo "Running Prettier to format Markdown files..."
-output=$(docker run --rm -v .:/workspace -w /workspace node:lts-alpine sh -c "npm install -g prettier && prettier --write '**/*.md' --ignore 'node_modules/**' 2>&1" || true)
+echo "Running Prettier to format files..."
+output=$(docker run --rm -v .:/workspace -w /workspace node:lts-alpine sh -c "npm install -g prettier && prettier --write '**/*.{md,ts,tsx}' --ignore 'node_modules/**' --ignore '.svelte-kit/**' --ignore 'build/**' 2>&1" || true)
 
 if [ $? -eq 0 ]; then
     echo "✅ Prettier formatting completed successfully!"
     
     # Show only changed files (filter out unchanged and installation noise)
-    changed_files=$(echo "$output" | grep '\.md' | grep -v 'unchanged' | grep -v 'node_modules')
+    changed_files=$(echo "$output" | grep -E '\.(md|ts|tsx)' | grep -v 'unchanged' | grep -v 'node_modules' | grep -v '.svelte-kit' | grep -v 'build')
     
     if [ -n "$changed_files" ]; then
         echo "Files changed:"
