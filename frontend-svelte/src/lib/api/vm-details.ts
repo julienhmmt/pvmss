@@ -22,6 +22,7 @@ export interface NetworkInterface {
 	bridge: string;
 	tag?: number;
 	firewall?: boolean;
+	rate?: string;
 	ips?: string[];
 }
 
@@ -32,6 +33,8 @@ export interface VMConfig {
 	status: string;
 	cpu: number;
 	cpus: number;
+	sockets: number;
+	cores: number;
 	mem_mb: number;
 	max_mem_mb: number;
 	disk_mb: number;
@@ -133,4 +136,37 @@ export async function getVMSettings(vmid: number): Promise<VMSettings> {
 
 export function deleteVM(vmid: number): Promise<void> {
 	return api.delete(`/api/v1/vms/${vmid}`);
+}
+
+export interface NetworkUpdateRequest {
+	index: string;    // "net0"…"net9"; empty = new card
+	model: string;    // virtio, e1000, e1000e, rtl8139, vmxnet3
+	bridge: string;
+	mac?: string;
+	vlan: number;     // 0 = none
+	rate: string;     // MB/s or ""
+	firewall: boolean;
+}
+
+export interface VMHardwareUpdate {
+	node: string;
+	sockets: number;
+	cores: number;
+	memory_mb: number;
+	tags?: string;
+	networks?: NetworkUpdateRequest[];
+	delete_networks?: string[];
+}
+
+export interface VMHardwareUpdateResponse {
+	success: boolean;
+	restarted: boolean;
+	message: string;
+}
+
+export async function updateVMHardware(
+	vmid: number,
+	data: VMHardwareUpdate
+): Promise<VMHardwareUpdateResponse> {
+	return api.put<VMHardwareUpdateResponse>(`/api/v1/vms/${vmid}/hardware`, data);
 }

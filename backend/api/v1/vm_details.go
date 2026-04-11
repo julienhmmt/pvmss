@@ -34,6 +34,8 @@ type VMConfigResponse struct {
 	Status      string                     `json:"status"`
 	CPU         float64                    `json:"cpu"`
 	CPUs        int                        `json:"cpus"`
+	Sockets     int                        `json:"sockets"`
+	Cores       int                        `json:"cores"`
 	MemMB       int64                      `json:"mem_mb"`
 	MaxMemMB    int64                      `json:"max_mem_mb"`
 	DiskMB      int64                      `json:"disk_mb"`
@@ -332,6 +334,15 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 		description = v
 	}
 
+	sockets := 1
+	if v, ok := cfg["sockets"].(float64); ok && v > 0 {
+		sockets = int(v)
+	}
+	cores := 1
+	if v, ok := cfg["cores"].(float64); ok && v > 0 {
+		cores = int(v)
+	}
+
 	const mb = int64(1024 * 1024)
 	var diskMB, uptime int64
 	var tags string
@@ -347,6 +358,8 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 		Status:      current.Status,
 		CPU:         current.CPU,
 		CPUs:        current.CPUs,
+		Sockets:     sockets,
+		Cores:       cores,
 		MemMB:       current.Mem / mb,
 		MaxMemMB:    current.MaxMem / mb,
 		DiskMB:      diskMB,
@@ -712,8 +725,37 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 }
 
 // GetVMSettings handles GET /api/v1/vms/:id/settings
-// Returns allowed ISOs, VМBRs, tags and resource limits for the VM edit form.
+// Returns allowed ISOs, VMBRs, tags and resource limits for the VM edit form.
 func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request) {
+	ps := httprouter.ParamsFromContext(r.Context())
+	vmid, atoiErr := strconv.Atoi(ps.ByName("id"))
+	if atoiErr != nil || vmid <= 0 {
+		errBadRequest(w, "invalid vm id")
+		return
+	}
+
+	if h.isOffline() {
+		errOffline(w)
+		return
+	}
+
+	username := usernameFromCtx(r)
+	isAdmin := isAdminFromCtx(r)
+
+	client, err := restyClient()
+	if err != nil {
+		errInternal(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	if !ownsVM(ctx, client, username, isAdmin, vmid) {
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		return
+	}
+
 	settings, _, err := state.LoadSettings()
 	if err != nil {
 		errInternal(w)

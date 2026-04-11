@@ -409,7 +409,37 @@
     "deleteConfirmMessage": "This will permanently delete VM {name} (ID {vmid}) and all its associated disk files. This action cannot be undone.",
     "deleteConfirmRunning": "Warning: the VM is currently running and will be forcibly stopped before deletion.",
     "deleteSuccess": "VM {name} deleted successfully",
-    "deleteFailed": "Failed to delete VM"
+    "deleteFailed": "Failed to delete VM",
+    "hardware": {
+      "modifyHardware": "Modify Hardware",
+      "title": "Modify Hardware",
+      "description": "Adjust CPU and memory for VM {vmid}.",
+      "warningRunning": "The VM will be stopped and restarted automatically.",
+      "sockets": "CPU Sockets",
+      "cores": "CPU Cores (per socket)",
+      "memory": "RAM (GB)",
+      "applying": "Applying…",
+      "applyChanges": "Apply Changes",
+      "updatedRestarted": "Hardware updated — VM restarted",
+      "updated": "Hardware updated",
+      "failed": "Failed to update hardware",
+      "tags": "Tags",
+      "tagsHint": "\"pvmss\" is always included",
+      "tagsSaved": "Tags saved"
+    },
+    "network": {
+      "addCard": "Add Network Card",
+      "model": "Model",
+      "bridge": "Bridge",
+      "vlan": "VLAN Tag",
+      "rate": "Rate Limit (MB/s)",
+      "firewall": "Firewall",
+      "vlanHint": "0 = none",
+      "rateHint": "empty = unlimited",
+      "noVmbr": "No bridges available",
+      "deleteCard": "Remove this card",
+      "newCard": "New card"
+    }
   },
   "vmCreate": {
     "title": "Create Virtual Machine",

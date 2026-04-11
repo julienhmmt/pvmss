@@ -10,6 +10,7 @@
 		getVMConfig,
 		getVMMetrics,
 		getVMSnapshots,
+		getVMSettings,
 		createSnapshot,
 		deleteSnapshot,
 		rollbackSnapshot,
@@ -17,9 +18,11 @@
 		deleteVM,
 		type VMConfig,
 		type VMMetrics,
+		type VMSettings,
 		type Snapshot,
 		type SnapshotList
 	} from '$lib/api/vm-details';
+	import VMHardwareModal from '$lib/components/vm/VMHardwareModal.svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -67,6 +70,20 @@
 	let editingDescription = $state(false);
 	let descriptionDraft = $state('');
 	let savingDescription = $state(false);
+
+	// Hardware update
+	let showHardwareModal = $state(false);
+	let vmSettings = $state<VMSettings | null>(null);
+	let hardwareReloadTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	$effect(() => {
+		return () => {
+			if (hardwareReloadTimeout !== null) {
+				clearTimeout(hardwareReloadTimeout);
+				hardwareReloadTimeout = null;
+			}
+		};
+	});
 
 	// Delete VM
 	let showDeleteDialog = $state(false);
@@ -135,6 +152,16 @@
 		} finally {
 			actionLoading = false;
 		}
+	}
+
+	async function openHardwareModal() {
+		try {
+			vmSettings = await getVMSettings(vmid);
+		} catch {
+			toast.error($t('common.error'));
+			return;
+		}
+		showHardwareModal = true;
 	}
 
 	async function saveDescription() {
@@ -519,6 +546,14 @@
 						{/if}
 					</tbody>
 				</table>
+				<div class="border-t border-border px-4 py-3">
+					<button
+						class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+						onclick={openHardwareModal}
+					>
+						{$t('vm.hardware.modifyHardware')}
+					</button>
+				</div>
 			</div>
 		{/if}
 
@@ -728,6 +763,30 @@
 		{/if}
 	{/if}
 </div>
+
+<!-- Hardware update modal -->
+{#if showHardwareModal && config}
+	<VMHardwareModal
+		bind:open={showHardwareModal}
+		vmid={config.vmid}
+		node={config.node}
+		currentSockets={config.sockets}
+		currentCores={config.cores}
+		currentMemMB={config.max_mem_mb}
+		currentTags={config.tags}
+		currentNetworks={config.networks}
+		isRunning={(metrics?.status ?? config.status) === 'running'}
+		settings={vmSettings}
+		onclose={() => (showHardwareModal = false)}
+		onsuccess={() => {
+			showHardwareModal = false;
+			hardwareReloadTimeout = setTimeout(() => {
+				hardwareReloadTimeout = null;
+				load();
+			}, 1500);
+		}}
+	/>
+{/if}
 
 <!-- Delete VM confirmation dialog -->
 <AlertDialog.Root bind:open={showDeleteDialog}>
