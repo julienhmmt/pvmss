@@ -25,6 +25,7 @@
 	let activeSection = $state('');
 	let sectionElements = $state<Map<string, HTMLElement>>(new Map());
 	let observer: IntersectionObserver | null = null;
+	let previousDocType = $state('');
 
 	async function load(type: DocType) {
 		if (!ALLOWED.includes(type)) {
@@ -39,10 +40,16 @@
 		sectionElements.clear();
 		try {
 			const res = await api.get<{ html: string }>(`/api/v1/docs/${type}`);
+			console.log('Docs API response:', res);
 			html = res.html;
+			console.log('HTML content length:', html.length);
+			console.log('HTML content preview:', html.substring(0, 200));
+			console.log('html state after assignment:', html.length);
 			toc = extractTOC(html);
+			console.log('TOC entries:', toc);
 			// Wait for DOM to update before caching elements
 			await new Promise((resolve) => setTimeout(resolve, 0));
+			console.log('After setTimeout, html length:', html.length);
 			cacheSectionElements();
 			setupIntersectionObserver();
 		} catch (e) {
@@ -117,8 +124,12 @@
 		};
 	});
 
+	// Only load when docType actually changes
 	$effect(() => {
-		if (docType) load(docType);
+		if (docType && docType !== previousDocType) {
+			previousDocType = docType;
+			load(docType);
+		}
 	});
 
 	$effect(() => {
@@ -185,6 +196,7 @@
 		{:else if loading}
 			<LoadingSkeleton variant="card" rows={8} />
 		{:else}
+			<!-- DEBUG: html length = {html.length} -->
 			<article class="pv-prose">
 				{@html html}
 			</article>
