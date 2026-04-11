@@ -24,8 +24,11 @@ export async function getVMs(): Promise<VMSummary[]> {
 	return res.vms;
 }
 
+export type SearchType = 'name' | 'tag' | 'vmid';
+
 export interface VMSearchParams {
 	q?: string;
+	type?: SearchType;
 	status?: string;
 	node?: string;
 }
@@ -33,6 +36,7 @@ export interface VMSearchParams {
 export async function searchVMs(params: VMSearchParams): Promise<VMSummary[]> {
 	const qs = new URLSearchParams();
 	if (params.q) qs.set('q', params.q);
+	if (params.type) qs.set('type', params.type);
 	if (params.status) qs.set('status', params.status);
 	if (params.node) qs.set('node', params.node);
 	const query = qs.toString();
