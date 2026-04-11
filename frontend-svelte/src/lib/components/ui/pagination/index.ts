@@ -7,19 +7,19 @@ import Next from "./pagination-next.svelte";
 import Ellipsis from "./pagination-ellipsis.svelte";
 
 export {
-	Root,
-	Content,
-	Item,
-	Link,
-	Ellipsis,
-	Previous,
-	Next,
-	//
-	Root as Pagination,
-	Content as PaginationContent,
-	Item as PaginationItem,
-	Link as PaginationLink,
-	Ellipsis as PaginationEllipsis,
-	Previous as PaginationPrevious,
-	Next as PaginationNext,
+  Root,
+  Content,
+  Item,
+  Link,
+  Ellipsis,
+  Previous,
+  Next,
+  //
+  Root as Pagination,
+  Content as PaginationContent,
+  Item as PaginationItem,
+  Link as PaginationLink,
+  Ellipsis as PaginationEllipsis,
+  Previous as PaginationPrevious,
+  Next as PaginationNext,
 };
