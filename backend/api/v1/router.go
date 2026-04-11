@@ -46,6 +46,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.DELETE("/api/v1/vms/:id/snapshots/:name", jwtWrap(s, vmDetailsHandler.DeleteSnapshot))
 	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(s, vmDetailsHandler.RollbackSnapshot))
 	router.GET("/api/v1/vms/:id/settings", jwtWrap(s, vmDetailsHandler.GetVMSettings))
+	router.PUT("/api/v1/vms/:id/hardware", jwtWrap(s, vmDetailsHandler.UpdateVMHardware))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(s, vmHandler.DeleteVM))
 
 	// VNC console routes — JWT required
