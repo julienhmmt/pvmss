@@ -75,6 +75,10 @@
 	onMount(load);
 </script>
 
+<svelte:head>
+	<title>PVMSS — {$t('admin.storage.title')}</title>
+</svelte:head>
+
 <!-- Gradient page header -->
 <div class="pv-header -mx-6 -mt-6 mb-6">
 	<div class="pv-header-flex">

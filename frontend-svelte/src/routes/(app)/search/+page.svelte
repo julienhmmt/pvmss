@@ -147,6 +147,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>PVMSS — {$t('nav.searchVm')}</title>
+</svelte:head>
+
 <div class="mx-auto max-w-5xl px-4 py-6">
 	<h1 class="mb-5 text-2xl font-bold">{$t('nav.searchVm')}</h1>
 

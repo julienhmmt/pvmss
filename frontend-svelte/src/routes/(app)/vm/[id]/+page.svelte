@@ -233,6 +233,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>PVMSS — {config?.name ?? `VM ${vmid}`}</title>
+</svelte:head>
+
 <div class="mx-auto max-w-5xl px-4 py-6">
 	<!-- Back + Header -->
 	<div class="mb-5 flex items-center justify-between">
