@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"context"
-	"html/template"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,8 +25,6 @@ func (m *mockStateManager) GetSessionManager() *scs.SessionManager {
 }
 
 // Implement other StateManager methods as no-ops for testing
-func (m *mockStateManager) GetTemplates() *template.Template               { return nil }
-func (m *mockStateManager) SetTemplates(t *template.Template) error        { return nil }
 func (m *mockStateManager) SetSessionManager(sm *scs.SessionManager) error { return nil }
 func (m *mockStateManager) StartOnlineMode() error                         { return nil }
 func (m *mockStateManager) SetOfflineMode()                                {}

@@ -2,7 +2,6 @@ package state
 
 import (
 	"errors"
-	"html/template"
 	"sync"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 
 // appState is the concrete implementation of StateManager
 type appState struct {
-	templates      *template.Template
 	sessionManager *scs.SessionManager
 	settings       *AppSettings
 	mu             sync.RWMutex
@@ -110,24 +108,6 @@ func (s *appState) SetGuestAgentCleanupFunc(cleanupFunc func()) {
 	defer s.cleanupMu.Unlock()
 	s.guestAgentCleanupFunc = cleanupFunc
 	logger.Get().Debug().Msg("Guest agent cleanup function registered")
-}
-
-// GetTemplates returns the template cache
-func (s *appState) GetTemplates() *template.Template {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.templates
-}
-
-// SetTemplates sets the template cache
-func (s *appState) SetTemplates(t *template.Template) error {
-	if t == nil {
-		return errors.New("templates cannot be nil")
-	}
-	s.mu.Lock()
-	s.templates = t
-	s.mu.Unlock()
-	return nil
 }
 
 // GetSessionManager returns the session manager
