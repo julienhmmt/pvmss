@@ -6,7 +6,7 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 
 ---
 
-## Phase 1: Critical Bug Fix
+## Phase 1: Critical Bug Fix - DONE
 
 ### 1.1 NetworkInterface JSON serialization mismatch
 
@@ -19,7 +19,7 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 
 ## Phase 2: Security Hardening
 
-### 2.1 Validate creation inputs against settings allowlists
+### 2.1 Validate creation inputs against settings allowlists - DONE
 
 - **File**: `backend/api/v1/vm_create.go` (in `CreateVM`)
 - **Fix**: Before forwarding to Proxmox, validate:
