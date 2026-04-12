@@ -82,7 +82,7 @@ func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
 	var interfaces []NetworkInterface
 
 	// Iterate over keys like net0, net1, ... in order
-	for i := 0; i < 10; i++ { // Support up to 10 network interfaces
+	for i := 0; i < 32; i++ { // Support up to 32 network interfaces (net0-net31)
 		key := fmt.Sprintf("net%d", i)
 		v, exists := cfg[key]
 		if !exists {

@@ -776,10 +776,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, fmt.Sprintf("RAM must be between %d and %d GB", limits.RAM.Min, limits.RAM.Max))
 		return
 	}
-	primaryDiskGB := req.Disks[0].SizeGB
-	if primaryDiskGB < limits.Disk.Min || primaryDiskGB > limits.Disk.Max {
-		errBadRequest(w, fmt.Sprintf("Disk must be between %d and %d GB", limits.Disk.Min, limits.Disk.Max))
-		return
+	// Validate all disk sizes against limits
+	for i, disk := range req.Disks {
+		if disk.SizeGB < limits.Disk.Min || disk.SizeGB > limits.Disk.Max {
+			errBadRequest(w, fmt.Sprintf("Disk %d must be between %d and %d GB", i+1, limits.Disk.Min, limits.Disk.Max))
+			return
+		}
 	}
 
 	// Check VM quota
@@ -865,6 +867,25 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	validBuses := map[string]bool{"virtio": true, "scsi": true, "sata": true, "ide": true}
 	if !validBuses[diskBus] {
 		diskBus = "virtio"
+	}
+
+	// Enforce disk-per-bus-type limits
+	var maxDisksForBus int
+	switch diskBus {
+	case state.DiskBusIDE:
+		maxDisksForBus = state.MaxDisksIDE
+	case state.DiskBusSATA:
+		maxDisksForBus = state.MaxDisksSATA
+	case state.DiskBusVirtIO:
+		maxDisksForBus = state.MaxDisksVirtIO
+	case state.DiskBusSCSI:
+		maxDisksForBus = state.MaxDisksSCSI
+	default:
+		maxDisksForBus = state.MaxDisksVirtIO // Default to VirtIO limit
+	}
+	if len(req.Disks) > maxDisksForBus {
+		errBadRequest(w, fmt.Sprintf("Too many disks for %s bus: maximum %d disks allowed", diskBus, maxDisksForBus))
+		return
 	}
 
 	// Build Proxmox API params
