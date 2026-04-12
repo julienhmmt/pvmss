@@ -9,10 +9,12 @@
 		VMCreateRequest,
 		VMCreateDisk,
 		VMCreateNetwork,
-		VMCreateCloudInit
+		VMCreateCloudInit,
+		VMProfileConfig,
+		VMCreateStorageOption
 	} from '$lib/types/vm-create';
-	import { NETWORK_MODELS, DISK_BUSES } from '$lib/types/vm-create';
-	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { NETWORK_MODELS, DISK_BUSES, PROFILE_COLOR_CLASSES } from '$lib/types/vm-create';
+	import { Card, CardContent } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -34,11 +36,22 @@
 		Trash,
 		SpinnerGap,
 		Warning,
-		Check
+		Check,
+		Globe,
+		Code,
+		Cube,
+		Database,
+		Flask,
+		Info,
+		MagicWand
 	} from 'phosphor-svelte';
+
+	// ── Step definitions ──────────────────────────────────────────────────────
 
 	const STEPS = ['base', 'hardware', 'disk', 'network', 'cloudinit', 'review'] as const;
 	type Step = (typeof STEPS)[number];
+
+	const SIMPLE_STEPS = ['profile', 'details', 'confirm'] as const;
 
 	const STEP_ICONS: Record<Step, typeof Monitor> = {
 		base: Monitor,
@@ -49,9 +62,32 @@
 		review: CheckCircle
 	};
 
+	// Maps icon name strings (from backend) to Phosphor icon components
+	const PROFILE_ICONS: Record<string, typeof Globe> = {
+		Globe,
+		Code,
+		Cube,
+		Database,
+		Flask,
+		Monitor,
+		Cpu,
+		HardDrive,
+		Cloud,
+		Info
+	};
+
+	// ── State ─────────────────────────────────────────────────────────────────
+
 	let settings: VMCreateSettings | null = $state(null);
 	let loading: boolean = $state(true);
 	let creating: boolean = $state(false);
+
+	// Mode
+	let creationMode: 'simple' | 'advanced' = $state('simple');
+	let simpleStep: number = $state(0);
+	let selectedProfileId: string = $state('');
+
+	// Advanced wizard step
 	let currentStep: number = $state(0);
 
 	// Form state
@@ -86,15 +122,34 @@
 
 	let vmStartAfterCreation: boolean = $state(true);
 
+	// ── Derived ───────────────────────────────────────────────────────────────
+
 	const currentStepName = $derived(STEPS[currentStep]);
 	const isFirstStep = $derived(currentStep === 0);
 	const isLastStep = $derived(currentStep === STEPS.length - 1);
 	const totalVCPUs = $derived(vmSockets * vmCores);
 	const totalDiskGB = $derived(vmDisks.reduce((acc, d) => acc + d.size_gb, 0));
+	const selectedProfile = $derived(
+		(settings?.vm_profiles ?? []).find((p) => p.id === selectedProfileId) ?? null
+	);
 
 	const quotaBlocked = $derived(
 		settings !== null && settings.remaining_vms !== -1 && settings.remaining_vms <= 0
 	);
+
+	const simpleDetailsValid = $derived(vmName.trim().length > 0 && vmNode !== '' && vmStorage !== '');
+
+	// Track what was auto-selected so we can display the hint
+	let autoNode: string = $state('');
+	let autoStorage: string = $state('');
+
+	const nodeIsAuto = $derived(vmNode !== '' && vmNode === autoNode);
+	const storageIsAuto = $derived(vmStorage !== '' && vmStorage === autoStorage);
+	const autoStorageIsShared = $derived(
+		settings?.storages.find((s) => s.name === autoStorage)?.node === ''
+	);
+
+	// ── Lifecycle ─────────────────────────────────────────────────────────────
 
 	onMount(async () => {
 		try {
@@ -108,18 +163,49 @@
 		}
 	});
 
+	// ── Helpers ───────────────────────────────────────────────────────────────
+
+	function clamp(value: number, min: number, max: number): number {
+		return Math.min(Math.max(value, min), max);
+	}
+
+	/**
+	 * Prefers shared/centralized storages (node === '' means RBD/Ceph/NFS/shared).
+	 * Falls back to name-pattern matching, then first available.
+	 */
+	function findBestStorage(storages: VMCreateStorageOption[]): string {
+		if (storages.length === 0) return '';
+		const shared = storages.find((s) => s.node === '');
+		if (shared) return shared.name;
+		const patterns = ['ceph', 'rbd', 'nfs', 'gluster', 'iscsi', 'san', 'shared'];
+		const byName = storages.find((s) =>
+			patterns.some((p) => s.name.toLowerCase().includes(p))
+		);
+		if (byName) return byName.name;
+		return storages[0].name;
+	}
+
 	function applyDefaults(): void {
 		if (!settings) return;
 		vmSockets = settings.limits.sockets.min;
 		vmCores = settings.limits.cores.min;
 		vmMemoryGB = settings.limits.ram.min;
 		vmDisks = [{ size_gb: settings.limits.disk.min }];
-		if (settings.nodes.length > 0) {
-			const firstEnabled = settings.nodes.find((n) => !n.disabled);
-			if (firstEnabled) vmNode = firstEnabled.name;
+		// Auto-select: first non-disabled node
+		if (settings.nodes.length === 0) {
+			// No nodes available - leave empty to trigger validation error
+			return;
 		}
-		if (settings.storages.length > 0) {
-			vmStorage = settings.storages[0].name;
+		const bestNode = settings.nodes.find((n) => !n.disabled) ?? settings.nodes[0];
+		if (bestNode) {
+			vmNode = bestNode.name;
+			autoNode = bestNode.name;
+		}
+		// Auto-select: prefer shared/centralized storage
+		const bestStorage = findBestStorage(settings.storages);
+		if (bestStorage) {
+			vmStorage = bestStorage;
+			autoStorage = bestStorage;
 		}
 		if (settings.bridges.length > 0) {
 			vmNetworks = [
@@ -136,6 +222,52 @@
 		}
 	}
 
+	function applyProfile(profile: VMProfileConfig): void {
+		if (!settings) return;
+		vmSockets = clamp(profile.sockets, settings.limits.sockets.min, settings.limits.sockets.max);
+		vmCores = clamp(profile.cores, settings.limits.cores.min, settings.limits.cores.max);
+		vmMemoryGB = clamp(profile.ram_gb, settings.limits.ram.min, settings.limits.ram.max);
+		vmDisks = [
+			{ size_gb: clamp(profile.disk_gb, settings.limits.disk.min, settings.limits.disk.max) }
+		];
+		const validBus = DISK_BUSES.find((b) => b.value === profile.disk_bus);
+		vmDiskBus = validBus ? profile.disk_bus : 'virtio';
+		// Apply node/storage overrides when profile specifies them; otherwise reset to auto-defaults
+		if (profile.node) {
+			const nodeExists = settings.nodes.find((n) => n.name === profile.node && !n.disabled);
+			if (nodeExists) { vmNode = profile.node; autoNode = ''; }
+		} else {
+			const bestNode = settings.nodes.find((n) => !n.disabled) ?? settings.nodes[0];
+			if (bestNode) { vmNode = bestNode.name; autoNode = bestNode.name; }
+		}
+		if (profile.storage) {
+			const storageExists = settings.storages.find((s) => s.name === profile.storage);
+			if (storageExists) { vmStorage = profile.storage; autoStorage = ''; }
+		} else {
+			const bestStorage = findBestStorage(settings.storages);
+			if (bestStorage) { vmStorage = bestStorage; autoStorage = bestStorage; }
+		}
+	}
+
+	function selectProfile(profile: VMProfileConfig): void {
+		selectedProfileId = profile.id;
+		applyProfile(profile);
+		// Move to details step if on confirm step
+		if (simpleStep > 1) simpleStep = 1;
+	}
+
+	// ── Simple wizard navigation ──────────────────────────────────────────────
+
+	function simpleNext(): void {
+		if (simpleStep < SIMPLE_STEPS.length - 1) simpleStep++;
+	}
+
+	function simplePrev(): void {
+		if (simpleStep > 0) simpleStep--;
+	}
+
+	// ── Advanced wizard navigation ────────────────────────────────────────────
+
 	function goNext(): void {
 		if (currentStep < STEPS.length - 1) currentStep++;
 	}
@@ -147,6 +279,8 @@
 	function goToStep(index: number): void {
 		if (index >= 0 && index < STEPS.length) currentStep = index;
 	}
+
+	// ── Disk / network management ─────────────────────────────────────────────
 
 	function addDisk(): void {
 		if (!settings) return;
@@ -189,6 +323,8 @@
 			vmTags = [...vmTags, tag];
 		}
 	}
+
+	// ── Create VM ─────────────────────────────────────────────────────────────
 
 	async function handleCreate(): Promise<void> {
 		if (!settings || creating) return;
@@ -247,6 +383,8 @@
 		}
 	}
 
+	// ── Validation ────────────────────────────────────────────────────────────
+
 	function isStepValid(step: Step): boolean {
 		if (!settings) return false;
 		switch (step) {
@@ -281,9 +419,36 @@
 
 <div class="mx-auto max-w-4xl space-y-6 p-4 md:p-6">
 	<!-- Header -->
-	<div>
-		<h1 class="text-2xl font-bold tracking-tight">{$t('vmCreate.title')}</h1>
-		<p class="text-muted-foreground text-sm">{$t('vmCreate.subtitle')}</p>
+	<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+		<div>
+			<h1 class="text-2xl font-bold tracking-tight">{$t('vmCreate.title')}</h1>
+			<p class="text-muted-foreground text-sm">{$t('vmCreate.subtitle')}</p>
+		</div>
+		<!-- Mode toggle — only shown when creation is available -->
+		{#if !loading && settings && settings.proxmox_connected && !quotaBlocked}
+			<div class="inline-flex self-start flex-shrink-0 rounded-lg border bg-muted p-1 gap-1">
+				<button
+					type="button"
+					onclick={() => { creationMode = 'simple'; simpleStep = 0; }}
+					class="rounded-md px-4 py-1.5 text-sm font-medium transition-all
+						{creationMode === 'simple'
+						? 'bg-background text-foreground shadow-sm'
+						: 'text-muted-foreground hover:text-foreground'}"
+				>
+					{$t('vmCreate.simple.modeSimple')}
+				</button>
+				<button
+					type="button"
+					onclick={() => { creationMode = 'advanced'; currentStep = 0; }}
+					class="rounded-md px-4 py-1.5 text-sm font-medium transition-all
+						{creationMode === 'advanced'
+						? 'bg-background text-foreground shadow-sm'
+						: 'text-muted-foreground hover:text-foreground'}"
+				>
+					{$t('vmCreate.simple.modeAdvanced')}
+				</button>
+			</div>
+		{/if}
 	</div>
 
 	{#if loading}
@@ -318,7 +483,349 @@
 				</p>
 			</CardContent>
 		</Card>
+
+	{:else if creationMode === 'simple'}
+		<!-- ══════════════════════ SIMPLE MODE ══════════════════════ -->
+
+		<!-- Simple step indicator -->
+		<nav class="flex items-center gap-2">
+			{#each SIMPLE_STEPS as step, i}
+				{@const isCurrent = i === simpleStep}
+				{@const isCompleted = i < simpleStep}
+				<div class="flex items-center gap-2">
+					<div
+						class="flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-all
+							{isCurrent
+							? 'bg-primary text-primary-foreground'
+							: isCompleted
+								? 'bg-primary/20 text-primary'
+								: 'bg-muted text-muted-foreground'}"
+					>
+						{#if isCompleted}
+							<Check class="h-3.5 w-3.5" />
+						{:else}
+							{i + 1}
+						{/if}
+					</div>
+					<span
+						class="text-sm font-medium
+							{isCurrent ? 'text-foreground' : 'text-muted-foreground'}"
+					>
+						{$t(`vmCreate.simple.step${step.charAt(0).toUpperCase() + step.slice(1)}`)}
+					</span>
+				</div>
+				{#if i < SIMPLE_STEPS.length - 1}
+					<div class="h-px flex-1 {i < simpleStep ? 'bg-primary/40' : 'bg-border'}"></div>
+				{/if}
+			{/each}
+		</nav>
+
+		{#if simpleStep === 0}
+			<!-- ─── Profile selection ─── -->
+			<div class="space-y-4">
+				<div>
+					<h2 class="text-lg font-semibold">{$t('vmCreate.simple.chooseProfile')}</h2>
+					<p class="text-muted-foreground text-sm mt-1">{$t('vmCreate.simple.chooseProfileHint')}</p>
+				</div>
+				<div class="grid gap-3 sm:grid-cols-2">
+					{#each (settings?.vm_profiles ?? []) as profile}
+						{@const ProfileIcon = PROFILE_ICONS[profile.icon] ?? Globe}
+						{@const colors = PROFILE_COLOR_CLASSES[profile.color] ?? PROFILE_COLOR_CLASSES['gray']}
+						{@const isSelected = selectedProfileId === profile.id}
+						<button
+							type="button"
+							onclick={() => selectProfile(profile)}
+							class="relative rounded-xl border-2 p-5 text-left transition-all
+								{isSelected
+								? 'border-primary bg-primary/5 shadow-sm'
+								: 'border-border hover:border-muted-foreground/40 hover:bg-muted/30 hover:shadow-sm'}"
+						>
+							<div class="flex items-start gap-4">
+								<div class="flex-shrink-0 rounded-lg p-2.5 {colors.bg}">
+									<ProfileIcon class="h-5 w-5 {colors.icon}" />
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="text-sm font-semibold leading-tight">{profile.name}</p>
+									<p class="text-muted-foreground mt-1 text-xs leading-snug">{profile.description}</p>
+									<div class="mt-3 flex flex-wrap gap-1.5">
+										<span
+											class="bg-muted inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+										>
+											{$t('vmCreate.simple.specs.vcpus', {
+												values: { count: String(profile.sockets * profile.cores) }
+											})}
+										</span>
+										<span
+											class="bg-muted inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+										>
+											{$t('vmCreate.simple.specs.ram', {
+												values: { gb: String(profile.ram_gb) }
+											})}
+										</span>
+										<span
+											class="bg-muted inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
+										>
+											{$t('vmCreate.simple.specs.disk', {
+												values: { gb: String(profile.disk_gb) }
+											})}
+										</span>
+									</div>
+								</div>
+								{#if isSelected}
+									<div class="absolute right-3 top-3">
+										<CheckCircle class="text-primary h-5 w-5" />
+									</div>
+								{/if}
+							</div>
+						</button>
+					{/each}
+				</div>
+				<div class="flex justify-end">
+					<Button onclick={simpleNext} disabled={!selectedProfileId}>
+						{$t('common.next')}
+						<CaretRight class="ml-1 h-4 w-4" />
+					</Button>
+				</div>
+			</div>
+
+		{:else if simpleStep === 1}
+			<!-- ─── VM Details ─── -->
+			<Card>
+				<CardContent class="space-y-5 p-6">
+					<div>
+						<h2 class="text-lg font-semibold">{$t('vmCreate.simple.details')}</h2>
+						<p class="text-muted-foreground mt-1 text-sm">{$t('vmCreate.simple.detailsHint')}</p>
+					</div>
+					<Separator />
+					<div class="grid gap-4 sm:grid-cols-2">
+						<div class="space-y-2 sm:col-span-2">
+							<Label for="simple-vm-name">{$t('vmCreate.base.name')}</Label>
+							<Input
+								id="simple-vm-name"
+								bind:value={vmName}
+								placeholder={$t('vmCreate.base.namePlaceholder')}
+								autofocus
+							/>
+							<p class="text-muted-foreground text-xs">{$t('vmCreate.base.nameHint')}</p>
+						</div>
+
+						<!-- Node selector — always shown, auto-selected hint when applicable -->
+						<div class="space-y-1.5">
+							<Label>{$t('vmCreate.base.node')}</Label>
+							<Select.Root
+								type="single"
+								value={vmNode}
+								onValueChange={(v) => {
+									vmNode = v;
+									// Clear auto-selection flag when user manually changes
+									autoNode = '';
+								}}
+							>
+								<Select.Trigger class="w-full">
+									{vmNode || $t('vmCreate.base.selectNode')}
+								</Select.Trigger>
+								<Select.Content>
+									{#each settings.nodes as node}
+										<Select.Item value={node.name} disabled={node.disabled}>
+											{node.name}
+											{#if node.disabled}
+												<span class="text-muted-foreground text-xs"> ({node.reason})</span>
+											{/if}
+										</Select.Item>
+									{/each}
+								</Select.Content>
+							</Select.Root>
+							{#if nodeIsAuto}
+								<p
+									class="flex items-center gap-1 text-xs text-primary/70"
+									title={$t('vmCreate.simple.autoNodeTooltip')}
+								>
+									<MagicWand class="h-3 w-3" />
+									{$t('vmCreate.simple.autoSelected')}
+								</p>
+							{/if}
+						</div>
+
+						<!-- Storage selector — always shown, auto-selected hint when applicable -->
+						<div class="space-y-1.5">
+							<Label>{$t('vmCreate.base.storage')}</Label>
+							<Select.Root
+								type="single"
+								value={vmStorage}
+								onValueChange={(v) => {
+									vmStorage = v;
+									// Clear auto-selection flag when user manually changes
+									autoStorage = '';
+								}}
+							>
+								<Select.Trigger class="w-full">
+									{vmStorage || $t('vmCreate.base.selectStorage')}
+								</Select.Trigger>
+								<Select.Content>
+									{#each settings.storages as storage}
+										<Select.Item value={storage.name}>
+											{storage.name}
+											{#if storage.node === ''}
+												<span class="text-muted-foreground text-xs"> — {$t('vmCreate.simple.sharedStorage')}</span>
+											{:else if storage.node}
+												<span class="text-muted-foreground text-xs"> ({storage.node})</span>
+											{/if}
+										</Select.Item>
+									{/each}
+								</Select.Content>
+							</Select.Root>
+							{#if storageIsAuto}
+								<p
+									class="flex items-center gap-1 text-xs text-primary/70"
+									title={autoStorageIsShared
+										? $t('vmCreate.simple.autoStorageSharedTooltip')
+										: $t('vmCreate.simple.autoStorageTooltip')}
+								>
+									<MagicWand class="h-3 w-3" />
+									{autoStorageIsShared
+										? $t('vmCreate.simple.autoSelectedShared')
+										: $t('vmCreate.simple.autoSelected')}
+								</p>
+							{/if}
+						</div>
+
+						<div class="space-y-2 sm:col-span-2">
+							<Label>{$t('vmCreate.base.iso')}</Label>
+							<Select.Root
+								type="single"
+								value={vmISO}
+								onValueChange={(v) => (vmISO = v)}
+							>
+								<Select.Trigger class="w-full">
+									{#if vmISO}
+										{settings.isos.find((i) => i.volid === vmISO)?.name || vmISO}
+									{:else}
+										{$t('vmCreate.base.noIso')}
+									{/if}
+								</Select.Trigger>
+								<Select.Content>
+									<Select.Item value="">{$t('vmCreate.base.noIso')}</Select.Item>
+									{#each settings.isos as iso}
+										<Select.Item value={iso.volid}>{iso.name}</Select.Item>
+									{/each}
+								</Select.Content>
+							</Select.Root>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+			<div class="flex items-center justify-between">
+				<Button variant="outline" onclick={simplePrev}>
+					<CaretLeft class="mr-1 h-4 w-4" />
+					{$t('common.previous')}
+				</Button>
+				<Button onclick={simpleNext} disabled={!simpleDetailsValid}>
+					{$t('common.next')}
+					<CaretRight class="ml-1 h-4 w-4" />
+				</Button>
+			</div>
+
+		{:else if simpleStep === 2}
+			<!-- ─── Confirm & Create ─── -->
+			<Card>
+				<CardContent class="space-y-5 p-6">
+					<div>
+						<h2 class="text-lg font-semibold">{$t('vmCreate.simple.confirm')}</h2>
+						<p class="text-muted-foreground mt-1 text-sm">{$t('vmCreate.simple.confirmHint')}</p>
+					</div>
+					<Separator />
+
+					{#if selectedProfile}
+						{@const ProfileIcon = PROFILE_ICONS[selectedProfile.icon] ?? Globe}
+						{@const confirmColors = PROFILE_COLOR_CLASSES[selectedProfile.color] ?? PROFILE_COLOR_CLASSES['gray']}
+						<!-- Profile + VM summary -->
+						<div class="rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
+							<div class="mb-4 flex items-center gap-3">
+								<div class="flex-shrink-0 rounded-lg p-2 {confirmColors.bg}">
+									<ProfileIcon class="h-5 w-5 {confirmColors.icon}" />
+								</div>
+								<div>
+									<p class="text-sm font-semibold">
+										{selectedProfile.name}
+									</p>
+									<p class="text-muted-foreground text-xs">
+										{selectedProfile.description}
+									</p>
+								</div>
+							</div>
+							<div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+								<span class="text-muted-foreground">{$t('vmCreate.review.name')}</span>
+								<span class="font-medium">{vmName}</span>
+								<span class="text-muted-foreground">{$t('vmCreate.review.node')}</span>
+								<span>{vmNode}</span>
+								<span class="text-muted-foreground">{$t('vmCreate.review.storage')}</span>
+								<span>{vmStorage}</span>
+								{#if vmISO}
+									<span class="text-muted-foreground">{$t('vmCreate.review.iso')}</span>
+									<span>{settings.isos.find((i) => i.volid === vmISO)?.name || vmISO}</span>
+								{/if}
+								<span class="text-muted-foreground">{$t('vmCreate.review.hardware')}</span>
+								<span>
+									{vmSockets * vmCores} vCPUs · {vmMemoryGB} GB RAM · {vmDisks[0].size_gb} GB
+								</span>
+							</div>
+						</div>
+					{/if}
+
+					<!-- Admin escalation notice -->
+					<div
+						class="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30"
+					>
+						<Info
+							class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400"
+						/>
+						<div class="space-y-1">
+							<p class="text-sm font-medium text-amber-800 dark:text-amber-200">
+								{$t('vmCreate.simple.adminNotice')}
+							</p>
+							<p class="text-xs text-amber-700 dark:text-amber-300">
+								{$t('vmCreate.simple.adminNoticeBody')}
+							</p>
+							<button
+								type="button"
+								onclick={() => { creationMode = 'advanced'; currentStep = 0; }}
+								class="text-xs font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+							>
+								{$t('vmCreate.simple.switchToAdvanced')}
+							</button>
+						</div>
+					</div>
+
+					<!-- Start after creation -->
+					<div class="flex items-center gap-3">
+						<Switch bind:checked={vmStartAfterCreation} />
+						<span class="text-sm font-medium">{$t('vmCreate.review.startAfterCreation')}</span>
+					</div>
+				</CardContent>
+			</Card>
+			<div class="flex items-center justify-between">
+				<Button variant="outline" onclick={simplePrev}>
+					<CaretLeft class="mr-1 h-4 w-4" />
+					{$t('common.previous')}
+				</Button>
+				<Button
+					onclick={handleCreate}
+					disabled={creating || !simpleDetailsValid || !selectedProfileId}
+				>
+					{#if creating}
+						<SpinnerGap class="mr-2 h-4 w-4 animate-spin" />
+						{$t('vmCreate.review.creating')}
+					{:else}
+						<CheckCircle class="mr-2 h-4 w-4" />
+						{$t('vmCreate.review.create')}
+					{/if}
+				</Button>
+			</div>
+		{/if}
+
 	{:else}
+		<!-- ══════════════════════ ADVANCED MODE ══════════════════════ -->
+
 		<!-- Step indicator -->
 		<nav class="flex items-center justify-between gap-1 overflow-x-auto pb-2">
 			{#each STEPS as step, i}
@@ -401,15 +908,15 @@
 							</Select.Root>
 						</div>
 						{#if settings.nodes.every((n) => n.disabled)}
-							<div class="bg-amber-50 border-amber-200 border rounded-lg p-3 text-sm">
+							<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
 								<p class="text-amber-800 font-medium">{$t('vmCreate.base.allNodesDisabled')}</p>
-								<p class="text-amber-700 text-xs mt-1">{$t('vmCreate.base.allNodesDisabledHint')}</p>
+								<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.allNodesDisabledHint')}</p>
 							</div>
 						{/if}
 						{#if settings.storages.length === 0}
-							<div class="bg-amber-50 border-amber-200 border rounded-lg p-3 text-sm">
+							<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
 								<p class="text-amber-800 font-medium">{$t('vmCreate.base.noStorages')}</p>
-								<p class="text-amber-700 text-xs mt-1">{$t('vmCreate.base.noStoragesHint')}</p>
+								<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.noStoragesHint')}</p>
 							</div>
 						{/if}
 						<div class="space-y-2">
@@ -662,7 +1169,9 @@
 													<Select.Item value={bridge.name}>
 														{bridge.name}
 														{#if bridge.description}
-															<span class="text-muted-foreground text-xs"> — {bridge.description}</span>
+															<span class="text-muted-foreground text-xs">
+																— {bridge.description}</span
+															>
 														{/if}
 													</Select.Item>
 												{/each}
@@ -884,7 +1393,9 @@
 						<div class="border-destructive/50 bg-destructive/5 rounded-lg border p-4">
 							<div class="flex items-center gap-2">
 								<Warning class="text-destructive h-5 w-5 flex-shrink-0" />
-								<p class="text-destructive text-sm font-medium">{$t('vmCreate.review.validationTitle')}</p>
+								<p class="text-destructive text-sm font-medium">
+									{$t('vmCreate.review.validationTitle')}
+								</p>
 							</div>
 							<ul class="text-destructive/80 mt-2 space-y-1 pl-7 text-sm">
 								{#if vmName.trim().length === 0}
@@ -919,7 +1430,9 @@
 						</h3>
 						<div class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm">
 							<span class="text-muted-foreground">{$t('vmCreate.review.name')}</span>
-							<span class="font-medium {vmName.trim().length === 0 ? 'text-destructive' : ''}">
+							<span
+								class="font-medium {vmName.trim().length === 0 ? 'text-destructive' : ''}"
+							>
 								{vmName.trim().length > 0 ? vmName : $t('vmCreate.review.required')}
 							</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.node')}</span>
@@ -992,18 +1505,17 @@
 							{$t('vmCreate.review.network')}
 						</h3>
 						{#each vmNetworks as net, i}
-							<div
-								class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm"
-							>
-								<span class="text-muted-foreground"
-									>{$t('vmCreate.network.card', { values: { index: String(i + 1) } })}</span
-								>
+							<div class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm">
+								<span class="text-muted-foreground">
+									{$t('vmCreate.network.card', { values: { index: String(i + 1) } })}
+								</span>
 								<span></span>
 								<span class="text-muted-foreground">{$t('vmCreate.review.bridge')}</span>
 								<span class="{net.bridge === '' ? 'text-destructive' : ''}">
 									{#if net.bridge}
 										{net.bridge}
-										{@const desc = settings.bridges.find((b) => b.name === net.bridge)?.description}
+										{@const desc = settings.bridges.find((b) => b.name === net.bridge)
+											?.description}
 										{#if desc}
 											<span class="text-muted-foreground text-xs"> — {desc}</span>
 										{/if}
@@ -1012,9 +1524,9 @@
 									{/if}
 								</span>
 								<span class="text-muted-foreground">{$t('vmCreate.review.model')}</span>
-								<span
-									>{NETWORK_MODELS.find((m) => m.value === net.model)?.label || net.model}</span
-								>
+								<span>
+									{NETWORK_MODELS.find((m) => m.value === net.model)?.label || net.model}
+								</span>
 								{#if net.vlan}
 									<span class="text-muted-foreground">VLAN</span>
 									<span>{net.vlan}</span>
@@ -1030,9 +1542,7 @@
 								<Cloud class="h-4 w-4" />
 								{$t('vmCreate.review.cloudinit')}
 							</h3>
-							<div
-								class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm"
-							>
+							<div class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm">
 								{#if vmCIUser}
 									<span class="text-muted-foreground">{$t('vmCreate.cloudinit.user')}</span>
 									<span>{vmCIUser}</span>
@@ -1044,9 +1554,9 @@
 									<span>{vmCIIP}</span>
 								{/if}
 								{#if vmCITemplateID}
-									<span class="text-muted-foreground"
-										>{$t('vmCreate.cloudinit.template')}</span
-									>
+									<span class="text-muted-foreground">
+										{$t('vmCreate.cloudinit.template')}
+									</span>
 									<span>
 										{settings.cloudinit_templates.find((t) => t.id === vmCITemplateID)?.name ||
 											vmCITemplateID}

@@ -30,6 +30,9 @@ func errBadRequest(w http.ResponseWriter, msg string) {
 func errInternal(w http.ResponseWriter) {
 	writeError(w, http.StatusInternalServerError, "internal_error", "Internal server error")
 }
+func errNotFound(w http.ResponseWriter, msg string) {
+	writeError(w, http.StatusNotFound, "not_found", msg)
+}
 func errOffline(w http.ResponseWriter) {
 	writeError(w, http.StatusServiceUnavailable, "proxmox_offline", "Proxmox is unavailable")
 }

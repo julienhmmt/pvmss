@@ -77,6 +77,77 @@ const (
 	DefaultSnapshotsPerVM = 8              // Default snapshots per VM
 )
 
+// VMProfileConfig defines a VM profile for the simplified creation wizard.
+type VMProfileConfig struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Sockets     int    `json:"sockets"`
+	Cores       int    `json:"cores"`
+	RAMGB       int    `json:"ram_gb"`
+	DiskGB      int    `json:"disk_gb"`
+	DiskBus     string `json:"disk_bus"`
+	// Node and Storage are optional. Empty string means auto-select.
+	Node    string `json:"node,omitempty"`
+	Storage string `json:"storage,omitempty"`
+	Icon    string `json:"icon"`
+	Color   string `json:"color"`
+	Enabled bool   `json:"enabled"`
+}
+
+// DefaultVMProfiles returns the built-in profiles used as fallback when none are configured.
+func DefaultVMProfiles() []VMProfileConfig {
+	return []VMProfileConfig{
+		{ID: "web-server", Name: "Web Server", Description: "Host websites, reverse proxies, or static content servers", Sockets: 1, Cores: 1, RAMGB: 2, DiskGB: 24, DiskBus: "virtio", Icon: "Globe", Color: "blue", Enabled: true},
+		{ID: "light-api", Name: "Lightweight API", Description: "Run REST APIs, microservices, or lightweight backend services", Sockets: 1, Cores: 2, RAMGB: 2, DiskGB: 24, DiskBus: "virtio", Icon: "Code", Color: "violet", Enabled: true},
+		{ID: "light-app-server", Name: "Light App Server", Description: "Deploy application runtimes, job queues, or middleware", Sockets: 1, Cores: 4, RAMGB: 4, DiskGB: 32, DiskBus: "virtio", Icon: "Cube", Color: "emerald", Enabled: true},
+		{ID: "medium-app-server", Name: "Medium App Server", Description: "Heavier workloads requiring more RAM — frameworks, daemons, or data pipelines", Sockets: 1, Cores: 4, RAMGB: 6, DiskGB: 32, DiskBus: "virtio", Icon: "Database", Color: "teal", Enabled: true},
+		{ID: "test-base", Name: "Test Environment", Description: "Quick sandbox for testing, prototyping, or CI/CD pipelines", Sockets: 1, Cores: 2, RAMGB: 4, DiskGB: 24, DiskBus: "virtio", Icon: "Flask", Color: "amber", Enabled: true},
+	}
+}
+
+// GetVMProfiles returns all configured profiles, falling back to built-in defaults when none are set.
+func (s *AppSettings) GetVMProfiles() []VMProfileConfig {
+	if len(s.VMProfiles) == 0 {
+		return DefaultVMProfiles()
+	}
+	return s.VMProfiles
+}
+
+// GetEnabledVMProfiles returns only enabled profiles (or all defaults when none are configured).
+func (s *AppSettings) GetEnabledVMProfiles() []VMProfileConfig {
+	all := s.GetVMProfiles()
+	enabled := make([]VMProfileConfig, 0, len(all))
+	for _, p := range all {
+		if p.Enabled {
+			enabled = append(enabled, p)
+		}
+	}
+	return enabled
+}
+
+// AddOrUpdateVMProfile upserts a profile by ID.
+func (s *AppSettings) AddOrUpdateVMProfile(profile VMProfileConfig) {
+	for i, p := range s.VMProfiles {
+		if p.ID == profile.ID {
+			s.VMProfiles[i] = profile
+			return
+		}
+	}
+	s.VMProfiles = append(s.VMProfiles, profile)
+}
+
+// RemoveVMProfile deletes a profile by ID and returns true if found.
+func (s *AppSettings) RemoveVMProfile(id string) bool {
+	for i, p := range s.VMProfiles {
+		if p.ID == id {
+			s.VMProfiles = append(s.VMProfiles[:i], s.VMProfiles[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
 // CloudInitTemplate represents metadata for a cloud-init template managed by PVMSS.
 // Templates are stored locally in settings.json; Storage and Filename are kept as
 // optional metadata about the intended Proxmox storage and filename.
@@ -137,6 +208,7 @@ type AppSettings struct {
 	Tags               []string                    `json:"tags"`
 	VMBRs              []string                    `json:"vmbrs"`
 	CloudInitTemplates []CloudInitTemplate         `json:"cloudinit_templates,omitempty"`
+	VMProfiles         []VMProfileConfig           `json:"vm_profiles,omitempty"`
 	AllowCustomYAML    bool                        `json:"allow_custom_yaml,omitempty"` // Allow users to provide custom YAML (default: true)
 	CloudInitSFTP      proxmox.CloudInitSFTPConfig `json:"cloudinit_sftp,omitempty"`    // SSH/SFTP configuration for snippet uploads
 	// JWTSecret is the signing key for /api/v1/ JWT tokens (minimum 32 bytes).

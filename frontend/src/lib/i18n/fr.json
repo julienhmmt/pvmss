@@ -7,6 +7,8 @@
     "create": "Créer",
     "update": "Mettre à jour",
     "confirm": "Confirmer",
+    "confirmDelete": "Confirmer la suppression",
+    "confirmDeleteDescription": "Êtes-vous sûr de vouloir supprimer \"{name}\" ?",
     "retry": "Réessayer",
     "refresh": "Actualiser",
     "enabled": "Activé",
@@ -66,7 +68,8 @@
     "network": "Réseau",
     "cloudinit": "Cloud-Init",
     "iso": "Images ISO",
-    "appinfo": "Infos app"
+    "appinfo": "Infos app",
+    "profiles": "Profils VM"
   },
   "admin": {
     "dashboard": {
@@ -225,6 +228,63 @@
         "deleted": "Modèle « {name} » supprimé",
         "enabled": "Modèle « {name} » activé",
         "disabled": "Modèle « {name} » désactivé"
+      }
+    },
+    "profiles": {
+      "title": "Profils VM",
+      "subtitle": "Configurez les profils proposés aux utilisateurs dans l'assistant de création simplifié.",
+      "createProfile": "Nouveau profil",
+      "editProfile": "Modifier le profil",
+      "noProfiles": "Aucun profil configuré",
+      "noProfilesHint": "Créez des profils pour proposer des préréglages de création rapide de VM à vos utilisateurs.",
+      "autoSelect": "Sélection auto",
+      "fields": {
+        "name": "Nom",
+        "description": "Description",
+        "sockets": "Sockets",
+        "cores": "Cœurs",
+        "ramGb": "RAM (Go)",
+        "diskGb": "Disque (Go)",
+        "diskBus": "Bus disque",
+        "node": "Nœud",
+        "storage": "Stockage",
+        "icon": "Icône",
+        "color": "Couleur",
+        "enabled": "Activé"
+      },
+      "iconOptions": {
+        "Globe": "Globe",
+        "Code": "Code",
+        "Cube": "Cube",
+        "Database": "Base de données",
+        "Flask": "Fiole",
+        "Monitor": "Moniteur",
+        "Cpu": "CPU",
+        "HardDrive": "Disque dur",
+        "Cloud": "Cloud",
+        "Info": "Info"
+      },
+      "colorOptions": {
+        "blue": "Bleu",
+        "violet": "Violet",
+        "emerald": "Émeraude",
+        "teal": "Sarcelle",
+        "amber": "Ambre",
+        "rose": "Rose",
+        "indigo": "Indigo",
+        "sky": "Ciel",
+        "orange": "Orange",
+        "gray": "Gris"
+      },
+      "validation": {
+        "numericRequired": "Les sockets, cœurs, RAM et disque doivent être au moins 1"
+      },
+      "toast": {
+        "created": "Profil « {name} » créé",
+        "updated": "Profil « {name} » mis à jour",
+        "deleted": "Profil « {name} » supprimé",
+        "enabled": "Profil « {name} » activé",
+        "disabled": "Profil « {name} » désactivé"
       }
     },
     "appinfo": {
@@ -571,6 +631,55 @@
       "invalidHardware": "Les valeurs matérielles dépassent les limites autorisées",
       "invalidDisk": "Au moins un disque avec une taille valide est requis",
       "invalidNetwork": "Chaque carte réseau doit avoir un pont sélectionné"
+    },
+    "simple": {
+      "modeSimple": "Simplifié",
+      "modeAdvanced": "Avancé",
+      "stepProfile": "Profil",
+      "stepDetails": "Détails",
+      "stepConfirm": "Confirmer",
+      "chooseProfile": "Choisir un profil",
+      "chooseProfileHint": "Sélectionnez le type de VM qui correspond le mieux à votre besoin. La configuration matérielle est pré-réglée.",
+      "profiles": {
+        "web-server": {
+          "name": "Serveur web",
+          "description": "Hébergez des sites web, des proxies inverses ou des serveurs de contenu statique"
+        },
+        "light-api": {
+          "name": "API légère",
+          "description": "Exécutez des API REST, des microservices ou des services backend légers"
+        },
+        "light-app-server": {
+          "name": "Serveur applicatif léger",
+          "description": "Déployez des runtimes applicatifs, des files de tâches ou des middlewares"
+        },
+        "medium-app-server": {
+          "name": "Serveur applicatif moyen",
+          "description": "Charges plus lourdes nécessitant plus de RAM — frameworks, daemons ou pipelines de données"
+        },
+        "test-base": {
+          "name": "Environnement de test",
+          "description": "Bac à sable pour les tests, le prototypage ou les pipelines CI/CD"
+        }
+      },
+      "specs": {
+        "vcpus": "{count} vCPUs",
+        "ram": "{gb} Go RAM",
+        "disk": "{gb} Go disque"
+      },
+      "details": "Détails de la VM",
+      "detailsHint": "Saisissez un nom et choisissez une image ISO pour votre VM",
+      "confirm": "Vérifier & Créer",
+      "confirmHint": "Vérifiez la configuration avant de déployer votre VM",
+      "autoSelected": "Sélectionné automatiquement",
+      "autoSelectedShared": "Sélectionné automatiquement — stockage centralisé",
+      "autoNodeTooltip": "Ce nœud a été sélectionné automatiquement car il dispose de capacité disponible. Vous pouvez le modifier.",
+      "autoStorageTooltip": "Ce stockage a été sélectionné automatiquement. Vous pouvez le modifier.",
+      "autoStorageSharedTooltip": "Un stockage centralisé (partagé entre les nœuds) a été sélectionné automatiquement. C'est le choix recommandé pour les images disque de VM. Vous pouvez le modifier.",
+      "sharedStorage": "partagé",
+      "adminNotice": "Besoin de quelque chose de spécifique ?",
+      "adminNoticeBody": "Les profils proposés couvrent les usages courants. Pour un besoin particulier — GPU, réseau avancé, stockage personnalisé ou options Proxmox non standard — merci de contacter votre administrateur PVMSS.",
+      "switchToAdvanced": "Passer en mode Avancé pour un contrôle total →"
     },
     "toast": {
       "created": "VM « {name} » (ID : {vmid}) créée avec succès",
