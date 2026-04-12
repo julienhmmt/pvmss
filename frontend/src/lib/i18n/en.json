@@ -710,5 +710,20 @@
       "createdWithWarning": "VM \"{name}\" created but cloud-init had an issue: {warning}",
       "failed": "Failed to create VM: {error}"
     }
+  },
+  "footer": {
+    "backToTop": "Back to top",
+    "documentation": "PVMSS overview",
+    "links": "Links",
+    "loading": "Loading…",
+    "nodes": "nodes",
+    "offlineMode": "offline",
+    "proxmoxConnected": "Proxmox connected",
+    "proxmoxDisconnected": "Proxmox unreachable",
+    "source": "Source code",
+    "status": "Status",
+    "statusUnavailable": "Status unavailable",
+    "tagline": "Proxmox VM Self-Service portal",
+    "vms": "VMs"
   }
 }
