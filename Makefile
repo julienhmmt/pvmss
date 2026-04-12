@@ -169,6 +169,10 @@ go-fmt: ## Formate le code Go
 	@echo "$(BLUE)Formatage du code Go...$(NC)"
 	cd $(BACKEND_DIR) && go fmt ./...
 
+go-update: ## Met à jour les dépendances Go
+	@echo "$(BLUE)Mise à jour des dépendances Go...$(NC)"
+	cd $(BACKEND_DIR) && go get -u ./... && go mod tidy
+
 # =============================================================================
 # Commandes BuildKit (pour builds multi-architecture)
 
