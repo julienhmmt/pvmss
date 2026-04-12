@@ -748,8 +748,20 @@ func ensureLocalPath(urlStr string) string {
 	}
 
 	// Prevent redirecting to a path starting with a second slash (//evil).
-
 	if len(cleanPath) > 1 && (cleanPath[1] == '/' || cleanPath[1] == '\\') {
+		return "/"
+	}
+
+	// Allow redirects only to approved internal route prefixes.
+	allowedPrefixes := []string{"/", "/admin", "/login"}
+	allowed := false
+	for _, prefix := range allowedPrefixes {
+		if cleanPath == prefix || strings.HasPrefix(cleanPath, prefix+"/") {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
 		return "/"
 	}
 
