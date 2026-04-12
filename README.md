@@ -134,8 +134,40 @@ You can now use the API token in the environment variables `PROXMOX_API_TOKEN_NA
       "ram": { "min": 1, "max": 4 },
       "disk": { "min": 6, "max": 12 }
     },
-    "max_snapshot": 8
-  }
+    "max_snapshots": 8
+  },
+  "vm_profiles": [
+    {
+      "id": "web-server",
+      "name": "Web Server",
+      "description": "Host websites, reverse proxies, or static content servers",
+      "sockets": 1,
+      "cores": 1,
+      "ram_gb": 2,
+      "disk_gb": 24,
+      "disk_bus": "virtio",
+      "node": "",
+      "storage": "",
+      "icon": "Globe",
+      "color": "blue",
+      "enabled": true
+    },
+    {
+      "id": "light-api",
+      "name": "Lightweight API",
+      "description": "Run REST APIs, microservices, or lightweight backend services",
+      "sockets": 1,
+      "cores": 2,
+      "ram_gb": 2,
+      "disk_gb": 24,
+      "disk_bus": "virtio",
+      "node": "",
+      "storage": "",
+      "icon": "Code",
+      "color": "violet",
+      "enabled": true
+    }
+  ]
 }
 ```
 
@@ -144,6 +176,37 @@ All keys are mandatory. Next versions of PVMSS can add new keys to this file, so
 #### Tags
 
 The tag `pvmss` is used by default for VMs created via PVMSS, it cannot and should not be removed. Only PVMSS tags created by the admin from this app can be used.
+
+#### VM Profiles
+
+VM profiles are pre-configured templates that simplify VM creation by providing common resource configurations. Users can select a profile when creating a VM, which automatically sets CPU, RAM, disk, and other parameters.
+
+If no profiles are configured in `settings.json`, PVMSS provides built-in default profiles:
+
+- **Web Server**: 1 vCPU, 2 GB RAM, 24 GB disk
+- **Lightweight API**: 2 vCPU, 2 GB RAM, 24 GB disk
+- **Light App Server**: 4 vCPU, 4 GB RAM, 32 GB disk
+- **Medium App Server**: 4 vCPU, 6 GB RAM, 32 GB disk
+- **Test Environment**: 2 vCPU, 4 GB RAM, 24 GB disk
+
+Admins can manage custom profiles via the **Admin > Profiles** page, where they can:
+
+- Create new profiles with custom resource specifications
+- Edit existing profiles
+- Enable or disable profiles
+- Delete profiles
+- Set optional node and storage overrides per profile
+
+Each profile includes:
+
+- `id`: Unique identifier
+- `name`: Display name
+- `description`: User-friendly description
+- `sockets`, `cores`, `ram_gb`, `disk_gb`: Resource specifications
+- `disk_bus`: Disk bus type (virtio, scsi, sata, ide)
+- `node`, `storage`: Optional node/storage overrides (empty = auto-select)
+- `icon`, `color`: Visual customization
+- `enabled`: Whether the profile is visible to users
 
 ### Environment variables
 
@@ -294,14 +357,14 @@ LOG_FILE_PATH: "/app/pvmss.log"
 - ./pvmss.log:/app/pvmss.log
 ```
 
-3. **Start the stack:**
+1. **Start the stack:**
 
    ```bash
    docker compose up -d
    ```
 
-4. Browse to **<http://localhost:50000>**.
-5. Login with the admin credentials configured earlier, on the page "Login", click on "Administrator login".
+2. Browse to **<http://localhost:50000>**.
+3. Login with the admin credentials configured earlier, on the page "Login", click on "Administrator login".
 
 ## Start with Kubernetes
 
