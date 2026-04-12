@@ -34,7 +34,7 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 - **Files**: `backend/api/v1/vm_create.go:898`, `backend/api/v1/vms.go:231`
 - **Fix**: Log the real error server-side, return generic "Failed to create/delete VM" to client
 
-### 2.3 Use Proxmox `GET /cluster/nextid` for atomic VMID allocation
+### 2.3 Use Proxmox `GET /cluster/nextid` for atomic VMID allocation - DONE
 
 - **Files**: `backend/api/v1/vm_create.go:741-759`, `backend/proxmox/vms.go`
 - **Fix**: Add `GetClusterNextIDResty()` function, call it instead of snapshot-based max+1

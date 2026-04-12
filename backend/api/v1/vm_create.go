@@ -838,7 +838,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if vmid == 0 {
-		nextID, err := proxmox.GetNextVMIDResty(ctx, client)
+		nextID, err := proxmox.GetClusterNextIDResty(ctx, client)
 		if err != nil {
 			logger.Get().Error().Err(err).Msg("api/v1: failed to get next VMID")
 			writeError(w, http.StatusInternalServerError, "vmid_error", "Failed to get next VMID")
