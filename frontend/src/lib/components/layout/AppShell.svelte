@@ -12,7 +12,7 @@
 
 <SidebarProvider>
 	{@render sidebar()}
-	<SidebarInset>
+	<SidebarInset class="flex flex-col">
 		<main class="flex-1 overflow-auto p-6">
 			{@render children()}
 		</main>

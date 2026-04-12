@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -314,6 +315,20 @@ func (h *AdminHandler) CloudInitStorages(w http.ResponseWriter, r *http.Request)
 		names = append(names, s.Storage)
 	}
 	writeJSON(w, names)
+}
+
+// Version handles GET /api/v1/public/version.
+// Public endpoint that returns only the application version.
+func (h *AdminHandler) Version(w http.ResponseWriter, _ *http.Request) {
+	version := os.Getenv("PVMSS_VERSION")
+	if version == "" {
+		version = constants.AppVersion
+	}
+	resp := map[string]string{
+		"version": version,
+	}
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	writeJSON(w, resp)
 }
 
 // AppInfo handles GET /api/v1/admin/appinfo.

@@ -5,6 +5,7 @@
 	import { themeStore } from '$lib/stores/theme.svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import Navbar from '$lib/components/layout/Navbar.svelte';
+	import Footer from '$lib/components/layout/Footer.svelte';
 	import '$lib/i18n';
 	import '../app.css';
 
@@ -21,9 +22,10 @@
 
 {#if $page.url.pathname !== '/login' && !$page.url.pathname.endsWith('/console')}
 	<Navbar />
-	<div class="pt-14">
+	<div class="pt-14 flex flex-col flex-1">
 		{@render children()}
 	</div>
+	<Footer />
 {:else}
 	{@render children()}
 {/if}
