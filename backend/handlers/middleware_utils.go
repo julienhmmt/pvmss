@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -354,9 +355,16 @@ func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath strin
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
 
+	// Decode and validate URL path first so encoded traversal payloads cannot bypass checks.
+	decodedPath, err := url.PathUnescape(r.URL.Path)
+	if err != nil || strings.Contains(decodedPath, "\x00") || strings.Contains(decodedPath, "..") || strings.Contains(decodedPath, "\\") {
+		http.NotFound(w, r)
+		return
+	}
+
 	// Strip leading slash to get a relative path within the build directory.
 	// e.g. "/login" → "login", "/_app/x.js" → "_app/x.js", "/admin/nodes" → "admin/nodes"
-	relPath := strings.TrimPrefix(r.URL.Path, "/")
+	relPath := strings.TrimPrefix(decodedPath, "/")
 	// Resolve the requested path within the SPA directory and ensure it cannot escape.
 	filePathAbs, ok := resolveWithinBase(spaDir, relPath)
 	if !ok {
