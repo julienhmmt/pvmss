@@ -107,11 +107,11 @@
 				.filter((t) => t && t !== MANDATORY_TAG);
 
 			cards = currentNetworks.map((n) => ({
-				index: n.name ?? '',
+				index: n.index ?? '',
 				model: n.model ?? 'virtio',
 				bridge: n.bridge ?? defaultBridge,
 				mac: n.mac ?? '',
-				vlan: n.tag ? Number(n.tag) : 0,
+				vlan: n.tag ?? 0,
 				rate: n.rate ?? '',
 				firewall: n.firewall ?? false,
 				deleted: false
@@ -157,6 +157,7 @@
 			const tagsString = [MANDATORY_TAG, ...selectedTags].join(';');
 
 			// Build network updates: existing changed cards + new cards
+			// Empty index means "add new card" - backend will auto-assign net0, net1, etc.
 			const networks: NetworkUpdateRequest[] = activeCards
 				.map((c) => ({
 					index: c.index,
