@@ -100,15 +100,26 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	// Main App Middleware Chain (with session, CSRF, etc.)
 	appHandler := buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(router)
 
-	// SvelteKit admin SPA serving
-	spaDir := filepath.Join(getFrontendPath(stateManager), "admin")
-	spaIndexPath := filepath.Join(spaDir, "index.html")
+	// SvelteKit SPA serving — try both 'build' (new) and 'admin' (old) for backward compatibility
+	spaDirs := []string{"build", "admin"}
+	spaDir := ""
 	spaAvailable := false
-	if _, err := os.Stat(spaIndexPath); err == nil {
-		spaAvailable = true
-		log.Info().Str("path", spaDir).Msg("SvelteKit admin SPA build found")
-	} else {
-		log.Info().Msg("SvelteKit admin SPA build not found — /admin/ will fall through to router")
+	for _, dir := range spaDirs {
+		candidateDir := filepath.Join(getFrontendPath(stateManager), dir)
+		candidateIndexPath := filepath.Join(candidateDir, "index.html")
+		if _, err := os.Stat(candidateIndexPath); err == nil {
+			spaDir = candidateDir
+			spaAvailable = true
+			log.Info().Str("path", spaDir).Msg("SvelteKit SPA build found")
+			break
+		}
+	}
+	if !spaAvailable {
+		log.Info().Msg("SvelteKit SPA build not found — run 'make frontend-build' to build the frontend")
+	}
+	var spaIndexPath string
+	if spaAvailable {
+		spaIndexPath = filepath.Join(spaDir, "index.html")
 	}
 
 	// Route requests to the appropriate middleware chain.
@@ -179,6 +190,7 @@ func setupStaticFiles(router *httprouter.Router, stateManager state.StateManager
 
 	// noVNC library for the Svelte console component
 	registerStaticHandler(router, "/components/*filepath", http.StripPrefix("/components/", createCachedFileServer(basePath, "components")))
+	registerStaticHandler(router, "/noVNC-1.6.0/*filepath", http.StripPrefix("/noVNC-1.6.0/", createCachedFileServer(basePath, "static/noVNC-1.6.0")))
 	registerStaticHandler(router, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
 	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured")

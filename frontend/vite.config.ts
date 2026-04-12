@@ -29,22 +29,6 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
-      "/logout": {
-        target: process.env.VITE_BACKEND_URL ?? "http://localhost:50000",
-        changeOrigin: true,
-      },
-      "/css": {
-        target: process.env.VITE_BACKEND_URL ?? "http://localhost:50000",
-        changeOrigin: true,
-      },
-      "/js": {
-        target: process.env.VITE_BACKEND_URL ?? "http://localhost:50000",
-        changeOrigin: true,
-      },
-      "/vendor": {
-        target: process.env.VITE_BACKEND_URL ?? "http://localhost:50000",
-        changeOrigin: true,
-      },
     },
   },
 });
