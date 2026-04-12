@@ -1,7 +1,7 @@
 # Makefile pour PVMSS
 # Permet de construire, démarrer, arrêter, nettoyer et tester l'application
 
-.PHONY: help dev dev-svelte dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status frontend-install frontend-build frontend-dev
+.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status frontend-install frontend-build frontend-dev
 
 # Couleurs pour l'affichage
 BLUE=\033[0;34m
@@ -206,6 +206,26 @@ buildkit-status: ## Vérifie le statut de buildkit
 		echo "$(RED)❌ Buildkit n'est pas démarré$(NC)"; \
 		echo "Lancez 'make buildkit-start' pour l'activer"; \
 	fi
+
+# =============================================================================
+# Commandes Frontend (SvelteKit)
+
+FRONTEND_DIR := frontend
+
+frontend-install: ## Installe les dépendances npm du frontend SvelteKit
+	@echo "$(BLUE)Installation des dépendances frontend...$(NC)"
+	cd $(FRONTEND_DIR) && npm ci
+	@echo "$(GREEN)✓ Dépendances installées$(NC)"
+
+frontend-build: ## Construit le frontend SvelteKit (output: frontend/build/)
+	@echo "$(BLUE)Construction du frontend SvelteKit...$(NC)"
+	cd $(FRONTEND_DIR) && npm run build
+	@echo "$(GREEN)✓ Frontend construit dans $(FRONTEND_DIR)/build/$(NC)"
+
+frontend-dev: ## Démarre le serveur de développement SvelteKit (port 5173, proxy vers :50000)
+	@echo "$(BLUE)Démarrage du serveur de développement frontend (port 5173)...$(NC)"
+	@echo "$(BLUE)Proxy API → http://localhost:50000$(NC)"
+	cd $(FRONTEND_DIR) && npm run dev
 
 # =============================================================================
 # Commandes de développement rapide

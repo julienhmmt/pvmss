@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"pvmss/logger"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
@@ -97,8 +98,17 @@ func (h *HealthHandler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.R
 
 // RegisterRoutes registers health and API routes
 func (h *HealthHandler) RegisterRoutes(router *httprouter.Router) {
-	// Health endpoints
+	// Keep /health for ops tooling (Kubernetes liveness probes etc.)
+	// /api/v1/health and /api/v1/health/proxmox are the canonical endpoints for the SPA.
 	router.GET("/health", h.HealthCheckHandler)
-	router.GET("/api/health", h.HealthCheckHandler)
-	router.GET("/api/health/proxmox", h.ProxmoxStatusHandler)
+
+	// Legacy API routes for backward compatibility (deprecated)
+	router.GET("/api/health", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		logger.Get().Warn().Msg("Legacy /api/health endpoint is deprecated. Use /health or /api/v1/health instead.")
+		h.HealthCheckHandler(w, r, p)
+	})
+	router.GET("/api/health/proxmox", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		logger.Get().Warn().Msg("Legacy /api/health/proxmox endpoint is deprecated. Use /api/v1/health/proxmox instead.")
+		h.ProxmoxStatusHandler(w, r, p)
+	})
 }

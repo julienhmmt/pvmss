@@ -87,7 +87,7 @@ type VMProfileConfig struct {
 	RAMGB       int    `json:"ram_gb"`
 	DiskGB      int    `json:"disk_gb"`
 	DiskBus     string `json:"disk_bus"`
-	// Node and Storage are optional. Empty string means auto-select.
+	// Node and Storage are optional in JSON (omitempty). Empty string means auto-select.
 	Node    string `json:"node,omitempty"`
 	Storage string `json:"storage,omitempty"`
 	Icon    string `json:"icon"`

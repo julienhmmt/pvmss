@@ -260,11 +260,13 @@ func withStaticCaching(next http.Handler) http.Handler {
 }
 
 // isStaticPath returns true when the request is for a static asset we serve directly.
+// /_app/ contains SvelteKit's immutable hashed assets (JS/CSS) and can bypass session middleware.
+// /noVNC-1.6.0/ contains the noVNC console library and should also bypass session middleware.
 func isStaticPath(p string) bool {
 	if p == "/favicon.ico" {
 		return true
 	}
-	for _, prefix := range []string{"/components/"} {
+	for _, prefix := range []string{"/components/", "/_app/", "/noVNC-1.6.0/"} {
 		if strings.HasPrefix(p, prefix) {
 			return true
 		}

@@ -1,3 +1,5 @@
+import type { VMProfileConfig } from "./vm-create";
+
 /**
  * Resource range with minimum and maximum values.
  */
@@ -57,38 +59,6 @@ export interface CloudInitTemplate {
   /** YAML content */
   yaml_content: string;
   /** Whether the template is enabled */
-  enabled: boolean;
-}
-
-/**
- * VM profile configuration for quick VM creation.
- */
-export interface VMProfileConfig {
-  /** Profile ID */
-  id: string;
-  /** Profile name */
-  name: string;
-  /** Profile description */
-  description: string;
-  /** Number of sockets */
-  sockets: number;
-  /** Number of cores */
-  cores: number;
-  /** RAM in GB */
-  ram_gb: number;
-  /** Disk size in GB */
-  disk_gb: number;
-  /** Disk bus type */
-  disk_bus: string;
-  /** Optional: Preferred Proxmox node */
-  node?: string;
-  /** Optional: Preferred storage */
-  storage?: string;
-  /** Icon identifier */
-  icon: string;
-  /** Color code */
-  color: string;
-  /** Whether the profile is enabled */
   enabled: boolean;
 }
 
