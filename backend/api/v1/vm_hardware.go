@@ -285,7 +285,8 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 			Msg("Stopping VM before hardware update")
 
 		if _, err := proxmox.VMActionResty(ctx, client, req.Node, vmidStr, action); err != nil {
-			writeError(w, http.StatusBadGateway, "proxmox_error", "failed to stop VM: "+err.Error())
+			logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Str("action", action).Msg("api/v1: failed to stop VM for hardware update")
+			writeError(w, http.StatusBadGateway, "proxmox_error", "Failed to stop VM")
 			return
 		}
 
@@ -307,8 +308,8 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	if req.Tags != nil {
 		liveParams := map[string]string{"tags": *req.Tags}
 		if err := proxmox.UpdateVMConfigResty(ctx, client, req.Node, vmid, liveParams); err != nil {
-			logger.Get().Error().Err(err).Int("vmid", vmid).Msg("vm_hardware: failed to update tags")
-			writeError(w, http.StatusBadGateway, "proxmox_error", "failed to update tags: "+err.Error())
+			logger.Get().Error().Err(err).Int("vmid", vmid).Msg("api/v1: failed to update tags")
+			writeError(w, http.StatusBadGateway, "proxmox_error", "Failed to update tags")
 			return
 		}
 	}
@@ -378,7 +379,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 				logger.Get().Error().Err(rerr).Int("vmid", vmid).Msg("vm_hardware: failed to restart VM after failed config")
 			}
 		}
-		writeError(w, http.StatusBadGateway, "proxmox_error", "failed to update VM config: "+err.Error())
+		writeError(w, http.StatusBadGateway, "proxmox_error", "Failed to update VM config")
 		return
 	}
 
@@ -388,7 +389,8 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 			Str("username", username).Msg("Restarting VM after hardware update")
 
 		if _, err := proxmox.VMActionResty(ctx, client, req.Node, vmidStr, "start"); err != nil {
-			writeError(w, http.StatusBadGateway, "proxmox_error", "config applied but failed to restart VM: "+err.Error())
+			logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Msg("api/v1: failed to restart VM after hardware update")
+			writeError(w, http.StatusBadGateway, "proxmox_error", "Failed to restart VM")
 			return
 		}
 		if err := waitForVMStarted(ctx, client, req.Node, vmid, 30*time.Second); err != nil {
