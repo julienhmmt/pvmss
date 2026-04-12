@@ -49,7 +49,7 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 
 ## Phase 3: Performance
 
-### 3.1 Parallelize node VM queries
+### 3.1 Parallelize node VM queries - DONE
 
 - **File**: `backend/proxmox/vms.go:243-267` (`GetVMsResty`)
 - **Fix**: Use goroutines with semaphore (same pattern as `nodes_aggregator.go:FetchAllNodeDetailsResty`) to query nodes in parallel
