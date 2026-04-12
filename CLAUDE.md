@@ -4,14 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Is
 
-**PVMSS** (Proxmox VM Self-Service) is a lightweight web portal letting users manage Proxmox VMs without direct Proxmox UI access. Stack: Go 1.25 backend + Vue 3 SPA (no build step), deployed via Docker/Kubernetes/Helm.
+**PVMSS** (Proxmox VM Self-Service) is a lightweight web portal letting users manage Proxmox VMs without direct Proxmox UI access. Stack: Go backend + SvelteKit SPA (Svelte 5 runes, adapter-static), deployed via Docker/Kubernetes/Helm.
 
 ## Commands
 
 ```bash
 # Development
-make dev              # Build + start application
+make dev              # Build frontend + Go binary + start Docker container
 make qualif           # Full QA pipeline: fmt → lint → test → dev
+make frontend-dev     # Run SvelteKit dev server (port 5173, proxies /api → :50000)
+make frontend-build   # Build SvelteKit SPA → frontend/build/
+make frontend-install # Install frontend npm dependencies
 
 # Testing
 make test-offline     # All offline tests (CI standard, no Proxmox needed)
@@ -23,7 +26,6 @@ make coverage         # Generate coverage report (backend/coverage.out)
 # Code quality
 make go-lint          # golangci-lint (3m timeout)
 make go-fmt           # Go formatting
-make go-template      # Regenerate templ components
 
 # Docker lifecycle
 make up / down / restart / logs
@@ -43,14 +45,13 @@ Go stateless REST API — no database, all state from Proxmox APIs.
 | ------------- | ------------------------------------------------------------------------ |
 | `main.go`     | Entry point; wires all packages                                          |
 | `api/v1/`     | RESTful JSON endpoints (`/api/v1/*`), route registration, JWT middleware |
-| `handlers/`   | HTTP handlers for both API and server-rendered pages                     |
+| `handlers/`   | HTTP handlers: SPA serving, auth forms (legacy), health, static files    |
 | `proxmox/`    | Proxmox API client (go-resty), caching, multi-node aggregation           |
 | `security/`   | Session management (alexedwards/scs), CSRF, input validation             |
 | `middleware/` | Rate limiting, Proxmox health checks                                     |
 | `state/`      | Central `StateManager` — shared session manager, settings, cache         |
 | `logger/`     | Structured logging via zerolog                                           |
 | `i18n/`       | EN + FR translations                                                     |
-| `components/` | Templ components (server-side templating)                                |
 | `cloudinit/`  | SFTP upload of cloud-init snippets                                       |
 | `tests/`      | Integration tests                                                        |
 
@@ -58,13 +59,21 @@ Go stateless REST API — no database, all state from Proxmox APIs.
 
 ### Frontend (`frontend/`)
 
-Vue 3 SPA with **no build step** (airgap-ready, vendor-bundled ESM). Uses Bulma CSS. Vendored dependencies live in `frontend/vendor/`. noVNC console widget at `frontend/components/noVNC-1.6.0/`.
+SvelteKit SPA using Svelte 5 runes, TypeScript, Tailwind CSS, and `adapter-static`. The Go binary serves the build output from `frontend/build/` with a catch-all to `index.html` for client-side routing. Key directories:
+
+- `src/routes/` — SvelteKit pages (`(app)/` group requires auth, `(public)/` is unauthenticated)
+- `src/lib/api/` — typed API clients for `/api/v1/*`
+- `src/lib/stores/` — Svelte 5 reactive stores
+- `src/lib/components/` — reusable Svelte components
+- `src/lib/i18n/` — EN + FR translation files
+- `static/noVNC-1.6.0/` — noVNC console widget (copied into `build/` at build time)
 
 ### Deployment
 
 - **Port**: 50000
 - **Image**: `gcr.io/distroless/static-debian13:nonroot` (non-root uid 65532)
 - **Binary entrypoint**: `/app/pvmss-backend -templates /app/frontend`
+- **SPA**: served from `frontend/build/` (catch-all `index.html`), `/_app/` assets bypass session middleware
 - Kubernetes manifests: `pvmss-deployment.yaml`, `pvmss-httproute.yml`
 - Helm chart: `helm/`
 

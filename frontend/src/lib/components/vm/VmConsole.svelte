@@ -70,7 +70,7 @@
 		statusMessage = 'Connecting to console…';
 
 		try {
-			const rfbUrl = '/static/noVNC-1.6.0/core/rfb.js';
+			const rfbUrl = '/noVNC-1.6.0/core/rfb.js';
 			const { default: RFBModule } = await import(/* @vite-ignore */ rfbUrl);
 
 			if (!RFBModule) throw new Error('noVNC RFB module failed to load');

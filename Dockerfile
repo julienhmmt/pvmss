@@ -25,13 +25,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
-# Copy frontend files (old Vue SPA — no noVNC needed here; console uses the SvelteKit static build).
-FROM alpine:3.23.3 AS frontend
-WORKDIR /app
-
-COPY frontend/ /app/frontend/
-
-# Build SvelteKit admin SPA
+# Build SvelteKit SPA
 FROM node:lts-alpine3.22 AS svelte-builder
 WORKDIR /app/frontend
 
@@ -49,10 +43,10 @@ FROM gcr.io/distroless/static-debian13:nonroot
 
 WORKDIR /app
 
-# Copy from builder and frontend stages
+# Copy Go binary
 COPY --from=builder --chown=nonroot:nonroot /app/pvmss-backend /app/pvmss-backend
-COPY --from=frontend --chown=nonroot:nonroot /app/frontend/ /app/frontend/
-COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend/build/ /app/frontend/admin/
+# SvelteKit build output — includes static assets (noVNC, robots.txt, etc.)
+COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend/build/ /app/frontend/build/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/i18n/ /app/backend/i18n/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/docs/ /app/backend/docs/
 

@@ -189,20 +189,26 @@ func (h *TagsHandler) DeleteTagHandler(w http.ResponseWriter, r *http.Request, _
 }
 
 // RegisterRoutes registers the routes for tag management.
+// Tags are managed through the VM API (/api/v1/vms/:id) — these legacy routes are kept for backward compatibility.
 func (h *TagsHandler) RegisterRoutes(router *httprouter.Router) {
-	// Tag creation with CSRF protection
-	router.POST("/tags", SecureFormHandler("CreateTag",
-		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
+	// Legacy API routes for backward compatibility (deprecated)
+	router.POST("/tags", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		logger.Get().Warn().Msg("Legacy /tags endpoint is deprecated. Use /api/v1/admin/tags instead.")
+		SecureFormHandler("CreateTag",
+			HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+				h.CreateTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+			})),
+		)(w, r, p)
+	})
 
-	// Tag deletion with CSRF protection
-	router.POST("/tags/delete", SecureFormHandler("DeleteTag",
-		HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.DeleteTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		})),
-	))
+	router.POST("/tags/delete", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		logger.Get().Warn().Msg("Legacy /tags/delete endpoint is deprecated. Use /api/v1/admin/tags instead.")
+		SecureFormHandler("DeleteTag",
+			HandlerFuncToHTTPrHandle(RequireAdminAuth(func(w http.ResponseWriter, r *http.Request) {
+				h.DeleteTagHandler(w, r, httprouter.ParamsFromContext(r.Context()))
+			})),
+		)(w, r, p)
+	})
 }
 
 // EnsureDefaultTag ensures that the default tag "pvmss" exists.
