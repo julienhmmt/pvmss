@@ -710,5 +710,20 @@
       "createdWithWarning": "VM « {name} » créée mais cloud-init a rencontré un problème : {warning}",
       "failed": "Échec de la création de la VM : {error}"
     }
+  },
+  "footer": {
+    "backToTop": "Retour en haut",
+    "documentation": "Présentation PVMSS",
+    "links": "Liens",
+    "loading": "Chargement…",
+    "nodes": "nœuds",
+    "offlineMode": "hors ligne",
+    "proxmoxConnected": "Proxmox connecté",
+    "proxmoxDisconnected": "Proxmox injoignable",
+    "source": "Code source",
+    "status": "État",
+    "statusUnavailable": "État indisponible",
+    "tagline": "Portail libre-service Proxmox",
+    "vms": "VMs"
   }
 }

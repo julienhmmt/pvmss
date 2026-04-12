@@ -16,10 +16,14 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	vmHandler := MakeVMHandler(s)
 	vmActionHandler := MakeVMActionHandler(s)
 	healthHandler := MakeHealthHandler(s)
+	adminHandler := MakeAdminHandler(s)
 
 	// Health routes — public, no auth required
 	router.GET("/api/v1/health", wrap(healthHandler.Health))
 	router.GET("/api/v1/health/proxmox", wrap(healthHandler.HealthProxmox))
+
+	// Public version endpoint — no auth required
+	router.GET("/api/v1/public/version", wrap(adminHandler.Version))
 
 	// Auth routes — no JWT required (login/exchange issue tokens)
 	router.POST("/api/v1/auth/login", wrap(authHandler.Login))
@@ -69,7 +73,6 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/docs/:type", wrap(docsHandler.GetDoc))
 
 	// Admin API routes — JWT + isAdmin required
-	adminHandler := MakeAdminHandler(s)
 	adminVMsHandler := MakeAdminVMsAPIHandler(s)
 	adminMutHandler := MakeAdminMutationsHandler(s)
 
