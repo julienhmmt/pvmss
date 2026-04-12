@@ -357,6 +357,26 @@
     }
   },
   "user": {
+    "profile": {
+      "title": "Mon profil",
+      "username": "Nom d'utilisateur",
+      "role": "Rôle",
+      "pool": "Pool",
+      "vmCount": "Machines virtuelles",
+      "myVms": "Mes machines virtuelles",
+      "noVms": "Aucune machine virtuelle",
+      "changePassword": "Changer le mot de passe",
+      "currentPassword": "Mot de passe actuel",
+      "newPassword": "Nouveau mot de passe",
+      "confirmPassword": "Confirmer le mot de passe",
+      "passwordsMismatch": "Les mots de passe ne correspondent pas",
+      "passwordMinLength": "Minimum 8 caractères",
+      "passwordChanged": "Mot de passe modifié avec succès",
+      "passwordChangeFailed": "Échec du changement de mot de passe",
+      "adminPasswordNote": "Le mot de passe administrateur est géré via une variable d'environnement et ne peut pas être modifié ici.",
+      "saving": "Modification...",
+      "savePassword": "Changer le mot de passe"
+    },
     "home": {
       "title": "Mes machines virtuelles",
       "description": "Bienvenue, {username}",

@@ -18,7 +18,7 @@
 
 ---
 
-## Gap 1 — Backend API manquants
+## Gap 1 — Backend API manquants - DONE
 
 ### 1.1 Health endpoints (publics)
 
@@ -55,7 +55,7 @@ Présent dans le design, absent dans `router.go`.
 
 ---
 
-## Gap 2 — Routes frontend manquantes
+## Gap 2 — Routes frontend manquantes - DONE
 
 ### 2.1 Page profil
 

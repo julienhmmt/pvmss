@@ -52,3 +52,10 @@ export async function proxmoxAdminLogin(
     password,
   });
 }
+
+export async function changePassword(
+  current: string,
+  newPassword: string,
+): Promise<void> {
+  await api.put<void>("/api/v1/auth/me/password", { current, new: newPassword });
+}

@@ -368,7 +368,7 @@
 			{#if (metrics?.status ?? config.status) === 'running'}
 				<button
 					class="pv-action-btn"
-					onclick={() => window.open(`/console?vmid=${config?.vmid}&name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
+					onclick={() => window.open(`/vm/${config?.vmid ?? vmid}/console?name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
 					title={$t('vm.openConsole')}
 				>
 					<Monitor class="h-4 w-4" />
@@ -450,7 +450,7 @@
 		{#if (metrics?.status ?? config.status) === 'running'}
 			<button
 				class="pv-console-banner mb-4"
-				onclick={() => window.open(`/console?vmid=${config?.vmid}&name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
+				onclick={() => window.open(`/vm/${config?.vmid ?? vmid}/console?name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
 			>
 				<Monitor class="h-5 w-5" />
 				<span>{$t('vm.openConsole')}</span>

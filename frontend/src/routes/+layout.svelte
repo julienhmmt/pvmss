@@ -19,7 +19,7 @@
 	});
 </script>
 
-{#if $page.url.pathname !== '/login' && $page.url.pathname !== '/console'}
+{#if $page.url.pathname !== '/login' && !$page.url.pathname.endsWith('/console')}
 	<Navbar />
 	<div class="pt-14">
 		{@render children()}

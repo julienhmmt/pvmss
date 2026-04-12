@@ -357,6 +357,26 @@
     }
   },
   "user": {
+    "profile": {
+      "title": "My Profile",
+      "username": "Username",
+      "role": "Role",
+      "pool": "Pool",
+      "vmCount": "Virtual machines",
+      "myVms": "My virtual machines",
+      "noVms": "No virtual machines",
+      "changePassword": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm password",
+      "passwordsMismatch": "Passwords do not match",
+      "passwordMinLength": "Minimum 8 characters",
+      "passwordChanged": "Password changed successfully",
+      "passwordChangeFailed": "Failed to change password",
+      "adminPasswordNote": "The admin password is managed via environment variable and cannot be changed here.",
+      "saving": "Changing...",
+      "savePassword": "Change password"
+    },
     "home": {
       "title": "My Virtual Machines",
       "description": "Welcome, {username}",
