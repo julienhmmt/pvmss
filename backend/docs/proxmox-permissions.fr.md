@@ -244,9 +244,10 @@ Les sections suivantes détaillent ces usages par **fonctionnalité PVMSS**, ave
 - **Description** : Créer une nouvelle VM avec CPU, RAM, disques, réseau, ISO, EFI, TPM, etc.
 - **Fichiers PVMSS** :
   - `backend/handlers/vm_create.go`
-  - `backend/proxmox/vms.go` → `GetNextVMIDResty` (pour déterminer le prochain VMID)
+  - `backend/proxmox/vms.go` → `GetClusterNextIDResty` (pour déterminer le prochain VMID)
 - **Endpoints Proxmox typiques** (basés sur l’API Viewer `chapter-qm.html`) :
-  - `GET /nodes/{node}/qemu` (calcul prochain VMID, via liste VMs)
+  - `GET /cluster/nextid` (allocation atomique de VMID en mode cluster)
+  - `GET /nodes/{node}/qemu` (fallback : calcul prochain VMID via liste VMs pour mode standalone)
   - `POST /nodes/{node}/qemu` (création VM, paramétrage initial : cores, memory, disks, net0, bios=ovmf, tpmstate0, etc.)
   - Ensuite, éventuellement des appels complémentaires `POST /nodes/{node}/qemu/{vmid}/config` pour ajuster certains paramètres.
 - **Privilèges Proxmox probables** :
