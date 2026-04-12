@@ -93,6 +93,7 @@ type CloudInitTemplate struct {
 // defaultSettings returns the default application settings
 func defaultSettings() *AppSettings {
 	return &AppSettings{
+		EnabledNodes:    []string{},
 		EnabledStorages: []string{},
 		ISOs:            []string{},
 		Limits: LimitsConfig{
@@ -126,6 +127,7 @@ func defaultSettings() *AppSettings {
 var settingsMutex = &sync.Mutex{}
 
 type AppSettings struct {
+	EnabledNodes       []string                    `json:"enabled_nodes,omitempty"`
 	EnabledStorages    []string                    `json:"enabled_storages"`
 	ISOs               []string                    `json:"isos"`
 	Limits             LimitsConfig                `json:"limits"`
@@ -223,6 +225,11 @@ func LoadSettings() (*AppSettings, bool, error) {
 	if settings.EnabledStorages == nil {
 		modified = true
 		settings.EnabledStorages = []string{}
+	}
+	// Do not force-initialize Nodes; when empty, keep it nil so it is omitted from JSON
+	if settings.EnabledNodes == nil {
+		modified = true
+		settings.EnabledNodes = []string{}
 	}
 
 	// Ensure VM limits exist with defaults (for new installations or corrupted data)
