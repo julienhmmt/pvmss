@@ -225,7 +225,8 @@ func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := proxmox.DeleteVMResty(ctx, client, targetNode, vmid); err != nil {
-		writeError(w, http.StatusInternalServerError, "delete_failed", err.Error())
+		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", targetNode).Msg("api/v1: VM deletion failed")
+		writeError(w, http.StatusInternalServerError, "delete_failed", "Failed to delete VM")
 		return
 	}
 	writeJSON(w, map[string]bool{"success": true})

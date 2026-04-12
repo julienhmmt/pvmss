@@ -154,8 +154,6 @@ type VMCreateResponse struct {
 // GetSettings handles GET /api/v1/vm-create/settings.
 // Returns all data needed to render the VM creation form.
 func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
-	log := logger.Get()
-
 	settings := h.state.GetSettings()
 	if settings == nil {
 		writeError(w, http.StatusInternalServerError, "settings_unavailable", "Settings not available")
@@ -258,7 +256,7 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		resp.Bridges = []VMCreateBridgeOption{}
 	}
 
-	log.Info().
+	logger.Get().Info().
 		Str("username", username).
 		Bool("is_admin", isAdmin).
 		Int("nodes", len(resp.Nodes)).
@@ -389,7 +387,6 @@ var vmDiskCompatibleStorageTypes = map[string]bool{
 
 // resolveStorages returns storage options from snapshot or live data.
 func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings, disabledNodes map[string]bool) []VMCreateStorageOption {
-	log := logger.Get()
 	enabledSet := make(map[string]bool, len(settings.EnabledStorages))
 	for _, s := range settings.EnabledStorages {
 		enabledSet[s] = true
@@ -398,7 +395,7 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 
 	// Log what storages are configured in settings
 	for i, s := range settings.EnabledStorages {
-		log.Debug().Int("index", i).Str("enabled_storage", s).Msg("resolveStorages: configured in settings")
+		logger.Get().Debug().Int("index", i).Str("enabled_storage", s).Msg("resolveStorages: configured in settings")
 	}
 
 	nodeStoragesCount := 0
@@ -407,7 +404,7 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 		nodeStoragesCount = len(snapshot.NodeStorages)
 		globalStoragesCount = len(snapshot.GlobalStorages)
 	}
-	log.Debug().
+	logger.Get().Debug().
 		Int("enabled_storages_count", len(settings.EnabledStorages)).
 		Bool("allow_all", allowAll).
 		Int("node_storages_count", nodeStoragesCount).
@@ -427,7 +424,7 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 	if snapshot != nil && len(snapshot.NodeStorages) > 0 {
 		for nodeName, nodeStorages := range snapshot.NodeStorages {
 			if disabledNodes[nodeName] {
-				log.Debug().Str("node", nodeName).Msg("resolveStorages: skipping disabled node")
+				logger.Get().Debug().Str("node", nodeName).Msg("resolveStorages: skipping disabled node")
 				continue
 			}
 			for _, storage := range nodeStorages {
@@ -446,7 +443,7 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 				uniqueID := nodeName + ":" + storage.Storage
 				isEnabled := allowAll || enabledSet[uniqueID]
 
-				log.Debug().
+				logger.Get().Debug().
 					Str("node", nodeName).
 					Str("storage", storage.Storage).
 					Str("unique_id", uniqueID).
@@ -471,7 +468,7 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 					_, supportsVMDisk = vmDiskCompatibleStorageTypes[storageType]
 				}
 				if !supportsVMDisk {
-					log.Debug().
+					logger.Get().Debug().
 						Str("storage", storage.Storage).
 						Str("content", storageContent).
 						Str("type", storageType).
@@ -485,7 +482,7 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 					} else {
 						storageMap[storage.Storage] = nodeName
 					}
-					log.Debug().
+					logger.Get().Debug().
 						Str("storage", storage.Storage).
 						Str("node", storageMap[storage.Storage]).
 						Msg("resolveStorages: storage added")
@@ -494,15 +491,15 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 		}
 	} else {
 		// Fallback: use enabled_storages from settings
-		log.Debug().Msg("resolveStorages: using fallback from settings.EnabledStorages")
+		logger.Get().Debug().Msg("resolveStorages: using fallback from settings.EnabledStorages")
 		for _, s := range settings.EnabledStorages {
 			parts := strings.SplitN(s, ":", 2)
 			if len(parts) == 2 {
 				storageMap[parts[1]] = parts[0]
-				log.Debug().Str("storage", parts[1]).Str("node", parts[0]).Msg("resolveStorages: added from settings")
+				logger.Get().Debug().Str("storage", parts[1]).Str("node", parts[0]).Msg("resolveStorages: added from settings")
 			} else {
 				storageMap[s] = ""
-				log.Debug().Str("storage", s).Msg("resolveStorages: added shared from settings")
+				logger.Get().Debug().Str("storage", s).Msg("resolveStorages: added shared from settings")
 			}
 		}
 	}
@@ -513,7 +510,7 @@ func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.Pro
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
 
-	log.Info().
+	logger.Get().Info().
 		Int("result_count", len(result)).
 		Int("source_enabled_count", len(settings.EnabledStorages)).
 		Int("source_node_storage_count", len(snapshot.NodeStorages)).
@@ -623,7 +620,6 @@ func (h *VMCreateHandler) bridgesFromSettings(settings *state.AppSettings) []VMC
 
 // CreateVM handles POST /api/v1/vms.
 func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
-	log := logger.Get()
 	ctx := r.Context()
 
 	if h.state.IsOfflineMode() {
@@ -681,7 +677,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !nodeAllowed {
-			log.Warn().Str("requested_node", req.Node).Strs("enabled_nodes", settings.EnabledNodes).Msg("api/v1: VM creation rejected - node not in allowlist")
+			logger.Get().Warn().Str("requested_node", req.Node).Strs("enabled_nodes", settings.EnabledNodes).Msg("api/v1: VM creation rejected - node not in allowlist")
 			errBadRequest(w, "Invalid selection")
 			return
 		}
@@ -705,7 +701,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !storageAllowed {
-			log.Warn().Str("requested_storage", req.Storage).Strs("enabled_storages", settings.EnabledStorages).Msg("api/v1: VM creation rejected - storage not in allowlist")
+			logger.Get().Warn().Str("requested_storage", req.Storage).Strs("enabled_storages", settings.EnabledStorages).Msg("api/v1: VM creation rejected - storage not in allowlist")
 			errBadRequest(w, "Invalid selection")
 			return
 		}
@@ -722,7 +718,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !isoAllowed {
-			log.Warn().Str("requested_iso", req.ISO).Strs("allowed_isos", settings.ISOs).Msg("api/v1: VM creation rejected - ISO not in allowlist")
+			logger.Get().Warn().Str("requested_iso", req.ISO).Strs("allowed_isos", settings.ISOs).Msg("api/v1: VM creation rejected - ISO not in allowlist")
 			errBadRequest(w, "Invalid selection")
 			return
 		}
@@ -750,7 +746,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			if !bridgeAllowed {
-				log.Warn().Str("requested_bridge", net.Bridge).Int("network_index", i).Strs("allowed_vmbrs", settings.VMBRs).Msg("api/v1: VM creation rejected - bridge not in allowlist")
+				logger.Get().Warn().Str("requested_bridge", net.Bridge).Int("network_index", i).Strs("allowed_vmbrs", settings.VMBRs).Msg("api/v1: VM creation rejected - bridge not in allowlist")
 				errBadRequest(w, "Invalid selection")
 				return
 			}
@@ -823,7 +819,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	// Get Proxmox client
 	client, err := restyClient()
 	if err != nil {
-		log.Error().Err(err).Msg("api/v1: failed to create resty client for VM creation")
+		logger.Get().Error().Err(err).Msg("api/v1: failed to create resty client for VM creation")
 		errInternal(w)
 		return
 	}
@@ -844,7 +840,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	if vmid == 0 {
 		nextID, err := proxmox.GetNextVMIDResty(ctx, client)
 		if err != nil {
-			log.Error().Err(err).Msg("api/v1: failed to get next VMID")
+			logger.Get().Error().Err(err).Msg("api/v1: failed to get next VMID")
 			writeError(w, http.StatusInternalServerError, "vmid_error", "Failed to get next VMID")
 			return
 		}
@@ -982,12 +978,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 
 	// Send creation request to Proxmox
 	path := "/nodes/" + url.PathEscape(req.Node) + "/qemu"
-	log.Info().Str("path", path).Int("vmid", vmid).Str("name", req.Name).Msg("api/v1: sending VM creation request")
+	logger.Get().Info().Str("path", path).Int("vmid", vmid).Str("name", req.Name).Msg("api/v1: sending VM creation request")
 
 	var createResp interface{}
 	if err := client.Post(ctx, path, params, &createResp); err != nil {
-		log.Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Msg("api/v1: VM creation failed")
-		writeError(w, http.StatusInternalServerError, "creation_failed", fmt.Sprintf("Failed to create VM: %v", err))
+		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Msg("api/v1: VM creation failed")
+		writeError(w, http.StatusInternalServerError, "creation_failed", "Failed to create VM")
 		return
 	}
 
@@ -1002,11 +998,11 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		startCtx, startCancel := context.WithTimeout(ctx, 15*time.Second)
 		defer startCancel()
 		if _, err := proxmox.VMActionResty(startCtx, client, req.Node, strconv.Itoa(vmid), "start"); err != nil {
-			log.Warn().Err(err).Int("vmid", vmid).Msg("api/v1: failed to start VM after creation")
+			logger.Get().Warn().Err(err).Int("vmid", vmid).Msg("api/v1: failed to start VM after creation")
 		}
 	}
 
-	log.Info().
+	logger.Get().Info().
 		Int("vmid", vmid).
 		Str("name", req.Name).
 		Str("node", req.Node).
@@ -1033,7 +1029,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 
 // applyCloudInit applies cloud-init configuration to a newly created VM.
 func (h *VMCreateHandler) applyCloudInit(ctx context.Context, client *proxmox.RestyClient, node string, vmid int, storage string, ci *VMCreateCloudInit, settings *state.AppSettings) string {
-	log := logger.Get()
 	warning := ""
 
 	ciParams := proxmox.CloudInitParams{CIUser: ci.User}
@@ -1087,12 +1082,12 @@ func (h *VMCreateHandler) applyCloudInit(ctx context.Context, client *proxmox.Re
 
 	// Ensure cloud-init drive
 	if err := proxmox.EnsureCloudInitDriveResty(ctx, client, node, vmid, storage); err != nil {
-		log.Warn().Err(err).Int("vmid", vmid).Msg("api/v1: failed to ensure cloud-init drive")
+		logger.Get().Error().Err(err).Int("vmid", vmid).Msg("api/v1: failed to ensure cloud-init drive")
 	}
 
 	// Apply cloud-init config
 	if err := proxmox.UpdateVMCloudInitConfigResty(ctx, client, node, vmid, ciParams); err != nil {
-		log.Error().Err(err).Int("vmid", vmid).Msg("api/v1: failed to apply cloud-init config")
+		logger.Get().Error().Err(err).Int("vmid", vmid).Msg("api/v1: failed to apply cloud-init config")
 		return "cloud-init-config-failed"
 	}
 

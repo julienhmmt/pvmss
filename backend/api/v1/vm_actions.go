@@ -79,7 +79,7 @@ func (h *VMActionHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 	upid, err := proxmox.VMActionResty(ctx, client, req.Node, strconv.Itoa(vmid), req.Action)
 	if err != nil {
 		logger.Get().Error().Err(err).Int("vmid", vmid).Str("action", req.Action).Msg("api/v1: VMActionResty failed")
-		writeError(w, http.StatusBadGateway, "proxmox_error", err.Error())
+		writeError(w, http.StatusBadGateway, "proxmox_error", "Failed to perform VM action")
 		return
 	}
 
