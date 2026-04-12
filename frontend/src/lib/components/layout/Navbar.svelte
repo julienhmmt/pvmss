@@ -10,6 +10,7 @@
 	import ThemeToggle from './ThemeToggle.svelte';
 	import { t } from 'svelte-i18n';
 	import { setLocale } from '$lib/i18n';
+	import { goto } from '$app/navigation';
 	import { notifications } from '$lib/stores/notifications.svelte';
 	import type { NavLink, KeyboardShortcut } from '$lib/types/navbar';
 	import {
@@ -23,7 +24,8 @@
 		ListIcon,
 		CaretDownIcon,
 		GlobeIcon,
-		BellIcon
+		BellIcon,
+		UserCircleIcon
 	} from 'phosphor-svelte';
 
 	let mobileOpen = $state(false);
@@ -77,7 +79,7 @@
 	}
 
 	function navigate(url: string) {
-		window.location.href = url;
+		goto(url);
 	}
 
 	async function handleLogout() {
@@ -348,6 +350,15 @@
 							</div>
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
+						<DropdownMenu.Item
+							onclick={() => {
+								navigate('/profile');
+								userDropdownOpen = false;
+							}}
+						>
+							<UserCircleIcon class="h-4 w-4" />
+							{$t('user.profile.title')}
+						</DropdownMenu.Item>
 						{#if auth.isAdmin}
 							<DropdownMenu.Item
 								onclick={() => {
@@ -358,8 +369,8 @@
 								<GearSixIcon class="h-4 w-4" />
 								{$t('common.admin')}
 							</DropdownMenu.Item>
-							<DropdownMenu.Separator />
 						{/if}
+						<DropdownMenu.Separator />
 						<DropdownMenu.Item
 							class="text-destructive focus:text-destructive"
 							onclick={handleLogout}
@@ -434,6 +445,14 @@
 							{#if auth.initialized && auth.username}
 							<div class="border-border my-2 border-t"></div>
 
+							<a
+								href="/profile"
+								class="pv-sidebar-item"
+								onclick={() => (mobileOpen = false)}
+							>
+								<span class="pv-sidebar-icon-wrap"><UserCircleIcon class="h-4 w-4" /></span>
+								{$t('user.profile.title')}
+							</a>
 							{#if auth.isAdmin}
 								<a
 									href="/admin/"
