@@ -388,7 +388,7 @@ var vmDiskCompatibleStorageTypes = map[string]bool{
 }
 
 // resolveStorages returns storage options from snapshot or live data.
-func (h *VMCreateHandler) resolveStorages(ctx context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings, disabledNodes map[string]bool) []VMCreateStorageOption {
+func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings, disabledNodes map[string]bool) []VMCreateStorageOption {
 	log := logger.Get()
 	enabledSet := make(map[string]bool, len(settings.EnabledStorages))
 	for _, s := range settings.EnabledStorages {
@@ -523,7 +523,7 @@ func (h *VMCreateHandler) resolveStorages(ctx context.Context, snapshot *state.P
 }
 
 // resolveBridges returns bridge options from snapshot or settings.
-func (h *VMCreateHandler) resolveBridges(ctx context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings, disabledNodes map[string]bool) []VMCreateBridgeOption {
+func (h *VMCreateHandler) resolveBridges(_ context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings, disabledNodes map[string]bool) []VMCreateBridgeOption {
 	bridgeNodes := make(map[string]string)
 	bridgeDescs := make(map[string]string)
 
@@ -663,6 +663,98 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	if settings == nil {
 		writeError(w, http.StatusInternalServerError, "settings_unavailable", "Settings not available")
 		return
+	}
+
+	// Security: Validate inputs against settings allowlists
+	// This prevents users from creating VMs with unauthorized nodes, storages, ISOs, or bridges.
+	// Validation applies in both online and offline modes.
+
+	// Validate node is in enabled nodes list (if configured).
+	// Note: Node names are simple strings (no "node:resource" format like storage/bridges).
+	// Empty EnabledNodes list means any node is allowed (no restriction).
+	if len(settings.EnabledNodes) > 0 {
+		nodeAllowed := false
+		for _, enabledNode := range settings.EnabledNodes {
+			if enabledNode == req.Node {
+				nodeAllowed = true
+				break
+			}
+		}
+		if !nodeAllowed {
+			log.Warn().Str("requested_node", req.Node).Strs("enabled_nodes", settings.EnabledNodes).Msg("api/v1: VM creation rejected - node not in allowlist")
+			errBadRequest(w, "Invalid selection")
+			return
+		}
+	}
+
+	// Validate storage is in enabled storages list (if configured).
+	// Handles both "node:storage" and "storage" formats.
+	// Empty EnabledStorages list means any storage is allowed (no restriction).
+	if len(settings.EnabledStorages) > 0 {
+		storageAllowed := false
+		for _, enabledStorage := range settings.EnabledStorages {
+			// Handle both "node:storage" and "storage" formats
+			parts := strings.SplitN(enabledStorage, ":", 2)
+			storageName := enabledStorage
+			if len(parts) == 2 {
+				storageName = parts[1]
+			}
+			if storageName == req.Storage {
+				storageAllowed = true
+				break
+			}
+		}
+		if !storageAllowed {
+			log.Warn().Str("requested_storage", req.Storage).Strs("enabled_storages", settings.EnabledStorages).Msg("api/v1: VM creation rejected - storage not in allowlist")
+			errBadRequest(w, "Invalid selection")
+			return
+		}
+	}
+
+	// Validate ISO is in allowed ISOs list (if ISO is provided and ISOs are configured).
+	// Empty ISOs list means any ISO is allowed (no restriction).
+	if req.ISO != "" && len(settings.ISOs) > 0 {
+		isoAllowed := false
+		for _, allowedISO := range settings.ISOs {
+			if allowedISO == req.ISO {
+				isoAllowed = true
+				break
+			}
+		}
+		if !isoAllowed {
+			log.Warn().Str("requested_iso", req.ISO).Strs("allowed_isos", settings.ISOs).Msg("api/v1: VM creation rejected - ISO not in allowlist")
+			errBadRequest(w, "Invalid selection")
+			return
+		}
+	}
+
+	// Validate network bridges are in allowed VMBRs list (if configured).
+	// Handles both "node:bridge" and "bridge" formats.
+	// Empty VMBRs list means any bridge is allowed (no restriction).
+	if len(settings.VMBRs) > 0 {
+		for i, net := range req.Networks {
+			if net.Bridge == "" {
+				continue // Skip validation if bridge is empty (will be caught by required field check)
+			}
+			bridgeAllowed := false
+			for _, allowedVMBR := range settings.VMBRs {
+				// Handle both "node:bridge" and "bridge" formats
+				parts := strings.SplitN(allowedVMBR, ":", 2)
+				bridgeName := allowedVMBR
+				if len(parts) == 2 {
+					bridgeName = parts[1]
+				}
+				if bridgeName == net.Bridge {
+					bridgeAllowed = true
+					break
+				}
+			}
+			if !bridgeAllowed {
+				log.Warn().Str("requested_bridge", net.Bridge).Int("network_index", i).Strs("allowed_vmbrs", settings.VMBRs).Msg("api/v1: VM creation rejected - bridge not in allowlist")
+				errBadRequest(w, "Invalid selection")
+				return
+			}
+		}
 	}
 
 	// Validate resource limits
