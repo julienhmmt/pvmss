@@ -88,6 +88,7 @@
 	// Delete VM
 	let showDeleteDialog = $state(false);
 	let deleting = $state(false);
+	let deleteProgress = $state('');
 
 	// Snapshot creation
 	let showSnapshotForm = $state(false);
@@ -207,14 +208,56 @@
 	}
 
 	async function confirmDeleteVM() {
+		const vmStatus = metrics?.status ?? config?.status;
+		const isRunning = vmStatus === 'running';
+
 		deleting = true;
+		deleteProgress = '';
+
 		try {
+			// If VM is running, shutdown first
+			if (isRunning) {
+				deleteProgress = $t('vm.shuttingDown');
+				await api.post(`/api/v1/vms/${vmid}/action`, { action: 'shutdown', node: config?.node });
+
+				// Poll for stopped state
+				const MAX_POLL_ATTEMPTS = 30; // 30 seconds max
+				const POLL_INTERVAL = 1000; // 1 second
+				let attempts = 0;
+
+				while (attempts < MAX_POLL_ATTEMPTS) {
+					await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
+					attempts++;
+
+					try {
+						const updatedConfig = await getVMConfig(vmid);
+						const currentStatus = updatedConfig.status;
+						if (currentStatus === 'stopped') {
+							deleteProgress = $t('vm.stopped');
+							break;
+						}
+						deleteProgress = $t('vm.shuttingDownProgress', { values: { attempts, max: MAX_POLL_ATTEMPTS } });
+					} catch {
+						// Continue polling on error
+					}
+				}
+
+
+				// Verify it's stopped before proceeding
+				const finalConfig = await getVMConfig(vmid);
+				if (finalConfig.status !== 'stopped') {
+					throw new Error($t('vm.deleteFailed'));
+				}
+			}
+
+			deleteProgress = $t('vm.deleting');
 			await deleteVM(vmid);
 			toast.success($t('vm.deleteSuccess', { values: { name: config?.name ?? String(vmid) } }));
 			goto('/home');
 		} catch {
 			toast.error($t('vm.deleteFailed'));
 			deleting = false;
+			deleteProgress = '';
 			showDeleteDialog = false;
 		}
 	}
@@ -794,9 +837,13 @@
 		<AlertDialog.Header>
 			<AlertDialog.Title>{$t('vm.deleteConfirmTitle')}</AlertDialog.Title>
 			<AlertDialog.Description>
-				{$t('vm.deleteConfirmMessage', { values: { name: config?.name ?? String(vmid), vmid } })}
-				{#if (metrics?.status ?? config?.status) === 'running'}
-					<p class="mt-2 font-medium text-destructive">{$t('vm.deleteConfirmRunning')}</p>
+				{#if !deleting}
+					{$t('vm.deleteConfirmMessage', { values: { name: config?.name ?? String(vmid), vmid } })}
+					{#if (metrics?.status ?? config?.status) === 'running'}
+						<p class="mt-2 font-medium text-destructive">{$t('vm.deleteConfirmRunning')}</p>
+					{/if}
+				{:else}
+					<p class="text-sm font-medium">{deleteProgress || $t('common.loading')}</p>
 				{/if}
 			</AlertDialog.Description>
 		</AlertDialog.Header>
