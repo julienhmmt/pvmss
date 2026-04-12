@@ -272,6 +272,76 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 	})
 }
 
+// ChangePassword handles PUT /api/v1/auth/me/password. Requires JWTMiddleware upstream.
+// Body: { "current": "...", "new": "..." }
+// Admin users cannot change password via this endpoint (managed via env var).
+// For regular users: verifies the current Proxmox password, then updates via API.
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	if h.state.IsOfflineMode() {
+		errOffline(w)
+		return
+	}
+
+	isAdmin := isAdminFromCtx(r)
+	username := usernameFromCtx(r)
+
+	// Built-in admin password cannot be changed via API.
+	// Proxmox admins (who have an @realm in their username) can change their passwords.
+	if isAdmin && !strings.Contains(username, "@") {
+		writeError(w, http.StatusForbidden, "forbidden", "Admin password is managed via environment variable")
+		return
+	}
+
+	if strings.HasSuffix(username, "@pam") {
+		writeError(w, http.StatusBadRequest, "bad_request", "Passwords for @pam users must be changed at the OS level")
+		return
+	}
+
+	var req struct {
+		Current string `json:"current"`
+		New     string `json:"new"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	if req.Current == "" || req.New == "" {
+		errBadRequest(w, "current and new passwords are required")
+		return
+	}
+	if len(req.New) < 8 {
+		errBadRequest(w, "new password must be at least 8 characters")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	// Verify the current password against Proxmox.
+	if err := verifyProxmoxCredentials(ctx, username, req.Current); err != nil {
+		logger.SecurityEvent("api_password_change_fail").Str("username", username).Msg("Invalid current password for password change")
+		errUnauthorized(w)
+		return
+	}
+
+	// Update the password using the service account API token.
+	// Requires the PVMSS service account to have User.Modify permission.
+	client, err := restyClient()
+	if err != nil {
+		errInternal(w)
+		return
+	}
+
+	if err := proxmox.UpdateUserPasswordResty(ctx, client, username, req.New, req.New, "pve"); err != nil {
+		logger.Get().Error().Err(err).Str("username", username).Msg("api/v1: failed to update password")
+		writeError(w, http.StatusBadGateway, "proxmox_error", "Failed to update password")
+		return
+	}
+
+	logger.AuthEvent("api_password_change").Str("username", username).Msg("Password changed successfully")
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // verifyProxmoxCredentials POSTs to /access/ticket to confirm user credentials.
 // Uses a cookie-auth client (no API token headers) because /access/ticket is a
 // public endpoint that rejects requests with conflicting Authorization headers.
