@@ -2,6 +2,7 @@ package proxmox
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"sort"
@@ -13,10 +14,24 @@ import (
 	"pvmss/logger"
 )
 
-// NOTE: Telmate-based functions (GetVMConfigWithContext, UpdateVMConfigWithContext,
-// GetVMCurrentWithContext, VMActionWithContext, DeleteVMWithContext,
-// GetGuestAgentNetworkInterfaces) have been removed. Use the Resty-based
-// equivalents in this file instead.
+// vmCache is a package-level LRU cache for VM listings with 10-second TTL
+// This prevents hammering Proxmox on rapid successive requests (polling, multiple users)
+var vmCache = MakeLRUCache(100, 10*time.Second)
+
+// InvalidateVMCache clears cached VM data for a specific node
+// This should be called after VM creation, deletion, or modification
+func InvalidateVMCache(nodeName string) {
+	cacheKey := fmt.Sprintf("vms:%s", nodeName)
+	vmCache.Delete(cacheKey)
+	logger.Get().Debug().Str("node", nodeName).Msg("VM cache invalidated for node")
+}
+
+// ClearVMCache clears all cached VM data
+// This is primarily intended for test isolation to prevent test interference
+func ClearVMCache() {
+	vmCache.Clear()
+	logger.Get().Debug().Msg("VM cache cleared for all nodes")
+}
 
 // VMInfo is a simplified, application-specific struct that holds curated information about a Virtual Machine.
 type VMInfo struct {
@@ -340,7 +355,22 @@ func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
 
 // GetVMsForNodeResty fetches all VMs located on a single, specified Proxmox node using resty.
 // It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
+// Results are cached for 10 seconds to avoid hammering Proxmox on rapid successive requests.
 func GetVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName string) ([]VM, error) {
+	// Check cache first
+	cacheKey := fmt.Sprintf("vms:%s", nodeName)
+	cachedData := vmCache.Get(cacheKey)
+	if cachedData != nil {
+		var cachedVMs []VM
+		unmarshalErr := json.Unmarshal(cachedData, &cachedVMs)
+		if unmarshalErr == nil {
+			logger.Get().Debug().Str("node", nodeName).Int("count", len(cachedVMs)).Msg("VMs retrieved from cache")
+			return cachedVMs, nil
+		}
+		logger.Get().Warn().Err(unmarshalErr).Str("node", nodeName).Msg("Failed to unmarshal cached VM data, fetching fresh")
+	}
+
+	// Cache miss or invalid data - fetch from Proxmox
 	path := fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(nodeName))
 
 	var response ListResponse[VM]
@@ -352,6 +382,13 @@ func GetVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName 
 	// Set the node name for each VM
 	for i := range response.Data {
 		response.Data[i].Node = nodeName
+	}
+
+	// Cache the result
+	if data, err := json.Marshal(response.Data); err == nil {
+		vmCache.Set(cacheKey, data)
+	} else {
+		logger.Get().Warn().Err(err).Str("node", nodeName).Msg("Failed to marshal VM data for caching")
 	}
 
 	logger.Get().Debug().Str("node", nodeName).Int("count", len(response.Data)).Msg("Fetched VMs for node (resty)")
@@ -411,6 +448,9 @@ func UpdateVMConfigResty(ctx context.Context, restyClient *RestyClient, node str
 		return fmt.Errorf("failed to update config for vm %d on node %s: %w", vmid, node, err)
 	}
 
+	// Invalidate cache for this node to reflect the config update
+	InvalidateVMCache(node)
+
 	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM config updated successfully (resty)")
 	return nil
 }
@@ -440,6 +480,9 @@ func VMActionResty(ctx context.Context, restyClient *RestyClient, node string, v
 		return "", err
 	}
 
+	// Invalidate cache for this node to reflect the status change
+	InvalidateVMCache(node)
+
 	// The task ID (UPID) is returned in the 'data' field.
 	// Some actions may not return a UPID, which is acceptable
 	if response.Data == "" {
@@ -462,6 +505,9 @@ func DeleteVMResty(ctx context.Context, restyClient *RestyClient, node string, v
 		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("VM deletion failed (resty)")
 		return fmt.Errorf("failed to delete VM %d on node %s: %w", vmid, node, err)
 	}
+
+	// Invalidate cache for this node to reflect the deletion
+	InvalidateVMCache(node)
 
 	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM deleted successfully (resty)")
 	return nil

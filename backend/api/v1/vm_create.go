@@ -1000,6 +1000,9 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Invalidate VM cache for this node so the new VM appears immediately
+	proxmox.InvalidateVMCache(req.Node)
+
 	// Apply cloud-init if requested
 	cloudInitWarning := ""
 	if req.CloudInit != nil {
