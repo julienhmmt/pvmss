@@ -6,7 +6,7 @@ require (
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/gomarkdown/markdown v0.0.0-20260411013819-759bbc3e3207
+	github.com/gomarkdown/markdown v0.0.0-20260412113850-134a5b2cce7f
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/julienschmidt/httprouter v1.3.0
