@@ -40,7 +40,7 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 - **Fix**: Add `GetClusterNextIDResty()` function, call it instead of snapshot-based max+1
 - Eliminates race condition when concurrent users create VMs
 
-### 2.4 Validate rate limit field
+### 2.4 Validate rate limit field - DONE
 
 - **File**: `backend/api/v1/vm_create.go:881` and `vm_hardware.go`
 - **Fix**: Parse `net.RateLimit` as a positive number, reject non-numeric or negative values before building config string

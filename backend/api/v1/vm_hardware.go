@@ -160,6 +160,14 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 			errBadRequest(w, fmt.Sprintf("network[%d]: VLAN tag must be between 1 and 4096", i))
 			return
 		}
+		if n.Rate != "" {
+			rate := strings.TrimSpace(n.Rate)
+			rateLimit, err := strconv.ParseFloat(rate, 64)
+			if err != nil || rateLimit < 0 {
+				errBadRequest(w, fmt.Sprintf("network[%d]: rate limit must be a non-negative number", i))
+				return
+			}
+		}
 	}
 
 	// Validate tags: pvmss must be present
