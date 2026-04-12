@@ -1,10 +1,12 @@
 import { api } from "./client";
+import type { VMStatus } from "$lib/types/vm";
+import { validateSearchParams, type VMSearchParams as SearchParams, type SearchFilter } from "$lib/api/search";
 
 export interface VMSummary {
   vmid: number;
   name: string;
   node: string;
-  status: string;
+  status: VMStatus;
   cpu: number;
   cpus: number;
   mem_mb: number;
@@ -24,16 +26,12 @@ export async function getVMs(): Promise<VMSummary[]> {
   return res.vms;
 }
 
-export type SearchType = "name" | "tag" | "vmid";
+export type SearchType = SearchFilter;
 
-export interface VMSearchParams {
-  q?: string;
-  type?: SearchType;
-  status?: string;
-  node?: string;
-}
+export type VMSearchParams = SearchParams;
 
 export async function searchVMs(params: VMSearchParams): Promise<VMSummary[]> {
+  validateSearchParams(params);
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.type) qs.set("type", params.type);
