@@ -74,27 +74,27 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 
 ## Phase 4: Validation & Correctness - DONE
 
-### 4.1 Validate additional disk sizes against limits
+### 4.1 Validate additional disk sizes against limits - DONE
 
 - **File**: `backend/api/v1/vm_create.go`
 - **Fix**: Apply `limits.Disk.Min/Max` check to all disks, not just `disks[0]`
 
-### 4.2 Enforce disk-per-bus-type limits
+### 4.2 Enforce disk-per-bus-type limits - DONE
 
 - **File**: `backend/api/v1/vm_create.go`
 - **Fix**: Count disks by bus type, reject if exceeding `MaxDisksIDE/SATA/VirtIO/SCSI`
 
-### 4.3 Fix NIC limit check in hardware update
+### 4.3 Fix NIC limit check in hardware update - DONE
 
 - **File**: `backend/api/v1/vm_hardware.go:142-148`
 - **Fix**: Count existing NICs + new NICs - deleted NICs, compare against `maxNICs`
 
-### 4.4 Expand ExtractNetworkInterfaces range
+### 4.4 Expand ExtractNetworkInterfaces range - DONE
 
 - **File**: `backend/proxmox/vms.go:66`
 - **Fix**: Change loop from `i < 10` to `i < 32` to match `MaxNetworkCards` default
 
-### 4.5 Unify tag check functions
+### 4.5 Unify tag check functions - DONE
 
 - **Files**: `backend/api/v1/vms.go` (`hasTag`), `backend/api/v1/admin_vms.go` (`hasPVMSSTag`)
 - **Fix**: Replace both with a single case-insensitive `hasTag(tags, target)` function
@@ -103,12 +103,12 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 
 ## Phase 5: UX Improvements
 
-### 5.1 Auto-stop VM before delete
+### 5.1 Auto-stop VM before delete - DONE
 
 - **File**: `frontend/src/routes/(app)/vm/[id]/+page.svelte`
 - **Fix**: If VM is running and user confirms delete, call `shutdown` action first, wait for stopped state (poll), then delete. Show progress in the confirmation dialog.
 
-### 5.2 Remove debug comment
+### 5.2 Remove debug comment - DONE
 
 - **File**: `frontend/src/routes/docs/[type]/+page.svelte:203`
 - **Fix**: Remove `<!-- DEBUG: html length = {html.length} -->`

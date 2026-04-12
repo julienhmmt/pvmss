@@ -200,7 +200,6 @@
 		{:else if loading}
 			<LoadingSkeleton variant="card" rows={8} />
 		{:else}
-			<!-- DEBUG: html length = {html.length} -->
 			<article class="pv-prose">
 				{@html html}
 			</article>
