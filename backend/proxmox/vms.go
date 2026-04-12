@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"pvmss/logger"
 )
@@ -244,8 +247,15 @@ type VM struct {
 	VMID    int     `json:"vmid"`
 }
 
+const (
+	// nodeQueryTimeout is the per-node timeout for VM list queries.
+	// 8 seconds allows for network latency and Proxmox API response time.
+	nodeQueryTimeout = 8 * time.Second
+)
+
 // GetVMsResty retrieves a comprehensive list of all VMs across all available Proxmox nodes using resty.
-// It first fetches the list of online nodes only and then iterates through them, calling GetVMsForNodeResty for each.
+// It first fetches the list of online nodes only and then queries them in parallel using goroutines
+// with a semaphore to limit concurrency (same pattern as FetchAllNodeDetailsResty).
 func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
 	// Get online nodes only to avoid errors with down nodes
 	nodes, err := GetOnlineNodeNamesResty(ctx, restyClient)
@@ -254,19 +264,77 @@ func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
 		return nil, fmt.Errorf("failed to get online node list: %w", err)
 	}
 
-	// Collect VMs from all online nodes
-	allVMs := make([]VM, 0)
+	if len(nodes) == 0 {
+		return []VM{}, nil
+	}
 
-	for _, node := range nodes {
-		nodeVMs, err := GetVMsForNodeResty(ctx, restyClient, node)
-		if err != nil {
-			logger.Get().Warn().Err(err).Str("node", node).Msg("Failed to get VMs for node (resty)")
-			continue
+	const maxConcurrent = 8
+	semaphore := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	failedNodes := make([]string, 0)
+	vmsChan := make(chan []VM, len(nodes))
+
+	for _, nodeName := range nodes {
+		// Check if parent context was cancelled before launching goroutine
+		if ctx.Err() != nil {
+			logger.Get().Warn().Msg("Parent context cancelled, skipping remaining nodes")
+			break
 		}
+
+		wg.Add(1)
+		name := nodeName
+		go func() {
+			defer wg.Done()
+
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			nodeCtx, cancel := context.WithTimeout(ctx, nodeQueryTimeout)
+			defer cancel()
+
+			nodeVMs, nodeErr := GetVMsForNodeResty(nodeCtx, restyClient, name)
+			if nodeErr != nil {
+				logger.Get().Warn().Err(nodeErr).Str("node", name).Msg("Failed to get VMs for node (resty)")
+				mu.Lock()
+				failedNodes = append(failedNodes, name)
+				mu.Unlock()
+				vmsChan <- []VM{}
+				return
+			}
+
+			vmsChan <- nodeVMs
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(vmsChan)
+	}()
+
+	// Pre-allocate slice with capacity hint (assume ~10 VMs per node average)
+	allVMs := make([]VM, 0, len(nodes)*10)
+	for nodeVMs := range vmsChan {
 		allVMs = append(allVMs, nodeVMs...)
 	}
 
-	logger.Get().Info().Int("total_vms", len(allVMs)).Msg("Successfully fetched all VMs from online nodes (resty)")
+	sort.Slice(allVMs, func(i, j int) bool {
+		if allVMs[i].Node != allVMs[j].Node {
+			return allVMs[i].Node < allVMs[j].Node
+		}
+		return allVMs[i].VMID < allVMs[j].VMID
+	})
+
+	// Log summary including any failed nodes
+	logEntry := logger.Get().Info().
+		Int("total_vms", len(allVMs)).
+		Int("successful_nodes", len(nodes)-len(failedNodes)).
+		Int("failed_nodes", len(failedNodes))
+	if len(failedNodes) > 0 {
+		logEntry.Strs("failed_node_names", failedNodes)
+	}
+	logEntry.Msg("Successfully fetched all VMs from online nodes (resty)")
+
 	return allVMs, nil
 }
 
