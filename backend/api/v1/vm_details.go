@@ -132,13 +132,23 @@ func ownsVM(ctx context.Context, client *proxmox.RestyClient, username string, i
 	return pool[vmid]
 }
 
-// resolveNode finds the node a VM lives on using the list already in hand, or by scanning.
+// resolveNode finds the node a VM lives on by calling GetVMsResty.
 func resolveNode(ctx context.Context, client *proxmox.RestyClient, vmid int) (string, error) {
 	vms, err := proxmox.GetVMsResty(ctx, client)
 	if err != nil {
 		return "", err
 	}
 	for _, vm := range vms {
+		if vm.VMID == vmid {
+			return vm.Node, nil
+		}
+	}
+	return "", nil
+}
+
+// resolveNodeFromList finds the node a VM lives on using the list already in hand.
+func resolveNodeFromList(allVMs []proxmox.VM, vmid int) (string, error) {
+	for _, vm := range allVMs {
 		if vm.VMID == vmid {
 			return vm.Node, nil
 		}
@@ -267,7 +277,14 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	node, err := resolveNode(ctx, client, vmid)
+	// Get all VMs once - reuse for both node resolution and summary lookup
+	allVMs, err := proxmox.GetVMsResty(ctx, client)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "internal_error", "Failed to retrieve VM list")
+		return
+	}
+
+	node, err := resolveNodeFromList(allVMs, vmid)
 	if err != nil || node == "" {
 		writeError(w, http.StatusNotFound, "not_found", "VM not found")
 		return
@@ -275,15 +292,10 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 
 	// Get the VM summary (for fields not in VMCurrent: MaxDisk, Uptime, Tags)
 	var vmSummary *proxmox.VM
-	{
-		allVMs, err2 := proxmox.GetVMsResty(ctx, client)
-		if err2 == nil {
-			for i := range allVMs {
-				if allVMs[i].VMID == vmid {
-					vmSummary = &allVMs[i]
-					break
-				}
-			}
+	for i := range allVMs {
+		if allVMs[i].VMID == vmid {
+			vmSummary = &allVMs[i]
+			break
 		}
 	}
 

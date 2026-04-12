@@ -55,7 +55,7 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 - **Fix**: Use goroutines with semaphore (same pattern as `nodes_aggregator.go:FetchAllNodeDetailsResty`) to query nodes in parallel
 - Expected improvement: N sequential requests → ~1 request latency
 
-### 3.2 Deduplicate GetVMsResty calls in GetVMConfig
+### 3.2 Deduplicate GetVMsResty calls in GetVMConfig - DONE
 
 - **File**: `backend/api/v1/vm_details.go:241-378`
 - **Fix**: Call `GetVMsResty` once, pass the result to both `resolveNode` and the vmSummary lookup
