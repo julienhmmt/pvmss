@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"pvmss/logger"
@@ -28,18 +29,18 @@ type VMInfo struct {
 
 // NetworkInterface represents a VM network interface configuration
 type NetworkInterface struct {
-	Bridge                 string   // e.g., "vmbr0"
-	Firewall               bool     // whether firewall is enabled
-	IPAddresses            []string // IP addresses from guest agent
-	Index                  string   // e.g., "net0", "net1"
-	LinkDown               bool     // whether link is down
-	MACAddress             string   // e.g., "AA:BB:CC:DD:EE:FF"
-	Model                  string   // e.g., "virtio", "e1000"
-	ModelLabel             string   // e.g., "VirtIO", "E1000"
-	ModelTranslationSuffix string
-	Rate                   string // bandwidth limit in MB/s if set
-	VLAN                   string // VLAN tag if present, e.g., "100"
-	MTU                    string
+	Bridge                 string   `json:"bridge"`      // e.g., "vmbr0"
+	Firewall               bool     `json:"firewall"`    // whether firewall is enabled
+	IPAddresses            []string `json:"ips"`         // IP addresses from guest agent
+	Index                  string   `json:"index"`       // e.g., "net0", "net1"
+	LinkDown               bool     `json:"link_down"`   // whether link is down
+	MACAddress             string   `json:"mac"`         // e.g., "AA:BB:CC:DD:EE:FF"
+	Model                  string   `json:"model"`       // e.g., "virtio", "e1000"
+	ModelLabel             string   `json:"model_label"` // e.g., "VirtIO", "E1000"
+	ModelTranslationSuffix string   `json:"model_translation_suffix"`
+	Rate                   string   `json:"rate"` // bandwidth limit in MB/s if set
+	VLAN                   int      `json:"tag"`  // VLAN tag if present, 0 = none
+	MTU                    string   `json:"mtu"`
 }
 
 var networkModelMetadata = map[string]struct {
@@ -103,7 +104,10 @@ func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
 			} else if strings.HasPrefix(p, "bridge=") {
 				iface.Bridge = strings.TrimPrefix(p, "bridge=")
 			} else if strings.HasPrefix(p, "tag=") {
-				iface.VLAN = strings.TrimPrefix(p, "tag=")
+				tagStr := strings.TrimPrefix(p, "tag=")
+				if tagVal, err := strconv.Atoi(tagStr); err == nil {
+					iface.VLAN = tagVal
+				}
 			} else if strings.HasPrefix(p, "rate=") {
 				iface.Rate = strings.TrimPrefix(p, "rate=")
 			} else if strings.HasPrefix(p, "mtu=") {
