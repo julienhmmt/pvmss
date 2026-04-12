@@ -139,13 +139,6 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	if maxNICs <= 0 {
 		maxNICs = 1
 	}
-	if len(req.Networks)+len(req.DeleteNetworks) > 0 {
-		// Count how many NICs will exist after the operation (rough check)
-		if len(req.Networks) > maxNICs {
-			errBadRequest(w, fmt.Sprintf("too many network cards: max %d", maxNICs))
-			return
-		}
-	}
 	// Validate each network card request
 	for i, n := range req.Networks {
 		if n.Bridge == "" {
@@ -198,6 +191,36 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	// Worst-case: 90s graceful stop + 30s force-stop + config update + 30s start + network round-trips.
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Minute)
 	defer cancel()
+
+	// Validate network card count properly: existing + new - deleted
+	if len(req.Networks)+len(req.DeleteNetworks) > 0 {
+		existingCfg, cfgErr := proxmox.GetVMConfigResty(ctx, client, req.Node, vmid)
+		if cfgErr != nil {
+			errInternal(w)
+			return
+		}
+		// Count existing NICs (net0, net1, etc.)
+		existingNICCount := 0
+		for i := 0; i < 32; i++ {
+			key := fmt.Sprintf("net%d", i)
+			if _, exists := existingCfg[key]; exists {
+				existingNICCount++
+			}
+		}
+		// Count new NICs (those with empty Index)
+		newNICCount := 0
+		for _, n := range req.Networks {
+			if n.Index == "" {
+				newNICCount++
+			}
+		}
+		// Calculate final NIC count: existing + new - deleted
+		finalNICCount := existingNICCount + newNICCount - len(req.DeleteNetworks)
+		if finalNICCount > maxNICs {
+			errBadRequest(w, fmt.Sprintf("too many network cards: max %d (would have %d after operation)", maxNICs, finalNICCount))
+			return
+		}
+	}
 
 	// Ownership check: pool membership (or admin) AND pvmss tag.
 	if !ownsVM(ctx, client, username, isAdmin, vmid) {
@@ -341,7 +364,11 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Fetch current config once for new-NIC index allocation.
-	existingCfg, _ := proxmox.GetVMConfigResty(ctx, client, req.Node, vmid)
+	existingCfg, err := proxmox.GetVMConfigResty(ctx, client, req.Node, vmid)
+	if err != nil {
+		errInternal(w)
+		return
+	}
 	assignedIdxs := make(map[string]bool) // track indexes assigned in this request
 
 	// Assign net* keys for created/updated NICs.

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -14,16 +13,6 @@ import (
 	"pvmss/proxmox"
 	"pvmss/state"
 )
-
-// hasPVMSSTag reports whether the semicolon-separated tags string contains "pvmss".
-func hasPVMSSTag(tags string) bool {
-	for _, tag := range strings.Split(tags, ";") {
-		if strings.TrimSpace(tag) == "pvmss" {
-			return true
-		}
-	}
-	return false
-}
 
 // AdminVMsAPIHandler handles admin VM endpoints.
 type AdminVMsAPIHandler struct {
@@ -53,7 +42,7 @@ func (h *AdminVMsAPIHandler) ListAllVMs(w http.ResponseWriter, r *http.Request) 
 	}
 	result := make([]AdminVMResponse, 0, len(vms))
 	for _, vm := range vms {
-		if !hasPVMSSTag(vm.Tags) {
+		if !hasTag(vm.Tags, "pvmss") {
 			continue
 		}
 		result = append(result, AdminVMResponse{
@@ -99,7 +88,7 @@ func (h *AdminVMsAPIHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 	}
 	var node string
 	for _, vm := range vms {
-		if vm.VMID == vmid && hasPVMSSTag(vm.Tags) {
+		if vm.VMID == vmid && hasTag(vm.Tags, "pvmss") {
 			node = vm.Node
 			break
 		}
