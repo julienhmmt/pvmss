@@ -151,20 +151,23 @@ func (h *AdminMutationsHandler) CreatePool(w http.ResponseWriter, r *http.Reques
 	// Derive username from pool name (pool_name@pve)
 	username := req.Pool + "@pve"
 	if err := proxmox.EnsureUserResty(ctx, restyClient, username, req.Password, "", fmt.Sprintf("PVMSS user for pool %s", req.Pool), "pve", true); err != nil {
-		writeError(w, http.StatusInternalServerError, "user_creation_failed", err.Error())
+		logger.Get().Error().Err(err).Str("username", username).Str("pool", req.Pool).Msg("api/v1: failed to ensure user")
+		writeError(w, http.StatusInternalServerError, "user_creation_failed", "Failed to create user")
 		return
 	}
 
 	// Create pool
 	poolID := "pvmss_" + req.Pool
 	if err := proxmox.EnsurePoolResty(ctx, restyClient, poolID, fmt.Sprintf("PVMSS managed pool for %s", req.Pool)); err != nil {
-		writeError(w, http.StatusInternalServerError, "pool_creation_failed", err.Error())
+		logger.Get().Error().Err(err).Str("poolid", poolID).Msg("api/v1: failed to ensure pool")
+		writeError(w, http.StatusInternalServerError, "pool_creation_failed", "Failed to create pool")
 		return
 	}
 
 	// Set ACL
 	if err := proxmox.EnsurePoolACLResty(ctx, restyClient, username, poolID, "PVMSSUser", true); err != nil {
-		writeError(w, http.StatusInternalServerError, "acl_creation_failed", err.Error())
+		logger.Get().Error().Err(err).Str("username", username).Str("poolid", poolID).Msg("api/v1: failed to ensure pool ACL")
+		writeError(w, http.StatusInternalServerError, "acl_creation_failed", "Failed to set ACL")
 		return
 	}
 
@@ -206,7 +209,8 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 		} `json:"data"`
 	}
 	if err := restyClient.Get(ctx, "/pools/"+url.PathEscape(poolID), &detailResp); err != nil {
-		writeError(w, http.StatusInternalServerError, "pool_members_failed", err.Error())
+		logger.Get().Error().Err(err).Str("poolid", poolID).Msg("api/v1: failed to get pool members")
+		writeError(w, http.StatusInternalServerError, "pool_members_failed", "Failed to get pool members")
 		return
 	}
 
@@ -249,8 +253,8 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 			continue
 		}
 		if err := restyClient.Delete(ctx, path, nil); err != nil {
-			logger.Get().Error().Err(err).Str("path", path).Msg("failed to delete VM during pool purge")
-			writeError(w, http.StatusInternalServerError, "vm_delete_failed", err.Error())
+			logger.Get().Error().Err(err).Str("path", path).Msg("api/v1: failed to delete VM during pool purge")
+			writeError(w, http.StatusInternalServerError, "vm_delete_failed", "Failed to delete VM")
 			return
 		}
 	}
@@ -277,7 +281,8 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 
 	// Step 5: delete pool
 	if err := restyClient.Delete(ctx, "/pools/"+url.PathEscape(poolID), nil); err != nil {
-		writeError(w, http.StatusInternalServerError, "pool_delete_failed", err.Error())
+		logger.Get().Error().Err(err).Str("poolid", poolID).Msg("api/v1: failed to delete pool")
+		writeError(w, http.StatusInternalServerError, "pool_delete_failed", "Failed to delete pool")
 		return
 	}
 

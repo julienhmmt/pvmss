@@ -29,7 +29,7 @@ A deep review of the VM creation, search, and details workflows revealed one cri
   - `req.Networks[*].Bridge` ∈ `settings.VMBRs`
 - Return 400 with generic "invalid selection" message on mismatch
 
-### 2.2 Stop leaking Proxmox error details
+### 2.2 Stop leaking Proxmox error details - DONE
 
 - **Files**: `backend/api/v1/vm_create.go:898`, `backend/api/v1/vms.go:231`
 - **Fix**: Log the real error server-side, return generic "Failed to create/delete VM" to client

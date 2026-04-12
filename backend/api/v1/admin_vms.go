@@ -10,6 +10,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -108,7 +109,8 @@ func (h *AdminVMsAPIHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := proxmox.DeleteVMResty(r.Context(), restyClient, node, vmid); err != nil {
-		writeError(w, http.StatusInternalServerError, "delete_failed", err.Error())
+		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", node).Msg("api/v1: VM deletion failed")
+		writeError(w, http.StatusInternalServerError, "delete_failed", "Failed to delete VM")
 		return
 	}
 	writeJSON(w, map[string]bool{"success": true})
@@ -165,7 +167,8 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 	}
 	taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, req.Action)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "vm_action_failed", err.Error())
+		logger.Get().Error().Err(err).Str("vmid", vmid).Str("node", node).Str("action", req.Action).Msg("api/v1: VM action failed")
+		writeError(w, http.StatusInternalServerError, "vm_action_failed", "Failed to perform VM action")
 		return
 	}
 	writeJSON(w, VMActionResponse{Success: true, TaskID: taskID})
