@@ -36,6 +36,84 @@
                 "max": 1,
                 "min": 1
             }
+        },
+        "max_snapshots": 8
+    },
+    "vm_profiles": [
+        {
+            "id": "web-server",
+            "name": "Web Server",
+            "description": "Host websites, reverse proxies, or static content servers",
+            "sockets": 1,
+            "cores": 1,
+            "ram_gb": 2,
+            "disk_gb": 24,
+            "disk_bus": "virtio",
+            "node": "",
+            "storage": "",
+            "icon": "Globe",
+            "color": "blue",
+            "enabled": true
+        },
+        {
+            "id": "light-api",
+            "name": "Lightweight API",
+            "description": "Run REST APIs, microservices, or lightweight backend services",
+            "sockets": 1,
+            "cores": 2,
+            "ram_gb": 2,
+            "disk_gb": 24,
+            "disk_bus": "virtio",
+            "node": "",
+            "storage": "",
+            "icon": "Code",
+            "color": "violet",
+            "enabled": true
+        },
+        {
+            "id": "light-app-server",
+            "name": "Light App Server",
+            "description": "Deploy application runtimes, job queues, or middleware",
+            "sockets": 1,
+            "cores": 4,
+            "ram_gb": 4,
+            "disk_gb": 32,
+            "disk_bus": "virtio",
+            "node": "",
+            "storage": "",
+            "icon": "Cube",
+            "color": "emerald",
+            "enabled": true
+        },
+        {
+            "id": "medium-app-server",
+            "name": "Medium App Server",
+            "description": "Heavier workloads requiring more RAM — frameworks, daemons, or data pipelines",
+            "sockets": 1,
+            "cores": 4,
+            "ram_gb": 6,
+            "disk_gb": 32,
+            "disk_bus": "virtio",
+            "node": "",
+            "storage": "",
+            "icon": "Database",
+            "color": "teal",
+            "enabled": true
+        },
+        {
+            "id": "test-base",
+            "name": "Test Environment",
+            "description": "Quick sandbox for testing, prototyping, or CI/CD pipelines",
+            "sockets": 1,
+            "cores": 2,
+            "ram_gb": 4,
+            "disk_gb": 24,
+            "disk_bus": "virtio",
+            "node": "",
+            "storage": "",
+            "icon": "Flask",
+            "color": "amber",
+            "enabled": true
         }
-    }
+    ]
 }
