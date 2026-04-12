@@ -1,5 +1,5 @@
 # Build stage - Go
-FROM golang:1.26.1-alpine3.23 AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
 # Build SvelteKit SPA
-FROM node:lts-alpine3.22 AS svelte-builder
+FROM node:lts-alpine AS svelte-builder
 WORKDIR /app/frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
