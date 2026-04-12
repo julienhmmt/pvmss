@@ -92,6 +92,12 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.DELETE("/api/v1/admin/cloudinit/:id", adminJWTWrap(s, adminMutHandler.DeleteCloudInit))
 	router.POST("/api/v1/admin/cloudinit/:id/toggle", adminJWTWrap(s, adminMutHandler.ToggleCloudInit))
 
+	router.GET("/api/v1/admin/vm-profiles", adminJWTWrap(s, adminMutHandler.ListVMProfiles))
+	router.POST("/api/v1/admin/vm-profiles", adminJWTWrap(s, adminMutHandler.CreateVMProfile))
+	router.PUT("/api/v1/admin/vm-profiles/:id", adminJWTWrap(s, adminMutHandler.UpdateVMProfile))
+	router.DELETE("/api/v1/admin/vm-profiles/:id", adminJWTWrap(s, adminMutHandler.DeleteVMProfile))
+	router.POST("/api/v1/admin/vm-profiles/:id/toggle", adminJWTWrap(s, adminMutHandler.ToggleVMProfile))
+
 	router.POST("/api/v1/admin/storage/toggle", adminJWTWrap(s, adminMutHandler.ToggleStorage))
 	router.POST("/api/v1/admin/vmbr/toggle", adminJWTWrap(s, adminMutHandler.ToggleVMBR))
 	router.POST("/api/v1/admin/iso/toggle", adminJWTWrap(s, adminMutHandler.ToggleISO))

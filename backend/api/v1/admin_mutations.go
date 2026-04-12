@@ -884,6 +884,228 @@ func (h *AdminMutationsHandler) ToggleISO(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// --- VM Profiles ---
+
+var profileIDRegex = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,49}$`)
+var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
+
+var validDiskBuses = map[string]bool{"virtio": true, "scsi": true, "sata": true, "ide": true}
+var validProfileIcons = map[string]bool{"Globe": true, "Code": true, "Cube": true, "Database": true, "Flask": true, "Monitor": true, "Cpu": true, "HardDrive": true, "Cloud": true, "Info": true}
+var validProfileColors = map[string]bool{"blue": true, "violet": true, "emerald": true, "teal": true, "amber": true, "rose": true, "indigo": true, "sky": true, "orange": true, "gray": true}
+
+func validateVMProfile(p *state.VMProfileConfig) error {
+	if !profileIDRegex.MatchString(p.ID) {
+		return fmt.Errorf("id must be lowercase alphanumeric with hyphens (max 50 chars, start with alphanumeric)")
+	}
+	if strings.TrimSpace(p.Name) == "" {
+		return fmt.Errorf("name is required")
+	}
+	if p.Sockets < 1 || p.Sockets > 8 {
+		return fmt.Errorf("sockets must be between 1 and 8")
+	}
+	if p.Cores < 1 || p.Cores > 64 {
+		return fmt.Errorf("cores must be between 1 and 64")
+	}
+	if p.RAMGB < 1 || p.RAMGB > 512 {
+		return fmt.Errorf("ram_gb must be between 1 and 512")
+	}
+	if p.DiskGB < 1 || p.DiskGB > 2000 {
+		return fmt.Errorf("disk_gb must be between 1 and 2000")
+	}
+	if !validDiskBuses[p.DiskBus] {
+		return fmt.Errorf("disk_bus must be one of: virtio, scsi, sata, ide")
+	}
+	if !validProfileIcons[p.Icon] {
+		return fmt.Errorf("icon must be one of: Globe, Code, Cube, Database, Flask, Monitor, Cpu, HardDrive, Cloud, Info")
+	}
+	if !validProfileColors[p.Color] {
+		return fmt.Errorf("color must be one of: blue, violet, emerald, teal, amber, rose, indigo, sky, orange, gray")
+	}
+	return nil
+}
+
+// slugifyProfile converts a name to a safe profile ID.
+func slugifyProfile(name string) string {
+	slug := strings.ToLower(strings.TrimSpace(name))
+	slug = slugRe.ReplaceAllString(slug, "-")
+	slug = strings.Trim(slug, "-")
+	if len(slug) > 50 {
+		slug = slug[:50]
+	}
+	if slug == "" {
+		return "profile"
+	}
+	return slug
+}
+
+// VMProfileListResponse is the response for GET /api/v1/admin/vm-profiles.
+type VMProfileListResponse struct {
+	Profiles      []state.VMProfileConfig `json:"profiles"`
+	UsingDefaults bool                    `json:"using_defaults"`
+}
+
+// ListVMProfiles handles GET /api/v1/admin/vm-profiles.
+func (h *AdminMutationsHandler) ListVMProfiles(w http.ResponseWriter, _ *http.Request) {
+	settings := h.state.GetSettings()
+	usingDefaults := len(settings.VMProfiles) == 0
+	writeJSON(w, VMProfileListResponse{
+		Profiles:      settings.GetVMProfiles(),
+		UsingDefaults: usingDefaults,
+	})
+}
+
+// CreateVMProfile handles POST /api/v1/admin/vm-profiles.
+func (h *AdminMutationsHandler) CreateVMProfile(w http.ResponseWriter, r *http.Request) {
+	var req state.VMProfileConfig
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	req.ID = strings.TrimSpace(req.ID)
+	req.Name = strings.TrimSpace(req.Name)
+	if req.ID == "" {
+		req.ID = slugifyProfile(req.Name)
+	}
+	if err := validateVMProfile(&req); err != nil {
+		errBadRequest(w, err.Error())
+		return
+	}
+	settings := h.state.GetSettings()
+	newSettings := *settings
+	// Materialize defaults so we have a real slice to append to.
+	if len(newSettings.VMProfiles) == 0 {
+		newSettings.VMProfiles = state.DefaultVMProfiles()
+	}
+	// Deep-copy to avoid shared backing array with the live settings.
+	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	for _, p := range newSettings.VMProfiles {
+		if p.ID == req.ID {
+			errBadRequest(w, "a profile with this ID already exists")
+			return
+		}
+	}
+	newSettings.VMProfiles = append(newSettings.VMProfiles, req)
+	if err := h.state.SetSettings(&newSettings); err != nil {
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, req)
+}
+
+// UpdateVMProfile handles PUT /api/v1/admin/vm-profiles/:id.
+func (h *AdminMutationsHandler) UpdateVMProfile(w http.ResponseWriter, r *http.Request) {
+	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	id := ps.ByName("id")
+	if id == "" {
+		errBadRequest(w, "missing profile id")
+		return
+	}
+	var req state.VMProfileConfig
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	req.ID = strings.TrimSpace(id)
+	req.Name = strings.TrimSpace(req.Name)
+	if err := validateVMProfile(&req); err != nil {
+		errBadRequest(w, err.Error())
+		return
+	}
+	settings := h.state.GetSettings()
+	newSettings := *settings
+	if len(newSettings.VMProfiles) == 0 {
+		newSettings.VMProfiles = state.DefaultVMProfiles()
+	}
+	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	found := false
+	for _, p := range newSettings.VMProfiles {
+		if p.ID == req.ID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		errNotFound(w, "profile not found")
+		return
+	}
+	newSettings.AddOrUpdateVMProfile(req)
+	if err := h.state.SetSettings(&newSettings); err != nil {
+		errInternal(w)
+		return
+	}
+	writeJSON(w, req)
+}
+
+// DeleteVMProfile handles DELETE /api/v1/admin/vm-profiles/:id.
+func (h *AdminMutationsHandler) DeleteVMProfile(w http.ResponseWriter, r *http.Request) {
+	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	id := ps.ByName("id")
+	if id == "" {
+		errBadRequest(w, "missing profile id")
+		return
+	}
+	settings := h.state.GetSettings()
+	newSettings := *settings
+	if len(newSettings.VMProfiles) == 0 {
+		newSettings.VMProfiles = state.DefaultVMProfiles()
+	}
+	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	if !newSettings.RemoveVMProfile(id) {
+		errNotFound(w, "profile not found")
+		return
+	}
+	if err := h.state.SetSettings(&newSettings); err != nil {
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ToggleVMProfile handles POST /api/v1/admin/vm-profiles/:id/toggle.
+func (h *AdminMutationsHandler) ToggleVMProfile(w http.ResponseWriter, r *http.Request) {
+	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	id := ps.ByName("id")
+	if id == "" {
+		errBadRequest(w, "missing profile id")
+		return
+	}
+	settings := h.state.GetSettings()
+	newSettings := *settings
+	if len(newSettings.VMProfiles) == 0 {
+		newSettings.VMProfiles = state.DefaultVMProfiles()
+	}
+	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	found := false
+	for i, p := range newSettings.VMProfiles {
+		if p.ID == id {
+			newSettings.VMProfiles[i].Enabled = !p.Enabled
+			found = true
+			break
+		}
+	}
+	if !found {
+		errNotFound(w, "profile not found")
+		return
+	}
+	if err := h.state.SetSettings(&newSettings); err != nil {
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// copyVMProfiles deep-copies a profile slice to avoid shared backing array.
+func copyVMProfiles(src []state.VMProfileConfig) []state.VMProfileConfig {
+	dst := make([]state.VMProfileConfig, len(src))
+	copy(dst, src)
+	return dst
+}
+
 // copyNodeLimits deep-copies the node limits map to avoid shared references.
 func copyNodeLimits(src map[string]state.NodeResourceLimits) map[string]state.NodeResourceLimits {
 	if src == nil {
