@@ -607,7 +607,7 @@
 						<tbody>
 							{#each config.networks as net, i (i)}
 								<tr class="pv-row">
-									<td class="pv-td-mono">{net.name || `net${i}`}</td>
+									<td class="pv-td-mono">{net.index || `net${i}`}</td>
 									<td>{net.model || '—'}</td>
 									<td class="pv-td-mono">{net.bridge || '—'}</td>
 									<td class="pv-td-mono text-xs">{net.mac || '—'}</td>

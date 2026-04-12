@@ -15,15 +15,23 @@ export interface CloudInitInfo {
   nameserver?: string;
 }
 
+/**
+ * Network interface configuration from API response.
+ * Field names match Proxmox config format (e.g., "tag" for VLAN).
+ */
 export interface NetworkInterface {
-  name: string;
+  index: string; // e.g., "net0", "net1"
   mac: string;
   model: string;
   bridge: string;
-  tag?: number;
+  tag?: number; // VLAN tag from Proxmox config (0 = none)
   firewall?: boolean;
   rate?: string;
   ips?: string[];
+  link_down?: boolean;
+  model_label?: string;
+  model_translation_suffix?: string;
+  mtu?: string;
 }
 
 export interface VMConfig {
@@ -148,12 +156,16 @@ export function deleteVM(vmid: number): Promise<void> {
   return api.delete(`/api/v1/vms/${vmid}`);
 }
 
+/**
+ * Network update request for API.
+ * Field names match backend struct (e.g., "vlan" instead of "tag").
+ */
 export interface NetworkUpdateRequest {
-  index: string; // "net0"…"net9"; empty = new card
+  index: string; // "net0"…"net9"; empty = new card (backend auto-assigns)
   model: string; // virtio, e1000, e1000e, rtl8139, vmxnet3
   bridge: string;
   mac?: string;
-  vlan: number; // 0 = none
+  vlan: number; // VLAN tag for API request (0 = none)
   rate: string; // MB/s or ""
   firewall: boolean;
 }
