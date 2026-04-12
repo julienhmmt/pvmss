@@ -60,10 +60,15 @@ A deep review of the VM creation, search, and details workflows revealed one cri
 - **File**: `backend/api/v1/vm_details.go:241-378`
 - **Fix**: Call `GetVMsResty` once, pass the result to both `resolveNode` and the vmSummary lookup
 
-### 3.3 Wire up LRUCache for VM listings
+### 3.3 Wire up LRUCache for VM listings - DONE
 
 - **Files**: `backend/proxmox/cache.go`, `backend/proxmox/vms.go`
 - **Fix**: Cache `GetVMsForNodeResty` results with a short TTL (5-10s) to avoid hammering Proxmox on rapid successive requests (polling, multiple users)
+- **Implementation**:
+  - Added package-level `vmCache` with 10-second TTL and 100 max entries
+  - Modified `GetVMsForNodeResty` to check cache first, return cached data if valid, fetch from Proxmox on cache miss, and cache the result
+  - Added `InvalidateVMCache` function to clear cached VM data for a specific node
+  - Added cache invalidation calls to `DeleteVMResty`, `UpdateVMConfigResty`, and `VMActionResty`
 
 ---
 
