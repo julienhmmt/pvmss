@@ -399,12 +399,31 @@ func DeleteVMResty(ctx context.Context, restyClient *RestyClient, node string, v
 	return nil
 }
 
-// GetNextVMIDResty determines the next available unique ID for a new VM using resty.
-// It fetches all existing VMs from online nodes only, finds the highest current VMID, and returns that value incremented by one.
-func GetNextVMIDResty(ctx context.Context, restyClient *RestyClient) (int, error) {
+// GetClusterNextIDResty retrieves the next available VMID from Proxmox's atomic cluster allocation.
+// This uses the GET /cluster/nextid endpoint which provides thread-safe VMID allocation,
+// eliminating race conditions when concurrent users create VMs.
+// Falls back to calculating from VM list if the cluster endpoint fails (standalone mode).
+func GetClusterNextIDResty(ctx context.Context, restyClient *RestyClient) (int, error) {
+	// Try cluster endpoint first (atomic allocation)
+	path := "/cluster/nextid"
+	var response Response[int]
+	if err := restyClient.Get(ctx, path, &response); err == nil {
+		nextVMID := response.Data
+		if nextVMID <= 0 {
+			logger.Get().Warn().Int("next_vmid", nextVMID).Msg("Cluster endpoint returned invalid VMID, falling back to calculation")
+		} else {
+			logger.Get().Info().Int("next_vmid", nextVMID).Msg("Retrieved next VMID from Proxmox cluster (atomic allocation)")
+			return nextVMID, nil
+		}
+	} else {
+		logger.Get().Warn().Err(err).Msg("Cluster nextid endpoint failed, falling back to VM list calculation")
+	}
+
+	// Fallback: calculate from existing VMs (works in standalone mode)
 	vms, err := GetVMsResty(ctx, restyClient)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get VMs from online nodes to calculate next VMID: %w", err)
+		logger.Get().Error().Err(err).Msg("Failed to get VMs for fallback VMID calculation")
+		return 0, fmt.Errorf("failed to get next VMID: cluster endpoint failed and VM list fallback failed: %w", err)
 	}
 
 	highestVMID := 0
@@ -415,7 +434,11 @@ func GetNextVMIDResty(ctx context.Context, restyClient *RestyClient) (int, error
 	}
 
 	nextVMID := highestVMID + 1
-	logger.Get().Info().Int("next_vmid", nextVMID).Msg("Calculated next VMID from online nodes (resty)")
+	if nextVMID <= 0 {
+		return 0, fmt.Errorf("calculated next VMID is invalid: %d", nextVMID)
+	}
+
+	logger.Get().Info().Int("next_vmid", nextVMID).Msg("Calculated next VMID from VM list (standalone/fallback)")
 	return nextVMID, nil
 }
 
