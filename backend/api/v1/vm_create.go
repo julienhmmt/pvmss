@@ -121,13 +121,13 @@ type VMCreateDisk struct {
 
 // VMCreateNetwork represents a network card in the VM creation request.
 type VMCreateNetwork struct {
-	Bridge    string `json:"bridge"`
-	Model     string `json:"model"`
-	MAC       string `json:"mac,omitempty"`
-	VLAN      int    `json:"vlan,omitempty"`
-	RateLimit string `json:"rate_limit,omitempty"`
-	MTU       int    `json:"mtu,omitempty"`
-	Enabled   bool   `json:"enabled"`
+	Bridge  string `json:"bridge"`
+	Model   string `json:"model"`
+	MAC     string `json:"mac,omitempty"`
+	VLAN    int    `json:"vlan,omitempty"`
+	Rate    string `json:"rate,omitempty"`
+	MTU     int    `json:"mtu,omitempty"`
+	Enabled bool   `json:"enabled"`
 }
 
 // VMCreateCloudInit represents cloud-init configuration in the VM creation request.
@@ -816,6 +816,14 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 			errBadRequest(w, "MTU must be between 576 and 9000")
 			return
 		}
+		if net.Rate != "" {
+			rate := strings.TrimSpace(net.Rate)
+			rateLimit, err := strconv.ParseFloat(rate, 64)
+			if err != nil || rateLimit < 0 {
+				errBadRequest(w, fmt.Sprintf("network[%d]: rate limit must be a non-negative number", i))
+				return
+			}
+		}
 	}
 
 	// Get Proxmox client
@@ -966,8 +974,11 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		if net.VLAN > 0 {
 			netConfig += ",tag=" + strconv.Itoa(net.VLAN)
 		}
-		if net.RateLimit != "" {
-			netConfig += ",rate=" + net.RateLimit
+		if net.Rate != "" {
+			rate := strings.TrimSpace(net.Rate)
+			if rate != "" && rate != "0" {
+				netConfig += ",rate=" + rate
+			}
 		}
 		if net.MTU > 0 {
 			netConfig += ",mtu=" + strconv.Itoa(net.MTU)
