@@ -250,8 +250,8 @@ Le backend Go ne sert pas encore le build SvelteKit. Il faut :
 
 ### 7.3 Suppression code mort Go
 
-- [ ] Tous les fichiers `.templ` dans `backend/components/`
-- [ ] `backend/templates/` (template loading)
+- [x] Tous les fichiers `.templ` dans `backend/components/`
+- [x] `backend/templates/` (template loading)
 - [ ] Session middleware (`backend/middleware/session.go`)
 - [ ] CSRF middleware (`backend/middleware/csrf.go`, `backend/security/csrf.go`)
 - [ ] Handlers form-based (remplacés par les handlers API)

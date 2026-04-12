@@ -1,4 +1,5 @@
 import { api } from "./client";
+import type { VMStatus } from "$lib/types/vm";
 
 export interface DiskInfo {
   index: string;
@@ -38,7 +39,7 @@ export interface VMConfig {
   vmid: number;
   name: string;
   node: string;
-  status: string;
+  status: VMStatus;
   cpu: number;
   cpus: number;
   sockets: number;
@@ -59,7 +60,7 @@ export interface VMConfig {
 }
 
 export interface VMMetrics {
-  status: string;
+  status: VMStatus;
   cpu: number;
   mem_mb: number;
   max_mem_mb: number;
