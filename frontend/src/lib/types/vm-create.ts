@@ -45,6 +45,25 @@ export interface VMCreateLimits {
   disk: VMCreateRange;
 }
 
+/** VM profile for simplified creation mode (admin-configured, from backend). */
+export interface VMProfileConfig {
+  id: string;
+  name: string;
+  description: string;
+  sockets: number;
+  cores: number;
+  ram_gb: number;
+  disk_gb: number;
+  disk_bus: string;
+  /** Empty string = auto-select. */
+  node?: string;
+  /** Empty string = auto-select. */
+  storage?: string;
+  icon: string;
+  color: string;
+  enabled: boolean;
+}
+
 /** Response from GET /api/v1/vm-create/settings. */
 export interface VMCreateSettings {
   nodes: VMCreateNodeOption[];
@@ -60,6 +79,7 @@ export interface VMCreateSettings {
   remaining_vms: number;
   proxmox_connected: boolean;
   allow_custom_yaml: boolean;
+  vm_profiles: VMProfileConfig[];
 }
 
 /** Disk in the VM creation request. */
@@ -140,3 +160,17 @@ export const IP_CONFIG_MODES = [
   { value: "dhcp", label: "DHCP" },
   { value: "static", label: "Static" },
 ] as const;
+
+/** Color key → Tailwind CSS class mapping for VM profile cards. */
+export const PROFILE_COLOR_CLASSES: Record<string, { bg: string; icon: string }> = {
+  blue:    { bg: "bg-blue-100 dark:bg-blue-900/30",    icon: "text-blue-600 dark:text-blue-400" },
+  violet:  { bg: "bg-violet-100 dark:bg-violet-900/30", icon: "text-violet-600 dark:text-violet-400" },
+  emerald: { bg: "bg-emerald-100 dark:bg-emerald-900/30", icon: "text-emerald-600 dark:text-emerald-400" },
+  teal:    { bg: "bg-teal-100 dark:bg-teal-900/30",    icon: "text-teal-600 dark:text-teal-400" },
+  amber:   { bg: "bg-amber-100 dark:bg-amber-900/30",  icon: "text-amber-600 dark:text-amber-400" },
+  rose:    { bg: "bg-rose-100 dark:bg-rose-900/30",    icon: "text-rose-600 dark:text-rose-400" },
+  indigo:  { bg: "bg-indigo-100 dark:bg-indigo-900/30", icon: "text-indigo-600 dark:text-indigo-400" },
+  sky:     { bg: "bg-sky-100 dark:bg-sky-900/30",      icon: "text-sky-600 dark:text-sky-400" },
+  orange:  { bg: "bg-orange-100 dark:bg-orange-900/30", icon: "text-orange-600 dark:text-orange-400" },
+  gray:    { bg: "bg-gray-100 dark:bg-gray-900/30",    icon: "text-gray-600 dark:text-gray-400" },
+};
