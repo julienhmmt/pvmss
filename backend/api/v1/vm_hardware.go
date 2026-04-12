@@ -410,11 +410,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 // and backed off for the same 2-second interval to avoid hammering the API.
 func pollVMStatus(ctx context.Context, client *proxmox.RestyClient, node string, vmid int, wantStatus string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
-	for {
-		// Check deadline before polling.
-		if !time.Now().Before(deadline) {
-			break
-		}
+	for time.Now().Before(deadline) {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()

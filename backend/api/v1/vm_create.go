@@ -171,8 +171,8 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		MaxNetworkCards:  settings.MaxNetworkCards,
 		MaxDiskPerVM:     settings.MaxDiskPerVM,
 		MaxVMPerUser:     settings.MaxVMPerUser,
-		Tags:       settings.Tags,
-		VMProfiles: settings.GetEnabledVMProfiles(),
+		Tags:             settings.Tags,
+		VMProfiles:       settings.GetEnabledVMProfiles(),
 		Limits: VMCreateLimits{
 			Sockets: VMCreateRange{Min: settings.Limits.VM.Sockets.Min, Max: settings.Limits.VM.Sockets.Max},
 			Cores:   VMCreateRange{Min: settings.Limits.VM.Cores.Min, Max: settings.Limits.VM.Cores.Max},
