@@ -15,6 +15,11 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	authHandler := MakeAuthHandler(s)
 	vmHandler := MakeVMHandler(s)
 	vmActionHandler := MakeVMActionHandler(s)
+	healthHandler := MakeHealthHandler(s)
+
+	// Health routes — public, no auth required
+	router.GET("/api/v1/health", wrap(healthHandler.Health))
+	router.GET("/api/v1/health/proxmox", wrap(healthHandler.HealthProxmox))
 
 	// Auth routes — no JWT required (login/exchange issue tokens)
 	router.POST("/api/v1/auth/login", wrap(authHandler.Login))
@@ -25,11 +30,15 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 
 	// Authenticated auth routes
 	router.GET("/api/v1/auth/me", jwtWrap(s, authHandler.Me))
+	router.PUT("/api/v1/auth/me/password", jwtWrap(s, authHandler.ChangePassword))
 
 	// VM routes — JWT required
 	router.GET("/api/v1/vms", jwtWrap(s, vmHandler.ListVMs))
 	router.GET("/api/v1/vms/:id", jwtWrap(s, vmHandler.GetVM))
 	router.POST("/api/v1/vms/:id/action", jwtWrap(s, vmActionHandler.VMAction))
+
+	// Search route — JWT required; accepts ?q= and ?filter=vmid|name|tags
+	router.GET("/api/v1/search/vms", jwtWrap(s, vmHandler.ListVMs))
 
 	// VM creation routes — JWT required
 	vmCreateHandler := MakeVMCreateHandler(s)
@@ -47,6 +56,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(s, vmDetailsHandler.RollbackSnapshot))
 	router.GET("/api/v1/vms/:id/settings", jwtWrap(s, vmDetailsHandler.GetVMSettings))
 	router.PUT("/api/v1/vms/:id/hardware", jwtWrap(s, vmDetailsHandler.UpdateVMHardware))
+	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(s, vmDetailsHandler.ToggleNIC))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(s, vmHandler.DeleteVM))
 
 	// VNC console routes — JWT required

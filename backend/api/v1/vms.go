@@ -74,6 +74,9 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	// Optional search/filter params: ?q=, ?type=name|tag|vmid, ?status=, ?node=
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	filterType := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("type")))
+	if filterType == "" {
+		filterType = strings.ToLower(strings.TrimSpace(r.URL.Query().Get("filter")))
+	}
 	filterStatus := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
 	filterNode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("node")))
 
