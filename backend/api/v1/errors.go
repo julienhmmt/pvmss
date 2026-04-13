@@ -14,7 +14,14 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 
 // writeJSON writes any value as a JSON response with HTTP 200.
 func writeJSON(w http.ResponseWriter, v interface{}) {
+	writeJSONStatus(w, http.StatusOK, v)
+}
+
+// writeJSONStatus writes any value as a JSON response with the given status code.
+// Content-Type is set before WriteHeader to ensure headers are sent correctly.
+func writeJSONStatus(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
 
