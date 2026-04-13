@@ -12,7 +12,6 @@
 		"strict": false,
 		"moduleResolution": "bundler",
 		"types": ["svelte", "vite/client"],
-		"moduleDetection": "force",
 		"verbatimModuleSyntax": false,
 		"noImplicitAny": false,
 		"noImplicitReturns": false,

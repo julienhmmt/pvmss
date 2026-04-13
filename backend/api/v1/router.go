@@ -63,6 +63,11 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(s, vmDetailsHandler.ToggleNIC))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(s, vmHandler.DeleteVM))
 
+	// Task status routes — JWT required
+	taskHandler := MakeTaskHandler(s)
+	router.GET("/api/v1/tasks/status", jwtWrap(s, taskHandler.GetTaskStatus))
+	router.GET("/api/v1/tasks/log", jwtWrap(s, taskHandler.GetTaskLog))
+
 	// VNC console routes — JWT required
 	vncHandler := MakeVNCHandler(s)
 	router.POST("/api/v1/vms/:id/vnc-ticket", jwtWrap(s, vncHandler.GetVNCTicket))

@@ -135,6 +135,7 @@ export interface VMCreateResponse {
   vmid: number;
   name: string;
   node: string;
+  upid?: string;
   cloud_init_warning?: string;
 }
 

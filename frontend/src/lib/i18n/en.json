@@ -706,9 +706,21 @@
       "switchToAdvanced": "Switch to Advanced mode for full control →"
     },
     "toast": {
+      "creating": "Creating VM \"{name}\"…",
       "created": "VM \"{name}\" (ID: {vmid}) created successfully",
       "createdWithWarning": "VM \"{name}\" created but cloud-init had an issue: {warning}",
       "failed": "Failed to create VM: {error}"
+    }
+  },
+  "tasks": {
+    "tray": {
+      "label": "Active tasks",
+      "title": "Active tasks"
+    },
+    "status": {
+      "running": "In progress…",
+      "done": "Completed",
+      "failed": "Failed"
     }
   },
   "footer": {
