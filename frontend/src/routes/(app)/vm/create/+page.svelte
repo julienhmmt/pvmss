@@ -4,6 +4,7 @@
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
 	import { getVMCreateSettings, createVM } from '$lib/api/vm-create';
+	import { tasks } from '$lib/stores/tasks.svelte';
 	import type {
 		VMCreateSettings,
 		VMCreateRequest,
@@ -124,28 +125,28 @@
 
 	// ── Derived ───────────────────────────────────────────────────────────────
 
-	const currentStepName = $derived(STEPS[currentStep]);
-	const isFirstStep = $derived(currentStep === 0);
-	const isLastStep = $derived(currentStep === STEPS.length - 1);
-	const totalVCPUs = $derived(vmSockets * vmCores);
-	const totalDiskGB = $derived(vmDisks.reduce((acc, d) => acc + d.size_gb, 0));
-	const selectedProfile = $derived(
+	const currentStepName = $derived(() => STEPS[currentStep]);
+	const isFirstStep = $derived(() => currentStep === 0);
+	const isLastStep = $derived(() => currentStep === STEPS.length - 1);
+	const totalVCPUs = $derived(() => vmSockets * vmCores);
+	const totalDiskGB = $derived(() => vmDisks.reduce((acc, d) => acc + d.size_gb, 0));
+	const selectedProfile = $derived(() =>
 		(settings?.vm_profiles ?? []).find((p) => p.id === selectedProfileId) ?? null
 	);
 
-	const quotaBlocked = $derived(
+	const quotaBlocked = $derived(() =>
 		settings !== null && settings.remaining_vms !== -1 && settings.remaining_vms <= 0
 	);
 
-	const simpleDetailsValid = $derived(vmName.trim().length > 0 && vmNode !== '' && vmStorage !== '');
+	const simpleDetailsValid = $derived(() => vmName.trim().length > 0 && vmNode !== '' && vmStorage !== '');
 
 	// Track what was auto-selected so we can display the hint
 	let autoNode: string = $state('');
 	let autoStorage: string = $state('');
 
-	const nodeIsAuto = $derived(vmNode !== '' && vmNode === autoNode);
-	const storageIsAuto = $derived(vmStorage !== '' && vmStorage === autoStorage);
-	const autoStorageIsShared = $derived(
+	const nodeIsAuto = $derived(() => vmNode !== '' && vmNode === autoNode);
+	const storageIsAuto = $derived(() => vmStorage !== '' && vmStorage === autoStorage);
+	const autoStorageIsShared = $derived(() =>
 		settings?.storages.find((s) => s.name === autoStorage)?.node === ''
 	);
 
@@ -361,20 +362,56 @@
 				request.cloud_init = ciConfig;
 			}
 			const resp = await createVM(request);
-			if (resp.cloud_init_warning) {
-				toast.warning(
-					$t('vmCreate.toast.createdWithWarning', {
-						values: { name: resp.name, warning: resp.cloud_init_warning }
-					})
-				);
+
+			if (resp.upid && resp.node) {
+				// Async creation: backend returned a Proxmox task UPID.
+				// Track it in the tasks store; the Navbar will show progress.
+				const taskId = tasks.add({
+					kind: 'vm_create',
+					upid: resp.upid,
+					node: resp.node,
+					vmid: resp.vmid,
+					label: resp.name,
+				});
+
+				toast.info($t('vmCreate.toast.creating', { values: { name: resp.name } }));
+
+				// Capture translations eagerly before navigation — the component
+				// may be destroyed during goto, but toast and $t are global singletons
+				// that survive.  Eager capture avoids relying on reactive subscriptions
+				// after the component is torn down.
+				const createdMsg = $t('vmCreate.toast.created', { values: { name: resp.name, vmid: String(resp.vmid) } });
+
+				// Register the completion callback BEFORE navigating away,
+				// so it is in place if the task finishes during goto.
+				tasks.onComplete(taskId, (task) => {
+					if (task.status === 'stopped') {
+						toast.success(createdMsg);
+					} else {
+						toast.error($t('vmCreate.toast.failed', { values: { error: task.exitStatus } }));
+					}
+					tasks.remove(taskId);
+				});
+
+				// Navigate to the VM detail page; it will load once Proxmox has it ready
+				await goto(`/vm/${resp.vmid}`);
 			} else {
-				toast.success(
-					$t('vmCreate.toast.created', {
-						values: { name: resp.name, vmid: String(resp.vmid) }
-					})
-				);
+				// Synchronous fallback (e.g. offline mode or future change)
+				if (resp.cloud_init_warning) {
+					toast.warning(
+						$t('vmCreate.toast.createdWithWarning', {
+							values: { name: resp.name, warning: resp.cloud_init_warning }
+						})
+					);
+				} else {
+					toast.success(
+						$t('vmCreate.toast.created', {
+							values: { name: resp.name, vmid: String(resp.vmid) }
+						})
+					);
+				}
+				await goto(`/vm/${resp.vmid}`);
 			}
-			await goto(`/vm/${resp.vmid}`);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : 'Unknown error';
 			toast.error($t('vmCreate.toast.failed', { values: { error: msg } }));

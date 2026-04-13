@@ -147,6 +147,7 @@ type VMCreateResponse struct {
 	VMID          int    `json:"vmid"`
 	Name          string `json:"name"`
 	Node          string `json:"node"`
+	UPID          string `json:"upid,omitempty"` // Proxmox task UPID for polling creation progress
 	CloudInitWarn string `json:"cloud_init_warning,omitempty"`
 }
 
@@ -1010,39 +1011,23 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		params.Set(fmt.Sprintf("net%d", i), netConfig)
 	}
 
-	// Send creation request to Proxmox
+	// Send creation request to Proxmox — returns a UPID immediately (async task)
 	path := "/nodes/" + url.PathEscape(req.Node) + "/qemu"
 	logger.Get().Info().Str("path", path).Int("vmid", vmid).Str("name", req.Name).Msg("api/v1: sending VM creation request")
 
-	var createResp interface{}
+	var createResp proxmox.Response[string]
 	if err := client.Post(ctx, path, params, &createResp); err != nil {
 		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Msg("api/v1: VM creation failed")
 		writeError(w, http.StatusInternalServerError, "creation_failed", "Failed to create VM")
 		return
 	}
-
-	// Invalidate VM cache for this node so the new VM appears immediately
-	proxmox.InvalidateVMCache(req.Node)
-
-	// Apply cloud-init if requested
-	cloudInitWarning := ""
-	if req.CloudInit != nil {
-		cloudInitWarning = h.applyCloudInit(ctx, client, req.Node, vmid, req.Storage, req.CloudInit, settings)
-	}
-
-	// Start VM if requested
-	if req.StartVM {
-		startCtx, startCancel := context.WithTimeout(ctx, 15*time.Second)
-		defer startCancel()
-		if _, err := proxmox.VMActionResty(startCtx, client, req.Node, strconv.Itoa(vmid), "start"); err != nil {
-			logger.Get().Warn().Err(err).Int("vmid", vmid).Msg("api/v1: failed to start VM after creation")
-		}
-	}
+	upid := createResp.Data
 
 	logger.Get().Info().
 		Int("vmid", vmid).
 		Str("name", req.Name).
 		Str("node", req.Node).
+		Str("upid", upid).
 		Str("username", username).
 		Bool("is_admin", isAdmin).
 		Int("sockets", req.Sockets).
@@ -1050,9 +1035,45 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		Int("memory_mb", req.MemoryMB).
 		Int("disk_gb", req.Disks[0].SizeGB).
 		Str("storage", req.Storage).
-		Msg("api/v1: VM created successfully")
+		Msg("api/v1: VM creation task dispatched")
 
-	// Request snapshot refresh so the new VM appears
+	// Invalidate VM cache immediately so the VM config shows up in listings.
+	proxmox.InvalidateVMCache(req.Node)
+	h.state.RequestSnapshotRefresh()
+
+	// ── Async path (UPID returned) ──────────────────────────────────────────
+	// Cloud-init and VM start must wait for the creation task to complete
+	// because Proxmox holds a VM lock during creation — any config update
+	// (including cloud-init) or start action would be rejected with
+	// "VM is locked (create)".
+	if upid != "" {
+		go h.finalizeAfterTask(client, req.Node, vmid, upid, req.StartVM, req.CloudInit, req.Storage, settings)
+
+		// Return 202 Accepted immediately with the UPID so the frontend can poll.
+		w.WriteHeader(http.StatusAccepted)
+		writeJSON(w, VMCreateResponse{
+			VMID:          vmid,
+			Name:          req.Name,
+			Node:          req.Node,
+			UPID:          upid,
+			CloudInitWarn: "",
+		})
+		return
+	}
+
+	// ── Synchronous fallback (no UPID) ───────────────────────────────────────
+	// Proxmox returned no UPID — apply cloud-init and start VM immediately.
+	cloudInitWarning := ""
+	if req.CloudInit != nil {
+		cloudInitWarning = h.applyCloudInit(ctx, client, req.Node, vmid, req.Storage, req.CloudInit, settings)
+	}
+	if req.StartVM {
+		startCtx, startCancel := context.WithTimeout(ctx, 15*time.Second)
+		defer startCancel()
+		if _, err := proxmox.VMActionResty(startCtx, client, req.Node, strconv.Itoa(vmid), "start"); err != nil {
+			logger.Get().Warn().Err(err).Int("vmid", vmid).Msg("api/v1: failed to start VM after creation")
+		}
+	}
 	h.state.RequestSnapshotRefresh()
 
 	w.WriteHeader(http.StatusCreated)
@@ -1060,8 +1081,91 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		VMID:          vmid,
 		Name:          req.Name,
 		Node:          req.Node,
+		UPID:          "",
 		CloudInitWarn: cloudInitWarning,
 	})
+}
+
+// finalizeAfterTask polls a Proxmox creation task UPID until it completes,
+// then applies cloud-init config, performs a final cache refresh, and
+// optionally starts the VM.
+//
+// It runs in a goroutine and does not affect the HTTP response.
+// The ctx parameter allows cancellation on server shutdown.
+func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node string, vmid int, upid string, startVM bool, ci *VMCreateCloudInit, storage string, settings *state.AppSettings) {
+	if client == nil {
+		logger.Get().Error().Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: resty client is nil")
+		return
+	}
+	if settings == nil {
+		logger.Get().Error().Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: settings is nil")
+		return
+	}
+
+	const (
+		pollInterval = 3 * time.Second
+		maxWait      = 10 * time.Minute
+	)
+
+	// Derive a context that cancels after maxWait so the goroutine cannot
+	// run indefinitely even if the server stays up.
+	ctx, cancelAll := context.WithTimeout(context.Background(), maxWait)
+	defer cancelAll()
+
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			logger.Get().Warn().Int("vmid", vmid).Str("upid", upid).Msg("api/v1: finalizeAfterTask: timed out waiting for creation task")
+			return
+		case <-ticker.C:
+		}
+
+		pollCtx, pollCancel := context.WithTimeout(ctx, 10*time.Second)
+		status, pollErr := proxmox.GetTaskStatusResty(pollCtx, client, node, upid)
+		pollCancel()
+
+		if pollErr != nil {
+			logger.Get().Warn().Err(pollErr).Int("vmid", vmid).Str("upid", upid).Msg("api/v1: finalizeAfterTask: polling error, retrying")
+			continue
+		}
+
+		if status.Status != "stopped" {
+			continue
+		}
+
+		// Final cache refresh once disks are fully created
+		proxmox.InvalidateVMCache(node)
+		h.state.RequestSnapshotRefresh()
+
+		if status.ExitStatus != "OK" {
+			logger.Get().Warn().Str("exit_status", status.ExitStatus).Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: creation task did not succeed")
+			return
+		}
+
+		// Apply cloud-init config now that the VM lock is released.
+		if ci != nil {
+			ciCtx, ciCancel := context.WithTimeout(ctx, 30*time.Second)
+			if warn := h.applyCloudInit(ciCtx, client, node, vmid, storage, ci, settings); warn != "" {
+				logger.Get().Warn().Str("warning", warn).Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: cloud-init issue")
+			}
+			ciCancel()
+		}
+
+		if startVM {
+			startCtx, startCancel := context.WithTimeout(ctx, 15*time.Second)
+			_, startErr := proxmox.VMActionResty(startCtx, client, node, strconv.Itoa(vmid), "start")
+			startCancel()
+			if startErr != nil {
+				logger.Get().Warn().Err(startErr).Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: failed to start VM")
+			} else {
+				logger.Get().Info().Int("vmid", vmid).Str("node", node).Msg("api/v1: finalizeAfterTask: VM started after creation")
+			}
+		}
+		return
+	}
 }
 
 // applyCloudInit applies cloud-init configuration to a newly created VM.
