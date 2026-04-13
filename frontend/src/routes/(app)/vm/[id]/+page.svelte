@@ -23,6 +23,10 @@
 		type SnapshotList
 	} from '$lib/api/vm-details';
 	import VMHardwareModal from '$lib/components/vm/VMHardwareModal.svelte';
+	import VMDiskAddModal from '$lib/components/vm/VMDiskAddModal.svelte';
+	import VMDiskResizeModal from '$lib/components/vm/VMDiskResizeModal.svelte';
+	import VMDiskDeleteModal from '$lib/components/vm/VMDiskDeleteModal.svelte';
+	import type { DiskInfo } from '$lib/api/vm-details';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -75,6 +79,12 @@
 	let showHardwareModal = $state(false);
 	let vmSettings = $state<VMSettings | null>(null);
 	let hardwareReloadTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// Disk management
+	let showDiskAddModal = $state(false);
+	let showDiskResizeModal = $state(false);
+	let showDiskDeleteModal = $state(false);
+	let selectedDisk = $state<DiskInfo | null>(null);
 
 	$effect(() => {
 		return () => {
@@ -163,6 +173,28 @@
 			return;
 		}
 		showHardwareModal = true;
+	}
+
+	async function openDiskAddModal() {
+		if (!vmSettings) {
+			try {
+				vmSettings = await getVMSettings(vmid);
+			} catch {
+				toast.error($t('common.error'));
+				return;
+			}
+		}
+		showDiskAddModal = true;
+	}
+
+	function openDiskResizeModal(disk: DiskInfo) {
+		selectedDisk = disk;
+		showDiskResizeModal = true;
+	}
+
+	function openDiskDeleteModal(disk: DiskInfo) {
+		selectedDisk = disk;
+		showDiskDeleteModal = true;
 	}
 
 	async function saveDescription() {
@@ -355,6 +387,14 @@
 						title={$t('vms.actions.shutdown')}
 					>
 						<Stop class="h-4 w-4" weight="fill" />
+					</button>
+					<button
+						class="pv-action-btn pv-action-btn--halt"
+						onclick={() => doAction('stop')}
+						disabled={actionLoading}
+						title={$t('vms.actions.forceStop')}
+					>
+						<Stop class="h-4 w-4" />
 					</button>
 					<button
 						class="pv-action-btn"
@@ -601,7 +641,19 @@
 		{/if}
 
 		{#if activeTab === 'disks'}
+			{@const isRunning = (metrics?.status ?? config.status) === 'running'}
 			<div class="pv-table-wrap">
+				<div class="flex items-center justify-between border-b border-border px-4 py-3">
+					<span class="text-sm font-medium">{$t('vm.tabDisks')}</span>
+					<button
+						class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+						onclick={openDiskAddModal}
+						disabled={isRunning}
+						title={isRunning ? $t('vm.disk.vmRunningWarning') : ''}
+					>
+						+ {$t('vm.disk.add')}
+					</button>
+				</div>
 				{#if config.disks.length === 0}
 					<p class="py-8 text-center text-sm text-muted-foreground">{$t('vm.noDisks')}</p>
 				{:else}
@@ -611,14 +663,38 @@
 								<th>{$t('common.name')}</th>
 								<th>{$t('common.storage')}</th>
 								<th>{$t('common.size')}</th>
+								<th>{$t('common.actions')}</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#each config.disks as disk (disk.index)}
 								<tr class="pv-row">
-									<td class="pv-td-mono">{disk.index}</td>
+									<td class="pv-td-mono">
+										{disk.index}
+										{#if disk.is_boot}
+											<span class="ml-1 text-[10px] font-medium text-amber-600">({$t('vm.disk.boot')})</span>
+										{/if}
+									</td>
 									<td>{disk.storage || '—'}</td>
 									<td class="pv-td-mono">{disk.size_gb} GB</td>
+									<td>
+										<div class="flex items-center gap-2">
+											<button
+												class="text-xs text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+												onclick={() => openDiskResizeModal(disk)}
+											>
+												{$t('vm.disk.resize')}
+											</button>
+											<button
+												class="text-xs text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+												onclick={() => openDiskDeleteModal(disk)}
+												disabled={isRunning || disk.is_boot}
+												title={isRunning ? $t('vm.disk.vmRunningWarning') : disk.is_boot ? $t('vm.disk.bootDiskWarning') : ''}
+											>
+												{$t('vm.disk.detach')}
+											</button>
+										</div>
+									</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -831,6 +907,51 @@
 	/>
 {/if}
 
+<!-- Disk management modals -->
+{#if showDiskAddModal && config}
+	<VMDiskAddModal
+		bind:open={showDiskAddModal}
+		vmid={config.vmid}
+		settings={vmSettings}
+		currentDiskCount={config.disks.length}
+		onclose={() => (showDiskAddModal = false)}
+		onsuccess={() => {
+			showDiskAddModal = false;
+			load();
+		}}
+	/>
+{/if}
+
+{#if showDiskResizeModal && config && selectedDisk}
+	<VMDiskResizeModal
+		bind:open={showDiskResizeModal}
+		vmid={config.vmid}
+		disk={selectedDisk}
+		maxDiskGB={vmSettings?.limits.max_disk_gb ?? 2000}
+		onclose={() => (showDiskResizeModal = false)}
+		onsuccess={() => {
+			showDiskResizeModal = false;
+			selectedDisk = null;
+			load();
+		}}
+	/>
+{/if}
+
+{#if showDiskDeleteModal && config && selectedDisk}
+	<VMDiskDeleteModal
+		bind:open={showDiskDeleteModal}
+		vmid={config.vmid}
+		disk={selectedDisk}
+		vmStatus={metrics?.status ?? config?.status ?? 'stopped'}
+		onclose={() => (showDiskDeleteModal = false)}
+		onsuccess={() => {
+			showDiskDeleteModal = false;
+			selectedDisk = null;
+			load();
+		}}
+	/>
+{/if}
+
 <!-- Delete VM confirmation dialog -->
 <AlertDialog.Root bind:open={showDeleteDialog}>
 	<AlertDialog.Content>
@@ -964,5 +1085,10 @@
 	:global(.pv-btn-primary:disabled) {
 		opacity: 0.5;
 		cursor: not-allowed;
+	}
+	:global(.pv-action-btn--halt:hover:not(:disabled)) {
+		background: hsl(0 84% 50% / 0.2);
+		border-color: hsl(0 84% 50% / 0.6);
+		color: hsl(0 84% 40%);
 	}
 </style>

@@ -57,6 +57,7 @@ type DiskInfo struct {
 	Storage string `json:"storage"`
 	SizeGB  int    `json:"size_gb"`
 	Raw     string `json:"raw"`
+	IsBoot  bool   `json:"is_boot"`
 }
 
 type CloudInitInfo struct {
@@ -88,11 +89,12 @@ type SnapshotListResponse struct {
 }
 
 type VMSettingsResponse struct {
-	AvailableISOs  []ISOOption  `json:"available_isos"`
-	AvailableVMBRs []VMBROption `json:"available_vmbrs"`
-	AvailableTags  []string     `json:"available_tags"`
-	Limits         LimitsInfo   `json:"limits"`
-	MaxSnapshots   int          `json:"max_snapshots"`
+	AvailableISOs     []ISOOption     `json:"available_isos"`
+	AvailableVMBRs    []VMBROption    `json:"available_vmbrs"`
+	AvailableTags     []string        `json:"available_tags"`
+	AvailableStorages []StorageOption `json:"available_storages"`
+	Limits            LimitsInfo      `json:"limits"`
+	MaxSnapshots      int             `json:"max_snapshots"`
 }
 
 type ISOOption struct {
@@ -108,13 +110,22 @@ type VMBROption struct {
 	Enabled bool   `json:"enabled"`
 }
 
+type StorageOption struct {
+	Storage string `json:"storage"`
+	Node    string `json:"node,omitempty"`
+	Enabled bool   `json:"enabled"`
+}
+
 type LimitsInfo struct {
-	MinSockets int `json:"min_sockets"`
-	MaxSockets int `json:"max_sockets"`
-	MinCores   int `json:"min_cores"`
-	MaxCores   int `json:"max_cores"`
-	MinRAMGB   int `json:"min_ram_gb"`
-	MaxRAMGB   int `json:"max_ram_gb"`
+	MinSockets    int `json:"min_sockets"`
+	MaxSockets    int `json:"max_sockets"`
+	MinCores      int `json:"min_cores"`
+	MaxCores      int `json:"max_cores"`
+	MinRAMGB      int `json:"min_ram_gb"`
+	MaxRAMGB      int `json:"max_ram_gb"`
+	MinDiskGB     int `json:"min_disk_gb"`
+	MaxDiskGB     int `json:"max_disk_gb"`
+	MaxDisksPerVM int `json:"max_disks_per_vm"`
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -164,19 +175,19 @@ func parseDisks(cfg map[string]interface{}) ([]DiskInfo, bool, string, int64) {
 	var totalMB int64
 
 	for _, bus := range buses {
-		for i := 0; i < 16; i++ {
+		for i := 0; i < state.GetMaxDisksForBus(bus); i++ {
 			key := bus + strconv.Itoa(i)
 			val, ok := cfg[key].(string)
 			if !ok || val == "" {
 				continue
 			}
 			// CD-ROM detection
-			if strings.Contains(val, "media=cdrom") || bus == "ide" && strings.Contains(val, "iso") {
+			if strings.Contains(val, "media=cdrom") || bus == "ide" && strings.HasSuffix(strings.SplitN(val, ",", 2)[0], ".iso") {
 				hasCDROM = true
 				parts := strings.SplitN(val, ",", 2)
 				if parts[0] != "none" && !strings.HasPrefix(parts[0], "local") {
 					currentISO = parts[0]
-				} else if strings.Contains(parts[0], ".iso") {
+				} else if strings.HasSuffix(parts[0], ".iso") {
 					currentISO = parts[0]
 				}
 				continue
@@ -194,12 +205,19 @@ func parseDisks(cfg map[string]interface{}) ([]DiskInfo, bool, string, int64) {
 						if n, err := strconv.Atoi(strings.TrimSuffix(s, "T")); err == nil {
 							sizeGB = n * 1024
 						}
+					} else if strings.HasSuffix(s, "M") {
+						if n, err := strconv.Atoi(strings.TrimSuffix(s, "M")); err == nil {
+							sizeGB = n / 1024
+							if sizeGB == 0 {
+								sizeGB = 1 // Round up sub-GB sizes to 1 GB
+							}
+						}
 					}
 				}
 			}
 			storage := ""
 			parts := strings.SplitN(val, ":", 2)
-			if len(parts) >= 1 {
+			if len(parts) == 2 && parts[0] != "" {
 				storage = parts[0]
 			}
 			disks = append(disks, DiskInfo{
@@ -208,6 +226,7 @@ func parseDisks(cfg map[string]interface{}) ([]DiskInfo, bool, string, int64) {
 				Storage: storage,
 				SizeGB:  sizeGB,
 				Raw:     val,
+				IsBoot:  isBootDisk(cfg, key),
 			})
 			totalMB += int64(sizeGB) * 1024
 		}
@@ -801,18 +820,33 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 	// settings.Tags is []string
 	tags := append([]string(nil), settings.Tags...)
 
+	// Parse EnabledStorages ("node:storage" or plain "storage" format) into structured options
+	storages := make([]StorageOption, 0, len(settings.EnabledStorages))
+	for _, s := range settings.EnabledStorages {
+		parts := strings.SplitN(s, ":", 2)
+		if len(parts) == 2 {
+			storages = append(storages, StorageOption{Storage: parts[1], Node: parts[0], Enabled: true})
+		} else {
+			storages = append(storages, StorageOption{Storage: s, Enabled: true})
+		}
+	}
+
 	resp := VMSettingsResponse{
-		AvailableISOs:  isos,
-		AvailableVMBRs: vmbrs,
-		AvailableTags:  tags,
-		MaxSnapshots:   settings.Limits.MaxSnapshots,
+		AvailableISOs:     isos,
+		AvailableVMBRs:    vmbrs,
+		AvailableTags:     tags,
+		AvailableStorages: storages,
+		MaxSnapshots:      settings.Limits.MaxSnapshots,
 		Limits: LimitsInfo{
-			MinSockets: settings.Limits.VM.Sockets.Min,
-			MaxSockets: settings.Limits.VM.Sockets.Max,
-			MinCores:   settings.Limits.VM.Cores.Min,
-			MaxCores:   settings.Limits.VM.Cores.Max,
-			MinRAMGB:   settings.Limits.VM.RAM.Min,
-			MaxRAMGB:   settings.Limits.VM.RAM.Max,
+			MinSockets:    settings.Limits.VM.Sockets.Min,
+			MaxSockets:    settings.Limits.VM.Sockets.Max,
+			MinCores:      settings.Limits.VM.Cores.Min,
+			MaxCores:      settings.Limits.VM.Cores.Max,
+			MinRAMGB:      settings.Limits.VM.RAM.Min,
+			MaxRAMGB:      settings.Limits.VM.RAM.Max,
+			MinDiskGB:     settings.Limits.VM.Disk.Min,
+			MaxDiskGB:     settings.Limits.VM.Disk.Max,
+			MaxDisksPerVM: settings.MaxDiskPerVM,
 		},
 	}
 	writeJSON(w, resp)

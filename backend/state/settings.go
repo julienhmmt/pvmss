@@ -69,6 +69,7 @@ const (
 	MaxNetworkCards       = 32 // Maximum network cards (net0-net31)
 	MinDiskPerVM          = 1
 	MaxDiskPerVM          = MaxDisksVirtIO // Maximum disks overall (VirtIO Block limit)
+	DefaultDiskPerVM      = 4              // Default max disks per VM
 	MinVMPerUser          = 0              // Minimum VMs per user (0 = no VMs allowed)
 	MaxVMPerUser          = 100            // Maximum VMs per user (reasonable upper limit)
 	DefaultVMPerUser      = 5              // Default VMs per user
@@ -178,7 +179,7 @@ func defaultSettings() *AppSettings {
 			Nodes: make(map[string]NodeResourceLimits),
 		},
 		MaxNetworkCards:    MinNetworkCards,
-		MaxDiskPerVM:       MinDiskPerVM,
+		MaxDiskPerVM:       DefaultDiskPerVM,
 		MaxVMPerUser:       DefaultVMPerUser,
 		Tags:               []string{"pvmss"},
 		VMBRs:              []string{},
@@ -326,7 +327,7 @@ func LoadSettings() (*AppSettings, bool, error) {
 	// Ensure MaxDiskPerVM has a valid default value
 	if settings.MaxDiskPerVM < MinDiskPerVM || settings.MaxDiskPerVM > MaxDiskPerVM {
 		modified = true
-		settings.MaxDiskPerVM = MinDiskPerVM
+		settings.MaxDiskPerVM = DefaultDiskPerVM
 	}
 	// Ensure MaxVMPerUser has a valid default value
 	if settings.MaxVMPerUser < MinVMPerUser || settings.MaxVMPerUser > MaxVMPerUser {

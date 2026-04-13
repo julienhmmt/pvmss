@@ -63,6 +63,12 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(s, vmDetailsHandler.ToggleNIC))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(s, vmHandler.DeleteVM))
 
+	// Disk management routes — JWT required
+	vmDiskHandler := MakeVMDiskHandler(s)
+	router.POST("/api/v1/vms/:id/disks", jwtWrap(s, vmDiskHandler.AddDisk))
+	router.PUT("/api/v1/vms/:id/disks/:diskId/resize", jwtWrap(s, vmDiskHandler.ResizeDisk))
+	router.DELETE("/api/v1/vms/:id/disks/:diskId", jwtWrap(s, vmDiskHandler.DeleteDisk))
+
 	// Task status routes — JWT required
 	taskHandler := MakeTaskHandler(s)
 	router.GET("/api/v1/tasks/status", jwtWrap(s, taskHandler.GetTaskStatus))

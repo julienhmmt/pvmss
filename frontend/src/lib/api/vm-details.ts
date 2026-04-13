@@ -7,6 +7,7 @@ export interface DiskInfo {
   storage: string;
   size_gb: number;
   raw: string;
+  is_boot: boolean;
 }
 
 export interface CloudInitInfo {
@@ -93,10 +94,17 @@ export interface VMBROption {
   enabled: boolean;
 }
 
+export interface StorageOption {
+  storage: string;
+  node?: string;
+  enabled: boolean;
+}
+
 export interface VMSettings {
   available_isos: ISOOption[];
   available_vmbrs: VMBROption[];
   available_tags: string[];
+  available_storages: StorageOption[];
   limits: {
     min_sockets: number;
     max_sockets: number;
@@ -104,6 +112,9 @@ export interface VMSettings {
     max_cores: number;
     min_ram_gb: number;
     max_ram_gb: number;
+    min_disk_gb: number;
+    max_disk_gb: number;
+    max_disks_per_vm: number;
   };
   max_snapshots: number;
 }
@@ -185,6 +196,33 @@ export interface VMHardwareUpdateResponse {
   success: boolean;
   restarted: boolean;
   message: string;
+}
+
+export async function addDisk(
+  vmid: number,
+  data: { storage: string; size_gb: number; bus: string },
+): Promise<{ status: string; disk: string }> {
+  return api.post<{ status: string; disk: string }>(
+    `/api/v1/vms/${vmid}/disks`,
+    data,
+  );
+}
+
+export async function resizeDisk(
+  vmid: number,
+  diskId: string,
+  addGB: number,
+): Promise<void> {
+  await api.put(`/api/v1/vms/${vmid}/disks/${encodeURIComponent(diskId)}/resize`, {
+    add_gb: addGB,
+  });
+}
+
+export async function deleteDisk(
+  vmid: number,
+  diskId: string,
+): Promise<void> {
+  await api.delete(`/api/v1/vms/${vmid}/disks/${encodeURIComponent(diskId)}`);
 }
 
 export async function updateVMHardware(
