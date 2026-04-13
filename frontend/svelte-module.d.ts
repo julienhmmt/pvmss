@@ -17,10 +17,20 @@ declare module "*.svelte#module" {
   export default module;
 }
 
-// Svelte 5 runes declarations
-declare function $state<T>(initial: T): T;
-declare function $state<T>(): T;
-declare function $derived<T>(fn: () => T): T;
-declare function $effect(fn: () => void | (() => void)): void;
-declare function $props<T>(): T;
-declare function $bindable<T>(initial?: T): T;
+// Svelte 5 runes declarations - these are global in Svelte 5
+declare const $state: {
+  <T>(initial: T): T;
+  <T>(): T;
+};
+declare const $derived: {
+  <T>(fn: () => T): T;
+};
+declare const $effect: {
+  (fn: () => void | (() => void)): void;
+};
+declare const $props: {
+  <T>(): T;
+};
+declare const $bindable: {
+  <T>(initial?: T): T;
+};

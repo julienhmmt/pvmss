@@ -12,6 +12,7 @@
 	import { setLocale } from '$lib/i18n';
 	import { goto } from '$app/navigation';
 	import { notifications } from '$lib/stores/notifications.svelte';
+	import { tasks } from '$lib/stores/tasks.svelte';
 	import type { NavLink, KeyboardShortcut } from '$lib/types/navbar';
 	import {
 		HouseIcon,
@@ -25,8 +26,13 @@
 		CaretDownIcon,
 		GlobeIcon,
 		BellIcon,
-		UserCircleIcon
+		UserCircleIcon,
+		ClockIcon,
+		CheckCircleIcon,
+		WarningCircleIcon
 	} from 'phosphor-svelte';
+
+	let tasksOpen = $state(false);
 
 	let mobileOpen = $state(false);
 	let notificationOpen = $state(false);
@@ -307,6 +313,66 @@
 								Mark all as read
 							</DropdownMenu.Item>
 						{/if}
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			{/if}
+
+			<!-- Active tasks tray -->
+			{#if auth.initialized && auth.username && tasks.tasks.length > 0}
+				<DropdownMenu.Root open={tasksOpen} onOpenChange={(open) => (tasksOpen = open)}>
+					<DropdownMenu.Trigger>
+						{#snippet child({ props })}
+							<button
+								class="pv-navbar-icon-btn pv-navbar-icon-btn--relative"
+								{...props}
+								aria-label={$t('tasks.tray.label')}
+								aria-haspopup="true"
+								aria-expanded={tasksOpen}
+							>
+								<ClockIcon class="h-4 w-4" />
+								{#if tasks.activeTasks.length > 0}
+									<Badge variant="default" class="pv-notification-badge animate-pulse">
+										{tasks.activeTasks.length}
+									</Badge>
+								{/if}
+							</button>
+						{/snippet}
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content align="end" class="w-80">
+						<DropdownMenu.Label>{$t('tasks.tray.title')}</DropdownMenu.Label>
+						<DropdownMenu.Separator />
+						{#each tasks.tasks as task (task.id)}
+							<div class="flex items-start gap-3 px-3 py-2">
+								<div class="mt-0.5 flex-shrink-0">
+									{#if task.status === 'running'}
+										<ClockIcon class="h-4 w-4 animate-spin text-blue-500" />
+									{:else if task.status === 'stopped'}
+										<CheckCircleIcon class="h-4 w-4 text-green-500" weight="fill" />
+									{:else}
+										<WarningCircleIcon class="h-4 w-4 text-destructive" weight="fill" />
+									{/if}
+								</div>
+								<div class="min-w-0 flex-1">
+									<p class="truncate text-sm font-medium">{task.label}</p>
+									<p class="text-muted-foreground text-xs">
+										{#if task.status === 'running'}
+											{$t('tasks.status.running')}
+										{:else if task.status === 'stopped'}
+											{$t('tasks.status.done')}
+										{:else}
+											{$t('tasks.status.failed')}: {task.exitStatus}
+										{/if}
+									</p>
+								</div>
+								{#if task.status !== 'running'}
+									<button
+										class="text-muted-foreground hover:text-foreground text-xs"
+										onclick={() => tasks.remove(task.id)}
+										aria-label="Dismiss"
+									>✕</button>
+								{/if}
+							</div>
+						{/each}
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			{/if}

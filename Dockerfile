@@ -31,8 +31,7 @@ WORKDIR /app/frontend
 
 COPY frontend/package.json frontend/package-lock.json ./
 
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+RUN npm install
 
 COPY frontend/ ./
 

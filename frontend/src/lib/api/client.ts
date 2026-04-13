@@ -1,12 +1,15 @@
 import { ApiRequestError, type ApiError } from "$lib/types/api";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  // Only set Content-Type for requests with a body (POST, PUT, PATCH).
+  // GET and DELETE requests should not carry a Content-Type header.
+  const headers: Record<string, string> = {
+    ...(options.body != null ? { "Content-Type": "application/json" } : {}),
+    ...(options.headers as Record<string, string> | undefined),
+  };
   const res = await fetch(path, {
     credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
     ...options,
   });
 

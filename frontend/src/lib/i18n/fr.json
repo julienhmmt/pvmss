@@ -706,9 +706,21 @@
       "switchToAdvanced": "Passer en mode Avancé pour un contrôle total →"
     },
     "toast": {
+      "creating": "Création de la VM « {name} »…",
       "created": "VM « {name} » (ID : {vmid}) créée avec succès",
       "createdWithWarning": "VM « {name} » créée mais cloud-init a rencontré un problème : {warning}",
       "failed": "Échec de la création de la VM : {error}"
+    }
+  },
+  "tasks": {
+    "tray": {
+      "label": "Tâches actives",
+      "title": "Tâches actives"
+    },
+    "status": {
+      "running": "En cours…",
+      "done": "Terminé",
+      "failed": "Échec"
     }
   },
   "footer": {
