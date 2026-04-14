@@ -95,6 +95,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/admin/settings", adminJWTWrap(s, adminHandler.Settings))
 
 	router.GET("/api/v1/admin/vms", adminJWTWrap(s, adminVMsHandler.ListAllVMs))
+	router.GET("/api/v1/admin/vms/paginated", adminJWTWrap(s, adminVMsHandler.ListAllVMsPaginated))
 	router.POST("/api/v1/admin/vms/:id/action", adminJWTWrap(s, adminVMsHandler.VMAction))
 	router.DELETE("/api/v1/admin/vms/:id", adminJWTWrap(s, adminVMsHandler.DeleteVM))
 

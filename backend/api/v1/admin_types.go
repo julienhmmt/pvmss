@@ -43,6 +43,12 @@ type AdminVMResponse struct {
 	Tags    string  `json:"tags"`
 }
 
+// AdminVMListPaginatedResponse wraps a paginated slice of AdminVMResponse.
+type AdminVMListPaginatedResponse struct {
+	VMs        []AdminVMResponse  `json:"vms"`
+	Pagination PaginationMetadata `json:"pagination"`
+}
+
 // --- User Pool ---
 
 type AdminPoolResponse struct {

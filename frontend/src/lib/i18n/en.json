@@ -133,6 +133,7 @@
     "vms": {
       "title": "Virtual machines",
       "noVms": "No virtual machines found",
+      "noSearchResults": "No virtual machines match your search.",
       "vmid": "VMID",
       "tags": "Tags",
       "cpus": "CPUs",
@@ -140,10 +141,6 @@
       "cpu": "CPU",
       "uptime": "Uptime",
       "allNodes": "All Nodes",
-      "pagination": {
-        "showing": "Showing {start} to {end} of {total} VMs",
-        "perPage": "{count} / page"
-      },
       "actions": {
         "start": "Start",
         "shutdown": "Shutdown",
@@ -368,6 +365,7 @@
       "vmCount": "Virtual machines",
       "myVms": "My virtual machines",
       "noVms": "No virtual machines",
+      "noSearchResults": "No virtual machines match your search.",
       "changePassword": "Change password",
       "currentPassword": "Current password",
       "newPassword": "New password",
@@ -419,6 +417,20 @@
     "noVms": "No virtual machines found",
     "selected": "{count} selected",
     "clearSelection": "Clear",
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total} VMs",
+      "perPage": "{count} / page"
+    },
+    "sort": {
+      "label": "Sort by",
+      "vmid": "VM ID",
+      "name": "Name",
+      "status": "Status",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "asc": "Ascending",
+      "desc": "Descending"
+    },
     "actions": {
       "start": "Start",
       "shutdown": "Shutdown",
