@@ -146,7 +146,7 @@
 <!-- Scroll Progress Bar -->
 <div class="pv-scroll-progress-bar" style="width: {scrollProgress}%"></div>
 
-<div class="mx-auto flex max-w-6xl gap-6 px-4 py-6">
+<div class="mx-auto flex gap-6 px-4 py-6 pv-content-width">
 	<!-- Sidebar -->
 	<aside class="hidden w-56 shrink-0 lg:block">
 		<nav class="mb-6 space-y-1">

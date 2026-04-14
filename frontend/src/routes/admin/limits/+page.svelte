@@ -151,6 +151,8 @@
 	</div>
 </div>
 
+<div class="pv-content-width">
+
 <LoadingToast visible={refreshing} />
 
 {#if error}
@@ -158,7 +160,7 @@
 {:else if loading || !limits}
 	<LoadingSkeleton variant="form" rows={6} />
 {:else}
-	<div class="max-w-3xl space-y-6">
+	<div class="space-y-6">
 
 		<!-- VM Resource Ranges -->
 		<div class="rounded-lg border">
@@ -319,3 +321,5 @@
 
 	</div>
 {/if}
+
+</div>

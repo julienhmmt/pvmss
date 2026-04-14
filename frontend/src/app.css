@@ -52,6 +52,7 @@
   --blaze-orange-800: 20 100% 37%;
   --blaze-orange-900: 17 100% 28%;
   --blaze-orange-950: 12 100% 21%;
+  --content-max-width: 80rem;
 }
 
 .dark {
@@ -144,6 +145,12 @@
     display: flex;
     flex-direction: column;
   }
+}
+
+.pv-content-width {
+  max-width: var(--content-max-width);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Offset the fixed sidebar below the navbar (h-14 = 3.5rem) */
