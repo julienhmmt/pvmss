@@ -125,7 +125,10 @@ func TestAppState_ValidateAndRemoveCSRFToken(t *testing.T) {
 	// Add token and validate
 	token := "test-token-456"
 	expiry := time.Now().Add(1 * time.Hour)
-	state.AddCSRFToken(token, expiry)
+	err := state.AddCSRFToken(token, expiry)
+	if err != nil {
+		t.Fatalf("AddCSRFToken() failed: %v", err)
+	}
 
 	valid = state.ValidateAndRemoveCSRFToken(token)
 	if !valid {
@@ -140,11 +143,17 @@ func TestAppState_CleanExpiredCSRFTokens(t *testing.T) {
 
 	// Add expired token
 	expiredToken := "expired-token"
-	state.AddCSRFToken(expiredToken, now.Add(-1*time.Hour))
+	err := state.AddCSRFToken(expiredToken, now.Add(-1*time.Hour))
+	if err != nil {
+		t.Fatalf("AddCSRFToken() failed for expired token: %v", err)
+	}
 
 	// Add valid token
 	validToken := "valid-token"
-	state.AddCSRFToken(validToken, now.Add(1*time.Hour))
+	err = state.AddCSRFToken(validToken, now.Add(1*time.Hour))
+	if err != nil {
+		t.Fatalf("AddCSRFToken() failed for valid token: %v", err)
+	}
 
 	// Clean expired tokens
 	state.CleanExpiredCSRFTokens()
@@ -171,12 +180,18 @@ func TestAppState_CSRFTokenConcurrency(t *testing.T) {
 	done := make(chan bool)
 	for i := 0; i < 10; i++ {
 		go func() {
-			state.AddCSRFToken(token, expiry)
+			err := state.AddCSRFToken(token, expiry)
+			if err != nil {
+				done <- false
+				return
+			}
 			done <- true
 		}()
 	}
 	for i := 0; i < 10; i++ {
-		<-done
+		if !<-done {
+			t.Fatal("AddCSRFToken() failed in concurrent goroutine")
+		}
 	}
 
 	// Should validate once and only once
