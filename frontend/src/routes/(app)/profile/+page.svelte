@@ -186,7 +186,7 @@
 	<title>PVMSS — {$t('user.profile.title')}</title>
 </svelte:head>
 
-<div class="mx-auto max-w-4xl px-4 py-6">
+<div class="mx-auto px-4 py-6 pv-content-width">
 	<!-- Header -->
 	<div class="mb-6">
 		<h1 class="text-2xl font-bold">{$t('user.profile.title')}</h1>

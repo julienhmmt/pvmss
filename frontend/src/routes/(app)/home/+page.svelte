@@ -191,7 +191,7 @@
 	{/if}
 {/snippet}
 
-<div class="mx-auto max-w-7xl px-4 py-6">
+<div class="mx-auto px-4 py-6 pv-content-width">
 	<!-- Header -->
 	<div class="mb-5 flex items-start justify-between">
 		<div>

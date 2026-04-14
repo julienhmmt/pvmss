@@ -151,7 +151,7 @@
 	<title>PVMSS — {$t('nav.searchVm')}</title>
 </svelte:head>
 
-<div class="mx-auto max-w-5xl px-4 py-6">
+<div class="mx-auto px-4 py-6 pv-content-width">
 	<h1 class="mb-5 text-2xl font-bold">{$t('nav.searchVm')}</h1>
 
 	<!-- Search bar -->
