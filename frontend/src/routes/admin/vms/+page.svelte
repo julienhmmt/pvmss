@@ -10,10 +10,11 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as Select from '$lib/components/ui/select';
-	import { getAllVMs, vmAction, deleteVM } from '$lib/api/admin/vms';
+	import { getAllVMsPaginated, vmAction, deleteVM } from '$lib/api/admin/vms';
+	import { getNodes } from '$lib/api/admin/nodes';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { formatBytes, formatCpu, formatUptime, formatPercent } from '$lib/utils/format';
-	import { Desktop, ArrowsClockwise } from 'phosphor-svelte';
+	import { Desktop, ArrowsClockwise, SortAscending, SortDescending } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { VM, VMAction } from '$lib/types/admin';
 
@@ -26,21 +27,27 @@
 	let selectedNode = $state<string>('');
 	let page = $state(1);
 	let perPage = $state(25);
+	let totalVMs = $state(0);
+	let totalPages = $state(1);
+	let hasNext = $state(false);
+	let hasPrev = $state(false);
+	let searchQuery = $state('');
+	let searchTimeout: ReturnType<typeof setTimeout>;
+	let runningTotal = $state(0);
+	let stoppedTotal = $state(0);
+	let nodeNames = $state<string[]>([]);
+	let loadAbort: AbortController | null = null;
+	let sortBy = $state<string>('vmid');
+	let sortOrder = $state<string>('asc');
 
 	let deleteTarget = $state<VM | null>(null);
 	let deleting = $state(false);
 
-	const nodes = $derived([...new Set(vms.map((v) => v.node))].sort());
+	const runningCount = $derived(runningTotal);
+	const stoppedCount = $derived(stoppedTotal);
 
-	const filteredVMs = $derived(selectedNode ? vms.filter((v) => v.node === selectedNode) : vms);
-
-	const runningCount = $derived(filteredVMs.filter((v) => v.status === 'running').length);
-	const stoppedCount = $derived(filteredVMs.filter((v) => v.status === 'stopped').length);
-
-	const totalPages = $derived(Math.max(1, Math.ceil(filteredVMs.length / perPage)));
-	const startIndex = $derived((page - 1) * perPage);
-	const endIndex = $derived(Math.min(startIndex + perPage, filteredVMs.length));
-	const paginatedVMs = $derived(filteredVMs.slice(startIndex, endIndex));
+	const startIndex = $derived((page - 1) * perPage + 1);
+	const endIndex = $derived(Math.min(page * perPage, totalVMs));
 
 	function parseTags(tags: string): string[] {
 		if (!tags) return [];
@@ -53,29 +60,86 @@
 		return '';
 	}
 
-	async function load() {
-		if (vms.length > 0) {
+	async function load(isRefresh = false) {
+		// Cancel any in-flight request to prevent race conditions.
+		if (loadAbort) loadAbort.abort();
+		const abort = new AbortController();
+		loadAbort = abort;
+
+		if (isRefresh) {
 			refreshing = true;
 		} else {
 			loading = true;
 		}
 		error = null;
 		try {
-			vms = await getAllVMs();
-			page = 1;
+			const res = await getAllVMsPaginated({
+				page,
+				limit: perPage,
+				search: searchQuery || undefined,
+				node: selectedNode || undefined,
+				sort_by: sortBy,
+				sort_order: sortOrder,
+			});
+			if (abort.signal.aborted) return;
+			vms = res.vms;
+			totalVMs = res.pagination.total;
+			totalPages = res.pagination.total_pages;
+			hasNext = res.pagination.has_next;
+			hasPrev = res.pagination.has_prev;
+			runningTotal = res.pagination.running_count;
+			stoppedTotal = res.pagination.stopped_count;
 		} catch (e) {
+			if (abort.signal.aborted) return;
 			error = e as Error;
 		} finally {
-			loading = false;
-			refreshing = false;
+			if (!abort.signal.aborted) {
+				loading = false;
+				refreshing = false;
+			}
+			if (loadAbort === abort) loadAbort = null;
 		}
+	}
+
+	function onSearchInput(e: Event): void {
+		clearTimeout(searchTimeout);
+		searchQuery = (e.target as HTMLInputElement).value;
+		searchTimeout = setTimeout(() => {
+			page = 1;
+			load();
+		}, 300);
+	}
+
+	function onNodeChange(value: string): void {
+		selectedNode = value;
+		page = 1;
+		load();
+	}
+
+	function onSortChange(value: string): void {
+		sortBy = value;
+		page = 1;
+		load();
+	}
+
+	function toggleSortOrder(): void {
+		sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+		page = 1;
+		load();
+	}
+
+	function onPerPageChange(v: string | undefined): void {
+		if (!v) return;
+		perPage = Number(v);
+		page = 1;
+		load();
 	}
 
 	async function doAction(vm: VM, action: VMAction) {
 		try {
 			await vmAction(vm.vmid, vm.node, action);
 			toast.success($t('admin.vms.toast.actionSent', { values: { action, vmid: vm.vmid } }));
-			await load();
+			await load(true);
 		} catch (e) {
 			toast.error(
 				$t('admin.vms.toast.actionFailed', {
@@ -93,7 +157,7 @@
 			await deleteVM(vm.vmid);
 			toast.success($t('admin.vms.toast.deleteSuccess', { values: { name: vm.name, vmid: vm.vmid } }));
 			deleteTarget = null;
-			await load();
+			await load(true);
 		} catch (e) {
 			toast.error($t('admin.vms.toast.deleteFailed', { values: { vmid: vm.vmid, error: (e as Error).message } }));
 		} finally {
@@ -104,13 +168,22 @@
 	onMount(() => {
 		load();
 
+		// Fetch node names for the dropdown filter.
+		getNodes()
+			.then((nodes) => { nodeNames = nodes.map((n) => n.name).sort(); })
+			.catch(() => {});
+
 		const autoRefreshTimer = setInterval(() => {
 			if (!document.hidden && !refreshing && !loading) {
-				load();
+				load(true);
 			}
 		}, AUTO_REFRESH_INTERVAL);
 
-		return () => clearInterval(autoRefreshTimer);
+		return () => {
+			clearInterval(autoRefreshTimer);
+			clearTimeout(searchTimeout);
+			if (loadAbort) loadAbort.abort();
+		};
 	});
 </script>
 
@@ -130,7 +203,7 @@
 				<div class="pv-header-stats">
 					<div class="pv-header-stat">
 						<div class="pv-header-stat-label">{$t('admin.vms.title')}</div>
-						<div class="pv-header-stat-value">{filteredVMs.length}</div>
+						<div class="pv-header-stat-value">{totalVMs}</div>
 					</div>
 					{#if runningCount > 0}
 						<div class="pv-header-stat">
@@ -149,7 +222,7 @@
 					class="pv-header-btn"
 					variant="outline"
 					size="sm"
-					onclick={load}
+					onclick={() => load(true)}
 					disabled={loading || refreshing}
 				>
 					<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
@@ -163,32 +236,70 @@
 <LoadingToast visible={refreshing} />
 
 {#if error}
-	<ErrorBanner {error} onRetry={load} />
+	<ErrorBanner {error} onRetry={() => load()} />
 {:else if loading}
 	<LoadingSkeleton variant="table" rows={8} />
-{:else if vms.length === 0}
-	<EmptyState title={$t('admin.vms.noVms')} icon={Desktop} />
+{:else if totalVMs === 0 && !loading}
+	{#if searchQuery || selectedNode}
+		<EmptyState title={$t('admin.vms.noSearchResults')} icon={Desktop} />
+	{:else}
+		<EmptyState title={$t('admin.vms.noVms')} icon={Desktop} />
+	{/if}
 {:else}
 	<!-- Toolbar -->
 	<div class="pv-toolbar">
 		<div class="pv-toolbar-info">
-			{filteredVMs.length}
+			{totalVMs}
 			{$t('admin.vms.title').toLowerCase()}
 			{#if selectedNode}· {selectedNode}{/if}
 		</div>
-		{#if nodes.length > 1}
-			<Select.Root type="single" value={selectedNode} onValueChange={(v) => { selectedNode = v ?? ''; page = 1; }}>
-				<Select.Trigger class="w-[180px] h-8 text-sm">
-					{selectedNode || $t('admin.vms.allNodes')}
+		<div class="flex items-center gap-2">
+			<input
+				type="search"
+				class="h-8 px-3 text-sm border border-border rounded-md bg-background text-foreground outline-none focus:border-primary"
+				placeholder={$t('common.search', { default: 'Search...' })}
+				oninput={onSearchInput}
+				value={searchQuery}
+			/>
+			<Select.Root type="single" value={selectedNode} onValueChange={onNodeChange}>
+				<Select.Trigger class="h-8 text-sm" style="width: 140px;">
+					{#if selectedNode}
+						{selectedNode}
+					{:else}
+						{$t('admin.vms.allNodes')}
+					{/if}
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Item value="">{$t('admin.vms.allNodes')}</Select.Item>
-					{#each nodes as node}
-						<Select.Item value={node}>{node}</Select.Item>
+					{#each nodeNames as nodeName}
+						<Select.Item value={nodeName}>{nodeName}</Select.Item>
 					{/each}
 				</Select.Content>
 			</Select.Root>
-		{/if}
+			<Select.Root type="single" value={sortBy} onValueChange={onSortChange}>
+				<Select.Trigger class="h-8 text-sm" style="width: 130px;">
+					{$t('vms.sort.label')}: {$t(`vms.sort.${sortBy}`)}
+				</Select.Trigger>
+				<Select.Content>
+					<Select.Item value="vmid">{$t('vms.sort.vmid')}</Select.Item>
+					<Select.Item value="name">{$t('vms.sort.name')}</Select.Item>
+					<Select.Item value="status">{$t('vms.sort.status')}</Select.Item>
+					<Select.Item value="cpu">{$t('vms.sort.cpu')}</Select.Item>
+					<Select.Item value="memory">{$t('vms.sort.memory')}</Select.Item>
+				</Select.Content>
+			</Select.Root>
+			<button
+				class="h-8 w-8 flex items-center justify-center border border-border rounded-md bg-background text-foreground hover:bg-accent transition-colors"
+				onclick={toggleSortOrder}
+				title={sortOrder === 'asc' ? $t('vms.sort.asc') : $t('vms.sort.desc')}
+			>
+				{#if sortOrder === 'asc'}
+					<SortAscending class="h-4 w-4" />
+				{:else}
+					<SortDescending class="h-4 w-4" />
+				{/if}
+			</button>
+		</div>
 	</div>
 
 	<div class="pv-table-wrap">
@@ -206,7 +317,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each paginatedVMs as vm}
+				{#each vms as vm}
 					{@const cpuPercent = Math.round(vm.cpu * 100)}
 					{@const ramPercent = formatPercent(vm.mem, vm.maxmem)}
 					{@const isRunning = vm.status === 'running'}
@@ -224,7 +335,7 @@
 								</div>
 								<div>
 									<div class="pv-resource-name">{vm.name}</div>
-									{#if nodes.length > 1 || !selectedNode}
+									{#if !selectedNode}
 										<div class="pv-td-muted text-xs">{vm.node}</div>
 									{/if}
 								</div>
@@ -345,8 +456,8 @@
 	<!-- Pagination -->
 	<div class="flex items-center justify-between pt-4">
 		<p class="text-sm text-muted-foreground">
-			{$t('admin.vms.pagination.showing', {
-				values: { start: startIndex + 1, end: endIndex, total: filteredVMs.length }
+			{$t('vms.pagination.showing', {
+				values: { start: startIndex, end: endIndex, total: totalVMs }
 			})}
 		</p>
 
@@ -354,13 +465,10 @@
 			<Select.Root
 				type="single"
 				value={String(perPage)}
-				onValueChange={(v) => {
-					perPage = Number(v);
-					page = 1;
-				}}
+				onValueChange={onPerPageChange}
 			>
 				<Select.Trigger class="w-[110px]">
-					{$t('admin.vms.pagination.perPage', { values: { count: perPage } })}
+					{$t('vms.pagination.perPage', { values: { count: perPage } })}
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Item value="10">10</Select.Item>
@@ -374,8 +482,8 @@
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={page <= 1}
-					onclick={() => { page = Math.max(1, page - 1); }}
+					disabled={!hasPrev}
+					onclick={() => { page = page - 1; load(); }}
 				>
 					{$t('common.previous')}
 				</Button>
@@ -385,8 +493,8 @@
 				<Button
 					variant="outline"
 					size="sm"
-					disabled={page >= totalPages}
-					onclick={() => { page = Math.min(totalPages, page + 1); }}
+					disabled={!hasNext}
+					onclick={() => { page = page + 1; load(); }}
 				>
 					{$t('common.next')}
 				</Button>

@@ -5,18 +5,33 @@
 	import { toast } from 'svelte-sonner';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { changePassword } from '$lib/api/auth';
-	import { getVMs, type VMSummary } from '$lib/api/vms';
+	import { getVMsPaginated, type VMSummary } from '$lib/api/vms';
 	import { Button } from '$lib/components/ui/button';
+	import * as Select from '$lib/components/ui/select';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
-	import { Play, Stop, ArrowCounterClockwise, UserCircle, Lock, Desktop } from 'phosphor-svelte';
+	import { Play, Stop, ArrowCounterClockwise, UserCircle, Lock, Desktop, SortAscending, SortDescending } from 'phosphor-svelte';
 	import { api } from '$lib/api/client';
 
-	// ── VM list ───────────────────────────────────────────────────────────────
+	// ── VM list state ─────────────────────────────────────────────────────────
 	let vmsLoading = $state(true);
 	let vmsError = $state<Error | null>(null);
 	let vms = $state<VMSummary[]>([]);
 	let actionLoading = $state<Record<number, boolean>>({});
+
+	// Pagination state
+	let currentPage = $state(1);
+	let pageSize = $state(25);
+	let totalVMs = $state(0);
+	let totalPages = $state(1);
+	let hasNext = $state(false);
+	let hasPrev = $state(false);
+	let searchQuery = $state('');
+	let searchTimeout: ReturnType<typeof setTimeout>;
+	let loadAbort: AbortController | null = null;
+	let runningTotal = $state(0);
+	let sortBy = $state<string>('vmid');
+	let sortOrder = $state<string>('asc');
 
 	// ── Password change ───────────────────────────────────────────────────────
 	let currentPassword = $state('');
@@ -27,7 +42,40 @@
 
 	// ── Derived ───────────────────────────────────────────────────────────────
 	const poolName = $derived(auth.isAdmin ? null : `pvmss_${auth.username}`);
-	const runningCount = $derived(vms.filter((v) => v.status === 'running').length);
+	const runningCount = $derived(runningTotal);
+
+	function goToPage(page: number): void {
+		currentPage = page;
+		loadVMs();
+	}
+
+	function onSearchInput(e: Event): void {
+		clearTimeout(searchTimeout);
+		searchQuery = (e.target as HTMLInputElement).value;
+		searchTimeout = setTimeout(() => {
+			currentPage = 1;
+			loadVMs();
+		}, 300);
+	}
+
+	function onSortChange(value: string): void {
+		sortBy = value;
+		currentPage = 1;
+		loadVMs();
+	}
+
+	function toggleSortOrder(): void {
+		sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+		currentPage = 1;
+		loadVMs();
+	}
+
+	function onPageSizeChange(v: string | undefined): void {
+		if (!v) return;
+		pageSize = Number(v);
+		currentPage = 1;
+		loadVMs();
+	}
 
 	// ── Helpers ───────────────────────────────────────────────────────────────
 	function statusClass(status: string): string {
@@ -47,14 +95,36 @@
 
 	// ── Data loading ──────────────────────────────────────────────────────────
 	async function loadVMs(): Promise<void> {
+		// Cancel any in-flight request to prevent race conditions.
+		if (loadAbort) loadAbort.abort();
+		const abort = new AbortController();
+		loadAbort = abort;
+
 		vmsLoading = true;
 		vmsError = null;
 		try {
-			vms = await getVMs();
+			const res = await getVMsPaginated({
+				page: currentPage,
+				limit: pageSize,
+				search: searchQuery || undefined,
+				sort_by: sortBy,
+				sort_order: sortOrder,
+			});
+			if (abort.signal.aborted) return;
+			vms = res.vms;
+			totalVMs = res.pagination.total;
+			totalPages = res.pagination.total_pages;
+			hasNext = res.pagination.has_next;
+			hasPrev = res.pagination.has_prev;
+			runningTotal = res.pagination.running_count;
 		} catch (e) {
+			if (abort.signal.aborted) return;
 			vmsError = e as Error;
 		} finally {
-			vmsLoading = false;
+			if (!abort.signal.aborted) {
+				vmsLoading = false;
+			}
+			if (loadAbort === abort) loadAbort = null;
 		}
 	}
 
@@ -102,7 +172,14 @@
 		}
 	}
 
-	onMount(() => loadVMs());
+	onMount(() => {
+		loadVMs();
+		return () => {
+			clearTimeout(searchTimeout);
+			clearTimeout(reloadTimeout);
+			if (loadAbort) loadAbort.abort();
+		};
+	});
 </script>
 
 <svelte:head>
@@ -142,7 +219,7 @@
 				{#if !vmsLoading}
 					<div class="pv-info-row">
 						<span class="pv-info-label">{$t('user.profile.vmCount')}</span>
-						<span class="pv-info-value">{vms.length} ({runningCount} running)</span>
+						<span class="pv-info-value">{totalVMs} ({runningCount} running)</span>
 					</div>
 				{/if}
 			</div>
@@ -235,9 +312,49 @@
 				<div class="p-4">
 					<LoadingSkeleton variant="table" rows={3} />
 				</div>
-			{:else if vms.length === 0}
-				<p class="p-6 text-center text-sm text-muted-foreground">{$t('user.profile.noVms')}</p>
+			{:else if totalVMs === 0}
+				<p class="p-6 text-center text-sm text-muted-foreground">
+					{#if searchQuery}
+						{$t('user.profile.noSearchResults')}
+					{:else}
+						{$t('user.profile.noVms')}
+					{/if}
+				</p>
 			{:else}
+				<!-- Search & sort bar -->
+				<div class="flex items-center gap-2 p-3 border-b border-border">
+					<input
+						type="search"
+						class="pv-input flex-1"
+						placeholder={$t('common.search', { default: 'Search...' })}
+						oninput={onSearchInput}
+						value={searchQuery}
+					/>
+					<Select.Root type="single" value={sortBy} onValueChange={onSortChange}>
+						<Select.Trigger class="h-8 text-sm" style="width: 130px;">
+							{$t('vms.sort.label')}: {$t(`vms.sort.${sortBy}`)}
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Item value="vmid">{$t('vms.sort.vmid')}</Select.Item>
+							<Select.Item value="name">{$t('vms.sort.name')}</Select.Item>
+							<Select.Item value="status">{$t('vms.sort.status')}</Select.Item>
+							<Select.Item value="cpu">{$t('vms.sort.cpu')}</Select.Item>
+							<Select.Item value="memory">{$t('vms.sort.memory')}</Select.Item>
+						</Select.Content>
+					</Select.Root>
+					<button
+						class="h-8 w-8 flex items-center justify-center border border-border rounded-md bg-background text-foreground hover:bg-accent transition-colors"
+						onclick={toggleSortOrder}
+						title={sortOrder === 'asc' ? $t('vms.sort.asc') : $t('vms.sort.desc')}
+					>
+						{#if sortOrder === 'asc'}
+							<SortAscending class="h-4 w-4" />
+						{:else}
+							<SortDescending class="h-4 w-4" />
+						{/if}
+					</button>
+				</div>
+
 				<div class="pv-table-wrap">
 					<table class="pv-table">
 						<thead>
@@ -307,6 +424,57 @@
 						</tbody>
 					</table>
 				</div>
+
+				<!-- Pagination controls -->
+				{#if totalPages > 1}
+					<div class="flex items-center justify-between px-4 py-3 border-t border-border">
+						<p class="text-sm text-muted-foreground">
+							{$t('vms.pagination.showing', {
+								values: {
+									start: (currentPage - 1) * pageSize + 1,
+									end: Math.min(currentPage * pageSize, totalVMs),
+									total: totalVMs
+								}
+							})}
+						</p>
+						<div class="flex items-center gap-4">
+							<Select.Root
+								type="single"
+								value={String(pageSize)}
+								onValueChange={onPageSizeChange}
+							>
+								<Select.Trigger class="w-[110px]">
+									{$t('vms.pagination.perPage', { values: { count: pageSize } })}
+								</Select.Trigger>
+								<Select.Content>
+									<Select.Item value="10">10 / page</Select.Item>
+									<Select.Item value="25">25 / page</Select.Item>
+									<Select.Item value="50">50 / page</Select.Item>
+									<Select.Item value="100">100 / page</Select.Item>
+								</Select.Content>
+							</Select.Root>
+							<div class="flex items-center gap-2">
+								<button
+									class="pv-action-btn"
+									disabled={!hasPrev}
+									onclick={() => goToPage(currentPage - 1)}
+								>
+									{$t('common.previous')}
+								</button>
+								<span class="text-sm text-muted-foreground">
+									{$t('common.pageOf', { values: { page: currentPage, total: totalPages } })}
+								</span>
+								<button
+									class="pv-action-btn"
+									disabled={!hasNext}
+									onclick={() => goToPage(currentPage + 1)}
+								>
+									{$t('common.next')}
+								</button>
+							</div>
+						</div>
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</div>

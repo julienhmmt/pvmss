@@ -40,6 +40,24 @@ type VMListResponse struct {
 	Total int         `json:"total"`
 }
 
+// PaginationMetadata provides pagination information in API responses.
+type PaginationMetadata struct {
+	Total        int  `json:"total"`
+	Page         int  `json:"page"`
+	Limit        int  `json:"limit"`
+	TotalPages   int  `json:"total_pages"`
+	HasNext      bool `json:"has_next"`
+	HasPrev      bool `json:"has_prev"`
+	RunningCount int  `json:"running_count"`
+	StoppedCount int  `json:"stopped_count"`
+}
+
+// VMListPaginatedResponse wraps a paginated slice of VMSummary.
+type VMListPaginatedResponse struct {
+	VMs        []VMSummary        `json:"vms"`
+	Pagination PaginationMetadata `json:"pagination"`
+}
+
 // VMActionRequest is the body for POST /api/v1/vms/:id/action
 type VMActionRequest struct {
 	Action string `json:"action"` // start|stop|shutdown|reboot|reset
