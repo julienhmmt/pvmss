@@ -1,7 +1,7 @@
 # Makefile pour PVMSS
 # Permet de construire, démarrer, arrêter, nettoyer et tester l'application
 
-.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status frontend-install frontend-build frontend-dev
+.PHONY: help dev dev-logs build docker-build up down restart logs test coverage test-unit test-integration test-routes test-offline test-offline-verbose test-offline-race test-offline-parallel go-lint go-fmt buildkit-start buildkit-stop buildkit-status frontend-install frontend-build frontend-dev frontend-test
 
 # Couleurs pour l'affichage
 BLUE=\033[0;34m
@@ -226,6 +226,11 @@ frontend-dev: ## Démarre le serveur de développement SvelteKit (port 5173, pro
 	@echo "$(BLUE)Démarrage du serveur de développement frontend (port 5173)...$(NC)"
 	@echo "$(BLUE)Proxy API → http://localhost:50000$(NC)"
 	cd $(FRONTEND_DIR) && npm run dev
+
+frontend-test: ## Lance les tests unitaires frontend (vitest)
+	@echo "$(BLUE)Lancement des tests unitaires frontend...$(NC)"
+	cd $(FRONTEND_DIR) && npm run test
+	@echo "$(GREEN)✓ Tests frontend terminés$(NC)"
 
 # =============================================================================
 # Commandes de développement rapide
