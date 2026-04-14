@@ -134,8 +134,10 @@
 		(settings?.vm_profiles ?? []).find((p) => p.id === selectedProfileId) ?? null
 	);
 
-	const quotaBlocked = $derived(() =>
-		settings !== null && settings.remaining_vms !== -1 && settings.remaining_vms <= 0
+	let quotaBlocked = $state(false);
+
+	const currentVMCount = $derived(() =>
+		settings !== null ? settings.max_vm_per_user - settings.remaining_vms : 0
 	);
 
 	const simpleDetailsValid = $derived(() => vmName.trim().length > 0 && vmNode !== '' && vmStorage !== '');
@@ -155,6 +157,7 @@
 	onMount(async () => {
 		try {
 			settings = await getVMCreateSettings();
+			quotaBlocked = settings !== null && settings.remaining_vms !== -1 && settings.remaining_vms <= 0;
 			applyDefaults();
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -513,14 +516,13 @@
 				<p class="text-muted-foreground">
 					{$t('vmCreate.quotaReached', {
 						values: {
-							current: String(settings.max_vm_per_user),
+							current: String(settings.max_vm_per_user - settings.remaining_vms),
 							max: String(settings.max_vm_per_user)
 						}
 					})}
 				</p>
 			</CardContent>
 		</Card>
-
 	{:else if creationMode === 'simple'}
 		<!-- ══════════════════════ SIMPLE MODE ══════════════════════ -->
 
@@ -772,9 +774,9 @@
 					</div>
 					<Separator />
 
-					{#if selectedProfile}
-						{@const ProfileIcon = PROFILE_ICONS[selectedProfile.icon] ?? Globe}
-						{@const confirmColors = PROFILE_COLOR_CLASSES[selectedProfile.color] ?? PROFILE_COLOR_CLASSES['gray']}
+					{#if selectedProfile()}
+						{@const ProfileIcon = PROFILE_ICONS[selectedProfile().icon] ?? Globe}
+						{@const confirmColors = PROFILE_COLOR_CLASSES[selectedProfile().color] ?? PROFILE_COLOR_CLASSES['gray']}
 						<!-- Profile + VM summary -->
 						<div class="rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
 							<div class="mb-4 flex items-center gap-3">
@@ -783,10 +785,10 @@
 								</div>
 								<div>
 									<p class="text-sm font-semibold">
-										{selectedProfile.name}
+										{selectedProfile().name}
 									</p>
 									<p class="text-muted-foreground text-xs">
-										{selectedProfile.description}
+										{selectedProfile().description}
 									</p>
 								</div>
 							</div>
@@ -908,7 +910,7 @@
 		<!-- Step content -->
 		<Card>
 			<CardContent class="space-y-5 p-6">
-				{#if currentStepName === 'base'}
+				{#if currentStepName() === 'base'}
 					<!-- STEP 1: BASE -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.base.title')}</h2>
 					<Separator />
@@ -1027,7 +1029,7 @@
 							</div>
 						{/if}
 					</div>
-				{:else if currentStepName === 'hardware'}
+				{:else if currentStepName() === 'hardware'}
 					<!-- STEP 2: HARDWARE -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.hardware.title')}</h2>
 					<Separator />
@@ -1112,7 +1114,7 @@
 							</div>
 						</div>
 					</div>
-				{:else if currentStepName === 'disk'}
+				{:else if currentStepName() === 'disk'}
 					<!-- STEP 3: DISK -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.disk.title')}</h2>
 					<Separator />
@@ -1164,7 +1166,7 @@
 							</p>
 						{/if}
 					</div>
-				{:else if currentStepName === 'network'}
+				{:else if currentStepName() === 'network'}
 					<!-- STEP 4: NETWORK -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.network.title')}</h2>
 					<Separator />
@@ -1297,7 +1299,7 @@
 							</p>
 						{/if}
 					</div>
-				{:else if currentStepName === 'cloudinit'}
+				{:else if currentStepName() === 'cloudinit'}
 					<!-- STEP 5: CLOUD-INIT -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.cloudinit.title')}</h2>
 					<Separator />
@@ -1420,7 +1422,7 @@
 							</div>
 						</div>
 					{/if}
-				{:else if currentStepName === 'review'}
+				{:else if currentStepName() === 'review'}
 					<!-- STEP 6: REVIEW -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.review.title')}</h2>
 					<p class="text-muted-foreground text-sm">{$t('vmCreate.review.subtitle')}</p>
@@ -1616,11 +1618,11 @@
 
 		<!-- Navigation buttons -->
 		<div class="flex items-center justify-between">
-			<Button variant="outline" onclick={goPrev} disabled={isFirstStep}>
+			<Button variant="outline" onclick={goPrev} disabled={isFirstStep()}>
 				<CaretLeft class="mr-1 h-4 w-4" />
 				{$t('common.previous')}
 			</Button>
-			{#if isLastStep}
+			{#if isLastStep()}
 				<Button
 					onclick={handleCreate}
 					disabled={creating || !isStepValid('base') || !isStepValid('hardware')}
@@ -1634,7 +1636,7 @@
 					{/if}
 				</Button>
 			{:else}
-				<Button onclick={goNext} disabled={!isStepValid(currentStepName)}>
+				<Button onclick={goNext} disabled={!isStepValid(currentStepName())}>
 					{$t('common.next')}
 					<CaretRight class="ml-1 h-4 w-4" />
 				</Button>
