@@ -8,7 +8,7 @@ import (
 // TestHandlerCollection provides minimal handlers for testing
 type TestHandlerCollection struct{}
 
-func setTestAdminSessionCookie(w http.ResponseWriter, r *http.Request) {
+func setTestAdminSessionCookie(w http.ResponseWriter, _ *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "admin_session",
 		Value:    "admin",

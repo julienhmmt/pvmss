@@ -258,7 +258,7 @@ func storeNodeUsageCache(usage map[string]*NodeResourceUsage) {
 }
 
 // returnLocalizedError returns a simple error (no i18n)
-func returnLocalizedError(messageID string, templateData map[string]interface{}, fallbackFormat string, args ...interface{}) error {
+func returnLocalizedError(_ string, _ map[string]interface{}, fallbackFormat string, args ...interface{}) error {
 	return fmt.Errorf(fallbackFormat, args...)
 }
 
