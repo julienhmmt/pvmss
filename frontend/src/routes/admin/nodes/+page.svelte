@@ -141,6 +141,8 @@
 	</div>
 </div>
 
+<div class="pv-content-width">
+
 <LoadingToast visible={refreshing} />
 
 {#if error}
@@ -258,3 +260,5 @@
 		{/each}
 	</div>
 {/if}
+
+</div>

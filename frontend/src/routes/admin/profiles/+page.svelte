@@ -218,6 +218,8 @@
 	</div>
 </div>
 
+<div class="pv-content-width">
+
 <LoadingToast visible={refreshing} />
 
 {#if error}
@@ -488,3 +490,5 @@
 	onConfirm={handleDelete}
 	onCancel={() => (deleteTarget = null)}
 />
+
+</div>

@@ -9,7 +9,7 @@
 	<title>PVMSS</title>
 </svelte:head>
 
-<div class="mx-auto max-w-4xl px-6 py-16 md:py-24">
+<div class="mx-auto px-6 py-16 md:py-24 pv-content-width">
 
 	<!-- Hero -->
 	<div class="mb-16 text-center">
