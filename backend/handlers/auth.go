@@ -184,7 +184,7 @@ func (h *AuthHandler) LogoutHandler(w http.ResponseWriter, r *http.Request, _ ht
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
+func (h *AuthHandler) renderAdminLoginForm(w http.ResponseWriter, r *http.Request, _ string) {
 	// Login is now handled by the SvelteKit SPA at /login.
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
@@ -777,7 +777,7 @@ func ensureLocalPath(urlStr string) string {
 	return result
 }
 
-func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, errorMsg string) {
+func (h *AuthHandler) renderLoginForm(w http.ResponseWriter, r *http.Request, _ string) {
 	// Login is now handled by the SvelteKit SPA at /login.
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
