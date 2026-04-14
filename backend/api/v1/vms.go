@@ -1,9 +1,11 @@
 package apiv1
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -41,38 +43,37 @@ func restyClient() (*proxmox.RestyClient, error) {
 // pool (pvmss_<username>) that are also tagged "pvmss".
 func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	if h.isOffline() {
-		writeJSON(w, VMListResponse{VMs: []VMSummary{}, Total: 0})
+		writeJSON(w, VMListPaginatedResponse{
+			VMs:        []VMSummary{},
+			Pagination: PaginationMetadata{Total: 0, Page: 1, Limit: 25, TotalPages: 1},
+		})
 		return
 	}
 
-	username := usernameFromCtx(r)
-	isAdmin := isAdminFromCtx(r)
-
-	client, err := restyClient()
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("api/v1: failed to create resty client for ListVMs")
-		errInternal(w)
-		return
+	// Parse pagination parameters.
+	page := parseIntParam(r.URL.Query().Get("page"), 1)
+	limit := parseIntParam(r.URL.Query().Get("limit"), 25)
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 25
+	}
+	search := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("search")))
+	sortBy := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sort_by")))
+	sortOrder := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sort_order")))
+	if sortBy == "" {
+		sortBy = "vmid"
+	}
+	if sortOrder != "desc" {
+		sortOrder = "asc"
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-	defer cancel()
-
-	allVMs, err := proxmox.GetVMsResty(ctx, client)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("api/v1: GetVMsResty failed")
-		errInternal(w)
-		return
-	}
-
-	// For non-admin users, restrict to VMs in their pool (pvmss_<username>).
-	var poolVMIDs map[int]bool
-	if !isAdmin && username != "" {
-		poolVMIDs = fetchPoolVMIDs(ctx, client, "pvmss_"+username)
-	}
-
-	// Optional search/filter params: ?q=, ?type=name|tag|vmid, ?status=, ?node=
+	// Legacy search params kept for backward compatibility (search/vms route).
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
+	if q != "" && search == "" {
+		search = q
+	}
 	filterType := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("type")))
 	if filterType == "" {
 		filterType = strings.ToLower(strings.TrimSpace(r.URL.Query().Get("filter")))
@@ -80,48 +81,65 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	filterStatus := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
 	filterNode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("node")))
 
-	summaries := make([]VMSummary, 0, len(allVMs))
-	for _, vm := range allVMs {
-		// Pool filter: non-admin users see only their pool's VMs.
-		if poolVMIDs != nil && !poolVMIDs[vm.VMID] {
-			continue
-		}
-		// Tag filter: VM must carry the "pvmss" tag.
-		if !hasTag(vm.Tags, "pvmss") {
-			continue
-		}
-		// Search filter: match by type (name|tag|vmid) or all three when unspecified.
-		if q != "" {
-			vmidStr := strconv.Itoa(vm.VMID)
-			var matched bool
-			switch filterType {
-			case "name":
-				matched = strings.Contains(strings.ToLower(vm.Name), q)
-			case "tag":
-				matched = containsTagSubstring(vm.Tags, q)
-			case "vmid":
-				matched = strings.Contains(vmidStr, q)
-			default:
-				matched = strings.Contains(strings.ToLower(vm.Name), q) ||
-					strings.Contains(vmidStr, q) ||
-					containsTagSubstring(vm.Tags, q)
-			}
-			if !matched {
+	username := usernameFromCtx(r)
+	isAdmin := isAdminFromCtx(r)
+
+	var summaries []VMSummary
+
+	// For admin users, try the snapshot cache first to avoid a live Proxmox call.
+	// Non-admin users need pool filtering which requires live data (SnapshotVM
+	// lacks pool membership), so they always use the live API path.
+	snapshot := h.state.GetProxmoxSnapshot()
+	if isAdmin && snapshot != nil {
+		for _, vm := range snapshot.VMs {
+			if !filterUserVM(vm.Tags, vm.Node, vm.VMID, vm.Name, "", filterNode, search, filterType) {
 				continue
 			}
+			if filterStatus != "" && !strings.EqualFold(vm.Status, filterStatus) {
+				continue
+			}
+			summaries = append(summaries, snapshotVMToSummary(vm))
 		}
-		// Status filter.
-		if filterStatus != "" && !strings.EqualFold(vm.Status, filterStatus) {
-			continue
+	} else {
+		client, err := restyClient()
+		if err != nil {
+			logger.Get().Error().Err(err).Msg("api/v1: failed to create resty client for ListVMs")
+			errInternal(w)
+			return
 		}
-		// Node filter.
-		if filterNode != "" && !strings.EqualFold(vm.Node, filterNode) {
-			continue
+
+		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+		defer cancel()
+
+		allVMs, err := proxmox.GetVMsResty(ctx, client)
+		if err != nil {
+			logger.Get().Error().Err(err).Msg("api/v1: GetVMsResty failed")
+			errInternal(w)
+			return
 		}
-		summaries = append(summaries, vmToSummary(vm))
+
+		var poolVMIDs map[int]bool
+		if !isAdmin && username != "" {
+			poolVMIDs = fetchPoolVMIDs(ctx, client, "pvmss_"+username)
+		}
+
+		for _, vm := range allVMs {
+			if poolVMIDs != nil && !poolVMIDs[vm.VMID] {
+				continue
+			}
+			if !filterUserVM(vm.Tags, vm.Node, vm.VMID, vm.Name, "", filterNode, search, filterType) {
+				continue
+			}
+			if filterStatus != "" && !strings.EqualFold(vm.Status, filterStatus) {
+				continue
+			}
+			summaries = append(summaries, vmToSummary(vm))
+		}
 	}
 
-	writeJSON(w, VMListResponse{VMs: summaries, Total: len(summaries)})
+	validateVMSortBy(sortBy)
+	sortVMs(summaries, sortBy, sortOrder)
+	writeJSON(w, paginateVMs(summaries, page, limit))
 }
 
 // GetVM handles GET /api/v1/vms/:id.
@@ -288,6 +306,55 @@ func containsTagSubstring(tags, sub string) bool {
 	return false
 }
 
+// filterUserVM returns true if the VM passes tag, node, and search filters.
+// filterType controls the search scope: "name", "tag", "vmid", or "" for all.
+func filterUserVM(tags, node string, vmid int, name, filterPool, filterNode, search, filterType string) bool {
+	if !hasTag(tags, "pvmss") {
+		return false
+	}
+	if filterNode != "" && !strings.EqualFold(node, filterNode) {
+		return false
+	}
+	if search != "" {
+		vmidStr := strconv.Itoa(vmid)
+		var matched bool
+		switch filterType {
+		case "name":
+			matched = strings.Contains(strings.ToLower(name), search)
+		case "tag":
+			matched = containsTagSubstring(tags, search)
+		case "vmid":
+			matched = strings.Contains(vmidStr, search)
+		default:
+			matched = strings.Contains(strings.ToLower(name), search) ||
+				strings.Contains(vmidStr, search) ||
+				containsTagSubstring(tags, search)
+		}
+		if !matched {
+			return false
+		}
+	}
+	return true
+}
+
+// snapshotVMToSummary converts a state.SnapshotVM to the API VMSummary.
+// SnapshotVM lacks live metrics (CPU, Mem, Uptime, Disk) — these are zeroed.
+func snapshotVMToSummary(vm state.SnapshotVM) VMSummary {
+	return VMSummary{
+		VMID:     vm.VMID,
+		Name:     vm.Name,
+		Node:     vm.Node,
+		Status:   vm.Status,
+		CPU:      0,
+		CPUs:     vm.Cores,
+		MemMB:    0,
+		MaxMemMB: vm.MemoryMB,
+		DiskMB:   0,
+		Uptime:   0,
+		Tags:     vm.Tags,
+	}
+}
+
 // vmToSummary converts a proxmox.VM to the API VMSummary.
 // Proxmox reports Mem/MaxMem/MaxDisk in bytes; we convert to MB.
 func vmToSummary(vm proxmox.VM) VMSummary {
@@ -304,5 +371,139 @@ func vmToSummary(vm proxmox.VM) VMSummary {
 		DiskMB:   vm.MaxDisk / bytesPerMB,
 		Uptime:   vm.Uptime,
 		Tags:     vm.Tags,
+	}
+}
+
+// parseIntParam parses a string query param as int, returning defaultValue on error.
+func parseIntParam(s string, defaultValue int) int {
+	if s == "" {
+		return defaultValue
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil || i < 0 {
+		return defaultValue
+	}
+	return i
+}
+
+// validVMSortKeys lists accepted sort_by values for the user VMs endpoint.
+var validVMSortKeys = map[string]bool{"vmid": true, "name": true, "status": true, "cpu": true, "memory": true}
+
+// validateVMSortBy logs a warning for unrecognised sort keys.
+func validateVMSortBy(sortBy string) {
+	if sortBy != "" && !validVMSortKeys[sortBy] {
+		logger.Get().Warn().Str("sort_by", sortBy).Str("endpoint", "vms").Msg("Unrecognised sort_by value; falling back to vmid")
+	}
+}
+
+// paginateVMs slices summaries based on page/limit and builds the paginated response.
+func paginateVMs(summaries []VMSummary, page, limit int) VMListPaginatedResponse {
+	total := len(summaries)
+	running := 0
+	stopped := 0
+	for _, s := range summaries {
+		switch s.Status {
+		case "running":
+			running++
+		case "stopped":
+			stopped++
+		}
+	}
+	totalPages := (total + limit - 1) / limit
+	if totalPages == 0 {
+		totalPages = 1
+	}
+	if page < 1 {
+		page = 1
+	}
+	if page > totalPages {
+		page = totalPages
+	}
+	offset := (page - 1) * limit
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	var paged []VMSummary
+	if offset < total {
+		paged = summaries[offset:end]
+	} else {
+		paged = []VMSummary{}
+	}
+	return VMListPaginatedResponse{
+		VMs: paged,
+		Pagination: PaginationMetadata{
+			Total:        total,
+			Page:         page,
+			Limit:        limit,
+			TotalPages:   totalPages,
+			HasNext:      page < totalPages,
+			HasPrev:      page > 1,
+			RunningCount: running,
+			StoppedCount: stopped,
+		},
+	}
+}
+
+// sortVMs sorts summaries in-place by the given field and order.
+func sortVMs(vms []VMSummary, sortBy, sortOrder string) {
+	ascending := sortOrder != "desc"
+	switch sortBy {
+	case "name":
+		slices.SortFunc(vms, func(a, b VMSummary) int {
+			cmp := strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
+			if ascending {
+				return cmp
+			}
+			return -cmp
+		})
+	case "status":
+		slices.SortFunc(vms, func(a, b VMSummary) int {
+			cmp := strings.Compare(a.Status, b.Status)
+			if ascending {
+				return cmp
+			}
+			return -cmp
+		})
+	case "cpu":
+		slices.SortFunc(vms, func(a, b VMSummary) int {
+			if a.CPU < b.CPU {
+				if ascending {
+					return -1
+				}
+				return 1
+			}
+			if a.CPU > b.CPU {
+				if ascending {
+					return 1
+				}
+				return -1
+			}
+			return 0
+		})
+	case "memory":
+		slices.SortFunc(vms, func(a, b VMSummary) int {
+			if a.MaxMemMB < b.MaxMemMB {
+				if ascending {
+					return -1
+				}
+				return 1
+			}
+			if a.MaxMemMB > b.MaxMemMB {
+				if ascending {
+					return 1
+				}
+				return -1
+			}
+			return 0
+		})
+	default: // "vmid" and fallback
+		slices.SortFunc(vms, func(a, b VMSummary) int {
+			c := cmp.Compare(a.VMID, b.VMID)
+			if ascending {
+				return c
+			}
+			return -c
+		})
 	}
 }

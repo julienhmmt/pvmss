@@ -133,6 +133,7 @@
     "vms": {
       "title": "Machines virtuelles",
       "noVms": "Aucune machine virtuelle trouvée",
+      "noSearchResults": "Aucune machine virtuelle ne correspond à votre recherche.",
       "vmid": "VMID",
       "tags": "Tags",
       "cpus": "CPUs",
@@ -140,10 +141,6 @@
       "cpu": "CPU",
       "uptime": "Disponibilité",
       "allNodes": "Tous les nœuds",
-      "pagination": {
-        "showing": "Affichage de {start} à {end} sur {total} VMs",
-        "perPage": "{count} / page"
-      },
       "actions": {
         "start": "Démarrer",
         "shutdown": "Arrêter",
@@ -365,6 +362,7 @@
       "vmCount": "Machines virtuelles",
       "myVms": "Mes machines virtuelles",
       "noVms": "Aucune machine virtuelle",
+      "noSearchResults": "Aucune machine virtuelle ne correspond à votre recherche.",
       "changePassword": "Changer le mot de passe",
       "currentPassword": "Mot de passe actuel",
       "newPassword": "Nouveau mot de passe",
@@ -416,6 +414,20 @@
     "noVms": "Aucune machine virtuelle trouvée",
     "selected": "{count} sélectionnée(s)",
     "clearSelection": "Effacer",
+    "pagination": {
+      "showing": "Affichage de {start} à {end} sur {total} VMs",
+      "perPage": "{count} / page"
+    },
+    "sort": {
+      "label": "Trier par",
+      "vmid": "ID VM",
+      "name": "Nom",
+      "status": "Statut",
+      "cpu": "CPU",
+      "memory": "Mémoire",
+      "asc": "Croissant",
+      "desc": "Décroissant"
+    },
     "actions": {
       "start": "Démarrer",
       "shutdown": "Arrêter",
