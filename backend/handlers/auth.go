@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	pathpkg "path"
 	"strings"
 	"time"
@@ -247,8 +246,9 @@ func (h *AuthHandler) handleAdminLogin(w http.ResponseWriter, r *http.Request, _
 		return
 	}
 
-	// Get admin password hash from environment
-	adminHash := os.Getenv("ADMIN_PASSWORD_HASH")
+	// Get admin password hash from environment configuration
+	envCfg := h.stateManager.GetEnvConfig()
+	adminHash := envCfg.AdminPasswordHash
 	if adminHash == "" {
 		ctx.Log.Error().Msg("ADMIN_PASSWORD_HASH is not set in environment variables")
 		http.Error(w, "SERVER_CONFIG_ERROR", http.StatusInternalServerError)
@@ -369,8 +369,9 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request, _ http
 	}
 
 	// Create a new Proxmox client for user authentication
-	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
-	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
+	envCfg := h.stateManager.GetEnvConfig()
+	proxmoxURL := envCfg.ProxmoxURL
+	insecureSkip := !envCfg.ProxmoxSSLVerify
 
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL is not configured")
@@ -507,8 +508,9 @@ func (h *AuthHandler) handleProxmoxAdminLogin(w http.ResponseWriter, r *http.Req
 	}
 
 	// Create a new Proxmox client for admin authentication
-	proxmoxURL := strings.TrimSpace(os.Getenv("PROXMOX_URL"))
-	insecureSkip := strings.TrimSpace(os.Getenv("PROXMOX_VERIFY_SSL")) == "false"
+	envCfg := h.stateManager.GetEnvConfig()
+	proxmoxURL := envCfg.ProxmoxURL
+	insecureSkip := !envCfg.ProxmoxSSLVerify
 
 	if proxmoxURL == "" {
 		log.Error().Msg("PROXMOX_URL is not configured")

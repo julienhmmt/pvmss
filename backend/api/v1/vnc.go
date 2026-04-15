@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -115,7 +114,8 @@ func (h *VNCHandler) ConsoleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	proxmoxURL := os.Getenv("PROXMOX_URL")
+	envCfg := h.state.GetEnvConfig()
+	proxmoxURL := envCfg.ProxmoxURL
 	if proxmoxURL == "" {
 		http.Error(w, "server configuration error", http.StatusInternalServerError)
 		return
@@ -128,11 +128,11 @@ func (h *VNCHandler) ConsoleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenName := os.Getenv("PROXMOX_API_TOKEN_NAME")
-	tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
+	tokenName := envCfg.ProxmoxAPITokenName
+	tokenValue := envCfg.ProxmoxAPITokenValue
 	authHeader := fmt.Sprintf("PVEAPIToken=%s=%s", tokenName, tokenValue)
 
-	if err := proxyVNCWebSocketWithToken(w, r, proxmoxWSURL, authHeader); err != nil {
+	if err := proxyVNCWebSocketWithToken(w, r, proxmoxWSURL, authHeader, !envCfg.ProxmoxSSLVerify); err != nil {
 		logger.Get().Warn().Err(err).Str("vmid", vmidStr).Msg("api/v1: VNC WebSocket proxy closed with error")
 	}
 }
@@ -163,7 +163,7 @@ func buildVNCWebSocketURL(proxmoxURL, node, vmid string, port int, vncticket str
 
 // proxyVNCWebSocketWithToken upgrades the HTTP connection to a WebSocket and proxies
 // traffic to Proxmox using API token authentication for the Proxmox handshake.
-func proxyVNCWebSocketWithToken(w http.ResponseWriter, r *http.Request, proxmoxWSURL, authHeader string) error {
+func proxyVNCWebSocketWithToken(w http.ResponseWriter, r *http.Request, proxmoxWSURL, authHeader string, insecureSkipVerify bool) error {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  4096,
 		WriteBufferSize: 4096,
@@ -193,7 +193,6 @@ func proxyVNCWebSocketWithToken(w http.ResponseWriter, r *http.Request, proxmoxW
 	}
 	defer func() { _ = clientConn.Close() }()
 
-	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
 	dialer := websocket.Dialer{
 		TLSClientConfig:  &tls.Config{InsecureSkipVerify: insecureSkipVerify}, // #nosec G402 — controlled by PROXMOX_VERIFY_SSL
 		HandshakeTimeout: 10 * time.Second,

@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 
+	envpkg "pvmss/env"
 	"pvmss/proxmox"
 )
 
@@ -46,6 +47,10 @@ type StateManager interface {
 	AddCSRFToken(token string, expiry time.Time) error
 	ValidateAndRemoveCSRFToken(token string) bool
 	CleanExpiredCSRFTokens()
+
+	// Environment configuration
+	GetEnvConfig() *envpkg.EnvConfig
+	SetEnvConfig(cfg *envpkg.EnvConfig)
 
 	// Frontend configuration
 	GetFrontendPath() string

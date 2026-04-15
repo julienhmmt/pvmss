@@ -216,17 +216,11 @@ func buildPublicMiddleware() func(http.Handler) http.Handler {
 }
 
 // buildAPIMiddleware assembles the middleware stack for /api/v1/ routes.
-// It loads sessions (needed by /api/v1/auth/exchange) but skips CSRF validation
-// because JSON API clients authenticate via JWT, not CSRF tokens.
+// JWT-authenticated; no session or CSRF needed.
 func buildAPIMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, isTestEnv bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		handler := next
 		handler = stateManagerContextMiddleware(sm)(handler)
-
-		sessionManager := sm.GetSessionManager()
-		if sessionManager != nil {
-			handler = sessionManager.LoadAndSave(handler)
-		}
 		if !isTestEnv {
 			handler = middleware.RateLimitMiddleware(rateLimiter)(handler)
 		}

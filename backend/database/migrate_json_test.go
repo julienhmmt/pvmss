@@ -112,7 +112,6 @@ func TestMigrateFromJSON_FullSettings_SummaryCountsMatch(t *testing.T) {
 	assert.Equal(t, 3, summary.TagsCount)
 	assert.Equal(t, 1, summary.CloudInitCount)
 	assert.Equal(t, 1, summary.VMProfilesCount)
-	assert.False(t, summary.HasJWTSecret)
 }
 
 func TestMigrateFromJSON_DataReadableAfterMigration(t *testing.T) {
@@ -202,35 +201,6 @@ func TestMigrateFromJSON_SFTPConfigReadableAfterMigration(t *testing.T) {
 	assert.Equal(t, src.CloudInitSFTP.Host, sftp.Host)
 	assert.Equal(t, src.CloudInitSFTP.Port, sftp.Port)
 	assert.Equal(t, src.CloudInitSFTP.SnippetBaseDir, sftp.RemotePath)
-}
-
-// ── JWT secret handling ───────────────────────────────────────────────────────
-
-func TestMigrateFromJSON_JWTSecret_DetectedNotMigrated(t *testing.T) {
-	db := openTestDB(t)
-	src := fullJSONSettings()
-	src.JWTSecret = "super-secret-jwt-signing-key-at-least-32-chars!!"
-
-	summary, err := database.MigrateFromJSON(db, src, "migration:settings.json")
-	require.NoError(t, err)
-	assert.True(t, summary.HasJWTSecret, "HasJWTSecret should be true")
-
-	entries, err := db.ListAuditLog("", 100, 0)
-	require.NoError(t, err)
-	for _, e := range entries {
-		assert.NotContains(t, e.NewValue, src.JWTSecret, "JWT secret must not appear in audit_log")
-		assert.NotContains(t, e.OldValue, src.JWTSecret, "JWT secret must not appear in audit_log")
-	}
-}
-
-func TestMigrateFromJSON_NoJWTSecret_HasJWTSecretFalse(t *testing.T) {
-	db := openTestDB(t)
-	src := fullJSONSettings()
-	src.JWTSecret = ""
-
-	summary, err := database.MigrateFromJSON(db, src, "migration:settings.json")
-	require.NoError(t, err)
-	assert.False(t, summary.HasJWTSecret)
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -397,7 +367,6 @@ func TestMigrateFromJSON_RealSettingsFixture(t *testing.T) {
 		"max_disk_per_vm": 4,
 		"max_vm_per_user": 5,
 		"allow_custom_yaml": true,
-		"jwt_secret": "example-secret-do-not-use-in-production-xx",
 		"cloudinit_sftp": {
 			"enabled": false,
 			"host": "",
@@ -423,7 +392,6 @@ func TestMigrateFromJSON_RealSettingsFixture(t *testing.T) {
 	assert.Equal(t, 1, summary.ISOsCount)
 	assert.Equal(t, 1, summary.VMBRsCount)
 	assert.Equal(t, 1, summary.TagsCount)
-	assert.True(t, summary.HasJWTSecret)
 
 	lim, err := db.GetVMLimits()
 	require.NoError(t, err)

@@ -94,7 +94,6 @@ type VMSettingsResponse struct {
 	AvailableTags     []string        `json:"available_tags"`
 	AvailableStorages []StorageOption `json:"available_storages"`
 	Limits            LimitsInfo      `json:"limits"`
-	MaxSnapshots      int             `json:"max_snapshots"`
 }
 
 type ISOOption struct {
@@ -126,6 +125,7 @@ type LimitsInfo struct {
 	MinDiskGB     int `json:"min_disk_gb"`
 	MaxDiskGB     int `json:"max_disk_gb"`
 	MaxDisksPerVM int `json:"max_disks_per_vm"`
+	MaxSnapshots  int `json:"max_snapshots"`
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -836,7 +836,6 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 		AvailableVMBRs:    vmbrs,
 		AvailableTags:     tags,
 		AvailableStorages: storages,
-		MaxSnapshots:      settings.Limits.MaxSnapshots,
 		Limits: LimitsInfo{
 			MinSockets:    settings.Limits.VM.Sockets.Min,
 			MaxSockets:    settings.Limits.VM.Sockets.Max,
@@ -847,6 +846,7 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 			MinDiskGB:     settings.Limits.VM.Disk.Min,
 			MaxDiskGB:     settings.Limits.VM.Disk.Max,
 			MaxDisksPerVM: settings.MaxDiskPerVM,
+			MaxSnapshots:  settings.Limits.MaxSnapshots,
 		},
 	}
 	writeJSON(w, resp)

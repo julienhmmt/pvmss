@@ -8,15 +8,17 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
 	"time"
 
 	apiv1 "pvmss/api/v1"
 	"pvmss/constants"
+	envpkg "pvmss/env"
 	"pvmss/handlers"
 	"pvmss/logger"
+	"pvmss/proxmox"
 	"pvmss/security"
+	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 
 	"github.com/joho/godotenv"
@@ -25,50 +27,48 @@ import (
 func main() {
 	stateManager := state.MakeAppState()
 
-	initLogger()
-
-	// Log startup with environment context
-	env := os.Getenv("PVMSS_ENV")
-	if env == "" {
-		env = "production"
+	// Load .env before validation so env vars are available.
+	if err := godotenv.Load("../.env"); err != nil {
+		// Pre-init logger with defaults so we can log the warning.
+		logger.Init(constants.DefaultLogLevel)
+		logger.Get().Warn().Msg("No .env file found, using environment variables")
 	}
-	offlineMode := strings.ToLower(os.Getenv("PVMSS_OFFLINE")) == "true"
+
+	// Load and validate all required environment variables (fail-fast).
+	envCfg, err := envpkg.LoadAndValidate()
+	if err != nil {
+		logger.Init(constants.DefaultLogLevel)
+		logger.Get().Fatal().Err(err).Msg("Environment configuration invalid")
+	}
+
+	// Initialise logger with the validated log level from EnvConfig.
+	logger.Init(envCfg.LogLevel)
+
+	// Store EnvConfig on the state manager so all handlers can access it.
+	stateManager.SetEnvConfig(envCfg)
+
+	// Also store in proxmox package for FromEnv convenience functions.
+	proxmox.SetEnvConfig(envCfg)
+
+	// Configure security middleware with the validated environment.
+	securityMiddleware.SetProductionMode(envCfg.Environment)
 
 	logger.Get().Info().
 		Str("event_category", "system").
 		Str("event_type", "startup").
-		Str("environment", env).
-		Bool("offline_mode", offlineMode).
+		Str("environment", envCfg.Environment).
+		Bool("offline_mode", envCfg.Offline).
+		Str("db_path", envCfg.DBPath).
+		Str("log_level", envCfg.LogLevel).
 		Msg("Starting PVMSS")
 
-	if err := godotenv.Load("../.env"); err != nil {
-		logger.Get().Warn().Msg("No .env file found, using environment variables")
-	}
-
-	// Validate required environment variables for security
-	if err := security.ValidateRequiredEnvVars(); err != nil {
-		logger.Get().Fatal().Err(err).Msg("Environment validation failed - check your configuration")
-	}
-
 	logger.Get().Debug().Msg("Starting application initialization")
-	if err := initializeApp(stateManager); err != nil {
+	if err := initializeApp(stateManager, envCfg); err != nil {
 		logger.Get().Fatal().Err(err).Msg("Failed to initialize application")
 	}
 	logger.Get().Debug().Msg("Application initialization completed")
 
-	sessionManager, err := security.InitSecurity()
-	if err != nil {
-		logger.Get().Fatal().Err(err).Msg("Failed to initialize security")
-	}
-
-	if err := stateManager.SetSessionManager(sessionManager); err != nil {
-		logger.Get().Fatal().Err(err).Msg("Failed to set session manager")
-	}
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = constants.DefaultPort
-	}
+	port := envCfg.Port
 
 	httpHandler, router := handlers.InitHandlers(stateManager)
 	apiv1.RegisterRoutes(router, stateManager)
@@ -121,33 +121,24 @@ func main() {
 	}
 }
 
-func initLogger() {
-	level := os.Getenv("LOG_LEVEL")
-	if level == "" {
-		level = constants.DefaultLogLevel
+func initializeApp(stateManager state.StateManager, envCfg *envpkg.EnvConfig) error {
+	sessionManager, err := security.NewSessionManager(envCfg.SessionSecret, envCfg.Environment)
+	if err != nil {
+		return fmt.Errorf("failed to create session manager: %w", err)
 	}
-	logger.Init(level)
-}
+	if err := stateManager.SetSessionManager(sessionManager); err != nil {
+		return fmt.Errorf("failed to set session manager: %w", err)
+	}
 
-func initializeApp(stateManager state.StateManager) error {
 	settings, modified, err := state.LoadSettings()
 	if err != nil {
 		return fmt.Errorf("failed to load settings: %w", err)
 	}
 
-	// Check if offline mode is enabled
-	offlineMode := strings.ToLower(os.Getenv("PVMSS_OFFLINE")) == "true"
-	if offlineMode {
-		logger.Get().Info().Msg("Environment variable PVMSS_OFFLINE is set to true. Starting in offline mode (Proxmox API calls disabled)")
+	if envCfg.Offline {
+		logger.Get().Info().Msg("PVMSS_OFFLINE=true: starting in offline mode (Proxmox API calls disabled)")
 		stateManager.SetOfflineMode()
 	} else {
-		proxmoxURL := os.Getenv("PROXMOX_URL")
-		tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
-		tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-		if proxmoxURL == "" || tokenID == "" || tokenValue == "" {
-			return fmt.Errorf("missing required Proxmox environment variables: PROXMOX_URL, PROXMOX_API_TOKEN_NAME, PROXMOX_API_TOKEN_VALUE")
-		}
-
 		if err := stateManager.StartOnlineMode(); err != nil {
 			return fmt.Errorf("failed to start online mode: %w", err)
 		}

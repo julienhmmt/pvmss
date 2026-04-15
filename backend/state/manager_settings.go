@@ -93,6 +93,8 @@ func (s *appState) GetLimits() map[string]interface{} {
 		limits["nodes"] = nodesLimits
 	}
 
+	limits["max_snapshots"] = s.settings.Limits.MaxSnapshots
+
 	return limits
 }
 

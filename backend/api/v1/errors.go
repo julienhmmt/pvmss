@@ -44,5 +44,5 @@ func errOffline(w http.ResponseWriter) {
 	writeError(w, http.StatusServiceUnavailable, "proxmox_offline", "Proxmox is unavailable")
 }
 func errNotConfigured(w http.ResponseWriter) {
-	writeError(w, http.StatusServiceUnavailable, "not_configured", "API auth is not configured (jwt_secret missing in settings.json)")
+	writeError(w, http.StatusServiceUnavailable, "not_configured", "API auth is not configured (JWT_SECRET environment variable missing or too short)")
 }

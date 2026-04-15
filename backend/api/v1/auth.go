@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -28,12 +27,14 @@ const (
 
 // AuthHandler handles JWT authentication endpoints.
 type AuthHandler struct {
-	state state.StateManager
+	state     state.StateManager
+	jwtSecret string
 }
 
 // MakeAuthHandler creates a new AuthHandler.
-func MakeAuthHandler(s state.StateManager) *AuthHandler {
-	return &AuthHandler{state: s}
+// jwtSecret must be the JWT_SECRET environment variable value (minimum 32 bytes).
+func MakeAuthHandler(s state.StateManager, jwtSecret string) *AuthHandler {
+	return &AuthHandler{state: s, jwtSecret: jwtSecret}
 }
 
 // Login handles POST /api/v1/auth/login.
@@ -41,7 +42,7 @@ func MakeAuthHandler(s state.StateManager) *AuthHandler {
 // If admin=true → bcrypt check against ADMIN_PASSWORD_HASH env var.
 // If admin=false → verify via Proxmox /access/ticket.
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	secret := h.state.GetSettings().JWTSecret
+	secret := h.jwtSecret
 	if secret == "" {
 		errNotConfigured(w)
 		return
@@ -60,7 +61,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var isAdmin bool
 
 	if req.Admin {
-		hash := os.Getenv("ADMIN_PASSWORD_HASH")
+		hash := h.state.GetEnvConfig().AdminPasswordHash
 		if hash == "" || bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)) != nil {
 			logger.SecurityEvent("api_auth_admin_fail").Str("username", req.Username).Msg("Invalid admin credentials")
 			errUnauthorized(w)
@@ -80,7 +81,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		isAdmin = false
 	}
 
-	if err := issueTokens(w, secret, req.Username, isAdmin); err != nil {
+	env := h.state.GetEnvConfig().Environment
+	if err := issueTokens(w, secret, req.Username, isAdmin, env); err != nil {
 		logger.Get().Error().Err(err).Msg("Failed to issue JWT tokens")
 		errInternal(w)
 		return
@@ -91,56 +93,40 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Exchange handles POST /api/v1/auth/exchange.
-// Checks for an existing valid JWT access token cookie first.
-// Falls back to reading the SCS session cookie (legacy Vue app path).
+// Validates the existing JWT access token cookie and returns the current user.
 // Used by the SvelteKit SPA on load to verify authentication state.
 func (h *AuthHandler) Exchange(w http.ResponseWriter, r *http.Request) {
-	secret := h.state.GetSettings().JWTSecret
+	secret := h.jwtSecret
 	if secret == "" {
 		errNotConfigured(w)
 		return
 	}
 
-	// Fast path: validate existing JWT access token cookie.
-	if cookie, err := r.Cookie(accessTokenCookie); err == nil {
-		claims := &JWTClaims{}
-		token, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return []byte(secret), nil
-		})
-		if err == nil && token.Valid && claims.Username != "" {
-			writeJSON(w, AuthResponse{Username: claims.Username, IsAdmin: claims.IsAdmin})
-			return
+	cookie, err := r.Cookie(accessTokenCookie)
+	if err != nil {
+		errUnauthorized(w)
+		return
+	}
+
+	claims := &JWTClaims{}
+	token, err := jwt.ParseWithClaims(cookie.Value, claims, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
 		}
-	}
-
-	// Legacy path: exchange SCS session for JWT tokens (Vue app).
-	sm := h.state.GetSessionManager()
-	if sm == nil {
+		return []byte(secret), nil
+	})
+	if err != nil || !token.Valid || claims.Username == "" {
 		errUnauthorized(w)
 		return
 	}
 
-	username, ok := sm.Get(r.Context(), "username").(string)
-	if !ok || username == "" {
-		errUnauthorized(w)
-		return
-	}
-	isAdmin, _ := sm.Get(r.Context(), "is_admin").(bool)
-
-	if err := issueTokens(w, secret, username, isAdmin); err != nil {
-		errInternal(w)
-		return
-	}
-	writeJSON(w, AuthResponse{Username: username, IsAdmin: isAdmin})
+	writeJSON(w, AuthResponse{Username: claims.Username, IsAdmin: claims.IsAdmin})
 }
 
 // Refresh handles POST /api/v1/auth/refresh.
 // Reads the refresh_token cookie and issues a new access_token.
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-	secret := h.state.GetSettings().JWTSecret
+	secret := h.jwtSecret
 	if secret == "" {
 		errNotConfigured(w)
 		return
@@ -164,7 +150,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL)
+	setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL, h.state.GetEnvConfig().Environment)
 	writeJSON(w, AuthResponse{Username: claims.Username, IsAdmin: claims.IsAdmin})
 }
 
@@ -178,7 +164,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles POST /api/v1/auth/logout. Clears both token cookies.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	secure := utils.IsProduction()
+	secure := utils.IsProduction(h.state.GetEnvConfig().Environment)
 
 	http.SetCookie(w, &http.Cookie{Name: accessTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
 	http.SetCookie(w, &http.Cookie{Name: refreshTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
@@ -189,7 +175,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 // Body: {"username":"user@pve","password":"..."}
 // Authenticates via Proxmox @pve realm, requires PVEAdmin or PVMSS_Admin role, issues admin JWT.
 func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) {
-	secret := h.state.GetSettings().JWTSecret
+	secret := h.jwtSecret
 	if secret == "" {
 		errNotConfigured(w)
 		return
@@ -230,7 +216,7 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := issueTokens(w, secret, ticketResp.Username, true); err != nil {
+	if err := issueTokens(w, secret, ticketResp.Username, true, h.state.GetEnvConfig().Environment); err != nil {
 		errInternal(w)
 		return
 	}
@@ -240,14 +226,14 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 }
 
 // issueTokens creates and sets both access_token and refresh_token cookies.
-func issueTokens(w http.ResponseWriter, secret, username string, isAdmin bool) error {
-	setTokenCookie(w, secret, accessTokenCookie, username, isAdmin, accessTokenTTL)
-	setTokenCookie(w, secret, refreshTokenCookie, username, isAdmin, refreshTokenTTL)
+func issueTokens(w http.ResponseWriter, secret, username string, isAdmin bool, env string) error {
+	setTokenCookie(w, secret, accessTokenCookie, username, isAdmin, accessTokenTTL, env)
+	setTokenCookie(w, secret, refreshTokenCookie, username, isAdmin, refreshTokenTTL, env)
 	return nil
 }
 
 // setTokenCookie mints a signed JWT and writes it as an HttpOnly SameSite=Strict cookie.
-func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmin bool, ttl time.Duration) {
+func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmin bool, ttl time.Duration, env string) {
 	claims := JWTClaims{
 		Username: username,
 		IsAdmin:  isAdmin,
@@ -259,7 +245,7 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, _ := tok.SignedString([]byte(secret))
 
-	secure := utils.IsProduction()
+	secure := utils.IsProduction(env)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,

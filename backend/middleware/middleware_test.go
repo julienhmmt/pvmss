@@ -9,6 +9,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 
+	envpkg "pvmss/env"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -45,6 +46,8 @@ func (m *mockStateManager) CleanExpiredCSRFTokens()                            {
 func (m *mockStateManager) GetFrontendPath() string                            { return "" }
 func (m *mockStateManager) SetFrontendPath(path string)                        {}
 func (m *mockStateManager) SetGuestAgentCleanupFunc(cleanupFunc func())        {}
+func (m *mockStateManager) GetEnvConfig() *envpkg.EnvConfig                    { return &envpkg.EnvConfig{} }
+func (m *mockStateManager) SetEnvConfig(cfg *envpkg.EnvConfig)                 {}
 
 func TestClientIP(t *testing.T) {
 	testCases := []struct {
