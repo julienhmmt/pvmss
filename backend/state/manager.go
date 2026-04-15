@@ -8,6 +8,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 
 	"pvmss/constants"
+	envpkg "pvmss/env"
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
@@ -40,6 +41,9 @@ type appState struct {
 	// Security-related fields
 	csrfTokens map[string]time.Time
 	securityMu sync.RWMutex // Mutex for CSRF token operations
+
+	// Environment configuration (loaded once at startup)
+	envConfig *envpkg.EnvConfig
 
 	// Frontend configuration
 	frontendPath string
@@ -126,6 +130,24 @@ func (s *appState) SetSessionManager(sm *scs.SessionManager) error {
 	s.sessionManager = sm
 	s.mu.Unlock()
 	return nil
+}
+
+// SetEnvConfig stores the validated environment configuration.
+func (s *appState) SetEnvConfig(cfg *envpkg.EnvConfig) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.envConfig = cfg
+}
+
+// GetEnvConfig returns the stored environment configuration.
+// Panics if SetEnvConfig has not been called; this is a programming error.
+func (s *appState) GetEnvConfig() *envpkg.EnvConfig {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.envConfig == nil {
+		panic("state: GetEnvConfig called before SetEnvConfig — call SetEnvConfig during startup")
+	}
+	return s.envConfig
 }
 
 // Settings methods moved to manager_settings.go

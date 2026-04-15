@@ -2,15 +2,28 @@ package middleware
 
 import (
 	"net/http"
+	"os"
 	"strings"
-
-	"pvmss/utils"
 )
 
 var (
-	// isProduction is cached at initialization to avoid repeated PVMSS_ENV lookups
-	isProduction = utils.IsProduction()
+	// isProduction is set once at startup via SetProductionMode.
+	isProduction bool
 )
+
+// SetProductionMode configures security headers for the given environment.
+// Call once after loading EnvConfig.
+func SetProductionMode(env string) {
+	isProduction = env == "production" || env == "prod"
+}
+
+func init() {
+	// Fallback: read PVMSS_ENV directly if SetProductionMode hasn't been called yet.
+	// This ensures headers work even before full startup completes.
+	if v := strings.ToLower(strings.TrimSpace(os.Getenv("PVMSS_ENV"))); v == "production" || v == "prod" {
+		isProduction = true
+	}
+}
 
 // Headers adds security headers to all responses
 func Headers(next http.Handler) http.Handler {

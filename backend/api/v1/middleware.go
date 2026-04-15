@@ -6,8 +6,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/julienschmidt/httprouter"
-
-	"pvmss/state"
 )
 
 // JWTClaims are the custom claims embedded in every access token.
@@ -18,10 +16,10 @@ type JWTClaims struct {
 }
 
 // JWTMiddleware validates the access_token cookie and injects username + is_admin into context.
-// It reads the JWT secret from sm.GetSettings().JWTSecret (settings.json).
-func JWTMiddleware(sm state.StateManager, next http.Handler) http.Handler {
+// jwtSecret must be the value of the JWT_SECRET environment variable (minimum 32 bytes).
+func JWTMiddleware(jwtSecret string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		secret := sm.GetSettings().JWTSecret
+		secret := jwtSecret
 		if secret == "" {
 			errNotConfigured(w)
 			return
@@ -52,8 +50,8 @@ func JWTMiddleware(sm state.StateManager, next http.Handler) http.Handler {
 }
 
 // JWTAdminMiddleware wraps JWTMiddleware and additionally requires is_admin=true.
-func JWTAdminMiddleware(sm state.StateManager, next http.Handler) http.Handler {
-	return JWTMiddleware(sm, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func JWTAdminMiddleware(jwtSecret string, next http.Handler) http.Handler {
+	return JWTMiddleware(jwtSecret, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !r.Context().Value(contextKeyIsAdmin).(bool) {
 			errForbidden(w)
 			return

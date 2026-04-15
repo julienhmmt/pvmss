@@ -3,10 +3,33 @@ package proxmox
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
+	"sync"
 	"time"
+
+	envpkg "pvmss/env"
 )
+
+// envCfgMu guards the package-level environment configuration.
+var envCfgMu sync.RWMutex
+
+// envCfg holds the validated environment configuration set at startup.
+var envCfg *envpkg.EnvConfig
+
+// SetEnvConfig stores the validated environment configuration for use by
+// FromEnv convenience functions. Must be called once during startup.
+func SetEnvConfig(cfg *envpkg.EnvConfig) {
+	envCfgMu.Lock()
+	defer envCfgMu.Unlock()
+	envCfg = cfg
+}
+
+// getEnvConfig returns the stored environment configuration.
+func getEnvConfig() *envpkg.EnvConfig {
+	envCfgMu.RLock()
+	defer envCfgMu.RUnlock()
+	return envCfg
+}
 
 // normalizeBaseURL ensures the Proxmox API URL is correctly formatted.
 func normalizeBaseURL(rawURL string) (string, error) {
@@ -28,30 +51,40 @@ func normalizeBaseURL(rawURL string) (string, error) {
 	return u.String(), nil
 }
 
-// MakeRestyClientFromEnv creates a RestyClient using environment variables
-// This is a convenience function for handlers that need a quick resty client
+// MakeRestyClientFromEnv creates a RestyClient using the stored EnvConfig.
+// Deprecated: Use MakeRestyClientFromEnvConfig when the config is available.
 func MakeRestyClientFromEnv(timeout time.Duration) (*RestyClient, error) {
-	proxmoxURL := os.Getenv("PROXMOX_URL")
-	tokenID := os.Getenv("PROXMOX_API_TOKEN_NAME")
-	tokenValue := os.Getenv("PROXMOX_API_TOKEN_VALUE")
-	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
-
-	if proxmoxURL == "" || tokenID == "" || tokenValue == "" {
-		return nil, fmt.Errorf("missing Proxmox environment variables")
+	cfg := getEnvConfig()
+	if cfg == nil {
+		return nil, fmt.Errorf("environment configuration not initialised (call SetEnvConfig first)")
 	}
-
-	return MakeRestyClient(proxmoxURL, tokenID, tokenValue, insecureSkipVerify, timeout)
+	return MakeRestyClientFromEnvConfig(cfg, timeout)
 }
 
-// MakeRestyClientCookieAuthFromEnv creates a cookie-auth RestyClient using environment variables.
-// Only requires PROXMOX_URL and PROXMOX_VERIFY_SSL (no API token needed).
+// MakeRestyClientCookieAuthFromEnv creates a cookie-auth RestyClient using the stored EnvConfig.
+// Deprecated: Use MakeRestyClientCookieAuthFromEnvConfig when the config is available.
 func MakeRestyClientCookieAuthFromEnv(timeout time.Duration) (*RestyClient, error) {
-	proxmoxURL := os.Getenv("PROXMOX_URL")
-	insecureSkipVerify := os.Getenv("PROXMOX_VERIFY_SSL") == "false"
+	cfg := getEnvConfig()
+	if cfg == nil {
+		return nil, fmt.Errorf("environment configuration not initialised (call SetEnvConfig first)")
+	}
+	return MakeRestyClientCookieAuthFromEnvConfig(cfg, timeout)
+}
 
-	if proxmoxURL == "" {
-		return nil, fmt.Errorf("PROXMOX_URL environment variable is required")
+// MakeRestyClientFromEnvConfig creates a RestyClient using the validated EnvConfig.
+func MakeRestyClientFromEnvConfig(cfg *envpkg.EnvConfig, timeout time.Duration) (*RestyClient, error) {
+	if cfg.ProxmoxURL == "" || cfg.ProxmoxAPITokenName == "" || cfg.ProxmoxAPITokenValue == "" {
+		return nil, fmt.Errorf("missing Proxmox configuration")
 	}
 
-	return MakeRestyClientCookieAuth(proxmoxURL, insecureSkipVerify, timeout)
+	return MakeRestyClient(cfg.ProxmoxURL, cfg.ProxmoxAPITokenName, cfg.ProxmoxAPITokenValue, !cfg.ProxmoxSSLVerify, timeout)
+}
+
+// MakeRestyClientCookieAuthFromEnvConfig creates a cookie-auth RestyClient using the validated EnvConfig.
+func MakeRestyClientCookieAuthFromEnvConfig(cfg *envpkg.EnvConfig, timeout time.Duration) (*RestyClient, error) {
+	if cfg.ProxmoxURL == "" {
+		return nil, fmt.Errorf("PROXMOX_URL is required")
+	}
+
+	return MakeRestyClientCookieAuth(cfg.ProxmoxURL, !cfg.ProxmoxSSLVerify, timeout)
 }

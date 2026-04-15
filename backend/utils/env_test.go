@@ -64,11 +64,8 @@ func TestIsProduction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variable (t.Setenv automatically restores after test)
-			t.Setenv("PVMSS_ENV", tt.envValue)
-
-			if got := IsProduction(); got != tt.want {
-				t.Errorf("IsProduction() = %v, want %v", got, tt.want)
+			if got := IsProduction(tt.envValue); got != tt.want {
+				t.Errorf("IsProduction(%q) = %v, want %v", tt.envValue, got, tt.want)
 			}
 		})
 	}
@@ -134,11 +131,8 @@ func TestIsDevelopment(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variable (t.Setenv automatically restores after test)
-			t.Setenv("PVMSS_ENV", tt.envValue)
-
-			if got := IsDevelopment(); got != tt.want {
-				t.Errorf("IsDevelopment() = %v, want %v", got, tt.want)
+			if got := IsDevelopment(tt.envValue); got != tt.want {
+				t.Errorf("IsDevelopment(%q) = %v, want %v", tt.envValue, got, tt.want)
 			}
 		})
 	}
@@ -205,17 +199,14 @@ func TestEnvDetectionConsistency(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set environment variable (t.Setenv automatically restores after test)
-			t.Setenv("PVMSS_ENV", tt.envValue)
-
-			isProd := IsProduction()
-			isDev := IsDevelopment()
+			isProd := IsProduction(tt.envValue)
+			isDev := IsDevelopment(tt.envValue)
 
 			if isProd != tt.wantProd {
-				t.Errorf("IsProduction() = %v, want %v", isProd, tt.wantProd)
+				t.Errorf("IsProduction(%q) = %v, want %v", tt.envValue, isProd, tt.wantProd)
 			}
 			if isDev != tt.wantDev {
-				t.Errorf("IsDevelopment() = %v, want %v", isDev, tt.wantDev)
+				t.Errorf("IsDevelopment(%q) = %v, want %v", tt.envValue, isDev, tt.wantDev)
 			}
 
 			// Ensure production and development are mutually exclusive

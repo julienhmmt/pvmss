@@ -1,9 +1,8 @@
 // Package database – JSON-to-SQLite migration.
 //
 // MigrateFromJSON reads a legacy settings.json snapshot and writes all
-// settings into the SQLite database within a single transaction.  The JWT
-// secret is detected and reported in the summary but is never written to the
-// database.  On any failure the transaction is rolled back and the database
+// settings into the SQLite database within a single transaction.
+// On any failure the transaction is rolled back and the database
 // is left unchanged.
 package database
 
@@ -20,21 +19,19 @@ import (
 // Defined here to avoid an import cycle (the state package will eventually
 // depend on database).
 type JSONSettings struct {
-	EnabledNodes       []string               `json:"enabled_nodes"`
-	EnabledStorages    []string               `json:"enabled_storages"`
-	ISOs               []string               `json:"isos"`
-	VMBRs              []string               `json:"vmbrs"`
-	Tags               []string               `json:"tags"`
-	Limits             JSONLimitsConfig       `json:"limits"`
-	MaxNetworkCards    int                    `json:"max_network_cards"`
-	MaxDiskPerVM       int                    `json:"max_disk_per_vm"`
-	MaxVMPerUser       int                    `json:"max_vm_per_user"`
-	AllowCustomYAML    bool                   `json:"allow_custom_yaml"`
+	EnabledNodes       []string                `json:"enabled_nodes"`
+	EnabledStorages    []string                `json:"enabled_storages"`
+	ISOs               []string                `json:"isos"`
+	VMBRs              []string                `json:"vmbrs"`
+	Tags               []string                `json:"tags"`
+	Limits             JSONLimitsConfig        `json:"limits"`
+	MaxNetworkCards    int                     `json:"max_network_cards"`
+	MaxDiskPerVM       int                     `json:"max_disk_per_vm"`
+	MaxVMPerUser       int                     `json:"max_vm_per_user"`
+	AllowCustomYAML    bool                    `json:"allow_custom_yaml"`
 	CloudInitTemplates []JSONCloudInitTemplate `json:"cloudinit_templates"`
-	VMProfiles         []JSONVMProfileConfig  `json:"vm_profiles"`
-	CloudInitSFTP      JSONSFTPConfig         `json:"cloudinit_sftp"`
-	// JWTSecret is read for detection only; it is never written to the database.
-	JWTSecret string `json:"jwt_secret,omitempty"`
+	VMProfiles         []JSONVMProfileConfig   `json:"vm_profiles"`
+	CloudInitSFTP      JSONSFTPConfig          `json:"cloudinit_sftp"`
 }
 
 // JSONLimitsConfig is the limits subset from settings.json.
@@ -98,16 +95,13 @@ type vmProfileConfigData struct {
 
 // MigrationSummary reports record counts written per table during a migration.
 type MigrationSummary struct {
-	NodesCount      int  `json:"nodes_count"`
-	StoragesCount   int  `json:"storages_count"`
-	ISOsCount       int  `json:"isos_count"`
-	VMBRsCount      int  `json:"vmbrs_count"`
-	TagsCount       int  `json:"tags_count"`
-	CloudInitCount  int  `json:"cloudinit_count"`
-	VMProfilesCount int  `json:"vm_profiles_count"`
-	// HasJWTSecret is true when settings.json contained a jwt_secret.
-	// The value is never written to the database.
-	HasJWTSecret bool `json:"has_jwt_secret"`
+	NodesCount      int `json:"nodes_count"`
+	StoragesCount   int `json:"storages_count"`
+	ISOsCount       int `json:"isos_count"`
+	VMBRsCount      int `json:"vmbrs_count"`
+	TagsCount       int `json:"tags_count"`
+	CloudInitCount  int `json:"cloudinit_count"`
+	VMProfilesCount int `json:"vm_profiles_count"`
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -127,15 +121,13 @@ func ReadJSONSettings(path string) (*JSONSettings, error) {
 
 // MigrateFromJSON migrates all settings from src into db using a single
 // transaction.  changedBy is recorded as the actor in every audit_log row.
-// The JWT secret is never written to the database; HasJWTSecret in the
-// returned summary indicates whether one was detected.
 // On any failure the transaction is rolled back and db is left unchanged.
 func MigrateFromJSON(db DB, src *JSONSettings, changedBy string) (*MigrationSummary, error) {
 	impl, ok := db.(*sqliteDB)
 	if !ok {
 		return nil, fmt.Errorf("MigrateFromJSON: unsupported DB implementation")
 	}
-	summary := &MigrationSummary{HasJWTSecret: src.JWTSecret != ""}
+	summary := &MigrationSummary{}
 	tx, err := impl.db.Begin()
 	if err != nil {
 		return nil, fmt.Errorf("begin migration: %w", err)

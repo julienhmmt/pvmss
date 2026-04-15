@@ -342,13 +342,14 @@ func (h *AdminHandler) AppInfo(w http.ResponseWriter, r *http.Request) {
 		totalVMs = len(snap.VMs)
 	}
 
+	envCfg := h.state.GetEnvConfig()
 	resp := AdminAppInfoResponse{
 		Version:          os.Getenv("PVMSS_VERSION"),
-		Environment:      os.Getenv("PVMSS_ENV"),
+		Environment:      envCfg.Environment,
 		GoVersion:        runtime.Version(),
 		Platform:         runtime.GOOS + "/" + runtime.GOARCH,
 		ProxmoxConnected: connected,
-		ProxmoxURL:       os.Getenv("PROXMOX_URL"),
+		ProxmoxURL:       envCfg.ProxmoxURL,
 		OfflineMode:      h.state.IsOfflineMode(),
 		TotalNodes:       len(nodes),
 		TotalVMs:         totalVMs,

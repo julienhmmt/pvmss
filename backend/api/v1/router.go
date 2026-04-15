@@ -12,7 +12,8 @@ import (
 // JWT-protected routes are wrapped with JWTMiddleware; the auth exchange
 // endpoint only needs a session (session is loaded by the API middleware chain).
 func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
-	authHandler := MakeAuthHandler(s)
+	jwtSecret := s.GetEnvConfig().JWTSecret
+	authHandler := MakeAuthHandler(s, jwtSecret)
 	vmHandler := MakeVMHandler(s)
 	vmActionHandler := MakeVMActionHandler(s)
 	healthHandler := MakeHealthHandler(s)
@@ -33,99 +34,99 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/auth/logout", wrap(authHandler.Logout))
 
 	// Authenticated auth routes
-	router.GET("/api/v1/auth/me", jwtWrap(s, authHandler.Me))
-	router.PUT("/api/v1/auth/me/password", jwtWrap(s, authHandler.ChangePassword))
+	router.GET("/api/v1/auth/me", jwtWrap(jwtSecret, authHandler.Me))
+	router.PUT("/api/v1/auth/me/password", jwtWrap(jwtSecret, authHandler.ChangePassword))
 
 	// VM routes — JWT required
-	router.GET("/api/v1/vms", jwtWrap(s, vmHandler.ListVMs))
-	router.GET("/api/v1/vms/:id", jwtWrap(s, vmHandler.GetVM))
-	router.POST("/api/v1/vms/:id/action", jwtWrap(s, vmActionHandler.VMAction))
+	router.GET("/api/v1/vms", jwtWrap(jwtSecret, vmHandler.ListVMs))
+	router.GET("/api/v1/vms/:id", jwtWrap(jwtSecret, vmHandler.GetVM))
+	router.POST("/api/v1/vms/:id/action", jwtWrap(jwtSecret, vmActionHandler.VMAction))
 
 	// Search route — JWT required; accepts ?q= and ?filter=vmid|name|tags
-	router.GET("/api/v1/search/vms", jwtWrap(s, vmHandler.ListVMs))
+	router.GET("/api/v1/search/vms", jwtWrap(jwtSecret, vmHandler.ListVMs))
 
 	// VM creation routes — JWT required
 	vmCreateHandler := MakeVMCreateHandler(s)
-	router.GET("/api/v1/vm-create/settings", jwtWrap(s, vmCreateHandler.GetSettings))
-	router.POST("/api/v1/vms", jwtWrap(s, vmCreateHandler.CreateVM))
+	router.GET("/api/v1/vm-create/settings", jwtWrap(jwtSecret, vmCreateHandler.GetSettings))
+	router.POST("/api/v1/vms", jwtWrap(jwtSecret, vmCreateHandler.CreateVM))
 
 	// VM detail routes — JWT required
 	vmDetailsHandler := MakeVMDetailsHandler(s)
-	router.GET("/api/v1/vms/:id/config", jwtWrap(s, vmDetailsHandler.GetVMConfig))
-	router.GET("/api/v1/vms/:id/metrics", jwtWrap(s, vmDetailsHandler.GetVMMetrics))
-	router.PATCH("/api/v1/vms/:id/config", jwtWrap(s, vmDetailsHandler.UpdateVMConfig))
-	router.GET("/api/v1/vms/:id/snapshots", jwtWrap(s, vmDetailsHandler.GetVMSnapshots))
-	router.POST("/api/v1/vms/:id/snapshots", jwtWrap(s, vmDetailsHandler.CreateSnapshot))
-	router.DELETE("/api/v1/vms/:id/snapshots/:name", jwtWrap(s, vmDetailsHandler.DeleteSnapshot))
-	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(s, vmDetailsHandler.RollbackSnapshot))
-	router.GET("/api/v1/vms/:id/settings", jwtWrap(s, vmDetailsHandler.GetVMSettings))
-	router.PUT("/api/v1/vms/:id/hardware", jwtWrap(s, vmDetailsHandler.UpdateVMHardware))
-	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(s, vmDetailsHandler.ToggleNIC))
-	router.DELETE("/api/v1/vms/:id", jwtWrap(s, vmHandler.DeleteVM))
+	router.GET("/api/v1/vms/:id/config", jwtWrap(jwtSecret, vmDetailsHandler.GetVMConfig))
+	router.GET("/api/v1/vms/:id/metrics", jwtWrap(jwtSecret, vmDetailsHandler.GetVMMetrics))
+	router.PATCH("/api/v1/vms/:id/config", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMConfig))
+	router.GET("/api/v1/vms/:id/snapshots", jwtWrap(jwtSecret, vmDetailsHandler.GetVMSnapshots))
+	router.POST("/api/v1/vms/:id/snapshots", jwtWrap(jwtSecret, vmDetailsHandler.CreateSnapshot))
+	router.DELETE("/api/v1/vms/:id/snapshots/:name", jwtWrap(jwtSecret, vmDetailsHandler.DeleteSnapshot))
+	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(jwtSecret, vmDetailsHandler.RollbackSnapshot))
+	router.GET("/api/v1/vms/:id/settings", jwtWrap(jwtSecret, vmDetailsHandler.GetVMSettings))
+	router.PUT("/api/v1/vms/:id/hardware", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMHardware))
+	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(jwtSecret, vmDetailsHandler.ToggleNIC))
+	router.DELETE("/api/v1/vms/:id", jwtWrap(jwtSecret, vmHandler.DeleteVM))
 
 	// Disk management routes — JWT required
 	vmDiskHandler := MakeVMDiskHandler(s)
-	router.POST("/api/v1/vms/:id/disks", jwtWrap(s, vmDiskHandler.AddDisk))
-	router.PUT("/api/v1/vms/:id/disks/:diskId/resize", jwtWrap(s, vmDiskHandler.ResizeDisk))
-	router.DELETE("/api/v1/vms/:id/disks/:diskId", jwtWrap(s, vmDiskHandler.DeleteDisk))
+	router.POST("/api/v1/vms/:id/disks", jwtWrap(jwtSecret, vmDiskHandler.AddDisk))
+	router.PUT("/api/v1/vms/:id/disks/:diskId/resize", jwtWrap(jwtSecret, vmDiskHandler.ResizeDisk))
+	router.DELETE("/api/v1/vms/:id/disks/:diskId", jwtWrap(jwtSecret, vmDiskHandler.DeleteDisk))
 
 	// Task status routes — JWT required
 	taskHandler := MakeTaskHandler(s)
-	router.GET("/api/v1/tasks/status", jwtWrap(s, taskHandler.GetTaskStatus))
-	router.GET("/api/v1/tasks/log", jwtWrap(s, taskHandler.GetTaskLog))
+	router.GET("/api/v1/tasks/status", jwtWrap(jwtSecret, taskHandler.GetTaskStatus))
+	router.GET("/api/v1/tasks/log", jwtWrap(jwtSecret, taskHandler.GetTaskLog))
 
 	// VNC console routes — JWT required
 	vncHandler := MakeVNCHandler(s)
-	router.POST("/api/v1/vms/:id/vnc-ticket", jwtWrap(s, vncHandler.GetVNCTicket))
-	router.GET("/api/v1/vms/:id/console/websocket", jwtWrap(s, vncHandler.ConsoleWebSocket))
+	router.POST("/api/v1/vms/:id/vnc-ticket", jwtWrap(jwtSecret, vncHandler.GetVNCTicket))
+	router.GET("/api/v1/vms/:id/console/websocket", jwtWrap(jwtSecret, vncHandler.ConsoleWebSocket))
 
 	// Docs routes — public; auth checked inside handler for admin-only types
-	docsHandler := MakeDocsAPIHandler(s)
+	docsHandler := MakeDocsAPIHandler(s, jwtSecret)
 	router.GET("/api/v1/docs/:type", wrap(docsHandler.GetDoc))
 
 	// Admin API routes — JWT + isAdmin required
 	adminVMsHandler := MakeAdminVMsAPIHandler(s)
 	adminMutHandler := MakeAdminMutationsHandler(s)
 
-	router.GET("/api/v1/admin/nodes", adminJWTWrap(s, adminHandler.Nodes))
-	router.GET("/api/v1/admin/storage", adminJWTWrap(s, adminHandler.Storage))
-	router.GET("/api/v1/admin/vmbr", adminJWTWrap(s, adminHandler.VMBR))
-	router.GET("/api/v1/admin/iso", adminJWTWrap(s, adminHandler.ISO))
-	router.GET("/api/v1/admin/appinfo", adminJWTWrap(s, adminHandler.AppInfo))
-	router.GET("/api/v1/admin/settings", adminJWTWrap(s, adminHandler.Settings))
+	router.GET("/api/v1/admin/nodes", adminJWTWrap(jwtSecret, adminHandler.Nodes))
+	router.GET("/api/v1/admin/storage", adminJWTWrap(jwtSecret, adminHandler.Storage))
+	router.GET("/api/v1/admin/vmbr", adminJWTWrap(jwtSecret, adminHandler.VMBR))
+	router.GET("/api/v1/admin/iso", adminJWTWrap(jwtSecret, adminHandler.ISO))
+	router.GET("/api/v1/admin/appinfo", adminJWTWrap(jwtSecret, adminHandler.AppInfo))
+	router.GET("/api/v1/admin/settings", adminJWTWrap(jwtSecret, adminHandler.Settings))
 
-	router.GET("/api/v1/admin/vms", adminJWTWrap(s, adminVMsHandler.ListAllVMs))
-	router.GET("/api/v1/admin/vms/paginated", adminJWTWrap(s, adminVMsHandler.ListAllVMsPaginated))
-	router.POST("/api/v1/admin/vms/:id/action", adminJWTWrap(s, adminVMsHandler.VMAction))
-	router.DELETE("/api/v1/admin/vms/:id", adminJWTWrap(s, adminVMsHandler.DeleteVM))
+	router.GET("/api/v1/admin/vms", adminJWTWrap(jwtSecret, adminVMsHandler.ListAllVMs))
+	router.GET("/api/v1/admin/vms/paginated", adminJWTWrap(jwtSecret, adminVMsHandler.ListAllVMsPaginated))
+	router.POST("/api/v1/admin/vms/:id/action", adminJWTWrap(jwtSecret, adminVMsHandler.VMAction))
+	router.DELETE("/api/v1/admin/vms/:id", adminJWTWrap(jwtSecret, adminVMsHandler.DeleteVM))
 
-	router.GET("/api/v1/admin/userpool", adminJWTWrap(s, adminMutHandler.ListPools))
-	router.POST("/api/v1/admin/userpool", adminJWTWrap(s, adminMutHandler.CreatePool))
-	router.DELETE("/api/v1/admin/userpool/:name", adminJWTWrap(s, adminMutHandler.DeletePool))
+	router.GET("/api/v1/admin/userpool", adminJWTWrap(jwtSecret, adminMutHandler.ListPools))
+	router.POST("/api/v1/admin/userpool", adminJWTWrap(jwtSecret, adminMutHandler.CreatePool))
+	router.DELETE("/api/v1/admin/userpool/:name", adminJWTWrap(jwtSecret, adminMutHandler.DeletePool))
 
-	router.GET("/api/v1/admin/tags", adminJWTWrap(s, adminMutHandler.ListTags))
-	router.POST("/api/v1/admin/tags", adminJWTWrap(s, adminMutHandler.CreateTag))
-	router.DELETE("/api/v1/admin/tags/:name", adminJWTWrap(s, adminMutHandler.DeleteTag))
+	router.GET("/api/v1/admin/tags", adminJWTWrap(jwtSecret, adminMutHandler.ListTags))
+	router.POST("/api/v1/admin/tags", adminJWTWrap(jwtSecret, adminMutHandler.CreateTag))
+	router.DELETE("/api/v1/admin/tags/:name", adminJWTWrap(jwtSecret, adminMutHandler.DeleteTag))
 
-	router.GET("/api/v1/admin/limits", adminJWTWrap(s, adminMutHandler.GetLimits))
-	router.PUT("/api/v1/admin/limits", adminJWTWrap(s, adminMutHandler.UpdateLimits))
+	router.GET("/api/v1/admin/limits", adminJWTWrap(jwtSecret, adminMutHandler.GetLimits))
+	router.PUT("/api/v1/admin/limits", adminJWTWrap(jwtSecret, adminMutHandler.UpdateLimits))
 
-	router.GET("/api/v1/admin/cloudinit/storages", adminJWTWrap(s, adminHandler.CloudInitStorages))
-	router.GET("/api/v1/admin/cloudinit", adminJWTWrap(s, adminMutHandler.ListCloudInit))
-	router.POST("/api/v1/admin/cloudinit", adminJWTWrap(s, adminMutHandler.CreateCloudInit))
-	router.PUT("/api/v1/admin/cloudinit/:id", adminJWTWrap(s, adminMutHandler.UpdateCloudInit))
-	router.DELETE("/api/v1/admin/cloudinit/:id", adminJWTWrap(s, adminMutHandler.DeleteCloudInit))
-	router.POST("/api/v1/admin/cloudinit/:id/toggle", adminJWTWrap(s, adminMutHandler.ToggleCloudInit))
+	router.GET("/api/v1/admin/cloudinit/storages", adminJWTWrap(jwtSecret, adminHandler.CloudInitStorages))
+	router.GET("/api/v1/admin/cloudinit", adminJWTWrap(jwtSecret, adminMutHandler.ListCloudInit))
+	router.POST("/api/v1/admin/cloudinit", adminJWTWrap(jwtSecret, adminMutHandler.CreateCloudInit))
+	router.PUT("/api/v1/admin/cloudinit/:id", adminJWTWrap(jwtSecret, adminMutHandler.UpdateCloudInit))
+	router.DELETE("/api/v1/admin/cloudinit/:id", adminJWTWrap(jwtSecret, adminMutHandler.DeleteCloudInit))
+	router.POST("/api/v1/admin/cloudinit/:id/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleCloudInit))
 
-	router.GET("/api/v1/admin/vm-profiles", adminJWTWrap(s, adminMutHandler.ListVMProfiles))
-	router.POST("/api/v1/admin/vm-profiles", adminJWTWrap(s, adminMutHandler.CreateVMProfile))
-	router.PUT("/api/v1/admin/vm-profiles/:id", adminJWTWrap(s, adminMutHandler.UpdateVMProfile))
-	router.DELETE("/api/v1/admin/vm-profiles/:id", adminJWTWrap(s, adminMutHandler.DeleteVMProfile))
-	router.POST("/api/v1/admin/vm-profiles/:id/toggle", adminJWTWrap(s, adminMutHandler.ToggleVMProfile))
+	router.GET("/api/v1/admin/vm-profiles", adminJWTWrap(jwtSecret, adminMutHandler.ListVMProfiles))
+	router.POST("/api/v1/admin/vm-profiles", adminJWTWrap(jwtSecret, adminMutHandler.CreateVMProfile))
+	router.PUT("/api/v1/admin/vm-profiles/:id", adminJWTWrap(jwtSecret, adminMutHandler.UpdateVMProfile))
+	router.DELETE("/api/v1/admin/vm-profiles/:id", adminJWTWrap(jwtSecret, adminMutHandler.DeleteVMProfile))
+	router.POST("/api/v1/admin/vm-profiles/:id/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleVMProfile))
 
-	router.POST("/api/v1/admin/storage/toggle", adminJWTWrap(s, adminMutHandler.ToggleStorage))
-	router.POST("/api/v1/admin/vmbr/toggle", adminJWTWrap(s, adminMutHandler.ToggleVMBR))
-	router.POST("/api/v1/admin/iso/toggle", adminJWTWrap(s, adminMutHandler.ToggleISO))
+	router.POST("/api/v1/admin/storage/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleStorage))
+	router.POST("/api/v1/admin/vmbr/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleVMBR))
+	router.POST("/api/v1/admin/iso/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleISO))
 }
 
 // wrap converts a plain http.HandlerFunc into the httprouter.Handle signature.
@@ -134,11 +135,11 @@ func wrap(h http.HandlerFunc) httprouter.Handle {
 }
 
 // jwtWrap wraps a handler with JWT authentication and converts it to httprouter.Handle.
-func jwtWrap(s state.StateManager, h http.HandlerFunc) httprouter.Handle {
-	return httprouterWrap(JWTMiddleware(s, h))
+func jwtWrap(jwtSecret string, h http.HandlerFunc) httprouter.Handle {
+	return httprouterWrap(JWTMiddleware(jwtSecret, h))
 }
 
 // adminJWTWrap wraps a handler with JWT + isAdmin check.
-func adminJWTWrap(s state.StateManager, h http.HandlerFunc) httprouter.Handle {
-	return httprouterWrap(JWTAdminMiddleware(s, h))
+func adminJWTWrap(jwtSecret string, h http.HandlerFunc) httprouter.Handle {
+	return httprouterWrap(JWTAdminMiddleware(jwtSecret, h))
 }

@@ -34,12 +34,6 @@ export interface LimitsConfig {
   nodes: Record<string, VMResourceLimits>;
   /** Maximum snapshots per VM */
   maxSnapshots: number;
-  /** Maximum network cards per VM */
-  maxNetworkCards: number;
-  /** Maximum disks per VM */
-  maxDiskPerVm: number;
-  /** Maximum VMs per user */
-  maxVmPerUser: number;
 }
 
 /**
@@ -74,6 +68,12 @@ export interface AppSettings {
   isos: string[];
   /** Resource limits configuration */
   limits: LimitsConfig;
+  /** Maximum network cards per VM */
+  max_network_cards: number;
+  /** Maximum disks per VM */
+  max_disk_per_vm: number;
+  /** Maximum VMs per user */
+  max_vm_per_user: number;
   /** Available tags */
   tags: string[];
   /** Available network bridges */

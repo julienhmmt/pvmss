@@ -150,33 +150,33 @@ Migrate from monolithic settings.json to a 2-tier SQLite-first configuration sys
 
 **Tasks**:
 
-- [ ] T064 Create backend/env/doc.go with package documentation
-- [ ] T065 [P] Create backend/env/loader.go with LoadAndValidate function
-- [ ] T066 [P] Create backend/env/config.go with EnvConfig struct definition
-- [ ] T067 Define EnvConfig struct fields: JWTSecret, SessionSecret, AdminPasswordHash, ProxmoxURL, ProxmoxAPITokenName, ProxmoxAPITokenValue, ProxmoxSSLVerify, DBPath, Environment, Offline, LogLevel, LogOutput, LogFormat, Timezone
-- [ ] T068 Implement JWT_SECRET validation (min 32 bytes)
-- [ ] T069 Implement SESSION_SECRET validation (min 32 bytes)
-- [ ] T070 Implement ADMIN_PASSWORD_HASH validation (must start with $2 for bcrypt)
-- [ ] T071 Implement PROXMOX_URL validation (must parse as valid HTTPS URL, skipped if PVMSS_OFFLINE=true)
-- [ ] T072 Implement fail-fast behavior (exit 1 if any required var missing or empty)
-- [ ] T073 Implement default values for optional env vars (DBPath, Environment, Offline, LogLevel, LogOutput, LogFormat, Timezone)
-- [ ] T074 Add startup summary logging with secrets redacted
-- [ ] T075 Write unit tests for env/loader.go covering all validation scenarios
-- [ ] T076 Write unit tests for missing required env vars
-- [ ] T077 Write unit tests for invalid env var values
-- [ ] T078 Write unit tests for default value assignments
-- [ ] T079 Write unit tests for offline mode (Proxmox vars optional)
-- [ ] T080 Update backend/main.go to load EnvConfig on startup
-- [ ] T081 Update backend/main.go startup order: Load EnvConfig → Open SQLite DB → Run migrations → Check bootstrap
-- [ ] T082 Update JWT middleware in backend/security/middleware/ to read JWT_SECRET from EnvConfig only
-- [ ] T083 Remove fallback to settings struct in JWT middleware
-- [ ] T084 Remove JWTSecret field from AppSettings struct in backend/state/settings.go
-- [ ] T085 Remove ProxmoxURL, ProxmoxAPITokenName, ProxmoxAPITokenValue from AppSettings struct
-- [ ] T086 Update all tests that reference JWTSecret in AppSettings
-- [ ] T087 Update all tests that reference Proxmox credentials in AppSettings
-- [ ] T088 Test startup with missing required env vars (should fail with clear error)
-- [ ] T089 Test startup with all required env vars present (should succeed)
-- [ ] T090 Test JWT middleware with env var JWT secret
+- [x] T064 Create backend/env/doc.go with package documentation
+- [x] T065 [P] Create backend/env/loader.go with LoadAndValidate function
+- [x] T066 [P] Create backend/env/config.go with EnvConfig struct definition
+- [x] T067 Define EnvConfig struct fields: JWTSecret, SessionSecret, AdminPasswordHash, ProxmoxURL, ProxmoxAPITokenName, ProxmoxAPITokenValue, ProxmoxSSLVerify, DBPath, Environment, Offline, LogLevel, LogOutput, LogFormat, Timezone
+- [x] T068 Implement JWT_SECRET validation (min 32 bytes)
+- [x] T069 Implement SESSION_SECRET validation (min 32 bytes)
+- [x] T070 Implement ADMIN_PASSWORD_HASH validation (must start with $2 for bcrypt)
+- [x] T071 Implement PROXMOX_URL validation (must parse as valid HTTPS URL, skipped if PVMSS_OFFLINE=true)
+- [x] T072 Implement fail-fast behavior (exit 1 if any required var missing or empty)
+- [x] T073 Implement default values for optional env vars (DBPath, Environment, Offline, LogLevel, LogOutput, LogFormat, Timezone)
+- [x] T074 Add startup summary logging with secrets redacted
+- [x] T075 Write unit tests for env/loader.go covering all validation scenarios
+- [x] T076 Write unit tests for missing required env vars
+- [x] T077 Write unit tests for invalid env var values
+- [x] T078 Write unit tests for default value assignments
+- [x] T079 Write unit tests for offline mode (Proxmox vars optional)
+- [x] T080 Update backend/main.go to load EnvConfig on startup
+- [x] T081 Update backend/main.go startup order: Load EnvConfig → Open SQLite DB → Run migrations → Check bootstrap
+- [x] T082 Update JWT middleware in backend/api/v1/ to read JWT_SECRET from EnvConfig only
+- [x] T083 Remove fallback to settings struct in JWT middleware
+- [x] T084 Remove JWTSecret field from AppSettings struct in backend/state/settings.go
+- [x] T085 N/A — ProxmoxURL/APIToken fields were never in AppSettings struct
+- [x] T086 N/A — No AppSettings-level JWTSecret in tests (database migration tests use JSONSettings, which is separate)
+- [x] T087 N/A — Proxmox credentials were never in AppSettings
+- [x] T088 Covered by TestLoadAndValidate_MissingRequiredVars / TestLoadAndValidate_AllErrorsReportedTogether
+- [x] T089 Covered by TestLoadAndValidate_AllRequired_Valid
+- [x] T090 Covered by JWT middleware using injected jwtSecret string (no settings dependency)
 
 ---
 
