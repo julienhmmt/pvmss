@@ -689,9 +689,9 @@ func TestSampled(t *testing.T) {
 
 	// Second call should return disabled event (not sampled)
 	event = logger.Sampled("sampled_test_unique", zerolog.InfoLevel)
+	//nolint:staticcheck // SA9003: empty branch is intentional — verifying
+	// that a disabled *zerolog.Event is returned (no-op when written).
 	if event != nil {
-		// Event is returned but should be disabled (no-op)
-		// This is expected - we don't check nil anymore
 	}
 }
 

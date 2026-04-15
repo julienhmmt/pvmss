@@ -190,7 +190,7 @@ func setupStaticFiles(router *httprouter.Router, stateManager state.StateManager
 
 	// SvelteKit SPA immutable assets (hashed JS/CSS)
 	registerStaticHandler(router, "/_app/*filepath", http.StripPrefix("/_app/", createCachedFileServer(basePath, "build/_app")))
-	
+
 	// noVNC library for the Svelte console component
 	registerStaticHandler(router, "/components/*filepath", http.StripPrefix("/components/", createCachedFileServer(basePath, "components")))
 	registerStaticHandler(router, "/noVNC-1.6.0/*filepath", http.StripPrefix("/noVNC-1.6.0/", createCachedFileServer(basePath, "static/noVNC-1.6.0")))
@@ -198,5 +198,3 @@ func setupStaticFiles(router *httprouter.Router, stateManager state.StateManager
 
 	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured")
 }
-
-// setupStaticFiles configures the static file server
