@@ -20,25 +20,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// applyPragmas applies the production PRAGMA set to db.
-// Must be called immediately after Open, before any queries, with
-// MaxOpenConns=1 to guarantee all subsequent queries use the same connection.
-func applyPragmas(t *testing.T, db *sql.DB) {
-	t.Helper()
-	pragmas := []string{
-		"PRAGMA journal_mode=WAL",
-		"PRAGMA busy_timeout=5000",
-		"PRAGMA foreign_keys=OFF",
-		"PRAGMA synchronous=NORMAL",
-		"PRAGMA cache_size=-64000",
-	}
-	for _, p := range pragmas {
-		if _, err := db.Exec(p); err != nil {
-			t.Fatalf("pragma %q: %v", p, err)
-		}
-	}
-}
-
 // openSpikeDB opens an in-memory SQLite database with production PRAGMAs.
 // MaxOpenConns=1 ensures the pragma-configured connection is always reused
 // (models the production single-write-connection pattern).
@@ -49,8 +30,10 @@ func openSpikeDB(t *testing.T) *sql.DB {
 		t.Fatalf("sql.Open: %v", err)
 	}
 	db.SetMaxOpenConns(1)
-	applyPragmas(t, db)
-	t.Cleanup(func() { db.Close() })
+	if err := applyPragmas(db); err != nil {
+		t.Fatalf("applyPragmas: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
 	return db
 }
 
@@ -116,7 +99,7 @@ func TestSpikeTransaction(t *testing.T) {
 			t.Fatalf("Begin: %v", err)
 		}
 		if _, err := tx.Exec(`UPDATE counters SET n = n + 1 WHERE name = 'hits'`); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			t.Fatalf("UPDATE: %v", err)
 		}
 		if err := tx.Commit(); err != nil {
@@ -138,10 +121,10 @@ func TestSpikeTransaction(t *testing.T) {
 			t.Fatalf("Begin: %v", err)
 		}
 		if _, err := tx.Exec(`UPDATE counters SET n = 999 WHERE name = 'hits'`); err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			t.Fatalf("UPDATE: %v", err)
 		}
-		tx.Rollback()
+		_ = tx.Rollback()
 
 		var n int
 		if err := db.QueryRow(`SELECT n FROM counters WHERE name = 'hits'`).Scan(&n); err != nil {
@@ -167,8 +150,10 @@ func openFileDB(t *testing.T) *sql.DB {
 		t.Fatalf("sql.Open (file): %v", err)
 	}
 	db.SetMaxOpenConns(1)
-	applyPragmas(t, db)
-	t.Cleanup(func() { db.Close() })
+	if err := applyPragmas(db); err != nil {
+		t.Fatalf("applyPragmas: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
 	return db
 }
 
@@ -267,12 +252,6 @@ func (c *inMemoryCache) get() string {
 	return c.value
 }
 
-func (c *inMemoryCache) set(v string) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.value = v
-}
-
 // BenchmarkCacheVsSQLite compares 1 000 reads from in-memory cache vs
 // 1 000 reads from SQLite to confirm the caching strategy is justified.
 //
@@ -283,7 +262,7 @@ func BenchmarkCacheVsSQLite(b *testing.B) {
 	if err != nil {
 		b.Fatalf("sql.Open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err := db.Exec(`CREATE TABLE s (k TEXT PRIMARY KEY, v TEXT NOT NULL)`); err != nil {
 		b.Fatalf("CREATE TABLE: %v", err)
 	}
@@ -319,7 +298,7 @@ func BenchmarkSQLiteWrite(b *testing.B) {
 	if err != nil {
 		b.Fatalf("sql.Open: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err := db.Exec(`CREATE TABLE s (k TEXT PRIMARY KEY, v TEXT NOT NULL)`); err != nil {
 		b.Fatalf("CREATE TABLE: %v", err)
 	}
