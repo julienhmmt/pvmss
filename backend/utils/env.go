@@ -1,20 +1,19 @@
 package utils
 
 import (
-	"os"
 	"strings"
 )
 
 // IsProduction checks if the application is running in production mode.
-// Accepts: "production", "prod", "production", "dev", "development", "developpement"
-func IsProduction() bool {
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("PVMSS_ENV")))
-	return env == "production" || env == "prod"
+// Accepts: "production", "prod"
+func IsProduction(env string) bool {
+	e := strings.ToLower(strings.TrimSpace(env))
+	return e == "production" || e == "prod"
 }
 
 // IsDevelopment checks if the application is running in development mode.
 // Accepts: "dev", "development", "developpement"
-func IsDevelopment() bool {
-	env := strings.ToLower(strings.TrimSpace(os.Getenv("PVMSS_ENV")))
-	return env == "dev" || env == "development" || env == "developpement"
+func IsDevelopment(env string) bool {
+	e := strings.ToLower(strings.TrimSpace(env))
+	return e == "dev" || e == "development" || e == "developpement"
 }

@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"net/http"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,10 +26,13 @@ func MakeVMHandler(s state.StateManager) *VMHandler {
 	return &VMHandler{state: s}
 }
 
-// isOffline returns true when PVMSS_OFFLINE=true or state signals offline.
+// isOffline returns true when offline mode is set in EnvConfig or state signals offline.
 func (h *VMHandler) isOffline() bool {
-	return strings.EqualFold(os.Getenv("PVMSS_OFFLINE"), "true") ||
-		h.state == nil || h.state.IsOfflineMode()
+	if h.state == nil {
+		return true
+	}
+	cfg := h.state.GetEnvConfig()
+	return (cfg != nil && cfg.Offline) || h.state.IsOfflineMode()
 }
 
 // restyClient returns a fresh Resty client from env vars with a 30s timeout.

@@ -12,7 +12,6 @@
         "privateKeyPath": "/app/pvmss_snippets_ed25519",
         "snippetBaseDir": "/snippets"
     },
-    "jwt_secret": "CHANGE_ME_use_at_least_32_random_bytes_here__",
     "max_network_cards": 1,
     "max_disk_per_vm": 1,
     "max_vm_per_user": 5,

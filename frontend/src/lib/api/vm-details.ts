@@ -115,8 +115,8 @@ export interface VMSettings {
     min_disk_gb: number;
     max_disk_gb: number;
     max_disks_per_vm: number;
+    max_snapshots: number;
   };
-  max_snapshots: number;
 }
 
 export async function getVMConfig(vmid: number): Promise<VMConfig> {

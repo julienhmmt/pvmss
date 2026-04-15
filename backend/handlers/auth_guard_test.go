@@ -10,6 +10,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 	"github.com/stretchr/testify/assert"
 
+	envpkg "pvmss/env"
 	"pvmss/handlers"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -51,6 +52,8 @@ func (m *mockStateManager) CleanExpiredCSRFTokens()                            {
 func (m *mockStateManager) GetFrontendPath() string                            { return "" }
 func (m *mockStateManager) SetFrontendPath(path string)                        {}
 func (m *mockStateManager) SetGuestAgentCleanupFunc(cleanupFunc func())        {}
+func (m *mockStateManager) GetEnvConfig() *envpkg.EnvConfig                    { return &envpkg.EnvConfig{} }
+func (m *mockStateManager) SetEnvConfig(cfg *envpkg.EnvConfig)                 {}
 
 func newTestRequest(method, path string) *http.Request {
 	req := httptest.NewRequest(method, path, nil)

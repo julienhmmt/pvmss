@@ -20,22 +20,26 @@ import (
 
 // DocsAPIHandler serves pre-rendered markdown documentation as HTML.
 type DocsAPIHandler struct {
-	docsDir string
-	state   state.StateManager
-	cache   map[string]string // key: "type.lang" → HTML string
-	mu      sync.RWMutex
+	docsDir   string
+	state     state.StateManager
+	cache     map[string]string // key: "type.lang" → HTML string
+	mu        sync.RWMutex
+	jwtSecret string
 }
 
 // MakeDocsAPIHandler creates a new DocsAPIHandler, resolving the docs directory.
-func MakeDocsAPIHandler(s state.StateManager) *DocsAPIHandler {
+// jwtSecret must be the JWT_SECRET environment variable value used to optionally
+// verify admin access for restricted doc types.
+func MakeDocsAPIHandler(s state.StateManager, jwtSecret string) *DocsAPIHandler {
 	dir, err := findAPIDocsDir()
 	if err != nil {
 		logger.Get().Warn().Err(err).Msg("api/v1/docs: docs directory not found")
 	}
 	return &DocsAPIHandler{
-		docsDir: dir,
-		state:   s,
-		cache:   make(map[string]string),
+		docsDir:   dir,
+		state:     s,
+		cache:     make(map[string]string),
+		jwtSecret: jwtSecret,
 	}
 }
 
@@ -233,10 +237,7 @@ func findAPIDocsDir() (string, error) {
 
 // parseClaims extracts JWT claims from the access_token cookie without going through middleware.
 func (h *DocsAPIHandler) parseClaims(r *http.Request) (*JWTClaims, bool) {
-	if h.state == nil {
-		return nil, false
-	}
-	secret := h.state.GetSettings().JWTSecret
+	secret := h.jwtSecret
 	if secret == "" {
 		return nil, false
 	}
