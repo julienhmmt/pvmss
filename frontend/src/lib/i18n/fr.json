@@ -768,6 +768,78 @@
       "failed": "Échec"
     }
   },
+  "setup": {
+    "title": "Configuration initiale",
+    "subtitle": "Configurez PVMSS avant de l'ouvrir aux utilisateurs",
+    "steps": {
+      "connection": "Connexion",
+      "nodes": "Nœuds",
+      "resources": "Ressources",
+      "limits": "Limites",
+      "review": "Révision"
+    },
+    "connection": {
+      "title": "Connexion Proxmox",
+      "description": "Vérification que PVMSS peut atteindre l'API Proxmox avec les identifiants configurés.",
+      "url": "URL Proxmox",
+      "testing": "Test en cours…",
+      "success": "Connexion réussie",
+      "failure": "Impossible de se connecter",
+      "offlineTitle": "Mode hors ligne",
+      "offlineDesc": "PVMSS fonctionne en mode hors ligne. Les appels à l'API Proxmox sont désactivés. Vous pouvez tout de même configurer les limites et terminer la configuration.",
+      "retry": "Tester à nouveau"
+    },
+    "nodes": {
+      "title": "Activer les nœuds",
+      "description": "Sélectionnez les nœuds Proxmox sur lesquels les utilisateurs peuvent déployer des VMs.",
+      "none": "Aucun nœud détecté — vérifiez la connexion Proxmox.",
+      "selectAll": "Tout sélectionner",
+      "deselectAll": "Tout désélectionner"
+    },
+    "resources": {
+      "title": "Activer les ressources",
+      "storagesTitle": "Stockages",
+      "storagesDesc": "Pools de stockage disponibles pour les disques des VMs.",
+      "isosTitle": "Images ISO",
+      "isosDesc": "Images ISO pouvant être attachées aux VMs.",
+      "vmbrsTitle": "Ponts réseau",
+      "vmbrsDesc": "Ponts virtuels auxquels les VMs peuvent se connecter.",
+      "none": "Aucun détecté",
+      "selectAll": "Tous",
+      "deselectAll": "Aucun"
+    },
+    "limits": {
+      "title": "Limites de ressources",
+      "description": "Définissez les quotas de ressources par défaut pour cette installation.",
+      "maxVms": "Nombre max de VMs total",
+      "maxVmPerUser": "VMs max par utilisateur",
+      "maxNetworkCards": "Cartes réseau max par VM",
+      "maxDiskPerVM": "Disques max par VM",
+      "maxSnapshots": "Snapshots max par VM",
+      "allowCustomYaml": "Autoriser le YAML cloud-init personnalisé"
+    },
+    "review": {
+      "title": "Révision & finalisation",
+      "description": "Vérifiez votre configuration puis cliquez sur Terminer pour finaliser.",
+      "nodes": "Nœuds",
+      "storages": "Stockages",
+      "isos": "Images ISO",
+      "vmbrs": "Ponts réseau",
+      "limits": "Limites",
+      "none": "Aucun sélectionné",
+      "complete": "Terminer la configuration",
+      "completing": "Finalisation…"
+    },
+    "done": {
+      "title": "Configuration terminée !",
+      "description": "PVMSS est prêt. Vous pouvez maintenant vous connecter.",
+      "login": "Aller à la connexion"
+    },
+    "nav": {
+      "back": "Retour",
+      "next": "Suivant"
+    }
+  },
   "footer": {
     "backToTop": "Retour en haut",
     "documentation": "Présentation PVMSS",

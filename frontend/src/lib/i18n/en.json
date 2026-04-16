@@ -770,6 +770,78 @@
       "failed": "Failed"
     }
   },
+  "setup": {
+    "title": "First-run setup",
+    "subtitle": "Configure PVMSS before opening it to users",
+    "steps": {
+      "connection": "Connection",
+      "nodes": "Nodes",
+      "resources": "Resources",
+      "limits": "Limits",
+      "review": "Review"
+    },
+    "connection": {
+      "title": "Proxmox connection",
+      "description": "Verifying that PVMSS can reach the Proxmox API using the configured credentials.",
+      "url": "Proxmox URL",
+      "testing": "Testing connection…",
+      "success": "Connected successfully",
+      "failure": "Could not connect",
+      "offlineTitle": "Offline mode",
+      "offlineDesc": "PVMSS is running in offline mode. Proxmox API calls are disabled. You can still configure limits and complete the setup.",
+      "retry": "Test again"
+    },
+    "nodes": {
+      "title": "Enable nodes",
+      "description": "Select which Proxmox nodes users can deploy VMs on.",
+      "none": "No nodes detected — check the Proxmox connection.",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all"
+    },
+    "resources": {
+      "title": "Enable resources",
+      "storagesTitle": "Storages",
+      "storagesDesc": "Storage pools available for VM disks.",
+      "isosTitle": "ISO images",
+      "isosDesc": "ISO images that can be attached to VMs.",
+      "vmbrsTitle": "Network bridges",
+      "vmbrsDesc": "Virtual bridges that VMs can connect to.",
+      "none": "None detected",
+      "selectAll": "All",
+      "deselectAll": "None"
+    },
+    "limits": {
+      "title": "Resource limits",
+      "description": "Set the default resource quotas for this installation.",
+      "maxVms": "Max total VMs",
+      "maxVmPerUser": "Max VMs per user",
+      "maxNetworkCards": "Max network cards per VM",
+      "maxDiskPerVM": "Max disks per VM",
+      "maxSnapshots": "Max snapshots per VM",
+      "allowCustomYaml": "Allow custom cloud-init YAML"
+    },
+    "review": {
+      "title": "Review & complete",
+      "description": "Check your configuration then click Complete to finish setup.",
+      "nodes": "Nodes",
+      "storages": "Storages",
+      "isos": "ISO images",
+      "vmbrs": "Network bridges",
+      "limits": "Limits",
+      "none": "None selected",
+      "complete": "Complete setup",
+      "completing": "Completing…"
+    },
+    "done": {
+      "title": "Setup complete!",
+      "description": "PVMSS is ready. You can now log in.",
+      "login": "Go to login"
+    },
+    "nav": {
+      "back": "Back",
+      "next": "Next"
+    }
+  },
   "footer": {
     "backToTop": "Back to top",
     "documentation": "PVMSS overview",
