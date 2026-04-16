@@ -8,6 +8,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 
 	"pvmss/constants"
+	"pvmss/database"
 	envpkg "pvmss/env"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -19,8 +20,17 @@ import (
 // appState is the concrete implementation of StateManager
 type appState struct {
 	sessionManager *scs.SessionManager
-	settings       *AppSettings
-	mu             sync.RWMutex
+
+	// settings cache – protected by settingsMu (separate from mu so settings
+	// writes never block session/env/frontend reads and vice-versa).
+	settings   *AppSettings
+	settingsMu sync.RWMutex
+
+	// db is the SQLite database backing the settings cache.
+	// nil when running without a DB (unit tests, legacy settings.json mode).
+	db database.DB
+
+	mu sync.RWMutex
 
 	// Proxmox connection status
 	proxmoxConnected bool
@@ -65,18 +75,29 @@ type appState struct {
 	cleanupMu             sync.RWMutex
 }
 
-// MakeAppState creates a new instance of the application state manager
+// MakeAppState creates a new StateManager without a database.
+// Suitable for unit tests and legacy settings.json operation.
 func MakeAppState() StateManager {
-	state := &appState{
+	return newAppState(nil)
+}
+
+// MakeAppStateWithDB creates a StateManager backed by the provided SQLite DB.
+// The DB must already be open and migrated; the caller retains ownership and
+// is responsible for closing it after the StateManager is done.
+func MakeAppStateWithDB(db database.DB) StateManager {
+	return newAppState(db)
+}
+
+// newAppState is the shared constructor used by both public constructors.
+func newAppState(db database.DB) *appState {
+	s := &appState{
 		settings:   &AppSettings{},
+		db:         db,
 		csrfTokens: make(map[string]time.Time),
 	}
-
-	// Start background cleanup goroutines
-	go state.cleanupSecurityData()
-	go state.cleanupGuestAgentCache()
-
-	return state
+	go s.cleanupSecurityData()
+	go s.cleanupGuestAgentCache()
+	return s
 }
 
 // cleanupSecurityData runs periodic cleanup of expired security data

@@ -15,6 +15,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/cloudinit"
+	"pvmss/database"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -356,16 +357,22 @@ func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	newSettings := *settings
 	newTags := make([]string, len(settings.Tags), len(settings.Tags)+1)
 	copy(newTags, settings.Tags)
 	newTags = append(newTags, req.Name)
-	newSettings.Tags = newTags
-	// Deep copy maps
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		if err := h.state.SetTags(newTags, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newSettings.Tags = newTags
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, AdminTagResponse{Name: req.Name})
@@ -385,7 +392,6 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 	}
 
 	settings := h.state.GetSettings()
-	newSettings := *settings
 	newTags := make([]string, 0, len(settings.Tags))
 	found := false
 	for _, t := range settings.Tags {
@@ -399,11 +405,19 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 		errBadRequest(w, "tag not found")
 		return
 	}
-	newSettings.Tags = newTags
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		if err := h.state.SetTags(newTags, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newSettings.Tags = newTags
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -420,6 +434,7 @@ func (h *AdminMutationsHandler) GetLimits(w http.ResponseWriter, _ *http.Request
 			Cores:   ResourceRangeResponse{Min: v.Cores.Min, Max: v.Cores.Max},
 			RAM:     ResourceRangeResponse{Min: v.RAM.Min, Max: v.RAM.Max},
 			Disk:    ResourceRangeResponse{Min: v.Disk.Min, Max: v.Disk.Max},
+			MaxVMs:  v.MaxVMs,
 		}
 	}
 	writeJSON(w, AdminLimitsResponse{
@@ -445,32 +460,65 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	settings := h.state.GetSettings()
-	newSettings := *settings
-	newSettings.Limits = state.LimitsConfig{
-		VM: state.VMResourceLimits{
-			Sockets: state.ResourceRange{Min: req.VM.Sockets.Min, Max: req.VM.Sockets.Max},
-			Cores:   state.ResourceRange{Min: req.VM.Cores.Min, Max: req.VM.Cores.Max},
-			RAM:     state.ResourceRange{Min: req.VM.RAM.Min, Max: req.VM.RAM.Max},
-			Disk:    state.ResourceRange{Min: req.VM.Disk.Min, Max: req.VM.Disk.Max},
-		},
-		Nodes:        make(map[string]state.NodeResourceLimits, len(req.Nodes)),
-		MaxSnapshots: req.MaxSnapshots,
-	}
-	for k, v := range req.Nodes {
-		newSettings.Limits.Nodes[k] = state.NodeResourceLimits{
-			Sockets: state.ResourceRange{Min: v.Sockets.Min, Max: v.Sockets.Max},
-			Cores:   state.ResourceRange{Min: v.Cores.Min, Max: v.Cores.Max},
-			RAM:     state.ResourceRange{Min: v.RAM.Min, Max: v.RAM.Max},
-			Disk:    state.ResourceRange{Min: v.Disk.Min, Max: v.Disk.Max},
+	changedBy := usernameFromCtx(r)
+
+	if h.state.HasDB() {
+		// Persist VM limits (MaxVMs, MaxVMPerUser, MaxNetworkCards, MaxDiskPerVM,
+		// AllowCustomYAML, MaxSnapshots) via the fine-grained DB setter.
+		current := h.state.GetSettings()
+		limits := &database.VMLimits{
+			MaxVMs:          0, // no global VM cap
+			MaxVMPerUser:    req.MaxVMPerUser,
+			MaxNetworkCards: req.MaxNetworkCards,
+			MaxDiskPerVM:    req.MaxDiskPerVM,
+			AllowCustomYAML: current.AllowCustomYAML,
+			MaxSnapshots:    req.MaxSnapshots,
 		}
-	}
-	newSettings.MaxNetworkCards = req.MaxNetworkCards
-	newSettings.MaxDiskPerVM = req.MaxDiskPerVM
-	newSettings.MaxVMPerUser = req.MaxVMPerUser
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+		if err := h.state.SetVMLimits(limits, changedBy); err != nil {
+			errInternal(w)
+			return
+		}
+		// Upsert per-node VM count limits from the request's Nodes map.
+		for nodeName, nodeReq := range req.Nodes {
+			if nodeReq.MaxVMs > 0 {
+				if err := h.state.SetNodeLimit(nodeName, nodeReq.MaxVMs, changedBy); err != nil {
+					errInternal(w)
+					return
+				}
+			} else {
+				// Zero means remove the per-node override.
+				_ = h.state.DeleteNodeLimit(nodeName, changedBy)
+			}
+		}
+	} else {
+		settings := h.state.GetSettings()
+		newSettings := *settings
+		newSettings.Limits = state.LimitsConfig{
+			VM: state.VMResourceLimits{
+				Sockets: state.ResourceRange{Min: req.VM.Sockets.Min, Max: req.VM.Sockets.Max},
+				Cores:   state.ResourceRange{Min: req.VM.Cores.Min, Max: req.VM.Cores.Max},
+				RAM:     state.ResourceRange{Min: req.VM.RAM.Min, Max: req.VM.RAM.Max},
+				Disk:    state.ResourceRange{Min: req.VM.Disk.Min, Max: req.VM.Disk.Max},
+			},
+			Nodes:        make(map[string]state.NodeResourceLimits, len(req.Nodes)),
+			MaxSnapshots: req.MaxSnapshots,
+		}
+		for k, v := range req.Nodes {
+			newSettings.Limits.Nodes[k] = state.NodeResourceLimits{
+				Sockets: state.ResourceRange{Min: v.Sockets.Min, Max: v.Sockets.Max},
+				Cores:   state.ResourceRange{Min: v.Cores.Min, Max: v.Cores.Max},
+				RAM:     state.ResourceRange{Min: v.RAM.Min, Max: v.RAM.Max},
+				Disk:    state.ResourceRange{Min: v.Disk.Min, Max: v.Disk.Max},
+				MaxVMs:  v.MaxVMs,
+			}
+		}
+		newSettings.MaxNetworkCards = req.MaxNetworkCards
+		newSettings.MaxDiskPerVM = req.MaxDiskPerVM
+		newSettings.MaxVMPerUser = req.MaxVMPerUser
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -594,15 +642,27 @@ func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.R
 		Enabled:     true,
 	}
 
-	newSettings := *settings
-	newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates), len(settings.CloudInitTemplates)+1)
-	copy(newTemplates, settings.CloudInitTemplates)
-	newTemplates = append(newTemplates, template)
-	newSettings.CloudInitTemplates = newTemplates
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		dbTemplate := &database.CloudInitTemplate{
+			ID: template.ID, Name: template.Name, Description: template.Description,
+			Storage: template.Storage, Filename: template.Filename,
+			YAMLContent: template.YAMLContent, Enabled: template.Enabled,
+		}
+		if err := h.state.CreateCloudInitTemplate(dbTemplate, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates), len(settings.CloudInitTemplates)+1)
+		copy(newTemplates, settings.CloudInitTemplates)
+		newTemplates = append(newTemplates, template)
+		newSettings.CloudInitTemplates = newTemplates
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, AdminCloudInitResponse{
@@ -633,22 +693,11 @@ func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.R
 	}
 
 	settings := h.state.GetSettings()
-	newSettings := *settings
-	newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates))
-	copy(newTemplates, settings.CloudInitTemplates)
 	found := false
-	for i, t := range newTemplates {
+	var existing state.CloudInitTemplate
+	for _, t := range settings.CloudInitTemplates {
 		if t.ID == id {
-			updated := t
-			if req.Name != "" {
-				updated.Name = req.Name
-			}
-			updated.Description = req.Description
-			updated.Storage = req.Storage
-			if req.YAMLContent != "" {
-				updated.YAMLContent = req.YAMLContent
-			}
-			newTemplates[i] = updated
+			existing = t
 			found = true
 			break
 		}
@@ -657,11 +706,40 @@ func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.R
 		errBadRequest(w, "cloud-init template not found")
 		return
 	}
-	newSettings.CloudInitTemplates = newTemplates
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if req.Name != "" {
+		existing.Name = req.Name
+	}
+	existing.Description = req.Description
+	existing.Storage = req.Storage
+	if req.YAMLContent != "" {
+		existing.YAMLContent = req.YAMLContent
+	}
+	if h.state.HasDB() {
+		dbTemplate := &database.CloudInitTemplate{
+			ID: existing.ID, Name: existing.Name, Description: existing.Description,
+			Storage: existing.Storage, Filename: existing.Filename,
+			YAMLContent: existing.YAMLContent, Enabled: existing.Enabled,
+		}
+		if err := h.state.UpdateCloudInitTemplate(dbTemplate, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates))
+		copy(newTemplates, settings.CloudInitTemplates)
+		for i, t := range newTemplates {
+			if t.ID == id {
+				newTemplates[i] = existing
+				break
+			}
+		}
+		newSettings.CloudInitTemplates = newTemplates
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -676,25 +754,37 @@ func (h *AdminMutationsHandler) DeleteCloudInit(w http.ResponseWriter, r *http.R
 	}
 
 	settings := h.state.GetSettings()
-	newSettings := *settings
-	newTemplates := make([]state.CloudInitTemplate, 0, len(settings.CloudInitTemplates))
 	found := false
 	for _, t := range settings.CloudInitTemplates {
 		if t.ID == id {
 			found = true
-			continue
+			break
 		}
-		newTemplates = append(newTemplates, t)
 	}
 	if !found {
 		errBadRequest(w, "cloud-init template not found")
 		return
 	}
-	newSettings.CloudInitTemplates = newTemplates
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		if err := h.state.DeleteCloudInitTemplate(id, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newTemplates := make([]state.CloudInitTemplate, 0, len(settings.CloudInitTemplates))
+		for _, t := range settings.CloudInitTemplates {
+			if t.ID == id {
+				continue
+			}
+			newTemplates = append(newTemplates, t)
+		}
+		newSettings.CloudInitTemplates = newTemplates
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -709,13 +799,12 @@ func (h *AdminMutationsHandler) ToggleCloudInit(w http.ResponseWriter, r *http.R
 	}
 
 	settings := h.state.GetSettings()
-	newSettings := *settings
-	newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates))
-	copy(newTemplates, settings.CloudInitTemplates)
 	found := false
-	for i, t := range newTemplates {
+	var toggled state.CloudInitTemplate
+	for _, t := range settings.CloudInitTemplates {
 		if t.ID == id {
-			newTemplates[i].Enabled = !t.Enabled
+			t.Enabled = !t.Enabled
+			toggled = t
 			found = true
 			break
 		}
@@ -724,11 +813,32 @@ func (h *AdminMutationsHandler) ToggleCloudInit(w http.ResponseWriter, r *http.R
 		errBadRequest(w, "cloud-init template not found")
 		return
 	}
-	newSettings.CloudInitTemplates = newTemplates
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		dbTemplate := &database.CloudInitTemplate{
+			ID: toggled.ID, Name: toggled.Name, Description: toggled.Description,
+			Storage: toggled.Storage, Filename: toggled.Filename,
+			YAMLContent: toggled.YAMLContent, Enabled: toggled.Enabled,
+		}
+		if err := h.state.UpdateCloudInitTemplate(dbTemplate, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newTemplates := make([]state.CloudInitTemplate, len(settings.CloudInitTemplates))
+		copy(newTemplates, settings.CloudInitTemplates)
+		for i, t := range newTemplates {
+			if t.ID == id {
+				newTemplates[i].Enabled = toggled.Enabled
+				break
+			}
+		}
+		newSettings.CloudInitTemplates = newTemplates
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -750,11 +860,9 @@ func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Req
 	uniqueID := req.Node + ":" + req.Storage
 
 	settings := h.state.GetSettings()
-	newSettings := *settings
 	newStorages := make([]string, len(settings.EnabledStorages))
 	copy(newStorages, settings.EnabledStorages)
 
-	// Check if currently enabled
 	found := false
 	for _, s := range newStorages {
 		if s == uniqueID {
@@ -764,7 +872,6 @@ func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Req
 	}
 
 	if found {
-		// Remove (disable)
 		filtered := make([]string, 0, len(newStorages))
 		for _, s := range newStorages {
 			if s != uniqueID {
@@ -773,15 +880,22 @@ func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Req
 		}
 		newStorages = filtered
 	} else {
-		// Add (enable)
 		newStorages = append(newStorages, uniqueID)
 	}
 
-	newSettings.EnabledStorages = newStorages
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		if err := h.state.SetEnabledStorages(newStorages, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newSettings.EnabledStorages = newStorages
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -803,7 +917,6 @@ func (h *AdminMutationsHandler) ToggleVMBR(w http.ResponseWriter, r *http.Reques
 	uniqueID := req.Node + ":" + req.VMBR
 
 	settings := h.state.GetSettings()
-	newSettings := *settings
 	newVMBRs := make([]string, len(settings.VMBRs))
 	copy(newVMBRs, settings.VMBRs)
 
@@ -827,11 +940,19 @@ func (h *AdminMutationsHandler) ToggleVMBR(w http.ResponseWriter, r *http.Reques
 		newVMBRs = append(newVMBRs, uniqueID)
 	}
 
-	newSettings.VMBRs = newVMBRs
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		if err := h.state.SetEnabledVMBRs(newVMBRs, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newSettings.VMBRs = newVMBRs
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -851,7 +972,6 @@ func (h *AdminMutationsHandler) ToggleISO(w http.ResponseWriter, r *http.Request
 	}
 
 	settings := h.state.GetSettings()
-	newSettings := *settings
 	newISOs := make([]string, len(settings.ISOs))
 	copy(newISOs, settings.ISOs)
 
@@ -875,11 +995,19 @@ func (h *AdminMutationsHandler) ToggleISO(w http.ResponseWriter, r *http.Request
 		newISOs = append(newISOs, req.VolID)
 	}
 
-	newSettings.ISOs = newISOs
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		if err := h.state.SetEnabledISOs(newISOs, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newSettings.ISOs = newISOs
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -954,6 +1082,24 @@ func (h *AdminMutationsHandler) ListVMProfiles(w http.ResponseWriter, _ *http.Re
 	})
 }
 
+// vmProfileConfigToDB converts a state.VMProfileConfig to a database.VMProfile
+// by marshalling the config fields into a JSON blob.
+func vmProfileConfigToDB(p state.VMProfileConfig) (*database.VMProfile, error) {
+	blob := database.VMProfileConfigBlob{
+		Sockets: p.Sockets, Cores: p.Cores, RAMGB: p.RAMGB,
+		DiskGB: p.DiskGB, DiskBus: p.DiskBus, Node: p.Node,
+		Storage: p.Storage, Icon: p.Icon, Color: p.Color,
+	}
+	configBytes, err := json.Marshal(blob)
+	if err != nil {
+		return nil, fmt.Errorf("marshal profile config: %w", err)
+	}
+	return &database.VMProfile{
+		ID: p.ID, Name: p.Name, Description: p.Description,
+		Config: string(configBytes), Enabled: p.Enabled,
+	}, nil
+}
+
 // CreateVMProfile handles POST /api/v1/admin/vm-profiles.
 func (h *AdminMutationsHandler) CreateVMProfile(w http.ResponseWriter, r *http.Request) {
 	var req state.VMProfileConfig
@@ -971,24 +1117,35 @@ func (h *AdminMutationsHandler) CreateVMProfile(w http.ResponseWriter, r *http.R
 		return
 	}
 	settings := h.state.GetSettings()
-	newSettings := *settings
-	// Materialize defaults so we have a real slice to append to.
-	if len(newSettings.VMProfiles) == 0 {
-		newSettings.VMProfiles = state.DefaultVMProfiles()
-	}
-	// Deep-copy to avoid shared backing array with the live settings.
-	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	for _, p := range newSettings.VMProfiles {
+	profiles := settings.GetVMProfiles()
+	for _, p := range profiles {
 		if p.ID == req.ID {
 			errBadRequest(w, "a profile with this ID already exists")
 			return
 		}
 	}
-	newSettings.VMProfiles = append(newSettings.VMProfiles, req)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		dbProfile, err := vmProfileConfigToDB(req)
+		if err != nil {
+			errInternal(w)
+			return
+		}
+		if err := h.state.CreateVMProfile(dbProfile, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		if len(newSettings.VMProfiles) == 0 {
+			newSettings.VMProfiles = state.DefaultVMProfiles()
+		}
+		newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		newSettings.VMProfiles = append(newSettings.VMProfiles, req)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, req)
@@ -1014,14 +1171,9 @@ func (h *AdminMutationsHandler) UpdateVMProfile(w http.ResponseWriter, r *http.R
 		return
 	}
 	settings := h.state.GetSettings()
-	newSettings := *settings
-	if len(newSettings.VMProfiles) == 0 {
-		newSettings.VMProfiles = state.DefaultVMProfiles()
-	}
-	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+	profiles := settings.GetVMProfiles()
 	found := false
-	for _, p := range newSettings.VMProfiles {
+	for _, p := range profiles {
 		if p.ID == req.ID {
 			found = true
 			break
@@ -1031,10 +1183,28 @@ func (h *AdminMutationsHandler) UpdateVMProfile(w http.ResponseWriter, r *http.R
 		errNotFound(w, "profile not found")
 		return
 	}
-	newSettings.AddOrUpdateVMProfile(req)
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		dbProfile, err := vmProfileConfigToDB(req)
+		if err != nil {
+			errInternal(w)
+			return
+		}
+		if err := h.state.UpdateVMProfile(dbProfile, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		if len(newSettings.VMProfiles) == 0 {
+			newSettings.VMProfiles = state.DefaultVMProfiles()
+		}
+		newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		newSettings.AddOrUpdateVMProfile(req)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	writeJSON(w, req)
 }
@@ -1048,19 +1218,34 @@ func (h *AdminMutationsHandler) DeleteVMProfile(w http.ResponseWriter, r *http.R
 		return
 	}
 	settings := h.state.GetSettings()
-	newSettings := *settings
-	if len(newSettings.VMProfiles) == 0 {
-		newSettings.VMProfiles = state.DefaultVMProfiles()
+	found := false
+	for _, p := range settings.GetVMProfiles() {
+		if p.ID == id {
+			found = true
+			break
+		}
 	}
-	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-	if !newSettings.RemoveVMProfile(id) {
+	if !found {
 		errNotFound(w, "profile not found")
 		return
 	}
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		if err := h.state.DeleteVMProfile(id, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		if len(newSettings.VMProfiles) == 0 {
+			newSettings.VMProfiles = state.DefaultVMProfiles()
+		}
+		newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		newSettings.RemoveVMProfile(id)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -1074,16 +1259,12 @@ func (h *AdminMutationsHandler) ToggleVMProfile(w http.ResponseWriter, r *http.R
 		return
 	}
 	settings := h.state.GetSettings()
-	newSettings := *settings
-	if len(newSettings.VMProfiles) == 0 {
-		newSettings.VMProfiles = state.DefaultVMProfiles()
-	}
-	newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
-	newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 	found := false
-	for i, p := range newSettings.VMProfiles {
+	var toggled state.VMProfileConfig
+	for _, p := range settings.GetVMProfiles() {
 		if p.ID == id {
-			newSettings.VMProfiles[i].Enabled = !p.Enabled
+			p.Enabled = !p.Enabled
+			toggled = p
 			found = true
 			break
 		}
@@ -1092,9 +1273,33 @@ func (h *AdminMutationsHandler) ToggleVMProfile(w http.ResponseWriter, r *http.R
 		errNotFound(w, "profile not found")
 		return
 	}
-	if err := h.state.SetSettings(&newSettings); err != nil {
-		errInternal(w)
-		return
+	if h.state.HasDB() {
+		dbProfile, err := vmProfileConfigToDB(toggled)
+		if err != nil {
+			errInternal(w)
+			return
+		}
+		if err := h.state.UpdateVMProfile(dbProfile, usernameFromCtx(r)); err != nil {
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		if len(newSettings.VMProfiles) == 0 {
+			newSettings.VMProfiles = state.DefaultVMProfiles()
+		}
+		newSettings.VMProfiles = copyVMProfiles(newSettings.VMProfiles)
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		for i, p := range newSettings.VMProfiles {
+			if p.ID == id {
+				newSettings.VMProfiles[i].Enabled = toggled.Enabled
+				break
+			}
+		}
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

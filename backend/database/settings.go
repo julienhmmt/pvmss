@@ -124,15 +124,16 @@ func scanVMLimitsRow(row *sql.Row) (*VMLimits, error) {
 	return &l, nil
 }
 
-// defaultVMLimits returns sane defaults matching the schema column defaults.
+// defaultVMLimits returns defaults aligned with state.defaultSettings().
+// These values must stay in sync with the constants in state/settings.go.
 func defaultVMLimits() *VMLimits {
 	return &VMLimits{
-		MaxVMs:          10,
-		MaxVMPerUser:    2,
-		MaxNetworkCards: 2,
-		MaxDiskPerVM:    4,
-		AllowCustomYAML: false,
-		MaxSnapshots:    3,
+		MaxVMs:          0, // no global VM cap in state defaults
+		MaxVMPerUser:    5, // state.DefaultVMPerUser
+		MaxNetworkCards: 1, // state.MinNetworkCards
+		MaxDiskPerVM:    4, // state.DefaultDiskPerVM
+		AllowCustomYAML: true,
+		MaxSnapshots:    8, // state.DefaultSnapshotsPerVM
 	}
 }
 

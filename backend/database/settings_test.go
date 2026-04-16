@@ -15,9 +15,9 @@ func TestVMLimits_DefaultsOnFreshDB(t *testing.T) {
 	db := openTestDB(t)
 	lim, err := db.GetVMLimits()
 	require.NoError(t, err)
-	assert.Equal(t, 10, lim.MaxVMs)
-	assert.Equal(t, 2, lim.MaxVMPerUser)
-	assert.Equal(t, 3, lim.MaxSnapshots)
+	assert.Equal(t, 0, lim.MaxVMs)
+	assert.Equal(t, 5, lim.MaxVMPerUser)
+	assert.Equal(t, 8, lim.MaxSnapshots)
 }
 
 func TestVMLimits_SetAndGet(t *testing.T) {
@@ -183,7 +183,7 @@ func TestLoadAppSettings_FreshDB(t *testing.T) {
 	s, err := db.LoadAppSettings()
 	require.NoError(t, err)
 	require.NotNil(t, s)
-	assert.Equal(t, 10, s.Limits.MaxVMs)
+	assert.Equal(t, 0, s.Limits.MaxVMs)
 	assert.Empty(t, s.EnabledNodes)
 	assert.Empty(t, s.CloudInitTemplates)
 	assert.Empty(t, s.VMProfiles)
