@@ -31,6 +31,7 @@
     "logout": "Logout",
     "saving": "Saving...",
     "size": "Size",
+    "page": "Page",
     "pageOf": "Page {page} of {total}",
     "addTag": "Add tag...",
     "value": "Value",
@@ -69,7 +70,8 @@
     "cloudinit": "Cloud-init",
     "iso": "ISO images",
     "appinfo": "App info",
-    "profiles": "VM Profiles"
+    "profiles": "VM Profiles",
+    "settings": "Settings"
   },
   "admin": {
     "dashboard": {
@@ -328,6 +330,39 @@
       "toast": {
         "created": "Pool \"{poolName}\" created",
         "deleted": "Pool \"{poolName}\" deleted"
+      }
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Database management and audit log",
+      "db": {
+        "title": "Database",
+        "exportTitle": "Export database",
+        "exportDesc": "Download a SQLite backup of the current database.",
+        "exportBtn": "Export",
+        "exportSuccess": "Database exported successfully",
+        "importTitle": "Import database",
+        "importDesc": "Replace the current database with an uploaded backup file.",
+        "importBtn": "Import",
+        "importSuccess": "Database imported successfully",
+        "importConfirmTitle": "Replace database?",
+        "importConfirmDesc": "This will replace all current data with the uploaded file. This action cannot be undone."
+      },
+      "migrate": {
+        "title": "Migrate from settings.json",
+        "desc": "Import settings from a legacy settings.json file into the database.",
+        "btn": "Upload settings.json",
+        "success": "Migration complete ({nodes} nodes, {tags} tags)"
+      },
+      "audit": {
+        "title": "Audit log",
+        "noEntries": "No audit entries",
+        "noEntriesDesc": "No configuration changes have been recorded yet.",
+        "time": "Time",
+        "table": "Table",
+        "record": "Record",
+        "action": "Action",
+        "changedBy": "Changed by"
       }
     }
   },

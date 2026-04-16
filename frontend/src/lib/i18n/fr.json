@@ -31,6 +31,7 @@
     "logout": "Déconnexion",
     "saving": "Enregistrement…",
     "size": "Taille",
+    "page": "Page",
     "pageOf": "Page {page} sur {total}",
     "addTag": "Ajouter un tag...",
     "value": "Valeur",
@@ -69,7 +70,8 @@
     "cloudinit": "Cloud-Init",
     "iso": "Images ISO",
     "appinfo": "Infos app",
-    "profiles": "Profils VM"
+    "profiles": "Profils VM",
+    "settings": "Paramètres"
   },
   "admin": {
     "dashboard": {
@@ -325,6 +327,39 @@
       "toast": {
         "created": "Pool « {poolName} » créé",
         "deleted": "Pool « {poolName} » supprimé"
+      }
+    },
+    "settings": {
+      "title": "Paramètres",
+      "subtitle": "Gestion de la base de données et journal d'audit",
+      "db": {
+        "title": "Base de données",
+        "exportTitle": "Exporter la base de données",
+        "exportDesc": "Télécharger une sauvegarde SQLite de la base de données actuelle.",
+        "exportBtn": "Exporter",
+        "exportSuccess": "Base de données exportée avec succès",
+        "importTitle": "Importer la base de données",
+        "importDesc": "Remplacer la base de données actuelle par un fichier de sauvegarde.",
+        "importBtn": "Importer",
+        "importSuccess": "Base de données importée avec succès",
+        "importConfirmTitle": "Remplacer la base de données ?",
+        "importConfirmDesc": "Toutes les données actuelles seront remplacées par le fichier uploadé. Cette action est irréversible."
+      },
+      "migrate": {
+        "title": "Migrer depuis settings.json",
+        "desc": "Importer les paramètres d'un fichier settings.json hérité dans la base de données.",
+        "btn": "Uploader settings.json",
+        "success": "Migration terminée ({nodes} nœuds, {tags} tags)"
+      },
+      "audit": {
+        "title": "Journal d'audit",
+        "noEntries": "Aucune entrée",
+        "noEntriesDesc": "Aucun changement de configuration n'a été enregistré.",
+        "time": "Horodatage",
+        "table": "Table",
+        "record": "Enregistrement",
+        "action": "Action",
+        "changedBy": "Modifié par"
       }
     }
   },

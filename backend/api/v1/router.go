@@ -130,6 +130,19 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/admin/iso/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleISO))
 }
 
+// RegisterAdminDBRoutes mounts the audit log and database management routes.
+// These require admin JWT auth and are separated from RegisterRoutes so that
+// the database.DB handle only needs to be threaded where it is actually used.
+func RegisterAdminDBRoutes(router *httprouter.Router, s state.StateManager, db database.DB) {
+	jwtSecret := s.GetEnvConfig().JWTSecret
+	h := MakeAdminDBHandler(s, db)
+
+	router.GET("/api/v1/admin/audit", adminJWTWrap(jwtSecret, h.ListAuditLog))
+	router.GET("/api/v1/admin/db/export", adminJWTWrap(jwtSecret, h.ExportDB))
+	router.POST("/api/v1/admin/db/import", adminJWTWrap(jwtSecret, h.ImportDB))
+	router.POST("/api/v1/admin/migrate-from-json", adminJWTWrap(jwtSecret, h.MigrateFromJSON))
+}
+
 // RegisterSetupRoutes mounts the first-run setup wizard routes onto the provided
 // router.  The status endpoint is always public; the mutating endpoints are
 // wrapped with requireSetupIncomplete so they return 404 once bootstrap is done.

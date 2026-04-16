@@ -121,6 +121,16 @@
   color: #2563eb;
   border: 1px solid #bfdbfe;
 }
+.pv-action-badge--success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.pv-action-badge--danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
 
 /* Feedback banners */
 .pv-error-banner,
