@@ -322,8 +322,8 @@ func TestMigrateFromJSON_ZeroLimits_DefaultsPreserved(t *testing.T) {
 
 	lim, err := db.GetVMLimits()
 	require.NoError(t, err)
-	// MaxVMs uses the hard-coded default, not zero.
-	assert.Equal(t, 10, lim.MaxVMs)
+	// MaxVMs uses the hard-coded default (0 = no global cap).
+	assert.Equal(t, 0, lim.MaxVMs)
 }
 
 func TestMigrateFromJSON_EmptyStringItemsSkipped(t *testing.T) {

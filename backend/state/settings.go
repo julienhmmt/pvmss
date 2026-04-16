@@ -32,6 +32,9 @@ type NodeResourceLimits struct {
 	Cores   ResourceRange `json:"cores"`
 	RAM     ResourceRange `json:"ram"`
 	Disk    ResourceRange `json:"disk"`
+	// MaxVMs is the per-node VM count override from the database node_limits table.
+	// Zero means no per-node override (use the global limit).
+	MaxVMs int `json:"max_vms,omitempty"`
 }
 
 // LimitsConfig defines the structure for all resource limits
@@ -214,10 +217,10 @@ type AppSettings struct {
 	CloudInitSFTP      proxmox.CloudInitSFTPConfig `json:"cloudinit_sftp,omitempty"`    // SSH/SFTP configuration for snippet uploads
 }
 
-// getSettingsFilePath returns the absolute path to the settings file.
+// GetSettingsFilePath returns the absolute path to the settings file.
 // It uses PVMSS_SETTINGS_PATH if set; otherwise, it looks for settings.json
 // in the backend directory relative to the executable.
-func getSettingsFilePath() (string, error) {
+func GetSettingsFilePath() (string, error) {
 	if v := os.Getenv("PVMSS_SETTINGS_PATH"); v != "" {
 		// Validate path to prevent directory traversal attacks
 		// Ensure the path is absolute and doesn't contain suspicious patterns
@@ -256,7 +259,7 @@ func LoadSettings() (*AppSettings, bool, error) {
 	log := logger.Get()
 	modified := false
 
-	settingsFile, err := getSettingsFilePath()
+	settingsFile, err := GetSettingsFilePath()
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to get settings file path: %w", err)
 	}
@@ -380,7 +383,7 @@ func WriteSettings(settings *AppSettings) error {
 
 	log := logger.Get()
 
-	settingsFile, err := getSettingsFilePath()
+	settingsFile, err := GetSettingsFilePath()
 	if err != nil {
 		return fmt.Errorf("failed to get settings file path for save: %w", err)
 	}

@@ -48,6 +48,7 @@ func sendSettingsJSONResponse(w http.ResponseWriter, settings *state.AppSettings
 				"cores":   map[string]int{"min": nodeLimits.Cores.Min, "max": nodeLimits.Cores.Max},
 				"ram":     map[string]int{"min": nodeLimits.RAM.Min, "max": nodeLimits.RAM.Max},
 				"disk":    map[string]int{"min": nodeLimits.Disk.Min, "max": nodeLimits.Disk.Max},
+				"max_vms": nodeLimits.MaxVMs,
 			}
 			nodesLimits[nodeName] = nodeMap
 		}

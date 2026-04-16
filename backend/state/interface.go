@@ -12,6 +12,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 
+	"pvmss/database"
 	envpkg "pvmss/env"
 	"pvmss/proxmox"
 )
@@ -58,6 +59,65 @@ type StateManager interface {
 
 	// Cleanup callbacks
 	SetGuestAgentCleanupFunc(cleanupFunc func())
+
+	// DB-backed settings writers.
+	// changedBy must be the authenticated admin username (from JWT claims).
+	// All methods call reloadSettingsCache() on success so the in-memory
+	// cache is immediately consistent with the database.
+
+	// HasDB reports whether the state manager is backed by a database.
+	// When true, callers must use the fine-grained DB setters (SetTags, etc.)
+	// instead of SetSettings() for persistence.
+	HasDB() bool
+
+	// LoadSettingsFromDB loads all settings from the database into the cache.
+	// Must be called once during startup after DB initialisation.
+	LoadSettingsFromDB() error
+
+	// SetVMLimits persists updated VM resource limits.
+	SetVMLimits(limits *database.VMLimits, changedBy string) error
+
+	// SetNodeLimit upserts a per-node maximum VM count.
+	SetNodeLimit(node string, maxVMs int, changedBy string) error
+
+	// DeleteNodeLimit removes a per-node VM count override.
+	DeleteNodeLimit(node string, changedBy string) error
+
+	// SetEnabledNodes replaces the full list of enabled Proxmox nodes.
+	SetEnabledNodes(nodes []string, changedBy string) error
+
+	// SetEnabledStorages replaces the full list of enabled storages.
+	SetEnabledStorages(storages []string, changedBy string) error
+
+	// SetEnabledISOs replaces the full list of available ISO images.
+	SetEnabledISOs(isos []string, changedBy string) error
+
+	// SetEnabledVMBRs replaces the full list of allowed network bridges.
+	SetEnabledVMBRs(vmbrs []string, changedBy string) error
+
+	// SetTags replaces the full list of VM tags.
+	SetTags(tags []string, changedBy string) error
+
+	// CreateCloudInitTemplate inserts a new cloud-init template.
+	CreateCloudInitTemplate(t *database.CloudInitTemplate, changedBy string) error
+
+	// UpdateCloudInitTemplate updates an existing cloud-init template.
+	UpdateCloudInitTemplate(t *database.CloudInitTemplate, changedBy string) error
+
+	// DeleteCloudInitTemplate removes a cloud-init template by ID.
+	DeleteCloudInitTemplate(id string, changedBy string) error
+
+	// CreateVMProfile inserts a new VM profile.
+	CreateVMProfile(p *database.VMProfile, changedBy string) error
+
+	// UpdateVMProfile updates an existing VM profile.
+	UpdateVMProfile(p *database.VMProfile, changedBy string) error
+
+	// DeleteVMProfile removes a VM profile by ID.
+	DeleteVMProfile(id string, changedBy string) error
+
+	// SetSFTPConfig persists the SFTP/SSH configuration.
+	SetSFTPConfig(cfg *database.SFTPConfig, changedBy string) error
 }
 
 // SettingsProvider exposes read access to application settings.

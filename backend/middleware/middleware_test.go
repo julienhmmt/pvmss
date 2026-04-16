@@ -9,6 +9,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 
+	"pvmss/database"
 	envpkg "pvmss/env"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -30,24 +31,47 @@ func (m *mockStateManager) RefreshNodeCache(_ context.Context)             {}
 func (m *mockStateManager) GetNodeCache() ([]*proxmox.NodeDetails, time.Time) {
 	return nil, time.Time{}
 }
-func (m *mockStateManager) GetProxmoxSnapshot() *state.ProxmoxClusterSnapshot  { return nil }
-func (m *mockStateManager) RequestSnapshotRefresh()                            {}
-func (m *mockStateManager) GetSettings() *state.AppSettings                    { return nil }
-func (m *mockStateManager) SetSettings(settings *state.AppSettings) error      { return nil }
-func (m *mockStateManager) SetSettingsWithoutSave(settings *state.AppSettings) {}
-func (m *mockStateManager) GetTags() []string                                  { return nil }
-func (m *mockStateManager) GetISOs() []string                                  { return nil }
-func (m *mockStateManager) GetVMBRs() []string                                 { return nil }
-func (m *mockStateManager) GetLimits() map[string]interface{}                  { return nil }
-func (m *mockStateManager) GetStorages() []string                              { return nil }
-func (m *mockStateManager) AddCSRFToken(token string, expiry time.Time) error  { return nil }
-func (m *mockStateManager) ValidateAndRemoveCSRFToken(token string) bool       { return false }
-func (m *mockStateManager) CleanExpiredCSRFTokens()                            {}
-func (m *mockStateManager) GetFrontendPath() string                            { return "" }
-func (m *mockStateManager) SetFrontendPath(path string)                        {}
-func (m *mockStateManager) SetGuestAgentCleanupFunc(cleanupFunc func())        {}
-func (m *mockStateManager) GetEnvConfig() *envpkg.EnvConfig                    { return &envpkg.EnvConfig{} }
-func (m *mockStateManager) SetEnvConfig(cfg *envpkg.EnvConfig)                 {}
+func (m *mockStateManager) GetProxmoxSnapshot() *state.ProxmoxClusterSnapshot             { return nil }
+func (m *mockStateManager) RequestSnapshotRefresh()                                       {}
+func (m *mockStateManager) GetSettings() *state.AppSettings                               { return nil }
+func (m *mockStateManager) SetSettings(settings *state.AppSettings) error                 { return nil }
+func (m *mockStateManager) SetSettingsWithoutSave(settings *state.AppSettings)            {}
+func (m *mockStateManager) GetTags() []string                                             { return nil }
+func (m *mockStateManager) GetISOs() []string                                             { return nil }
+func (m *mockStateManager) GetVMBRs() []string                                            { return nil }
+func (m *mockStateManager) GetLimits() map[string]interface{}                             { return nil }
+func (m *mockStateManager) GetStorages() []string                                         { return nil }
+func (m *mockStateManager) AddCSRFToken(token string, expiry time.Time) error             { return nil }
+func (m *mockStateManager) ValidateAndRemoveCSRFToken(token string) bool                  { return false }
+func (m *mockStateManager) CleanExpiredCSRFTokens()                                       {}
+func (m *mockStateManager) GetFrontendPath() string                                       { return "" }
+func (m *mockStateManager) SetFrontendPath(path string)                                   {}
+func (m *mockStateManager) SetGuestAgentCleanupFunc(cleanupFunc func())                   {}
+func (m *mockStateManager) GetEnvConfig() *envpkg.EnvConfig                               { return &envpkg.EnvConfig{} }
+func (m *mockStateManager) SetEnvConfig(cfg *envpkg.EnvConfig)                            {}
+func (m *mockStateManager) LoadSettingsFromDB() error                                     { return nil }
+func (m *mockStateManager) HasDB() bool                                                   { return false }
+func (m *mockStateManager) SetVMLimits(limits *database.VMLimits, changedBy string) error { return nil }
+func (m *mockStateManager) SetNodeLimit(node string, maxVMs int, changedBy string) error  { return nil }
+func (m *mockStateManager) DeleteNodeLimit(node string, changedBy string) error           { return nil }
+func (m *mockStateManager) SetEnabledNodes(nodes []string, changedBy string) error        { return nil }
+func (m *mockStateManager) SetEnabledStorages(storages []string, changedBy string) error  { return nil }
+func (m *mockStateManager) SetEnabledISOs(isos []string, changedBy string) error          { return nil }
+func (m *mockStateManager) SetEnabledVMBRs(vmbrs []string, changedBy string) error        { return nil }
+func (m *mockStateManager) SetTags(tags []string, changedBy string) error                 { return nil }
+func (m *mockStateManager) CreateCloudInitTemplate(t *database.CloudInitTemplate, changedBy string) error {
+	return nil
+}
+func (m *mockStateManager) UpdateCloudInitTemplate(t *database.CloudInitTemplate, changedBy string) error {
+	return nil
+}
+func (m *mockStateManager) DeleteCloudInitTemplate(id string, changedBy string) error     { return nil }
+func (m *mockStateManager) CreateVMProfile(p *database.VMProfile, changedBy string) error { return nil }
+func (m *mockStateManager) UpdateVMProfile(p *database.VMProfile, changedBy string) error { return nil }
+func (m *mockStateManager) DeleteVMProfile(id string, changedBy string) error             { return nil }
+func (m *mockStateManager) SetSFTPConfig(cfg *database.SFTPConfig, changedBy string) error {
+	return nil
+}
 
 func TestClientIP(t *testing.T) {
 	testCases := []struct {

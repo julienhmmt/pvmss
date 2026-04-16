@@ -2,40 +2,105 @@ package state
 
 import "errors"
 
-// GetSettings returns the application settings.
+// GetSettings returns a deep copy of the application settings.
+// Callers may freely mutate the returned pointer without affecting the
+// in-memory cache.  All slices and maps are independently allocated.
 func (s *appState) GetSettings() *AppSettings {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.settings
+	s.settingsMu.RLock()
+	defer s.settingsMu.RUnlock()
+	if s.settings == nil {
+		return &AppSettings{}
+	}
+	return deepCopySettings(s.settings)
 }
 
-// SetSettingsWithoutSave updates the application settings in memory without persisting them.
+// deepCopySettings returns an independent deep copy of AppSettings,
+// allocating fresh backing arrays for every slice and map field.
+func deepCopySettings(src *AppSettings) *AppSettings {
+	cp := *src
+	cp.EnabledNodes = copyStrings(src.EnabledNodes)
+	cp.EnabledStorages = copyStrings(src.EnabledStorages)
+	cp.ISOs = copyStrings(src.ISOs)
+	cp.Tags = copyStrings(src.Tags)
+	cp.VMBRs = copyStrings(src.VMBRs)
+	cp.CloudInitTemplates = copyCloudInitTemplates(src.CloudInitTemplates)
+	cp.VMProfiles = copyVMProfilesDeep(src.VMProfiles)
+	cp.Limits.Nodes = copyNodeLimitsDeep(src.Limits.Nodes)
+	return &cp
+}
+
+// copyStrings returns an independent copy of a string slice.
+func copyStrings(src []string) []string {
+	if src == nil {
+		return nil
+	}
+	dst := make([]string, len(src))
+	copy(dst, src)
+	return dst
+}
+
+// copyCloudInitTemplates returns an independent copy of a CloudInitTemplate slice.
+func copyCloudInitTemplates(src []CloudInitTemplate) []CloudInitTemplate {
+	if src == nil {
+		return nil
+	}
+	dst := make([]CloudInitTemplate, len(src))
+	copy(dst, src)
+	return dst
+}
+
+// copyVMProfilesDeep returns an independent copy of a VMProfileConfig slice.
+func copyVMProfilesDeep(src []VMProfileConfig) []VMProfileConfig {
+	if src == nil {
+		return nil
+	}
+	dst := make([]VMProfileConfig, len(src))
+	copy(dst, src)
+	return dst
+}
+
+// copyNodeLimitsDeep returns an independent copy of the node limits map.
+func copyNodeLimitsDeep(src map[string]NodeResourceLimits) map[string]NodeResourceLimits {
+	if src == nil {
+		return nil
+	}
+	dst := make(map[string]NodeResourceLimits, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+// SetSettingsWithoutSave updates the settings cache without persisting to any backend.
 func (s *appState) SetSettingsWithoutSave(settings *AppSettings) {
 	if settings == nil {
 		return
 	}
-	s.mu.Lock()
+	s.settingsMu.Lock()
 	s.settings = settings
-	s.mu.Unlock()
+	s.settingsMu.Unlock()
 }
 
-// SetSettings updates the application settings and saves them to file.
+// SetSettings updates the settings cache and persists them.
+// When a DB is configured the call is a no-op persistence-wise (use the
+// fine-grained DB setters instead); otherwise falls back to writing settings.json.
 func (s *appState) SetSettings(settings *AppSettings) error {
 	if settings == nil {
 		return errors.New("settings cannot be nil")
 	}
-
-	s.mu.Lock()
+	s.settingsMu.Lock()
 	s.settings = settings
-	s.mu.Unlock()
-
+	s.settingsMu.Unlock()
+	if s.db != nil {
+		return nil // DB-backed: fine-grained setters handle persistence
+	}
 	return WriteSettings(settings)
 }
 
 // GetTags returns the list of available tags.
 func (s *appState) GetTags() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.settingsMu.RLock()
+	defer s.settingsMu.RUnlock()
 	if s.settings == nil || s.settings.Tags == nil {
 		return []string{}
 	}
@@ -44,8 +109,8 @@ func (s *appState) GetTags() []string {
 
 // GetISOs returns the list of available ISO files.
 func (s *appState) GetISOs() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.settingsMu.RLock()
+	defer s.settingsMu.RUnlock()
 	if s.settings == nil || s.settings.ISOs == nil {
 		return []string{}
 	}
@@ -54,8 +119,8 @@ func (s *appState) GetISOs() []string {
 
 // GetVMBRs returns the list of available network bridges.
 func (s *appState) GetVMBRs() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.settingsMu.RLock()
+	defer s.settingsMu.RUnlock()
 	if s.settings == nil || s.settings.VMBRs == nil {
 		return []string{}
 	}
@@ -64,8 +129,8 @@ func (s *appState) GetVMBRs() []string {
 
 // GetLimits returns the resource limits as a map for backward compatibility.
 func (s *appState) GetLimits() map[string]interface{} {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.settingsMu.RLock()
+	defer s.settingsMu.RUnlock()
 	if s.settings == nil {
 		return make(map[string]interface{})
 	}
@@ -87,6 +152,7 @@ func (s *appState) GetLimits() map[string]interface{} {
 				"cores":   map[string]int{"min": nodeLimits.Cores.Min, "max": nodeLimits.Cores.Max},
 				"ram":     map[string]int{"min": nodeLimits.RAM.Min, "max": nodeLimits.RAM.Max},
 				"disk":    map[string]int{"min": nodeLimits.Disk.Min, "max": nodeLimits.Disk.Max},
+				"max_vms": nodeLimits.MaxVMs,
 			}
 			nodesLimits[nodeName] = nodeMap
 		}
@@ -100,8 +166,8 @@ func (s *appState) GetLimits() map[string]interface{} {
 
 // GetStorages returns the list of available storages.
 func (s *appState) GetStorages() []string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.settingsMu.RLock()
+	defer s.settingsMu.RUnlock()
 
 	if s.settings == nil {
 		return []string{}
