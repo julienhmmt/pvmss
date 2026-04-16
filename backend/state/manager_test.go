@@ -1,6 +1,7 @@
 package state
 
 import (
+	"pvmss/database"
 	"testing"
 	"time"
 
@@ -238,7 +239,13 @@ func TestAppState_GetSettings(t *testing.T) {
 }
 
 func TestAppState_SetSettings(t *testing.T) {
-	state := MakeAppState()
+	db, err := database.OpenMemory()
+	if err != nil {
+		t.Fatalf("OpenMemory: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	state := MakeAppStateWithDB(db)
 
 	newSettings := &AppSettings{
 		VMProfiles: []VMProfileConfig{
@@ -246,8 +253,7 @@ func TestAppState_SetSettings(t *testing.T) {
 		},
 	}
 
-	err := state.SetSettings(newSettings)
-	if err != nil {
+	if err := state.SetSettings(newSettings); err != nil {
 		t.Errorf("SetSettings() returned error: %v", err)
 	}
 

@@ -78,8 +78,9 @@ type JSONSFTPConfig struct {
 	SnippetBaseDir string `json:"snippet_base_dir"`
 }
 
-// vmProfileConfigData is the JSON blob stored in vm_profiles.config.
-type vmProfileConfigData struct {
+// VMProfileConfigBlob is the JSON blob stored in vm_profiles.config.
+// Shared by database, state, and api/v1 packages to avoid duplication.
+type VMProfileConfigBlob struct {
 	Sockets int    `json:"sockets"`
 	Cores   int    `json:"cores"`
 	RAMGB   int    `json:"ram_gb"`
@@ -90,6 +91,10 @@ type vmProfileConfigData struct {
 	Icon    string `json:"icon"`
 	Color   string `json:"color"`
 }
+
+// vmProfileConfigData is an alias kept for backward compatibility within
+// this package during the migration path.
+type vmProfileConfigData = VMProfileConfigBlob
 
 // ── Output type ───────────────────────────────────────────────────────────────
 
@@ -348,9 +353,9 @@ func validateMigration(impl *sqliteDB, summary *MigrationSummary) error {
 // ── Converters ────────────────────────────────────────────────────────────────
 
 // jsonToVMLimits maps JSONSettings flat fields to a VMLimits row.
-// MaxVMs has no direct equivalent in settings.json; the schema default (10) is used.
+// MaxVMs has no direct equivalent in settings.json; 0 means no global cap.
 func jsonToVMLimits(src *JSONSettings) *VMLimits {
-	const defaultMaxVMs = 10
+	const defaultMaxVMs = 0
 	return &VMLimits{
 		MaxVMs:          defaultMaxVMs,
 		MaxVMPerUser:    src.MaxVMPerUser,

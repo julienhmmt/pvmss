@@ -102,6 +102,7 @@ type NodeResourceLimitsResponse struct {
 	Cores   ResourceRangeResponse `json:"cores"`
 	RAM     ResourceRangeResponse `json:"ram"`
 	Disk    ResourceRangeResponse `json:"disk"`
+	MaxVMs  int                   `json:"max_vms"`
 }
 
 // --- VMBR ---
