@@ -82,6 +82,7 @@ func main() {
 
 	httpHandler, router := handlers.InitHandlers(stateManager)
 	apiv1.RegisterRoutes(router, stateManager)
+	apiv1.RegisterSetupRoutes(router, stateManager, db)
 
 	srv := &http.Server{
 		Addr:              ":" + port,
@@ -207,11 +208,10 @@ func bootstrapSettings(db database.DB) error {
 	}
 
 	if !settingsFileExists {
-		// T115: no settings.json and bootstrap not done → first-run mode with DB defaults.
-		log.Info().Msg("First-run mode: no settings.json found; starting with database defaults")
-		if err := db.CompleteBootstrap(constants.AppVersion); err != nil {
-			return fmt.Errorf("complete bootstrap (first-run): %w", err)
-		}
+		// T115: no settings.json and bootstrap not yet done → first-run mode.
+		// Bootstrap is intentionally left incomplete so the Phase-5 setup wizard
+		// can collect initial configuration before marking the app ready.
+		log.Info().Msg("First-run mode: no settings.json found; setup wizard required")
 		return nil
 	}
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/database"
 	"pvmss/state"
 )
 
@@ -127,6 +128,17 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/admin/storage/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleStorage))
 	router.POST("/api/v1/admin/vmbr/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleVMBR))
 	router.POST("/api/v1/admin/iso/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleISO))
+}
+
+// RegisterSetupRoutes mounts the first-run setup wizard routes onto the provided
+// router.  The status endpoint is always public; the mutating endpoints are
+// wrapped with requireSetupIncomplete so they return 404 once bootstrap is done.
+func RegisterSetupRoutes(router *httprouter.Router, s state.StateManager, db database.DB) {
+	h := MakeSetupHandler(s, db)
+	router.GET("/api/v1/setup/status", wrap(h.Status))
+	router.POST("/api/v1/setup/test-connection", wrap(requireSetupIncomplete(db, h.TestConnection)))
+	router.GET("/api/v1/setup/proxmox-data", wrap(requireSetupIncomplete(db, h.ProxmoxData)))
+	router.POST("/api/v1/setup/complete", wrap(requireSetupIncomplete(db, h.Complete)))
 }
 
 // wrap converts a plain http.HandlerFunc into the httprouter.Handle signature.
