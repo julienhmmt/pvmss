@@ -20,7 +20,8 @@
 		WifiHigh,
 		Cloud,
 		Disc,
-		Cube
+		Cube,
+		Gear
 	} from 'phosphor-svelte';
 
 	const items = $derived([
@@ -34,7 +35,8 @@
 		{ href: `/admin/vmbr`, icon: WifiHigh, label: $t('nav.network') },
 		{ href: `/admin/cloudinit`, icon: Cloud, label: $t('nav.cloudinit') },
 		{ href: `/admin/iso`, icon: Disc, label: $t('nav.iso') },
-		{ href: `/admin/profiles`, icon: Cube, label: $t('nav.profiles') }
+		{ href: `/admin/profiles`, icon: Cube, label: $t('nav.profiles') },
+		{ href: `/admin/settings`, icon: Gear, label: $t('nav.settings') }
 	]);
 
 	function isActive(itemHref: string, currentPath: string): boolean {

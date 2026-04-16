@@ -82,6 +82,7 @@ func main() {
 
 	httpHandler, router := handlers.InitHandlers(stateManager)
 	apiv1.RegisterRoutes(router, stateManager)
+	apiv1.RegisterAdminDBRoutes(router, stateManager, db)
 	apiv1.RegisterSetupRoutes(router, stateManager, db)
 
 	srv := &http.Server{

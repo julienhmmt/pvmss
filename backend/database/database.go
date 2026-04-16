@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 
 	_ "modernc.org/sqlite"
 )
@@ -75,12 +76,19 @@ type DB interface {
 	// Backup creates a consistent point-in-time snapshot at destPath using VACUUM INTO.
 	Backup(destPath string) error
 
+	// RestoreFrom atomically replaces all data in the current database with
+	// the contents of the SQLite database at srcPath.
+	// The source is validated before any changes are made.
+	// changedBy is recorded in the audit log.
+	RestoreFrom(srcPath string, changedBy string) error
+
 	Close() error
 }
 
 // sqliteDB is the concrete DB implementation backed by modernc.org/sqlite.
 type sqliteDB struct {
-	db *sql.DB
+	db        *sql.DB
+	restoreMu sync.Mutex // protects RestoreFrom operations
 }
 
 // Open opens (or creates) a file-backed SQLite database at path.

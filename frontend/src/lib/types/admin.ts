@@ -132,3 +132,20 @@ export interface AppInfo {
 }
 
 export type VMAction = "start" | "stop" | "shutdown" | "reboot" | "reset";
+
+export interface AuditEntry {
+  id: number;
+  table_name: string;
+  record_id: string;
+  action: string;
+  old_value: string;
+  new_value: string;
+  changed_by: string;
+  changed_at: string;
+}
+
+export interface AuditLogResponse {
+  entries: AuditEntry[];
+  limit: number;
+  offset: number;
+}
