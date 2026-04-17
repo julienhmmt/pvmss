@@ -27,7 +27,7 @@ type appState struct {
 	settingsMu sync.RWMutex
 
 	// db is the SQLite database backing the settings cache.
-	// nil when running without a DB (unit tests, legacy settings.json mode).
+	// nil when running without a DB (unit tests only).
 	db database.DB
 
 	mu sync.RWMutex

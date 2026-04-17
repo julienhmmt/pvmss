@@ -165,47 +165,21 @@ Then reference this secret in your deployment configuration by mounting it as a 
 
 ### Step 7: Configure PVMSS settings
 
-In your `settings.json`, enable SFTP and configure the connection:
+Configure SFTP in the PVMSS admin panel (`/admin/cloudinit`):
 
-```json
-{
-  "cloudinit_sftp": {
-    "enabled": true,
-    "host": "YOUR_PROXMOX_NODE_IP_OR_HOSTNAME",
-    "port": 22,
-    "username": "pvmss-snippets",
-    "privateKeyPath": "/app/pvmss_snippets_ed25519",
-    "snippetBaseDir": "/snippets"
-  }
-}
-```
+1. Navigate to **Admin > Cloud-Init**
+2. Enable SFTP and configure the connection:
+   - **Host**: Proxmox node IP or hostname (e.g., `192.168.1.100`)
+   - **Port**: SSH port (default `22`)
+   - **Username**: PAM user for SFTP (e.g., `pvmss-snippets`)
+   - **Private Key Path**: Path to private key inside container (e.g., `/app/pvmss_snippets_ed25519`)
+   - **Snippet Base Dir**: Snippets directory (relative to chroot if used, e.g., `/snippets`)
 
 > **Note**: If you configured `ChrootDirectory /var/lib/vz` in Step 4, use `/snippets` as the `snippetBaseDir`. If you did NOT use chroot, use the full path `/var/lib/vz/snippets`.
 
-### Configuration options
-
-| Option           | Description                                     | Example                         |
-| ---------------- | ----------------------------------------------- | ------------------------------- |
-| `enabled`        | Enable/disable SFTP uploads                     | `true`                          |
-| `host`           | Proxmox node IP or hostname                     | `"192.168.1.100"`               |
-| `port`           | SSH port                                        | `22`                            |
-| `username`       | PAM user for SFTP                               | `"pvmss-snippets"`              |
-| `privateKeyPath` | Path to private key inside container            | `"/app/pvmss_snippets_ed25519"` |
-| `snippetBaseDir` | Snippets directory (relative to chroot if used) | `"/snippets"`                   |
-
 ### Disabling SFTP (basic cloud-init only)
 
-If you cannot configure SFTP, disable it and use only basic cloud-init parameters:
-
-```json
-{
-  "cloudinit_sftp": {
-    "enabled": false
-  }
-}
-```
-
-With this configuration, you can still use `ciuser`, `cipassword`, `sshkeys`, and `ipconfig0`, but not custom YAML templates.
+If you cannot configure SFTP, disable it in the admin panel and use only basic cloud-init parameters. With SFTP disabled, you can still use `ciuser`, `cipassword`, `sshkeys`, and `ipconfig0`, but not custom YAML templates.
 
 ## How it works
 
@@ -214,7 +188,7 @@ With this configuration, you can still use `ciuser`, `cipassword`, `sshkeys`, an
 1. **Create templates**: Admins create cloud-init templates in the admin panel (`/admin/cloudinit`)
 2. **YAML validation**: Templates must start with `#cloud-config` header and contain valid YAML
 3. **Enable/disable**: Templates can be enabled or disabled without deletion
-4. **Local storage**: Templates are stored in `settings.json` (not on Proxmox storage)
+4. **Database storage**: Templates are stored in the SQLite database (not on Proxmox storage)
 
 ### VM creation (user)
 

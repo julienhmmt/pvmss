@@ -345,12 +345,6 @@
         "importConfirmTitle": "Remplacer la base de données ?",
         "importConfirmDesc": "Toutes les données actuelles seront remplacées par le fichier uploadé. Cette action est irréversible."
       },
-      "migrate": {
-        "title": "Migrer depuis settings.json",
-        "desc": "Importer les paramètres d'un fichier settings.json hérité dans la base de données.",
-        "btn": "Uploader settings.json",
-        "success": "Migration terminée ({nodes} nœuds, {tags} tags)"
-      },
       "audit": {
         "title": "Journal d'audit",
         "noEntries": "Aucune entrée",

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -142,11 +141,6 @@ func initializeApp(stateManager state.StateManager, db database.DB, envCfg *envp
 		return fmt.Errorf("failed to set session manager: %w", err)
 	}
 
-	// T114/T115/T116: handle bootstrap, migration, and first-run modes.
-	if err := bootstrapSettings(db); err != nil {
-		return fmt.Errorf("bootstrap settings: %w", err)
-	}
-
 	// T113: load settings from the database into the in-memory cache.
 	if err := stateManager.LoadSettingsFromDB(); err != nil {
 		return fmt.Errorf("load settings from database: %w", err)
@@ -180,97 +174,4 @@ func initializeApp(stateManager state.StateManager, db database.DB, envCfg *envp
 	stateManager.SetFrontendPath(frontendPath)
 
 	return nil
-}
-
-// bootstrapSettings handles the three startup scenarios for settings persistence:
-//
-//   - T114  Bootstrap not complete + settings.json exists  → migrate JSON → DB
-//   - T115  Bootstrap not complete + no settings.json     → first-run mode (use DB defaults)
-//   - T116  Bootstrap complete     + settings.json exists  → log deprecation warning
-func bootstrapSettings(db database.DB) error {
-	log := logger.Get()
-
-	bootstrapComplete, err := db.IsBootstrapComplete()
-	if err != nil {
-		return fmt.Errorf("check bootstrap status: %w", err)
-	}
-
-	settingsPath, pathErr := state.GetSettingsFilePath()
-	settingsFileExists := pathErr == nil && fileExists(settingsPath)
-
-	if bootstrapComplete {
-		// T116: warn if settings.json is still present after a completed migration.
-		if settingsFileExists {
-			log.Warn().
-				Str("settings_file", settingsPath).
-				Msg("DEPRECATED: settings.json found but database bootstrap is already complete; settings.json is no longer read and can be removed")
-		}
-		return nil
-	}
-
-	if !settingsFileExists {
-		// T115: no settings.json and bootstrap not yet done → first-run mode.
-		// Bootstrap is intentionally left incomplete so the Phase-5 setup wizard
-		// can collect initial configuration before marking the app ready.
-		log.Info().Msg("First-run mode: no settings.json found; setup wizard required")
-		return nil
-	}
-
-	// T114: settings.json exists and bootstrap not complete → migrate.
-	log.Info().Str("settings_file", settingsPath).Msg("Migrating settings from settings.json to database")
-
-	// Create a backup of settings.json before migrating so the original
-	// can be restored if the migration goes wrong.
-	backupPath := settingsPath + ".pre-db-migration.bak"
-	if err := backupFile(settingsPath, backupPath); err != nil {
-		log.Warn().Err(err).Str("backup", backupPath).Msg("Failed to create settings.json backup; continuing migration")
-	} else {
-		log.Info().Str("backup", backupPath).Msg("Created settings.json backup before migration")
-	}
-
-	jsonSettings, err := database.ReadJSONSettings(settingsPath)
-	if err != nil {
-		return fmt.Errorf("read settings.json for migration: %w", err)
-	}
-	summary, err := database.MigrateFromJSON(db, jsonSettings, "system")
-	if err != nil {
-		return fmt.Errorf("migrate settings.json to database: %w", err)
-	}
-	log.Info().
-		Int("nodes", summary.NodesCount).
-		Int("storages", summary.StoragesCount).
-		Int("isos", summary.ISOsCount).
-		Int("vmbrs", summary.VMBRsCount).
-		Int("tags", summary.TagsCount).
-		Int("cloudinit_templates", summary.CloudInitCount).
-		Int("vm_profiles", summary.VMProfilesCount).
-		Msg("Settings migrated from settings.json to database")
-	return nil
-}
-
-// fileExists reports whether a regular file exists at path.
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
-}
-
-// backupFile copies src to dst. If dst already exists it is not overwritten.
-func backupFile(src, dst string) error {
-	if _, err := os.Stat(dst); err == nil {
-		return nil // backup already exists, don't overwrite
-	}
-	in, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("open source: %w", err)
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("create backup: %w", err)
-	}
-	defer out.Close()
-	if _, err := io.Copy(out, in); err != nil {
-		return fmt.Errorf("copy: %w", err)
-	}
-	return out.Sync()
 }

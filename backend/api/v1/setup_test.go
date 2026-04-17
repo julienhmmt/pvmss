@@ -35,16 +35,16 @@ func (s *stubDB) CompleteBootstrap(_ string) error {
 // stubStateManager is a minimal state.StateManager stub.
 type stubStateManager struct {
 	state.StateManager
-	offline    bool
-	proxmoxOK  bool
-	envCfg     *envpkg.EnvConfig
-	nodesSet   []string
+	offline     bool
+	proxmoxOK   bool
+	envCfg      *envpkg.EnvConfig
+	nodesSet    []string
 	storagesSet []string
-	isosSet    []string
-	vmbrsSet   []string
+	isosSet     []string
+	vmbrsSet    []string
 }
 
-func (s *stubStateManager) IsOfflineMode() bool    { return s.offline }
+func (s *stubStateManager) IsOfflineMode() bool { return s.offline }
 func (s *stubStateManager) GetProxmoxStatus() (bool, string) {
 	return s.proxmoxOK, ""
 }

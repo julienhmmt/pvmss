@@ -1,7 +1,6 @@
 package apiv1
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"os"
@@ -181,66 +180,4 @@ func (h *AdminDBHandler) ImportDB(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, map[string]string{"message": "database imported successfully"})
-}
-
-// ── Migrate from JSON ─────────────────────────────────────────────────────────
-
-// MigrateFromJSONResponse wraps MigrationSummary with an extra message field.
-type MigrateFromJSONResponse struct {
-	Message         string `json:"message"`
-	NodesCount      int    `json:"nodes_count"`
-	StoragesCount   int    `json:"storages_count"`
-	ISOsCount       int    `json:"isos_count"`
-	VMBRsCount      int    `json:"vmbrs_count"`
-	TagsCount       int    `json:"tags_count"`
-	CloudInitCount  int    `json:"cloudinit_count"`
-	VMProfilesCount int    `json:"vm_profiles_count"`
-}
-
-// MigrateFromJSON handles POST /api/v1/admin/migrate-from-json.
-// Expects a multipart form with a "settings" file field containing a legacy
-// settings.json payload.  Runs MigrateFromJSON and reloads the cache.
-func (h *AdminDBHandler) MigrateFromJSON(w http.ResponseWriter, r *http.Request) {
-	const maxUploadSize = 4 << 20 // 4 MB
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
-		errBadRequest(w, "invalid multipart form")
-		return
-	}
-	file, _, err := r.FormFile("settings")
-	if err != nil {
-		errBadRequest(w, "missing settings file field")
-		return
-	}
-	defer func() { _ = file.Close() }()
-
-	var settings database.JSONSettings
-	if err := json.NewDecoder(file).Decode(&settings); err != nil {
-		errBadRequest(w, "invalid JSON content: "+err.Error())
-		return
-	}
-
-	changedBy := usernameFromCtx(r)
-	summary, err := database.MigrateFromJSON(h.db, &settings, changedBy)
-	if err != nil {
-		logger.Get().Error().Err(err).Msg("JSON migration failed")
-		errInternal(w)
-		return
-	}
-
-	if err := h.state.LoadSettingsFromDB(); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to reload settings cache after JSON migration")
-		errInternal(w)
-		return
-	}
-
-	writeJSON(w, MigrateFromJSONResponse{
-		Message:         "migration completed successfully",
-		NodesCount:      summary.NodesCount,
-		StoragesCount:   summary.StoragesCount,
-		ISOsCount:       summary.ISOsCount,
-		VMBRsCount:      summary.VMBRsCount,
-		TagsCount:       summary.TagsCount,
-		CloudInitCount:  summary.CloudInitCount,
-		VMProfilesCount: summary.VMProfilesCount,
-	})
 }

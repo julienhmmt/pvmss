@@ -82,8 +82,7 @@ func (s *appState) SetSettingsWithoutSave(settings *AppSettings) {
 }
 
 // SetSettings updates the settings cache and persists them.
-// When a DB is configured the call is a no-op persistence-wise (use the
-// fine-grained DB setters instead); otherwise falls back to writing settings.json.
+// DB is always configured after migration; use fine-grained DB setters instead.
 func (s *appState) SetSettings(settings *AppSettings) error {
 	if settings == nil {
 		return errors.New("settings cannot be nil")
@@ -91,10 +90,7 @@ func (s *appState) SetSettings(settings *AppSettings) error {
 	s.settingsMu.Lock()
 	s.settings = settings
 	s.settingsMu.Unlock()
-	if s.db != nil {
-		return nil // DB-backed: fine-grained setters handle persistence
-	}
-	return WriteSettings(settings)
+	return nil // DB-backed: fine-grained setters handle persistence
 }
 
 // GetTags returns the list of available tags.

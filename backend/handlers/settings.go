@@ -123,27 +123,7 @@ func (h *SettingsHandler) GetAllSettingsHandler(w http.ResponseWriter, r *http.R
 }
 
 // RegisterRoutes registers routes for settings-related endpoints.
-// The SPA uses /api/v1/admin/settings instead — these legacy routes are kept for backward compatibility.
+// All legacy routes have been removed after migration to DB-backed configuration.
 func (h *SettingsHandler) RegisterRoutes(router *httprouter.Router) {
-	// Legacy API routes for backward compatibility (deprecated)
-	router.GET("/api/settings", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		logger.Get().Warn().Msg("Legacy /api/settings endpoint is deprecated. Use /api/v1/admin/settings instead.")
-		HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.GetSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		}))(w, r, p)
-	})
-
-	router.GET("/api/vmbr/all", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		logger.Get().Warn().Msg("Legacy /api/vmbr/all endpoint is deprecated. Use /api/v1/admin/vmbr instead.")
-		HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.GetAllVMBRsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		}))(w, r, p)
-	})
-
-	router.GET("/api/settings/all", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		logger.Get().Warn().Msg("Legacy /api/settings/all endpoint is deprecated. Use /api/v1/admin/settings instead.")
-		HandlerFuncToHTTPrHandle(RequireAuth(func(w http.ResponseWriter, r *http.Request) {
-			h.GetAllSettingsHandler(w, r, httprouter.ParamsFromContext(r.Context()))
-		}))(w, r, p)
-	})
+	// No legacy routes - use /api/v1/admin/settings instead
 }

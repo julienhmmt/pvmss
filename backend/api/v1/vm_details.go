@@ -503,9 +503,10 @@ func (h *VMDetailsHandler) GetVMSnapshots(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	maxSnapshots := 5
-	if settings, _, err := state.LoadSettings(); err == nil {
-		maxSnapshots = settings.Limits.MaxSnapshots
+	settings := h.state.GetSettings()
+	maxSnapshots := settings.Limits.MaxSnapshots
+	if maxSnapshots == 0 {
+		maxSnapshots = 5
 	}
 
 	result := make([]SnapshotResponse, 0, len(snaps))
@@ -577,9 +578,10 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 		errInternal(w)
 		return
 	}
-	maxSnapshots := 5
-	if settings, _, sErr := state.LoadSettings(); sErr == nil {
-		maxSnapshots = settings.Limits.MaxSnapshots
+	settings := h.state.GetSettings()
+	maxSnapshots := settings.Limits.MaxSnapshots
+	if maxSnapshots == 0 {
+		maxSnapshots = 5
 	}
 	actual := 0
 	for _, s := range snaps {
@@ -787,11 +789,7 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	settings, _, err := state.LoadSettings()
-	if err != nil {
-		errInternal(w)
-		return
-	}
+	settings := h.state.GetSettings()
 
 	// settings.ISOs is []string (volid values like "local:iso/debian.iso")
 	isos := make([]ISOOption, 0, len(settings.ISOs))

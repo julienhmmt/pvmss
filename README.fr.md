@@ -108,41 +108,23 @@ Allez dans Datacenter > Permissions > API Tokens. Cliquez sur le bouton “Add�
 
 Vous pouvez maintenant utiliser le token API dans les variables d'environnement `PROXMOX_API_TOKEN_NAME` et `PROXMOX_API_TOKEN_VALUE`.
 
-### Le fichier de configuration settings.json
+### Configuration de la base de données
 
-Le fichier `settings.json` fait office de source de vérité pour les options disponibles aux utilisateurs :
+PVMSS utilise une base de données SQLite intégrée pour stocker toute la configuration. La base de données est initialisée automatiquement au premier démarrage et inclut :
 
-```json
-{
-  "tags": ["pvmss"],
-  "isos": [],
-  "vmbrs": [],
-  "cloudinit_sftp": {
-    "enabled": true,
-    "host": "your-proxmox-ip-or-hostname",
-    "port": 22,
-    "username": "pvmss-snippets",
-    "privateKeyPath": "/app/pvmss_snippets_ed25519",
-    "snippetBaseDir": "/snippets"
-  },
-  "enabled_storages": [],
-  "max_network_cards": 1,
-  "max_disk_per_vm": 1,
-  "max_vm_per_user": 3,
-  "limits": {
-    "nodes": {},
-    "vm": {
-      "sockets": { "min": 1, "max": 1 },
-      "cores": { "min": 1, "max": 2 },
-      "ram": { "min": 1, "max": 4 },
-      "disk": { "min": 6, "max": 12 }
-    },
-    "max_snapshot": 8
-  }
-}
-```
+- Les nœuds, stockages, VMBR et dépôts ISO approuvés
+- Les limites de ressources VM (globales et par nœud)
+- Les tags et pools utilisateurs
+- Les templates cloud-init et configuration SFTP
+- Les profils VM
 
-Toutes les clés sont obligatoires. Les futures versions peuvent en ajouter : gardez ce fichier synchronisé.
+Toute la configuration est gérée via la section **Admin** de l'interface web, qui fournit :
+
+- Opérations CRUD complètes pour tous les éléments de configuration
+- Historique d'audit de tous les changements
+- Fonctionnalités d'import/export pour sauvegarde/restauration
+
+Le fichier de base de données doit être persisté sur un volume pour survivre aux redémarrages du conteneur.
 
 #### Tags
 
@@ -162,9 +144,9 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `PROXMOX_VERIFY_SSL`      | `true` pour certificats valides, `false` sinon                 |   ❌   | `false`              |
 | `PVMSS_ENV`               | `production/prod` ou `development/dev/developpement`           |   ❌   | `production`         |
 | `PVMSS_OFFLINE`           | `true` pour désactiver les appels Proxmox                      |   ❌   | `false`              |
-| `PVMSS_SETTINGS_PATH`     | Chemin interne vers `settings.json`                            |   ❌   | `/app/settings.json` |
+| `PVMSS_DB_PATH`          | Chemin vers le fichier SQLite DB (volume persistant requis)    |   ✅   | `/data/pvmss.db`     |
 | `LOG_LEVEL`               | Verbosité des logs (`debug`, `info`, `warn`, `error`)          |   ❌   | `INFO`               |
-| `LOG_OUTPUT`              | Destination des logs : `stdout`, `file` ou `both`              |   ❌   | `stdout`             |
+| `LOG_OUTPUT`              | Destination des logs : `stdout`, `file` ou `both`              |   ❌   | `stdout`             |
 | `LOG_FILE_PATH`           | Chemin du fichier log si `LOG_OUTPUT` = `file` ou `both`       |   ❌   | —                    |
 | `LOG_FORMAT`              | `console` (lisible humainement) ou `json` (pour SIEM/collecte) |   ❌   | `console`            |
 | `TZ`                      | Fuseau horaire du conteneur                                    |   ❌   | `UTC`                |
@@ -206,7 +188,7 @@ Le format JSON est une ligne par événement, avec des champs comme `component`,
 
 | Plateforme          | Détails                                                                                                                                                                                                                                                    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez `settings.json` et exposez `50000`.                                                                                                                                                                 |
+| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez le volume de base de données et exposez `50000`.                                                                                                                                                 |
 | **Docker Compose**  | Expérience recommandée : service unique, variables centralisées, environnement reproductible.                                                                                                                                                              |
 | **Kubernetes**      | Utilisez [`pvmss-deployment.yaml`](pvmss-deployment.yaml) (namespace + secret + configmap + PVC + Deployment + Service). Appliquez via `kubectl apply -f pvmss-deployment.yaml`. L'ingress/HTTPRoute reste à votre charge (exemple `pvmss-httproute.yml`). |
 
@@ -217,7 +199,7 @@ docker run -d \
   --name pvmss \
   --restart unless-stopped \
   -p 50000:50000 \
-  -v $(pwd)/settings.json:/app/settings.json \
+  -v $(pwd)/pvmss.db:/data/pvmss.db \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
   -e LOG_LEVEL=INFO \
   -e LOG_OUTPUT=stdout \
@@ -228,7 +210,7 @@ docker run -d \
   -e PROXMOX_VERIFY_SSL=false \
   -e PVMSS_ENV="prod" \
   -e PVMSS_OFFLINE="false" \
-  -e PVMSS_SETTINGS_PATH="/app/settings.json" \
+  -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
   jhmmt/pvmss:0.3.0
@@ -247,13 +229,7 @@ L'application sera accessible sur <http://localhost:50000>.
 
 ## Démarrer avec Docker compose
 
-1. **Créer `settings.json`** (voir [la configuration](#le-fichier-de-configuration-settingsjson)) puis protéger le fichier :
-
-   ```bash
-   chmod 600 settings.json
-   ```
-
-2. **Créer `docker-compose.yml` :**
+1. **Créer `docker-compose.yml` :**
 
 ```yaml
 services:
@@ -275,10 +251,10 @@ services:
       SESSION_SECRET: "changeMeWithSomethingElseUnique"
       PVMSS_ENV: "production" # "prod", "development", "dev", "developpement"
       PVMSS_OFFLINE: "false" # "true" ou "false"
-      PVMSS_SETTINGS_PATH: "/app/settings.json"
+      PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
-      - ./settings.json:/app/settings.json
+      - ./pvmss.db:/data/pvmss.db
       # - ./pvmss.log:/app/pvmss.log # Décommentez pour persister les logs dans un fichier à l'intérieur du conteneur
     deploy:
       resources:
@@ -297,14 +273,14 @@ LOG_FILE_PATH: "/app/pvmss.log"
 - ./pvmss.log:/app/pvmss.log
 ```
 
-3. **Démarrer la stack :**
+2. **Démarrer la stack :**
 
    ```bash
    docker compose up -d
    ```
 
-4. Ouvrez un navigateur et accédez à **<http://localhost:50000>**.
-5. Se connecter avec le compte admin, sur la page "Login", cliquez sur "Connexion administrateur".
+3. Ouvrez un navigateur et accédez à **<http://localhost:50000>**.
+4. Se connecter avec le compte admin, sur la page "Login", cliquez sur "Connexion administrateur".
 
 ## Démarrer avec Kubernetes
 
@@ -316,7 +292,7 @@ Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votr
 
 - **Logs** : `docker logs -f pvmss` ou `kubectl -n pvmss logs -f deploy/pvmss`. Passez `LOG_LEVEL=DEBUG` pour plus de verbosité. Utilisez `LOG_FORMAT=json` et `LOG_OUTPUT=stdout` ou `file` pour produire des logs JSON exploitables par un SIEM ou un collecteur de logs.
 - **Santé** : les logs de démarrage détaillent la connectivité Proxmox, l'état du mode hors-ligne et les métriques runtime. La page admin "Informations de l'application" affiche des métriques, des variables d'environnement et le statut du cluster Proxmox.
-- **Mises à jour** : récupérez l'image souhaitée (le tag), mettez le fichier `settings.json` à jour si nécessaire, et redémarrez le conteneur.
+- **Mises à jour** : récupérez l'image souhaitée (le tag) et redémarrez le conteneur. La configuration est stockée dans la base de données SQLite et persiste automatiquement.
 
 ## Limites connues
 
