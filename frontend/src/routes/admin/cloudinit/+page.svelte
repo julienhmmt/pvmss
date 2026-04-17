@@ -35,7 +35,7 @@
 	let deleteTarget = $state<string | null>(null);
 	let toggling = $state<string | null>(null);
 	let saving = $state(false);
-	let form = $state({ name: '', description: '', storage: '', yaml_content: '' });
+	let form = $state({ name: '', description: '', storage: '', yamlContent: '' });
 
 	const deleteTargetName = $derived(
 		templates.find((t) => t.id === deleteTarget)?.name ?? deleteTarget ?? ''
@@ -51,7 +51,7 @@
 		try {
 			const [data, storages] = await Promise.all([getCloudInits(), getCloudInitStorages()]);
 			templates = data.templates;
-			sftpStatus = data.sftp_status;
+			sftpStatus = data.sftpStatus;
 			snippetStorages = storages;
 		} catch (e) {
 			error = e as Error;
@@ -63,7 +63,7 @@
 
 	function openCreate() {
 		editId = null;
-		form = { name: '', description: '', storage: '', yaml_content: '' };
+		form = { name: '', description: '', storage: '', yamlContent: '' };
 		editOpen = true;
 	}
 
@@ -73,13 +73,13 @@
 			name: tmpl.name,
 			description: tmpl.description,
 			storage: tmpl.storage,
-			yaml_content: tmpl.yaml_content ?? ''
+			yamlContent: tmpl.yamlContent ?? ''
 		};
 		editOpen = true;
 	}
 
 	async function handleSave() {
-		if (!form.name || !form.yaml_content) return;
+		if (!form.name || !form.yamlContent) return;
 		saving = true;
 		try {
 			if (editId) {
@@ -182,8 +182,8 @@
 {:else}
 	<!-- SFTP status panel -->
 	{#if sftpStatus}
-		{@const isSuccess = sftpStatus.status_type === 'success'}
-		{@const isWarning = sftpStatus.status_type === 'warning'}
+		{@const isSuccess = sftpStatus.statusType === 'success'}
+		{@const isWarning = sftpStatus.statusType === 'warning'}
 		<div class="mb-6 rounded-lg border p-4 {isSuccess ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30' : isWarning ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}">
 			<div class="flex items-start gap-3">
 				<div class="mt-0.5 shrink-0">
@@ -197,7 +197,7 @@
 				</div>
 				<div class="flex-1 min-w-0">
 					<p class="text-sm font-medium {isSuccess ? 'text-green-800 dark:text-green-300' : isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}">
-						{$t('admin.cloudinit.sftpStatus')} — {sftpStatus.status_text}
+						{$t('admin.cloudinit.sftpStatus')} — {sftpStatus.statusText}
 					</p>
 					{#if sftpStatus.enabled}
 						<div class="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
@@ -207,7 +207,7 @@
 							{#if sftpStatus.username}
 								<span><span class="font-medium">{$t('admin.cloudinit.username')}:</span> {sftpStatus.username}</span>
 							{/if}
-							<span><span class="font-medium">{$t('admin.cloudinit.keyExists')}:</span> {sftpStatus.key_exists ? $t('common.yes') : $t('common.no')}</span>
+							<span><span class="font-medium">{$t('admin.cloudinit.keyExists')}:</span> {sftpStatus.keyExists ? $t('common.yes') : $t('common.no')}</span>
 						</div>
 					{/if}
 				</div>
@@ -327,7 +327,7 @@
 				<Label>{$t('admin.cloudinit.yamlContent')}</Label>
 				<textarea
 					class="flex min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					bind:value={form.yaml_content}
+					bind:value={form.yamlContent}
 					placeholder="#cloud-config&#10;users:&#10;  - name: user"
 				></textarea>
 			</div>
@@ -336,7 +336,7 @@
 			<Button variant="outline" onclick={() => (editOpen = false)}>{$t('common.cancel')}</Button>
 			<Button
 				onclick={handleSave}
-				disabled={!form.name || !form.yaml_content || saving}
+				disabled={!form.name || !form.yamlContent || saving}
 			>
 				{saving ? $t('common.saving') : editId ? $t('common.update') : $t('common.create')}
 			</Button>

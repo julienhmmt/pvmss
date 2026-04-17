@@ -15,7 +15,7 @@
 	let info = $state<AppInfo | null>(null);
 
 	let envVarEntries = $derived(
-		info?.env_vars ? Object.entries(info.env_vars).sort(([a], [b]) => a.localeCompare(b)) : []
+		info?.envVars ? Object.entries(info.envVars).sort(([a], [b]) => a.localeCompare(b)) : []
 	);
 
 	async function load() {
@@ -61,20 +61,20 @@
 				</div>
 				<div class="pv-header-stat">
 					<div class="pv-header-stat-label">{$t('admin.appinfo.totalNodes')}</div>
-					<div class="pv-header-stat-value">{info.total_nodes}</div>
+					<div class="pv-header-stat-value">{info.totalNodes}</div>
 				</div>
 				<div class="pv-header-stat">
 					<div class="pv-header-stat-label">{$t('admin.appinfo.totalVms')}</div>
-					<div class="pv-header-stat-value">{info.total_vms}</div>
+					<div class="pv-header-stat-value">{info.totalVms}</div>
 				</div>
 				<div
-					class="pv-header-stat {!info.proxmox_connected
+					class="pv-header-stat {!info.proxmoxConnected
 						? 'pv-header-stat--danger'
 						: ''}"
 				>
 					<div class="pv-header-stat-label">Proxmox</div>
 					<div class="pv-header-stat-value text-base">
-						{info.proxmox_connected
+						{info.proxmoxConnected
 							? $t('admin.appinfo.connected')
 							: $t('admin.appinfo.disconnected')}
 					</div>
@@ -104,11 +104,11 @@
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				<ResourceCard title={$t('admin.appinfo.version')} value={info.version} />
 				<ResourceCard title={$t('admin.appinfo.environment')} value={info.environment} />
-				<ResourceCard title={$t('admin.appinfo.goVersion')} value={info.go_version} />
+				<ResourceCard title={$t('admin.appinfo.goVersion')} value={info.goVersion} />
 				<ResourceCard title={$t('admin.appinfo.platform')} value={info.platform} />
 				<ResourceCard
 					title={$t('admin.appinfo.offlineMode')}
-					value={info.offline_mode ? $t('common.yes') : $t('common.no')}
+					value={info.offlineMode ? $t('common.yes') : $t('common.no')}
 				/>
 			</div>
 		</section>
@@ -125,7 +125,7 @@
 						<tr class="pv-row">
 							<th>{$t('admin.appinfo.proxmox')}</th>
 							<td>
-								{#if info.proxmox_connected}
+								{#if info.proxmoxConnected}
 									<span class="pv-badge--online flex items-center gap-1 w-fit">
 										<CheckCircle class="h-3.5 w-3.5" />
 										{$t('admin.appinfo.connected')}
@@ -140,15 +140,15 @@
 						</tr>
 						<tr class="pv-row">
 							<th>URL</th>
-							<td><span class="pv-td-mono">{info.proxmox_url}</span></td>
+							<td><span class="pv-td-mono">{info.proxmoxUrl}</span></td>
 						</tr>
 						<tr class="pv-row">
 							<th>{$t('admin.appinfo.totalNodes')}</th>
-							<td class="font-medium tabular-nums">{info.total_nodes}</td>
+							<td class="font-medium tabular-nums">{info.totalNodes}</td>
 						</tr>
 						<tr class="pv-row">
 							<th>{$t('admin.appinfo.totalVms')}</th>
-							<td class="font-medium tabular-nums">{info.total_vms}</td>
+							<td class="font-medium tabular-nums">{info.totalVms}</td>
 						</tr>
 					</tbody>
 				</table>
@@ -156,23 +156,23 @@
 		</section>
 
 		<!-- Cluster info -->
-		{#if info.cluster_info}
+		{#if info.clusterInfo}
 			<section>
 				<p class="pv-section-title">{$t('admin.appinfo.clusterInfo')}</p>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					<ResourceCard
 						title={$t('admin.appinfo.clusterMode')}
-						value={info.cluster_info.is_cluster
+						value={info.clusterInfo.isCluster
 							? $t('admin.appinfo.clustered')
 							: $t('admin.appinfo.standalone')}
 					/>
 					<ResourceCard
 						title={$t('admin.appinfo.clusterName')}
-						value={info.cluster_info.cluster_name || 'N/A'}
+						value={info.clusterInfo.clusterName || 'N/A'}
 					/>
 					<ResourceCard
 						title={$t('admin.appinfo.nodeCount')}
-						value={String(info.cluster_info.node_count)}
+						value={String(info.clusterInfo.nodeCount)}
 					/>
 				</div>
 			</section>

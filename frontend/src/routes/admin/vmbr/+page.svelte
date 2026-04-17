@@ -157,7 +157,7 @@
 						</td>
 						<td class="pv-td-muted">{v.node}</td>
 						<td class="pv-td-muted">{v.type || '—'}</td>
-						<td class="pv-td-muted">{v.bridge_ports || '—'}</td>
+						<td class="pv-td-muted">{v.bridgePorts || '—'}</td>
 						<td class="pv-td-actions">
 							<Switch
 								checked={v.enabled}

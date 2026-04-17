@@ -54,7 +54,7 @@
 		error = null;
 		try {
 			const user = await login(userUsername, userPassword);
-			auth.setUser(user.username, user.is_admin);
+			auth.setUser(user.username, user.isAdmin);
 			window.location.href = '/';
 		} catch (err) {
 			error = getErrorMessage(err);
@@ -70,7 +70,7 @@
 		error = null;
 		try {
 			const user = await adminLogin(localPassword);
-			auth.setUser(user.username, user.is_admin);
+			auth.setUser(user.username, user.isAdmin);
 			window.location.href = '/admin/';
 		} catch (err) {
 			error = getErrorMessage(err);
@@ -87,7 +87,7 @@
 		error = null;
 		try {
 			const user = await proxmoxAdminLogin(username, pvePassword);
-			auth.setUser(user.username, user.is_admin);
+			auth.setUser(user.username, user.isAdmin);
 			window.location.href = '/admin/';
 		} catch (err) {
 			error = getErrorMessage(err);

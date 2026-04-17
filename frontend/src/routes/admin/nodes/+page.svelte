@@ -33,7 +33,7 @@
 	}
 
 	function hasDisk(node: Node): boolean {
-		return node.max_disk > 0;
+		return node.maxDisk > 0;
 	}
 
 	async function load() {
@@ -159,8 +159,8 @@
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 		{#each nodes as node}
 			{@const cpuPercent = Math.round(node.cpu * 100)}
-			{@const ramPercent = formatPercent(node.memory, node.max_memory)}
-			{@const diskPercent = hasDisk(node) ? formatPercent(node.disk, node.max_disk) : 0}
+			{@const ramPercent = formatPercent(node.memory, node.maxMemory)}
+			{@const diskPercent = hasDisk(node) ? formatPercent(node.disk, node.maxDisk) : 0}
 
 			<div class="pv-table-wrap p-5 space-y-4">
 				<!-- Node header -->
@@ -172,7 +172,7 @@
 						<div>
 							<div class="pv-resource-name">{node.name}</div>
 							<div class="pv-td-muted text-xs">
-								{$t('admin.nodes.cores', { values: { count: node.maxcpu } })}
+								{$t('admin.nodes.cores', { values: { count: node.maxCpu } })}
 							</div>
 						</div>
 					</div>
@@ -212,7 +212,7 @@
 						</span>
 						<span class="text-sm tabular-nums">
 							<span class="font-semibold">{formatBytes(node.memory)}</span>
-							<span class="text-muted-foreground text-xs"> / {formatBytes(node.max_memory)}</span>
+							<span class="text-muted-foreground text-xs"> / {formatBytes(node.maxMemory)}</span>
 						</span>
 					</div>
 					<div class="pv-usage-bar">
@@ -236,7 +236,7 @@
 							</span>
 							<span class="text-sm tabular-nums">
 								<span class="font-semibold">{formatBytes(node.disk)}</span>
-								<span class="text-muted-foreground text-xs"> / {formatBytes(node.max_disk)}</span>
+								<span class="text-muted-foreground text-xs"> / {formatBytes(node.maxDisk)}</span>
 							</span>
 						</div>
 						<div class="pv-usage-bar">

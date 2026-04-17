@@ -79,10 +79,10 @@
 				disk: coerceRange(l.vm.disk)
 			},
 			nodes,
-			max_snapshots: Number(l.max_snapshots),
-			max_network_cards: Number(l.max_network_cards),
-			max_disk_per_vm: Number(l.max_disk_per_vm),
-			max_vm_per_user: Number(l.max_vm_per_user)
+			maxSnapshots: Number(l.maxSnapshots),
+			maxNetworkCards: Number(l.maxNetworkCards),
+			maxDiskPerVm: Number(l.maxDiskPerVm),
+			maxVmPerUser: Number(l.maxVmPerUser)
 		};
 	}
 
@@ -144,7 +144,7 @@
 				</div>
 				<div class="pv-header-stat">
 					<div class="pv-header-stat-label">{$t('admin.limits.maxVmsPerUser')}</div>
-					<div class="pv-header-stat-value">{limits.max_vm_per_user}</div>
+					<div class="pv-header-stat-value">{limits.maxVmPerUser}</div>
 				</div>
 			</div>
 		{/if}
@@ -212,19 +212,19 @@
 				<div class="grid grid-cols-2 gap-3">
 					<div class="space-y-1.5">
 						<Label class="text-xs">{$t('admin.limits.maxVmsPerUser')}</Label>
-						<Input type="number" min="0" bind:value={limits.max_vm_per_user} />
+						<Input type="number" min="0" bind:value={limits.maxVmPerUser} />
 					</div>
 					<div class="space-y-1.5">
 						<Label class="text-xs">{$t('admin.limits.maxSnapshots')}</Label>
-						<Input type="number" min="0" bind:value={limits.max_snapshots} />
+						<Input type="number" min="0" bind:value={limits.maxSnapshots} />
 					</div>
 					<div class="space-y-1.5">
 						<Label class="text-xs">{$t('admin.limits.maxNetworkCards')}</Label>
-						<Input type="number" min="1" bind:value={limits.max_network_cards} />
+						<Input type="number" min="1" bind:value={limits.maxNetworkCards} />
 					</div>
 					<div class="space-y-1.5">
 						<Label class="text-xs">{$t('admin.limits.maxDisksPerVm')}</Label>
-						<Input type="number" min="1" bind:value={limits.max_disk_per_vm} />
+						<Input type="number" min="1" bind:value={limits.maxDiskPerVm} />
 					</div>
 				</div>
 			</div>
