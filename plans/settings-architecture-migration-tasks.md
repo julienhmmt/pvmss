@@ -371,38 +371,38 @@ Migrate from monolithic settings.json to a 2-tier SQLite-first configuration sys
 
 **Backend Tasks**:
 
-- [ ] T221 Create backend/handlers/admin_settings_overview.go with an aggregated read handler
-- [ ] T222 Implement GET /api/v1/admin/settings/overview returning a typed snapshot of every DB table (vm_limits, node_limits, enabled_nodes, enabled_storages, enabled_isos, enabled_vmbrs, tags, cloudinit_templates, vm_profiles, sftp_config, bootstrap status)
-- [ ] T223 Add per-section metadata to the overview response (schema version, row count, `updated_at`, whether section supports add/edit)
-- [ ] T224 Create POST /api/v1/admin/settings/upsert endpoint dispatching to the right `state.SetX` / `state.CreateX` / `state.UpdateX` method based on a `{table, record}` payload
-- [ ] T225 Explicitly reject DELETE verbs and any `action: "delete"` payload in the upsert endpoint with HTTP 405 + audit-safe log line
-- [ ] T226 Reuse existing validation helpers from backend/handlers/limits_helpers.go, tags.go, vmbr.go, etc. — no duplicated validation logic
-- [ ] T227 Ensure every mutation goes through StateManager so cache + audit invariants from Phase 4 remain intact
-- [ ] T228 Add admin-only middleware + CSRF protection on the new endpoints (reuse existing `AdminOnly`, `CSRFProtect`)
+- [x] T221 Create backend/handlers/admin_settings_overview.go with an aggregated read handler
+- [x] T222 Implement GET /api/v1/admin/settings/overview returning a typed snapshot of every DB table (vm_limits, node_limits, enabled_nodes, enabled_storages, enabled_isos, enabled_vmbrs, tags, cloudinit_templates, vm_profiles, sftp_config, bootstrap status)
+- [x] T223 Add per-section metadata to the overview response (schema version, row count, `updated_at`, whether section supports add/edit)
+- [x] T224 Create POST /api/v1/admin/settings/upsert endpoint dispatching to the right `state.SetX` / `state.CreateX` / `state.UpdateX` method based on a `{table, record}` payload
+- [x] T225 Explicitly reject DELETE verbs and any `action: "delete"` payload in the upsert endpoint with HTTP 405 + audit-safe log line
+- [x] T226 Reuse existing validation helpers from backend/handlers/limits_helpers.go, tags.go, vmbr.go, etc. — no duplicated validation logic
+- [x] T227 Ensure every mutation goes through StateManager so cache + audit invariants from Phase 4 remain intact
+- [x] T228 Add admin-only middleware + CSRF protection on the new endpoints (reuse existing `AdminOnly`, `CSRFProtect`)
 - [ ] T229 Write unit tests for admin_settings_overview.go covering: full snapshot shape, empty DB, each section present, delete rejection, audit-log side-effect
 - [ ] T230 Write integration test: upsert → overview reflects change → audit_log contains entry with `changed_by` from JWT
 
 **Frontend Tasks**:
 
-- [ ] T231 Create frontend/src/lib/api/admin/settings-overview.ts — typed client for GET /overview and POST /upsert
-- [ ] T232 Create frontend/src/lib/types/admin-settings.ts — mirror of the backend snapshot structure (no `any`, one export per file)
-- [ ] T233 Extend frontend/src/routes/admin/settings/+page.svelte with a new "Configuration overview" section above the existing DB management block
-- [ ] T234 Create frontend/src/lib/components/admin/SettingsOverview.svelte — accordion/tab layout with one panel per table
-- [ ] T235 Create frontend/src/lib/components/admin/SettingsSection.svelte — reusable section component (title, row count, `updated_at`, rows table)
-- [ ] T236 Render scalar singletons (vm_limits, sftp_config) as a read-only summary + "Edit" button opening an inline form
-- [ ] T237 Render list tables (nodes, storages, ISOs, VMBRs, tags) as a table with inline "Add" row and per-row "Edit" action (toggle `enabled`, rename where schema allows)
-- [ ] T238 Render keyed tables (cloudinit_templates, vm_profiles, node_limits) with "Add" button + per-row "Edit" modal; reuse existing forms from per-resource pages when possible
-- [ ] T239 Hide/omit any delete affordance in every sub-component; rely on disable flags where supported
-- [ ] T240 Wire add/edit actions to POST /api/v1/admin/settings/upsert and invalidate the overview query on success
+- [x] T231 Create frontend/src/lib/api/admin/settings-overview.ts — typed client for GET /overview and POST /upsert
+- [x] T232 Create frontend/src/lib/types/admin-settings.ts — mirror of the backend snapshot structure (no `any`, one export per file)
+- [x] T233 Extend frontend/src/routes/admin/settings/+page.svelte with a new "Configuration overview" section above the existing DB management block
+- [x] T234 Create frontend/src/lib/components/admin/SettingsOverview.svelte — accordion/tab layout with one panel per table
+- [x] T235 Create frontend/src/lib/components/admin/SettingsSection.svelte — reusable section component (title, row count, `updated_at`, rows table)
+- [x] T236 Render scalar singletons (vm_limits, sftp_config) as a read-only summary + "Edit" button opening an inline form
+- [x] T237 Render list tables (nodes, storages, ISOs, VMBRs, tags) as a table with inline "Add" row and per-row "Edit" action (toggle `enabled`, rename where schema allows)
+- [x] T238 Render keyed tables (cloudinit_templates, vm_profiles, node_limits) with "Add" button + per-row "Edit" modal; reuse existing forms from per-resource pages when possible
+- [x] T239 Hide/omit any delete affordance in every sub-component; rely on disable flags where supported
+- [x] T240 Wire add/edit actions to POST /api/v1/admin/settings/upsert and invalidate the overview query on success
 - [ ] T241 Surface audit entries inline (last change per section via join with audit_log) using the existing AuditLog component as reference
-- [ ] T242 Add i18n keys under `admin.settings.overview.*` in both EN and FR translation files
-- [ ] T243 Add empty-state + error-state UI for each section (loading skeleton, empty message, retry on failure)
+- [x] T242 Add i18n keys under `admin.settings.overview.*` in both EN and FR translation files
+- [x] T243 Add empty-state + error-state UI for each section (loading skeleton, empty message, retry on failure)
 - [ ] T244 Verify keyboard navigation + focus order across accordion sections (accessibility)
 
 **Documentation & Verification**:
 
-- [ ] T245 Document the "no delete" policy in docs/migration-v1-v2.md ("Why deletions are disabled in the unified panel")
-- [ ] T246 Add screenshot / description of the unified panel to the admin section of README.md and README.fr.md
+- [x] T245 Document the "no delete" policy in docs/migration-v1-v2.md ("Why deletions are disabled in the unified panel")
+- [x] T246 Add screenshot / description of the unified panel to the admin section of README.md and README.fr.md
 - [ ] T247 Manual test: edit vm_limits → overview refreshes → audit row visible with correct `changed_by`
 - [ ] T248 Manual test: attempt DELETE via curl on /api/v1/admin/settings/upsert returns 405
 - [ ] T249 Manual test: toggle `enabled=false` on an ISO → VM creation UI no longer lists it
