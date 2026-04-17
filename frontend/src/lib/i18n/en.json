@@ -337,8 +337,10 @@
       "subtitle": "Database management and audit log",
       "overview": {
         "title": "Configuration overview",
+        "accordionHint": "Manual overrides — expand only when needed",
         "noItems": "No items",
         "updateSuccess": "Settings updated successfully",
+        "manualOverrideNotice": "This panel is for manual corrections only. Use the dedicated admin pages (Nodes, Storage, ISOs, Tags, Limits, Cloud-Init, VM Profiles) for day-to-day management. Direct edits here bypass the guided workflows and should be reserved for troubleshooting or emergency fixes.",
         "resources": "Resources",
         "inventory": "Inventory",
         "templates": "Templates",
@@ -368,11 +370,15 @@
           "nodeName": "Node Name",
           "maxVms": "Max VMs",
           "addNodeLimit": "Add Node Limit",
-          "editNodeLimit": "Edit Node Limit"
+          "editNodeLimit": "Edit Node Limit",
+          "errorNode": "Node name is required",
+          "errorMaxVms": "Max VMs must be 0 or greater"
         },
         "list": {
           "addItem": "Add new item...",
-          "empty": "No items"
+          "empty": "No items",
+          "confirmDeleteTitle": "Confirm Delete",
+          "confirmDeleteMessage": "Are you sure you want to delete \"{item}\"?"
         },
         "cloudinit": {
           "title": "Cloud-Init Templates",
@@ -380,8 +386,12 @@
           "name": "Name",
           "description": "Description",
           "yamlContent": "YAML Content",
+          "filenameLabel": "Filename",
           "addTemplate": "Add Template",
-          "editTemplate": "Edit Template"
+          "editTemplate": "Edit Template",
+          "errorIdName": "ID and name are required",
+          "errorStorage": "Storage is required",
+          "errorFilename": "Filename is required"
         },
         "vmprofiles": {
           "title": "VM Profiles",
@@ -397,7 +407,12 @@
           "color": "Color",
           "addProfile": "Add Profile",
           "editProfile": "Edit Profile",
-          "specs": "{sockets} sockets, {cores} cores, {ram}GB RAM, {disk}GB disk"
+          "specs": "{sockets} sockets, {cores} cores, {ram}GB RAM, {disk}GB disk",
+          "errorIdName": "ID and name are required",
+          "errorSockets": "Sockets must be at least 1",
+          "errorCores": "Cores must be at least 1",
+          "errorRam": "RAM must be at least 1 GB",
+          "errorDisk": "Disk must be at least 1 GB"
         },
         "sftp": {
           "title": "SFTP Configuration",
