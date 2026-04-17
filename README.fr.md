@@ -51,6 +51,7 @@ PVMSS est une application stateless (backend Go + frontend HTML/CSS) qui s'appui
 - Gestion des tags et des pools utilisateurs.
 - Définition de limites globales par VM et plafonds par nœud (CPU, RAM, disque, nombre de NIC/disques).
 - Documentation et page d'informations applicatives (runtime, environnement, statut cluster).
+- **Panneau de configuration unifié** : Une interface unique pour gérer toute la configuration (limites VM, limites de nœud, éléments d'inventaire, modèles cloud-init, profils VM, configuration SFTP) avec journal d'audit et fonctionnalités d'import/export.
 
 ## Architecture en un coup d'œil
 

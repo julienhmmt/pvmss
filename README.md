@@ -51,6 +51,7 @@ PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and r
 - Manage tags and user pools.
 - Define global VM limits plus per-node caps (CPU, RAM, disk, number of NICs/disks).
 - Admin documentation and application insights page (runtime, environment, cluster status).
+- **Unified Settings Panel**: A single interface to manage all configuration (VM limits, node limits, inventory items, cloud-init templates, VM profiles, SFTP configuration) with audit trail and import/export functionality.
 
 ## Architecture at a glance
 

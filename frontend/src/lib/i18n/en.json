@@ -335,6 +335,80 @@
     "settings": {
       "title": "Settings",
       "subtitle": "Database management and audit log",
+      "overview": {
+        "title": "Configuration overview",
+        "noItems": "No items",
+        "updateSuccess": "Settings updated successfully",
+        "resources": "Resources",
+        "inventory": "Inventory",
+        "templates": "Templates",
+        "integrations": "Integrations",
+        "lastUpdated": "Last updated by {user} at {time}",
+        "save": "Save",
+        "saving": "Saving...",
+        "add": "Add",
+        "edit": "Edit",
+        "remove": "Remove",
+        "enable": "Enable",
+        "disable": "Disable",
+        "cancel": "Cancel",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "vmlimits": {
+          "title": "VM Limits",
+          "maxVms": "Max VMs (0 = unlimited)",
+          "maxVmsPerUser": "Max VMs per User",
+          "maxNetworkCards": "Max Network Cards per VM",
+          "maxDiskPerVm": "Max Disks per VM",
+          "maxSnapshots": "Max Snapshots per VM",
+          "allowCustomYaml": "Allow Custom YAML"
+        },
+        "nodelimits": {
+          "title": "Node Limits",
+          "nodeName": "Node Name",
+          "maxVms": "Max VMs",
+          "addNodeLimit": "Add Node Limit",
+          "editNodeLimit": "Edit Node Limit"
+        },
+        "list": {
+          "addItem": "Add new item...",
+          "empty": "No items"
+        },
+        "cloudinit": {
+          "title": "Cloud-Init Templates",
+          "id": "ID",
+          "name": "Name",
+          "description": "Description",
+          "yamlContent": "YAML Content",
+          "addTemplate": "Add Template",
+          "editTemplate": "Edit Template"
+        },
+        "vmprofiles": {
+          "title": "VM Profiles",
+          "id": "ID",
+          "name": "Name",
+          "description": "Description",
+          "sockets": "Sockets",
+          "cores": "Cores",
+          "ramGb": "RAM (GB)",
+          "diskGb": "Disk (GB)",
+          "diskBus": "Disk Bus",
+          "icon": "Icon",
+          "color": "Color",
+          "addProfile": "Add Profile",
+          "editProfile": "Edit Profile",
+          "specs": "{sockets} sockets, {cores} cores, {ram}GB RAM, {disk}GB disk"
+        },
+        "sftp": {
+          "title": "SFTP Configuration",
+          "enableUpload": "Enable SFTP Upload",
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "privateKeyPath": "Private Key Path",
+          "remotePath": "Remote Path"
+        }
+      },
       "db": {
         "title": "Database",
         "exportTitle": "Export database",

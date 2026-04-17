@@ -332,6 +332,80 @@
     "settings": {
       "title": "Paramètres",
       "subtitle": "Gestion de la base de données et journal d'audit",
+      "overview": {
+        "title": "Vue d'ensemble de la configuration",
+        "noItems": "Aucun élément",
+        "updateSuccess": "Paramètres mis à jour avec succès",
+        "resources": "Ressources",
+        "inventory": "Inventaire",
+        "templates": "Modèles",
+        "integrations": "Intégrations",
+        "lastUpdated": "Dernière mise à jour par {user} à {time}",
+        "save": "Enregistrer",
+        "saving": "Enregistrement...",
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "remove": "Supprimer",
+        "enable": "Activer",
+        "disable": "Désactiver",
+        "cancel": "Annuler",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "vmlimits": {
+          "title": "Limites VM",
+          "maxVms": "Max VMs (0 = illimité)",
+          "maxVmsPerUser": "Max VMs par utilisateur",
+          "maxNetworkCards": "Max cartes réseau par VM",
+          "maxDiskPerVm": "Max disques par VM",
+          "maxSnapshots": "Max snapshots par VM",
+          "allowCustomYaml": "Autoriser YAML personnalisé"
+        },
+        "nodelimits": {
+          "title": "Limites de nœud",
+          "nodeName": "Nom du nœud",
+          "maxVms": "Max VMs",
+          "addNodeLimit": "Ajouter limite de nœud",
+          "editNodeLimit": "Modifier limite de nœud"
+        },
+        "list": {
+          "addItem": "Ajouter un nouvel élément...",
+          "empty": "Aucun élément"
+        },
+        "cloudinit": {
+          "title": "Modèles Cloud-Init",
+          "id": "ID",
+          "name": "Nom",
+          "description": "Description",
+          "yamlContent": "Contenu YAML",
+          "addTemplate": "Ajouter modèle",
+          "editTemplate": "Modifier modèle"
+        },
+        "vmprofiles": {
+          "title": "Profils VM",
+          "id": "ID",
+          "name": "Nom",
+          "description": "Description",
+          "sockets": "Sockets",
+          "cores": "Cœurs",
+          "ramGb": "RAM (Go)",
+          "diskGb": "Disque (Go)",
+          "diskBus": "Bus disque",
+          "icon": "Icône",
+          "color": "Couleur",
+          "addProfile": "Ajouter profil",
+          "editProfile": "Modifier profil",
+          "specs": "{sockets} sockets, {cores} cœurs, {ram}Go RAM, {disk}Go disque"
+        },
+        "sftp": {
+          "title": "Configuration SFTP",
+          "enableUpload": "Activer upload SFTP",
+          "host": "Hôte",
+          "port": "Port",
+          "username": "Nom d'utilisateur",
+          "privateKeyPath": "Chemin clé privée",
+          "remotePath": "Chemin distant"
+        }
+      },
       "db": {
         "title": "Base de données",
         "exportTitle": "Exporter la base de données",
