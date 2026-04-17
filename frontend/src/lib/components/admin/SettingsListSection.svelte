@@ -1,154 +1,122 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
+	import { Button } from '$lib/components/ui/button';
 	import { upsertSettings } from '$lib/api/admin/settings-overview';
 	import type { SectionMeta } from '$lib/api/admin/settings-overview';
 
 	let { meta, data, table, onUpdate }: { meta: SectionMeta; data: string[]; table: string; onUpdate: () => Promise<void> } = $props();
 
-	let items = $derived.by(() => [...(data || [])]);
+	let items = $derived([...(data ?? [])]);
 	let newItem = $state('');
 	let saving = $state(false);
 	let error = $state<string | null>(null);
-
+	let itemToDelete = $state<string | null>(null);
 
 	async function handleAdd() {
-		if (!newItem.trim()) return;
+		const trimmed = newItem.trim();
+		if (!trimmed) return;
 		saving = true;
 		error = null;
 		try {
-			const updated = [...items, newItem.trim()];
-			await upsertSettings({ table, record: updated });
+			await upsertSettings({ table, record: [...items, trimmed] });
 			await onUpdate();
 			newItem = '';
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to add item';
+			error = e instanceof Error ? e.message : 'Failed to add';
 		} finally {
 			saving = false;
 		}
 	}
 
-	async function handleKeyPress(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
-			e.preventDefault();
-			handleAdd();
+	function confirmRemove(item: string) {
+		itemToDelete = item;
+	}
+
+	async function handleRemove() {
+		if (!itemToDelete) return;
+		saving = true;
+		error = null;
+		try {
+			await upsertSettings({ table, record: items.filter((i) => i !== itemToDelete) });
+			await onUpdate();
+			itemToDelete = null;
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to remove';
+		} finally {
+			saving = false;
 		}
+	}
+
+	function cancelRemove() {
+		itemToDelete = null;
 	}
 </script>
 
-<div class="list-section">
-	<h3>{meta.name}</h3>
-	{#if meta.last_change_by}
-		<p class="audit-info">
-			Last updated by {meta.last_change_by} at {new Date(meta.last_change_at || '').toLocaleString()}
-		</p>
-	{/if}
+<div class="rounded-xl border border-border bg-card p-5 space-y-4">
+	<div>
+		<p class="font-medium text-sm">{meta.name}</p>
+		{#if meta.last_change_by}
+			<p class="text-xs text-muted-foreground mt-0.5">
+				{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+			</p>
+		{/if}
+	</div>
 
-	<div class="add-item">
+	<div class="flex gap-2">
 		<input
 			type="text"
 			bind:value={newItem}
-			onkeypress={handleKeyPress}
-			placeholder="Add new item..."
+			onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
+			placeholder={$t('admin.settings.overview.list.addItem')}
 			disabled={saving}
+			class="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
 		/>
-		<button onclick={handleAdd} disabled={saving || !newItem.trim()} class="btn-add">
-			Add
-		</button>
+		<Button size="sm" onclick={handleAdd} disabled={saving || !newItem.trim()}>
+			{$t('common.create')}
+		</Button>
 	</div>
 
 	{#if error}
-		<p class="error">{error}</p>
+		<p class="text-sm text-destructive">{error}</p>
 	{/if}
 
-	<ul class="item-list">
-		{#each items as item}
-			<li class="item">
-				<span class="item-name">{item}</span>
-			</li>
-		{/each}
-		{#if items.length === 0}
-			<li class="empty">No items</li>
-		{/if}
-	</ul>
+	{#if items.length === 0}
+		<p class="text-sm text-muted-foreground italic">{$t('common.noData')}</p>
+	{:else}
+		<ul class="space-y-1.5">
+			{#each items as item}
+				<li class="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2">
+					<span class="text-sm">{item}</span>
+					<button
+						type="button"
+						onclick={() => confirmRemove(item)}
+						disabled={saving || itemToDelete !== null}
+						class="text-xs text-muted-foreground hover:text-destructive disabled:opacity-40 transition-colors"
+						aria-label={$t('common.delete')}
+					>
+						✕
+					</button>
+				</li>
+			{/each}
+		</ul>
+	{/if}
 </div>
 
-<style>
-	.list-section {
-		padding: 1rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-	}
-
-	.list-section h3 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-	}
-
-	.audit-info {
-		font-size: 0.875rem;
-		color: #666;
-		margin-bottom: 1rem;
-	}
-
-	.add-item {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
-	}
-
-	.add-item input {
-		flex: 1;
-		padding: 0.5rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-	}
-
-	.add-item input:disabled {
-		opacity: 0.6;
-	}
-
-	.btn-add {
-		padding: 0.5rem 1rem;
-		background-color: #1976d2;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-	}
-
-	.btn-add:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.error {
-		color: #d32f2f;
-		margin-bottom: 1rem;
-	}
-
-	.item-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 0.5rem;
-		background: #f5f5f5;
-		border-radius: 4px;
-		margin-bottom: 0.5rem;
-	}
-
-	.item-name {
-		flex: 1;
-	}
-
-	.empty {
-		color: #999;
-		font-style: italic;
-		padding: 0.5rem;
-	}
-</style>
+{#if itemToDelete}
+	<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+		<div class="bg-background rounded-lg border border-border p-6 max-w-sm w-full mx-4 shadow-lg">
+			<h3 class="text-lg font-semibold mb-2">{$t('admin.settings.overview.list.confirmDeleteTitle')}</h3>
+			<p class="text-sm text-muted-foreground mb-4">
+				{$t('admin.settings.overview.list.confirmDeleteMessage', { values: { item: itemToDelete } })}
+			</p>
+			<div class="flex gap-2 justify-end">
+				<Button variant="outline" size="sm" onclick={cancelRemove} disabled={saving}>
+					{$t('common.cancel')}
+				</Button>
+				<Button size="sm" variant="destructive" onclick={handleRemove} disabled={saving}>
+					{$t('common.delete')}
+				</Button>
+			</div>
+		</div>
+	</div>
+{/if}

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
+	import { Button } from '$lib/components/ui/button';
 	import { upsertSettings, TABLE_CLOUDINIT_TEMPLATES } from '$lib/api/admin/settings-overview';
 	import type { SectionMeta } from '$lib/api/admin/settings-overview';
 
@@ -12,11 +14,7 @@
 		enabled: boolean;
 	}
 
-	let { meta, data, onUpdate }: { meta: SectionMeta; data: CloudInitTemplate[]; onUpdate: () => Promise<void> } = $props();
-
-	let items = $state([...(data || [])]);
-	let editingIndex = $state<number | null>(null);
-	let editForm = $state<CloudInitTemplate>({
+	const emptyForm = (): CloudInitTemplate => ({
 		id: '',
 		name: '',
 		description: '',
@@ -25,55 +23,39 @@
 		yaml_content: '#cloud-config\n',
 		enabled: true
 	});
+
+	let { meta, data, onUpdate }: { meta: SectionMeta; data: CloudInitTemplate[]; onUpdate: () => Promise<void> } = $props();
+
+	let items = $derived([...(data ?? [])]);
+	let editingId = $state<string | null>(null); // null=none, ''=new
+	let editForm = $state<CloudInitTemplate>(emptyForm());
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
-	// Sync items when data changes
-	$effect(() => {
-		items = [...(data || [])];
-	});
+	function startNew() {
+		editingId = '';
+		editForm = emptyForm();
+	}
 
-	function startEdit(index: number) {
-		editingIndex = index;
-		editForm = { ...items[index] };
+	function startEdit(item: CloudInitTemplate) {
+		editingId = item.id;
+		editForm = { ...item };
 	}
 
 	function cancelEdit() {
-		editingIndex = null;
-		editForm = {
-			id: '',
-			name: '',
-			description: '',
-			storage: '',
-			filename: '',
-			yaml_content: '#cloud-config\n',
-			enabled: true
-		};
+		editingId = null;
+		editForm = emptyForm();
+		error = null;
 	}
 
 	async function handleSave() {
-		if (!editForm.id || !editForm.name) {
-			error = 'ID and Name are required';
-			return;
-		}
-		if (!editForm.storage) {
-			error = 'Storage is required';
-			return;
-		}
-		if (!editForm.filename) {
-			error = 'Filename is required';
-			return;
-		}
+		if (!editForm.id || !editForm.name) { error = $t('admin.settings.overview.cloudinit.errorIdName'); return; }
+		if (!editForm.storage) { error = $t('admin.settings.overview.cloudinit.errorStorage'); return; }
+		if (!editForm.filename) { error = $t('admin.settings.overview.cloudinit.errorFilename'); return; }
 		saving = true;
 		error = null;
 		try {
-			const updated = [...items];
-			if (editingIndex !== null) {
-				updated[editingIndex] = { ...editForm };
-			} else {
-				updated.push({ ...editForm });
-			}
-			await upsertSettings({ table: TABLE_CLOUDINIT_TEMPLATES, record: updated });
+			await upsertSettings({ table: TABLE_CLOUDINIT_TEMPLATES, record: { ...editForm } });
 			await onUpdate();
 			cancelEdit();
 		} catch (e) {
@@ -83,13 +65,11 @@
 		}
 	}
 
-	async function handleToggle(index: number) {
+	async function handleToggle(item: CloudInitTemplate) {
 		saving = true;
 		error = null;
 		try {
-			const updated = [...items];
-			updated[index].enabled = !updated[index].enabled;
-			await upsertSettings({ table: TABLE_CLOUDINIT_TEMPLATES, record: updated });
+			await upsertSettings({ table: TABLE_CLOUDINIT_TEMPLATES, record: { ...item, enabled: !item.enabled } });
 			await onUpdate();
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to toggle';
@@ -99,250 +79,104 @@
 	}
 </script>
 
-<div class="cloudinit-section">
-	<h3>{meta.name}</h3>
-	{#if meta.last_change_by}
-		<p class="audit-info">
-			Last updated by {meta.last_change_by}
-			{#if meta.last_change_at}
-				at {new Date(meta.last_change_at).toLocaleString()}
+<div class="rounded-xl border border-border bg-card p-5 space-y-4">
+	<div class="flex items-center justify-between">
+		<div>
+			<p class="font-medium text-sm">{meta.name}</p>
+			{#if meta.last_change_by}
+				<p class="text-xs text-muted-foreground mt-0.5">
+					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+				</p>
 			{/if}
-		</p>
-	{/if}
+		</div>
+		{#if editingId === null}
+			<Button size="sm" variant="outline" onclick={startNew} disabled={saving}>
+				{$t('common.create')}
+			</Button>
+		{/if}
+	</div>
 
-	{#if editingIndex !== null}
-		<div class="edit-form">
-			<h4>{editingIndex === -1 ? 'Add New Template' : 'Edit Template'}</h4>
-			<div class="form-group">
-				<label>ID</label>
-				<input type="text" bind:value={editForm.id} disabled={saving || editingIndex !== -1} />
+	{#if editingId !== null}
+		<div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+			<p class="text-xs font-semibold uppercase text-muted-foreground tracking-wide">
+				{editingId === '' ? $t('admin.settings.overview.cloudinit.addTemplate') : $t('admin.settings.overview.cloudinit.editTemplate')}
+			</p>
+			<div class="grid gap-3 sm:grid-cols-2">
+				<div class="space-y-1">
+					<label for="ci_id" class="block text-xs font-medium text-muted-foreground">ID</label>
+					<input id="ci_id" type="text" bind:value={editForm.id} disabled={saving || editingId !== ''}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1">
+					<label for="ci_name" class="block text-xs font-medium text-muted-foreground">{$t('common.name')}</label>
+					<input id="ci_name" type="text" bind:value={editForm.name} disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1">
+					<label for="ci_storage" class="block text-xs font-medium text-muted-foreground">{$t('common.storage')}</label>
+					<input id="ci_storage" type="text" bind:value={editForm.storage} disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1">
+					<label for="ci_filename" class="block text-xs font-medium text-muted-foreground">
+						{$t('admin.settings.overview.cloudinit.filenameLabel')}
+					</label>
+					<input id="ci_filename" type="text" bind:value={editForm.filename} disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1 sm:col-span-2">
+					<label for="ci_desc" class="block text-xs font-medium text-muted-foreground">{$t('common.description')}</label>
+					<input id="ci_desc" type="text" bind:value={editForm.description} disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1 sm:col-span-2">
+					<label for="ci_yaml" class="block text-xs font-medium text-muted-foreground">YAML</label>
+					<textarea id="ci_yaml" rows="8" bind:value={editForm.yaml_content} disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"></textarea>
+				</div>
+				<div class="flex items-center gap-2">
+					<input id="ci_enabled" type="checkbox" bind:checked={editForm.enabled}
+						class="h-4 w-4 rounded border-input" />
+					<label for="ci_enabled" class="text-xs font-medium text-muted-foreground">{$t('common.enabled')}</label>
+				</div>
 			</div>
-			<div class="form-group">
-				<label>Name</label>
-				<input type="text" bind:value={editForm.name} disabled={saving} />
-			</div>
-			<div class="form-group">
-				<label>Description</label>
-				<input type="text" bind:value={editForm.description} disabled={saving} />
-			</div>
-			<div class="form-group">
-				<label>Storage</label>
-				<input type="text" bind:value={editForm.storage} disabled={saving} />
-			</div>
-			<div class="form-group">
-				<label>Filename</label>
-				<input type="text" bind:value={editForm.filename} disabled={saving} />
-			</div>
-			<div class="form-group">
-				<label>YAML Content</label>
-				<textarea bind:value={editForm.yaml_content} rows="10" disabled={saving}></textarea>
-			</div>
-			<div class="form-group checkbox">
-				<input type="checkbox" bind:checked={editForm.enabled} disabled={saving} />
-				<label>Enabled</label>
-			</div>
-			<div class="form-actions">
-				<button onclick={handleSave} disabled={saving} class="btn-save">Save</button>
-				<button onclick={cancelEdit} disabled={saving} class="btn-cancel">Cancel</button>
+			{#if error}
+				<p class="text-sm text-destructive">{error}</p>
+			{/if}
+			<div class="flex gap-2">
+				<Button size="sm" onclick={handleSave} disabled={saving}>{$t('common.save')}</Button>
+				<Button size="sm" variant="outline" onclick={cancelEdit} disabled={saving}>{$t('common.cancel')}</Button>
 			</div>
 		</div>
+	{/if}
+
+	{#if editingId === null && error}
+		<p class="text-sm text-destructive">{error}</p>
+	{/if}
+
+	{#if items.length === 0}
+		<p class="text-sm text-muted-foreground italic">{$t('common.noData')}</p>
 	{:else}
-		<button onclick={() => (editingIndex = -1)} disabled={saving} class="btn-add">
-			Add Template
-		</button>
+		<ul class="space-y-1.5">
+			{#each items as item}
+				<li class="flex items-start justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 gap-3">
+					<div class="space-y-0.5 min-w-0">
+						<p class="text-sm font-medium truncate">{item.name}</p>
+						<p class="text-xs text-muted-foreground">{item.id}{item.description ? ` · ${item.description}` : ''}</p>
+						<span class="inline-block text-xs font-medium {item.enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}">
+							{item.enabled ? $t('admin.settings.overview.enabled') : $t('admin.settings.overview.disabled')}
+						</span>
+					</div>
+					<div class="flex gap-1.5 flex-shrink-0">
+						<Button size="sm" variant="ghost" onclick={() => handleToggle(item)} disabled={saving || editingId !== null}>
+							{item.enabled ? $t('admin.settings.overview.disable') : $t('admin.settings.overview.enable')}
+						</Button>
+						<Button size="sm" variant="ghost" onclick={() => startEdit(item)} disabled={saving || editingId !== null}>
+							{$t('common.edit')}
+						</Button>
+					</div>
+				</li>
+			{/each}
+		</ul>
 	{/if}
-
-	{#if error}
-		<p class="error">{error}</p>
-	{/if}
-
-	<ul class="item-list">
-		{#each items as item, index}
-			<li class="item">
-				<div class="item-details">
-					<strong>{item.name}</strong>
-					<span>ID: {item.id}</span>
-					{#if item.description}
-						<span>{item.description}</span>
-					{/if}
-					<span class="status {item.enabled ? 'enabled' : 'disabled'}">
-						{item.enabled ? 'Enabled' : 'Disabled'}
-					</span>
-				</div>
-				<div class="item-actions">
-					<button onclick={() => handleToggle(index)} disabled={saving} class="btn-toggle">
-						{item.enabled ? 'Disable' : 'Enable'}
-					</button>
-					<button onclick={() => startEdit(index)} disabled={saving} class="btn-edit">Edit</button>
-				</div>
-			</li>
-		{/each}
-		{#if items.length === 0}
-			<li class="empty">No cloud-init templates configured</li>
-		{/if}
-	</ul>
 </div>
-
-<style>
-	.cloudinit-section {
-		padding: 1rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-	}
-
-	.cloudinit-section h3 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-	}
-
-	.audit-info {
-		font-size: 0.875rem;
-		color: #666;
-		margin-bottom: 1rem;
-	}
-
-	.edit-form {
-		background: #f5f5f5;
-		padding: 1rem;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-	}
-
-	.edit-form h4 {
-		margin-top: 0;
-		margin-bottom: 0.75rem;
-	}
-
-	.form-group {
-		margin-bottom: 0.75rem;
-	}
-
-	.form-group label {
-		display: block;
-		margin-bottom: 0.25rem;
-		font-weight: 500;
-	}
-
-	.form-group input,
-	.form-group textarea {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-		font-family: monospace;
-	}
-
-	.form-group.checkbox {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.form-group.checkbox input {
-		width: auto;
-	}
-
-	.form-actions {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	.btn-add,
-	.btn-save,
-	.btn-cancel,
-	.btn-edit,
-	.btn-toggle {
-		padding: 0.5rem 1rem;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-	}
-
-	.btn-add,
-	.btn-save {
-		background-color: #1976d2;
-		color: white;
-	}
-
-	.btn-cancel {
-		background-color: #666;
-		color: white;
-	}
-
-	.btn-edit {
-		background-color: #f57c00;
-		color: white;
-	}
-
-	.btn-toggle {
-		background-color: #388e3c;
-		color: white;
-	}
-
-	.btn-add:disabled,
-	.btn-save:disabled,
-	.btn-cancel:disabled,
-	.btn-edit:disabled,
-	.btn-toggle:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.error {
-		color: #d32f2f;
-		margin-bottom: 1rem;
-	}
-
-	.item-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.item {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		padding: 0.75rem;
-		background: #f5f5f5;
-		border-radius: 4px;
-		margin-bottom: 0.5rem;
-	}
-
-	.item-details {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		flex: 1;
-	}
-
-	.item-details span {
-		font-size: 0.875rem;
-		color: #666;
-	}
-
-	.status {
-		font-weight: 500;
-	}
-
-	.status.enabled {
-		color: #388e3c;
-	}
-
-	.status.disabled {
-		color: #d32f2f;
-	}
-
-	.item-actions {
-		display: flex;
-		gap: 0.5rem;
-		flex-shrink: 0;
-	}
-
-	.empty {
-		color: #999;
-		font-style: italic;
-		padding: 0.5rem;
-	}
-</style>
