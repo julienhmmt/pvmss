@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	_ "modernc.org/sqlite"
@@ -95,6 +96,17 @@ type sqliteDB struct {
 // WAL pragmas are applied and all pending migrations are run before returning.
 // The caller is responsible for calling Close when done.
 func Open(path string) (DB, error) {
+	if path != ":memory:" {
+		if path == "" {
+			return nil, fmt.Errorf("database path cannot be empty")
+		}
+		dir := filepath.Dir(path)
+		if dir != "." && dir != "" {
+			if err := os.MkdirAll(dir, 0o750); err != nil {
+				return nil, fmt.Errorf("create db directory %q: %w", dir, err)
+			}
+		}
+	}
 	raw, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite at %q: %w", path, err)

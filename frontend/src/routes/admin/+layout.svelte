@@ -3,7 +3,6 @@
 	import { auth } from '$lib/stores/auth.svelte';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import AdminSidebar from '$lib/components/layout/AdminSidebar.svelte';
-	import Footer from '$lib/components/layout/Footer.svelte';
 
 	let { children } = $props();
 
@@ -22,6 +21,5 @@
 			{/snippet}
 			{@render children()}
 		</AppShell>
-		<Footer />
 	</div>
 {/if}

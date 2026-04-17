@@ -49,6 +49,9 @@ COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend/build/ /app/fro
 COPY --from=builder --chown=nonroot:nonroot /app/backend/i18n/ /app/backend/i18n/
 COPY --from=builder --chown=nonroot:nonroot /app/backend/docs/ /app/backend/docs/
 
+# Default database path (override at runtime with -e PVMSS_DB_PATH=...)
+ENV PVMSS_DB_PATH=/data/pvmss.db
+
 # Expose the port the app runs on
 EXPOSE 50000
 

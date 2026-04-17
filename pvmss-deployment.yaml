@@ -17,60 +17,14 @@ metadata:
 type: Opaque
 data:
   admin-password-hash: changemebase64hash
+  jwt-secret: changemebase64hash
   pve-api-token: changemebase64hash
   session-secret: changemebase64hash
 ---
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pvmss-config
-data:
-  settings.json: |
-    {
-        "tags": [
-            "pvmss"
-        ],
-        "isos": [],
-        "vmbrs": [],
-        "cloudinit_sftp": {
-          "enabled": true,
-          "host": "your-proxmox-ip-or-hostname",
-          "port": 22,
-          "username": "pvmss-snippets",
-          "privateKeyPath": "/app/pvmss_snippets_ed25519",
-          "snippetBaseDir": "/snippets"
-        },
-        "max_network_cards": 1,
-        "max_disk_per_vm": 1,
-        "enabled_storages": [],
-        "limits": {
-            "nodes": {},
-            "vm": {
-                "cores": {
-                    "min": 1,
-                    "max": 4
-                },
-                "disk": {
-                    "min": 6,
-                    "max": 12
-                },
-                "ram": {
-                    "min": 1,
-                    "max": 4
-                },
-                "sockets": {
-                    "min": 1,
-                    "max": 1
-                }
-            },
-            "max_snapshot": 8
-        }
-    }
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvmss-settings-pvc
+  name: pvmss-data-pvc
   namespace: pvmss
 spec:
   accessModes:
@@ -159,6 +113,11 @@ spec:
               value: "false"
             - name: PROXMOX_URL
               value: "https://changeme:8006/api2/json"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pvmss-secrets
+                  key: jwt-secret
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
@@ -168,14 +127,14 @@ spec:
               value: "production" # Can be 'dev', 'developpement', 'prod'
             - name: PVMSS_OFFLINE
               value: "false" # Set to true to disable Proxmox connection
-            - name: PVMSS_SETTINGS_PATH
-              value: "/data/settings.json"
+            - name: PVMSS_DB_PATH
+              value: "/data/pvmss.db"
             - name: CSRF_TOKEN_TTL
               value: "2h" # duration (e.g.: 10m, 4d)
             - name: TZ
               value: "Europe/Paris"
           volumeMounts:
-            - name: pvmss-settings
+            - name: pvmss-data
               mountPath: /data
               readOnly: false
             - name: pvmss-logs
@@ -197,9 +156,9 @@ spec:
             seccompProfile:
               type: RuntimeDefault
       volumes:
-        - name: pvmss-settings
+        - name: pvmss-data
           persistentVolumeClaim:
-            claimName: pvmss-settings-pvc
+            claimName: pvmss-data-pvc
         - name: pvmss-logs
           persistentVolumeClaim:
             claimName: pvmss-logs-pvc

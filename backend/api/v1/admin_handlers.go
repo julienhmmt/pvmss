@@ -386,7 +386,7 @@ func collectSafeEnvVars() map[string]string {
 	safeKeys := []string{
 		"LOG_LEVEL", "LOG_FORMAT", "LOG_OUTPUT",
 		"PROXMOX_URL", "PROXMOX_VERIFY_SSL",
-		"PVMSS_ENV", "PVMSS_OFFLINE", "PVMSS_SETTINGS_PATH",
+		"PVMSS_ENV", "PVMSS_OFFLINE", "PVMSS_DB_PATH",
 	}
 	vars := make(map[string]string, len(safeKeys))
 	for _, key := range safeKeys {

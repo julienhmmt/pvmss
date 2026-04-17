@@ -40,7 +40,7 @@ This section (accessible at `/admin/appinfo`) provides a read-only overview of t
 - **Build information**: application version, Go version, operating system and architecture.
 - **Environment**: current mode (`development`, `production`, or `offline`) based on the `PVMSS_ENV` and `PVMSS_OFFLINE` environment variables.
 - **Proxmox cluster status**: whether PVMSS is connected to a single node or to a Proxmox cluster, cluster name, and number of nodes when available.
-- **Environment variables (safe subset)**: non-sensitive configuration such as `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV`, `PVMSS_OFFLINE`, `PVMSS_SETTINGS_PATH`.
+- **Environment variables (safe subset)**: non-sensitive configuration such as `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV`, `PVMSS_OFFLINE`, `PVMSS_DB_PATH`.
 
 #### Timezone (TZ)
 
@@ -406,7 +406,7 @@ Administrators should monitor these logs to detect recurring problems with guest
 ## Deployment and upgrade checklist
 
 - Confirm that the target Proxmox VE version is supported (9.0 or newer).
-- Configure mandatory environment variables: `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV`, `PVMSS_OFFLINE`, `PVMSS_SETTINGS_PATH`, `ADMIN_PASSWORD_HASH`, `LOG_LEVEL`.
+- Configure mandatory environment variables: `PROXMOX_URL`, `PROXMOX_VERIFY_SSL`, `PVMSS_ENV`, `PVMSS_OFFLINE`, `PVMSS_DB_PATH`, `JWT_SECRET`, `SESSION_SECRET`, `ADMIN_PASSWORD_HASH`, `LOG_LEVEL`.
 - Start PVMSS and open `/admin/appinfo` to verify:
   - Environment mode (`development`, `production`, `offline`).
   - Proxmox URL and SSL verification settings.
