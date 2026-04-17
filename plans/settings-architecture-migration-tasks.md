@@ -320,34 +320,34 @@ Migrate from monolithic settings.json to a 2-tier SQLite-first configuration sys
 
 **Tasks**:
 
-- [ ] T171 Add PVMSS_DB_PATH default to Dockerfile
-- [ ] T172 Update docker-compose.example.yml with JWT_SECRET env var
-- [ ] T173 Update docker-compose.example.yml with SESSION_SECRET env var
-- [ ] T174 Update docker-compose.example.yml with ADMIN_PASSWORD_HASH env var
-- [ ] T175 Update docker-compose.example.yml with PROXMOX_URL env var
-- [ ] T176 Update docker-compose.example.yml with PROXMOX_API_TOKEN_NAME env var
-- [ ] T177 Update docker-compose.example.yml with PROXMOX_API_TOKEN_VALUE env var
-- [ ] T178 Update docker-compose.example.yml with PROXMOX_SSL_VERIFY env var
-- [ ] T179 Update docker-compose.example.yml with pvmss.db volume mount
-- [ ] T180 Remove settings.json volume mount from docker-compose.example.yml
-- [ ] T181 Remove PVMSS_SETTINGS_PATH from docker-compose.example.yml
-- [ ] T182 Update Kubernetes manifests to add JWT_SECRET to Secret
-- [ ] T183 Update Kubernetes manifests to add PVC for SQLite
-- [ ] T184 Update Kubernetes deployment mounts for pvmss.db
-- [ ] T185 Update Helm chart to add DB PVC template
-- [ ] T186 Update Helm chart values.yaml with new env vars
-- [ ] T187 Update example.env with JWT_SECRET documentation
-- [ ] T188 Update example.env with SESSION_SECRET documentation
-- [ ] T189 Update example.env with ADMIN_PASSWORD_HASH documentation
-- [ ] T190 Update example.env with PROXMOX_* env var documentation
-- [ ] T191 Update example.env with PVMSS_DB_PATH documentation
-- [ ] T192 Create docs/migration-v1-v2.md migration guide
-- [ ] T193 Document extracting JWT secret from settings.json in migration guide
-- [ ] T194 Document setting Proxmox credentials as env vars in migration guide
-- [ ] T195 Document deploying new version and auto-migration in migration guide
-- [ ] T196 Document verifying admin UI works in migration guide
-- [ ] T197 Document removing settings.json in migration guide
-- [ ] T198 Document rollback procedure (restore .db backup + old binary) in migration guide
+- [x] T171 Add PVMSS_DB_PATH default to Dockerfile
+- [x] T172 Update docker-compose.example.yml with JWT_SECRET env var
+- [x] T173 Update docker-compose.example.yml with SESSION_SECRET env var
+- [x] T174 Update docker-compose.example.yml with ADMIN_PASSWORD_HASH env var
+- [x] T175 Update docker-compose.example.yml with PROXMOX_URL env var
+- [x] T176 Update docker-compose.example.yml with PROXMOX_API_TOKEN_NAME env var
+- [x] T177 Update docker-compose.example.yml with PROXMOX_API_TOKEN_VALUE env var
+- [x] T178 Update docker-compose.example.yml with PROXMOX_SSL_VERIFY env var
+- [x] T179 Update docker-compose.example.yml with pvmss.db volume mount
+- [x] T180 Remove settings.json volume mount from docker-compose.example.yml
+- [x] T181 Remove PVMSS_SETTINGS_PATH from docker-compose.example.yml
+- [x] T182 Update Kubernetes manifests to add JWT_SECRET to Secret
+- [x] T183 Update Kubernetes manifests to add PVC for SQLite
+- [x] T184 Update Kubernetes deployment mounts for pvmss.db
+- [x] T185 Update Helm chart to add DB PVC template
+- [x] T186 Update Helm chart values.yaml with new env vars
+- [x] T187 Update example.env with JWT_SECRET documentation
+- [x] T188 Update example.env with SESSION_SECRET documentation
+- [x] T189 Update example.env with ADMIN_PASSWORD_HASH documentation
+- [x] T190 Update example.env with PROXMOX_* env var documentation
+- [x] T191 Update example.env with PVMSS_DB_PATH documentation
+- [x] T192 Create docs/migration-v1-v2.md migration guide
+- [x] T193 Document extracting JWT secret from settings.json in migration guide
+- [x] T194 Document setting Proxmox credentials as env vars in migration guide
+- [x] T195 Document deploying new version and auto-migration in migration guide
+- [x] T196 Document verifying admin UI works in migration guide
+- [x] T197 Document removing settings.json in migration guide
+- [x] T198 Document rollback procedure (restore .db backup + old binary) in migration guide
 - [ ] T199 Test Docker Compose startup with new configuration
 - [ ] T200 Test Kubernetes deployment with new manifests
 - [ ] T201 Test migration guide instructions with fresh deployment

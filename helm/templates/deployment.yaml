@@ -51,6 +51,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.PROXMOX_API_TOKEN_VALUE }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pvmss.fullname" . }}-secrets
+                  key: {{ .Values.deployment.secretEnv.JWT_SECRET }}
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
@@ -62,7 +67,7 @@ spec:
               value: "{{ $v }}"
             {{- end }}
           volumeMounts:
-            - name: pvmss-settings
+            - name: pvmss-data
               mountPath: /data
             - name: pvmss-logs
               mountPath: /data/logs
@@ -82,9 +87,9 @@ spec:
             seccompProfile:
               type: RuntimeDefault
       volumes:
-        - name: pvmss-settings
+        - name: pvmss-data
           persistentVolumeClaim:
-            claimName: {{ include "pvmss.fullname" . }}-settings-pvc
+            claimName: {{ include "pvmss.fullname" . }}-db-pvc
         - name: pvmss-logs
           persistentVolumeClaim:
             claimName: {{ include "pvmss.fullname" . }}-logs-pvc

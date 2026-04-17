@@ -11,58 +11,16 @@ serviceAccount:
   automountToken: true
   annotations: {}
 
-# SECRETS (à encoder en base64 ou injecter via --set-file)
+# SECRETS (base64-encode values or inject via --set-file)
 secrets:
   adminPasswordHash: changemebase64hash
+  jwtSecret: changemebase64hash
   pveApiToken: changemebase64hash
   sessionSecret: changemebase64hash
 
-# CONFIGMAP
-config:
-  settingsJson: |
-    {
-        "tags": [
-            "pvmss"
-        ],
-        "isos": [],
-        "vmbrs": [],
-        "cloudinit_sftp": {
-            "enabled": true,
-            "host": "your-proxmox-ip-or-hostname",
-            "port": 22,
-            "username": "pvmss-snippets",
-            "privateKeyPath": "/app/pvmss_snippets_ed25519",
-            "snippetBaseDir": "/snippets"
-        },
-        "max_network_cards": 1,
-        "max_disk_per_vm": 1,
-        "enabled_storages": [],
-        "limits": {
-            "nodes": {},
-            "vm": {
-                "cores": {
-                    "min": 1,
-                    "max": 4
-                },
-                "disk": {
-                    "min": 6,
-                    "max": 12
-                },
-                "ram": {
-                    "min": 1,
-                    "max": 4
-                },
-                "sockets": {
-                    "min": 1,
-                    "max": 1
-                }
-            }
-        }
-    }
-
 # PERSISTENCE (PVCs)
 persistence:
-  settings:
+  db:
     enabled: true
     size: 1Gi
     storageClass: ""
@@ -95,11 +53,12 @@ deployment:
     PROXMOX_URL: "https://changeme:8006/api2/json"
     PVMSS_ENV: "production"
     PVMSS_OFFLINE: "false"
-    PVMSS_SETTINGS_PATH: "/data/settings.json"
+    PVMSS_DB_PATH: "/data/pvmss.db"
     CSRF_TOKEN_TTL: "2h"
     TZ: "Europe/Paris"
   secretEnv:
     ADMIN_PASSWORD_HASH: admin-password-hash
+    JWT_SECRET: jwt-secret
     PROXMOX_API_TOKEN_VALUE: pve-api-token
     SESSION_SECRET: session-secret
 
