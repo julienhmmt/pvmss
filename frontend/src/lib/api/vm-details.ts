@@ -1,19 +1,20 @@
 import { api } from "./client";
 import type { VMStatus } from "$lib/types/vm";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export interface DiskInfo {
   index: string;
   bus: string;
   storage: string;
-  size_gb: number;
+  sizeGb: number;
   raw: string;
-  is_boot: boolean;
+  isBoot: boolean;
 }
 
 export interface CloudInitInfo {
   user?: string;
-  ssh_keys?: string;
-  ip_config?: string;
+  sshKeys?: string;
+  ipConfig?: string;
   nameserver?: string;
 }
 
@@ -30,9 +31,9 @@ export interface NetworkInterface {
   firewall?: boolean;
   rate?: string;
   ips?: string[];
-  link_down?: boolean;
-  model_label?: string;
-  model_translation_suffix?: string;
+  linkDown?: boolean;
+  modelLabel?: string;
+  modelTranslationSuffix?: string;
   mtu?: string;
 }
 
@@ -45,26 +46,26 @@ export interface VMConfig {
   cpus: number;
   sockets: number;
   cores: number;
-  mem_mb: number;
-  max_mem_mb: number;
-  disk_mb: number;
+  memMb: number;
+  maxMemMb: number;
+  diskMb: number;
   uptime: number;
   tags: string;
   description: string;
   networks: NetworkInterface[];
   disks: DiskInfo[];
-  has_cdrom: boolean;
-  current_iso: string;
-  efi_enabled: boolean;
-  tpm_enabled: boolean;
-  cloud_init?: CloudInitInfo;
+  hasCdrom: boolean;
+  currentIso: string;
+  efiEnabled: boolean;
+  tpmEnabled: boolean;
+  cloudInit?: CloudInitInfo;
 }
 
 export interface VMMetrics {
   status: VMStatus;
   cpu: number;
-  mem_mb: number;
-  max_mem_mb: number;
+  memMb: number;
+  maxMemMb: number;
 }
 
 export interface Snapshot {
@@ -78,7 +79,7 @@ export interface Snapshot {
 
 export interface SnapshotList {
   snapshots: Snapshot[];
-  max_allowed: number;
+  maxAllowed: number;
 }
 
 export interface ISOOption {
@@ -101,34 +102,37 @@ export interface StorageOption {
 }
 
 export interface VMSettings {
-  available_isos: ISOOption[];
-  available_vmbrs: VMBROption[];
-  available_tags: string[];
-  available_storages: StorageOption[];
+  availableIsos: ISOOption[];
+  availableVmbrs: VMBROption[];
+  availableTags: string[];
+  availableStorages: StorageOption[];
   limits: {
-    min_sockets: number;
-    max_sockets: number;
-    min_cores: number;
-    max_cores: number;
-    min_ram_gb: number;
-    max_ram_gb: number;
-    min_disk_gb: number;
-    max_disk_gb: number;
-    max_disks_per_vm: number;
-    max_snapshots: number;
+    minSockets: number;
+    maxSockets: number;
+    minCores: number;
+    maxCores: number;
+    minRamGb: number;
+    maxRamGb: number;
+    minDiskGb: number;
+    maxDiskGb: number;
+    maxDisksPerVm: number;
+    maxSnapshots: number;
   };
 }
 
 export async function getVMConfig(vmid: number): Promise<VMConfig> {
-  return api.get<VMConfig>(`/api/v1/vms/${vmid}/config`);
+  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/config`);
+  return transformKeysToCamelCase<VMConfig>(res);
 }
 
 export async function getVMMetrics(vmid: number): Promise<VMMetrics> {
-  return api.get<VMMetrics>(`/api/v1/vms/${vmid}/metrics`);
+  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/metrics`);
+  return transformKeysToCamelCase<VMMetrics>(res);
 }
 
 export async function getVMSnapshots(vmid: number): Promise<SnapshotList> {
-  return api.get<SnapshotList>(`/api/v1/vms/${vmid}/snapshots`);
+  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/snapshots`);
+  return transformKeysToCamelCase<SnapshotList>(res);
 }
 
 export async function createSnapshot(
@@ -136,7 +140,8 @@ export async function createSnapshot(
   name: string,
   description = "",
 ): Promise<void> {
-  await api.post(`/api/v1/vms/${vmid}/snapshots`, { name, description });
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ name, description });
+  await api.post(`/api/v1/vms/${vmid}/snapshots`, payload);
 }
 
 export async function deleteSnapshot(
@@ -157,11 +162,13 @@ export async function updateVMConfig(
   vmid: number,
   data: { description?: string; tags?: string },
 ): Promise<void> {
-  await api.patch(`/api/v1/vms/${vmid}/config`, data);
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  await api.patch(`/api/v1/vms/${vmid}/config`, payload);
 }
 
 export async function getVMSettings(vmid: number): Promise<VMSettings> {
-  return api.get<VMSettings>(`/api/v1/vms/${vmid}/settings`);
+  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/settings`);
+  return transformKeysToCamelCase<VMSettings>(res);
 }
 
 export function deleteVM(vmid: number): Promise<void> {
@@ -186,10 +193,10 @@ export interface VMHardwareUpdate {
   node: string;
   sockets: number;
   cores: number;
-  memory_mb: number;
+  memoryMb: number;
   tags?: string;
   networks?: NetworkUpdateRequest[];
-  delete_networks?: string[];
+  deleteNetworks?: string[];
 }
 
 export interface VMHardwareUpdateResponse {
@@ -200,12 +207,14 @@ export interface VMHardwareUpdateResponse {
 
 export async function addDisk(
   vmid: number,
-  data: { storage: string; size_gb: number; bus: string },
+  data: { storage: string; sizeGb: number; bus: string },
 ): Promise<{ status: string; disk: string }> {
-  return api.post<{ status: string; disk: string }>(
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  const res = await api.post<Record<string, unknown>>(
     `/api/v1/vms/${vmid}/disks`,
-    data,
+    payload,
   );
+  return transformKeysToCamelCase<{ status: string; disk: string }>(res);
 }
 
 export async function resizeDisk(
@@ -213,9 +222,8 @@ export async function resizeDisk(
   diskId: string,
   addGB: number,
 ): Promise<void> {
-  await api.put(`/api/v1/vms/${vmid}/disks/${encodeURIComponent(diskId)}/resize`, {
-    add_gb: addGB,
-  });
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ addGb: addGB });
+  await api.put(`/api/v1/vms/${vmid}/disks/${encodeURIComponent(diskId)}/resize`, payload);
 }
 
 export async function deleteDisk(
@@ -229,8 +237,10 @@ export async function updateVMHardware(
   vmid: number,
   data: VMHardwareUpdate,
 ): Promise<VMHardwareUpdateResponse> {
-  return api.put<VMHardwareUpdateResponse>(
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  const res = await api.put<Record<string, unknown>>(
     `/api/v1/vms/${vmid}/hardware`,
-    data,
+    payload,
   );
+  return transformKeysToCamelCase<VMHardwareUpdateResponse>(res);
 }

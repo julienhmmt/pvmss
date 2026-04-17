@@ -2,7 +2,7 @@ import { api } from "./client";
 
 export interface AuthUser {
   username: string;
-  is_admin: boolean;
+  isAdmin: boolean;
 }
 
 // Use raw fetch so a 401 (unauthenticated) doesn't trigger the client's

@@ -1,27 +1,33 @@
 import { api } from "$lib/api/client";
 import type { VMProfileConfig } from "$lib/types/vm-create";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 interface ProfileListResponse {
   profiles: VMProfileConfig[];
-  using_defaults: boolean;
+  usingDefaults: boolean;
 }
 
-export function getProfiles(): Promise<ProfileListResponse> {
-  return api.get("/api/v1/admin/vm-profiles");
+export async function getProfiles(): Promise<ProfileListResponse> {
+  const response = await api.get<Record<string, unknown>>("/api/v1/admin/vm-profiles");
+  return transformKeysToCamelCase<ProfileListResponse>(response);
 }
 
-export function createProfile(data: Omit<VMProfileConfig, "id"> & { id?: string }): Promise<VMProfileConfig> {
-  return api.post("/api/v1/admin/vm-profiles", data);
+export async function createProfile(data: Omit<VMProfileConfig, "id"> & { id?: string }): Promise<VMProfileConfig> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  const response = await api.post<Record<string, unknown>>("/api/v1/admin/vm-profiles", payload);
+  return transformKeysToCamelCase<VMProfileConfig>(response);
 }
 
-export function updateProfile(id: string, data: Omit<VMProfileConfig, "id">): Promise<VMProfileConfig> {
-  return api.put(`/api/v1/admin/vm-profiles/${encodeURIComponent(id)}`, data);
+export async function updateProfile(id: string, data: Omit<VMProfileConfig, "id">): Promise<VMProfileConfig> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  const response = await api.put<Record<string, unknown>>(`/api/v1/admin/vm-profiles/${encodeURIComponent(id)}`, payload);
+  return transformKeysToCamelCase<VMProfileConfig>(response);
 }
 
-export function deleteProfile(id: string): Promise<void> {
+export async function deleteProfile(id: string): Promise<void> {
   return api.delete(`/api/v1/admin/vm-profiles/${encodeURIComponent(id)}`);
 }
 
-export function toggleProfile(id: string): Promise<void> {
+export async function toggleProfile(id: string): Promise<void> {
   return api.post(`/api/v1/admin/vm-profiles/${encodeURIComponent(id)}/toggle`);
 }

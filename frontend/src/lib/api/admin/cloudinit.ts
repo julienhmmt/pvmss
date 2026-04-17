@@ -1,44 +1,45 @@
 import { api } from "$lib/api/client";
 import type { CloudInitTemplate, SFTPStatus } from "$lib/types/admin";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 interface CloudInitListResponse {
   templates: CloudInitTemplate[];
-  sftp_status?: SFTPStatus;
+  sftpStatus?: SFTPStatus;
 }
 
-export function getCloudInits(): Promise<CloudInitListResponse> {
-  return api.get("/api/v1/admin/cloudinit");
+export async function getCloudInits(): Promise<CloudInitListResponse> {
+  const response = await api.get<Record<string, unknown>>("/api/v1/admin/cloudinit");
+  return transformKeysToCamelCase<CloudInitListResponse>(response);
 }
 
-export function getCloudInitStorages(): Promise<string[]> {
-  return api.get("/api/v1/admin/cloudinit/storages");
+export async function getCloudInitStorages(): Promise<string[]> {
+  return api.get<string[]>("/api/v1/admin/cloudinit/storages");
 }
 
-export function createCloudInit(data: {
+export interface CreateCloudInitData {
   name: string;
   description: string;
   storage: string;
-  yaml_content: string;
-}): Promise<void> {
-  return api.post("/api/v1/admin/cloudinit", data);
+  yamlContent: string;
 }
 
-export function updateCloudInit(
+export async function createCloudInit(data: CreateCloudInitData): Promise<void> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  return api.post("/api/v1/admin/cloudinit", payload);
+}
+
+export async function updateCloudInit(
   id: string,
-  data: {
-    name: string;
-    description: string;
-    storage: string;
-    yaml_content: string;
-  },
+  data: CreateCloudInitData,
 ): Promise<void> {
-  return api.put(`/api/v1/admin/cloudinit/${encodeURIComponent(id)}`, data);
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  return api.put(`/api/v1/admin/cloudinit/${encodeURIComponent(id)}`, payload);
 }
 
-export function deleteCloudInit(id: string): Promise<void> {
+export async function deleteCloudInit(id: string): Promise<void> {
   return api.delete(`/api/v1/admin/cloudinit/${encodeURIComponent(id)}`);
 }
 
-export function toggleCloudInit(id: string): Promise<void> {
+export async function toggleCloudInit(id: string): Promise<void> {
   return api.post(`/api/v1/admin/cloudinit/${encodeURIComponent(id)}/toggle`);
 }

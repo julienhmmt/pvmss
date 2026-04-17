@@ -78,17 +78,17 @@
 				limit: perPage,
 				search: searchQuery || undefined,
 				node: selectedNode || undefined,
-				sort_by: sortBy,
-				sort_order: sortOrder,
+				sortBy: sortBy,
+				sortOrder: sortOrder,
 			});
 			if (abort.signal.aborted) return;
 			vms = res.vms;
 			totalVMs = res.pagination.total;
-			totalPages = res.pagination.total_pages;
-			hasNext = res.pagination.has_next;
-			hasPrev = res.pagination.has_prev;
-			runningTotal = res.pagination.running_count;
-			stoppedTotal = res.pagination.stopped_count;
+			totalPages = res.pagination.totalPages;
+			hasNext = res.pagination.hasNext;
+			hasPrev = res.pagination.hasPrev;
+			runningTotal = res.pagination.runningCount;
+			stoppedTotal = res.pagination.stoppedCount;
 		} catch (e) {
 			if (abort.signal.aborted) return;
 			error = e as Error;
@@ -321,7 +321,7 @@
 			<tbody>
 				{#each vms as vm}
 					{@const cpuPercent = Math.round(vm.cpu * 100)}
-					{@const ramPercent = formatPercent(vm.mem, vm.maxmem)}
+					{@const ramPercent = formatPercent(vm.mem, vm.maxMem)}
 					{@const isRunning = vm.status === 'running'}
 					<tr class="pv-row">
 						<!-- VMID -->
@@ -377,7 +377,7 @@
 
 						<!-- RAM -->
 						<td>
-							{#if isRunning && vm.maxmem > 0}
+							{#if isRunning && vm.maxMem > 0}
 								<div class="pv-usage-bar" style="min-width: 100px;">
 									<div class="pv-usage-bar-track" style="flex: 1;">
 										<div
@@ -388,10 +388,10 @@
 									<span class="pv-usage-label">{ramPercent}%</span>
 								</div>
 								<div class="pv-td-muted text-xs mt-0.5">
-									{formatBytes(vm.mem)} / {formatBytes(vm.maxmem)}
+									{formatBytes(vm.mem)} / {formatBytes(vm.maxMem)}
 								</div>
-							{:else if vm.maxmem > 0}
-								<span class="pv-td-muted text-xs">{formatBytes(vm.maxmem)}</span>
+							{:else if vm.maxMem > 0}
+								<span class="pv-td-muted text-xs">{formatBytes(vm.maxMem)}</span>
 							{:else}
 								<span class="pv-td-muted">—</span>
 							{/if}

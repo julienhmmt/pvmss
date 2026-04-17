@@ -1,13 +1,14 @@
 import { api } from "$lib/api/client";
 import type { VM, VMAction } from "$lib/types/admin";
 import type { PaginationMetadata } from "$lib/api/vms";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export interface AdminVMPaginationParams {
   page?: number;
   limit?: number;
   search?: string;
-  sort_by?: string;
-  sort_order?: string;
+  sortBy?: string;
+  sortOrder?: string;
   node?: string;
 }
 
@@ -16,25 +17,27 @@ export interface AdminVMListPaginatedResponse {
   pagination: PaginationMetadata;
 }
 
-export function getAllVMs(): Promise<VM[]> {
-  return api.get("/api/v1/admin/vms");
+export async function getAllVMs(): Promise<VM[]> {
+  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/vms");
+  return transformKeysToCamelCase<VM[]>(response);
 }
 
-export function getAllVMsPaginated(params: AdminVMPaginationParams = {}): Promise<AdminVMListPaginatedResponse> {
+export async function getAllVMsPaginated(params: AdminVMPaginationParams = {}): Promise<AdminVMListPaginatedResponse> {
   const qs = new URLSearchParams();
   if (params.page) qs.set("page", String(params.page));
   if (params.limit) qs.set("limit", String(params.limit));
   if (params.search) qs.set("search", params.search);
-  if (params.sort_by) qs.set("sort_by", params.sort_by);
-  if (params.sort_order) qs.set("sort_order", params.sort_order);
+  if (params.sortBy) qs.set("sort_by", params.sortBy);
+  if (params.sortOrder) qs.set("sort_order", params.sortOrder);
   if (params.node) qs.set("node", params.node);
   const query = qs.toString();
-  return api.get<AdminVMListPaginatedResponse>(
+  const response = await api.get<Record<string, unknown>>(
     `/api/v1/admin/vms/paginated${query ? "?" + query : ""}`,
   );
+  return transformKeysToCamelCase<AdminVMListPaginatedResponse>(response);
 }
 
-export function vmAction(
+export async function vmAction(
   vmid: number,
   node: string,
   action: VMAction,
@@ -42,6 +45,6 @@ export function vmAction(
   return api.post(`/api/v1/admin/vms/${vmid}/action`, { action, node });
 }
 
-export function deleteVM(vmid: number): Promise<void> {
+export async function deleteVM(vmid: number): Promise<void> {
   return api.delete(`/api/v1/admin/vms/${vmid}`);
 }

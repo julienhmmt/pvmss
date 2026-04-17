@@ -1,14 +1,16 @@
 import { api } from "$lib/api/client";
 import type { Tag } from "$lib/types/admin";
+import { transformKeysToCamelCase } from "$lib/utils/transform";
 
-export function getTags(): Promise<Tag[]> {
-  return api.get("/api/v1/admin/tags");
+export async function getTags(): Promise<Tag[]> {
+  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/tags");
+  return transformKeysToCamelCase<Tag[]>(response);
 }
 
-export function createTag(name: string): Promise<void> {
+export async function createTag(name: string): Promise<void> {
   return api.post("/api/v1/admin/tags", { name });
 }
 
-export function deleteTag(name: string): Promise<void> {
+export async function deleteTag(name: string): Promise<void> {
   return api.delete(`/api/v1/admin/tags/${encodeURIComponent(name)}`);
 }

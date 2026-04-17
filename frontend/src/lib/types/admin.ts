@@ -2,11 +2,11 @@ export interface Node {
   name: string;
   status: string;
   cpu: number;
-  maxcpu: number;
+  maxCpu: number;
   memory: number;
-  max_memory: number;
+  maxMemory: number;
   disk: number;
-  max_disk: number;
+  maxDisk: number;
   uptime: number;
 }
 
@@ -29,22 +29,22 @@ export interface VM {
   cpu: number;
   cpus: number;
   mem: number;
-  maxmem: number;
-  maxdisk: number;
+  maxMem: number;
+  maxDisk: number;
   uptime: number;
   tags: string;
 }
 
 export interface Pool {
-  poolid: string;
+  poolId: string;
   comment: string;
   members: string[];
-  vm_count: number;
+  vmCount: number;
 }
 
 export interface Tag {
   name: string;
-  vm_count: number;
+  vmCount: number;
 }
 
 export interface ResourceRange {
@@ -68,17 +68,17 @@ export interface Limits {
       disk: ResourceRange;
     }
   >;
-  max_snapshots: number;
-  max_network_cards: number;
-  max_disk_per_vm: number;
-  max_vm_per_user: number;
+  maxSnapshots: number;
+  maxNetworkCards: number;
+  maxDiskPerVm: number;
+  maxVmPerUser: number;
 }
 
 export interface VMBR {
   iface: string;
   type: string;
   active: boolean;
-  bridge_ports: string;
+  bridgePorts: string;
   node: string;
   enabled: boolean;
 }
@@ -89,7 +89,7 @@ export interface CloudInitTemplate {
   description: string;
   storage: string;
   filename: string;
-  yaml_content: string;
+  yamlContent: string;
   enabled: boolean;
 }
 
@@ -103,45 +103,45 @@ export interface ISO {
 }
 
 export interface ClusterInfo {
-  is_cluster: boolean;
-  cluster_name: string;
-  node_count: number;
+  isCluster: boolean;
+  clusterName: string;
+  nodeCount: number;
 }
 
 export interface SFTPStatus {
   enabled: boolean;
   host?: string;
   username?: string;
-  key_exists: boolean;
-  status_text: string;
-  status_type: "success" | "warning" | "danger";
+  keyExists: boolean;
+  statusText: string;
+  statusType: "success" | "warning" | "danger";
 }
 
 export interface AppInfo {
   version: string;
   environment: string;
-  go_version: string;
+  goVersion: string;
   platform: string;
-  proxmox_connected: boolean;
-  proxmox_url: string;
-  offline_mode: boolean;
-  total_nodes: number;
-  total_vms: number;
-  cluster_info?: ClusterInfo;
-  env_vars?: Record<string, string>;
+  proxmoxConnected: boolean;
+  proxmoxUrl: string;
+  offlineMode: boolean;
+  totalNodes: number;
+  totalVms: number;
+  clusterInfo?: ClusterInfo;
+  envVars?: Record<string, string>;
 }
 
 export type VMAction = "start" | "stop" | "shutdown" | "reboot" | "reset";
 
 export interface AuditEntry {
   id: number;
-  table_name: string;
-  record_id: string;
+  tableName: string;
+  recordId: string;
   action: string;
-  old_value: string;
-  new_value: string;
-  changed_by: string;
-  changed_at: string;
+  oldValue: string;
+  newValue: string;
+  changedBy: string;
+  changedAt: string;
 }
 
 export interface AuditLogResponse {

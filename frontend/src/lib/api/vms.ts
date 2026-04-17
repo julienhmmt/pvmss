@@ -1,30 +1,23 @@
 import { api } from "./client";
-import type { VMStatus } from "$lib/types/vm";
+import type { VM, VMStatus } from "$lib/types/vm";
+import { transformKeysToCamelCase } from "$lib/utils/transform";
 import { validateSearchParams, type VMSearchParams as SearchParams, type SearchFilter } from "$lib/api/search";
 
-export interface VMSummary {
-  vmid: number;
-  name: string;
-  node: string;
-  status: VMStatus;
-  cpu: number;
-  cpus: number;
-  mem_mb: number;
-  max_mem_mb: number;
-  disk_mb: number;
-  uptime: number;
-  tags: string;
-}
+/**
+ * Summary view of a VM for list displays.
+ * Derived from full VM type to ensure field consistency.
+ */
+export type VMSummary = Pick<VM, "vmid" | "name" | "node" | "status" | "cpu" | "cpus" | "memMb" | "maxMemMb" | "diskMb" | "uptime" | "tags">;
 
 export interface PaginationMetadata {
   total: number;
   page: number;
   limit: number;
-  total_pages: number;
-  has_next: boolean;
-  has_prev: boolean;
-  running_count: number;
-  stopped_count: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+  runningCount: number;
+  stoppedCount: number;
 }
 
 export interface PaginatedVMListResponse {
@@ -36,13 +29,14 @@ export interface VMPaginationParams {
   page?: number;
   limit?: number;
   search?: string;
-  sort_by?: string;
-  sort_order?: string;
+  sortBy?: string;
+  sortOrder?: string;
 }
 
 export async function getVMs(): Promise<VMSummary[]> {
-  const res = await api.get<PaginatedVMListResponse>("/api/v1/vms");
-  return res.vms;
+  const res = await api.get<Record<string, unknown>>("/api/v1/vms");
+  const transformed = transformKeysToCamelCase<PaginatedVMListResponse>(res);
+  return transformed.vms;
 }
 
 export async function getVMsPaginated(params: VMPaginationParams = {}): Promise<PaginatedVMListResponse> {
@@ -50,12 +44,13 @@ export async function getVMsPaginated(params: VMPaginationParams = {}): Promise<
   if (params.page) qs.set("page", String(params.page));
   if (params.limit) qs.set("limit", String(params.limit));
   if (params.search) qs.set("search", params.search);
-  if (params.sort_by) qs.set("sort_by", params.sort_by);
-  if (params.sort_order) qs.set("sort_order", params.sort_order);
+  if (params.sortBy) qs.set("sort_by", params.sortBy);
+  if (params.sortOrder) qs.set("sort_order", params.sortOrder);
   const query = qs.toString();
-  return api.get<PaginatedVMListResponse>(
+  const res = await api.get<Record<string, unknown>>(
     `/api/v1/vms${query ? "?" + query : ""}`,
   );
+  return transformKeysToCamelCase<PaginatedVMListResponse>(res);
 }
 
 export type SearchType = SearchFilter;
@@ -70,8 +65,9 @@ export async function searchVMs(params: VMSearchParams): Promise<VMSummary[]> {
   if (params.status) qs.set("status", params.status);
   if (params.node) qs.set("node", params.node);
   const query = qs.toString();
-  const res = await api.get<PaginatedVMListResponse>(
+  const res = await api.get<Record<string, unknown>>(
     `/api/v1/vms${query ? "?" + query : ""}`,
   );
-  return res.vms;
+  const transformed = transformKeysToCamelCase<PaginatedVMListResponse>(res);
+  return transformed.vms;
 }
