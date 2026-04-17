@@ -1,4 +1,5 @@
 import { api } from "./client";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 /**
  * VM snapshot information.
@@ -25,7 +26,7 @@ export interface SnapshotList {
   /** Array of snapshots */
   snapshots: Snapshot[];
   /** Maximum number of snapshots allowed */
-  max_allowed: number;
+  maxAllowed: number;
 }
 
 /**
@@ -38,7 +39,8 @@ export async function listSnapshots(vmid: number): Promise<SnapshotList> {
   if (vmid <= 0) {
     throw new Error("Invalid VM ID: must be a positive integer");
   }
-  return api.get<SnapshotList>(`/api/v1/vms/${vmid}/snapshots`);
+  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/snapshots`);
+  return transformKeysToCamelCase<SnapshotList>(res);
 }
 
 /**
@@ -62,7 +64,8 @@ export async function createSnapshot(
   if (!name || name.trim().length === 0) {
     throw new Error("Snapshot name cannot be empty");
   }
-  await api.post(`/api/v1/vms/${vmid}/snapshots`, { name, description, vmstate });
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ name, description, vmstate });
+  await api.post(`/api/v1/vms/${vmid}/snapshots`, payload);
 }
 
 /**

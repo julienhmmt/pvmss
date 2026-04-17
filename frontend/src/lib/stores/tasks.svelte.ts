@@ -1,7 +1,7 @@
 import { getTaskStatus } from "$lib/api/tasks";
 import { ApiRequestError } from "$lib/types/api";
 
-export type TaskKind = "vm_create" | "vm_action";
+export type TaskKind = "vmCreate" | "vmAction";
 
 export type ActiveTask = {
   id: string;
@@ -96,10 +96,10 @@ function createTasksStore(): TasksStore {
         if (result.status === "stopped") {
           stopPolling(taskId);
 
-          const isError = result.exitstatus !== "OK";
+          const isError = result.exitStatus !== "OK";
           updateTask(taskId, {
             status: isError ? "error" : "stopped",
-            exitStatus: result.exitstatus,
+            exitStatus: result.exitStatus,
           });
 
           const cb = completionCallbacks.get(taskId);
@@ -118,7 +118,7 @@ function createTasksStore(): TasksStore {
           stopPolling(taskId);
           updateTask(taskId, {
             status: "error",
-            exitStatus: "auth_failed",
+            exitStatus: "authFailed",
           });
           return;
         }
@@ -130,7 +130,7 @@ function createTasksStore(): TasksStore {
           stopPolling(taskId);
           updateTask(taskId, {
             status: "error",
-            exitStatus: "polling_failed",
+            exitStatus: "pollingFailed",
           });
         }
       }

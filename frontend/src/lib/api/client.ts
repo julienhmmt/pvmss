@@ -20,9 +20,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     });
     if (refreshRes.ok) {
       const retryRes = await fetch(path, {
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json", ...options.headers },
         ...options,
+        credentials: "same-origin",
+        headers: {
+          ...(options.body != null ? { "Content-Type": "application/json" } : {}),
+          ...(options.headers as Record<string, string> | undefined),
+        },
       });
       if (retryRes.ok) {
         return retryRes.status === 204 ? (undefined as T) : retryRes.json();

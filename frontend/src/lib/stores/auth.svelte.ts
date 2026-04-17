@@ -39,10 +39,11 @@ function createAuthStore(): AuthStore {
         const user = await exchange();
         state = {
           username: user.username,
-          isAdmin: user.is_admin,
+          isAdmin: user.isAdmin,
           initialized: true,
         };
-      } catch {
+      } catch (err) {
+        console.error("[AuthStore] Token exchange failed:", err);
         state = { username: "", isAdmin: false, initialized: true };
       }
     },
@@ -50,8 +51,9 @@ function createAuthStore(): AuthStore {
     async refresh() {
       try {
         const user = await me();
-        state = { ...state, username: user.username, isAdmin: user.is_admin };
-      } catch {
+        state = { ...state, username: user.username, isAdmin: user.isAdmin };
+      } catch (err) {
+        console.error("[AuthStore] Token refresh failed:", err);
         // Token expired, exchange will handle redirect
       }
     },

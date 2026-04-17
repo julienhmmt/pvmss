@@ -1,10 +1,12 @@
 import { api } from "$lib/api/client";
 import type { VMBR } from "$lib/types/admin";
+import { transformKeysToCamelCase } from "$lib/utils/transform";
 
-export function getVMBRs(): Promise<VMBR[]> {
-  return api.get("/api/v1/admin/vmbr");
+export async function getVMBRs(): Promise<VMBR[]> {
+  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/vmbr");
+  return transformKeysToCamelCase<VMBR[]>(response);
 }
 
-export function toggleVMBR(vmbr: string, node: string): Promise<void> {
+export async function toggleVMBR(vmbr: string, node: string): Promise<void> {
   return api.post("/api/v1/admin/vmbr/toggle", { vmbr, node });
 }

@@ -52,9 +52,9 @@ export interface VMProfileConfig {
   description: string;
   sockets: number;
   cores: number;
-  ram_gb: number;
-  disk_gb: number;
-  disk_bus: string;
+  ramGb: number;
+  diskGb: number;
+  diskBus: string;
   /** Empty string = auto-select. */
   node?: string;
   /** Empty string = auto-select. */
@@ -71,20 +71,20 @@ export interface VMCreateSettings {
   bridges: VMCreateBridgeOption[];
   isos: VMCreateISOOption[];
   tags: string[];
-  cloudinit_templates: VMCreateCITemplate[];
+  cloudinitTemplates: VMCreateCITemplate[];
   limits: VMCreateLimits;
-  max_network_cards: number;
-  max_disk_per_vm: number;
-  max_vm_per_user: number;
-  remaining_vms: number;
-  proxmox_connected: boolean;
-  allow_custom_yaml: boolean;
-  vm_profiles: VMProfileConfig[];
+  maxNetworkCards: number;
+  maxDiskPerVm: number;
+  maxVmPerUser: number;
+  remainingVms: number;
+  proxmoxConnected: boolean;
+  allowCustomYaml: boolean;
+  vmProfiles: VMProfileConfig[];
 }
 
 /** Disk in the VM creation request. */
 export interface VMCreateDisk {
-  size_gb: number;
+  sizeGb: number;
 }
 
 /** Network card in the VM creation request. */
@@ -93,7 +93,7 @@ export interface VMCreateNetwork {
   model: string;
   mac: string;
   vlan: number;
-  rate_limit: string;
+  rateLimit: string;
   mtu: number;
   enabled: boolean;
 }
@@ -102,12 +102,12 @@ export interface VMCreateNetwork {
 export interface VMCreateCloudInit {
   user: string;
   password: string;
-  ssh_keys: string;
-  ip_config: string;
+  sshKeys: string;
+  ipConfig: string;
   ip: string;
   gateway: string;
   dns: string;
-  template_id: string;
+  templateId: string;
 }
 
 /** Request body for POST /api/v1/vms. */
@@ -120,14 +120,14 @@ export interface VMCreateRequest {
   tags: string[];
   sockets: number;
   cores: number;
-  memory_mb: number;
+  memoryMb: number;
   disks: VMCreateDisk[];
   networks: VMCreateNetwork[];
-  enable_efi: boolean;
-  enable_tpm: boolean;
-  disk_bus: string;
-  start_vm: boolean;
-  cloud_init?: VMCreateCloudInit;
+  enableEfi: boolean;
+  enableTpm: boolean;
+  diskBus: string;
+  startVm: boolean;
+  cloudInit?: VMCreateCloudInit;
 }
 
 /** Response from POST /api/v1/vms. */
@@ -136,7 +136,7 @@ export interface VMCreateResponse {
   name: string;
   node: string;
   upid?: string;
-  cloud_init_warning?: string;
+  cloudInitWarning?: string;
 }
 
 /** Network card model options. */

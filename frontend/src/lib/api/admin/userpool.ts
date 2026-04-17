@@ -1,17 +1,22 @@
 import { api } from "$lib/api/client";
 import type { Pool } from "$lib/types/admin";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
-export function getPools(): Promise<Pool[]> {
-  return api.get("/api/v1/admin/userpool");
+export async function getPools(): Promise<Pool[]> {
+  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/userpool");
+  return transformKeysToCamelCase<Pool[]>(response);
 }
 
-export function createPool(data: {
-  pool_name: string;
+export interface CreatePoolData {
+  poolName: string;
   password: string;
-}): Promise<void> {
-  return api.post("/api/v1/admin/userpool", data);
 }
 
-export function deletePool(name: string): Promise<void> {
+export async function createPool(data: CreatePoolData): Promise<void> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  return api.post("/api/v1/admin/userpool", payload);
+}
+
+export async function deletePool(name: string): Promise<void> {
   return api.delete(`/api/v1/admin/userpool/${encodeURIComponent(name)}`);
 }
