@@ -354,6 +354,62 @@ Migrate from monolithic settings.json to a 2-tier SQLite-first configuration sys
 
 ---
 
+## Phase 9: Unified Settings Panel (View / Add / Edit, No Delete)
+
+**Goal**: Extend the `/admin/settings` page so every DB-backed setting is visible in one place, with inline add/edit capability. Deletion of settings records is explicitly forbidden (disabling is allowed where the schema already supports it, e.g. `enabled` flag).
+
+**Rationale**: After Phase 7, configuration lives in SQLite. Admins today must navigate through multiple pages (limits, tags, ISOs, VMBRs, storage, nodes, cloudinit, profiles, SFTP) to inspect state. A single consolidated panel makes the full configuration auditable at a glance while keeping existing per-resource pages as power-user editors.
+
+**Independent Test Criteria**:
+
+- All DB tables covered by Phase 1 are represented in the panel (vm_limits, node_limits, enabled_nodes, enabled_storages, enabled_isos, enabled_vmbrs, tags, cloudinit_templates, vm_profiles, sftp_config).
+- Every row shows its current value and `updated_at` (where available).
+- Add + edit flows succeed end-to-end and appear in `audit_log`.
+- No delete button/endpoint is exposed from this panel; backend rejects DELETE requests routed through the unified endpoint.
+- Disable-via-flag (e.g. `enabled=false`) works and is reversible.
+- Existing per-resource admin pages continue to function unchanged.
+
+**Backend Tasks**:
+
+- [ ] T221 Create backend/handlers/admin_settings_overview.go with an aggregated read handler
+- [ ] T222 Implement GET /api/v1/admin/settings/overview returning a typed snapshot of every DB table (vm_limits, node_limits, enabled_nodes, enabled_storages, enabled_isos, enabled_vmbrs, tags, cloudinit_templates, vm_profiles, sftp_config, bootstrap status)
+- [ ] T223 Add per-section metadata to the overview response (schema version, row count, `updated_at`, whether section supports add/edit)
+- [ ] T224 Create POST /api/v1/admin/settings/upsert endpoint dispatching to the right `state.SetX` / `state.CreateX` / `state.UpdateX` method based on a `{table, record}` payload
+- [ ] T225 Explicitly reject DELETE verbs and any `action: "delete"` payload in the upsert endpoint with HTTP 405 + audit-safe log line
+- [ ] T226 Reuse existing validation helpers from backend/handlers/limits_helpers.go, tags.go, vmbr.go, etc. — no duplicated validation logic
+- [ ] T227 Ensure every mutation goes through StateManager so cache + audit invariants from Phase 4 remain intact
+- [ ] T228 Add admin-only middleware + CSRF protection on the new endpoints (reuse existing `AdminOnly`, `CSRFProtect`)
+- [ ] T229 Write unit tests for admin_settings_overview.go covering: full snapshot shape, empty DB, each section present, delete rejection, audit-log side-effect
+- [ ] T230 Write integration test: upsert → overview reflects change → audit_log contains entry with `changed_by` from JWT
+
+**Frontend Tasks**:
+
+- [ ] T231 Create frontend/src/lib/api/admin/settings-overview.ts — typed client for GET /overview and POST /upsert
+- [ ] T232 Create frontend/src/lib/types/admin-settings.ts — mirror of the backend snapshot structure (no `any`, one export per file)
+- [ ] T233 Extend frontend/src/routes/admin/settings/+page.svelte with a new "Configuration overview" section above the existing DB management block
+- [ ] T234 Create frontend/src/lib/components/admin/SettingsOverview.svelte — accordion/tab layout with one panel per table
+- [ ] T235 Create frontend/src/lib/components/admin/SettingsSection.svelte — reusable section component (title, row count, `updated_at`, rows table)
+- [ ] T236 Render scalar singletons (vm_limits, sftp_config) as a read-only summary + "Edit" button opening an inline form
+- [ ] T237 Render list tables (nodes, storages, ISOs, VMBRs, tags) as a table with inline "Add" row and per-row "Edit" action (toggle `enabled`, rename where schema allows)
+- [ ] T238 Render keyed tables (cloudinit_templates, vm_profiles, node_limits) with "Add" button + per-row "Edit" modal; reuse existing forms from per-resource pages when possible
+- [ ] T239 Hide/omit any delete affordance in every sub-component; rely on disable flags where supported
+- [ ] T240 Wire add/edit actions to POST /api/v1/admin/settings/upsert and invalidate the overview query on success
+- [ ] T241 Surface audit entries inline (last change per section via join with audit_log) using the existing AuditLog component as reference
+- [ ] T242 Add i18n keys under `admin.settings.overview.*` in both EN and FR translation files
+- [ ] T243 Add empty-state + error-state UI for each section (loading skeleton, empty message, retry on failure)
+- [ ] T244 Verify keyboard navigation + focus order across accordion sections (accessibility)
+
+**Documentation & Verification**:
+
+- [ ] T245 Document the "no delete" policy in docs/migration-v1-v2.md ("Why deletions are disabled in the unified panel")
+- [ ] T246 Add screenshot / description of the unified panel to the admin section of README.md and README.fr.md
+- [ ] T247 Manual test: edit vm_limits → overview refreshes → audit row visible with correct `changed_by`
+- [ ] T248 Manual test: attempt DELETE via curl on /api/v1/admin/settings/upsert returns 405
+- [ ] T249 Manual test: toggle `enabled=false` on an ISO → VM creation UI no longer lists it
+- [ ] T250 Run existing frontend tests to ensure no regression on `/admin/settings`
+
+---
+
 ## Phase 8: Cleanup
 
 **Goal**: Remove all legacy code once migration is stable (after one release cycle).
@@ -401,6 +457,7 @@ Migrate from monolithic settings.json to a 2-tier SQLite-first configuration sys
 - **Phase 6**: Requires Phase 4 completion (StateManager integrated with DB)
 - **Phase 7**: Requires Phase 6 completion (admin UI updated)
 - **Phase 8**: Requires Phase 7 completion + one release cycle (stable in production)
+- **Phase 9**: Requires Phase 6 completion (DB-backed admin handlers + audit log endpoint)
 
 ### Parallel Execution Opportunities
 
