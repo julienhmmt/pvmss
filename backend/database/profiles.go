@@ -159,3 +159,24 @@ func scanVMProfileRow(row *sql.Row) (*VMProfile, error) {
 	p.Enabled = enabled != 0
 	return &p, nil
 }
+
+// execUpsertVMProfile executes an UPSERT for vm_profiles within a transaction.
+// Returns (true, nil) if a new record was inserted, (false, nil) if an existing record was updated.
+// This is used by the JSON migration to make migrations idempotent.
+func execUpsertVMProfile(tx *sql.Tx, p *VMProfile) (bool, error) {
+	result, err := tx.Exec(`
+		INSERT INTO vm_profiles (id, name, description, config, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT(id) DO UPDATE SET
+		    name        = excluded.name,
+		    description = excluded.description,
+		    config      = excluded.config,
+		    enabled     = excluded.enabled,
+		    updated_at  = CURRENT_TIMESTAMP
+	`, p.ID, p.Name, p.Description, p.Config, boolToInt(p.Enabled))
+	if err != nil {
+		return false, err
+	}
+	rowsAffected, _ := result.RowsAffected()
+	return rowsAffected == 1, nil
+}
