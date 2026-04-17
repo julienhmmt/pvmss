@@ -21,7 +21,7 @@
 	let pools = $state<Pool[]>([]);
 	let createOpen = $state(false);
 	let deleteTarget = $state<string | null>(null);
-	let form = $state({ pool_name: '', password: '' });
+	let form = $state({ poolName: '', password: '' });
 
 	async function load() {
 		if (pools.length > 0) {
@@ -41,14 +41,14 @@
 	}
 
 	async function handleCreate() {
-		if (!form.pool_name || !form.password) return;
+		if (!form.poolName || !form.password) return;
 		try {
 			await createPool({
-				pool_name: form.pool_name,
+				poolName: form.poolName,
 				password: form.password
 			});
-			toast.success($t('admin.userpool.toast.created', { values: { poolName: form.pool_name } }));
-			form = { pool_name: '', password: '' };
+			toast.success($t('admin.userpool.toast.created', { values: { poolName: form.poolName } }));
+			form = { poolName: '', password: '' };
 			createOpen = false;
 			await load();
 		} catch (e) {
@@ -138,21 +138,21 @@
 						<td>
 							<div class="pv-resource-cell">
 								<div class="pv-resource-icon" style="width:28px;height:28px;font-size:0.65rem">
-									{pool.poolid.slice(0, 2).toUpperCase()}
+									{pool.poolId.slice(0, 2).toUpperCase()}
 								</div>
-								<span class="pv-td-mono">{pool.poolid}</span>
+								<span class="pv-td-mono">{pool.poolId}</span>
 							</div>
 						</td>
 						<td class="pv-td-muted">{pool.comment || '—'}</td>
 						<td class="pv-td-num">
-							<span class="pv-action-badge pv-action-badge--vm">{pool.vm_count}</span>
+							<span class="pv-action-badge pv-action-badge--vm">{pool.vmCount}</span>
 						</td>
 						<td class="pv-td-actions">
 							<Button
 								variant="ghost"
 								size="sm"
 								class="text-destructive hover:text-destructive hover:bg-destructive/10"
-								onclick={() => (deleteTarget = pool.poolid)}
+								onclick={() => (deleteTarget = pool.poolId)}
 							>
 								<TrashIcon class="h-4 w-4" />
 							</Button>
@@ -174,9 +174,9 @@
 		<div class="space-y-4 py-2">
 			<div class="space-y-2">
 				<Label>{$t('admin.userpool.poolName')}</Label>
-				<Input bind:value={form.pool_name} placeholder="my-pool" />
-				{#if form.pool_name}
-					<p class="text-xs text-muted-foreground">{$t('admin.userpool.usernameHint', { values: { username: form.pool_name + '@pve' } })}</p>
+				<Input bind:value={form.poolName} placeholder="my-pool" />
+				{#if form.poolName}
+					<p class="text-xs text-muted-foreground">{$t('admin.userpool.usernameHint', { values: { username: form.poolName + '@pve' } })}</p>
 				{/if}
 			</div>
 			<div class="space-y-2">
@@ -188,7 +188,7 @@
 			<Button variant="outline" onclick={() => (createOpen = false)}>{$t('common.cancel')}</Button>
 			<Button
 				onclick={handleCreate}
-				disabled={!form.pool_name || !form.password}
+				disabled={!form.poolName || !form.password}
 			>
 				{$t('common.create')}
 			</Button>
