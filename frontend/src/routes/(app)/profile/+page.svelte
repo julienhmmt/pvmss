@@ -107,16 +107,16 @@
 				page: currentPage,
 				limit: pageSize,
 				search: searchQuery || undefined,
-				sort_by: sortBy,
-				sort_order: sortOrder,
+				sortBy: sortBy,
+				sortOrder: sortOrder,
 			});
 			if (abort.signal.aborted) return;
 			vms = res.vms;
 			totalVMs = res.pagination.total;
-			totalPages = res.pagination.total_pages;
-			hasNext = res.pagination.has_next;
-			hasPrev = res.pagination.has_prev;
-			runningTotal = res.pagination.running_count;
+			totalPages = res.pagination.totalPages;
+			hasNext = res.pagination.hasNext;
+			hasPrev = res.pagination.hasPrev;
+			runningTotal = res.pagination.runningCount;
 		} catch (e) {
 			if (abort.signal.aborted) return;
 			vmsError = e as Error;

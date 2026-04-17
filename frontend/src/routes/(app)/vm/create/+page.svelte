@@ -107,9 +107,9 @@
 	let vmEnableEFI: boolean = $state(false);
 	let vmEnableTPM: boolean = $state(false);
 
-	let vmDisks: VMCreateDisk[] = $state([{ size_gb: 10 }]);
+	let vmDisks: VMCreateDisk[] = $state([{ sizeGb: 10 }]);
 	let vmNetworks: VMCreateNetwork[] = $state([
-		{ bridge: '', model: 'virtio', mac: '', vlan: 0, rate_limit: '', mtu: 0, enabled: true }
+		{ bridge: '', model: 'virtio', mac: '', vlan: 0, rateLimit: '', mtu: 0, enabled: true }
 	]);
 
 	let vmCloudInitEnabled: boolean = $state(false);
@@ -130,15 +130,15 @@
 	const isFirstStep = $derived(() => currentStep === 0);
 	const isLastStep = $derived(() => currentStep === STEPS.length - 1);
 	const totalVCPUs = $derived(() => vmSockets * vmCores);
-	const totalDiskGB = $derived(() => vmDisks.reduce((acc, d) => acc + d.size_gb, 0));
+	const totalDiskGB = $derived(() => vmDisks.reduce((acc, d) => acc + d.sizeGb, 0));
 	const selectedProfile = $derived(() =>
-		(settings?.vm_profiles ?? []).find((p) => p.id === selectedProfileId) ?? null
+		(settings?.vmProfiles ?? []).find((p) => p.id === selectedProfileId) ?? null
 	);
 
 	let quotaBlocked = $state(false);
 
 	const currentVMCount = $derived(() =>
-		settings !== null ? settings.max_vm_per_user - settings.remaining_vms : 0
+		settings !== null ? settings.maxVmPerUser - settings.remainingVms : 0
 	);
 
 	const simpleDetailsValid = $derived(() => vmName.trim().length > 0 && vmNode !== '' && vmStorage !== '');
@@ -163,7 +163,7 @@
 		}
 		try {
 			settings = await getVMCreateSettings();
-			quotaBlocked = settings !== null && settings.remaining_vms !== -1 && settings.remaining_vms <= 0;
+			quotaBlocked = settings !== null && settings.remainingVms !== -1 && settings.remainingVms <= 0;
 			applyDefaults();
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -200,7 +200,7 @@
 		vmSockets = settings.limits.sockets.min;
 		vmCores = settings.limits.cores.min;
 		vmMemoryGB = settings.limits.ram.min;
-		vmDisks = [{ size_gb: settings.limits.disk.min }];
+		vmDisks = [{ sizeGb: settings.limits.disk.min }];
 		// Auto-select: first non-disabled node
 		if (settings.nodes.length === 0) {
 			// No nodes available - leave empty to trigger validation error
@@ -224,7 +224,7 @@
 					model: 'virtio',
 					mac: '',
 					vlan: 0,
-					rate_limit: '',
+					rateLimit: '',
 					mtu: 0,
 					enabled: true
 				}
@@ -236,12 +236,12 @@
 		if (!settings) return;
 		vmSockets = clamp(profile.sockets, settings.limits.sockets.min, settings.limits.sockets.max);
 		vmCores = clamp(profile.cores, settings.limits.cores.min, settings.limits.cores.max);
-		vmMemoryGB = clamp(profile.ram_gb, settings.limits.ram.min, settings.limits.ram.max);
+		vmMemoryGB = clamp(profile.ramGb, settings.limits.ram.min, settings.limits.ram.max);
 		vmDisks = [
-			{ size_gb: clamp(profile.disk_gb, settings.limits.disk.min, settings.limits.disk.max) }
+			{ sizeGb: clamp(profile.diskGb, settings.limits.disk.min, settings.limits.disk.max) }
 		];
-		const validBus = DISK_BUSES.find((b) => b.value === profile.disk_bus);
-		vmDiskBus = validBus ? profile.disk_bus : 'virtio';
+		const validBus = DISK_BUSES.find((b) => b.value === profile.diskBus);
+		vmDiskBus = validBus ? profile.diskBus : 'virtio';
 		// Apply node/storage overrides when profile specifies them; otherwise reset to auto-defaults
 		if (profile.node) {
 			const nodeExists = settings.nodes.find((n) => n.name === profile.node && !n.disabled);
@@ -294,8 +294,8 @@
 
 	function addDisk(): void {
 		if (!settings) return;
-		if (vmDisks.length >= settings.max_disk_per_vm) return;
-		vmDisks = [...vmDisks, { size_gb: settings.limits.disk.min }];
+		if (vmDisks.length >= settings.maxDiskPerVm) return;
+		vmDisks = [...vmDisks, { sizeGb: settings.limits.disk.min }];
 	}
 
 	function removeDisk(index: number): void {
@@ -305,7 +305,7 @@
 
 	function addNetworkCard(): void {
 		if (!settings) return;
-		if (vmNetworks.length >= settings.max_network_cards) return;
+		if (vmNetworks.length >= settings.maxNetworkCards) return;
 		const defaultBridge = settings.bridges.length > 0 ? settings.bridges[0].name : '';
 		vmNetworks = [
 			...vmNetworks,
@@ -314,7 +314,7 @@
 				model: 'virtio',
 				mac: '',
 				vlan: 0,
-				rate_limit: '',
+				rateLimit: '',
 				mtu: 0,
 				enabled: true
 			}
@@ -349,26 +349,26 @@
 				tags: vmTags,
 				sockets: vmSockets,
 				cores: vmCores,
-				memory_mb: vmMemoryGB * 1024,
+				memoryMb: vmMemoryGB * 1024,
 				disks: vmDisks,
 				networks: vmNetworks,
-				enable_efi: vmEnableEFI,
-				enable_tpm: vmEnableTPM,
-				disk_bus: vmDiskBus,
-				start_vm: vmStartAfterCreation
+				enableEfi: vmEnableEFI,
+				enableTpm: vmEnableTPM,
+				diskBus: vmDiskBus,
+				startVm: vmStartAfterCreation
 			};
 			if (vmCloudInitEnabled) {
 				const ciConfig: VMCreateCloudInit = {
 					user: vmCIUser,
 					password: vmCIPassword,
-					ssh_keys: vmCISSHKeys,
-					ip_config: vmCIIPConfig,
+					sshKeys: vmCISSHKeys,
+					ipConfig: vmCIIPConfig,
 					ip: vmCIIP,
 					gateway: vmCIGateway,
 					dns: vmCIDNS,
-					template_id: vmCITemplateID
+					templateId: vmCITemplateID
 				};
-				request.cloud_init = ciConfig;
+				request.cloudInit = ciConfig;
 			}
 			const resp = await createVM(request);
 
@@ -376,7 +376,7 @@
 				// Async creation: backend returned a Proxmox task UPID.
 				// Track it in the tasks store; the Navbar will show progress.
 				const taskId = tasks.add({
-					kind: 'vm_create',
+					kind: 'vmCreate',
 					upid: resp.upid,
 					node: resp.node,
 					vmid: resp.vmid,
@@ -406,10 +406,10 @@
 				await goto(`/vm/${resp.vmid}`);
 			} else {
 				// Synchronous fallback (e.g. offline mode or future change)
-				if (resp.cloud_init_warning) {
+				if (resp.cloudInitWarning) {
 					toast.warning(
 						$t('vmCreate.toast.createdWithWarning', {
-							values: { name: resp.name, warning: resp.cloud_init_warning }
+							values: { name: resp.name, warning: resp.cloudInitWarning }
 						})
 					);
 				} else {
@@ -446,7 +446,7 @@
 					vmMemoryGB <= settings.limits.ram.max
 				);
 			case 'disk':
-				return vmDisks.length > 0 && vmDisks.every((d) => d.size_gb > 0);
+				return vmDisks.length > 0 && vmDisks.every((d) => d.sizeGb > 0);
 			case 'network':
 				return vmNetworks.length > 0 && vmNetworks.every((n) => n.bridge !== '');
 			case 'cloudinit':
@@ -471,7 +471,7 @@
 			<p class="text-muted-foreground text-sm">{$t('vmCreate.subtitle')}</p>
 		</div>
 		<!-- Mode toggle — only shown when creation is available -->
-		{#if !loading && settings && settings.proxmox_connected && !quotaBlocked}
+		{#if !loading && settings && settings.proxmoxConnected && !quotaBlocked}
 			<div class="inline-flex self-start flex-shrink-0 rounded-lg border bg-muted p-1 gap-1">
 				<button
 					type="button"
@@ -508,7 +508,7 @@
 				<p class="text-muted-foreground">{$t('common.error')}</p>
 			</CardContent>
 		</Card>
-	{:else if !settings.proxmox_connected}
+	{:else if !settings.proxmoxConnected}
 		<Card>
 			<CardContent class="py-10 text-center">
 				<Warning class="mx-auto mb-3 h-10 w-10 text-amber-500" />
@@ -522,8 +522,8 @@
 				<p class="text-muted-foreground">
 					{$t('vmCreate.quotaReached', {
 						values: {
-							current: String(settings.max_vm_per_user - settings.remaining_vms),
-							max: String(settings.max_vm_per_user)
+							current: String(settings.maxVmPerUser - settings.remainingVms),
+							max: String(settings.maxVmPerUser)
 						}
 					})}
 				</p>
@@ -573,7 +573,7 @@
 					<p class="text-muted-foreground text-sm mt-1">{$t('vmCreate.simple.chooseProfileHint')}</p>
 				</div>
 				<div class="grid gap-3 sm:grid-cols-2">
-					{#each (settings?.vm_profiles ?? []) as profile}
+					{#each (settings?.vmProfiles ?? []) as profile}
 						{@const ProfileIcon = PROFILE_ICONS[profile.icon] ?? Globe}
 						{@const colors = PROFILE_COLOR_CLASSES[profile.color] ?? PROFILE_COLOR_CLASSES['gray']}
 						{@const isSelected = selectedProfileId === profile.id}
@@ -604,14 +604,14 @@
 											class="bg-muted inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
 										>
 											{$t('vmCreate.simple.specs.ram', {
-												values: { gb: String(profile.ram_gb) }
+												values: { gb: String(profile.ramGb) }
 											})}
 										</span>
 										<span
 											class="bg-muted inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium"
 										>
 											{$t('vmCreate.simple.specs.disk', {
-												values: { gb: String(profile.disk_gb) }
+												values: { gb: String(profile.diskGb) }
 											})}
 										</span>
 									</div>
@@ -811,7 +811,7 @@
 								{/if}
 								<span class="text-muted-foreground">{$t('vmCreate.review.hardware')}</span>
 								<span>
-									{vmSockets * vmCores} vCPUs · {vmMemoryGB} GB RAM · {vmDisks[0].size_gb} GB
+									{vmSockets * vmCores} vCPUs · {vmMemoryGB} GB RAM · {vmDisks[0].sizeGb} GB
 								</span>
 							</div>
 						</div>
@@ -1136,7 +1136,7 @@
 									<div class="flex items-center gap-2">
 										<Input
 											type="number"
-											bind:value={vmDisks[i].size_gb}
+											bind:value={vmDisks[i].sizeGb}
 											min={settings.limits.disk.min}
 											max={settings.limits.disk.max}
 											class="w-32"
@@ -1159,7 +1159,7 @@
 								{/if}
 							</div>
 						{/each}
-						{#if vmDisks.length < settings.max_disk_per_vm}
+						{#if vmDisks.length < settings.maxDiskPerVm}
 							<Button variant="outline" size="sm" onclick={addDisk}>
 								<Plus class="mr-1 h-4 w-4" />
 								{$t('vmCreate.disk.addDisk')}
@@ -1167,7 +1167,7 @@
 						{:else}
 							<p class="text-muted-foreground text-xs">
 								{$t('vmCreate.disk.maxDisksReached', {
-									values: { max: String(settings.max_disk_per_vm) }
+									values: { max: String(settings.maxDiskPerVm) }
 								})}
 							</p>
 						{/if}
@@ -1292,7 +1292,7 @@
 								</div>
 							</div>
 						{/each}
-						{#if vmNetworks.length < settings.max_network_cards}
+						{#if vmNetworks.length < settings.maxNetworkCards}
 							<Button variant="outline" size="sm" onclick={addNetworkCard}>
 								<Plus class="mr-1 h-4 w-4" />
 								{$t('vmCreate.network.addCard')}
@@ -1300,7 +1300,7 @@
 						{:else}
 							<p class="text-muted-foreground text-xs">
 								{$t('vmCreate.network.maxCardsReached', {
-									values: { max: String(settings.max_network_cards) }
+									values: { max: String(settings.maxNetworkCards) }
 								})}
 							</p>
 						{/if}
@@ -1315,7 +1315,7 @@
 					</div>
 					{#if vmCloudInitEnabled}
 						<div class="grid gap-4 sm:grid-cols-2">
-							{#if settings.cloudinit_templates.length > 0}
+							{#if settings.cloudinitTemplates.length > 0}
 								<div class="space-y-2 sm:col-span-2">
 									<Label>{$t('vmCreate.cloudinit.template')}</Label>
 									<Select.Root
@@ -1325,7 +1325,7 @@
 									>
 										<Select.Trigger class="w-full">
 											{#if vmCITemplateID}
-												{settings.cloudinit_templates.find((t) => t.id === vmCITemplateID)
+												{settings.cloudinitTemplates.find((t) => t.id === vmCITemplateID)
 													?.name || vmCITemplateID}
 											{:else}
 												{$t('vmCreate.cloudinit.noTemplate')}
@@ -1335,7 +1335,7 @@
 											<Select.Item value=""
 												>{$t('vmCreate.cloudinit.noTemplate')}</Select.Item
 											>
-											{#each settings.cloudinit_templates as tpl}
+											{#each settings.cloudinitTemplates as tpl}
 												<Select.Item value={tpl.id}>
 													{tpl.name}
 													{#if tpl.description}
@@ -1534,7 +1534,7 @@
 										? $t('vmCreate.disk.primaryDisk')
 										: $t('vmCreate.disk.diskIndex', { values: { index: String(i + 1) } })}
 								</span>
-								<span>{disk.size_gb} GB</span>
+								<span>{disk.sizeGb} GB</span>
 							{/each}
 							<span class="text-muted-foreground font-medium"
 								>{$t('vmCreate.review.totalDisk')}</span
@@ -1603,7 +1603,7 @@
 										{$t('vmCreate.cloudinit.template')}
 									</span>
 									<span>
-										{settings.cloudinit_templates.find((t) => t.id === vmCITemplateID)?.name ||
+										{settings.cloudinitTemplates.find((t) => t.id === vmCITemplateID)?.name ||
 											vmCITemplateID}
 									</span>
 								{/if}
