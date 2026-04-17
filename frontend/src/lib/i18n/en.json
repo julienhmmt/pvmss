@@ -348,12 +348,6 @@
         "importConfirmTitle": "Replace database?",
         "importConfirmDesc": "This will replace all current data with the uploaded file. This action cannot be undone."
       },
-      "migrate": {
-        "title": "Migrate from settings.json",
-        "desc": "Import settings from a legacy settings.json file into the database.",
-        "btn": "Upload settings.json",
-        "success": "Migration complete ({nodes} nodes, {tags} tags)"
-      },
       "audit": {
         "title": "Audit log",
         "noEntries": "No audit entries",

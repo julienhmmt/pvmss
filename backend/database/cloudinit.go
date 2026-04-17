@@ -167,27 +167,3 @@ func scanCloudInitRow(row *sql.Row) (*CloudInitTemplate, error) {
 	t.Enabled = enabled != 0
 	return &t, nil
 }
-
-// execUpsertCloudInitTemplate executes an UPSERT for cloudinit_templates within a transaction.
-// Returns (true, nil) if a new record was inserted, (false, nil) if an existing record was updated.
-// This is used by the JSON migration to make migrations idempotent.
-func execUpsertCloudInitTemplate(tx *sql.Tx, t *CloudInitTemplate) (bool, error) {
-	result, err := tx.Exec(`
-		INSERT INTO cloudinit_templates
-		    (id, name, description, storage, filename, yaml_content, enabled, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-		ON CONFLICT(id) DO UPDATE SET
-		    name         = excluded.name,
-		    description  = excluded.description,
-		    storage      = excluded.storage,
-		    filename     = excluded.filename,
-		    yaml_content = excluded.yaml_content,
-		    enabled      = excluded.enabled,
-		    updated_at   = CURRENT_TIMESTAMP
-	`, t.ID, t.Name, t.Description, t.Storage, t.Filename, t.YAMLContent, boolToInt(t.Enabled))
-	if err != nil {
-		return false, err
-	}
-	rowsAffected, _ := result.RowsAffected()
-	return rowsAffected == 1, nil
-}

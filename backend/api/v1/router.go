@@ -140,7 +140,6 @@ func RegisterAdminDBRoutes(router *httprouter.Router, s state.StateManager, db d
 	router.GET("/api/v1/admin/audit", adminJWTWrap(jwtSecret, h.ListAuditLog))
 	router.GET("/api/v1/admin/db/export", adminJWTWrap(jwtSecret, h.ExportDB))
 	router.POST("/api/v1/admin/db/import", adminJWTWrap(jwtSecret, h.ImportDB))
-	router.POST("/api/v1/admin/migrate-from-json", adminJWTWrap(jwtSecret, h.MigrateFromJSON))
 }
 
 // RegisterSetupRoutes mounts the first-run setup wizard routes onto the provided

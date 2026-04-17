@@ -105,73 +105,23 @@ Go to Datacenter > Permissions > API Tokens. Click on “Add” button and selec
 
 You can now use the API token in the environment variables `PROXMOX_API_TOKEN_NAME` and `PROXMOX_API_TOKEN_VALUE`.
 
-### The configuration file settings.json
+### Database configuration
 
-`settings.json` file acts as the source of truth for every option available to users:
+PVMSS uses an embedded SQLite database to store all configuration. The database is automatically initialized on first startup and includes:
 
-```json
-{
-  "tags": ["pvmss"],
-  "isos": [],
-  "vmbrs": [],
-  "cloudinit_sftp": {
-    "enabled": true,
-    "host": "your-proxmox-ip-or-hostname",
-    "port": 22,
-    "username": "pvmss-snippets",
-    "privateKeyPath": "/app/pvmss_snippets_ed25519",
-    "snippetBaseDir": "/snippets"
-  },
-  "enabled_storages": [],
-  "max_network_cards": 1,
-  "max_disk_per_vm": 1,
-  "max_vm_per_user": 3,
-  "limits": {
-    "nodes": {},
-    "vm": {
-      "sockets": { "min": 1, "max": 1 },
-      "cores": { "min": 1, "max": 2 },
-      "ram": { "min": 1, "max": 4 },
-      "disk": { "min": 6, "max": 12 }
-    },
-    "max_snapshots": 8
-  },
-  "vm_profiles": [
-    {
-      "id": "web-server",
-      "name": "Web Server",
-      "description": "Host websites, reverse proxies, or static content servers",
-      "sockets": 1,
-      "cores": 1,
-      "ram_gb": 2,
-      "disk_gb": 24,
-      "disk_bus": "virtio",
-      "node": "",
-      "storage": "",
-      "icon": "Globe",
-      "color": "blue",
-      "enabled": true
-    },
-    {
-      "id": "light-api",
-      "name": "Lightweight API",
-      "description": "Run REST APIs, microservices, or lightweight backend services",
-      "sockets": 1,
-      "cores": 2,
-      "ram_gb": 2,
-      "disk_gb": 24,
-      "disk_bus": "virtio",
-      "node": "",
-      "storage": "",
-      "icon": "Code",
-      "color": "violet",
-      "enabled": true
-    }
-  ]
-}
-```
+- Approved Proxmox nodes, storages, VMBRs, and ISO repositories
+- VM resource limits (global and per-node)
+- Tags and user pools
+- Cloud-init templates and SFTP configuration
+- VM profiles
 
-All keys are mandatory. Next versions of PVMSS can add new keys to this file, so it is recommended to keep it up to date.
+All configuration is managed through the **Admin** section of the web UI, which provides:
+
+- Full CRUD operations for all configuration items
+- Audit trail of all changes
+- Import/export functionality for backup/restore
+
+The database file must be persisted on a volume to survive container restarts.
 
 #### Tags
 
@@ -181,7 +131,7 @@ The tag `pvmss` is used by default for VMs created via PVMSS, it cannot and shou
 
 VM profiles are pre-configured templates that simplify VM creation by providing common resource configurations. Users can select a profile when creating a VM, which automatically sets CPU, RAM, disk, and other parameters.
 
-If no profiles are configured in `settings.json`, PVMSS provides built-in default profiles:
+PVMSS provides built-in default profiles:
 
 - **Web Server**: 1 vCPU, 2 GB RAM, 24 GB disk
 - **Lightweight API**: 2 vCPU, 2 GB RAM, 24 GB disk
@@ -222,7 +172,7 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PROXMOX_VERIFY_SSL`      | `true` for trusted certs, `false` for self-signed labs                       |    ❌    | `false`              |
 | `PVMSS_ENV`               | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` |    ❌    | `production`         |
 | `PVMSS_OFFLINE`           | `true` disables all Proxmox calls (demo mode)                                |    ❌    | `false`              |
-| `PVMSS_SETTINGS_PATH`     | Inside-container path to `settings.json`                                     |    ❌    | `/app/settings.json` |
+| `PVMSS_DB_PATH`          | Path to SQLite database file (must be on persistent volume)                 |    ✅    | `/data/pvmss.db`     |
 | `LOG_LEVEL`               | Log verbosity (`debug`, `info`, `warn`, `error`)                             |    ❌    | `INFO`               |
 | `LOG_OUTPUT`              | Log destination: `stdout`, `file`, or `both`                                 |    ❌    | `stdout`             |
 | `LOG_FILE_PATH`           | File path when `LOG_OUTPUT` is `file` or `both`                              |    ❌    | —                    |
@@ -266,7 +216,7 @@ The JSON format is line-delimited and includes fields such as `component`, `oper
 
 | Platform            | Notes                                                                                                                                                                                                                                      |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Docker / Podman** | Recommended for quick trials or single-node installs. Mount `settings.json` and expose port `50000`.                                                                                                                                       |
+| **Docker / Podman** | Recommended for quick trials or single-node installs. Mount the database volume and expose port `50000`.                                                                                                                                  |
 | **Docker Compose**  | Best experience: one service, reproducible environment, easy env var management.                                                                                                                                                           |
 | **Kubernetes**      | Use [`pvmss-deployment.yaml`](pvmss-deployment.yaml) for namespace + secret + configmap + PVC + Deployment + Service. Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute (see `pvmss-httproute.yml`). |
 
@@ -277,7 +227,7 @@ docker run -d \
   --name pvmss \
   --restart unless-stopped \
   -p 50000:50000 \
-  -v $(pwd)/settings.json:/app/settings.json \
+  -v $(pwd)/pvmss.db:/data/pvmss.db \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
   -e LOG_LEVEL=INFO \
   -e LOG_OUTPUT=stdout \
@@ -288,7 +238,7 @@ docker run -d \
   -e PROXMOX_VERIFY_SSL=false \
   -e PVMSS_ENV="prod" \
   -e PVMSS_OFFLINE="false" \
-  -e PVMSS_SETTINGS_PATH="/app/settings.json" \
+  -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
   jhmmt/pvmss:0.3.0
@@ -307,13 +257,7 @@ The application will be available at <http://localhost:50000>.
 
 ## Start with Docker compose
 
-1. **Create `settings.json`** (see [the configuration file](#the-configuration-file-settingsjson)) and secure it:
-
-   ```bash
-   chmod 600 settings.json
-   ```
-
-2. **Create `docker-compose.yml`:**
+1. **Create `docker-compose.yml`:**
 
 ```yaml
 services:
@@ -335,10 +279,10 @@ services:
       SESSION_SECRET: "changeMeWithSomethingElseUnique"
       PVMSS_ENV: "production"
       PVMSS_OFFLINE: "false"
-      PVMSS_SETTINGS_PATH: "/app/settings.json"
+      PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
-      - ./settings.json:/app/settings.json
+      - ./pvmss.db:/data/pvmss.db
       # - ./pvmss.log:/app/pvmss.log # Uncomment to persist logs to a file inside the container
     deploy:
       resources:
@@ -376,7 +320,7 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 
 - **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces. Use `LOG_FORMAT=json` and `LOG_OUTPUT=stdout` or `file` to emit JSON logs that can be shipped to a SIEM or log aggregator.
 - **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
-- **Upgrades**: pull the desired image tag, update the file `settings.json` if new fields appear, and restart the container.
+- **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
 
 ## Limitations
 
