@@ -58,11 +58,6 @@ func registerTestRoutes(router *http.ServeMux, hc *handlers.TestHandlerCollectio
 	router.HandleFunc("/admin/userpool", hc.UserPoolPageHandler)
 	router.HandleFunc("/admin/appinfo", hc.AppInfoPageHandler)
 
-	// API endpoints
-	router.HandleFunc("/api/settings", hc.SettingsHandler)
-	router.HandleFunc("/api/settings/all", hc.AllSettingsHandler)
-	router.HandleFunc("/api/vmbr/all", hc.AllVMBRHandler)
-
 	// Static files (simplified)
 	router.HandleFunc("/favicon.ico", hc.FaviconHandler)
 	router.HandleFunc("/css/", hc.StaticHandler)

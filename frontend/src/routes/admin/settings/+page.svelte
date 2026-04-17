@@ -5,15 +5,13 @@
 	import { Button } from '$lib/components/ui/button';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import AuditLog from '$lib/components/admin/AuditLog.svelte';
-	import { exportDB, importDB, migrateFromJSON } from '$lib/api/admin/db';
+	import { exportDB, importDB } from '$lib/api/admin/db';
 
 	let exportLoading = $state(false);
 	let importLoading = $state(false);
-	let migrateLoading = $state(false);
 	let importConfirmOpen = $state(false);
 	let pendingImportFile = $state<File | null>(null);
 	let importFileInput: HTMLInputElement;
-	let migrateFileInput: HTMLInputElement;
 
 	async function handleExport() {
 		exportLoading = true;
@@ -47,25 +45,6 @@
 		} finally {
 			importLoading = false;
 			pendingImportFile = null;
-		}
-	}
-
-	async function handleMigrate(e: Event) {
-		const file = (e.target as HTMLInputElement).files?.[0];
-		if (!file) return;
-		(e.target as HTMLInputElement).value = '';
-		migrateLoading = true;
-		try {
-			const result = await migrateFromJSON(file);
-			toast.success(
-				$t('admin.settings.migrate.success', {
-					values: { nodes: result.nodes_count, tags: result.tags_count },
-				})
-			);
-		} catch (e) {
-			toast.error((e as Error).message);
-		} finally {
-			migrateLoading = false;
 		}
 	}
 </script>
@@ -136,31 +115,6 @@
 				>
 					<UploadIcon class="h-4 w-4 mr-2" />
 					{importLoading ? $t('common.loading') : $t('admin.settings.db.importBtn')}
-				</Button>
-			</div>
-
-			<!-- Migrate from JSON -->
-			<div class="rounded-xl border border-border bg-card p-5 space-y-3">
-				<div>
-					<p class="font-medium text-sm">{$t('admin.settings.migrate.title')}</p>
-					<p class="text-xs text-muted-foreground mt-1">{$t('admin.settings.migrate.desc')}</p>
-				</div>
-				<input
-					bind:this={migrateFileInput}
-					type="file"
-					accept=".json"
-					class="hidden"
-					onchange={handleMigrate}
-				/>
-				<Button
-					variant="outline"
-					size="sm"
-					class="w-full"
-					disabled={migrateLoading}
-					onclick={() => migrateFileInput.click()}
-				>
-					<UploadIcon class="h-4 w-4 mr-2" />
-					{migrateLoading ? $t('common.loading') : $t('admin.settings.migrate.btn')}
 				</Button>
 			</div>
 		</div>

@@ -231,14 +231,13 @@ func buildAPIMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, 
 }
 
 // isAPIPath returns true when the request path is a JWT-authenticated API route (/api/v1/).
-// Routes under /api/vm/ and /api/settings/ are session-authenticated and handled by appHandler.
 func isAPIPath(p string) bool {
 	return strings.HasPrefix(p, "/api/v1/")
 }
 
 // isLegacyAPIPath returns true for session-authenticated API routes that live
-// outside /api/v1/ (e.g. /api/settings, /api/vmbr, /api/health). These must
-// be routed through appHandler even when the SvelteKit SPA is available.
+// outside /api/v1/ (e.g. /api/health). These must be routed through appHandler
+// even when the SvelteKit SPA is available.
 func isLegacyAPIPath(p string) bool {
 	return strings.HasPrefix(p, "/api/") && !strings.HasPrefix(p, "/api/v1/")
 }
