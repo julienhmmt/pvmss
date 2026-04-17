@@ -331,7 +331,7 @@
     },
     "settings": {
       "title": "Paramètres",
-      "subtitle": "Gestion de la base de données et journal d'audit",
+      "subtitle": "Corrections manuelles, gestion de la base de données et journal d'audit",
       "overview": {
         "title": "Vue d'ensemble de la configuration",
         "accordionHint": "Corrections manuelles — à déplier uniquement si nécessaire",
@@ -369,7 +369,8 @@
           "addNodeLimit": "Ajouter limite de nœud",
           "editNodeLimit": "Modifier limite de nœud",
           "errorNode": "Le nom du nœud est requis",
-          "errorMaxVms": "Max VMs doit être 0 ou plus"
+          "errorMaxVms": "Max VMs doit être 0 ou plus",
+          "emptyHint": "Aucune limite de nœud configurée. Note : les limites par nœud des anciens déploiements n'ont pas été migrées automatiquement — ajoutez-les ici ou via Admin → Limites."
         },
         "list": {
           "addItem": "Ajouter un nouvel élément...",
