@@ -57,7 +57,7 @@
 			macKey: 'b',
 			ctrlKey: true,
 			description: 'Create VM',
-			action: () => navigate('/vm/create')
+			action: () => { if (!auth.isAdmin) navigate('/vm/create'); }
 		},
 		{
 			key: 'Escape',
@@ -72,12 +72,17 @@
 	];
 
 	const navLinks = $derived<NavLink[]>([
-		{ href: '/', icon: HouseIcon, label: $t('nav.home'), authRequired: false },
-		{ href: '/home', icon: HouseIcon, label: $t('nav.myVms'), authRequired: true },
-		{ href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm'), authRequired: true },
-		{ href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm'), authRequired: true },
-		{ href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation'), authRequired: false }
-	].filter(link => !link.authRequired || auth.username));
+		{ href: '/', icon: HouseIcon, label: $t('nav.home'), authRequired: false, adminOnly: false },
+		{ href: '/home', icon: HouseIcon, label: $t('nav.myVms'), authRequired: true, adminOnly: false },
+		{ href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm'), authRequired: true, adminOnly: false },
+		{ href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm'), authRequired: true, adminOnly: false },
+		{ href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation'), authRequired: false, adminOnly: false }
+	].filter(link => {
+		if (link.authRequired && !auth.username) return false;
+		if (link.adminOnly && !auth.isAdmin) return false;
+		if (!link.adminOnly && auth.isAdmin) return false;
+		return true;
+	}));
 
 	function isActive(href: string, pathname: string): boolean {
 		if (href === '/') return pathname === '/';
@@ -296,9 +301,10 @@
 									tabindex="0"
 									onclick={() => notifications.markAsRead(notification.id)}
 									onkeydown={(e) => {
-										if (e.key === 'Enter' || e.key === ' ') {
-											e.preventDefault();
-											notifications.markAsRead(notification.id);
+										if (e.key.toLowerCase() === 'b' && !auth.isAdmin) {
+											event.preventDefault();
+											navigate('/vm/create');
+											return;
 										}
 									}}
 								>
@@ -416,6 +422,7 @@
 							</div>
 						</DropdownMenu.Label>
 						<DropdownMenu.Separator />
+						{#if !auth.isAdmin}
 						<DropdownMenu.Item
 							onclick={() => {
 								navigate('/profile');
@@ -425,6 +432,7 @@
 							<UserCircleIcon class="h-4 w-4" />
 							{$t('user.profile.title')}
 						</DropdownMenu.Item>
+						{/if}
 						{#if auth.isAdmin}
 							<DropdownMenu.Item
 								onclick={() => {
@@ -511,6 +519,7 @@
 							{#if auth.initialized && auth.username}
 							<div class="border-border my-2 border-t"></div>
 
+							{#if !auth.isAdmin}
 							<a
 								href="/profile"
 								class="pv-sidebar-item"
@@ -519,6 +528,7 @@
 								<span class="pv-sidebar-icon-wrap"><UserCircleIcon class="h-4 w-4" /></span>
 								{$t('user.profile.title')}
 							</a>
+							{/if}
 							{#if auth.isAdmin}
 								<a
 									href="/admin/"
