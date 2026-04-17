@@ -1,7 +1,15 @@
-import { init, addMessages, getLocaleFromNavigator, locale } from "svelte-i18n";
+import { init, addMessages, locale } from "svelte-i18n";
 import { browser } from "$app/environment";
 import en from "./en.json";
 import fr from "./fr.json";
+
+// getLocaleFromNavigator is available at runtime but TypeScript types may not expose it
+const getLocaleFromNavigator = (): string | null => {
+  if (typeof window === "undefined") return null;
+  // navigator.language is the first element of navigator.languages per spec
+  // Use it directly instead of accessing languages[0] which could be undefined
+  return window.navigator.language || null;
+};
 
 addMessages("en", en);
 addMessages("fr", fr);

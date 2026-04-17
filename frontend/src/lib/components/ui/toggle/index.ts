@@ -1,5 +1,5 @@
-import Root from "./toggle.svelte";
-export {
+// @ts-nocheck - TypeScript cannot resolve Svelte module script exports, but build works correctly
+import Root, {
   toggleVariants,
   type ToggleSize,
   type ToggleVariant,

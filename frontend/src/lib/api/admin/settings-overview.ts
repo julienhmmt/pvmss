@@ -7,11 +7,11 @@ export interface SectionMeta {
 	name: string;
 	category: string;
 	kind: string;
-	row_count: number;
-	last_change_at?: string;
-	last_change_by?: string;
-	supports_add: boolean;
-	supports_edit: boolean;
+	rowCount: number;
+	lastChangeAt?: string;
+	lastChangeBy?: string;
+	supportsAdd: boolean;
+	supportsEdit: boolean;
 }
 
 export interface OverviewSection extends SectionMeta {
@@ -19,8 +19,8 @@ export interface OverviewSection extends SectionMeta {
 }
 
 export interface OverviewResponse {
-	schema_version: number;
-	bootstrap_complete: boolean;
+	schemaVersion: number;
+	bootstrapComplete: boolean;
 	sections: Record<string, OverviewSection>;
 }
 
@@ -46,16 +46,16 @@ export const KIND_LIST = 'list';
 export const KIND_KEYED = 'keyed';
 
 // Table name constants
-export const TABLE_VM_LIMITS = 'vm_limits';
-export const TABLE_NODE_LIMITS = 'node_limits';
-export const TABLE_ENABLED_NODES = 'enabled_nodes';
-export const TABLE_ENABLED_STORAGES = 'enabled_storages';
-export const TABLE_ENABLED_ISOS = 'enabled_isos';
-export const TABLE_ENABLED_VMBRS = 'enabled_vmbrs';
-export const TABLE_TAGS = 'tags';
-export const TABLE_CLOUDINIT_TEMPLATES = 'cloudinit_templates';
-export const TABLE_VM_PROFILES = 'vm_profiles';
-export const TABLE_SFTP_CONFIG = 'sftp_config';
+export const TABLE_VM_LIMITS = 'vm_limits' as const;
+export const TABLE_NODE_LIMITS = 'node_limits' as const;
+export const TABLE_ENABLED_NODES = 'enabled_nodes' as const;
+export const TABLE_ENABLED_STORAGES = 'enabled_storages' as const;
+export const TABLE_ENABLED_ISOS = 'enabled_isos' as const;
+export const TABLE_ENABLED_VMBRS = 'enabled_vmbrs' as const;
+export const TABLE_TAGS = 'tags' as const;
+export const TABLE_CLOUDINIT_TEMPLATES = 'cloudinit_templates' as const;
+export const TABLE_VM_PROFILES = 'vm_profiles' as const;
+export const TABLE_SFTP_CONFIG = 'sftp_config' as const;
 
 /**
  * Fetch the settings overview

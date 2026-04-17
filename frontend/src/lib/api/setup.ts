@@ -1,13 +1,16 @@
+import { api } from "./client";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
+
 export interface SetupStatus {
   complete: boolean;
-  proxmox_ok: boolean;
+  proxmoxOk: boolean;
   offline: boolean;
-  proxmox_url: string;
+  proxmoxUrl: string;
 }
 
 export interface SetupConnectionTestResult {
   ok: boolean;
-  proxmox_url: string;
+  proxmoxUrl: string;
   error?: string;
 }
 
@@ -19,49 +22,38 @@ export interface SetupProxmoxData {
 }
 
 export interface SetupLimits {
-  max_vms: number;
-  max_vm_per_user: number;
-  max_network_cards: number;
-  max_disk_per_vm: number;
-  max_snapshots: number;
-  allow_custom_yaml: boolean;
+  maxVms: number;
+  maxVmPerUser: number;
+  maxNetworkCards: number;
+  maxDiskPerVm: number;
+  maxSnapshots: number;
+  allowCustomYaml: boolean;
 }
 
 export interface SetupCompleteRequest {
-  enabled_nodes: string[];
-  enabled_storages: string[];
-  enabled_isos: string[];
-  enabled_vmbrs: string[];
+  enabledNodes: string[];
+  enabledStorages: string[];
+  enabledIsos: string[];
+  enabledVmbrs: string[];
   limits: SetupLimits;
 }
 
 export async function getSetupStatus(): Promise<SetupStatus> {
-  const res = await fetch("/api/v1/setup/status", { credentials: "same-origin" });
-  if (!res.ok) throw new Error("Failed to fetch setup status");
-  return res.json();
+  const res = await api.get<Record<string, unknown>>("/api/v1/setup/status");
+  return transformKeysToCamelCase<SetupStatus>(res);
 }
 
 export async function testConnection(): Promise<SetupConnectionTestResult> {
-  const res = await fetch("/api/v1/setup/test-connection", {
-    method: "POST",
-    credentials: "same-origin",
-  });
-  if (!res.ok) throw new Error("Connection test failed");
-  return res.json();
+  const res = await api.post<Record<string, unknown>>("/api/v1/setup/test-connection");
+  return transformKeysToCamelCase<SetupConnectionTestResult>(res);
 }
 
 export async function getProxmoxData(): Promise<SetupProxmoxData> {
-  const res = await fetch("/api/v1/setup/proxmox-data", { credentials: "same-origin" });
-  if (!res.ok) throw new Error("Failed to fetch Proxmox data");
-  return res.json();
+  const res = await api.get<Record<string, unknown>>("/api/v1/setup/proxmox-data");
+  return transformKeysToCamelCase<SetupProxmoxData>(res);
 }
 
 export async function completeSetup(req: SetupCompleteRequest): Promise<void> {
-  const res = await fetch("/api/v1/setup/complete", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(req),
-  });
-  if (!res.ok) throw new Error("Failed to complete setup");
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(req);
+  await api.post("/api/v1/setup/complete", payload);
 }

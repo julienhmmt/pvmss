@@ -14,7 +14,7 @@ export interface Disk {
   /** Storage location */
   storage: string;
   /** Disk size in GB */
-  size_gb: number;
+  sizeGb: number;
   /** Raw Proxmox config string */
   raw: string;
 }
@@ -40,7 +40,7 @@ export interface NetworkCard {
   /** Optional: IP addresses */
   ips?: string[];
   /** Optional: Link down flag */
-  link_down?: boolean;
+  linkDown?: boolean;
 }
 
 /**
@@ -50,9 +50,9 @@ export interface CloudInitConfig {
   /** Optional: Default user */
   user?: string;
   /** Optional: SSH public keys */
-  ssh_keys?: string;
+  sshKeys?: string;
   /** Optional: IP configuration */
-  ip_config?: string;
+  ipConfig?: string;
   /** Optional: DNS nameserver */
   nameserver?: string;
 }
@@ -78,11 +78,11 @@ export interface VM {
   /** Number of cores per socket */
   cores: number;
   /** Used memory in MB */
-  mem_mb: number;
+  memMb: number;
   /** Maximum memory in MB */
-  max_mem_mb: number;
+  maxMemMb: number;
   /** Disk usage in MB */
-  disk_mb: number;
+  diskMb: number;
   /** VM uptime in seconds */
   uptime: number;
   /** Semicolon-separated tags */
@@ -94,13 +94,13 @@ export interface VM {
   /** Array of network cards */
   networks: NetworkCard[];
   /** Optional: Cloud-Init configuration */
-  cloud_init?: CloudInitConfig;
+  cloudInit?: CloudInitConfig;
   /** Whether VM has CD-ROM */
-  has_cdrom: boolean;
+  hasCdrom: boolean;
   /** Optional: Current mounted ISO */
-  current_iso?: string;
+  currentIso?: string;
   /** Whether EFI/UEFI is enabled */
-  efi_enabled: boolean;
+  efiEnabled: boolean;
   /** Whether TPM is enabled */
-  tpm_enabled: boolean;
+  tpmEnabled: boolean;
 }

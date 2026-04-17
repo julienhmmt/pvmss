@@ -1,5 +1,11 @@
 import type { VMStatus } from "$lib/types/vm";
 
+/** Minimum valid VM ID. */
+const VM_ID_MIN = 1;
+
+/** Maximum length for search query string. */
+const SEARCH_QUERY_MAX_LENGTH = 100;
+
 /**
  * Search filter type for VM search operations.
  */
@@ -27,8 +33,8 @@ export interface VMSearchParams {
 export function validateSearchParams(params: VMSearchParams): void {
   if (params.type === "vmid" && params.q) {
     const vmid = parseInt(params.q, 10);
-    if (isNaN(vmid) || vmid <= 0) {
-      throw new Error("Invalid VM ID: must be a positive integer when searching by vmid");
+    if (isNaN(vmid) || vmid < VM_ID_MIN) {
+      throw new Error(`Invalid VM ID: must be at least ${VM_ID_MIN} when searching by vmid`);
     }
   }
 
@@ -43,8 +49,8 @@ export function validateSearchParams(params: VMSearchParams): void {
     throw new Error("Node name cannot be empty");
   }
 
-  if (params.q && params.q.length > 100) {
-    throw new Error("Search query too long (max 100 characters)");
+  if (params.q && params.q.length > SEARCH_QUERY_MAX_LENGTH) {
+    throw new Error(`Search query too long (max ${SEARCH_QUERY_MAX_LENGTH} characters)`);
   }
 
   if ((params.type === "name" || params.type === "tag") && !params.q) {

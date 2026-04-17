@@ -51,7 +51,7 @@ export interface CloudInitTemplate {
   /** Filename */
   filename: string;
   /** YAML content */
-  yaml_content: string;
+  yamlContent: string;
   /** Whether the template is enabled */
   enabled: boolean;
 }
@@ -61,27 +61,27 @@ export interface CloudInitTemplate {
  */
 export interface AppSettings {
   /** Enabled Proxmox nodes */
-  enabled_nodes: string[];
+  enabledNodes: string[];
   /** Enabled storage locations */
-  enabled_storages: string[];
+  enabledStorages: string[];
   /** Available ISO images */
   isos: string[];
   /** Resource limits configuration */
   limits: LimitsConfig;
   /** Maximum network cards per VM */
-  max_network_cards: number;
+  maxNetworkCards: number;
   /** Maximum disks per VM */
-  max_disk_per_vm: number;
+  maxDiskPerVm: number;
   /** Maximum VMs per user */
-  max_vm_per_user: number;
+  maxVmPerUser: number;
   /** Available tags */
   tags: string[];
   /** Available network bridges */
   vmbrs: string[];
   /** Cloud-Init templates */
-  cloudinit_templates: CloudInitTemplate[];
+  cloudinitTemplates: CloudInitTemplate[];
   /** VM profiles */
-  vm_profiles: VMProfileConfig[];
+  vmProfiles: VMProfileConfig[];
   /** Whether custom YAML is allowed */
-  allow_custom_yaml: boolean;
+  allowCustomYaml: boolean;
 }
