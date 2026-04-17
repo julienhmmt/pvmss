@@ -27,6 +27,9 @@ type NodeResourceLimits struct {
 	// MaxVMs is the per-node VM count override from the database node_limits table.
 	// Zero means no per-node override (use the global limit).
 	MaxVMs int `json:"max_vms,omitempty"`
+	// MaxDiskGB is the total disk capacity cap (GB) for PVMSS VMs on this node.
+	// Zero means no cap. Stored in the database but not yet enforced during VM creation.
+	MaxDiskGB int `json:"max_disk_gb,omitempty"`
 }
 
 // LimitsConfig defines the structure for all resource limits

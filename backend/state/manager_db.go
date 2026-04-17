@@ -49,12 +49,15 @@ func mapDBToStateSettings(src *database.AppSettings) *AppSettings {
 	base.AllowCustomYAML = src.Limits.AllowCustomYAML
 	base.Limits.MaxSnapshots = src.Limits.MaxSnapshots
 
-	// Map DB node_limits (node → max_vms) into the state-layer Limits.Nodes map.
+	// Map DB node_limits into the state-layer Limits.Nodes map.
 	// Preserve any existing resource-range defaults from defaultSettings() and
-	// overlay the MaxVMs value from the database.
-	for nodeName, maxVMs := range src.NodeLimits {
+	// overlay the persisted capacity caps from the database.
+	for nodeName, nl := range src.NodeLimits {
 		existing := base.Limits.Nodes[nodeName]
-		existing.MaxVMs = maxVMs
+		existing.MaxVMs = nl.MaxVMs
+		existing.Cores.Max = nl.MaxVCPUs  // used by vm_create.go capacity check
+		existing.RAM.Max = nl.MaxRAMGB    // used by vm_create.go capacity check
+		existing.MaxDiskGB = nl.MaxDiskGB // stored for future enforcement
 		base.Limits.Nodes[nodeName] = existing
 	}
 
@@ -148,12 +151,26 @@ func (s *appState) SetVMLimits(limits *database.VMLimits, changedBy string) erro
 	return s.reloadSettingsCache()
 }
 
-// SetNodeLimit upserts a per-node maximum VM count and refreshes the cache.
-func (s *appState) SetNodeLimit(node string, maxVMs int, changedBy string) error {
+// GetNodeLimitFromDB retrieves a single node's limits directly from the database,
+// bypassing the in-memory cache. This ensures we always get the latest values.
+func (s *appState) GetNodeLimitFromDB(node string) (database.NodeLimit, bool, error) {
+	if s.db == nil {
+		return database.NodeLimit{}, false, fmt.Errorf("GetNodeLimitFromDB: no database configured")
+	}
+	limits, err := s.db.GetNodeLimits()
+	if err != nil {
+		return database.NodeLimit{}, false, fmt.Errorf("GetNodeLimitFromDB: %w", err)
+	}
+	limit, exists := limits[node]
+	return limit, exists, nil
+}
+
+// SetNodeLimit upserts all capacity limits for a single node and refreshes the cache.
+func (s *appState) SetNodeLimit(limit database.NodeLimit, changedBy string) error {
 	if s.db == nil {
 		return fmt.Errorf("SetNodeLimit: no database configured")
 	}
-	if err := s.db.SetNodeLimit(node, maxVMs, changedBy); err != nil {
+	if err := s.db.SetNodeLimit(limit, changedBy); err != nil {
 		return fmt.Errorf("SetNodeLimit: %w", err)
 	}
 	return s.reloadSettingsCache()

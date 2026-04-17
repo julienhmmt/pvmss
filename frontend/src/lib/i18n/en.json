@@ -371,8 +371,15 @@
           "maxVms": "Max VMs",
           "addNodeLimit": "Add Node Limit",
           "editNodeLimit": "Edit Node Limit",
+          "zeroUnlimited": "(0 = unlimited)",
           "errorNode": "Node name is required",
           "errorMaxVms": "Max VMs must be 0 or greater",
+          "errorMaxVcpus": "Max vCPUs must be 0 or greater",
+          "errorMaxRam": "Max RAM must be 0 or greater",
+          "errorMaxDisk": "Max disk must be 0 or greater",
+          "maxVcpus": "Max vCPUs",
+          "maxRamGb": "Max RAM (GB)",
+          "maxDiskGb": "Max Disk (GB)",
           "emptyHint": "No node limits configured. Note: per-node limits from older deployments were not automatically migrated — add them here or via Admin → Limits."
         },
         "list": {

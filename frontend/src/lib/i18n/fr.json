@@ -368,8 +368,15 @@
           "maxVms": "Max VMs",
           "addNodeLimit": "Ajouter limite de nœud",
           "editNodeLimit": "Modifier limite de nœud",
+          "zeroUnlimited": "(0 = illimité)",
           "errorNode": "Le nom du nœud est requis",
           "errorMaxVms": "Max VMs doit être 0 ou plus",
+          "errorMaxVcpus": "Max vCPUs doit être 0 ou plus",
+          "errorMaxRam": "Max RAM doit être 0 ou plus",
+          "errorMaxDisk": "Max disque doit être 0 ou plus",
+          "maxVcpus": "Max vCPUs",
+          "maxRamGb": "Max RAM (Go)",
+          "maxDiskGb": "Max Disque (Go)",
           "emptyHint": "Aucune limite de nœud configurée. Note : les limites par nœud des anciens déploiements n'ont pas été migrées automatiquement — ajoutez-les ici ou via Admin → Limites."
         },
         "list": {
