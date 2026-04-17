@@ -334,8 +334,10 @@
       "subtitle": "Gestion de la base de données et journal d'audit",
       "overview": {
         "title": "Vue d'ensemble de la configuration",
+        "accordionHint": "Corrections manuelles — à déplier uniquement si nécessaire",
         "noItems": "Aucun élément",
         "updateSuccess": "Paramètres mis à jour avec succès",
+        "manualOverrideNotice": "Ce panneau est réservé aux corrections manuelles. Pour la gestion courante, utilisez les pages dédiées (Nœuds, Stockage, ISOs, Tags, Limites, Cloud-Init, Profils VM). Les modifications directes ici contournent les workflows guidés et doivent être réservées au dépannage ou aux corrections d'urgence.",
         "resources": "Ressources",
         "inventory": "Inventaire",
         "templates": "Modèles",
@@ -365,11 +367,15 @@
           "nodeName": "Nom du nœud",
           "maxVms": "Max VMs",
           "addNodeLimit": "Ajouter limite de nœud",
-          "editNodeLimit": "Modifier limite de nœud"
+          "editNodeLimit": "Modifier limite de nœud",
+          "errorNode": "Le nom du nœud est requis",
+          "errorMaxVms": "Max VMs doit être 0 ou plus"
         },
         "list": {
           "addItem": "Ajouter un nouvel élément...",
-          "empty": "Aucun élément"
+          "empty": "Aucun élément",
+          "confirmDeleteTitle": "Confirmer la suppression",
+          "confirmDeleteMessage": "Êtes-vous sûr de vouloir supprimer \"{item}\" ?"
         },
         "cloudinit": {
           "title": "Modèles Cloud-Init",
@@ -377,8 +383,12 @@
           "name": "Nom",
           "description": "Description",
           "yamlContent": "Contenu YAML",
+          "filenameLabel": "Nom de fichier",
           "addTemplate": "Ajouter modèle",
-          "editTemplate": "Modifier modèle"
+          "editTemplate": "Modifier modèle",
+          "errorIdName": "L'ID et le nom sont requis",
+          "errorStorage": "Le stockage est requis",
+          "errorFilename": "Le nom de fichier est requis"
         },
         "vmprofiles": {
           "title": "Profils VM",
@@ -394,7 +404,12 @@
           "color": "Couleur",
           "addProfile": "Ajouter profil",
           "editProfile": "Modifier profil",
-          "specs": "{sockets} sockets, {cores} cœurs, {ram}Go RAM, {disk}Go disque"
+          "specs": "{sockets} sockets, {cores} cœurs, {ram}Go RAM, {disk}Go disque",
+          "errorIdName": "L'ID et le nom sont requis",
+          "errorSockets": "Les sockets doivent être au moins 1",
+          "errorCores": "Les cœurs doivent être au moins 1",
+          "errorRam": "La RAM doit être au moins 1 Go",
+          "errorDisk": "Le disque doit être au moins 1 Go"
         },
         "sftp": {
           "title": "Configuration SFTP",

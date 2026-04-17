@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
+	import { Button } from '$lib/components/ui/button';
 	import { upsertSettings, TABLE_SFTP_CONFIG } from '$lib/api/admin/settings-overview';
 	import type { SectionMeta } from '$lib/api/admin/settings-overview';
 
@@ -13,15 +15,6 @@
 
 	let { meta, data, onUpdate }: { meta: SectionMeta; data: SFTPConfig; onUpdate: () => Promise<void> } = $props();
 
-	let initialValues = $derived({
-		enabled: data?.enabled ?? false,
-		host: data?.host ?? '',
-		port: data?.port ?? 22,
-		username: data?.username ?? '',
-		private_key_path: data?.private_key_path ?? '',
-		remote_path: data?.remote_path ?? ''
-	});
-
 	let formState = $state({
 		enabled: false,
 		host: '',
@@ -31,14 +24,13 @@
 		remote_path: ''
 	});
 
-	// Sync formState when initialValues changes (e.g., after reload)
 	$effect(() => {
-		formState.enabled = initialValues.enabled;
-		formState.host = initialValues.host;
-		formState.port = initialValues.port;
-		formState.username = initialValues.username;
-		formState.private_key_path = initialValues.private_key_path;
-		formState.remote_path = initialValues.remote_path;
+		formState.enabled = data?.enabled ?? false;
+		formState.host = data?.host ?? '';
+		formState.port = data?.port ?? 22;
+		formState.username = data?.username ?? '';
+		formState.private_key_path = data?.private_key_path ?? '';
+		formState.remote_path = data?.remote_path ?? '';
 	});
 
 	let saving = $state(false);
@@ -58,118 +50,69 @@
 	}
 </script>
 
-<div class="sftp-section">
-	<h3>{meta.name}</h3>
-	{#if meta.last_change_by}
-		<p class="audit-info">
-			Last updated by {meta.last_change_by} at {new Date(meta.last_change_at || '').toLocaleString()}
-		</p>
-	{/if}
+<div class="rounded-xl border border-border bg-card p-5 space-y-4">
+	<div>
+		<p class="font-medium text-sm">{meta.name}</p>
+		{#if meta.last_change_by}
+			<p class="text-xs text-muted-foreground mt-0.5">
+				{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+			</p>
+		{/if}
+	</div>
 
-	<form onsubmit={handleSave}>
-		<div class="form-group checkbox">
-			<input id="sftp_enabled" type="checkbox" bind:checked={formState.enabled} />
-			<label for="sftp_enabled">Enable SFTP Upload</label>
+	<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-3">
+		<div class="flex items-center gap-2">
+			<input id="sftp_enabled" type="checkbox" bind:checked={formState.enabled}
+				class="h-4 w-4 rounded border-input" />
+			<label for="sftp_enabled" class="text-xs font-medium text-muted-foreground">
+				{$t('admin.settings.overview.sftp.enableUpload')}
+			</label>
 		</div>
 
-		<div class="form-group">
-			<label for="sftp_host">Host</label>
-			<input id="sftp_host" type="text" bind:value={formState.host} placeholder="pve.example.com" />
-		</div>
-
-		<div class="form-group">
-			<label for="sftp_port">Port</label>
-			<input id="sftp_port" type="number" min="1" max="65535" bind:value={formState.port} />
-		</div>
-
-		<div class="form-group">
-			<label for="sftp_username">Username</label>
-			<input id="sftp_username" type="text" bind:value={formState.username} />
-		</div>
-
-		<div class="form-group">
-			<label for="sftp_private_key">Private Key Path</label>
-			<input id="sftp_private_key" type="text" bind:value={formState.private_key_path} placeholder="/app/key" />
-		</div>
-
-		<div class="form-group">
-			<label for="sftp_remote_path">Remote Path</label>
-			<input id="sftp_remote_path" type="text" bind:value={formState.remote_path} placeholder="/var/lib/vz/snippets" />
+		<div class="grid gap-3 sm:grid-cols-2">
+			<div class="space-y-1">
+				<label for="sftp_host" class="block text-xs font-medium text-muted-foreground">
+					{$t('admin.settings.overview.sftp.host')}
+				</label>
+				<input id="sftp_host" type="text" bind:value={formState.host} placeholder="pve.example.com"
+					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+			</div>
+			<div class="space-y-1">
+				<label for="sftp_port" class="block text-xs font-medium text-muted-foreground">
+					{$t('admin.settings.overview.sftp.port')}
+				</label>
+				<input id="sftp_port" type="number" min="1" max="65535" bind:value={formState.port}
+					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+			</div>
+			<div class="space-y-1">
+				<label for="sftp_username" class="block text-xs font-medium text-muted-foreground">
+					{$t('admin.settings.overview.sftp.username')}
+				</label>
+				<input id="sftp_username" type="text" bind:value={formState.username}
+					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+			</div>
+			<div class="space-y-1">
+				<label for="sftp_private_key" class="block text-xs font-medium text-muted-foreground">
+					{$t('admin.settings.overview.sftp.privateKeyPath')}
+				</label>
+				<input id="sftp_private_key" type="text" bind:value={formState.private_key_path} placeholder="/app/key"
+					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+			</div>
+			<div class="space-y-1 sm:col-span-2">
+				<label for="sftp_remote_path" class="block text-xs font-medium text-muted-foreground">
+					{$t('admin.settings.overview.sftp.remotePath')}
+				</label>
+				<input id="sftp_remote_path" type="text" bind:value={formState.remote_path} placeholder="/var/lib/vz/snippets"
+					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
+			</div>
 		</div>
 
 		{#if error}
-			<p class="error">{error}</p>
+			<p class="text-sm text-destructive">{error}</p>
 		{/if}
 
-		<button type="submit" disabled={saving} class="btn-primary">
-			{saving ? 'Saving...' : 'Save'}
-		</button>
+		<Button type="submit" size="sm" disabled={saving}>
+			{saving ? $t('common.saving') : $t('common.save')}
+		</Button>
 	</form>
 </div>
-
-<style>
-	.sftp-section {
-		padding: 1rem;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		margin-bottom: 1rem;
-	}
-
-	.sftp-section h3 {
-		margin-top: 0;
-		margin-bottom: 0.5rem;
-	}
-
-	.audit-info {
-		font-size: 0.875rem;
-		color: #666;
-		margin-bottom: 1rem;
-	}
-
-	.form-group {
-		margin-bottom: 1rem;
-	}
-
-	.form-group label {
-		display: block;
-		margin-bottom: 0.25rem;
-		font-weight: 500;
-	}
-
-	.form-group input[type='text'],
-	.form-group input[type='number'] {
-		width: 100%;
-		padding: 0.5rem;
-		border: 1px solid #ccc;
-		border-radius: 4px;
-	}
-
-	.form-group.checkbox {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.form-group.checkbox input {
-		width: auto;
-	}
-
-	.error {
-		color: #d32f2f;
-		margin-bottom: 1rem;
-	}
-
-	.btn-primary {
-		padding: 0.5rem 1rem;
-		background-color: #1976d2;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-</style>
