@@ -9,8 +9,8 @@
 		host: string;
 		port: number;
 		username: string;
-		private_key_path: string;
-		remote_path: string;
+		privateKeyPath: string;
+		remotePath: string;
 	}
 
 	let { meta, data, onUpdate }: { meta: SectionMeta; data: SFTPConfig; onUpdate: () => Promise<void> } = $props();
@@ -20,8 +20,8 @@
 		host: '',
 		port: 22,
 		username: '',
-		private_key_path: '',
-		remote_path: ''
+		privateKeyPath: '',
+		remotePath: ''
 	});
 
 	$effect(() => {
@@ -29,8 +29,8 @@
 		formState.host = data?.host ?? '';
 		formState.port = data?.port ?? 22;
 		formState.username = data?.username ?? '';
-		formState.private_key_path = data?.private_key_path ?? '';
-		formState.remote_path = data?.remote_path ?? '';
+		formState.privateKeyPath = data?.privateKeyPath ?? '';
+		formState.remotePath = data?.remotePath ?? '';
 	});
 
 	let saving = $state(false);
@@ -53,9 +53,9 @@
 <div class="rounded-xl border border-border bg-card p-5 space-y-4">
 	<div>
 		<p class="font-medium text-sm">{meta.name}</p>
-		{#if meta.last_change_by}
+		{#if meta.lastChangeBy}
 			<p class="text-xs text-muted-foreground mt-0.5">
-				{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+				{$t('admin.settings.overview.lastUpdated', { values: { user: meta.lastChangeBy, time: meta.lastChangeAt ? new Date(meta.lastChangeAt).toLocaleString() : '' } })}
 			</p>
 		{/if}
 	</div>
@@ -95,14 +95,14 @@
 				<label for="sftp_private_key" class="block text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.sftp.privateKeyPath')}
 				</label>
-				<input id="sftp_private_key" type="text" bind:value={formState.private_key_path} placeholder="/app/key"
+				<input id="sftp_private_key" type="text" bind:value={formState.privateKeyPath} placeholder="/app/key"
 					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
 			</div>
 			<div class="space-y-1 sm:col-span-2">
 				<label for="sftp_remote_path" class="block text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.sftp.remotePath')}
 				</label>
-				<input id="sftp_remote_path" type="text" bind:value={formState.remote_path} placeholder="/var/lib/vz/snippets"
+				<input id="sftp_remote_path" type="text" bind:value={formState.remotePath} placeholder="/var/lib/vz/snippets"
 					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
 			</div>
 		</div>

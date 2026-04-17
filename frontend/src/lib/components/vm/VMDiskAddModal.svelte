@@ -22,11 +22,11 @@
 	let bus = $state('virtio');
 	let saving = $state(false);
 
-	const storages = $derived(settings?.available_storages ?? []);
+	const storages = $derived(settings?.availableStorages ?? []);
 	const storageNames = $derived<string[]>([...new Set(storages.map((s) => s.storage))]);
-	const minDisk = $derived<number>(settings?.limits.min_disk_gb ?? 1);
-	const maxDisk = $derived<number>(settings?.limits.max_disk_gb ?? 2000);
-	const maxDisksPerVM = $derived<number>(settings?.limits.max_disks_per_vm ?? 4);
+	const minDisk = $derived<number>(settings?.limits.minDiskGb ?? 1);
+	const maxDisk = $derived<number>(settings?.limits.maxDiskGb ?? 2000);
+	const maxDisksPerVM = $derived<number>(settings?.limits.maxDisksPerVm ?? 4);
 
 	$effect(() => {
 		if (open) {
@@ -51,7 +51,7 @@
 		}
 		saving = true;
 		try {
-			const result = await addDisk(vmid, { storage, size_gb: sizeGB, bus });
+			const result = await addDisk(vmid, { storage, sizeGb: sizeGB, bus });
 			toast.success($t('vm.disk.addSuccess', { values: { disk: result.disk } }));
 			open = false;
 			onsuccess();

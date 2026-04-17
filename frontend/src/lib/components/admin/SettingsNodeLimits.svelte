@@ -6,13 +6,13 @@
 
 	interface NodeLimit {
 		node: string;
-		max_vms: number;
-		max_vcpus: number;
-		max_ram_gb: number;
-		max_disk_gb: number;
+		maxVms: number;
+		maxVcpus: number;
+		maxRamGb: number;
+		maxDiskGb: number;
 	}
 
-	const EMPTY_FORM: NodeLimit = { node: '', max_vms: 0, max_vcpus: 0, max_ram_gb: 0, max_disk_gb: 0 };
+	const EMPTY_FORM: NodeLimit = { node: '', maxVms: 0, maxVcpus: 0, maxRamGb: 0, maxDiskGb: 0 };
 
 	let { meta, data, onUpdate }: { meta: SectionMeta; data: NodeLimit[]; onUpdate: () => Promise<void> } = $props();
 
@@ -40,10 +40,10 @@
 
 	async function handleSave() {
 		if (!editForm.node) { error = $t('admin.settings.overview.nodelimits.errorNode'); return; }
-		if (editForm.max_vms < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxVms'); return; }
-		if (editForm.max_vcpus < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxVcpus'); return; }
-		if (editForm.max_ram_gb < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxRam'); return; }
-		if (editForm.max_disk_gb < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxDisk'); return; }
+		if (editForm.maxVms < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxVms'); return; }
+		if (editForm.maxVcpus < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxVcpus'); return; }
+		if (editForm.maxRamGb < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxRam'); return; }
+		if (editForm.maxDiskGb < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxDisk'); return; }
 		saving = true;
 		error = null;
 		try {
@@ -62,9 +62,9 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<p class="font-medium text-sm">{meta.name}</p>
-			{#if meta.last_change_by}
+			{#if meta.lastChangeBy}
 				<p class="text-xs text-muted-foreground mt-0.5">
-					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.lastChangeBy, time: meta.lastChangeAt ? new Date(meta.lastChangeAt).toLocaleString() : '' } })}
 				</p>
 			{/if}
 		</div>
@@ -95,7 +95,7 @@
 						{$t('admin.settings.overview.nodelimits.maxVms')}
 						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
 					</label>
-					<input id="node_max_vms" type="number" min="0" bind:value={editForm.max_vms}
+					<input id="node_max_vms" type="number" min="0" bind:value={editForm.maxVms}
 						disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -104,7 +104,7 @@
 						{$t('admin.settings.overview.nodelimits.maxVcpus')}
 						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
 					</label>
-					<input id="node_max_vcpus" type="number" min="0" bind:value={editForm.max_vcpus}
+					<input id="node_max_vcpus" type="number" min="0" bind:value={editForm.maxVcpus}
 						disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -113,7 +113,7 @@
 						{$t('admin.settings.overview.nodelimits.maxRamGb')}
 						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
 					</label>
-					<input id="node_max_ram_gb" type="number" min="0" bind:value={editForm.max_ram_gb}
+					<input id="node_max_ram_gb" type="number" min="0" bind:value={editForm.maxRamGb}
 						disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -122,7 +122,7 @@
 						{$t('admin.settings.overview.nodelimits.maxDiskGb')}
 						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
 					</label>
-					<input id="node_max_disk_gb" type="number" min="0" bind:value={editForm.max_disk_gb}
+					<input id="node_max_disk_gb" type="number" min="0" bind:value={editForm.maxDiskGb}
 						disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -146,17 +146,17 @@
 					<div class="min-w-0">
 						<span class="text-sm font-medium">{item.node}</span>
 						<div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
-							{#if item.max_vms > 0}
-								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxVms')}: {item.max_vms}</span>
+							{#if item.maxVms > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxVms')}: {item.maxVms}</span>
 							{/if}
-							{#if item.max_vcpus > 0}
-								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxVcpus')}: {item.max_vcpus}</span>
+							{#if item.maxVcpus > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxVcpus')}: {item.maxVcpus}</span>
 							{/if}
-							{#if item.max_ram_gb > 0}
-								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxRamGb')}: {item.max_ram_gb} GB</span>
+							{#if item.maxRamGb > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxRamGb')}: {item.maxRamGb} GB</span>
 							{/if}
-							{#if item.max_disk_gb > 0}
-								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxDiskGb')}: {item.max_disk_gb} GB</span>
+							{#if item.maxDiskGb > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxDiskGb')}: {item.maxDiskGb} GB</span>
 							{/if}
 						</div>
 					</div>

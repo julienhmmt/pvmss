@@ -42,7 +42,10 @@ export async function vmAction(
   node: string,
   action: VMAction,
 ): Promise<void> {
-  return api.post(`/api/v1/admin/vms/${vmid}/action`, { action, node });
+  return api.post(
+    `/api/v1/admin/vms/${vmid}/action`,
+    transformKeysToSnakeCase({ action, node }),
+  );
 }
 
 export async function deleteVM(vmid: number): Promise<void> {
