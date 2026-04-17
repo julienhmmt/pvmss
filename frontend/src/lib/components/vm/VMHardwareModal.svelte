@@ -73,21 +73,21 @@
 
 	const limits = $derived(
 		settings?.limits ?? {
-			min_sockets: 1,
-			max_sockets: 4,
-			min_cores: 1,
-			max_cores: 16,
-			min_ram_gb: 1,
-			max_ram_gb: 64
+			minSockets: 1,
+			maxSockets: 4,
+			minCores: 1,
+			maxCores: 16,
+			minRamGb: 1,
+			maxRamGb: 64
 		}
 	);
 
 	const availableTags = $derived(
-		(settings?.available_tags ?? []).filter((tag) => tag !== MANDATORY_TAG)
+		(settings?.availableTags ?? []).filter((tag) => tag !== MANDATORY_TAG)
 	);
 
 	const availableBridges = $derived(
-		(settings?.available_vmbrs ?? []).map((b) => b.iface)
+		(settings?.availableVmbrs ?? []).map((b) => b.iface)
 	);
 
 	const defaultBridge = $derived(availableBridges[0] ?? '');
@@ -178,10 +178,10 @@
 				node,
 				sockets,
 				cores,
-				memory_mb: memGB * 1024,
+				memoryMb: memGB * 1024,
 				tags: tagsString,
 				networks,
-				delete_networks: deleteNetworks
+				deleteNetworks: deleteNetworks
 			});
 
 			if (result.restarted) {
@@ -242,12 +242,12 @@
 					<input
 						id="hw-sockets"
 						type="number"
-						min={limits.min_sockets}
-						max={limits.max_sockets}
+						min={limits.minSockets}
+						max={limits.maxSockets}
 						bind:value={sockets}
 						class="w-full rounded border border-border bg-background px-3 py-2 text-sm"
 					/>
-					<p class="mt-0.5 text-xs text-muted-foreground">{limits.min_sockets}–{limits.max_sockets}</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">{limits.minSockets}–{limits.maxSockets}</p>
 				</div>
 				<div>
 					<label class="mb-1 block text-sm font-medium" for="hw-cores">
@@ -256,12 +256,12 @@
 					<input
 						id="hw-cores"
 						type="number"
-						min={limits.min_cores}
-						max={limits.max_cores}
+						min={limits.minCores}
+						max={limits.maxCores}
 						bind:value={cores}
 						class="w-full rounded border border-border bg-background px-3 py-2 text-sm"
 					/>
-					<p class="mt-0.5 text-xs text-muted-foreground">{limits.min_cores}–{limits.max_cores}</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">{limits.minCores}–{limits.maxCores}</p>
 				</div>
 				<div class="col-span-2">
 					<label class="mb-1 block text-sm font-medium" for="hw-memory">
@@ -270,12 +270,12 @@
 					<input
 						id="hw-memory"
 						type="number"
-						min={limits.min_ram_gb}
-						max={limits.max_ram_gb}
+						min={limits.minRamGb}
+						max={limits.maxRamGb}
 						bind:value={memGB}
 						class="w-full rounded border border-border bg-background px-3 py-2 text-sm"
 					/>
-					<p class="mt-0.5 text-xs text-muted-foreground">{limits.min_ram_gb}–{limits.max_ram_gb} GB</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">{limits.minRamGb}–{limits.maxRamGb} GB</p>
 				</div>
 			</div>
 		{/if}

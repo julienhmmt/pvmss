@@ -55,9 +55,9 @@
 <div class="rounded-xl border border-border bg-card p-5 space-y-4">
 	<div>
 		<p class="font-medium text-sm">{meta.name}</p>
-		{#if meta.last_change_by}
+		{#if meta.lastChangeBy}
 			<p class="text-xs text-muted-foreground mt-0.5">
-				{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+				{$t('admin.settings.overview.lastUpdated', { values: { user: meta.lastChangeBy, time: meta.lastChangeAt ? new Date(meta.lastChangeAt).toLocaleString() : '' } })}
 			</p>
 		{/if}
 	</div>

@@ -123,13 +123,13 @@
 				<tbody>
 					{#each entries as entry (entry.id)}
 						<tr class="pv-row">
-							<td class="pv-td-mono whitespace-nowrap">{formatDate(entry.changed_at)}</td>
-							<td class="pv-td-mono">{entry.table_name}</td>
-							<td class="pv-td-mono">{entry.record_id}</td>
+							<td class="pv-td-mono whitespace-nowrap">{formatDate(entry.changedAt)}</td>
+							<td class="pv-td-mono">{entry.tableName}</td>
+							<td class="pv-td-mono">{entry.recordId}</td>
 							<td>
 								<span class={actionBadgeClass(entry.action)}>{entry.action}</span>
 							</td>
-							<td class="pv-td-mono">{entry.changed_by || '—'}</td>
+							<td class="pv-td-mono">{entry.changedBy || '—'}</td>
 						</tr>
 					{/each}
 				</tbody>
