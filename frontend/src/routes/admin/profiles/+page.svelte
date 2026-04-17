@@ -69,10 +69,10 @@
 		name: '',
 		description: '',
 		sockets: 1,
-		cores: 2,
-		ram_gb: 2,
-		disk_gb: 24,
-		disk_bus: 'virtio',
+		cores: 1,
+		ramGb: 2,
+		diskGb: 16,
+		diskBus: 'virtio',
 		node: '',
 		storage: '',
 		icon: 'Globe',
@@ -128,7 +128,7 @@
 
 	async function handleSave() {
 		if (!form.name.trim()) return;
-		if (form.sockets < 1 || form.cores < 1 || form.ram_gb < 1 || form.disk_gb < 1) {
+		if (form.sockets < 1 || form.cores < 1 || form.ramGb < 1 || form.diskGb < 1) {
 			toast.error($t('admin.profiles.validation.numericRequired'));
 			return;
 		}
@@ -268,13 +268,13 @@
 								{profile.sockets * profile.cores} vCPU
 							</span>
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
-								{profile.ram_gb} GB RAM
+								{profile.ramGb} GB RAM
 							</span>
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
-								{profile.disk_gb} GB disk
+								{profile.diskGb} GB disk
 							</span>
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
-								{profile.disk_bus}
+								{profile.diskBus}
 							</span>
 							{#if profile.node}
 								<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
@@ -348,20 +348,20 @@
 				</div>
 				<div class="grid gap-1.5">
 					<Label for="p-ram">{$t('admin.profiles.fields.ramGb')}</Label>
-					<Input id="p-ram" type="number" min="1" bind:value={form.ram_gb} />
+					<Input id="p-ram" type="number" min="1" bind:value={form.ramGb} />
 				</div>
 				<div class="grid gap-1.5">
 					<Label for="p-disk">{$t('admin.profiles.fields.diskGb')}</Label>
-					<Input id="p-disk" type="number" min="1" bind:value={form.disk_gb} />
+					<Input id="p-disk" type="number" min="1" bind:value={form.diskGb} />
 				</div>
 				<div class="grid gap-1.5">
 					<Label for="p-bus">{$t('admin.profiles.fields.diskBus')}</Label>
 					<Select.Root
 						type="single"
-						bind:value={form.disk_bus}
+						bind:value={form.diskBus}
 					>
 						<Select.Trigger id="p-bus">
-							{form.disk_bus || 'Select bus...'}
+							{form.diskBus || 'Select bus...'}
 						</Select.Trigger>
 						<Select.Content>
 							{#each ['virtio', 'scsi', 'sata', 'ide'] as bus}

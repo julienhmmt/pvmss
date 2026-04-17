@@ -142,7 +142,7 @@
 							</div>
 						</td>
 						<td class="pv-td-num">
-							<span class="pv-action-badge pv-action-badge--vm">{tag.vm_count}</span>
+							<span class="pv-action-badge pv-action-badge--vm">{tag.vmCount}</span>
 						</td>
 						<td class="pv-td-actions">
 							{#if tag.name !== 'pvmss'}

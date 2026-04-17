@@ -43,7 +43,12 @@ function createAuthStore(): AuthStore {
           initialized: true,
         };
       } catch (err) {
-        console.error("[AuthStore] Token exchange failed:", err);
+        // Expected for first-time visitors or logged-out users - not an error
+        if (err instanceof Error && err.message === "not authenticated") {
+          console.debug("[AuthStore] User not authenticated");
+        } else {
+          console.error("[AuthStore] Token exchange failed:", err);
+        }
         state = { username: "", isAdmin: false, initialized: true };
       }
     },

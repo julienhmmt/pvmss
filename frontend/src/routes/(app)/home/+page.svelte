@@ -370,12 +370,12 @@
 										{/if}
 									</td>
 									<td class="tabular-nums text-sm">
-										{#if vm.max_mem_mb > 0}
+										{#if vm.maxMemMb > 0}
 											<div class="pv-usage-bar w-24">
 												<div class="pv-usage-bar-track" style="flex:1">
-													<div class="pv-usage-bar-fill" style="width:{Math.round((vm.mem_mb / vm.max_mem_mb) * 100)}%"></div>
+													<div class="pv-usage-bar-fill" style="width:{Math.round((vm.memMb / vm.maxMemMb) * 100)}%"></div>
 												</div>
-												<span class="pv-usage-label">{Math.round(vm.max_mem_mb / 1024)} GB</span>
+												<span class="pv-usage-label">{Math.round(vm.maxMemMb / 1024)} GB</span>
 											</div>
 										{:else}
 											<span class="text-muted-foreground">—</span>
