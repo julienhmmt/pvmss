@@ -130,8 +130,8 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		case isAPIPath(r.URL.Path):
 			apiHandler.ServeHTTP(w, r)
 		case isLegacyAPIPath(r.URL.Path):
-			// Session-authenticated API routes (/api/settings, /api/vmbr, /api/health)
-			// must go through the app middleware even when the SPA is available.
+			// Session-authenticated API routes (/api/health) must go through
+			// the app middleware even when the SPA is available.
 			appHandler.ServeHTTP(w, r)
 		case spaAvailable:
 			// Serve SvelteKit SPA for all other paths when available

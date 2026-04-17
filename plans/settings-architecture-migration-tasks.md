@@ -422,25 +422,25 @@ Migrate from monolithic settings.json to a 2-tier SQLite-first configuration sys
 
 **Tasks**:
 
-- [ ] T202 Remove LoadSettings() function from backend/state/settings.go
-- [ ] T203 Remove WriteSettings() function from backend/state/settings.go
-- [ ] T204 Remove all file-based I/O code from backend/state/settings.go
-- [ ] T205 Remove JWTSecret from all struct definitions
-- [ ] T206 Remove JWTSecret from all test fixtures
-- [ ] T207 Remove PVMSS_SETTINGS_PATH env var support from backend/main.go
-- [ ] T208 Remove PVMSS_SETTINGS_PATH from example.env
-- [ ] T209 Remove /api/settings legacy endpoint
-- [ ] T210 Remove /api/settings/all legacy endpoint
-- [ ] T211 Remove /api/vmbr/all legacy endpoint
-- [ ] T212 Remove POST /api/v1/admin/migrate-from-json endpoint
-- [ ] T213 Update all tests to use DB fixtures instead of settings.json test files
-- [ ] T214 Delete any remaining settings.json test fixtures
-- [ ] T215 Search codebase for any remaining references to settings.json and remove
-- [ ] T216 Search codebase for any remaining references to JWTSecret in structs and remove
-- [ ] T217 Run full test suite to ensure all tests pass
-- [ ] T218 Verify no deprecated routes remain in route registration
-- [ ] T219 Update README.md to reflect new configuration system
-- [ ] T220 Update README.fr.md to reflect new configuration system
+- [x] T202 Remove LoadSettings() function from backend/state/settings.go
+- [x] T203 Remove WriteSettings() function from backend/state/settings.go
+- [x] T204 Remove all file-based I/O code from backend/state/settings.go
+- [x] T205 Remove JWTSecret from all struct definitions
+- [x] T206 Remove JWTSecret from all test fixtures
+- [x] T207 Remove PVMSS_SETTINGS_PATH env var support from backend/main.go
+- [x] T208 Remove PVMSS_SETTINGS_PATH from example.env
+- [x] T209 Remove /api/settings legacy endpoint
+- [x] T210 Remove /api/settings/all legacy endpoint
+- [x] T211 Remove /api/vmbr/all legacy endpoint
+- [x] T212 Remove POST /api/v1/admin/migrate-from-json endpoint
+- [x] T213 Update all tests to use DB fixtures instead of settings.json test files
+- [x] T214 Delete any remaining settings.json test fixtures
+- [x] T215 Search codebase for any remaining references to settings.json and remove
+- [x] T216 Search codebase for any remaining references to JWTSecret in structs and remove
+- [x] T217 Run full test suite to ensure all tests pass
+- [x] T218 Verify no deprecated routes remain in route registration
+- [x] T219 Update README.md to reflect new configuration system
+- [x] T220 Update README.fr.md to reflect new configuration system
 
 ---
 

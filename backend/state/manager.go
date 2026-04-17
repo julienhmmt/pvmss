@@ -76,7 +76,7 @@ type appState struct {
 }
 
 // MakeAppState creates a new StateManager without a database.
-// Suitable for unit tests and legacy settings.json operation.
+// Suitable for unit tests only (production requires a database).
 func MakeAppState() StateManager {
 	return newAppState(nil)
 }
