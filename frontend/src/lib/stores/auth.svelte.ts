@@ -43,10 +43,8 @@ function createAuthStore(): AuthStore {
           initialized: true,
         };
       } catch (err) {
-        // Expected for first-time visitors or logged-out users - not an error
-        if (err instanceof Error && err.message === "not authenticated") {
-          console.debug("[AuthStore] User not authenticated");
-        } else {
+        // Expected for first-time visitors or logged-out users - silently set logged-out state
+        if (err instanceof Error && err.message !== "not authenticated") {
           console.error("[AuthStore] Token exchange failed:", err);
         }
         state = { username: "", isAdmin: false, initialized: true };
