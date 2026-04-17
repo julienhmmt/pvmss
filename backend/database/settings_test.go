@@ -81,28 +81,31 @@ func TestNodeLimits_EmptyOnFreshDB(t *testing.T) {
 
 func TestNodeLimits_SetAndGet(t *testing.T) {
 	db := openTestDB(t)
-	require.NoError(t, db.SetNodeLimit("pve1", 10, "admin"))
-	require.NoError(t, db.SetNodeLimit("pve2", 5, "admin"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 10, MaxVCPUs: 16, MaxRAMGB: 32}, "admin"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve2", MaxVMs: 5}, "admin"))
 
 	m, err := db.GetNodeLimits()
 	require.NoError(t, err)
-	assert.Equal(t, 10, m["pve1"])
-	assert.Equal(t, 5, m["pve2"])
+	assert.Equal(t, 10, m["pve1"].MaxVMs)
+	assert.Equal(t, 16, m["pve1"].MaxVCPUs)
+	assert.Equal(t, 32, m["pve1"].MaxRAMGB)
+	assert.Equal(t, 5, m["pve2"].MaxVMs)
 }
 
 func TestNodeLimits_Update(t *testing.T) {
 	db := openTestDB(t)
-	require.NoError(t, db.SetNodeLimit("pve1", 10, "admin"))
-	require.NoError(t, db.SetNodeLimit("pve1", 20, "admin"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 10}, "admin"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 20, MaxVCPUs: 8}, "admin"))
 
 	m, err := db.GetNodeLimits()
 	require.NoError(t, err)
-	assert.Equal(t, 20, m["pve1"])
+	assert.Equal(t, 20, m["pve1"].MaxVMs)
+	assert.Equal(t, 8, m["pve1"].MaxVCPUs)
 }
 
 func TestNodeLimits_Delete(t *testing.T) {
 	db := openTestDB(t)
-	require.NoError(t, db.SetNodeLimit("pve1", 10, "admin"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 10}, "admin"))
 	require.NoError(t, db.DeleteNodeLimit("pve1", "admin"))
 
 	m, err := db.GetNodeLimits()
@@ -118,7 +121,7 @@ func TestNodeLimits_DeleteNonExistent_ReturnsErrNotFound(t *testing.T) {
 
 func TestNodeLimits_SetCreatesAuditEntry(t *testing.T) {
 	db := openTestDB(t)
-	require.NoError(t, db.SetNodeLimit("pve1", 3, "bob"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 3}, "bob"))
 
 	entries, err := db.ListAuditLog("node_limits", 5, 0)
 	require.NoError(t, err)

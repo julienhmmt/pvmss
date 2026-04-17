@@ -103,3 +103,12 @@ CREATE TABLE IF NOT EXISTS app_bootstrap (
     version      TEXT
 );
 `
+
+// schemaV2 adds capacity-limit columns to the node_limits table.
+// SQLite's ALTER TABLE only supports adding columns (no dropping/renaming in older versions),
+// so this migration is forward-only and fully idempotent via IF NOT EXISTS semantics.
+const schemaV2 = `
+ALTER TABLE node_limits ADD COLUMN max_vcpus  INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE node_limits ADD COLUMN max_ram_gb INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE node_limits ADD COLUMN max_disk_gb INTEGER NOT NULL DEFAULT 0;
+`

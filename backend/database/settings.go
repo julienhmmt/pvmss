@@ -27,19 +27,29 @@ type SFTPConfig struct {
 	RemotePath     string `json:"remote_path"`
 }
 
+// NodeLimit holds the per-node capacity caps stored in the node_limits table.
+// Zero values mean "no cap" for that dimension.
+type NodeLimit struct {
+	NodeName  string `json:"node"`
+	MaxVMs    int    `json:"max_vms"`
+	MaxVCPUs  int    `json:"max_vcpus"`
+	MaxRAMGB  int    `json:"max_ram_gb"`
+	MaxDiskGB int    `json:"max_disk_gb"`
+}
+
 // AppSettings is the in-memory representation assembled from all DB tables.
 // It is the type returned by LoadAppSettings and used to warm the StateManager cache.
 type AppSettings struct {
-	Limits             VMLimits            `json:"limits"`
-	NodeLimits         map[string]int      `json:"node_limits"`
-	EnabledNodes       []string            `json:"enabled_nodes"`
-	EnabledStorages    []string            `json:"enabled_storages"`
-	EnabledISOs        []string            `json:"enabled_isos"`
-	EnabledVMBRs       []string            `json:"enabled_vmbrs"`
-	Tags               []string            `json:"tags"`
-	CloudInitTemplates []CloudInitTemplate `json:"cloudinit_templates"`
-	VMProfiles         []VMProfile         `json:"vm_profiles"`
-	SFTPConfig         SFTPConfig          `json:"sftp_config"`
+	Limits             VMLimits             `json:"limits"`
+	NodeLimits         map[string]NodeLimit `json:"node_limits"`
+	EnabledNodes       []string             `json:"enabled_nodes"`
+	EnabledStorages    []string             `json:"enabled_storages"`
+	EnabledISOs        []string             `json:"enabled_isos"`
+	EnabledVMBRs       []string             `json:"enabled_vmbrs"`
+	Tags               []string             `json:"tags"`
+	CloudInitTemplates []CloudInitTemplate  `json:"cloudinit_templates"`
+	VMProfiles         []VMProfile          `json:"vm_profiles"`
+	SFTPConfig         SFTPConfig           `json:"sftp_config"`
 }
 
 // GetVMLimits reads the singleton vm_limits row.
@@ -145,9 +155,12 @@ func boolToInt(b bool) int {
 	return 0
 }
 
-// GetNodeLimits returns a map of node name → max_vms override.
-func (s *sqliteDB) GetNodeLimits() (map[string]int, error) {
-	rows, err := s.db.Query(`SELECT node_name, max_vms FROM node_limits`)
+// GetNodeLimits returns a map of node name → NodeLimit with all capacity caps.
+func (s *sqliteDB) GetNodeLimits() (map[string]NodeLimit, error) {
+	rows, err := s.db.Query(`
+		SELECT node_name, max_vms, max_vcpus, max_ram_gb, max_disk_gb
+		FROM node_limits
+	`)
 	if err != nil {
 		return nil, fmt.Errorf("query node_limits: %w", err)
 	}
@@ -156,26 +169,27 @@ func (s *sqliteDB) GetNodeLimits() (map[string]int, error) {
 }
 
 // scanNodeLimitsRows scans node_limits rows into a map.
-func scanNodeLimitsRows(rows *sql.Rows) (map[string]int, error) {
-	result := make(map[string]int)
+func scanNodeLimitsRows(rows *sql.Rows) (map[string]NodeLimit, error) {
+	result := make(map[string]NodeLimit)
 	for rows.Next() {
-		var name string
-		var maxVMs int
-		if err := rows.Scan(&name, &maxVMs); err != nil {
+		var nl NodeLimit
+		if err := rows.Scan(&nl.NodeName, &nl.MaxVMs, &nl.MaxVCPUs, &nl.MaxRAMGB, &nl.MaxDiskGB); err != nil {
 			return nil, fmt.Errorf("scan node_limits: %w", err)
 		}
-		result[name] = maxVMs
+		result[nl.NodeName] = nl
 	}
 	return result, rows.Err()
 }
 
-// SetNodeLimit upserts the max_vms limit for a single node.
-func (s *sqliteDB) SetNodeLimit(node string, maxVMs int, changedBy string) error {
+// SetNodeLimit upserts all capacity limits for a single node.
+func (s *sqliteDB) SetNodeLimit(limit NodeLimit, changedBy string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
-	rows, err := tx.Query(`SELECT node_name, max_vms FROM node_limits`)
+	rows, err := tx.Query(`
+		SELECT node_name, max_vms, max_vcpus, max_ram_gb, max_disk_gb FROM node_limits
+	`)
 	if err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("query node_limits: %w", err)
@@ -185,21 +199,24 @@ func (s *sqliteDB) SetNodeLimit(node string, maxVMs int, changedBy string) error
 		_ = tx.Rollback()
 		return err
 	}
-	action := auditAction(oldMap, node)
-	oldJSON, _ := json.Marshal(map[string]int{node: oldMap[node]})
-	newJSON, _ := json.Marshal(map[string]int{node: maxVMs})
+	action := auditAction(oldMap, limit.NodeName)
+	oldJSON, _ := json.Marshal(oldMap[limit.NodeName])
+	newJSON, _ := json.Marshal(limit)
 	_, execErr := tx.Exec(`
-		INSERT INTO node_limits (node_name, max_vms, updated_at)
-		VALUES (?, ?, CURRENT_TIMESTAMP)
+		INSERT INTO node_limits (node_name, max_vms, max_vcpus, max_ram_gb, max_disk_gb, updated_at)
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(node_name) DO UPDATE SET
 		    max_vms    = excluded.max_vms,
+		    max_vcpus  = excluded.max_vcpus,
+		    max_ram_gb = excluded.max_ram_gb,
+		    max_disk_gb = excluded.max_disk_gb,
 		    updated_at = CURRENT_TIMESTAMP
-	`, node, maxVMs)
+	`, limit.NodeName, limit.MaxVMs, limit.MaxVCPUs, limit.MaxRAMGB, limit.MaxDiskGB)
 	if execErr != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("upsert node_limits: %w", execErr)
 	}
-	if err := appendAudit(tx, "node_limits", node, action, string(oldJSON), string(newJSON), changedBy); err != nil {
+	if err := appendAudit(tx, "node_limits", limit.NodeName, action, string(oldJSON), string(newJSON), changedBy); err != nil {
 		_ = tx.Rollback()
 		return err
 	}
@@ -213,7 +230,9 @@ func (s *sqliteDB) DeleteNodeLimit(node string, changedBy string) error {
 	if err != nil {
 		return err
 	}
-	rows, err := tx.Query(`SELECT node_name, max_vms FROM node_limits`)
+	rows, err := tx.Query(`
+		SELECT node_name, max_vms, max_vcpus, max_ram_gb, max_disk_gb FROM node_limits
+	`)
 	if err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("query node_limits: %w", err)
@@ -227,7 +246,7 @@ func (s *sqliteDB) DeleteNodeLimit(node string, changedBy string) error {
 		_ = tx.Rollback()
 		return fmt.Errorf("delete node_limit %q: %w", node, ErrNotFound)
 	}
-	oldJSON, _ := json.Marshal(map[string]int{node: oldMap[node]})
+	oldJSON, _ := json.Marshal(oldMap[node])
 	if _, execErr := tx.Exec(`DELETE FROM node_limits WHERE node_name = ?`, node); execErr != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("delete node_limits: %w", execErr)

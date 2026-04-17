@@ -7,19 +7,24 @@
 	interface NodeLimit {
 		node: string;
 		max_vms: number;
+		max_vcpus: number;
+		max_ram_gb: number;
+		max_disk_gb: number;
 	}
+
+	const EMPTY_FORM: NodeLimit = { node: '', max_vms: 0, max_vcpus: 0, max_ram_gb: 0, max_disk_gb: 0 };
 
 	let { meta, data, onUpdate }: { meta: SectionMeta; data: NodeLimit[]; onUpdate: () => Promise<void> } = $props();
 
 	let items = $derived([...(data ?? [])]);
 	let editingNode = $state<string | null>(null); // null = not editing, '' = new item
-	let editForm = $state<NodeLimit>({ node: '', max_vms: 0 });
+	let editForm = $state<NodeLimit>({ ...EMPTY_FORM });
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
 	function startNew() {
 		editingNode = '';
-		editForm = { node: '', max_vms: 0 };
+		editForm = { ...EMPTY_FORM };
 	}
 
 	function startEdit(item: NodeLimit) {
@@ -29,16 +34,20 @@
 
 	function cancelEdit() {
 		editingNode = null;
-		editForm = { node: '', max_vms: 0 };
+		editForm = { ...EMPTY_FORM };
+		error = null;
 	}
 
 	async function handleSave() {
 		if (!editForm.node) { error = $t('admin.settings.overview.nodelimits.errorNode'); return; }
 		if (editForm.max_vms < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxVms'); return; }
+		if (editForm.max_vcpus < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxVcpus'); return; }
+		if (editForm.max_ram_gb < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxRam'); return; }
+		if (editForm.max_disk_gb < 0) { error = $t('admin.settings.overview.nodelimits.errorMaxDisk'); return; }
 		saving = true;
 		error = null;
 		try {
-			await upsertSettings({ table: TABLE_NODE_LIMITS, record: { node: editForm.node, max_vms: editForm.max_vms } });
+			await upsertSettings({ table: TABLE_NODE_LIMITS, record: { ...editForm } });
 			await onUpdate();
 			cancelEdit();
 		} catch (e) {
@@ -78,13 +87,42 @@
 					</label>
 					<input id="node_name" type="text" bind:value={editForm.node}
 						disabled={saving || editingNode !== ''}
+						placeholder="pve1"
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
 					<label for="node_max_vms" class="block text-xs font-medium text-muted-foreground">
 						{$t('admin.settings.overview.nodelimits.maxVms')}
+						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
 					</label>
 					<input id="node_max_vms" type="number" min="0" bind:value={editForm.max_vms}
+						disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1">
+					<label for="node_max_vcpus" class="block text-xs font-medium text-muted-foreground">
+						{$t('admin.settings.overview.nodelimits.maxVcpus')}
+						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
+					</label>
+					<input id="node_max_vcpus" type="number" min="0" bind:value={editForm.max_vcpus}
+						disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1">
+					<label for="node_max_ram_gb" class="block text-xs font-medium text-muted-foreground">
+						{$t('admin.settings.overview.nodelimits.maxRamGb')}
+						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
+					</label>
+					<input id="node_max_ram_gb" type="number" min="0" bind:value={editForm.max_ram_gb}
+						disabled={saving}
+						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
+				</div>
+				<div class="space-y-1">
+					<label for="node_max_disk_gb" class="block text-xs font-medium text-muted-foreground">
+						{$t('admin.settings.overview.nodelimits.maxDiskGb')}
+						<span class="text-muted-foreground/60 font-normal ml-1">{$t('admin.settings.overview.nodelimits.zeroUnlimited')}</span>
+					</label>
+					<input id="node_max_disk_gb" type="number" min="0" bind:value={editForm.max_disk_gb}
 						disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -99,19 +137,28 @@
 		</div>
 	{/if}
 
-	{#if editingNode === null && error}
-		<p class="text-sm text-destructive">{error}</p>
-	{/if}
-
 	{#if items.length === 0}
 		<p class="text-sm text-muted-foreground">{$t('admin.settings.overview.nodelimits.emptyHint')}</p>
 	{:else}
 		<ul class="space-y-1.5">
 			{#each items as item}
-				<li class="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2">
-					<div>
+				<li class="flex items-start justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 gap-3">
+					<div class="min-w-0">
 						<span class="text-sm font-medium">{item.node}</span>
-						<span class="text-xs text-muted-foreground ml-2">max {item.max_vms} VMs</span>
+						<div class="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+							{#if item.max_vms > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxVms')}: {item.max_vms}</span>
+							{/if}
+							{#if item.max_vcpus > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxVcpus')}: {item.max_vcpus}</span>
+							{/if}
+							{#if item.max_ram_gb > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxRamGb')}: {item.max_ram_gb} GB</span>
+							{/if}
+							{#if item.max_disk_gb > 0}
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxDiskGb')}: {item.max_disk_gb} GB</span>
+							{/if}
+						</div>
 					</div>
 					<Button size="sm" variant="ghost" onclick={() => startEdit(item)} disabled={saving || editingNode !== null}>
 						{$t('common.edit')}

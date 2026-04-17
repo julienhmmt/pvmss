@@ -77,8 +77,12 @@ type StateManager interface {
 	// SetVMLimits persists updated VM resource limits.
 	SetVMLimits(limits *database.VMLimits, changedBy string) error
 
-	// SetNodeLimit upserts a per-node maximum VM count.
-	SetNodeLimit(node string, maxVMs int, changedBy string) error
+	// GetNodeLimitFromDB retrieves a single node's limits directly from the database.
+	// Returns the limit, true if found, or false if not found.
+	GetNodeLimitFromDB(node string) (database.NodeLimit, bool, error)
+
+	// SetNodeLimit upserts all capacity limits for a single node.
+	SetNodeLimit(limit database.NodeLimit, changedBy string) error
 
 	// DeleteNodeLimit removes a per-node VM count override.
 	DeleteNodeLimit(node string, changedBy string) error

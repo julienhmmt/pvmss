@@ -34,8 +34,8 @@ type DB interface {
 	SetVMLimits(limits *VMLimits, changedBy string) error
 
 	// Per-node limits
-	GetNodeLimits() (map[string]int, error)
-	SetNodeLimit(node string, maxVMs int, changedBy string) error
+	GetNodeLimits() (map[string]NodeLimit, error)
+	SetNodeLimit(limit NodeLimit, changedBy string) error
 	DeleteNodeLimit(node string, changedBy string) error
 
 	// List-based settings

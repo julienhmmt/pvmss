@@ -308,6 +308,9 @@ func (h *VMCreateHandler) resolveNodes(ctx context.Context, snapshot *state.Prox
 			}
 			for nodeName, nodeLimits := range settings.Limits.Nodes {
 				usage := nodeUsage[nodeName]
+				if nodeLimits.MaxVMs > 0 && usage.totalVMs >= nodeLimits.MaxVMs {
+					disabledNodes[nodeName] = true
+				}
 				if nodeLimits.Cores.Max > 0 && usage.cores+minCores > nodeLimits.Cores.Max {
 					disabledNodes[nodeName] = true
 				}
@@ -330,10 +333,11 @@ func (h *VMCreateHandler) resolveNodes(ctx context.Context, snapshot *state.Prox
 	return options, disabledNodes
 }
 
-// nodeAggregateUsage holds the aggregate cores and RAM (in GB) used by pvmss VMs on a node.
+// nodeAggregateUsage holds the aggregate resource usage for pvmss VMs on a node.
 type nodeAggregateUsage struct {
-	cores int
-	ramGB int
+	totalVMs int
+	cores    int
+	ramGB    int
 }
 
 // computeNodeUsageFromSnapshot sums cores and RAM for pvmss-tagged VMs per node.
@@ -368,6 +372,7 @@ func computeNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) map[st
 			cores = 1
 		}
 		u := usage[vm.Node]
+		u.totalVMs++
 		u.cores += sockets * cores
 		// Round to nearest GB to avoid truncation errors
 		u.ramGB += int((vm.MemoryMB + 512) / 1024) //nolint:gosec

@@ -58,7 +58,10 @@ func (m *mockStateManager) SetEnvConfig(cfg *envpkg.EnvConfig)                  
 func (m *mockStateManager) LoadSettingsFromDB() error                                     { return nil }
 func (m *mockStateManager) HasDB() bool                                                   { return false }
 func (m *mockStateManager) SetVMLimits(limits *database.VMLimits, changedBy string) error { return nil }
-func (m *mockStateManager) SetNodeLimit(node string, maxVMs int, changedBy string) error  { return nil }
+func (m *mockStateManager) GetNodeLimitFromDB(node string) (database.NodeLimit, bool, error) {
+	return database.NodeLimit{}, false, nil
+}
+func (m *mockStateManager) SetNodeLimit(limit database.NodeLimit, changedBy string) error { return nil }
 func (m *mockStateManager) DeleteNodeLimit(node string, changedBy string) error           { return nil }
 func (m *mockStateManager) SetEnabledNodes(nodes []string, changedBy string) error        { return nil }
 func (m *mockStateManager) SetEnabledStorages(storages []string, changedBy string) error  { return nil }
