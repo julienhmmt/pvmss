@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"pvmss/logger"
 )
 
 // allDataTables is the ordered list of tables copied during a RestoreFrom.
@@ -61,7 +62,7 @@ func (s *sqliteDB) RestoreFrom(srcPath string, changedBy string) error {
 	}
 	defer func() {
 		if _, err := conn.ExecContext(ctx, `DETACH DATABASE imported`); err != nil {
-			// Log but don't fail - connection will be closed anyway
+			logger.Get().Warn().Err(err).Msg("failed to detach imported database during restore")
 		}
 	}()
 

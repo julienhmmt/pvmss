@@ -208,11 +208,7 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings, _, err := state.LoadSettings()
-	if err != nil {
-		errInternal(w)
-		return
-	}
+	settings := h.state.GetSettings()
 
 	// Validate storage against allowed list.
 	// Handles both "node:storage" and plain "storage" formats in EnabledStorages.
@@ -427,11 +423,7 @@ func (h *VMDiskHandler) ResizeDisk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings, _, err := state.LoadSettings()
-	if err != nil {
-		errInternal(w)
-		return
-	}
+	settings := h.state.GetSettings()
 
 	diskMax := settings.Limits.VM.Disk.Max
 	if diskMax < 1 {

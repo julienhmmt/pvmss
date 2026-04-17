@@ -90,10 +90,10 @@ SvelteKit SPA using Svelte 5 runes, TypeScript, Tailwind CSS, and `adapter-stati
 
 - `PVMSS_OFFLINE=true` — demo mode, disables all Proxmox calls (used in offline tests)
 - `PVMSS_ENV` — `production` (default) or `development`
-- `PVMSS_SETTINGS_PATH` — path to `settings.json` (default `/app/settings.json`)
+- `PVMSS_DB_PATH` — path to SQLite database file (default `/data/pvmss.db`)
 - `LOG_LEVEL` / `LOG_FORMAT` / `LOG_OUTPUT` — logging config
 
-**`settings.json`** controls approved nodes/ISOs/storages/bridges, VM resource limits, per-user VM quotas, and SFTP cloud-init config. The `pvmss` tag is mandatory in `tags`.
+**Database** stores approved nodes/ISOs/storages/bridges, VM resource limits, per-user VM quotas, and SFTP cloud-init config. The `pvmss` tag is mandatory in `tags`.
 
 ## Testing Notes
 
