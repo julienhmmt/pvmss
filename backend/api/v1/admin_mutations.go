@@ -478,16 +478,56 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 			errInternal(w)
 			return
 		}
-		// Upsert per-node VM count limits from the request's Nodes map.
+		// Upsert per-node limits from the request's Nodes map.
+		// Preserve capacity limits (max_vcpus, max_ram_gb, max_disk_gb) already
+		// stored in the DB; only update max_vms from the Limits admin page.
 		for nodeName, nodeReq := range req.Nodes {
 			if nodeReq.MaxVMs > 0 {
-				if err := h.state.SetNodeLimit(nodeName, nodeReq.MaxVMs, changedBy); err != nil {
+				// Read existing limits directly from DB to avoid cache staleness.
+				existing, found, err := h.state.GetNodeLimitFromDB(nodeName)
+				if err != nil {
+					logger.Get().Error().Err(err).Str("node", nodeName).Msg("UpdateLimits: failed to read existing node limits")
+					errInternal(w)
+					return
+				}
+				if !found {
+					existing = database.NodeLimit{NodeName: nodeName}
+				}
+				if err := h.state.SetNodeLimit(database.NodeLimit{
+					NodeName:  nodeName,
+					MaxVMs:    nodeReq.MaxVMs,
+					MaxVCPUs:  existing.MaxVCPUs,
+					MaxRAMGB:  existing.MaxRAMGB,
+					MaxDiskGB: existing.MaxDiskGB,
+				}, changedBy); err != nil {
 					errInternal(w)
 					return
 				}
 			} else {
-				// Zero means remove the per-node override.
-				_ = h.state.DeleteNodeLimit(nodeName, changedBy)
+				// Zero means remove the VM count limit, but preserve capacity limits.
+				// Read existing to preserve capacity limits that may have been set via Settings Overview.
+				existing, found, err := h.state.GetNodeLimitFromDB(nodeName)
+				if err != nil {
+					logger.Get().Error().Err(err).Str("node", nodeName).Msg("UpdateLimits: failed to read existing node limits for delete")
+					errInternal(w)
+					return
+				}
+				if found && (existing.MaxVCPUs > 0 || existing.MaxRAMGB > 0 || existing.MaxDiskGB > 0) {
+					// Preserve capacity limits by updating with zero MaxVMs instead of deleting.
+					if err := h.state.SetNodeLimit(database.NodeLimit{
+						NodeName:  nodeName,
+						MaxVMs:    0,
+						MaxVCPUs:  existing.MaxVCPUs,
+						MaxRAMGB:  existing.MaxRAMGB,
+						MaxDiskGB: existing.MaxDiskGB,
+					}, changedBy); err != nil {
+						errInternal(w)
+						return
+					}
+				} else {
+					// No capacity limits exist, safe to delete the row entirely.
+					_ = h.state.DeleteNodeLimit(nodeName, changedBy)
+				}
 			}
 		}
 	} else {

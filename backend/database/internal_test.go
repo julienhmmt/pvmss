@@ -208,7 +208,7 @@ func TestListAuditLog_ClosedDB_ReturnsError(t *testing.T) {
 
 func TestSetNodeLimit_ClosedDB_ReturnsError(t *testing.T) {
 	s := closedDB(t)
-	err := s.SetNodeLimit("pve1", 5, "admin")
+	err := s.SetNodeLimit(NodeLimit{NodeName: "pve1", MaxVMs: 5}, "admin")
 	assert.Error(t, err)
 }
 

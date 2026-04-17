@@ -97,8 +97,11 @@ type VMLimitsPayload struct {
 
 // NodeLimitPayload is the shape accepted by the node_limits upsert.
 type NodeLimitPayload struct {
-	Node   string `json:"node"`
-	MaxVMs int    `json:"max_vms"`
+	Node      string `json:"node"`
+	MaxVMs    int    `json:"max_vms"`
+	MaxVCPUs  int    `json:"max_vcpus"`
+	MaxRAMGB  int    `json:"max_ram_gb"`
+	MaxDiskGB int    `json:"max_disk_gb"`
 }
 
 // SFTPConfigPayload mirrors database.SFTPConfig with JSON-friendly keys.
@@ -249,10 +252,17 @@ func buildVMLimitsSection(s *state.AppSettings, latest database.AuditEntry) Over
 func buildNodeLimitsSection(s *state.AppSettings, latest database.AuditEntry) OverviewSection {
 	rows := make([]NodeLimitPayload, 0, len(s.Limits.Nodes))
 	for name, node := range s.Limits.Nodes {
-		if node.MaxVMs <= 0 {
+		// Include the row if any limit is set (at least one non-zero field).
+		if node.MaxVMs <= 0 && node.Cores.Max <= 0 && node.RAM.Max <= 0 && node.MaxDiskGB <= 0 {
 			continue
 		}
-		rows = append(rows, NodeLimitPayload{Node: name, MaxVMs: node.MaxVMs})
+		rows = append(rows, NodeLimitPayload{
+			Node:      name,
+			MaxVMs:    node.MaxVMs,
+			MaxVCPUs:  node.Cores.Max,
+			MaxRAMGB:  node.RAM.Max,
+			MaxDiskGB: node.MaxDiskGB,
+		})
 	}
 	return OverviewSection{
 		SectionMeta: SectionMeta{
@@ -467,7 +477,23 @@ func (h *AdminSettingsOverviewHandler) upsertNodeLimit(raw json.RawMessage, chan
 	if p.MaxVMs < 0 {
 		return fmt.Errorf("node_limits: max_vms must be >= 0")
 	}
-	if err := h.state.SetNodeLimit(p.Node, p.MaxVMs, changedBy); err != nil {
+	if p.MaxVCPUs < 0 {
+		return fmt.Errorf("node_limits: max_vcpus must be >= 0")
+	}
+	if p.MaxRAMGB < 0 {
+		return fmt.Errorf("node_limits: max_ram_gb must be >= 0")
+	}
+	if p.MaxDiskGB < 0 {
+		return fmt.Errorf("node_limits: max_disk_gb must be >= 0")
+	}
+	limit := database.NodeLimit{
+		NodeName:  p.Node,
+		MaxVMs:    p.MaxVMs,
+		MaxVCPUs:  p.MaxVCPUs,
+		MaxRAMGB:  p.MaxRAMGB,
+		MaxDiskGB: p.MaxDiskGB,
+	}
+	if err := h.state.SetNodeLimit(limit, changedBy); err != nil {
 		logger.Get().Error().Err(err).Str("node", p.Node).Msg("settings overview: SetNodeLimit failed")
 		return err
 	}

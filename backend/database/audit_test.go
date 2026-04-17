@@ -40,7 +40,7 @@ func TestAudit_FilterByTable(t *testing.T) {
 func TestAudit_LimitAndOffset(t *testing.T) {
 	db := openTestDB(t)
 	for i := range 5 {
-		require.NoError(t, db.SetNodeLimit("pve1", i+1, "admin"))
+		require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: i + 1}, "admin"))
 	}
 
 	page1, err := db.ListAuditLog("node_limits", 2, 0)
@@ -58,8 +58,8 @@ func TestAudit_LimitAndOffset(t *testing.T) {
 
 func TestAudit_OrderedMostRecentFirst(t *testing.T) {
 	db := openTestDB(t)
-	require.NoError(t, db.SetNodeLimit("pve1", 1, "first"))
-	require.NoError(t, db.SetNodeLimit("pve1", 2, "second"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 1}, "first"))
+	require.NoError(t, db.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 2}, "second"))
 
 	entries, err := db.ListAuditLog("node_limits", 10, 0)
 	require.NoError(t, err)

@@ -182,7 +182,7 @@ func TestAppState_SetNodeLimit_CacheInvalidation(t *testing.T) {
 		t.Fatalf("LoadSettingsFromDB: %v", err)
 	}
 
-	if err := sm.SetNodeLimit("pve1", 8, "admin"); err != nil {
+	if err := sm.SetNodeLimit(database.NodeLimit{NodeName: "pve1", MaxVMs: 8}, "admin"); err != nil {
 		t.Fatalf("SetNodeLimit: %v", err)
 	}
 	if err := sm.DeleteNodeLimit("pve1", "admin"); err != nil {
@@ -374,7 +374,9 @@ func TestAppState_NilDB_SettersReturnError(t *testing.T) {
 		{"SetVMLimits", func() error {
 			return sm.SetVMLimits(&database.VMLimits{MaxVMPerUser: 5}, "admin")
 		}, true},
-		{"SetNodeLimit", func() error { return sm.SetNodeLimit("n", 5, "admin") }, true},
+		{"SetNodeLimit", func() error {
+			return sm.SetNodeLimit(database.NodeLimit{NodeName: "n", MaxVMs: 5}, "admin")
+		}, true},
 		{"DeleteNodeLimit", func() error { return sm.DeleteNodeLimit("n", "admin") }, true},
 		{"CreateCloudInitTemplate", func() error {
 			return sm.CreateCloudInitTemplate(&database.CloudInitTemplate{ID: "x", Name: "X"}, "admin")
