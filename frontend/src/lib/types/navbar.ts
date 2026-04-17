@@ -6,6 +6,7 @@ export interface NavLink {
   icon: any;
   label: string;
   authRequired: boolean;
+  adminOnly: boolean;
 }
 
 /**

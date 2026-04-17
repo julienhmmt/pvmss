@@ -5,6 +5,7 @@
 	import { toast } from 'svelte-sonner';
 	import { getVMCreateSettings, createVM } from '$lib/api/vm-create';
 	import { tasks } from '$lib/stores/tasks.svelte';
+	import { auth } from '$lib/stores/auth.svelte';
 	import type {
 		VMCreateSettings,
 		VMCreateRequest,
@@ -155,6 +156,11 @@
 	// ── Lifecycle ─────────────────────────────────────────────────────────────
 
 	onMount(async () => {
+		if (auth.isAdmin) {
+			toast.error('Local admin users cannot create VMs');
+			goto('/admin');
+			return;
+		}
 		try {
 			settings = await getVMCreateSettings();
 			quotaBlocked = settings !== null && settings.remaining_vms !== -1 && settings.remaining_vms <= 0;
