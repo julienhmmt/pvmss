@@ -4,15 +4,11 @@
 
 	let { meta, data, table, onUpdate }: { meta: SectionMeta; data: string[]; table: string; onUpdate: () => Promise<void> } = $props();
 
-	let items = $state([...(data || [])]);
+	let items = $derived.by(() => [...(data || [])]);
 	let newItem = $state('');
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
-	// Sync items when data changes
-	$effect(() => {
-		items = [...(data || [])];
-	});
 
 	async function handleAdd() {
 		if (!newItem.trim()) return;
