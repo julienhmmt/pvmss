@@ -254,14 +254,15 @@ func migrateCloudInitTemplatesTx(tx *sql.Tx, templates []JSONCloudInitTemplate, 
 	for i := range templates {
 		t := jsonToCloudInitTemplate(&templates[i])
 		newJSON, _ := json.Marshal(t)
-		_, err := tx.Exec(
-			`INSERT INTO cloudinit_templates (id, name, description, storage, filename, yaml_content, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			t.ID, t.Name, t.Description, t.Storage, t.Filename, t.YAMLContent, boolToInt(t.Enabled),
-		)
+		inserted, err := execUpsertCloudInitTemplate(tx, t)
 		if err != nil {
-			return fmt.Errorf("insert cloudinit_template %q: %w", t.ID, err)
+			return fmt.Errorf("upsert cloudinit_template %q: %w", t.ID, err)
 		}
-		if err := appendAudit(tx, "cloudinit_templates", t.ID, "create", "", string(newJSON), changedBy); err != nil {
+		action := "create"
+		if !inserted {
+			action = "update"
+		}
+		if err := appendAudit(tx, "cloudinit_templates", t.ID, action, "", string(newJSON), changedBy); err != nil {
 			return err
 		}
 	}
@@ -276,14 +277,15 @@ func migrateVMProfilesTx(tx *sql.Tx, profiles []JSONVMProfileConfig, changedBy s
 			return fmt.Errorf("encode vm_profile %q config: %w", profiles[i].ID, err)
 		}
 		newJSON, _ := json.Marshal(p)
-		_, execErr := tx.Exec(
-			`INSERT INTO vm_profiles (id, name, description, config, enabled) VALUES (?, ?, ?, ?, ?)`,
-			p.ID, p.Name, p.Description, p.Config, boolToInt(p.Enabled),
-		)
-		if execErr != nil {
-			return fmt.Errorf("insert vm_profile %q: %w", p.ID, execErr)
+		inserted, err := execUpsertVMProfile(tx, p)
+		if err != nil {
+			return fmt.Errorf("upsert vm_profile %q: %w", p.ID, err)
 		}
-		if err := appendAudit(tx, "vm_profiles", p.ID, "create", "", string(newJSON), changedBy); err != nil {
+		action := "create"
+		if !inserted {
+			action = "update"
+		}
+		if err := appendAudit(tx, "vm_profiles", p.ID, action, "", string(newJSON), changedBy); err != nil {
 			return err
 		}
 	}
