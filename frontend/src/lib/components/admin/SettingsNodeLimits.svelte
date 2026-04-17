@@ -9,16 +9,12 @@
 
 	let { meta, data, onUpdate }: { meta: SectionMeta; data: NodeLimit[]; onUpdate: () => Promise<void> } = $props();
 
-	let items = $state([...(data || [])]);
+	let items = $derived.by(() => [...(data || [])]);
 	let editingIndex = $state<number | null>(null);
 	let editForm = $state<NodeLimit>({ node: '', max_vms: 0 });
 	let saving = $state(false);
 	let error = $state<string | null>(null);
 
-	// Sync items when data changes
-	$effect(() => {
-		items = [...(data || [])];
-	});
 
 	function startEdit(index: number) {
 		editingIndex = index;
@@ -64,12 +60,12 @@
 		<div class="edit-form">
 			<h4>{editingIndex === -1 ? 'Add New Node Limit' : 'Edit Node Limit'}</h4>
 			<div class="form-group">
-				<label>Node Name</label>
-				<input type="text" bind:value={editForm.node} disabled={saving} />
+				<label for="node-name">Node Name</label>
+				<input id="node-name" type="text" bind:value={editForm.node} disabled={saving} />
 			</div>
 			<div class="form-group">
-				<label>Max VMs</label>
-				<input type="number" min="0" bind:value={editForm.max_vms} disabled={saving} />
+				<label for="max-vms">Max VMs</label>
+				<input id="max-vms" type="number" min="0" bind:value={editForm.max_vms} disabled={saving} />
 			</div>
 			<div class="form-actions">
 				<button onclick={handleSave} disabled={saving} class="btn-save">Save</button>
