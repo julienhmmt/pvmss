@@ -334,7 +334,7 @@
     },
     "settings": {
       "title": "Settings",
-      "subtitle": "Database management and audit log",
+      "subtitle": "Manual overrides, database management, and audit log",
       "overview": {
         "title": "Configuration overview",
         "accordionHint": "Manual overrides — expand only when needed",
@@ -372,7 +372,8 @@
           "addNodeLimit": "Add Node Limit",
           "editNodeLimit": "Edit Node Limit",
           "errorNode": "Node name is required",
-          "errorMaxVms": "Max VMs must be 0 or greater"
+          "errorMaxVms": "Max VMs must be 0 or greater",
+          "emptyHint": "No node limits configured. Note: per-node limits from older deployments were not automatically migrated — add them here or via Admin → Limits."
         },
         "list": {
           "addItem": "Add new item...",
