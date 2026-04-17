@@ -75,6 +75,11 @@ func validate(cfg *EnvConfig) error {
 		errs = append(errs, "ADMIN_PASSWORD_HASH must be a valid bcrypt hash (must start with $2)")
 	}
 
+	// PVMSS_DB_PATH: required, cannot be empty.
+	if cfg.DBPath == "" {
+		errs = append(errs, "PVMSS_DB_PATH is required")
+	}
+
 	// Proxmox variables: required unless running in offline mode.
 	if !cfg.Offline {
 		if cfg.ProxmoxURL == "" {

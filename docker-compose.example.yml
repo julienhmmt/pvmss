@@ -16,19 +16,21 @@ services:
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       PROXMOX_URL: "https://ip-or-name:8006/api2/json"
       PROXMOX_VERIFY_SSL: "false"
-      # PVMSS settings
+      # PVMSS settings — secrets (minimum 32 characters each)
+      JWT_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
+      SESSION_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
       ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # PVMSS settings — general
+      PVMSS_DB_PATH: "/data/pvmss.db"
       LOG_LEVEL: "INFO"
       LOG_OUTPUT: "file" # stdout / file / both
       LOG_FILE_PATH: "/app/info.log" # If "file" or "both" on LOG_OUTPUT,
       LOG_FORMAT: "console" # "console" or "json". If "json", the log will be in JSON format, used for SIEM.
-      SESSION_SECRET: "changeMeWithSomethingElseUnique"
       PVMSS_ENV: "prod" # Environment: production/prod or development/dev/developpement
       PVMSS_OFFLINE: "false"
-      PVMSS_SETTINGS_PATH: "/app/settings.json"
       TZ: "Europe/Paris"
     volumes:
-      - ./settings.json:/app/settings.json
+      - pvmss_data:/data
       - ./app.log:/app/info.log # If "file" or "both" on LOG_OUTPUT, you need to set this to a valid file path
       # Cloud-init SFTP upload (optional - mount private key for snippet uploads)
       - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
@@ -37,3 +39,6 @@ services:
         limits:
           cpus: '1'
           memory: 64M
+
+volumes:
+  pvmss_data: {}

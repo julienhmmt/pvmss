@@ -31,3 +31,6 @@ frontend/css/css_lint.txt
 
 # Git worktrees
 .worktrees/
+
+# Database
+pvmss.db
