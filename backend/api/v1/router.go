@@ -136,10 +136,15 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 func RegisterAdminDBRoutes(router *httprouter.Router, s state.StateManager, db database.DB) {
 	jwtSecret := s.GetEnvConfig().JWTSecret
 	h := MakeAdminDBHandler(s, db)
+	settingsOverviewHandler := MakeAdminSettingsOverviewHandler(s, db)
 
 	router.GET("/api/v1/admin/audit", adminJWTWrap(jwtSecret, h.ListAuditLog))
 	router.GET("/api/v1/admin/db/export", adminJWTWrap(jwtSecret, h.ExportDB))
 	router.POST("/api/v1/admin/db/import", adminJWTWrap(jwtSecret, h.ImportDB))
+
+	// Settings overview routes (Phase 9: Unified Settings Panel)
+	router.GET("/api/v1/admin/settings/overview", adminJWTWrap(jwtSecret, settingsOverviewHandler.GetSettingsOverview))
+	router.POST("/api/v1/admin/settings/upsert", adminJWTWrap(jwtSecret, settingsOverviewHandler.UpsertSettings))
 }
 
 // RegisterSetupRoutes mounts the first-run setup wizard routes onto the provided

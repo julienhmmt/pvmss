@@ -5,6 +5,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import AuditLog from '$lib/components/admin/AuditLog.svelte';
+	import SettingsOverview from '$lib/components/admin/SettingsOverview.svelte';
 	import { exportDB, importDB } from '$lib/api/admin/db';
 
 	let exportLoading = $state(false);
@@ -64,6 +65,9 @@
 </div>
 
 <div class="pv-content-width space-y-8">
+
+	<!-- Configuration overview -->
+	<SettingsOverview />
 
 	<!-- Database management -->
 	<section>
