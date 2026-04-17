@@ -191,37 +191,6 @@ func (hc *TestHandlerCollection) AppInfoPageHandler(w http.ResponseWriter, r *ht
 	http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 }
 
-// SettingsHandler handles settings API
-func (hc *TestHandlerCollection) SettingsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"tags":   []string{"test"},
-		"isos":   []string{"test.iso"},
-		"vmbrs":  []string{"vmbr0"},
-		"limits": map[string]interface{}{},
-	})
-}
-
-// AllSettingsHandler handles all settings API
-func (hc *TestHandlerCollection) AllSettingsHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"tags":   []string{"test"},
-		"isos":   []string{"test.iso"},
-		"vmbrs":  []string{"vmbr0"},
-		"limits": map[string]interface{}{},
-	})
-}
-
-// AllVMBRHandler handles VMBR API
-func (hc *TestHandlerCollection) AllVMBRHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode([]string{"vmbr0"})
-}
-
 // FaviconHandler handles favicon requests
 func (hc *TestHandlerCollection) FaviconHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
