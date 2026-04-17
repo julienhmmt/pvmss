@@ -1,6 +1,6 @@
 import { api } from "$lib/api/client";
 import type { Tag } from "$lib/types/admin";
-import { transformKeysToCamelCase } from "$lib/utils/transform";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export async function getTags(): Promise<Tag[]> {
   const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/tags");
@@ -8,7 +8,7 @@ export async function getTags(): Promise<Tag[]> {
 }
 
 export async function createTag(name: string): Promise<void> {
-  return api.post("/api/v1/admin/tags", { name });
+  return api.post("/api/v1/admin/tags", transformKeysToSnakeCase({ name }));
 }
 
 export async function deleteTag(name: string): Promise<void> {

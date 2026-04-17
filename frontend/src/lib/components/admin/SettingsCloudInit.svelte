@@ -10,7 +10,7 @@
 		description?: string;
 		storage: string;
 		filename: string;
-		yaml_content: string;
+		yamlContent: string;
 		enabled: boolean;
 	}
 
@@ -20,7 +20,7 @@
 		description: '',
 		storage: '',
 		filename: '',
-		yaml_content: '#cloud-config\n',
+		yamlContent: '#cloud-config\n',
 		enabled: true
 	});
 
@@ -83,9 +83,9 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<p class="font-medium text-sm">{meta.name}</p>
-			{#if meta.last_change_by}
+			{#if meta.lastChangeBy}
 				<p class="text-xs text-muted-foreground mt-0.5">
-					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.lastChangeBy, time: meta.lastChangeAt ? new Date(meta.lastChangeAt).toLocaleString() : '' } })}
 				</p>
 			{/if}
 		</div>
@@ -131,7 +131,7 @@
 				</div>
 				<div class="space-y-1 sm:col-span-2">
 					<label for="ci_yaml" class="block text-xs font-medium text-muted-foreground">YAML</label>
-					<textarea id="ci_yaml" rows="8" bind:value={editForm.yaml_content} disabled={saving}
+					<textarea id="ci_yaml" rows="8" bind:value={editForm.yamlContent} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"></textarea>
 				</div>
 				<div class="flex items-center gap-2">

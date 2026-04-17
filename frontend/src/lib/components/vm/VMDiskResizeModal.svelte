@@ -18,7 +18,7 @@
 	let addGB = $state(10);
 	let saving = $state(false);
 
-	const newTotal = $derived(disk ? disk.size_gb + addGB : addGB);
+	const newTotal = $derived(disk ? disk.sizeGb + addGB : addGB);
 	const exceedsMax = $derived(newTotal > maxDiskGB);
 
 	$effect(() => {
@@ -34,7 +34,7 @@
 			return;
 		}
 		if (newTotal > maxDiskGB) {
-			toast.error($t('vm.disk.sizeOutOfRange', { values: { min: disk.size_gb, max: maxDiskGB } }));
+			toast.error($t('vm.disk.sizeOutOfRange', { values: { min: disk.sizeGb, max: maxDiskGB } }));
 			return;
 		}
 		saving = true;
@@ -64,7 +64,7 @@
 			{#if disk}
 				<div class="rounded-md bg-muted px-3 py-2 text-sm">
 					<span class="font-medium">{$t('vm.disk.currentSize')}:</span>
-					{disk.size_gb} GB
+					{disk.sizeGb} GB
 				</div>
 			{/if}
 

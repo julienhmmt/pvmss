@@ -3,6 +3,8 @@
  * Phase 9: Unified Settings Panel
  */
 
+import { transformKeysToSnakeCase } from "$lib/utils/transform";
+
 export interface SectionMeta {
 	name: string;
 	category: string;
@@ -79,13 +81,17 @@ export async function getSettingsOverview(): Promise<OverviewResponse> {
  * POST /api/v1/admin/settings/upsert
  */
 export async function upsertSettings(request: UpsertRequest): Promise<UpsertResponse> {
+	const transformedRequest = {
+		...request,
+		record: transformKeysToSnakeCase(request.record)
+	};
 	const res = await fetch('/api/v1/admin/settings/upsert', {
 		method: 'POST',
 		credentials: 'same-origin',
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify(request),
+		body: JSON.stringify(transformedRequest),
 	});
 
 	if (!res.ok) {

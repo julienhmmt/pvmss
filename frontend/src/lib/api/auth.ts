@@ -1,5 +1,5 @@
 import { api } from "./client";
-import { transformKeysToCamelCase } from "$lib/utils/transform";
+import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export interface AuthUser {
   username: string;
@@ -35,20 +35,18 @@ export async function login(
   username: string,
   password: string,
 ): Promise<AuthUser> {
-  const data = await api.post<Record<string, unknown>>("/api/v1/auth/login", {
-    username,
-    password,
-    admin: false,
-  });
+  const data = await api.post<Record<string, unknown>>(
+    "/api/v1/auth/login",
+    transformKeysToSnakeCase({ username, password, admin: false }),
+  );
   return transformKeysToCamelCase<AuthUser>(data);
 }
 
 export async function adminLogin(password: string): Promise<AuthUser> {
-  const data = await api.post<Record<string, unknown>>("/api/v1/auth/login", {
-    username: "admin",
-    password,
-    admin: true,
-  });
+  const data = await api.post<Record<string, unknown>>(
+    "/api/v1/auth/login",
+    transformKeysToSnakeCase({ username: "admin", password, admin: true }),
+  );
   return transformKeysToCamelCase<AuthUser>(data);
 }
 
@@ -56,10 +54,10 @@ export async function proxmoxAdminLogin(
   username: string,
   password: string,
 ): Promise<AuthUser> {
-  const data = await api.post<Record<string, unknown>>("/api/v1/auth/proxmox-admin-login", {
-    username,
-    password,
-  });
+  const data = await api.post<Record<string, unknown>>(
+    "/api/v1/auth/proxmox-admin-login",
+    transformKeysToSnakeCase({ username, password }),
+  );
   return transformKeysToCamelCase<AuthUser>(data);
 }
 
@@ -67,5 +65,8 @@ export async function changePassword(
   current: string,
   newPassword: string,
 ): Promise<void> {
-  await api.put<void>("/api/v1/auth/me/password", { current, new: newPassword });
+  await api.put<void>(
+    "/api/v1/auth/me/password",
+    transformKeysToSnakeCase({ current, new: newPassword }),
+  );
 }

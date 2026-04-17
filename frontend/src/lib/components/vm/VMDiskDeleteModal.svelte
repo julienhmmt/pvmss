@@ -44,7 +44,7 @@
 					<span class="font-medium text-destructive">{$t('vm.disk.vmRunningWarning')}</span>
 					<br /><br />
 				{/if}
-				{#if disk?.is_boot}
+				{#if disk?.isBoot}
 					<span class="font-medium text-amber-600">{$t('vm.disk.bootDiskWarning')}</span>
 					<br /><br />
 				{/if}
@@ -55,7 +55,7 @@
 			<AlertDialog.Cancel onclick={onclose}>{$t('common.cancel')}</AlertDialog.Cancel>
 			<AlertDialog.Action
 				onclick={confirm}
-				disabled={deleting || vmStatus === 'running' || !!disk?.is_boot}
+				disabled={deleting || vmStatus === 'running' || !!disk?.isBoot}
 				class="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
 			>
 				{deleting ? $t('common.saving') : $t('vm.disk.detach')}
