@@ -15,6 +15,7 @@
 		{ value: '', label: 'All tables' },
 		{ value: 'tags', label: 'tags' },
 		{ value: 'vm_limits', label: 'vm_limits' },
+		{ value: 'node_limits', label: 'node_limits' },
 		{ value: 'enabled_nodes', label: 'enabled_nodes' },
 		{ value: 'enabled_storages', label: 'enabled_storages' },
 		{ value: 'enabled_isos', label: 'enabled_isos' },

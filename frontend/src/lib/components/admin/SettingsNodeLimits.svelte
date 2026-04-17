@@ -104,7 +104,7 @@
 	{/if}
 
 	{#if items.length === 0}
-		<p class="text-sm text-muted-foreground italic">{$t('common.noData')}</p>
+		<p class="text-sm text-muted-foreground">{$t('admin.settings.overview.nodelimits.emptyHint')}</p>
 	{:else}
 		<ul class="space-y-1.5">
 			{#each items as item}
