@@ -7,6 +7,7 @@
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { getVMs, type VMSummary } from '$lib/api/vms';
 	import { api } from '$lib/api/client';
+	import { auth } from '$lib/stores/auth.svelte';
 	import {
 		ArrowsClockwise, PlusSquare, Desktop, Play, Stop, ArrowCounterClockwise,
 		CaretUp, CaretDown, ArrowsDownUp, CheckSquare, Square, ClockCounterClockwise
@@ -204,10 +205,12 @@
 			{/if}
 		</div>
 		<div class="flex items-center gap-2">
+			{#if !auth.isAdmin}
 			<Button href="/vm/create" size="sm">
 				<PlusSquare class="mr-1.5 h-4 w-4" />
 				{$t('nav.createVm')}
 			</Button>
+		{/if}
 			<Button variant="outline" size="sm" onclick={() => load(true)} disabled={refreshing}>
 				<ArrowsClockwise class="h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
 			</Button>
@@ -226,10 +229,12 @@
 			</div>
 			<h2 class="pv-empty-title">{$t('user.home.emptyTitle')}</h2>
 			<p class="pv-empty-desc">{$t('user.home.emptyDesc')}</p>
+			{#if !auth.isAdmin}
 			<Button href="/vm/create" size="lg">
 				<PlusSquare class="mr-2 h-4 w-4" />
 				{$t('user.home.emptyAction')}
 			</Button>
+		{/if}
 		</div>
 	{:else}
 		<!-- Stats row -->
