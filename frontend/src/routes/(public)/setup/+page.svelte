@@ -50,12 +50,12 @@
 	let selectedVMBRs = $state<Set<string>>(new Set());
 
 	let limits = $state<SetupLimits>({
-		max_vms: 20,
-		max_vm_per_user: 5,
-		max_network_cards: 2,
-		max_disk_per_vm: 4,
-		max_snapshots: 5,
-		allow_custom_yaml: false,
+		maxVms: 20,
+		maxVmPerUser: 5,
+		maxNetworkCards: 2,
+		maxDiskPerVm: 4,
+		maxSnapshots: 5,
+		allowCustomYaml: false,
 	});
 
 	let completing = $state(false);
@@ -70,7 +70,7 @@
 				return;
 			}
 			if (status.offline) {
-				connectionResult = { ok: false, proxmox_url: '', error: 'offline' };
+				connectionResult = { ok: false, proxmoxUrl: '', error: 'offline' };
 			}
 		} catch {
 			error = 'Failed to load setup status.';
@@ -85,7 +85,7 @@
 		try {
 			connectionResult = await testConnection();
 		} catch {
-			connectionResult = { ok: false, proxmox_url: '', error: 'Network error' };
+			connectionResult = { ok: false, proxmoxUrl: '', error: 'Network error' };
 		} finally {
 			connectionTesting = false;
 		}
@@ -142,10 +142,10 @@
 		error = null;
 		try {
 			await completeSetup({
-				enabled_nodes: [...selectedNodes],
-				enabled_storages: [...selectedStorages],
-				enabled_isos: [...selectedISOs],
-				enabled_vmbrs: [...selectedVMBRs],
+				enabledNodes: [...selectedNodes],
+				enabledStorages: [...selectedStorages],
+				enabledIsos: [...selectedISOs],
+				enabledVmbrs: [...selectedVMBRs],
 				limits,
 			});
 			currentStep = 'done';
@@ -224,7 +224,7 @@
 						{:else}
 							<div class="space-y-2">
 								<Label>{$t('setup.connection.url')}</Label>
-								<Input value={status?.proxmox_url ?? ''} readonly class="font-mono text-sm" />
+								<Input value={status?.proxmoxUrl ?? ''} readonly class="font-mono text-sm" />
 							</div>
 
 							<Button
@@ -390,11 +390,11 @@
 						<p class="text-sm text-muted-foreground">{$t('setup.limits.description')}</p>
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							{#each [
-								{ key: 'max_vms', label: $t('setup.limits.maxVms') },
-								{ key: 'max_vm_per_user', label: $t('setup.limits.maxVmPerUser') },
-								{ key: 'max_network_cards', label: $t('setup.limits.maxNetworkCards') },
-								{ key: 'max_disk_per_vm', label: $t('setup.limits.maxDiskPerVM') },
-								{ key: 'max_snapshots', label: $t('setup.limits.maxSnapshots') },
+								{ key: 'maxVms', label: $t('setup.limits.maxVms') },
+								{ key: 'maxVmPerUser', label: $t('setup.limits.maxVmPerUser') },
+								{ key: 'maxNetworkCards', label: $t('setup.limits.maxNetworkCards') },
+								{ key: 'maxDiskPerVm', label: $t('setup.limits.maxDiskPerVM') },
+								{ key: 'maxSnapshots', label: $t('setup.limits.maxSnapshots') },
 							] as field}
 								<div class="space-y-1">
 									<Label for="limit-{field.key}">{field.label}</Label>
@@ -413,8 +413,8 @@
 							<div class="flex items-center gap-3 sm:col-span-2 pt-1">
 								<Switch
 									id="allow-yaml"
-									checked={limits.allow_custom_yaml}
-									onCheckedChange={(v) => { limits = { ...limits, allow_custom_yaml: v }; }}
+									checked={limits.allowCustomYaml}
+									onCheckedChange={(v) => { limits = { ...limits, allowCustomYaml: v }; }}
 								/>
 								<Label for="allow-yaml">{$t('setup.limits.allowCustomYaml')}</Label>
 							</div>
@@ -441,11 +441,11 @@
 							<div>
 								<span class="font-medium">{$t('setup.review.limits')}:</span>
 								<ul class="mt-1 ml-4 space-y-0.5 text-muted-foreground">
-									<li>{$t('setup.limits.maxVms')}: {limits.max_vms}</li>
-									<li>{$t('setup.limits.maxVmPerUser')}: {limits.max_vm_per_user}</li>
-									<li>{$t('setup.limits.maxNetworkCards')}: {limits.max_network_cards}</li>
-									<li>{$t('setup.limits.maxDiskPerVM')}: {limits.max_disk_per_vm}</li>
-									<li>{$t('setup.limits.maxSnapshots')}: {limits.max_snapshots}</li>
+									<li>{$t('setup.limits.maxVms')}: {limits.maxVms}</li>
+									<li>{$t('setup.limits.maxVmPerUser')}: {limits.maxVmPerUser}</li>
+									<li>{$t('setup.limits.maxNetworkCards')}: {limits.maxNetworkCards}</li>
+									<li>{$t('setup.limits.maxDiskPerVM')}: {limits.maxDiskPerVm}</li>
+									<li>{$t('setup.limits.maxSnapshots')}: {limits.maxSnapshots}</li>
 								</ul>
 							</div>
 						</div>
