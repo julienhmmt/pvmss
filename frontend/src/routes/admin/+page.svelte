@@ -38,7 +38,7 @@
 	let nodesOffline = $derived(nodes.filter((n) => n.status !== 'online').length);
 	let storageUsedPct = $derived(storageTotal > 0 ? Math.round((storageUsed / storageTotal) * 100) : 0);
 	let envVarEntries = $derived(
-		info?.env_vars ? Object.entries(info.env_vars).sort(([a], [b]) => a.localeCompare(b)) : []
+		info?.envVars ? Object.entries(info.envVars).sort(([a], [b]) => a.localeCompare(b)) : []
 	);
 
 	function usageBarClass(pct: number) {
@@ -83,7 +83,7 @@
 </svelte:head>
 
 <!-- Header -->
-<div class="pv-header -mx-6 -mt-6 mb-6 {info && !info.proxmox_connected ? 'pv-header--danger' : ''}">
+<div class="pv-header -mx-6 -mt-6 mb-6 {info && !info.proxmoxConnected ? 'pv-header--danger' : ''}">
 	<div class="pv-header-flex">
 		<div>
 			<h1 class="pv-title">{$t('admin.dashboard.title')}</h1>
@@ -103,10 +103,10 @@
 							<div class="pv-header-stat-label">{$t('nav.vms')}</div>
 							<div class="pv-header-stat-value">{vmCount}</div>
 						</div>
-						<div class="pv-header-stat {!info.proxmox_connected ? 'pv-header-stat--danger' : ''}">
+						<div class="pv-header-stat {!info.proxmoxConnected ? 'pv-header-stat--danger' : ''}">
 							<div class="pv-header-stat-label">Proxmox</div>
 							<div class="pv-header-stat-value text-base">
-								{info.proxmox_connected ? $t('admin.appinfo.connected') : $t('admin.appinfo.disconnected')}
+								{info.proxmoxConnected ? $t('admin.appinfo.connected') : $t('admin.appinfo.disconnected')}
 							</div>
 						</div>
 					</div>
@@ -195,19 +195,19 @@
 						Proxmox
 					</div>
 					<div class="flex items-center gap-2 mt-1">
-						{#if info.proxmox_connected}
+						{#if info.proxmoxConnected}
 							<span class="pv-badge pv-badge--online">{$t('admin.appinfo.connected')}</span>
 						{:else}
 							<span class="pv-badge pv-badge--offline">{$t('admin.appinfo.disconnected')}</span>
 						{/if}
 					</div>
-					{#if info.cluster_info?.is_cluster}
+					{#if info.clusterInfo?.isCluster}
 						<div class="text-xs text-muted-foreground flex items-center gap-1">
 							<GitBranch class="h-3 w-3" />
-							{info.cluster_info.cluster_name} · {info.cluster_info.node_count} {$t('nav.nodes').toLowerCase()}
+							{info.clusterInfo.clusterName} · {info.clusterInfo.nodeCount} {$t('nav.nodes').toLowerCase()}
 						</div>
 					{/if}
-					<div class="pv-td-mono text-[0.65rem] truncate">{info.proxmox_url}</div>
+					<div class="pv-td-mono text-[0.65rem] truncate">{info.proxmoxUrl}</div>
 				</div>
 			</div>
 		</section>
@@ -233,7 +233,7 @@
 						<tbody>
 							{#each nodes as node}
 								{@const cpuPct = Math.round(node.cpu * 100)}
-								{@const ramPct = Number(formatPercent(node.memory, node.max_memory))}
+								{@const ramPct = Number(formatPercent(node.memory, node.maxMemory))}
 								<tr class="pv-row">
 									<td>
 										<div class="pv-resource-cell">
@@ -290,7 +290,7 @@
 						</tr>
 						<tr class="pv-row">
 							<th class="text-muted-foreground font-medium">{$t('admin.appinfo.goVersion')}</th>
-							<td><span class="pv-td-mono">{info.go_version}</span></td>
+							<td><span class="pv-td-mono">{info.goVersion}</span></td>
 						</tr>
 						<tr class="pv-row">
 							<th class="text-muted-foreground font-medium">{$t('admin.appinfo.platform')}</th>
@@ -299,7 +299,7 @@
 						<tr class="pv-row">
 							<th class="text-muted-foreground font-medium">{$t('admin.appinfo.offlineMode')}</th>
 							<td>
-								{#if info.offline_mode}
+								{#if info.offlineMode}
 									<span class="pv-badge pv-badge--warn">{$t('common.yes')}</span>
 								{:else}
 									<span class="pv-badge pv-badge--online">{$t('common.no')}</span>

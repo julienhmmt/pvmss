@@ -458,9 +458,9 @@
 					<div class="pv-stat-label">{$t('vms.ram')}</div>
 					<div class="pv-stat-value">
 						{#if (metrics?.status ?? config.status) === 'running' && metrics}
-							{Math.round(metrics.mem_mb / 1024)} / {Math.round(metrics.max_mem_mb / 1024)} GB
+							{Math.round(metrics.memMb / 1024)} / {Math.round(metrics.maxMemMb / 1024)} GB
 						{:else}
-							{Math.round(config.max_mem_mb / 1024)} GB
+							{Math.round(config.maxMemMb / 1024)} GB
 						{/if}
 					</div>
 				</div>
@@ -470,7 +470,7 @@
 				<div>
 					<div class="pv-stat-label">{$t('common.storage')}</div>
 					<div class="pv-stat-value">
-						{config.disks.reduce((s, d) => s + d.size_gb, 0)} GB
+						{config.disks.reduce((s, d) => s + d.sizeGb, 0)} GB
 					</div>
 				</div>
 			</div>
@@ -593,7 +593,7 @@
 						</tr>
 						<tr class="pv-row">
 							<td class="pv-td-label">{$t('vms.ram')}</td>
-							<td class="pv-td-mono">{Math.round(config.max_mem_mb / 1024)} GB</td>
+							<td class="pv-td-mono">{Math.round(config.maxMemMb / 1024)} GB</td>
 						</tr>
 						<tr class="pv-row">
 							<td class="pv-td-label">{$t('admin.vms.tags')}</td>
@@ -609,7 +609,7 @@
 								{/if}
 							</td>
 						</tr>
-						{#if config.efi_enabled}
+						{#if config.efiEnabled}
 							<tr class="pv-row">
 								<td class="pv-td-label">{$t('vm.efi')}</td>
 								<td>
@@ -618,7 +618,7 @@
 								</td>
 							</tr>
 						{/if}
-						{#if config.tpm_enabled}
+						{#if config.tpmEnabled}
 							<tr class="pv-row">
 								<td class="pv-td-label">{$t('vm.tpm')}</td>
 								<td>
@@ -671,12 +671,12 @@
 								<tr class="pv-row">
 									<td class="pv-td-mono">
 										{disk.index}
-										{#if disk.is_boot}
+										{#if disk.isBoot}
 											<span class="ml-1 text-[10px] font-medium text-amber-600">({$t('vm.disk.boot')})</span>
 										{/if}
 									</td>
 									<td>{disk.storage || '—'}</td>
-									<td class="pv-td-mono">{disk.size_gb} GB</td>
+									<td class="pv-td-mono">{disk.sizeGb} GB</td>
 									<td>
 										<div class="flex items-center gap-2">
 											<button
@@ -688,8 +688,8 @@
 											<button
 												class="text-xs text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
 												onclick={() => openDiskDeleteModal(disk)}
-												disabled={isRunning || disk.is_boot}
-												title={isRunning ? $t('vm.disk.vmRunningWarning') : disk.is_boot ? $t('vm.disk.bootDiskWarning') : ''}
+												disabled={isRunning || disk.isBoot}
+												title={isRunning ? $t('vm.disk.vmRunningWarning') : disk.isBoot ? $t('vm.disk.bootDiskWarning') : ''}
 											>
 												{$t('vm.disk.detach')}
 											</button>
@@ -700,9 +700,9 @@
 						</tbody>
 					</table>
 				{/if}
-				{#if config.has_cdrom}
+				{#if config.hasCdrom}
 					<div class="border-t border-border px-4 py-2 text-sm text-muted-foreground">
-						CD-ROM: {config.current_iso || $t('vm.noISO')}
+						CD-ROM: {config.currentIso || $t('vm.noISO')}
 					</div>
 				{/if}
 			</div>
@@ -750,10 +750,10 @@
 				<div class="flex items-center justify-between border-b border-border px-4 py-3">
 					<span class="text-sm font-medium">
 						{snapshotData
-							? `${snapshotData.snapshots.filter((s) => !s.current).length} / ${snapshotData.max_allowed} ${$t('vm.snapshots')}`
+							? `${snapshotData.snapshots.filter((s) => !s.current).length} / ${snapshotData.maxAllowed} ${$t('vm.snapshots')}`
 							: $t('vm.snapshots')}
 					</span>
-					{#if !showSnapshotForm && snapshotData && snapshotData.snapshots.filter((s) => !s.current).length < snapshotData.max_allowed}
+					{#if !showSnapshotForm && snapshotData && snapshotData.snapshots.filter((s) => !s.current).length < snapshotData.maxAllowed}
 						<button
 							class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
 							onclick={() => (showSnapshotForm = true)}
@@ -840,7 +840,7 @@
 
 		{#if activeTab === 'cloudinit'}
 			<div class="pv-table-wrap">
-				{#if !config.cloud_init}
+				{#if !config.cloudInit}
 					<div class="flex flex-col items-center py-12 text-muted-foreground">
 						<CloudArrowUp class="mb-3 h-10 w-10 opacity-30" />
 						<p class="text-sm">{$t('vm.noCloudInit')}</p>
@@ -848,30 +848,30 @@
 				{:else}
 					<table class="pv-table">
 						<tbody>
-							{#if config.cloud_init.user}
+							{#if config.cloudInit.user}
 								<tr class="pv-row">
 									<td class="pv-td-label">{$t('admin.cloudinit.username')}</td>
-									<td class="pv-td-mono">{config.cloud_init.user}</td>
+									<td class="pv-td-mono">{config.cloudInit.user}</td>
 								</tr>
 							{/if}
-							{#if config.cloud_init.ip_config}
+							{#if config.cloudInit.ipConfig}
 								<tr class="pv-row">
 									<td class="pv-td-label">{$t('vm.ipConfig')}</td>
-									<td class="pv-td-mono text-xs">{config.cloud_init.ip_config}</td>
+									<td class="pv-td-mono text-xs">{config.cloudInit.ipConfig}</td>
 								</tr>
 							{/if}
-							{#if config.cloud_init.nameserver}
+							{#if config.cloudInit.nameserver}
 								<tr class="pv-row">
 									<td class="pv-td-label">{$t('vm.nameserver')}</td>
-									<td class="pv-td-mono">{config.cloud_init.nameserver}</td>
+									<td class="pv-td-mono">{config.cloudInit.nameserver}</td>
 								</tr>
 							{/if}
-							{#if config.cloud_init.ssh_keys}
+							{#if config.cloudInit.sshKeys}
 								<tr class="pv-row">
 									<td class="pv-td-label">{$t('vm.sshKeys')}</td>
 									<td>
 										<pre class="max-h-40 overflow-auto rounded bg-muted p-2 text-xs">{config
-												.cloud_init.ssh_keys}</pre>
+												.cloudInit.sshKeys}</pre>
 									</td>
 								</tr>
 							{/if}
@@ -891,7 +891,7 @@
 		node={config.node}
 		currentSockets={config.sockets}
 		currentCores={config.cores}
-		currentMemMB={config.max_mem_mb}
+		currentMemMB={config.maxMemMb}
 		currentTags={config.tags}
 		currentNetworks={config.networks}
 		isRunning={(metrics?.status ?? config.status) === 'running'}
@@ -927,7 +927,7 @@
 		bind:open={showDiskResizeModal}
 		vmid={config.vmid}
 		disk={selectedDisk}
-		maxDiskGB={vmSettings?.limits.max_disk_gb ?? 2000}
+		maxDiskGB={vmSettings?.limits.maxDiskGb ?? 2000}
 		onclose={() => (showDiskResizeModal = false)}
 		onsuccess={() => {
 			showDiskResizeModal = false;

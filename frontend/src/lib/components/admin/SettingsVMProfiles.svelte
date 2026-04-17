@@ -10,9 +10,9 @@
 		description?: string;
 		sockets: number;
 		cores: number;
-		ram_gb: number;
-		disk_gb: number;
-		disk_bus: string;
+		ramGb: number;
+		diskGb: number;
+		diskBus: string;
 		node?: string;
 		storage?: string;
 		icon: string;
@@ -26,9 +26,9 @@
 		description: '',
 		sockets: 1,
 		cores: 2,
-		ram_gb: 4,
-		disk_gb: 32,
-		disk_bus: 'virtio',
+		ramGb: 4,
+		diskGb: 32,
+		diskBus: 'virtio',
 		node: '',
 		storage: '',
 		icon: 'Server',
@@ -64,8 +64,8 @@
 		if (!editForm.id || !editForm.name) { error = $t('admin.settings.overview.vmprofiles.errorIdName'); return; }
 		if (editForm.sockets < 1) { error = $t('admin.settings.overview.vmprofiles.errorSockets'); return; }
 		if (editForm.cores < 1) { error = $t('admin.settings.overview.vmprofiles.errorCores'); return; }
-		if (editForm.ram_gb < 1) { error = $t('admin.settings.overview.vmprofiles.errorRam'); return; }
-		if (editForm.disk_gb < 1) { error = $t('admin.settings.overview.vmprofiles.errorDisk'); return; }
+		if (editForm.ramGb < 1) { error = $t('admin.settings.overview.vmprofiles.errorRam'); return; }
+		if (editForm.diskGb < 1) { error = $t('admin.settings.overview.vmprofiles.errorDisk'); return; }
 		saving = true;
 		error = null;
 		try {
@@ -97,9 +97,9 @@
 	<div class="flex items-center justify-between">
 		<div>
 			<p class="font-medium text-sm">{meta.name}</p>
-			{#if meta.last_change_by}
+			{#if meta.lastChangeBy}
 				<p class="text-xs text-muted-foreground mt-0.5">
-					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.lastChangeBy, time: meta.lastChangeAt ? new Date(meta.lastChangeAt).toLocaleString() : '' } })}
 				</p>
 			{/if}
 		</div>
@@ -142,19 +142,19 @@
 				</div>
 				<div class="space-y-1">
 					<label for="p_ram" class="block text-xs font-medium text-muted-foreground">RAM (GB)</label>
-					<input id="p_ram" type="number" min="1" bind:value={editForm.ram_gb} disabled={saving}
+					<input id="p_ram" type="number" min="1" bind:value={editForm.ramGb} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
 					<label for="p_disk" class="block text-xs font-medium text-muted-foreground">Disk (GB)</label>
-					<input id="p_disk" type="number" min="1" bind:value={editForm.disk_gb} disabled={saving}
+					<input id="p_disk" type="number" min="1" bind:value={editForm.diskGb} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
-					<label for="p_disk_bus" class="block text-xs font-medium text-muted-foreground">
+					<label for="p_diskBus" class="block text-xs font-medium text-muted-foreground">
 						{$t('admin.settings.overview.vmprofiles.diskBus')}
 					</label>
-					<select id="p_disk_bus" bind:value={editForm.disk_bus} disabled={saving}
+					<select id="p_diskBus" bind:value={editForm.diskBus} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
 						<option value="virtio">VirtIO</option>
 						<option value="scsi">SCSI</option>
@@ -216,7 +216,7 @@
 					<div class="space-y-0.5 min-w-0">
 						<p class="text-sm font-medium truncate">{item.name}</p>
 						<p class="text-xs text-muted-foreground">
-							{item.sockets}s · {item.cores}c · {item.ram_gb}GB RAM · {item.disk_gb}GB {item.disk_bus}
+							{item.sockets}s · {item.cores}c · {item.ramGb}GB RAM · {item.diskGb}GB {item.diskBus}
 						</p>
 						<span class="inline-block text-xs font-medium {item.enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}">
 							{item.enabled ? $t('admin.settings.overview.enabled') : $t('admin.settings.overview.disabled')}

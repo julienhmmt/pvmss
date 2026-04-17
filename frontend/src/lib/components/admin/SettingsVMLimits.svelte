@@ -5,32 +5,32 @@
 	import type { SectionMeta } from '$lib/api/admin/settings-overview';
 
 	interface VMLimitsData {
-		max_vms: number;
-		max_vm_per_user: number;
-		max_network_cards: number;
-		max_disk_per_vm: number;
-		allow_custom_yaml: boolean;
-		max_snapshots: number;
+		maxVms: number;
+		maxVmPerUser: number;
+		maxNetworkCards: number;
+		maxDiskPerVm: number;
+		allowCustomYaml: boolean;
+		maxSnapshots: number;
 	}
 
 	let { meta, data, onUpdate }: { meta: SectionMeta; data: VMLimitsData; onUpdate: () => Promise<void> } = $props();
 
 	let formState = $state({
-		max_vms: 0,
-		max_vm_per_user: 10,
-		max_network_cards: 4,
-		max_disk_per_vm: 8,
-		allow_custom_yaml: false,
-		max_snapshots: 5
+		maxVms: 0,
+		maxVmPerUser: 10,
+		maxNetworkCards: 4,
+		maxDiskPerVm: 8,
+		allowCustomYaml: false,
+		maxSnapshots: 5
 	});
 
 	$effect(() => {
-		formState.max_vms = data?.max_vms ?? 0;
-		formState.max_vm_per_user = data?.max_vm_per_user ?? 10;
-		formState.max_network_cards = data?.max_network_cards ?? 4;
-		formState.max_disk_per_vm = data?.max_disk_per_vm ?? 8;
-		formState.allow_custom_yaml = data?.allow_custom_yaml ?? false;
-		formState.max_snapshots = data?.max_snapshots ?? 5;
+		formState.maxVms = data?.maxVms ?? 0;
+		formState.maxVmPerUser = data?.maxVmPerUser ?? 10;
+		formState.maxNetworkCards = data?.maxNetworkCards ?? 4;
+		formState.maxDiskPerVm = data?.maxDiskPerVm ?? 8;
+		formState.allowCustomYaml = data?.allowCustomYaml ?? false;
+		formState.maxSnapshots = data?.maxSnapshots ?? 5;
 	});
 
 	let saving = $state(false);
@@ -54,9 +54,9 @@
 	<div class="flex items-start justify-between">
 		<div>
 			<p class="font-medium text-sm">{meta.name}</p>
-			{#if meta.last_change_by}
+			{#if meta.lastChangeBy}
 				<p class="text-xs text-muted-foreground mt-0.5">
-					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.last_change_by, time: meta.last_change_at ? new Date(meta.last_change_at).toLocaleString() : '' } })}
+					{$t('admin.settings.overview.lastUpdated', { values: { user: meta.lastChangeBy, time: meta.lastChangeAt ? new Date(meta.lastChangeAt).toLocaleString() : '' } })}
 				</p>
 			{/if}
 		</div>
@@ -65,44 +65,44 @@
 	<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-3">
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="space-y-1">
-				<label for="max_vms" class="block text-xs font-medium text-muted-foreground">
+				<label for="maxVms" class="block text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.vmlimits.maxVms')}
 				</label>
-				<input id="max_vms" type="number" min="0" bind:value={formState.max_vms}
+				<input id="maxVms" type="number" min="0" bind:value={formState.maxVms}
 					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
 			</div>
 			<div class="space-y-1">
-				<label for="max_vm_per_user" class="block text-xs font-medium text-muted-foreground">
+				<label for="maxVmPerUser" class="block text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.vmlimits.maxVmsPerUser')}
 				</label>
-				<input id="max_vm_per_user" type="number" min="0" bind:value={formState.max_vm_per_user}
+				<input id="maxVmPerUser" type="number" min="0" bind:value={formState.maxVmPerUser}
 					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
 			</div>
 			<div class="space-y-1">
-				<label for="max_network_cards" class="block text-xs font-medium text-muted-foreground">
+				<label for="maxNetworkCards" class="block text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.vmlimits.maxNetworkCards')}
 				</label>
-				<input id="max_network_cards" type="number" min="1" max="10" bind:value={formState.max_network_cards}
+				<input id="maxNetworkCards" type="number" min="1" max="10" bind:value={formState.maxNetworkCards}
 					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
 			</div>
 			<div class="space-y-1">
-				<label for="max_disk_per_vm" class="block text-xs font-medium text-muted-foreground">
+				<label for="maxDiskPerVm" class="block text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.vmlimits.maxDiskPerVm')}
 				</label>
-				<input id="max_disk_per_vm" type="number" min="0" bind:value={formState.max_disk_per_vm}
+				<input id="maxDiskPerVm" type="number" min="0" bind:value={formState.maxDiskPerVm}
 					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
 			</div>
 			<div class="space-y-1">
-				<label for="max_snapshots" class="block text-xs font-medium text-muted-foreground">
+				<label for="maxSnapshots" class="block text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.vmlimits.maxSnapshots')}
 				</label>
-				<input id="max_snapshots" type="number" min="0" bind:value={formState.max_snapshots}
+				<input id="maxSnapshots" type="number" min="0" bind:value={formState.maxSnapshots}
 					class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring" />
 			</div>
 			<div class="flex items-center gap-2 pt-4">
-				<input id="allow_custom_yaml" type="checkbox" bind:checked={formState.allow_custom_yaml}
+				<input id="allowCustomYaml" type="checkbox" bind:checked={formState.allowCustomYaml}
 					class="h-4 w-4 rounded border-input" />
-				<label for="allow_custom_yaml" class="text-xs font-medium text-muted-foreground">
+				<label for="allowCustomYaml" class="text-xs font-medium text-muted-foreground">
 					{$t('admin.settings.overview.vmlimits.allowCustomYaml')}
 				</label>
 			</div>
