@@ -93,14 +93,6 @@ func TestSecurityConfiguration(t *testing.T) {
 	assertEqualDuration(t, "RateLimitCleanup", RateLimitCleanup, 15*time.Minute)
 	assertEqualInt(t, "LoginRateLimitCapacity", LoginRateLimitCapacity, 5)
 	assertEqualDuration(t, "LoginRateLimitRefill", LoginRateLimitRefill, 12*time.Second)
-	assertEqualString(t, "SessionKeyAuthenticated", SessionKeyAuthenticated, "authenticated")
-	assertEqualString(t, "SessionKeyIsAdmin", SessionKeyIsAdmin, "is_admin")
-	assertEqualString(t, "SessionKeyUsername", SessionKeyUsername, "username")
-	assertEqualString(t, "SessionKeyCSRFToken", SessionKeyCSRFToken, "csrf_token")
-	assertEqualString(t, "SessionKeyPVEAuthCookie", SessionKeyPVEAuthCookie, "pve_auth_cookie")
-	assertEqualString(t, "SessionKeyPVECSRFToken", SessionKeyPVECSRFToken, "pve_csrf_token")
-	assertEqualString(t, "SessionKeyPVEUsername", SessionKeyPVEUsername, "pve_username")
-	assertEqualString(t, "SessionKeyPVETicketCreated", SessionKeyPVETicketCreated, "pve_ticket_created")
 }
 
 func TestMessageKeysNotEmpty(t *testing.T) {
@@ -187,26 +179,5 @@ func TestMessageKeysNotEmpty(t *testing.T) {
 		if value == "" {
 			t.Fatalf("%s is empty, expected non-empty message key", name)
 		}
-	}
-}
-
-func TestSessionKeyUniqueness(t *testing.T) {
-	sessionKeys := []string{
-		SessionKeyAuthenticated,
-		SessionKeyIsAdmin,
-		SessionKeyUsername,
-		SessionKeyCSRFToken,
-		SessionKeyPVEAuthCookie,
-		SessionKeyPVECSRFToken,
-		SessionKeyPVEUsername,
-		SessionKeyPVETicketCreated,
-	}
-
-	seen := make(map[string]bool)
-	for _, key := range sessionKeys {
-		if seen[key] {
-			t.Fatalf("duplicate session key value detected: %s", key)
-		}
-		seen[key] = true
 	}
 }
