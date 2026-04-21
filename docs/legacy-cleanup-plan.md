@@ -109,7 +109,7 @@ Fonctions à **conserver** (nécessaires jusqu'en phase 3) :
 - `IsAuthenticated`, `IsAdmin` (encore référencés par `auth_guard.go` jusqu'à phase 3)
 - `RedirectIfAuthenticated`
 
-### 2c — `handlers/tags.go`
+### 2c — `handlers/tags.go` ✅
 
 Supprimer `CreateTagHandler`, `DeleteTagHandler` et leurs enregistrements `POST /tags`, `POST /tags/delete`.
 **Conserver** `EnsureDefaultTag` (appelé depuis `InitHandlers`).
