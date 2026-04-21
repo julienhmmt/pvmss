@@ -88,7 +88,7 @@ rateLimiter.AddRule("POST", "/api/v1/auth/login",              Rule{...})
 rateLimiter.AddRule("POST", "/api/v1/auth/proxmox-admin-login",Rule{...})
 ```
 
-### 2b — `handlers/auth.go` (786 lignes → ~80 lignes)
+### 2b — `handlers/auth.go` (786 lignes → ~80 lignes) ✅
 
 Fonctions à **supprimer** :
 
