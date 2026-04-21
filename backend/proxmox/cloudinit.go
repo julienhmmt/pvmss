@@ -271,7 +271,6 @@ func UploadSnippetFileResty(ctx context.Context, restyClient *RestyClient, node,
 	path := fmt.Sprintf("/nodes/%s/storage/%s/upload",
 		url.PathEscape(node), url.PathEscape(storage))
 
-	// Create multipart form body following telmate/proxmox-api-go approach
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 
