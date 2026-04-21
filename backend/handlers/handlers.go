@@ -28,15 +28,11 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	isTestEnv := os.Getenv("GO_TEST_ENVIRONMENT") == "1"
 	rateLimiter := middleware.MakeRateLimiter(constants.RateLimitWindow, constants.RateLimitCleanup)
 	if !isTestEnv {
-		rateLimiter.AddRule("POST", "/login", middleware.Rule{
+		rateLimiter.AddRule("POST", "/api/v1/auth/login", middleware.Rule{
 			Capacity: constants.LoginRateLimitCapacity,
 			Refill:   constants.LoginRateLimitRefill,
 		})
-		rateLimiter.AddRule("POST", "/admin/login", middleware.Rule{
-			Capacity: constants.LoginRateLimitCapacity,
-			Refill:   constants.LoginRateLimitRefill,
-		})
-		rateLimiter.AddRule("POST", "/admin/proxmox-login", middleware.Rule{
+		rateLimiter.AddRule("POST", "/api/v1/auth/proxmox-admin-login", middleware.Rule{
 			Capacity: constants.LoginRateLimitCapacity,
 			Refill:   constants.LoginRateLimitRefill,
 		})

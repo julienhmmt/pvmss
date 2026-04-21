@@ -5,7 +5,7 @@
 | Phase | Statut | Commit |
 |---|---|---|
 | Phase 1 — Quick wins | ✅ Terminée | `refactor: phase 1 — supprimer le code mort pré-SPA (quick wins)` |
-| Phase 2 — Routes legacy + rate-limiter | ⏳ À faire | — |
+| Phase 2 — Routes legacy + rate-limiter | 🔄 En cours | — |
 | Phase 3 — Infrastructure session | ⏳ À faire | — |
 | Phase 4 — limits_helpers.go | ⏳ À décider | — |
 | Phase 5 — Résidus finaux | ⏳ À faire | — |
@@ -73,7 +73,7 @@ templates) ne sert en pratique que `/api/health` et `/api/health/proxmox`.
 > Handlers session-based enregistrés sur le router mais jamais atteints quand le SPA est présent.
 > Contient un **fix de sécurité** (règles rate-limiter sur des routes mortes).
 
-### 2a — Fix rate-limiter (sécurité, priorité haute)
+### 2a — Fix rate-limiter (sécurité, priorité haute) ✅
 
 Les règles actuelles dans `handlers/handlers.go:31-42` protègent des routes inexistantes :
 
