@@ -5,7 +5,7 @@
 | Phase | Statut | Commit |
 |---|---|---|
 | Phase 1 — Quick wins | ✅ Terminée | `refactor: phase 1 — supprimer le code mort pré-SPA (quick wins)` |
-| Phase 2 — Routes legacy + rate-limiter | 🔄 En cours | — |
+| Phase 2 — Routes legacy + rate-limiter | ✅ Terminée | — |
 | Phase 3 — Infrastructure session | ⏳ À faire | — |
 | Phase 4 — limits_helpers.go | ⏳ À décider | — |
 | Phase 5 — Résidus finaux | ⏳ À faire | — |
@@ -122,18 +122,18 @@ Supprimer `CreateTagHandler`, `DeleteTagHandler` et leurs enregistrements `POST 
 | `backend/handlers/route_helpers.go` | ~90 | `MakeRouteHelpers`/`MakeAdminPageRoutes` sans appelant après 2c |
 | `backend/handlers/handler_context.go` | ~265 | Appelé uniquement depuis les handlers morts de `auth.go` |
 
-### 2e — `handlers/auth_guard.go`
+### 2e — `handlers/auth_guard.go` ✅
 
 Supprimer `RequireAuth`, `RequireAdminAuth`, `RequireAuthHandleWS`, `RequireAuthHandle`
 (wrappers session-based — sans appelant après 2c/2d).
 **Conserver** `IsAuthenticated`, `IsAdmin` jusqu'à phase 3.
 
-### 2f — `handlers/common.go`
+### 2f — `handlers/common.go` ✅
 
 Supprimer `AdminAuditMiddleware` (jamais enregistré sur aucune route) et
 `HandlerFuncToHTTPrHandle` (plus d'appelant après 2c/2d).
 
-### 2g — `handlers/helpers.go`
+### 2g — `handlers/helpers.go` ✅
 
 Supprimer `PostOnlyHandler`, `ParseFormMiddleware`, `PostFormHandler`, `RedirectWithSuccess`,
 `RedirectWithError` (sans appelant).
