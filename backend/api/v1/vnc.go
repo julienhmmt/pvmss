@@ -3,6 +3,7 @@ package apiv1
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -172,19 +173,21 @@ func proxyVNCWebSocketWithToken(w http.ResponseWriter, r *http.Request, proxmoxW
 			if origin == "" {
 				return true // Allow direct connections (no Origin header)
 			}
-			// Allow localhost connections regardless of port (for development)
-			// In production, this should be more restrictive
-			host := r.Host
 			originURL, err := url.Parse(origin)
 			if err != nil {
 				return false
 			}
-			// Allow if same host (ignore port for localhost)
-			if originURL.Hostname() == host || originURL.Hostname() == "localhost" {
-				return true
+			// Behind a reverse proxy the external hostname arrives via
+			// X-Forwarded-Host; fall back to r.Host for direct connections.
+			host := r.Header.Get("X-Forwarded-Host")
+			if host == "" {
+				host = r.Host
 			}
-			// Allow exact match (same host and port)
-			return origin == "http://"+host || origin == "https://"+host
+			// Strip port from host so bare hostnames compare correctly.
+			if h, _, err := net.SplitHostPort(host); err == nil {
+				host = h
+			}
+			return originURL.Hostname() == host
 		},
 	}
 	clientConn, err := upgrader.Upgrade(w, r, nil)
