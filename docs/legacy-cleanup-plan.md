@@ -1,5 +1,17 @@
 # Legacy Code Cleanup Plan
 
+## Statut des phases
+
+| Phase | Statut | Commit |
+|---|---|---|
+| Phase 1 — Quick wins | ✅ Terminée | `refactor: phase 1 — supprimer le code mort pré-SPA (quick wins)` |
+| Phase 2 — Routes legacy + rate-limiter | ⏳ À faire | — |
+| Phase 3 — Infrastructure session | ⏳ À faire | — |
+| Phase 4 — limits_helpers.go | ⏳ À décider | — |
+| Phase 5 — Résidus finaux | ⏳ À faire | — |
+
+---
+
 **Objectif :** supprimer le sous-système session/CSRF/formulaires hérité de l'ère pré-SPA,
 ne conserver que la stack JWT `api/v1/`, et corriger les règles rate-limiter qui ciblent
 des routes mortes.
@@ -29,7 +41,7 @@ templates) ne sert en pratique que `/api/health` et `/api/health/proxmox`.
 
 ---
 
-## Phase 1 — Quick wins, risque zéro
+## Phase 1 — Quick wins, risque zéro ✅
 
 > Fichiers sans aucun appelant vivant. Suppression immédiate.
 
