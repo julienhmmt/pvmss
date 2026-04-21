@@ -9,10 +9,8 @@ export interface AuthUser {
 // Use raw fetch so a 401 (unauthenticated) doesn't trigger the client's
 // redirect-to-login logic. Failing exchange is normal for logged-out users.
 export async function exchange(): Promise<AuthUser> {
-  // Skip request if no access token cookie exists (avoid 401 console error)
-  if (!document.cookie.includes("access_token=")) {
-    throw new Error("not authenticated");
-  }
+  // Note: access_token is HttpOnly so it is never visible via document.cookie.
+  // We always attempt the exchange and let the server determine auth state.
   const res = await fetch("/api/v1/auth/exchange", {
     method: "POST",
     credentials: "same-origin",
