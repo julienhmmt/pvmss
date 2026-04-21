@@ -114,7 +114,7 @@ Fonctions à **conserver** (nécessaires jusqu'en phase 3) :
 Supprimer `CreateTagHandler`, `DeleteTagHandler` et leurs enregistrements `POST /tags`, `POST /tags/delete`.
 **Conserver** `EnsureDefaultTag` (appelé depuis `InitHandlers`).
 
-### 2d — Fichiers entiers à supprimer
+### 2d — Fichiers entiers à supprimer ✅
 
 | Fichier | Lignes | Raison |
 |---|---|---|
