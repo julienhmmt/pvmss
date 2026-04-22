@@ -1081,7 +1081,7 @@
 						</div>
 						<div class="flex items-end pb-6">
 							<Badge variant="secondary" class="text-sm">
-								{$t('vmCreate.hardware.totalVCPUs', { values: { count: String(totalVCPUs) } })}
+								{$t('vmCreate.hardware.totalVCPUs', { values: { count: String(totalVCPUs()) } })}
 							</Badge>
 						</div>
 						<div class="space-y-2 sm:col-span-2">
@@ -1509,7 +1509,7 @@
 							<span class="text-muted-foreground">{$t('vmCreate.review.sockets')}</span>
 							<span>{vmSockets}</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.cores')}</span>
-							<span>{vmCores} ({totalVCPUs} vCPUs)</span>
+							<span>{vmCores} ({totalVCPUs()} vCPUs)</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.memory')}</span>
 							<span>{vmMemoryGB} GB</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.diskBus')}</span>
@@ -1539,7 +1539,7 @@
 							<span class="text-muted-foreground font-medium"
 								>{$t('vmCreate.review.totalDisk')}</span
 							>
-							<span class="font-medium">{totalDiskGB} GB</span>
+							<span class="font-medium">{totalDiskGB()} GB</span>
 						</div>
 					</div>
 
