@@ -134,11 +134,6 @@
 {:else}
 	<!-- Toolbar -->
 	<div class="pv-toolbar">
-		<div class="pv-toolbar-info">
-			{filteredStorages.length}
-			{$t('admin.storage.title', { default: 'stockages' }).toLowerCase()}
-			{#if selectedNode}· {selectedNode}{/if}
-		</div>
 		{#if nodes.length > 1}
 			<Select.Root type="single" value={selectedNode} onValueChange={(v) => (selectedNode = v ?? '')}>
 				<Select.Trigger class="w-[180px] h-8 text-sm">
@@ -256,6 +251,11 @@
 				{/each}
 			</tbody>
 		</table>
+	</div>
+	<div class="mt-3 text-sm text-muted-foreground">
+		{filteredStorages.length}
+		{$t('admin.storage.title', { default: 'stockages' }).toLowerCase()}
+		{#if selectedNode}· {selectedNode}{/if}
 	</div>
 {/if}
 
