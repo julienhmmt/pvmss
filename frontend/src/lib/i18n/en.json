@@ -584,6 +584,7 @@
     "tooltip": "Search by Name: partial match on the VM name.\nSearch by Tag: partial match on any tag (except pvmss).\nSearch by VM ID: exact or partial match on the numeric VM ID.\nSearch is case-insensitive.",
     "slowLoading": "The Proxmox API is taking longer than usual…",
     "noResults": "No virtual machines match your search.",
+    "queryRequired": "Search query is required when searching by name or tag.",
     "resultsCount": "{count} result(s)",
     "searchType": "Search type",
     "typeByName": "By name",
