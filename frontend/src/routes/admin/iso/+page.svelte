@@ -9,7 +9,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import { getISOs, toggleISO } from '$lib/api/admin/iso';
 	import { formatBytes } from '$lib/utils/format';
-	import { DiscIcon } from 'phosphor-svelte';
+	import { DiscIcon, MagnifyingGlass } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { ISO } from '$lib/types/admin';
 
@@ -18,10 +18,19 @@
 	let error = $state<Error | null>(null);
 	let isos: ISO[] = $state([]);
 	let selectedNode = $state<string>('');
+	let searchQuery = $state<string>('');
 	let toggling = $state<string | null>(null);
 
 	const nodes = $derived([...new Set(isos.map((i) => i.node))].sort());
-	const filteredISOs = $derived(selectedNode ? isos.filter((i) => i.node === selectedNode) : isos);
+	const filteredISOs = $derived(
+		isos.filter((i) => {
+			const matchesNode = selectedNode ? i.node === selectedNode : true;
+			const matchesSearch = searchQuery
+				? i.name.toLowerCase().includes(searchQuery.toLowerCase())
+				: true;
+			return matchesNode && matchesSearch;
+		})
+	);
 	const enabledCount = $derived(isos.filter((i) => i.enabled).length);
 
 	async function load() {
@@ -110,8 +119,17 @@
 		description={$t('admin.iso.noIsoDesc')}
 	/>
 {:else}
-	{#if nodes.length > 1}
-		<div class="mb-4">
+	<div class="mb-4 flex flex-wrap items-center gap-3">
+		<div class="relative flex-1 min-w-[200px] max-w-[320px]">
+			<MagnifyingGlass class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+			<input
+				type="text"
+				class="w-full rounded-md border border-border bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+				placeholder={$t('admin.iso.searchPlaceholder')}
+				bind:value={searchQuery}
+			/>
+		</div>
+		{#if nodes.length > 1}
 			<Select.Root
 				type="single"
 				value={selectedNode}
@@ -129,46 +147,53 @@
 					{/each}
 				</Select.Content>
 			</Select.Root>
+		{/if}
+	</div>
+
+	{#if filteredISOs.length === 0}
+		<div class="pv-table-wrap py-12 text-center text-muted-foreground">
+			<MagnifyingGlass class="mx-auto mb-3 h-10 w-10 opacity-30" />
+			<p class="text-sm">{$t('admin.iso.noSearchResults')}</p>
+		</div>
+	{:else}
+		<div class="pv-table-wrap">
+			<table class="pv-table">
+				<thead>
+					<tr>
+						<th>{$t('common.name')}</th>
+						<th>{$t('common.node')}</th>
+						<th>{$t('common.storage')}</th>
+						<th>{$t('common.size')}</th>
+						<th class="pv-td-actions">{$t('common.enabled')}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each filteredISOs as iso}
+						<tr class="pv-row" class:opacity-50={toggling === iso.volid}>
+							<td>
+								<div class="pv-resource-cell">
+									<div class="pv-resource-icon" style="width:28px;height:28px">
+										<DiscIcon class="h-3.5 w-3.5" />
+									</div>
+									<span class="pv-td-mono">{iso.name}</span>
+								</div>
+							</td>
+							<td class="pv-td-muted">{iso.node}</td>
+							<td class="pv-td-muted">{iso.storage}</td>
+							<td class="pv-td-muted">{formatBytes(iso.size)}</td>
+							<td class="pv-td-actions">
+								<Switch
+									checked={iso.enabled}
+									disabled={toggling === iso.volid}
+									onCheckedChange={() => handleToggle(iso)}
+								/>
+							</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
 		</div>
 	{/if}
-
-	<div class="pv-table-wrap">
-		<table class="pv-table">
-			<thead>
-				<tr>
-					<th>{$t('common.name')}</th>
-					<th>{$t('common.node')}</th>
-					<th>{$t('common.storage')}</th>
-					<th>{$t('common.size')}</th>
-					<th class="pv-td-actions">{$t('common.enabled')}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each filteredISOs as iso}
-					<tr class="pv-row" class:opacity-50={toggling === iso.volid}>
-						<td>
-							<div class="pv-resource-cell">
-								<div class="pv-resource-icon" style="width:28px;height:28px">
-									<DiscIcon class="h-3.5 w-3.5" />
-								</div>
-								<span class="pv-td-mono">{iso.name}</span>
-							</div>
-						</td>
-						<td class="pv-td-muted">{iso.node}</td>
-						<td class="pv-td-muted">{iso.storage}</td>
-						<td class="pv-td-muted">{formatBytes(iso.size)}</td>
-						<td class="pv-td-actions">
-							<Switch
-								checked={iso.enabled}
-								disabled={toggling === iso.volid}
-								onCheckedChange={() => handleToggle(iso)}
-							/>
-						</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
 {/if}
 
 </div>

@@ -8,19 +8,25 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import * as Select from '$lib/components/ui/select';
 	import { getVMBRs, toggleVMBR } from '$lib/api/admin/vmbr';
-	import { WifiHighIcon } from 'phosphor-svelte';
+	import { WifiHighIcon, CaretUp, CaretDown, ArrowsDownUp } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { VMBR } from '$lib/types/admin';
 
 	let loading = $state(true);
 	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
+	type SortKey = 'iface' | 'node' | 'type' | 'ports';
+	type SortDir = 'asc' | 'desc';
+
 	let vmbrs = $state<VMBR[]>([]);
 	let selectedNode = $state<string>('');
+	let sortKey = $state<SortKey>('iface');
+	let sortDir = $state<SortDir>('asc');
 	let toggling = $state<string | null>(null);
 
 	const nodes = $derived([...new Set(vmbrs.map((v) => v.node))].sort());
 	const filteredVmbrs = $derived(selectedNode ? vmbrs.filter((v) => v.node === selectedNode) : vmbrs);
+	const sortedVmbrs = $derived(sortVmbrs(filteredVmbrs, sortKey, sortDir));
 	const enabledCount = $derived(vmbrs.filter((v) => v.enabled).length);
 
 	async function load() {
@@ -56,6 +62,21 @@
 		} finally {
 			toggling = null;
 		}
+	}
+
+	function sortVmbrs(list: VMBR[], key: SortKey, dir: SortDir): VMBR[] {
+		return [...list].sort((a, b) => {
+			const prop = key === 'ports' ? 'bridgePorts' : key;
+			const aVal = (a[prop as keyof VMBR] ?? '').toString();
+			const bVal = (b[prop as keyof VMBR] ?? '').toString();
+			const cmp = aVal.localeCompare(bVal);
+			return dir === 'asc' ? cmp : -cmp;
+		});
+	}
+
+	function toggleSort(key: SortKey): void {
+		if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		else { sortKey = key; sortDir = 'asc'; }
 	}
 
 	onMount(load);
@@ -136,15 +157,35 @@
 		<table class="pv-table">
 			<thead>
 				<tr>
-					<th>{$t('admin.vmbr.iface')}</th>
-					<th>{$t('common.node')}</th>
-					<th>{$t('common.type')}</th>
-					<th>{$t('admin.vmbr.ports')}</th>
+					<th>
+						<button class="pv-sort-btn" onclick={() => toggleSort('iface')}>
+							{$t('admin.vmbr.iface')}
+							{@render sortIcon('iface')}
+						</button>
+					</th>
+					<th>
+						<button class="pv-sort-btn" onclick={() => toggleSort('node')}>
+							{$t('common.node')}
+							{@render sortIcon('node')}
+						</button>
+					</th>
+					<th>
+						<button class="pv-sort-btn" onclick={() => toggleSort('type')}>
+							{$t('common.type')}
+							{@render sortIcon('type')}
+						</button>
+					</th>
+					<th>
+						<button class="pv-sort-btn" onclick={() => toggleSort('ports')}>
+							{$t('admin.vmbr.ports')}
+							{@render sortIcon('ports')}
+						</button>
+					</th>
 					<th class="pv-td-actions">{$t('admin.vmbr.enabled')}</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each filteredVmbrs as v}
+				{#each sortedVmbrs as v}
 					{@const key = v.node + ':' + v.iface}
 					<tr class="pv-row" class:opacity-50={toggling === key}>
 						<td>
@@ -173,3 +214,34 @@
 {/if}
 
 </div>
+
+{#snippet sortIcon(key: SortKey)}
+	{#if sortKey === key}
+		{#if sortDir === 'asc'}
+			<CaretUp class="h-3 w-3" weight="bold" />
+		{:else}
+			<CaretDown class="h-3 w-3" weight="bold" />
+		{/if}
+	{:else}
+		<ArrowsDownUp class="h-3 w-3 opacity-25" />
+	{/if}
+{/snippet}
+
+<style>
+	:global(.pv-sort-btn) {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		background: none;
+		border: none;
+		font: inherit;
+		font-weight: 500;
+		color: inherit;
+		cursor: pointer;
+		padding: 0;
+		white-space: nowrap;
+	}
+	:global(.pv-sort-btn:hover) {
+		color: var(--foreground);
+	}
+</style>
