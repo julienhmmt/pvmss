@@ -111,7 +111,12 @@
 		try {
 			results = await searchVMs({ q: extractedQuery || undefined, type: detectedType });
 		} catch (e) {
-			error = e as Error;
+			const err = e as Error;
+			if (err.message === 'Search query required when searching by name or tag') {
+				error = new Error($t('search.queryRequired'));
+			} else {
+				error = err;
+			}
 		} finally {
 			loading = false;
 			slowLoadingVisible = false;
