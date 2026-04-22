@@ -5,7 +5,6 @@
 		Sidebar,
 		SidebarContent,
 		SidebarHeader,
-		SidebarFooter,
 		SidebarMenu,
 		SidebarMenuItem
 	} from '$lib/components/ui/sidebar';
@@ -77,12 +76,6 @@
 		</SidebarMenu>
 	</SidebarContent>
 
-	<!-- Footer -->
-	<SidebarFooter class="px-4 py-3 border-t border-border">
-		<div class="text-[0.68rem] text-muted-foreground font-medium">
-			{$t('nav.sidebarFooter')}
-		</div>
-	</SidebarFooter>
 </Sidebar>
 
 <style>

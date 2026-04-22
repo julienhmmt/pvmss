@@ -9,7 +9,8 @@
 	import { Label } from '$lib/components/ui/label';
 	import { getLimits, updateLimits } from '$lib/api/admin/limits';
 	import { getNodes } from '$lib/api/admin/nodes';
-	import { SlidersIcon, GlobeIcon, HardDriveIcon } from 'phosphor-svelte';
+	import { SlidersIcon, GlobeIcon, HardDriveIcon, InfoIcon } from 'phosphor-svelte';
+	import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip';
 	import { toast } from 'svelte-sonner';
 	import type { Limits, ResourceRange, Node } from '$lib/types/admin';
 
@@ -168,6 +169,16 @@
 				<div class="flex items-center gap-2">
 					<SlidersIcon class="h-4 w-4 text-muted-foreground" />
 					<h2 class="text-sm font-semibold">{$t('admin.limits.vmResourceRanges')}</h2>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger>
+								<InfoIcon class="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p class="max-w-xs">{$t('admin.limits.vmResourceRangesTooltip')}</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 				<Button size="sm" disabled={savingVm} onclick={() => saveSection((v) => (savingVm = v))}>
 					{savingVm ? $t('common.saving') : $t('common.save')}
@@ -203,6 +214,16 @@
 				<div class="flex items-center gap-2">
 					<GlobeIcon class="h-4 w-4 text-muted-foreground" />
 					<h2 class="text-sm font-semibold">{$t('admin.limits.globalLimits')}</h2>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger>
+								<InfoIcon class="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+							</TooltipTrigger>
+							<TooltipContent>
+								<p class="max-w-xs">{$t('admin.limits.globalLimitsTooltip')}</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 				<Button size="sm" disabled={savingGlobal} onclick={() => saveSection((v) => (savingGlobal = v))}>
 					{savingGlobal ? $t('common.saving') : $t('common.save')}
@@ -237,6 +258,16 @@
 					<div class="flex items-center gap-2">
 						<HardDriveIcon class="h-4 w-4 text-muted-foreground" />
 						<h2 class="text-sm font-semibold">{$t('admin.limits.nodeSpecificLimits')}</h2>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger>
+									<InfoIcon class="h-3.5 w-3.5 text-muted-foreground/60 cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent>
+									<p class="max-w-xs">{$t('admin.limits.nodeSpecificLimitsTooltip')}</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 						<span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 							{sortedNodes.length}
 						</span>
