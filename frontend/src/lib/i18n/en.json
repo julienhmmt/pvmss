@@ -99,6 +99,7 @@
       "title": "Storage",
       "noStorage": "No storages found",
       "allNodes": "All Nodes",
+      "allTypes": "All Types",
       "content": "Content",
       "usage": "Usage",
       "total": "Total",
