@@ -159,4 +159,3 @@ func TestIsAdmin_IsAdmin(t *testing.T) {
 	result := handlers.IsAdmin(req)
 	assert.True(t, result, "Should return true when user is admin")
 }
-

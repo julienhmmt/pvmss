@@ -32,4 +32,3 @@ const (
 	// LoginRateLimitRefill is how often a login attempt token is refilled
 	LoginRateLimitRefill = 12 * time.Second
 )
-
