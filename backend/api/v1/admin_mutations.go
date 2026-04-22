@@ -591,7 +591,7 @@ func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
 	if settings == nil {
 		return &AdminSFTPStatusResponse{
 			Enabled:    false,
-			StatusText: "settings unavailable",
+			StatusText: "settings-unavailable",
 			StatusType: "danger",
 		}
 	}
@@ -616,10 +616,10 @@ func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
 		KeyExists: keyExists,
 	}
 	if !keyExists {
-		status.StatusText = "private key not found"
+		status.StatusText = "private-key-not-found"
 		status.StatusType = "danger"
 	} else if cfg.Host == "" {
-		status.StatusText = "host not configured"
+		status.StatusText = "host-not-configured"
 		status.StatusType = "danger"
 	} else {
 		status.StatusText = "configured"

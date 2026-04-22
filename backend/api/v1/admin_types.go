@@ -3,15 +3,16 @@ package apiv1
 // --- Nodes ---
 
 type AdminNodeResponse struct {
-	Name      string  `json:"name"`
-	Status    string  `json:"status"`
-	CPU       float64 `json:"cpu"`
-	MaxCPU    int     `json:"maxcpu"`
-	Memory    float64 `json:"memory"`
-	MaxMemory float64 `json:"max_memory"`
-	Disk      float64 `json:"disk"`
-	MaxDisk   float64 `json:"max_disk"`
-	Uptime    int64   `json:"uptime"`
+	Name       string  `json:"name"`
+	Status     string  `json:"status"`
+	CPU        float64 `json:"cpu"`
+	MaxCPU     int     `json:"maxcpu"`
+	CpuSockets int     `json:"cpu_sockets"`
+	Memory     float64 `json:"memory"`
+	MaxMemory  float64 `json:"max_memory"`
+	Disk       float64 `json:"disk"`
+	MaxDisk    float64 `json:"max_disk"`
+	Uptime     int64   `json:"uptime"`
 }
 
 // --- Storage ---
