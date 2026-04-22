@@ -171,9 +171,6 @@
 						</div>
 						<div>
 							<div class="pv-resource-name">{node.name}</div>
-							<div class="pv-td-muted text-xs">
-								{$t('admin.nodes.cores', { values: { count: node.maxCpu } })}
-							</div>
 						</div>
 					</div>
 					<span class="pv-badge {node.status === 'online' ? 'pv-badge--online' : 'pv-badge--offline'} mt-0.5">
@@ -200,6 +197,9 @@
 							></div>
 						</div>
 						<span class="pv-usage-label">{cpuPercent}%</span>
+					</div>
+					<div class="text-xs text-muted-foreground tabular-nums">
+						{$t('admin.nodes.cpuDetails', { values: { cores: node.maxCpu, sockets: node.cpuSockets } })}
 					</div>
 				</div>
 

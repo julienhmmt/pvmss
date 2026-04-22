@@ -197,7 +197,7 @@
 				</div>
 				<div class="flex-1 min-w-0">
 					<p class="text-sm font-medium {isSuccess ? 'text-green-800 dark:text-green-300' : isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}">
-						{$t('admin.cloudinit.sftpStatus')} — {sftpStatus.statusText}
+						{$t('admin.cloudinit.sftpStatus')} — {$t('admin.cloudinit.sftpStatusText.' + sftpStatus.statusText)}
 					</p>
 					{#if sftpStatus.enabled}
 						<div class="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">

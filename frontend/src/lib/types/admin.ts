@@ -3,6 +3,7 @@ export interface Node {
   status: string;
   cpu: number;
   maxCpu: number;
+  cpuSockets: number;
   memory: number;
   maxMemory: number;
   disk: number;
