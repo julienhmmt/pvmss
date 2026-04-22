@@ -76,7 +76,8 @@
 		{ href: '/home', icon: HouseIcon, label: $t('nav.myVms'), authRequired: true, adminOnly: false },
 		{ href: '/vm/create', icon: PlusSquareIcon, label: $t('nav.createVm'), authRequired: true, adminOnly: false },
 		{ href: '/search', icon: MagnifyingGlassIcon, label: $t('nav.searchVm'), authRequired: true, adminOnly: false },
-		{ href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation'), authRequired: false, adminOnly: false }
+		{ href: '/docs/user', icon: BookOpenIcon, label: $t('nav.documentation'), authRequired: false, adminOnly: false },
+		{ href: '/docs/admin', icon: BookOpenIcon, label: $t('nav.adminDocumentation'), authRequired: true, adminOnly: true }
 	].filter(link => {
 		if (link.authRequired && !auth.username) return false;
 		if (link.adminOnly && !auth.isAdmin) return false;
