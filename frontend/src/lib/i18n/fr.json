@@ -128,6 +128,8 @@
       "noIsoDesc": "Aucune image ISO détectée sur les nœuds Proxmox",
       "allNodes": "Tous les nœuds",
       "enabledCount": "{count} activée(s)",
+      "searchPlaceholder": "Rechercher une ISO par nom...",
+      "noSearchResults": "Aucune image ISO ne correspond à votre recherche.",
       "toast": {
         "enabled": "ISO {name} activée",
         "disabled": "ISO {name} désactivée"
