@@ -9,7 +9,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { getStorages, toggleStorage } from '$lib/api/admin/storage';
 	import { formatBytes, formatPercent } from '$lib/utils/format';
-	import { Database, ArrowsClockwise } from 'phosphor-svelte';
+	import { Database, ArrowsClockwise, CaretUp, CaretDown, ArrowsDownUp } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { Storage } from '$lib/types/admin';
 	import * as Select from '$lib/components/ui/select';
@@ -19,13 +19,26 @@
 	let error = $state<Error | null>(null);
 	let storages = $state<Storage[]>([]);
 	let selectedNode = $state<string>('');
+	let selectedType = $state<string>('');
 	let toggling = $state<Set<string>>(new Set());
 
+	type SortKey = 'name' | 'total' | 'used' | 'usage';
+	type SortDir = 'asc' | 'desc';
+	let sortKey = $state<SortKey>('usage');
+	let sortDir = $state<SortDir>('desc');
+
 	const nodes = $derived([...new Set(storages.map((s) => s.node))].sort());
+	const storageTypes = $derived([...new Set(storages.map((s) => s.type))].sort());
 
 	const filteredStorages = $derived(
-		selectedNode ? storages.filter((s) => s.node === selectedNode) : storages
+		storages.filter((s) => {
+			const nodeMatch = selectedNode ? s.node === selectedNode : true;
+			const typeMatch = selectedType ? s.type === selectedType : true;
+			return nodeMatch && typeMatch;
+		})
 	);
+
+	const sortedStorages = $derived(sortStorages(filteredStorages, sortKey, sortDir));
 
 	const enabledCount = $derived(filteredStorages.filter((s) => s.enabled).length);
 
@@ -38,6 +51,27 @@
 
 	function storageKey(storage: string, node: string): string {
 		return `${node}/${storage}`;
+	}
+
+	function sortStorages(list: Storage[], key: SortKey, dir: SortDir): Storage[] {
+		return [...list].sort((a, b) => {
+			let cmp = 0;
+			if (key === 'usage') {
+				const aPct = a.total > 0 ? a.used / a.total : 0;
+				const bPct = b.total > 0 ? b.used / b.total : 0;
+				cmp = aPct - bPct;
+			} else if (key === 'name') {
+				cmp = a.storage.localeCompare(b.storage);
+			} else {
+				cmp = (a[key] ?? 0) - (b[key] ?? 0);
+			}
+			return dir === 'asc' ? cmp : -cmp;
+		});
+	}
+
+	function toggleSort(key: SortKey): void {
+		if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		else { sortKey = key; sortDir = 'asc'; }
 	}
 
 	async function load() {
@@ -121,6 +155,37 @@
 	</div>
 </div>
 
+{#snippet sortIcon(key: SortKey)}
+	{#if sortKey === key}
+		{#if sortDir === 'asc'}
+			<CaretUp class="h-3 w-3" weight="bold" />
+		{:else}
+			<CaretDown class="h-3 w-3" weight="bold" />
+		{/if}
+	{:else}
+		<ArrowsDownUp class="h-3 w-3 opacity-25" />
+	{/if}
+{/snippet}
+
+<style>
+	:global(.pv-sort-btn) {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		background: none;
+		border: none;
+		font: inherit;
+		font-weight: 500;
+		color: inherit;
+		cursor: pointer;
+		padding: 0;
+		white-space: nowrap;
+	}
+	:global(.pv-sort-btn:hover) {
+		color: var(--foreground);
+	}
+</style>
+
 <div class="pv-content-width">
 
 <LoadingToast visible={refreshing} />
@@ -147,26 +212,59 @@
 				</Select.Content>
 			</Select.Root>
 		{/if}
+		{#if storageTypes.length > 1}
+			<Select.Root type="single" value={selectedType} onValueChange={(v) => (selectedType = v ?? '')}>
+				<Select.Trigger class="w-[180px] h-8 text-sm">
+					{selectedType || $t('admin.storage.allTypes')}
+				</Select.Trigger>
+				<Select.Content>
+					<Select.Item value="">{$t('admin.storage.allTypes')}</Select.Item>
+					{#each storageTypes as st}
+						<Select.Item value={st}>{st}</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
+		{/if}
 	</div>
 
 	<div class="pv-table-wrap">
 		<table class="pv-table">
 			<thead>
 				<tr>
-					<th>{$t('common.name')}</th>
+					<th>
+						<button class="pv-sort-btn" onclick={() => toggleSort('name')}>
+							{$t('common.name')}
+							{@render sortIcon('name')}
+						</button>
+					</th>
 					<th>{$t('common.type')}</th>
 					<th>{$t('admin.storage.content')}</th>
 					{#if nodes.length > 1 || selectedNode === ''}
 						<th>{$t('common.node')}</th>
 					{/if}
-					<th class="pv-th-num">{$t('admin.storage.total')}</th>
-					<th class="pv-th-num">{$t('admin.storage.used')}</th>
-					<th>{$t('admin.storage.usage')}</th>
+					<th class="pv-th-num">
+						<button class="pv-sort-btn" onclick={() => toggleSort('total')}>
+							{$t('admin.storage.total')}
+							{@render sortIcon('total')}
+						</button>
+					</th>
+					<th class="pv-th-num">
+						<button class="pv-sort-btn" onclick={() => toggleSort('used')}>
+							{$t('admin.storage.used')}
+							{@render sortIcon('used')}
+						</button>
+					</th>
+					<th>
+						<button class="pv-sort-btn" onclick={() => toggleSort('usage')}>
+							{$t('admin.storage.usage')}
+							{@render sortIcon('usage')}
+						</button>
+					</th>
 					<th class="text-center">{$t('common.enabled')}</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each filteredStorages as s}
+				{#each sortedStorages as s}
 					{@const pct = Number(formatPercent(s.used, s.total))}
 					{@const key = storageKey(s.storage, s.node)}
 					<tr class="pv-row">
