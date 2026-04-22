@@ -92,7 +92,7 @@
       "ram": "RAM",
       "disk": "Disk",
       "uptime": "Uptime",
-      "cores": "{count} cores"
+      "cpuDetails": "{cores} cores · {sockets} sockets"
     },
     "storage": {
       "title": "Storage",
@@ -212,6 +212,13 @@
       "noTemplatesDesc": "Create a template to automate VM initialization",
       "templateCount": "{count} template(s)",
       "sftpStatus": "SFTP status",
+      "sftpStatusText": {
+        "configured": "Configured",
+        "disabled": "Disabled",
+        "host-not-configured": "Host not configured",
+        "private-key-not-found": "Private key not found",
+        "settings-unavailable": "Settings unavailable"
+      },
       "host": "Host",
       "username": "Username",
       "keyExists": "Key exists",

@@ -91,8 +91,8 @@
       "cpu": "CPU",
       "ram": "RAM",
       "disk": "Disque",
-      "uptime": "Disponibilité",
-      "cores": "{count} cœurs"
+      "uptime": "Temps de fonctionnement",
+      "cpuDetails": "{cores} cœurs · {sockets} sockets"
     },
     "storage": {
       "title": "Stockage",
@@ -141,7 +141,7 @@
       "cpus": "CPUs",
       "ram": "RAM",
       "cpu": "CPU",
-      "uptime": "Disponibilité",
+      "uptime": "Temps de fonctionnement",
       "allNodes": "Tous les nœuds",
       "actions": {
         "start": "Démarrer",
@@ -209,6 +209,13 @@
       "noTemplatesDesc": "Créez un modèle pour automatiser l'initialisation des VMs",
       "templateCount": "{count} modèle(s)",
       "sftpStatus": "Statut SFTP",
+      "sftpStatusText": {
+        "configured": "Configuré",
+        "disabled": "Désactivé",
+        "host-not-configured": "Hôte non configuré",
+        "private-key-not-found": "Clé privée introuvable",
+        "settings-unavailable": "Paramètres indisponibles"
+      },
       "host": "Hôte",
       "username": "Nom d'utilisateur",
       "keyExists": "Clé présente",

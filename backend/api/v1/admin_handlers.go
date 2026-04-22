@@ -41,15 +41,16 @@ func (h *AdminHandler) Nodes(w http.ResponseWriter, r *http.Request) {
 	result := make([]AdminNodeResponse, 0, len(cached))
 	for _, details := range cached {
 		result = append(result, AdminNodeResponse{
-			Name:      details.Node,
-			Status:    details.Status,
-			CPU:       details.CPU,
-			MaxCPU:    details.MaxCPU,
-			Memory:    details.Memory,
-			MaxMemory: details.MaxMemory,
-			Disk:      details.Disk,
-			MaxDisk:   details.MaxDisk,
-			Uptime:    details.Uptime,
+			Name:       details.Node,
+			Status:     details.Status,
+			CPU:        details.CPU,
+			MaxCPU:     details.MaxCPU,
+			CpuSockets: details.Sockets,
+			Memory:     details.Memory,
+			MaxMemory:  details.MaxMemory,
+			Disk:       details.Disk,
+			MaxDisk:    details.MaxDisk,
+			Uptime:     details.Uptime,
 		})
 	}
 	writeJSON(w, result)
