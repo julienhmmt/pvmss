@@ -581,6 +581,7 @@
     "tooltip": "Par nom : correspondance partielle sur le nom de la VM.\nPar tag : correspondance partielle sur n'importe quel tag (sauf pvmss).\nPar ID de VM : correspondance partielle sur l'identifiant numérique.\nLa recherche est insensible à la casse.",
     "slowLoading": "L'API Proxmox prend plus de temps que d'habitude…",
     "noResults": "Aucune machine virtuelle ne correspond à votre recherche.",
+    "queryRequired": "Une requête de recherche est requise lors d'une recherche par nom ou tag.",
     "resultsCount": "{count} résultat(s)",
     "searchType": "Type de recherche",
     "typeByName": "Par nom",
