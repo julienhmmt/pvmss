@@ -119,6 +119,7 @@ type AdminVMBRResponse struct {
 	Type        string `json:"type"`
 	Active      bool   `json:"active"`
 	BridgePorts string `json:"bridge_ports"`
+	Comments    string `json:"comments"`
 	Node        string `json:"node"`
 	Enabled     bool   `json:"enabled"`
 }

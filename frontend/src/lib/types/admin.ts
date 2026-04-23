@@ -81,6 +81,7 @@ export interface VMBR {
   type: string;
   active: boolean;
   bridgePorts: string;
+  comments: string;
   node: string;
   enabled: boolean;
 }
