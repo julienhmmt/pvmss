@@ -5,6 +5,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -21,6 +23,10 @@
 	let createOpen = $state(false);
 	let newTagName = $state('');
 	let deleteTarget = $state<string | null>(null);
+
+	let page = $state(1);
+	let perPage = $state(25);
+	const pagedTags = $derived(paginate(tags, page, perPage));
 
 	async function load() {
 		if (tags.length > 0) {
@@ -128,7 +134,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each tags as tag}
+				{#each pagedTags as tag (tag.name)}
 					<tr class="pv-row">
 						<td>
 							<div class="pv-resource-cell">
@@ -161,6 +167,8 @@
 			</tbody>
 		</table>
 	</div>
+
+	<Paginator total={tags.length} bind:page bind:perPage />
 {/if}
 
 <!-- Create tag dialog -->

@@ -5,6 +5,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import { Switch } from '$lib/components/ui/switch';
 	import * as Select from '$lib/components/ui/select';
 	import { getISOs, toggleISO } from '$lib/api/admin/iso';
@@ -32,6 +34,16 @@
 		})
 	);
 	const enabledCount = $derived(isos.filter((i) => i.enabled).length);
+
+	let page = $state(1);
+	let perPage = $state(25);
+	const pagedISOs = $derived(paginate(filteredISOs, page, perPage));
+
+	$effect(() => {
+		selectedNode;
+		searchQuery;
+		page = 1;
+	});
 
 	async function load() {
 		if (isos.length > 0) {
@@ -168,7 +180,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each filteredISOs as iso}
+					{#each pagedISOs as iso (iso.volid)}
 						<tr class="pv-row" class:opacity-50={toggling === iso.volid}>
 							<td>
 								<div class="pv-resource-cell">
@@ -193,6 +205,8 @@
 				</tbody>
 			</table>
 		</div>
+
+		<Paginator total={filteredISOs.length} bind:page bind:perPage />
 	{/if}
 {/if}
 

@@ -5,6 +5,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -38,6 +40,10 @@
 	let togglingsftp = $state(false);
 	let saving = $state(false);
 	let form = $state({ name: '', description: '', storage: '', yamlContent: '' });
+
+	let page = $state(1);
+	let perPage = $state(25);
+	const pagedTemplates = $derived(paginate(templates, page, perPage));
 
 	const deleteTargetName = $derived(
 		templates.find((t) => t.id === deleteTarget)?.name ?? deleteTarget ?? ''
@@ -261,7 +267,7 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each templates as tmpl}
+					{#each pagedTemplates as tmpl (tmpl.id)}
 						<tr class="pv-row" class:opacity-50={toggling === tmpl.id}>
 							<td>
 								<div class="pv-resource-cell">
@@ -304,6 +310,8 @@
 				</tbody>
 			</table>
 		</div>
+
+		<Paginator total={templates.length} bind:page bind:perPage />
 	{/if}
 {/if}
 
