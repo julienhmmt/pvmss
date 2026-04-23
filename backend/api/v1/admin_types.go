@@ -73,8 +73,11 @@ type CreatePoolRequest struct {
 // --- Tags ---
 
 type AdminTagResponse struct {
-	Name    string `json:"name"`
-	VMCount int    `json:"vm_count"`
+	Name        string `json:"name"`
+	VMCount     int    `json:"vm_count"`
+	Color       string `json:"color,omitempty"`
+	TextColor   string `json:"text_color,omitempty"`
+	FromProxmox bool   `json:"from_proxmox"`
 }
 
 type CreateTagRequest struct {

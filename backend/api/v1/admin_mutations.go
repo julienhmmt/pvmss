@@ -308,6 +308,7 @@ func (h *AdminMutationsHandler) ListTags(w http.ResponseWriter, r *http.Request)
 
 	// Count VMs per tag if online
 	tagCounts := make(map[string]int, len(tags))
+	tagColors := map[string]proxmox.TagColor{}
 	if !h.state.IsOfflineMode() {
 		snap := h.state.GetProxmoxSnapshot()
 		if snap != nil {
@@ -320,14 +321,25 @@ func (h *AdminMutationsHandler) ListTags(w http.ResponseWriter, r *http.Request)
 				}
 			}
 		}
+		if restyClient, err := proxmox.MakeRestyClientFromEnv(5 * time.Second); err == nil {
+			if colors, cErr := proxmox.GetTagColorsResty(r.Context(), restyClient); cErr == nil {
+				tagColors = colors
+			}
+		}
 	}
 
 	result := make([]AdminTagResponse, 0, len(tags))
 	for _, tag := range tags {
-		result = append(result, AdminTagResponse{
+		entry := AdminTagResponse{
 			Name:    tag,
 			VMCount: tagCounts[tag],
-		})
+		}
+		if color, ok := tagColors[tag]; ok {
+			entry.Color = color.Background
+			entry.TextColor = color.Text
+			entry.FromProxmox = true
+		}
+		result = append(result, entry)
 	}
 	writeJSON(w, result)
 }
