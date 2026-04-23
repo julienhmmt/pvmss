@@ -131,6 +131,9 @@
 	const isLastStep = $derived(() => currentStep === STEPS.length - 1);
 	const totalVCPUs = $derived(() => vmSockets * vmCores);
 	const totalDiskGB = $derived(() => vmDisks.reduce((acc, d) => acc + d.sizeGb, 0));
+	const maxTotalDiskGB = $derived(() =>
+		settings ? settings.maxDiskPerVm * settings.limits.disk.max : 0
+	);
 	const selectedProfile = $derived(() =>
 		(settings?.vmProfiles ?? []).find((p) => p.id === selectedProfileId) ?? null
 	);
@@ -951,20 +954,15 @@
 									{/each}
 								</Select.Content>
 							</Select.Root>
+							{#if settings.nodes.every((n) => n.disabled)}
+								<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
+									<p class="text-amber-800 font-medium">{$t('vmCreate.base.allNodesDisabled')}</p>
+									<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.allNodesDisabledHint')}</p>
+								</div>
+							{/if}
 						</div>
-						{#if settings.nodes.every((n) => n.disabled)}
-							<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
-								<p class="text-amber-800 font-medium">{$t('vmCreate.base.allNodesDisabled')}</p>
-								<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.allNodesDisabledHint')}</p>
-							</div>
-						{/if}
-						{#if settings.storages.length === 0}
-							<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
-								<p class="text-amber-800 font-medium">{$t('vmCreate.base.noStorages')}</p>
-								<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.noStoragesHint')}</p>
-							</div>
-						{/if}
 						<div class="space-y-2">
+							<Label>{$t('vmCreate.base.storage')}</Label>
 							<Select.Root
 								type="single"
 								value={vmStorage}
@@ -984,6 +982,12 @@
 									{/each}
 								</Select.Content>
 							</Select.Root>
+							{#if settings.storages.length === 0}
+								<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
+									<p class="text-amber-800 font-medium">{$t('vmCreate.base.noStorages')}</p>
+									<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.noStoragesHint')}</p>
+								</div>
+							{/if}
 						</div>
 						<div class="space-y-2 sm:col-span-2">
 							<Label>{$t('vmCreate.base.iso')}</Label>
@@ -1092,11 +1096,11 @@
 								onValueChange={(v) => (vmDiskBus = v)}
 							>
 								<Select.Trigger class="w-full">
-									{DISK_BUSES.find((b) => b.value === vmDiskBus)?.label || vmDiskBus}
+									{$t(DISK_BUSES.find((b) => b.value === vmDiskBus)?.labelKey) || vmDiskBus}
 								</Select.Trigger>
 								<Select.Content>
 									{#each DISK_BUSES as bus}
-										<Select.Item value={bus.value}>{bus.label}</Select.Item>
+										<Select.Item value={bus.value}>{$t(bus.labelKey)}</Select.Item>
 									{/each}
 								</Select.Content>
 							</Select.Root>
@@ -1122,7 +1126,24 @@
 					</div>
 				{:else if currentStepName() === 'disk'}
 					<!-- STEP 3: DISK -->
-					<h2 class="text-lg font-semibold">{$t('vmCreate.disk.title')}</h2>
+					<div class="flex items-center justify-between">
+						<h2 class="text-lg font-semibold">{$t('vmCreate.disk.title')}</h2>
+						<Badge variant="secondary">
+							{$t('vmCreate.disk.diskCount', {
+								values: { current: String(vmDisks.length), max: String(settings.maxDiskPerVm) }
+							})}
+						</Badge>
+					</div>
+					<p class="text-muted-foreground text-xs">
+						{$t('vmCreate.disk.capacityInfo', {
+							values: {
+								total: String(totalDiskGB()),
+								max: String(maxTotalDiskGB()),
+								maxDisks: String(settings.maxDiskPerVm),
+								maxSize: String(settings.limits.disk.max)
+							}
+						})}
+					</p>
 					<Separator />
 					<div class="space-y-4">
 						{#each vmDisks as disk, i}
@@ -1174,7 +1195,14 @@
 					</div>
 				{:else if currentStepName() === 'network'}
 					<!-- STEP 4: NETWORK -->
-					<h2 class="text-lg font-semibold">{$t('vmCreate.network.title')}</h2>
+					<div class="flex items-center justify-between">
+						<h2 class="text-lg font-semibold">{$t('vmCreate.network.title')}</h2>
+						<Badge variant="secondary">
+							{$t('vmCreate.network.cardCount', {
+								values: { current: String(vmNetworks.length), max: String(settings.maxNetworkCards) }
+							})}
+						</Badge>
+					</div>
 					<Separator />
 					<div class="space-y-4">
 						{#each vmNetworks as net, i}
@@ -1235,12 +1263,12 @@
 											}}
 										>
 											<Select.Trigger class="w-full">
-												{NETWORK_MODELS.find((m) => m.value === vmNetworks[i].model)?.label ||
+												{$t(NETWORK_MODELS.find((m) => m.value === vmNetworks[i].model)?.labelKey) ||
 													vmNetworks[i].model}
 											</Select.Trigger>
 											<Select.Content>
 												{#each NETWORK_MODELS as model}
-													<Select.Item value={model.value}>{model.label}</Select.Item>
+													<Select.Item value={model.value}>{$t(model.labelKey)}</Select.Item>
 												{/each}
 											</Select.Content>
 										</Select.Root>
@@ -1513,7 +1541,7 @@
 							<span class="text-muted-foreground">{$t('vmCreate.review.memory')}</span>
 							<span>{vmMemoryGB} GB</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.diskBus')}</span>
-							<span>{DISK_BUSES.find((b) => b.value === vmDiskBus)?.label || vmDiskBus}</span>
+							<span>{$t(DISK_BUSES.find((b) => b.value === vmDiskBus)?.labelKey) || vmDiskBus}</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.efi')}</span>
 							<span>{vmEnableEFI ? $t('common.yes') : $t('common.no')}</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.tpm')}</span>
@@ -1570,7 +1598,7 @@
 								</span>
 								<span class="text-muted-foreground">{$t('vmCreate.review.model')}</span>
 								<span>
-									{NETWORK_MODELS.find((m) => m.value === net.model)?.label || net.model}
+									{$t(NETWORK_MODELS.find((m) => m.value === net.model)?.labelKey) || net.model}
 								</span>
 								{#if net.vlan}
 									<span class="text-muted-foreground">VLAN</span>
