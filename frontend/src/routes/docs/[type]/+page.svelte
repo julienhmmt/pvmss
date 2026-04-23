@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { t } from 'svelte-i18n';
+	import { t, locale } from 'svelte-i18n';
 	import { api } from '$lib/api/client';
 	import { auth as authStore } from '$lib/stores/auth.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
@@ -39,7 +39,8 @@
 		toc = [];
 		sectionElements.clear();
 		try {
-			const res = await api.get<{ html: string }>(`/api/v1/docs/${type}`);
+			const lang = ($locale ?? 'en').startsWith('fr') ? 'fr' : 'en';
+			const res = await api.get<{ html: string }>(`/api/v1/docs/${type}?lang=${lang}`);
 			console.log('Docs API response:', res);
 			html = res.html;
 			console.log('HTML content length:', html.length);
@@ -124,10 +125,14 @@
 		};
 	});
 
-	// Only load when docType actually changes
+	let previousLocale = $state('');
+
+	// Load when docType or locale changes
 	$effect(() => {
-		if (docType && docType !== previousDocType) {
+		const currentLocale = $locale ?? '';
+		if (docType && (docType !== previousDocType || currentLocale !== previousLocale)) {
 			previousDocType = docType;
+			previousLocale = currentLocale;
 			load(docType);
 		}
 	});
