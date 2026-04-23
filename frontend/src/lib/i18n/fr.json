@@ -134,6 +134,11 @@
       "enabled": "Activé",
       "enabledCount": "{count} activé(s)",
       "filterNode": "Filtrer par nœud",
+      "description": "Description",
+      "noDescription": "Sans description",
+      "noPorts": "Aucun port",
+      "searchPlaceholder": "Rechercher un pont ou une description…",
+      "noSearchResults": "Aucun pont ne correspond à votre recherche",
       "toast": {
         "enabled": "Pont {iface} activé sur {node}",
         "disabled": "Pont {iface} désactivé sur {node}"

@@ -259,6 +259,7 @@ func (h *AdminHandler) VMBR(w http.ResponseWriter, r *http.Request) {
 				Type:        b.Type,
 				Active:      active,
 				BridgePorts: b.BridgePorts,
+				Comments:    strings.TrimSpace(b.Comments),
 				Node:        nr.node,
 				Enabled:     enabledSet[nr.node+":"+b.Iface],
 			})
