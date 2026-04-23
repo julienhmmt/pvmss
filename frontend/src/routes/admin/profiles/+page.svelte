@@ -77,7 +77,8 @@
 		storage: '',
 		icon: 'Globe',
 		color: 'blue',
-		enabled: true
+		enabled: true,
+		enableEfi: true
 	});
 
 	let form = $state(emptyForm());
@@ -120,7 +121,7 @@
 
 	function openEdit(profile: VMProfileConfig) {
 		editId = profile.id;
-		form = { ...profile, node: profile.node ?? '', storage: profile.storage ?? '' };
+		form = { ...profile, node: profile.node ?? '', storage: profile.storage ?? '', enableEfi: profile.enableEfi ?? true };
 		editOpen = true;
 	}
 
@@ -276,6 +277,11 @@
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
 								{profile.diskBus}
 							</span>
+							{#if profile.enableEfi}
+								<span class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded px-1.5 py-0.5 text-xs font-medium">
+									EFI
+								</span>
+							{/if}
 							{#if profile.node}
 								<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
 									{$t('admin.profiles.fields.node')}: {profile.node}
@@ -407,6 +413,15 @@
 					</div>
 				</div>
 			{/if}
+
+			<!-- EFI toggle -->
+			<div class="flex items-center gap-3 rounded-md border p-3">
+				<Switch bind:checked={form.enableEfi} />
+				<div>
+					<p class="text-sm font-medium">{$t('admin.profiles.fields.enableEfi')}</p>
+					<p class="text-xs text-muted-foreground">{$t('admin.profiles.fields.enableEfiHint')}</p>
+				</div>
+			</div>
 
 			<!-- Icon + Color -->
 			<div class="grid grid-cols-2 gap-3">

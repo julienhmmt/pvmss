@@ -118,6 +118,7 @@ func mapVMProfilesFromDB(src []database.VMProfile) []VMProfileConfig {
 			Icon:        blob.Icon,
 			Color:       blob.Color,
 			Enabled:     p.Enabled,
+			EnableEFI:   blob.EnableEFI,
 		})
 	}
 	return out

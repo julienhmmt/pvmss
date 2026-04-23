@@ -246,6 +246,8 @@
 		];
 		const validBus = DISK_BUSES.find((b) => b.value === profile.diskBus);
 		vmDiskBus = validBus ? profile.diskBus : 'virtio';
+		// Apply EFI from profile (defaults to true when not specified)
+		vmEnableEFI = profile.enableEfi ?? true;
 		// Apply node/storage overrides when profile specifies them; otherwise reset to auto-defaults
 		if (profile.node) {
 			const nodeExists = settings.nodes.find((n) => n.name === profile.node && !n.disabled);

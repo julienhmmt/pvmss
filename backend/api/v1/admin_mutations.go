@@ -1129,6 +1129,7 @@ func vmProfileConfigToDB(p state.VMProfileConfig) (*database.VMProfile, error) {
 		Sockets: p.Sockets, Cores: p.Cores, RAMGB: p.RAMGB,
 		DiskGB: p.DiskGB, DiskBus: p.DiskBus, Node: p.Node,
 		Storage: p.Storage, Icon: p.Icon, Color: p.Color,
+		EnableEFI: p.EnableEFI,
 	}
 	configBytes, err := json.Marshal(blob)
 	if err != nil {
