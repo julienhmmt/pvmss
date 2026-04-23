@@ -31,20 +31,21 @@ func MakeVMCreateHandler(s state.StateManager) *VMCreateHandler {
 
 // VMCreateSettingsResponse is the response for GET /api/v1/vm-create/settings.
 type VMCreateSettingsResponse struct {
-	Nodes             []VMCreateNodeOption    `json:"nodes"`
-	Storages          []VMCreateStorageOption `json:"storages"`
-	Bridges           []VMCreateBridgeOption  `json:"bridges"`
-	ISOs              []VMCreateISOOption     `json:"isos"`
-	Tags              []string                `json:"tags"`
-	CloudInitTemplate []VMCreateCITemplate    `json:"cloudinit_templates"`
-	VMProfiles        []state.VMProfileConfig `json:"vm_profiles"`
-	Limits            VMCreateLimits          `json:"limits"`
-	MaxNetworkCards   int                     `json:"max_network_cards"`
-	MaxDiskPerVM      int                     `json:"max_disk_per_vm"`
-	MaxVMPerUser      int                     `json:"max_vm_per_user"`
-	RemainingVMs      int                     `json:"remaining_vms"`
-	ProxmoxConnected  bool                    `json:"proxmox_connected"`
-	AllowCustomYAML   bool                    `json:"allow_custom_yaml"`
+	Nodes              []VMCreateNodeOption    `json:"nodes"`
+	Storages           []VMCreateStorageOption `json:"storages"`
+	Bridges            []VMCreateBridgeOption  `json:"bridges"`
+	ISOs               []VMCreateISOOption     `json:"isos"`
+	Tags               []string                `json:"tags"`
+	CloudInitTemplate  []VMCreateCITemplate    `json:"cloudinit_templates"`
+	CloudInitAvailable bool                    `json:"cloud_init_available"`
+	VMProfiles         []state.VMProfileConfig `json:"vm_profiles"`
+	Limits             VMCreateLimits          `json:"limits"`
+	MaxNetworkCards    int                     `json:"max_network_cards"`
+	MaxDiskPerVM       int                     `json:"max_disk_per_vm"`
+	MaxVMPerUser       int                     `json:"max_vm_per_user"`
+	RemainingVMs       int                     `json:"remaining_vms"`
+	ProxmoxConnected   bool                    `json:"proxmox_connected"`
+	AllowCustomYAML    bool                    `json:"allow_custom_yaml"`
 }
 
 // VMCreateNodeOption represents a node option for VM creation.
@@ -215,6 +216,8 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	resp.CloudInitTemplate = ciTemplates
+	// Cloud-init is available when at least one template is configured by the admin
+	resp.CloudInitAvailable = len(ciTemplates) > 0
 
 	// Compute remaining VMs for the user
 	resp.RemainingVMs = -1 // -1 = unlimited
