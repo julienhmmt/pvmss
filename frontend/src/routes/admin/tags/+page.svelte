@@ -11,8 +11,15 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import * as Dialog from '$lib/components/ui/dialog';
-	import { getTags, createTag, deleteTag } from '$lib/api/admin/tags';
-	import { TagIcon, TrashIcon, LockIcon, MagnifyingGlass, PaletteIcon } from 'phosphor-svelte';
+	import { getTags, createTag, deleteTag, setTagColor } from '$lib/api/admin/tags';
+	import {
+		TagIcon,
+		TrashIcon,
+		LockIcon,
+		MagnifyingGlass,
+		PaletteIcon,
+		ArrowCounterClockwiseIcon
+	} from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import type { Tag as TagType } from '$lib/types/admin';
 
@@ -24,6 +31,7 @@
 	let newTagName = $state('');
 	let deleteTarget = $state<string | null>(null);
 	let searchQuery = $state('');
+	let savingColor = $state<string | null>(null);
 
 	const filteredTags = $derived(
 		searchQuery
@@ -113,6 +121,37 @@
 			await load();
 		} catch (e) {
 			toast.error((e as Error).message);
+		}
+	}
+
+	async function handleColorChange(tagName: string, color: string) {
+		const hex = color.replace('#', '').toLowerCase();
+		if (!/^[0-9a-f]{6}$/.test(hex)) {
+			toast.error($t('admin.tags.colorFailed') + ': Invalid color format');
+			return;
+		}
+		savingColor = tagName;
+		try {
+			await setTagColor(tagName, hex);
+			toast.success($t('admin.tags.colorSaved', { values: { tagName } }));
+			await load();
+		} catch (e) {
+			toast.error(`${$t('admin.tags.colorFailed')}: ${(e as Error).message}`);
+		} finally {
+			savingColor = null;
+		}
+	}
+
+	async function handleColorReset(tagName: string) {
+		savingColor = tagName;
+		try {
+			await setTagColor(tagName, '');
+			toast.success($t('admin.tags.colorReset', { values: { tagName } }));
+			await load();
+		} catch (e) {
+			toast.error(`${$t('admin.tags.colorFailed')}: ${(e as Error).message}`);
+		} finally {
+			savingColor = null;
 		}
 	}
 
@@ -259,9 +298,49 @@
 										? $t('admin.tags.colorProxmoxHint')
 										: $t('admin.tags.colorAutoHint')}
 								>
-									<span class="pv-tag-swatch" style="background:{colors.bg}"></span>
+									<button
+										class="pv-tag-swatch-btn"
+										style="background:{colors.bg}"
+										aria-label={$t('admin.tags.editColor')}
+										title={$t('admin.tags.editColor')}
+										class:is-saving={savingColor === tag.name}
+										disabled={savingColor !== null}
+										onclick={(e) => {
+											const input = e.currentTarget.querySelector('input[type="color"]');
+											if (input) input.click();
+										}}
+										onkeydown={(e) => {
+											if (e.key === 'Enter' || e.key === ' ') {
+												e.preventDefault();
+												const input = e.currentTarget.querySelector('input[type="color"]');
+												if (input) input.click();
+											}
+										}}
+									>
+										<input
+											type="color"
+											class="pv-tag-color-input"
+											value={colors.bg}
+											disabled={savingColor !== null}
+											onchange={(e) =>
+												handleColorChange(tag.name, (e.target as HTMLInputElement).value)}
+											aria-hidden="true"
+											tabindex="-1"
+										/>
+									</button>
 									<span class="pv-td-mono text-xs">{colors.bg.toUpperCase()}</span>
-									{#if !colors.fromProxmox}
+									{#if colors.fromProxmox}
+										<Button
+											variant="ghost"
+											size="sm"
+											class="h-6 w-6 p-0"
+											title={$t('admin.tags.resetColor')}
+											disabled={savingColor !== null}
+											onclick={() => handleColorReset(tag.name)}
+										>
+											<ArrowCounterClockwiseIcon class="h-3 w-3" />
+										</Button>
+									{:else}
 										<PaletteIcon class="h-3 w-3 text-muted-foreground" />
 									{/if}
 								</div>
@@ -350,6 +429,40 @@
 		border-radius: 4px;
 		border: 1px solid hsl(var(--border));
 		flex-shrink: 0;
+	}
+
+	:global(.pv-tag-swatch-btn) {
+		position: relative;
+		display: inline-block;
+		width: 22px;
+		height: 22px;
+		border-radius: 6px;
+		border: 1px solid hsl(var(--border));
+		cursor: pointer;
+		overflow: hidden;
+		flex-shrink: 0;
+		transition: transform 0.15s ease, box-shadow 0.15s ease;
+	}
+	:global(.pv-tag-swatch-btn:hover) {
+		transform: scale(1.08);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+	}
+	:global(.pv-tag-swatch-btn.is-saving) {
+		opacity: 0.5;
+		cursor: wait;
+	}
+	:global(.pv-tag-color-input) {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		opacity: 0;
+		border: 0;
+		padding: 0;
+		cursor: pointer;
+	}
+	:global(.pv-tag-color-input:disabled) {
+		cursor: wait;
 	}
 
 	:global(.pv-tag-protected) {

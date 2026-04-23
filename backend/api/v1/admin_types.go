@@ -84,6 +84,13 @@ type CreateTagRequest struct {
 	Name string `json:"name"`
 }
 
+// SetTagColorRequest is the request body for PUT /api/v1/admin/tags/:name/color.
+// An empty Color removes the entry from the Proxmox color-map.
+type SetTagColorRequest struct {
+	Color     string `json:"color"`
+	TextColor string `json:"text_color"`
+}
+
 // --- Limits ---
 
 type AdminLimitsResponse struct {

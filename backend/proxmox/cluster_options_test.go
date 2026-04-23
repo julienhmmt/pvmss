@@ -1,13 +1,16 @@
 package proxmox
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestParseTagStyle(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name    string
-		input   string
-		want    map[string]TagColor
+		name  string
+		input string
+		want  map[string]TagColor
 	}{
 		{
 			name:  "empty",
@@ -76,5 +79,66 @@ func TestParseTagStyle(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestTagStyleBuilder_SerializeRoundtrip(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		input  string
+		expect string
+	}{
+		{
+			name:   "empty",
+			input:  "",
+			expect: "",
+		},
+		{
+			name:   "only extras preserved",
+			input:  "shape=full,ordering=config",
+			expect: "shape=full,ordering=config",
+		},
+		{
+			name:   "colors sorted alphabetically",
+			input:  "color-map=b:222222;a:111111:ffffff",
+			expect: "color-map=a:111111:ffffff;b:222222",
+		},
+		{
+			name:   "extras kept before color-map",
+			input:  "shape=full,color-map=x:aabbcc,ordering=config",
+			expect: "shape=full,ordering=config,color-map=x:aabbcc",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := splitTagStyle(tc.input).serialize()
+			if got != tc.expect {
+				t.Errorf("serialize: got %q, want %q", got, tc.expect)
+			}
+		})
+	}
+}
+
+func TestTagStyleBuilder_UpsertAndDelete(t *testing.T) {
+	t.Parallel()
+	builder := splitTagStyle("shape=full,color-map=a:111111;b:222222")
+	builder.colors["c"] = TagColor{Background: "333333", Text: "ffffff"}
+	delete(builder.colors, "a")
+	got := builder.serialize()
+	want := "shape=full,color-map=b:222222;c:333333:ffffff"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	// Confirm parseTagStyle round-trip yields the same colors map.
+	roundtrip := parseTagStyle(got)
+	wantMap := map[string]TagColor{
+		"b": {Background: "222222"},
+		"c": {Background: "333333", Text: "ffffff"},
+	}
+	if !reflect.DeepEqual(roundtrip, wantMap) {
+		t.Errorf("roundtrip map mismatch: got %+v, want %+v", roundtrip, wantMap)
 	}
 }
