@@ -467,7 +467,7 @@
 	<title>PVMSS — {$t('vmCreate.title')}</title>
 </svelte:head>
 
-<div class="mx-auto space-y-6 p-4 md:p-6 pv-content-width">
+<div class="mx-auto space-y-6 px-4 py-6 pv-content-width">
 	<!-- Header -->
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
 		<div>
