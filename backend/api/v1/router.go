@@ -108,6 +108,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 
 	router.GET("/api/v1/admin/tags", adminJWTWrap(jwtSecret, adminMutHandler.ListTags))
 	router.POST("/api/v1/admin/tags", adminJWTWrap(jwtSecret, adminMutHandler.CreateTag))
+	router.PUT("/api/v1/admin/tags/:name/color", adminJWTWrap(jwtSecret, adminMutHandler.SetTagColor))
 	router.DELETE("/api/v1/admin/tags/:name", adminJWTWrap(jwtSecret, adminMutHandler.DeleteTag))
 
 	router.GET("/api/v1/admin/limits", adminJWTWrap(jwtSecret, adminMutHandler.GetLimits))
