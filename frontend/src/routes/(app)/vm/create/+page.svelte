@@ -263,6 +263,13 @@
 			const bestStorage = findBestStorage(settings.storages);
 			if (bestStorage) { vmStorage = bestStorage; autoStorage = bestStorage; }
 		}
+		// Ensure network bridge is set — profiles don't carry network config so fall back to defaults
+		if (vmNetworks.length === 0 || vmNetworks[0].bridge === '') {
+			const defaultBridge = settings.bridges.length > 0 ? settings.bridges[0].name : '';
+			vmNetworks = [
+				{ bridge: defaultBridge, model: 'virtio', mac: '', vlan: 0, rateLimit: '', mtu: 0, enabled: true }
+			];
+		}
 	}
 
 	function selectProfile(profile: VMProfileConfig): void {
