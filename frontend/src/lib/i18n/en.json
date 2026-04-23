@@ -236,6 +236,8 @@
         "private-key-not-found": "Private key not found",
         "settings-unavailable": "Settings unavailable"
       },
+      "sftpEnable": "Enable",
+      "sftpDisable": "Disable",
       "host": "Host",
       "username": "Username",
       "keyExists": "Key exists",

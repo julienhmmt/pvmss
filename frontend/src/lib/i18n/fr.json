@@ -233,6 +233,8 @@
         "private-key-not-found": "Clé privée introuvable",
         "settings-unavailable": "Paramètres indisponibles"
       },
+      "sftpEnable": "Activer",
+      "sftpDisable": "Désactiver",
       "host": "Hôte",
       "username": "Nom d'utilisateur",
       "keyExists": "Clé présente",

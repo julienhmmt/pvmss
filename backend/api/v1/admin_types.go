@@ -201,12 +201,13 @@ type AdminClusterInfoResponse struct {
 
 // AdminSFTPStatusResponse represents SFTP configuration status for cloud-init uploads.
 type AdminSFTPStatusResponse struct {
-	Enabled    bool   `json:"enabled"`
-	Host       string `json:"host,omitempty"`
-	Username   string `json:"username,omitempty"`
-	KeyExists  bool   `json:"key_exists"`
-	StatusText string `json:"status_text"`
-	StatusType string `json:"status_type"` // "success", "warning", "danger"
+	Enabled      bool   `json:"enabled"`
+	Host         string `json:"host,omitempty"`
+	Username     string `json:"username,omitempty"`
+	KeyExists    bool   `json:"key_exists"`
+	IsConfigured bool   `json:"is_configured"` // true when host+username+key are set (even if disabled)
+	StatusText   string `json:"status_text"`
+	StatusType   string `json:"status_type"` // "success", "warning", "danger"
 }
 
 // AdminCloudInitListResponse wraps cloud-init templates with SFTP status.

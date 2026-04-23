@@ -43,3 +43,7 @@ export async function deleteCloudInit(id: string): Promise<void> {
 export async function toggleCloudInit(id: string): Promise<void> {
   return api.post(`/api/v1/admin/cloudinit/${encodeURIComponent(id)}/toggle`);
 }
+
+export async function toggleSFTP(): Promise<void> {
+  return api.post("/api/v1/admin/cloudinit/sftp/toggle");
+}
