@@ -47,6 +47,9 @@ export interface Pool {
 export interface Tag {
   name: string;
   vmCount: number;
+  color?: string;
+  textColor?: string;
+  fromProxmox: boolean;
 }
 
 export interface ResourceRange {
