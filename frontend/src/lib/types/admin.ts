@@ -115,6 +115,7 @@ export interface SFTPStatus {
   host?: string;
   username?: string;
   keyExists: boolean;
+  isConfigured: boolean;
   statusText: string;
   statusType: "success" | "warning" | "danger";
 }

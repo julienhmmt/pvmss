@@ -596,24 +596,32 @@ func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
 		}
 	}
 	cfg := settings.CloudInitSFTP
-	if !cfg.Enabled {
-		return &AdminSFTPStatusResponse{
-			Enabled:    false,
-			StatusText: "disabled",
-			StatusType: "warning",
-		}
-	}
+	isConfigured := cfg.Host != "" && cfg.Username != "" && cfg.PrivateKeyPath != ""
+
 	keyExists := false
 	if cfg.PrivateKeyPath != "" {
 		if _, err := os.Stat(cfg.PrivateKeyPath); err == nil {
 			keyExists = true
 		}
 	}
+
+	if !cfg.Enabled {
+		return &AdminSFTPStatusResponse{
+			Enabled:      false,
+			Host:         cfg.Host,
+			Username:     cfg.Username,
+			KeyExists:    keyExists,
+			IsConfigured: isConfigured,
+			StatusText:   "disabled",
+			StatusType:   "warning",
+		}
+	}
 	status := &AdminSFTPStatusResponse{
-		Enabled:   true,
-		Host:      cfg.Host,
-		Username:  cfg.Username,
-		KeyExists: keyExists,
+		Enabled:      true,
+		Host:         cfg.Host,
+		Username:     cfg.Username,
+		KeyExists:    keyExists,
+		IsConfigured: isConfigured,
 	}
 	if !keyExists {
 		status.StatusText = "private-key-not-found"
@@ -626,6 +634,39 @@ func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
 		status.StatusType = "success"
 	}
 	return status
+}
+
+// ToggleSFTP handles POST /api/v1/admin/cloudinit/sftp/toggle.
+func (h *AdminMutationsHandler) ToggleSFTP(w http.ResponseWriter, r *http.Request) {
+	settings := h.state.GetSettings()
+	cfg := settings.CloudInitSFTP
+	newEnabled := !cfg.Enabled
+
+	if h.state.HasDB() {
+		dbCfg := &database.SFTPConfig{
+			Enabled:        newEnabled,
+			Host:           cfg.Host,
+			Port:           cfg.Port,
+			Username:       cfg.Username,
+			PrivateKeyPath: cfg.PrivateKeyPath,
+			RemotePath:     cfg.SnippetBaseDir,
+		}
+		if err := h.state.SetSFTPConfig(dbCfg, usernameFromCtx(r)); err != nil {
+			logger.Get().Error().Err(err).Msg("api/v1: ToggleSFTP failed")
+			errInternal(w)
+			return
+		}
+	} else {
+		newSettings := *settings
+		newSettings.CloudInitSFTP = cfg
+		newSettings.CloudInitSFTP.Enabled = newEnabled
+		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
+		if err := h.state.SetSettings(&newSettings); err != nil {
+			errInternal(w)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // generateCloudInitID generates a safe ID from a template name (lowercase, alphanumeric, hyphens).
