@@ -26,6 +26,8 @@
     "error": "An error occurred",
     "previous": "Previous",
     "next": "Next",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
     "total": "Total",
     "admin": "Admin",
     "logout": "Logout",

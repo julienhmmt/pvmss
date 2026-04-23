@@ -45,5 +45,5 @@ export async function toggleCloudInit(id: string): Promise<void> {
 }
 
 export async function toggleSFTP(): Promise<void> {
-  return api.post("/api/v1/admin/cloudinit/sftp/toggle");
+  return api.post("/api/v1/admin/cloudinit-sftp/toggle");
 }
