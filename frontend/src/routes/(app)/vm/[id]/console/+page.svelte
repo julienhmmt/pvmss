@@ -50,10 +50,9 @@
 				throw new Error('noVNC RFB module failed to load');
 			}
 
-			const backendHost = import.meta.env.DEV ? 'localhost:50000' : window.location.host;
 			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 			const wsUrl =
-				`${protocol}//${backendHost}/api/v1/vms/${vmid}/console/websocket` +
+				`${protocol}//${window.location.host}/api/v1/vms/${vmid}/console/websocket` +
 				`?port=${port}&node=${encodeURIComponent(node)}&vncticket=${encodeURIComponent(ticket)}`;
 
 			rfb = new (RFB as { new (...args: unknown[]): unknown })(container, wsUrl, {
