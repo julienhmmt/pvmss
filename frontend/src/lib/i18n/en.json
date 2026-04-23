@@ -134,6 +134,11 @@
       "enabled": "Enabled",
       "enabledCount": "{count} enabled",
       "filterNode": "Filter by node",
+      "description": "Description",
+      "noDescription": "No description",
+      "noPorts": "No ports",
+      "searchPlaceholder": "Search bridges or descriptions…",
+      "noSearchResults": "No bridges match your search",
       "toast": {
         "enabled": "Bridge {iface} enabled on {node}",
         "disabled": "Bridge {iface} disabled on {node}"
