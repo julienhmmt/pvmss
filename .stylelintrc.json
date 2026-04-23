@@ -1,0 +1,31 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "ignoreFiles": [
+    "**/build/**",
+    "**/.svelte-kit/**",
+    "**/node_modules/**",
+    "**/static/**"
+  ],
+  "rules": {
+    "selector-class-pattern": null,
+    "at-rule-no-unknown": [
+      true,
+      {
+        "ignoreAtRules": [
+          "custom-variant",
+          "theme",
+          "layer",
+          "apply",
+          "config",
+          "plugin"
+        ]
+      }
+    ],
+    "lightness-notation": null,
+    "hue-degree-notation": null,
+    "import-notation": null,
+    "declaration-empty-line-before": null,
+    "rule-empty-line-before": null,
+    "at-rule-empty-line-before": null
+  }
+}

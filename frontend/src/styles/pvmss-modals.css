@@ -2,7 +2,7 @@
 .pv-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0 0 0 / 40%);
   backdrop-filter: blur(3px);
   z-index: 50;
   display: flex;
@@ -16,7 +16,7 @@
   border-radius: 20px;
   width: 100%;
   max-width: 640px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 18%);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -40,7 +40,7 @@
 
 /* Colored modal header (gradient) */
 .pv-modal-header--primary {
-  background: linear-gradient(135deg, oklch(0.35 0.12 45), oklch(0.60 0.19 45));
+  background: linear-gradient(135deg, oklch(35% 0.12 45deg), oklch(60% 0.19 45deg));
   color: white;
   border-bottom: none;
 }
@@ -97,14 +97,14 @@
 /* Close button on colored header */
 .pv-modal-header--primary .pv-modal-close,
 .pv-modal-header--danger .pv-modal-close {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgb(255 255 255 / 15%);
+  border-color: rgb(255 255 255 / 25%);
   color: white;
 }
 
 .pv-modal-header--primary .pv-modal-close:hover,
 .pv-modal-header--danger .pv-modal-close:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgb(255 255 255 / 25%);
 }
 
 /* Form field inside modal */
@@ -126,7 +126,7 @@
   margin-top: 2px;
 }
 
-@media (max-width: 640px) {
+@media (width <= 640px) {
   .pv-overlay {
     padding: 16px;
     align-items: flex-end;
