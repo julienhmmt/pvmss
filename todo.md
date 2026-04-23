@@ -4,7 +4,7 @@
 
 - [ ] frontend : avoir un squelette mais sans les donner, pour afficher ce qui va arriver une fois les données récupérées
 - [ ] admin/nodes : il faut un bouton à côté de chaque node pour activer/désactiver le node qu'on laisse à l'utilisateur. On peut déjà le faire dans les paramètres avancés en tant qu'administrateur mais il faut un bouton plus facile d'accès pour les admin dans la page admin/nodes
-- [ ] admin/limites : avoir un bouton à chaque node pour 'appliquer ces limites à tous les nodes'
+- [x] **TO CHECK** admin/limites : avoir un bouton à chaque node pour 'appliquer ces limites à tous les nodes'
 - [x] **TO CHECK** admin/iso : permettre de filtrer par node
 - [ ] frontend : la largeur et l'affichage de la page d'accueil est bonne, il faut avoir cette même disposition dans toutes les autres pages (home, vm/create (et toutes les pages sous-jacentes), search, documentation, profile)
 - [ ] user/createVM : dans les profils il faut ajouter l'efi (dire que c'est le démarrage sécurisé), le cocher par défaut et mettre sur un stockage qui supporte l'efi (il existe déjà ce check)

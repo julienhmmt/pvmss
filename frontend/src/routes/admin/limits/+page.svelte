@@ -123,6 +123,20 @@
 		return n.status === 'online' ? 'online' : 'offline';
 	}
 
+	function applyVmLimitsToAllNodes(): void {
+		if (!limits) return;
+		const updatedNodes: typeof limits.nodes = {};
+		for (const name of Object.keys(limits.nodes)) {
+			updatedNodes[name] = {
+				sockets: { min: limits.vm.sockets.min, max: limits.vm.sockets.max },
+				cores:   { min: limits.vm.cores.min,   max: limits.vm.cores.max },
+				ram:     { min: limits.vm.ram.min,     max: limits.vm.ram.max },
+				disk:    { min: limits.vm.disk.min,    max: limits.vm.disk.max }
+			};
+		}
+		limits = { ...limits, nodes: updatedNodes };
+	}
+
 	onMount(load);
 </script>
 
@@ -272,9 +286,23 @@
 							{sortedNodes.length}
 						</span>
 					</div>
-					<Button size="sm" disabled={savingNodes} onclick={() => saveSection((v) => (savingNodes = v))}>
-						{savingNodes ? $t('common.saving') : $t('common.save')}
-					</Button>
+					<div class="flex items-center gap-2">
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger>
+									<Button size="sm" variant="outline" onclick={applyVmLimitsToAllNodes} disabled={savingNodes}>
+										{$t('admin.limits.applyToAllNodes')}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p class="max-w-xs">{$t('admin.limits.applyToAllNodesTooltip')}</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+						<Button size="sm" disabled={savingNodes} onclick={() => saveSection((v) => (savingNodes = v))}>
+							{savingNodes ? $t('common.saving') : $t('common.save')}
+						</Button>
+					</div>
 				</div>
 
 				<div class="divide-y">
