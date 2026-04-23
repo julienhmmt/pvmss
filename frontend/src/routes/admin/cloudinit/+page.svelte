@@ -18,6 +18,7 @@
 		updateCloudInit,
 		deleteCloudInit,
 		toggleCloudInit,
+		toggleSFTP,
 		getCloudInitStorages
 	} from '$lib/api/admin/cloudinit';
 	import { CloudIcon, TrashIcon, PencilIcon, CheckCircleIcon, WarningCircleIcon, XCircleIcon } from 'phosphor-svelte';
@@ -34,6 +35,7 @@
 	let editId = $state<string | null>(null);
 	let deleteTarget = $state<string | null>(null);
 	let toggling = $state<string | null>(null);
+	let togglingsftp = $state(false);
 	let saving = $state(false);
 	let form = $state({ name: '', description: '', storage: '', yamlContent: '' });
 
@@ -108,6 +110,18 @@
 			await load();
 		} catch (e) {
 			toast.error((e as Error).message);
+		}
+	}
+
+	async function handleToggleSFTP() {
+		togglingsftp = true;
+		try {
+			await toggleSFTP();
+			await load();
+		} catch (e) {
+			toast.error((e as Error).message);
+		} finally {
+			togglingsftp = false;
 		}
 	}
 
@@ -196,10 +210,23 @@
 					{/if}
 				</div>
 				<div class="flex-1 min-w-0">
-					<p class="text-sm font-medium {isSuccess ? 'text-green-800 dark:text-green-300' : isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}">
-						{$t('admin.cloudinit.sftpStatus')} — {$t('admin.cloudinit.sftpStatusText.' + sftpStatus.statusText)}
-					</p>
-					{#if sftpStatus.enabled}
+					<div class="flex items-center justify-between gap-3 flex-wrap">
+						<p class="text-sm font-medium {isSuccess ? 'text-green-800 dark:text-green-300' : isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}">
+							{$t('admin.cloudinit.sftpStatus')} — {$t('admin.cloudinit.sftpStatusText.' + sftpStatus.statusText)}
+						</p>
+						{#if sftpStatus.isConfigured}
+							<Button
+								size="sm"
+								variant="outline"
+								disabled={togglingsftp}
+								onclick={handleToggleSFTP}
+								class="shrink-0 text-xs"
+							>
+								{sftpStatus.enabled ? $t('admin.cloudinit.sftpDisable') : $t('admin.cloudinit.sftpEnable')}
+							</Button>
+						{/if}
+					</div>
+					{#if sftpStatus.host || sftpStatus.username}
 						<div class="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
 							{#if sftpStatus.host}
 								<span><span class="font-medium">{$t('admin.cloudinit.host')}:</span> {sftpStatus.host}</span>
