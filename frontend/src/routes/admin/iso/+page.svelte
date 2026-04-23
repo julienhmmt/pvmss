@@ -19,14 +19,14 @@
 	let refreshing = $state(false);
 	let error = $state<Error | null>(null);
 	let isos: ISO[] = $state([]);
-	let selectedNode = $state<string>('');
+	let selectedNodes = $state<string[]>([]);
 	let searchQuery = $state<string>('');
 	let toggling = $state<string | null>(null);
 
 	const nodes = $derived([...new Set(isos.map((i) => i.node))].sort());
 	const filteredISOs = $derived(
 		isos.filter((i) => {
-			const matchesNode = selectedNode ? i.node === selectedNode : true;
+			const matchesNode = selectedNodes.length > 0 ? selectedNodes.includes(i.node) : true;
 			const matchesSearch = searchQuery
 				? i.name.toLowerCase().includes(searchQuery.toLowerCase())
 				: true;
@@ -34,13 +34,20 @@
 		})
 	);
 	const enabledCount = $derived(isos.filter((i) => i.enabled).length);
+	const nodeFilterLabel = $derived(
+		selectedNodes.length === 0
+			? $t('admin.iso.allNodes')
+			: selectedNodes.length === 1
+				? selectedNodes[0]
+				: $t('admin.iso.selectedNodes', { values: { count: selectedNodes.length } })
+	);
 
 	let page = $state(1);
 	let perPage = $state(25);
 	const pagedISOs = $derived(paginate(filteredISOs, page, perPage));
 
 	$effect(() => {
-		selectedNode;
+		selectedNodes;
 		searchQuery;
 		page = 1;
 	});
@@ -143,22 +150,30 @@
 		</div>
 		{#if nodes.length > 1}
 			<Select.Root
-				type="single"
-				value={selectedNode}
+				type="multiple"
+				value={selectedNodes}
 				onValueChange={(v) => {
-					selectedNode = v ?? '';
+					selectedNodes = v ?? [];
 				}}
 			>
-				<Select.Trigger class="w-[200px]">
-					{selectedNode || $t('admin.iso.allNodes')}
+				<Select.Trigger class="w-[220px]">
+					{nodeFilterLabel}
 				</Select.Trigger>
 				<Select.Content>
-					<Select.Item value="">{$t('admin.iso.allNodes')}</Select.Item>
 					{#each nodes as node}
 						<Select.Item value={node}>{node}</Select.Item>
 					{/each}
 				</Select.Content>
 			</Select.Root>
+			{#if selectedNodes.length > 0}
+				<button
+					type="button"
+					class="text-xs text-muted-foreground hover:text-foreground underline"
+					onclick={() => (selectedNodes = [])}
+				>
+					{$t('common.clear')}
+				</button>
+			{/if}
 		{/if}
 	</div>
 
