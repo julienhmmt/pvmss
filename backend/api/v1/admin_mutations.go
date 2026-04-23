@@ -390,6 +390,70 @@ func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request
 	writeJSON(w, AdminTagResponse{Name: req.Name})
 }
 
+// hexColorRegex validates 6-digit hex colors (with optional leading #).
+var hexColorRegex = regexp.MustCompile(`^#?[0-9a-fA-F]{6}$`)
+
+// SetTagColor handles PUT /api/v1/admin/tags/:name/color.
+// Updates the cluster-wide `tag-style` color-map in Proxmox datacenter options.
+// An empty color in the body removes the entry.
+func (h *AdminMutationsHandler) SetTagColor(w http.ResponseWriter, r *http.Request) {
+	if h.state.IsOfflineMode() {
+		errBadRequest(w, "tag colors require an online Proxmox connection")
+		return
+	}
+	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	name := ps.ByName("name")
+	if name == "" {
+		errBadRequest(w, "missing tag name")
+		return
+	}
+	// Ensure the tag is actually known to PVMSS to avoid polluting tag-style
+	// with foreign names.
+	settings := h.state.GetSettings()
+	known := false
+	for _, t := range settings.Tags {
+		if t == name {
+			known = true
+			break
+		}
+	}
+	if !known {
+		errBadRequest(w, "tag not found")
+		return
+	}
+
+	var req SetTagColorRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	if req.Color != "" && !hexColorRegex.MatchString(req.Color) {
+		errBadRequest(w, "color must be a 6-digit hex value")
+		return
+	}
+	if req.TextColor != "" && !hexColorRegex.MatchString(req.TextColor) {
+		errBadRequest(w, "text_color must be a 6-digit hex value")
+		return
+	}
+	// Text color without background is meaningless.
+	if req.Color == "" && req.TextColor != "" {
+		errBadRequest(w, "text_color requires color")
+		return
+	}
+
+	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	if err != nil {
+		errInternal(w)
+		return
+	}
+	if err := proxmox.SetTagColorResty(r.Context(), restyClient, name, req.Color, req.TextColor); err != nil {
+		logger.Get().Error().Err(err).Str("tag", name).Msg("Failed to set tag color")
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // DeleteTag handles DELETE /api/v1/admin/tags/:name.
 func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request) {
 	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
