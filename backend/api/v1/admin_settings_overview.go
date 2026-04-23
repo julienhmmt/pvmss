@@ -140,6 +140,7 @@ type VMProfilePayload struct {
 	Icon        string `json:"icon"`
 	Color       string `json:"color"`
 	Enabled     bool   `json:"enabled"`
+	EnableEFI   bool   `json:"enable_efi,omitempty"`
 }
 
 // UpsertRequest is the JSON body for POST /api/v1/admin/settings/upsert.
@@ -343,6 +344,7 @@ func buildVMProfilesSection(s *state.AppSettings, latest database.AuditEntry) Ov
 			Icon:        p.Icon,
 			Color:       p.Color,
 			Enabled:     p.Enabled,
+			EnableEFI:   p.EnableEFI,
 		})
 	}
 	return OverviewSection{
@@ -611,15 +613,16 @@ func (h *AdminSettingsOverviewHandler) upsertVMProfile(raw json.RawMessage, chan
 	}
 
 	blob := database.VMProfileConfigBlob{
-		Sockets: p.Sockets,
-		Cores:   p.Cores,
-		RAMGB:   p.RAMGB,
-		DiskGB:  p.DiskGB,
-		DiskBus: p.DiskBus,
-		Node:    p.Node,
-		Storage: p.Storage,
-		Icon:    p.Icon,
-		Color:   p.Color,
+		Sockets:   p.Sockets,
+		Cores:     p.Cores,
+		RAMGB:     p.RAMGB,
+		DiskGB:    p.DiskGB,
+		DiskBus:   p.DiskBus,
+		Node:      p.Node,
+		Storage:   p.Storage,
+		Icon:      p.Icon,
+		Color:     p.Color,
+		EnableEFI: p.EnableEFI,
 	}
 	blobJSON, err := json.Marshal(blob)
 	if err != nil {

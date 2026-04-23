@@ -265,7 +265,9 @@
         "storage": "Stockage",
         "icon": "Icône",
         "color": "Couleur",
-        "enabled": "Activé"
+        "enabled": "Activé",
+        "enableEfi": "Activer EFI (Démarrage sécurisé)",
+        "enableEfiHint": "Requis pour Windows 11 et les systèmes d'exploitation modernes. Coché par défaut."
       },
       "iconOptions": {
         "Globe": "Globe",
