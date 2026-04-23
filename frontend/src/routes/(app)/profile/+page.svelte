@@ -188,294 +188,311 @@
 
 <div class="mx-auto px-4 py-6 pv-content-width">
 	<!-- Header -->
-	<div class="mb-6">
+	<div class="mb-5">
 		<h1 class="text-2xl font-bold">{$t('user.profile.title')}</h1>
 	</div>
 
-	<!-- Profile info card -->
-	<div class="pv-card mb-6">
-		<div class="pv-card-header">
-			<UserCircle class="h-5 w-5" />
-			<span>{$t('user.profile.username')}</span>
-		</div>
-		<div class="pv-card-body">
-			<div class="pv-info-grid">
-				<div class="pv-info-row">
-					<span class="pv-info-label">{$t('user.profile.username')}</span>
-					<span class="pv-info-value font-mono">{auth.username}</span>
-				</div>
-				<div class="pv-info-row">
-					<span class="pv-info-label">{$t('user.profile.role')}</span>
-					<span class="pv-info-value">
-						{auth.isAdmin ? $t('nav.administrator') : $t('nav.user')}
-					</span>
-				</div>
-				{#if poolName}
-					<div class="pv-info-row">
-						<span class="pv-info-label">{$t('user.profile.pool')}</span>
-						<span class="pv-info-value font-mono">{poolName}</span>
-					</div>
-				{/if}
-				{#if !vmsLoading}
-					<div class="pv-info-row">
-						<span class="pv-info-label">{$t('user.profile.vmCount')}</span>
-						<span class="pv-info-value">{totalVMs} ({runningCount} running)</span>
-					</div>
-				{/if}
-			</div>
-		</div>
-	</div>
+	<!-- Two-column layout: sidebar (info + password) + main (VMs) -->
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
 
-	<!-- Password change card -->
-	<div class="pv-card mb-6">
-		<div class="pv-card-header">
-			<Lock class="h-5 w-5" />
-			<span>{$t('user.profile.changePassword')}</span>
-		</div>
-		<div class="pv-card-body">
-			{#if auth.isAdmin}
-				<p class="text-sm text-muted-foreground">{$t('user.profile.adminPasswordNote')}</p>
-			{:else}
-				<form
-					class="flex flex-col gap-3"
-					onsubmit={(e) => {
-						e.preventDefault();
-						handlePasswordChange();
-					}}
-				>
-					<div class="pv-field">
-						<label class="pv-label" for="current-password">
-							{$t('user.profile.currentPassword')}
-						</label>
-						<input
-							id="current-password"
-							type="password"
-							class="pv-input"
-							bind:value={currentPassword}
-							autocomplete="current-password"
-							required
-						/>
-					</div>
-					<div class="pv-field">
-						<label class="pv-label" for="new-password">
-							{$t('user.profile.newPassword')}
-						</label>
-						<input
-							id="new-password"
-							type="password"
-							class="pv-input"
-							bind:value={newPassword}
-							autocomplete="new-password"
-							minlength="8"
-							required
-						/>
-					</div>
-					<div class="pv-field">
-						<label class="pv-label" for="confirm-password">
-							{$t('user.profile.confirmPassword')}
-						</label>
-						<input
-							id="confirm-password"
-							type="password"
-							class="pv-input"
-							bind:value={confirmPassword}
-							autocomplete="new-password"
-							minlength="8"
-							required
-						/>
-					</div>
-					{#if passwordError}
-						<p class="text-sm text-destructive">{passwordError}</p>
-					{/if}
-					<div>
-						<Button type="submit" size="sm" disabled={passwordLoading}>
-							{passwordLoading ? $t('user.profile.saving') : $t('user.profile.savePassword')}
-						</Button>
-					</div>
-				</form>
-			{/if}
-		</div>
-	</div>
+		<!-- Left sidebar: user info + password -->
+		<div class="flex flex-col gap-6">
 
-	<!-- VM list card -->
-	<div class="pv-card">
-		<div class="pv-card-header">
-			<Desktop class="h-5 w-5" />
-			<span>{$t('user.profile.myVms')}</span>
-		</div>
-		<div class="pv-card-body p-0">
-			{#if vmsError}
-				<div class="p-4">
-					<ErrorBanner error={vmsError} onRetry={loadVMs} />
+			<!-- User info card -->
+			<div class="pv-card">
+				<div class="pv-card-header">
+					<UserCircle class="h-5 w-5" />
+					<span>{$t('user.profile.username')}</span>
 				</div>
-			{:else if vmsLoading}
-				<div class="p-4">
-					<LoadingSkeleton variant="table" rows={3} />
-				</div>
-			{:else if totalVMs === 0}
-				<p class="p-6 text-center text-sm text-muted-foreground">
-					{#if searchQuery}
-						{$t('user.profile.noSearchResults')}
-					{:else}
-						{$t('user.profile.noVms')}
-					{/if}
-				</p>
-			{:else}
-				<!-- Search & sort bar -->
-				<div class="flex items-center gap-2 p-3 border-b border-border">
-					<input
-						type="search"
-						class="pv-input flex-1"
-						placeholder={$t('common.search', { default: 'Search...' })}
-						oninput={onSearchInput}
-						value={searchQuery}
-					/>
-					<Select.Root type="single" value={sortBy} onValueChange={onSortChange}>
-						<Select.Trigger class="h-8 text-sm" style="width: 130px;">
-							{$t('vms.sort.label')}: {$t(`vms.sort.${sortBy}`)}
-						</Select.Trigger>
-						<Select.Content>
-							<Select.Item value="vmid">{$t('vms.sort.vmid')}</Select.Item>
-							<Select.Item value="name">{$t('vms.sort.name')}</Select.Item>
-							<Select.Item value="status">{$t('vms.sort.status')}</Select.Item>
-							<Select.Item value="cpu">{$t('vms.sort.cpu')}</Select.Item>
-							<Select.Item value="memory">{$t('vms.sort.memory')}</Select.Item>
-						</Select.Content>
-					</Select.Root>
-					<button
-						class="h-8 w-8 flex items-center justify-center border border-border rounded-md bg-background text-foreground hover:bg-accent transition-colors"
-						onclick={toggleSortOrder}
-						title={sortOrder === 'asc' ? $t('vms.sort.asc') : $t('vms.sort.desc')}
-					>
-						{#if sortOrder === 'asc'}
-							<SortAscending class="h-4 w-4" />
-						{:else}
-							<SortDescending class="h-4 w-4" />
-						{/if}
-					</button>
-				</div>
-
-				<div class="pv-table-wrap">
-					<table class="pv-table">
-						<thead>
-							<tr>
-								<th>{$t('vms.vmid')}</th>
-								<th>{$t('common.name')}</th>
-								<th>{$t('common.status')}</th>
-								<th>{$t('common.node')}</th>
-								<th>{$t('vms.uptime')}</th>
-								<th></th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each vms as vm (vm.vmid)}
-								{@const busy = actionLoading[vm.vmid] ?? false}
-								<tr
-									class="pv-row pv-row--clickable"
-									onclick={() => goto(`/vm/${vm.vmid}`)}
-								>
-									<td class="pv-td-mono text-sm">{vm.vmid}</td>
-									<td>
-										<div class="pv-resource-cell">
-											<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">VM</div>
-											<span class="pv-resource-name">{vm.name || '—'}</span>
-										</div>
-									</td>
-									<td>
-										<span class="pv-badge {statusClass(vm.status)}">
-											{$t(`common.statusMap.${vm.status}`, { default: vm.status })}
-										</span>
-									</td>
-									<td class="pv-td-muted text-sm">{vm.node}</td>
-									<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
-									<td onclick={(e) => e.stopPropagation()}>
-										<div class="flex items-center gap-1">
-											{#if vm.status === 'stopped'}
-												<button
-													class="pv-action-btn pv-action-btn--start"
-													onclick={() => doAction(vm, 'start')}
-													disabled={busy}
-													title={$t('vms.actions.start')}
-												>
-													<Play class="h-3.5 w-3.5" weight="fill" />
-												</button>
-											{:else if vm.status === 'running'}
-												<button
-													class="pv-action-btn pv-action-btn--stop"
-													onclick={() => doAction(vm, 'shutdown')}
-													disabled={busy}
-													title={$t('vms.actions.shutdown')}
-												>
-													<Stop class="h-3.5 w-3.5" weight="fill" />
-												</button>
-												<button
-													class="pv-action-btn"
-													onclick={() => doAction(vm, 'reboot')}
-													disabled={busy}
-													title={$t('vms.actions.reboot')}
-												>
-													<ArrowCounterClockwise class="h-3.5 w-3.5" />
-												</button>
-											{/if}
-										</div>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-
-				<!-- Pagination controls -->
-				{#if totalPages > 1}
-					<div class="flex items-center justify-between px-4 py-3 border-t border-border">
-						<p class="text-sm text-muted-foreground">
-							{$t('vms.pagination.showing', {
-								values: {
-									start: (currentPage - 1) * pageSize + 1,
-									end: Math.min(currentPage * pageSize, totalVMs),
-									total: totalVMs
-								}
-							})}
-						</p>
-						<div class="flex items-center gap-4">
-							<Select.Root
-								type="single"
-								value={String(pageSize)}
-								onValueChange={onPageSizeChange}
-							>
-								<Select.Trigger class="w-[110px]">
-									{$t('vms.pagination.perPage', { values: { count: pageSize } })}
-								</Select.Trigger>
-								<Select.Content>
-									<Select.Item value="10">10 / page</Select.Item>
-									<Select.Item value="25">25 / page</Select.Item>
-									<Select.Item value="50">50 / page</Select.Item>
-									<Select.Item value="100">100 / page</Select.Item>
-								</Select.Content>
-							</Select.Root>
-							<div class="flex items-center gap-2">
-								<button
-									class="pv-action-btn"
-									disabled={!hasPrev}
-									onclick={() => goToPage(currentPage - 1)}
-								>
-									{$t('common.previous')}
-								</button>
-								<span class="text-sm text-muted-foreground">
-									{$t('common.pageOf', { values: { page: currentPage, total: totalPages } })}
-								</span>
-								<button
-									class="pv-action-btn"
-									disabled={!hasNext}
-									onclick={() => goToPage(currentPage + 1)}
-								>
-									{$t('common.next')}
-								</button>
-							</div>
+				<div class="pv-card-body">
+					<!-- Avatar / initials -->
+					<div class="mb-4 flex items-center gap-3">
+						<div class="pv-profile-avatar">
+							{(auth.username ?? '?').slice(0, 1).toUpperCase()}
+						</div>
+						<div>
+							<p class="font-semibold">{auth.username}</p>
+							<p class="text-xs text-muted-foreground">
+								{auth.isAdmin ? $t('nav.administrator') : $t('nav.user')}
+							</p>
 						</div>
 					</div>
+					<div class="flex flex-col gap-3">
+						{#if poolName}
+							<div class="flex justify-between text-sm">
+								<span class="text-muted-foreground">{$t('user.profile.pool')}</span>
+								<span class="font-mono">{poolName}</span>
+							</div>
+						{/if}
+						{#if !vmsLoading}
+							<div class="flex justify-between text-sm">
+								<span class="text-muted-foreground">{$t('user.profile.vmCount')}</span>
+								<span>{totalVMs}
+									{#if runningCount > 0}
+										<span class="text-green-600 dark:text-green-400 text-xs">({runningCount} running)</span>
+									{/if}
+								</span>
+							</div>
+						{/if}
+					</div>
+				</div>
+			</div>
+
+			<!-- Password change card -->
+			<div class="pv-card">
+				<div class="pv-card-header">
+					<Lock class="h-5 w-5" />
+					<span>{$t('user.profile.changePassword')}</span>
+				</div>
+				<div class="pv-card-body">
+					{#if auth.isAdmin}
+						<p class="text-sm text-muted-foreground">{$t('user.profile.adminPasswordNote')}</p>
+					{:else}
+						<form
+							class="flex flex-col gap-3"
+							onsubmit={(e) => {
+								e.preventDefault();
+								handlePasswordChange();
+							}}
+						>
+							<div class="pv-field">
+								<label class="pv-label" for="current-password">
+									{$t('user.profile.currentPassword')}
+								</label>
+								<input
+									id="current-password"
+									type="password"
+									class="pv-input"
+									bind:value={currentPassword}
+									autocomplete="current-password"
+									required
+								/>
+							</div>
+							<div class="pv-field">
+								<label class="pv-label" for="new-password">
+									{$t('user.profile.newPassword')}
+								</label>
+								<input
+									id="new-password"
+									type="password"
+									class="pv-input"
+									bind:value={newPassword}
+									autocomplete="new-password"
+									minlength="8"
+									required
+								/>
+							</div>
+							<div class="pv-field">
+								<label class="pv-label" for="confirm-password">
+									{$t('user.profile.confirmPassword')}
+								</label>
+								<input
+									id="confirm-password"
+									type="password"
+									class="pv-input"
+									bind:value={confirmPassword}
+									autocomplete="new-password"
+									minlength="8"
+									required
+								/>
+							</div>
+							{#if passwordError}
+								<p class="text-sm text-destructive">{passwordError}</p>
+							{/if}
+							<div>
+								<Button type="submit" size="sm" disabled={passwordLoading}>
+									{passwordLoading ? $t('user.profile.saving') : $t('user.profile.savePassword')}
+								</Button>
+							</div>
+						</form>
+					{/if}
+				</div>
+			</div>
+		</div>
+
+		<!-- Right: VM list -->
+		<div class="pv-card min-w-0">
+			<div class="pv-card-header">
+				<Desktop class="h-5 w-5" />
+				<span>{$t('user.profile.myVms')}</span>
+				{#if !vmsLoading}
+					<span class="ml-auto text-xs text-muted-foreground font-normal">{totalVMs} VM{totalVMs !== 1 ? 's' : ''}</span>
 				{/if}
-			{/if}
+			</div>
+			<div class="pv-card-body p-0">
+				{#if vmsError}
+					<div class="p-4">
+						<ErrorBanner error={vmsError} onRetry={loadVMs} />
+					</div>
+				{:else if vmsLoading}
+					<div class="p-4">
+						<LoadingSkeleton variant="table" rows={3} />
+					</div>
+				{:else if totalVMs === 0}
+					<p class="p-6 text-center text-sm text-muted-foreground">
+						{#if searchQuery}
+							{$t('user.profile.noSearchResults')}
+						{:else}
+							{$t('user.profile.noVms')}
+						{/if}
+					</p>
+				{:else}
+					<!-- Search & sort bar -->
+					<div class="flex items-center gap-2 p-3 border-b border-border">
+						<input
+							type="search"
+							class="pv-input flex-1"
+							placeholder={$t('common.search', { default: 'Search...' })}
+							oninput={onSearchInput}
+							value={searchQuery}
+						/>
+						<Select.Root type="single" value={sortBy} onValueChange={onSortChange}>
+							<Select.Trigger class="h-8 text-sm" style="width: 130px;">
+								{$t('vms.sort.label')}: {$t(`vms.sort.${sortBy}`)}
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item value="vmid">{$t('vms.sort.vmid')}</Select.Item>
+								<Select.Item value="name">{$t('vms.sort.name')}</Select.Item>
+								<Select.Item value="status">{$t('vms.sort.status')}</Select.Item>
+								<Select.Item value="cpu">{$t('vms.sort.cpu')}</Select.Item>
+								<Select.Item value="memory">{$t('vms.sort.memory')}</Select.Item>
+							</Select.Content>
+						</Select.Root>
+						<button
+							class="h-8 w-8 flex items-center justify-center border border-border rounded-md bg-background text-foreground hover:bg-accent transition-colors"
+							onclick={toggleSortOrder}
+							title={sortOrder === 'asc' ? $t('vms.sort.asc') : $t('vms.sort.desc')}
+						>
+							{#if sortOrder === 'asc'}
+								<SortAscending class="h-4 w-4" />
+							{:else}
+								<SortDescending class="h-4 w-4" />
+							{/if}
+						</button>
+					</div>
+
+					<div class="pv-table-wrap">
+						<table class="pv-table">
+							<thead>
+								<tr>
+									<th>{$t('vms.vmid')}</th>
+									<th>{$t('common.name')}</th>
+									<th>{$t('common.status')}</th>
+									<th>{$t('common.node')}</th>
+									<th>{$t('vms.uptime')}</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each vms as vm (vm.vmid)}
+									{@const busy = actionLoading[vm.vmid] ?? false}
+									<tr
+										class="pv-row pv-row--clickable"
+										onclick={() => goto(`/vm/${vm.vmid}`)}
+									>
+										<td class="pv-td-mono text-sm">{vm.vmid}</td>
+										<td>
+											<div class="pv-resource-cell">
+												<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">VM</div>
+												<span class="pv-resource-name">{vm.name || '—'}</span>
+											</div>
+										</td>
+										<td>
+											<span class="pv-badge {statusClass(vm.status)}">
+												{$t(`common.statusMap.${vm.status}`, { default: vm.status })}
+											</span>
+										</td>
+										<td class="pv-td-muted text-sm">{vm.node}</td>
+										<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
+										<td onclick={(e) => e.stopPropagation()}>
+											<div class="flex items-center gap-1">
+												{#if vm.status === 'stopped'}
+													<button
+														class="pv-action-btn pv-action-btn--start"
+														onclick={() => doAction(vm, 'start')}
+														disabled={busy}
+														title={$t('vms.actions.start')}
+													>
+														<Play class="h-3.5 w-3.5" weight="fill" />
+													</button>
+												{:else if vm.status === 'running'}
+													<button
+														class="pv-action-btn pv-action-btn--stop"
+														onclick={() => doAction(vm, 'shutdown')}
+														disabled={busy}
+														title={$t('vms.actions.shutdown')}
+													>
+														<Stop class="h-3.5 w-3.5" weight="fill" />
+													</button>
+													<button
+														class="pv-action-btn"
+														onclick={() => doAction(vm, 'reboot')}
+														disabled={busy}
+														title={$t('vms.actions.reboot')}
+													>
+														<ArrowCounterClockwise class="h-3.5 w-3.5" />
+													</button>
+												{/if}
+											</div>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+
+					<!-- Pagination controls -->
+					{#if totalPages > 1}
+						<div class="flex items-center justify-between px-4 py-3 border-t border-border">
+							<p class="text-sm text-muted-foreground">
+								{$t('vms.pagination.showing', {
+									values: {
+										start: (currentPage - 1) * pageSize + 1,
+										end: Math.min(currentPage * pageSize, totalVMs),
+										total: totalVMs
+									}
+								})}
+							</p>
+							<div class="flex items-center gap-4">
+								<Select.Root
+									type="single"
+									value={String(pageSize)}
+									onValueChange={onPageSizeChange}
+								>
+									<Select.Trigger class="w-[110px]">
+										{$t('vms.pagination.perPage', { values: { count: pageSize } })}
+									</Select.Trigger>
+									<Select.Content>
+										<Select.Item value="10">10 / page</Select.Item>
+										<Select.Item value="25">25 / page</Select.Item>
+										<Select.Item value="50">50 / page</Select.Item>
+										<Select.Item value="100">100 / page</Select.Item>
+									</Select.Content>
+								</Select.Root>
+								<div class="flex items-center gap-2">
+									<button
+										class="pv-action-btn"
+										disabled={!hasPrev}
+										onclick={() => goToPage(currentPage - 1)}
+									>
+										{$t('common.previous')}
+									</button>
+									<span class="text-sm text-muted-foreground">
+										{$t('common.pageOf', { values: { page: currentPage, total: totalPages } })}
+									</span>
+									<button
+										class="pv-action-btn"
+										disabled={!hasNext}
+										onclick={() => goToPage(currentPage + 1)}
+									>
+										{$t('common.next')}
+									</button>
+								</div>
+							</div>
+						</div>
+					{/if}
+				{/if}
+			</div>
 		</div>
 	</div>
 </div>
@@ -562,5 +579,20 @@
 	}
 	:global(.pv-row--clickable:hover td) {
 		background: var(--accent);
+	}
+
+	/* Profile avatar */
+	:global(.pv-profile-avatar) {
+		width: 44px;
+		height: 44px;
+		border-radius: 10px;
+		background: linear-gradient(135deg, hsl(var(--blaze-orange-500)), hsl(var(--blaze-orange-700)));
+		color: white;
+		font-size: 1.125rem;
+		font-weight: 700;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
 	}
 </style>
