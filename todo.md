@@ -17,7 +17,7 @@
 - [ ] user/createVM : error 400 en sélectionnant un profil : on a pas le choix du réseau donc ça plante
 - [ ] user/createVM : error 500 post <https://pvmss-beta.domain.local/api/v1/vms> en voulant créer une vm en mode 'avancé' : POST request returned error status 400 for /nodes/pve1/qemu message: parameter verification failed: errors: ide2 invalid format - format error. ide2.file: unable to parse volume ID
 - [x] **TO CHECK** admin/doc : la doc est par défaut en anglais, il faut qu'elle suive la langue que l'utilisateur a choisi (fr ou en)
-- [ ] admin/nodes : le nombre de coeur ne s'affiche pas, il y a juste 'coeurs'
+- [x] **TO CHECK** admin/nodes : le nombre de coeur ne s'affiche pas, il y a juste 'coeurs'
 - [x] **TO CHECK** user/createVM : dans le bus disque c'est en anglais - traduction manquante (virtio block - recommended)
 - [x] **TO CHECK** user/createVM : dans la configuration des disques il faut un compteur ou un tooltip pour afficher le nombre de disque actuel, la capacité max selon la limite imposée par les admin pvmss
 - [x] **TO CHECK** user/createVM : dans la configuration des vmbr il faut un compteur ou un tooltip pour afficher le nombre de carte réseau actuel, la capacité max selon la limite imposée par les admin pvmss
