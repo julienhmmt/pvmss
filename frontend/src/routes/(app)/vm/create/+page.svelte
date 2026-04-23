@@ -51,8 +51,14 @@
 
 	// ── Step definitions ──────────────────────────────────────────────────────
 
-	const STEPS = ['base', 'hardware', 'disk', 'network', 'cloudinit', 'review'] as const;
-	type Step = (typeof STEPS)[number];
+	type Step = 'base' | 'hardware' | 'disk' | 'network' | 'cloudinit' | 'review';
+
+	// Cloud-init step is only shown when at least one template is enabled by an admin.
+	const STEPS = $derived<Step[]>(
+		settings?.cloudInitAvailable
+			? ['base', 'hardware', 'disk', 'network', 'cloudinit', 'review']
+			: ['base', 'hardware', 'disk', 'network', 'review']
+	);
 
 	const SIMPLE_STEPS = ['profile', 'details', 'confirm'] as const;
 
