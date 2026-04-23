@@ -237,7 +237,7 @@
 				<p class="text-sm text-muted-foreground">{$t('user.profile.adminPasswordNote')}</p>
 			{:else}
 				<form
-					class="flex flex-col gap-3 max-w-sm"
+					class="flex flex-col gap-3"
 					onsubmit={(e) => {
 						e.preventDefault();
 						handlePasswordChange();
