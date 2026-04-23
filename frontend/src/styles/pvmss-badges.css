@@ -19,21 +19,25 @@
   color: #15803d;
   border: 1px solid #86efac;
 }
+
 .pv-status-badge--stopped {
   background: #f8fafc;
   color: #64748b;
   border: 1px solid #cbd5e1;
 }
+
 .pv-status-badge--paused {
   background: #fffbeb;
   color: #d97706;
   border: 1px solid #fcd34d;
 }
+
 .pv-status-badge--error {
   background: #fef2f2;
   color: #dc2626;
   border: 1px solid #fca5a5;
 }
+
 .pv-status-badge--unknown {
   background: #f8fafc;
   color: #94a3b8;
@@ -46,6 +50,7 @@
   color: #15803d;
   border: 1px solid #86efac;
 }
+
 .pv-badge--online::before {
   content: '';
   display: inline-block;
@@ -55,11 +60,13 @@
   background: #16a34a;
   flex-shrink: 0;
 }
+
 .pv-badge--offline {
   background: #fef2f2;
   color: #dc2626;
   border: 1px solid #fca5a5;
 }
+
 .pv-badge--offline::before {
   content: '';
   display: inline-block;
@@ -69,6 +76,7 @@
   background: #dc2626;
   flex-shrink: 0;
 }
+
 .pv-badge--warn {
   background: #fffbeb;
   color: #d97706;
@@ -81,19 +89,23 @@
   color: #4ade80;
   border-color: #166534;
 }
+
 .dark .pv-badge--online::before {
   background: #4ade80;
 }
+
 .dark .pv-status-badge--running {
   background: #052e16;
   color: #4ade80;
   border-color: #166534;
 }
+
 .dark .pv-status-badge--stopped {
   background: #1e293b;
   color: #94a3b8;
   border-color: #334155;
 }
+
 .dark .pv-badge--offline {
   background: #450a0a;
   color: #f87171;
@@ -106,26 +118,31 @@
   letter-spacing: 0.04em;
   border-radius: 6px;
 }
+
 .pv-action-badge--vm {
   background: hsl(var(--blaze-orange-50));
   color: hsl(var(--blaze-orange-800));
   border: 1px solid hsl(var(--blaze-orange-200));
 }
+
 .pv-action-badge--template {
   background: #f5f3ff;
   color: #7c3aed;
   border: 1px solid #ddd6fe;
 }
+
 .pv-action-badge--lxc {
   background: #eff6ff;
   color: #2563eb;
   border: 1px solid #bfdbfe;
 }
+
 .pv-action-badge--success {
   background: #f0fdf4;
   color: #15803d;
   border: 1px solid #bbf7d0;
 }
+
 .pv-action-badge--danger {
   background: #fef2f2;
   color: #dc2626;
@@ -141,16 +158,19 @@
   font-size: 0.875rem;
   margin-bottom: 16px;
 }
+
 .pv-error-banner {
   background: #fef2f2;
   border: 1px solid #fca5a5;
   color: #dc2626;
 }
+
 .pv-warn-banner {
   background: #fffbeb;
   border: 1px solid #fcd34d;
   color: #92400e;
 }
+
 .pv-success-banner {
   background: #f0fdf4;
   border: 1px solid #bbf7d0;

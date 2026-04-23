@@ -1,14 +1,14 @@
 /* PVMSS page headers and overview sections */
 :root {
-  --pv-header-from: oklch(0.35 0.12 45);
-  --pv-header-to: oklch(0.60 0.19 45);
+  --pv-header-from: oklch(35% 0.12 45deg);
+  --pv-header-to: oklch(60% 0.19 45deg);
   --pv-header-from-danger: #7f1d1d;
   --pv-header-to-danger: #dc2626;
   --pv-header-from-warn: #78350f;
   --pv-header-to-warn: #d97706;
-  --pv-header-stat-bg: rgba(255, 255, 255, 0.12);
-  --pv-header-stat-border: rgba(255, 255, 255, 0.18);
-  --pv-header-stat-label: rgba(255, 255, 255, 0.7);
+  --pv-header-stat-bg: rgb(255 255 255 / 12%);
+  --pv-header-stat-border: rgb(255 255 255 / 18%);
+  --pv-header-stat-label: rgb(255 255 255 / 70%);
 }
 
 /* Gradient page header */
@@ -76,13 +76,13 @@
 }
 
 .pv-header-stat--danger {
-  background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.4);
+  background: rgb(239 68 68 / 20%);
+  border-color: rgb(239 68 68 / 40%);
 }
 
 .pv-header-stat--warn {
-  background: rgba(245, 158, 11, 0.2);
-  border-color: rgba(245, 158, 11, 0.4);
+  background: rgb(245 158 11 / 20%);
+  border-color: rgb(245 158 11 / 40%);
 }
 
 .pv-header-stat-label {
@@ -147,18 +147,18 @@
   gap: 6px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgb(255 255 255 / 85%);
   text-decoration: none;
   margin-bottom: 12px;
   padding: 6px 14px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 20%);
   transition: background 0.15s, color 0.15s;
 }
 
 .pv-back:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: rgb(255 255 255 / 22%);
   color: white;
 }
 
@@ -178,12 +178,12 @@
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--foreground);
-  box-shadow: 0 4px 24px oklch(0 0 0 / 12%);
+  box-shadow: 0 4px 24px oklch(0% 0 0deg / 12%);
   animation: pv-toast-in 0.2s ease;
 }
 
 .dark .pv-loading-toast {
-  box-shadow: 0 4px 24px oklch(0 0 0 / 40%);
+  box-shadow: 0 4px 24px oklch(0% 0 0deg / 40%);
 }
 
 @keyframes pv-toast-in {
