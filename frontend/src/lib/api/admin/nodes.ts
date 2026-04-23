@@ -6,3 +6,7 @@ export async function getNodes(): Promise<Node[]> {
   const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/nodes");
   return transformKeysToCamelCase<Node[]>(response);
 }
+
+export async function toggleNode(name: string): Promise<void> {
+  await api.post("/api/v1/admin/nodes/toggle", { name });
+}

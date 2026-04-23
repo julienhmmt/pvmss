@@ -93,7 +93,15 @@
       "ram": "RAM",
       "disk": "Disk",
       "uptime": "Uptime",
-      "cpuDetails": "{cores} cores · {sockets} sockets"
+      "cpuDetails": "{cores} cores · {sockets} sockets",
+      "userEnabled": "Accessible to users",
+      "userDisabled": "Hidden from users",
+      "enableForUsers": "Enable for users",
+      "disableForUsers": "Disable for users",
+      "toast": {
+        "enabled": "Node {name} enabled for users",
+        "disabled": "Node {name} disabled for users"
+      }
     },
     "storage": {
       "title": "Storage",

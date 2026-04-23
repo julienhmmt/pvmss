@@ -93,7 +93,15 @@
       "ram": "RAM",
       "disk": "Disque",
       "uptime": "Temps de fonctionnement",
-      "cpuDetails": "{cores} cœurs · {sockets} sockets"
+      "cpuDetails": "{cores} cœurs · {sockets} sockets",
+      "userEnabled": "Accessible aux utilisateurs",
+      "userDisabled": "Masqué aux utilisateurs",
+      "enableForUsers": "Activer pour les utilisateurs",
+      "disableForUsers": "Désactiver pour les utilisateurs",
+      "toast": {
+        "enabled": "Nœud {name} activé pour les utilisateurs",
+        "disabled": "Nœud {name} désactivé pour les utilisateurs"
+      }
     },
     "storage": {
       "title": "Stockage",

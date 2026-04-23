@@ -90,6 +90,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	adminMutHandler := MakeAdminMutationsHandler(s)
 
 	router.GET("/api/v1/admin/nodes", adminJWTWrap(jwtSecret, adminHandler.Nodes))
+	router.POST("/api/v1/admin/nodes/toggle", adminJWTWrap(jwtSecret, adminHandler.ToggleNode))
 	router.GET("/api/v1/admin/storage", adminJWTWrap(jwtSecret, adminHandler.Storage))
 	router.GET("/api/v1/admin/vmbr", adminJWTWrap(jwtSecret, adminHandler.VMBR))
 	router.GET("/api/v1/admin/iso", adminJWTWrap(jwtSecret, adminHandler.ISO))
