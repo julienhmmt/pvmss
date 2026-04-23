@@ -6,7 +6,7 @@ type AdminNodeResponse struct {
 	Name        string  `json:"name"`
 	Status      string  `json:"status"`
 	CPU         float64 `json:"cpu"`
-	MaxCPU      int     `json:"maxcpu"`
+	MaxCPU      int     `json:"max_cpu"`
 	CpuSockets  int     `json:"cpu_sockets"`
 	Memory      float64 `json:"memory"`
 	MaxMemory   float64 `json:"max_memory"`
