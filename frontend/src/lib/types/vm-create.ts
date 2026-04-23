@@ -74,6 +74,8 @@ export interface VMCreateSettings {
   isos: VMCreateISOOption[];
   tags: string[];
   cloudinitTemplates: VMCreateCITemplate[];
+  /** True when at least one cloud-init template is enabled by an admin. */
+  cloudInitAvailable: boolean;
   limits: VMCreateLimits;
   maxNetworkCards: number;
   maxDiskPerVm: number;
