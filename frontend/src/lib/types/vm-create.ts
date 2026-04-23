@@ -139,21 +139,21 @@ export interface VMCreateResponse {
   cloudInitWarning?: string;
 }
 
-/** Network card model options. */
+/** Network card model options (labelKey points to i18n path). */
 export const NETWORK_MODELS = [
-  { value: "virtio", label: "VirtIO (recommended)" },
-  { value: "e1000", label: "Intel E1000" },
-  { value: "e1000e", label: "Intel E1000E" },
-  { value: "rtl8139", label: "Realtek RTL8139" },
-  { value: "vmxnet3", label: "VMware VMXNet3" },
+  { value: "virtio", labelKey: "vmCreate.hardware.networkModelOptions.virtio" },
+  { value: "e1000", labelKey: "vmCreate.hardware.networkModelOptions.e1000" },
+  { value: "e1000e", labelKey: "vmCreate.hardware.networkModelOptions.e1000e" },
+  { value: "rtl8139", labelKey: "vmCreate.hardware.networkModelOptions.rtl8139" },
+  { value: "vmxnet3", labelKey: "vmCreate.hardware.networkModelOptions.vmxnet3" },
 ] as const;
 
-/** Disk bus options. */
+/** Disk bus options (labelKey points to i18n path). */
 export const DISK_BUSES = [
-  { value: "virtio", label: "VirtIO Block (recommended)" },
-  { value: "scsi", label: "SCSI" },
-  { value: "sata", label: "SATA" },
-  { value: "ide", label: "IDE" },
+  { value: "virtio", labelKey: "vmCreate.hardware.diskBusOptions.virtio" },
+  { value: "scsi", labelKey: "vmCreate.hardware.diskBusOptions.scsi" },
+  { value: "sata", labelKey: "vmCreate.hardware.diskBusOptions.sata" },
+  { value: "ide", labelKey: "vmCreate.hardware.diskBusOptions.ide" },
 ] as const;
 
 /** IP configuration modes. */
