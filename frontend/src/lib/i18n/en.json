@@ -757,7 +757,20 @@
       "enableEFI": "Enable EFI/UEFI Boot",
       "efiHint": "Required for Windows 11 and modern operating systems",
       "enableTPM": "Enable TPM 2.0",
-      "tpmHint": "Required for Windows 11. Needs compatible storage."
+      "tpmHint": "Required for Windows 11. Needs compatible storage.",
+      "diskBusOptions": {
+        "virtio": "VirtIO Block (recommended)",
+        "scsi": "SCSI",
+        "sata": "SATA",
+        "ide": "IDE"
+      },
+      "networkModelOptions": {
+        "virtio": "VirtIO (recommended)",
+        "e1000": "Intel E1000",
+        "e1000e": "Intel E1000E",
+        "rtl8139": "Realtek RTL8139",
+        "vmxnet3": "VMware VMXNet3"
+      }
     },
     "disk": {
       "title": "Disk Configuration",
@@ -767,7 +780,9 @@
       "addDisk": "Add Disk",
       "removeDisk": "Remove",
       "diskIndex": "Disk {index}",
-      "maxDisksReached": "Maximum disk limit reached ({max})"
+      "maxDisksReached": "Maximum disk limit reached ({max})",
+      "diskCount": "{current} / {max} disks",
+      "capacityInfo": "Total capacity: {total} / {max} GB (max {maxDisks} disks × {maxSize} GB)"
     },
     "network": {
       "title": "Network Configuration",
@@ -786,7 +801,8 @@
       "enabled": "Link enabled",
       "addCard": "Add Network Card",
       "removeCard": "Remove",
-      "maxCardsReached": "Maximum network card limit reached ({max})"
+      "maxCardsReached": "Maximum network card limit reached ({max})",
+      "cardCount": "{current} / {max} cards"
     },
     "cloudinit": {
       "title": "Cloud-init Configuration",
