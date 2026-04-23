@@ -62,6 +62,8 @@ export interface VMProfileConfig {
   icon: string;
   color: string;
   enabled: boolean;
+  /** Enable EFI/UEFI boot (secure boot). */
+  enableEfi?: boolean;
 }
 
 /** Response from GET /api/v1/vm-create/settings. */

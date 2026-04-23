@@ -268,7 +268,9 @@
         "storage": "Storage",
         "icon": "Icon",
         "color": "Color",
-        "enabled": "Enabled"
+        "enabled": "Enabled",
+        "enableEfi": "Enable EFI (Secure Boot)",
+        "enableEfiHint": "Required for Windows 11 and modern operating systems. Checked by default."
       },
       "iconOptions": {
         "Globe": "Globe",

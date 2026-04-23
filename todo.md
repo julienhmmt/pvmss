@@ -7,7 +7,7 @@
 - [x] **TO CHECK** admin/limites : avoir un bouton à chaque node pour 'appliquer ces limites à tous les nodes'
 - [x] **TO CHECK** admin/iso : permettre de filtrer par node
 - [x] **TO CHECK** frontend : la largeur et l'affichage de la page d'accueil est bonne, il faut avoir cette même disposition dans toutes les autres pages (home, vm/create (et toutes les pages sous-jacentes), search, documentation, profile)
-- [ ] user/createVM : dans les profils il faut ajouter l'efi (dire que c'est le démarrage sécurisé), le cocher par défaut et mettre sur un stockage qui supporte l'efi (il existe déjà ce check)
+- [x] **TO CHECK** user/createVM : dans les profils il faut ajouter l'efi (dire que c'est le démarrage sécurisé), le cocher par défaut et mettre sur un stockage qui supporte l'efi (il existe déjà ce check)
 
 ## Fixes
 

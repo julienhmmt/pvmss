@@ -17,8 +17,9 @@ type VMProfileConfigBlob struct {
 	DiskBus string `json:"disk_bus"`
 	Node    string `json:"node,omitempty"`
 	Storage string `json:"storage,omitempty"`
-	Icon    string `json:"icon"`
-	Color   string `json:"color"`
+	Icon      string `json:"icon"`
+	Color     string `json:"color"`
+	EnableEFI bool   `json:"enable_efi,omitempty"`
 }
 
 // VMProfile represents a VM configuration profile stored in the database.

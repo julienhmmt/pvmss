@@ -87,11 +87,12 @@ type VMProfileConfig struct {
 	DiskGB      int    `json:"disk_gb"`
 	DiskBus     string `json:"disk_bus"`
 	// Node and Storage are optional in JSON (omitempty). Empty string means auto-select.
-	Node    string `json:"node,omitempty"`
-	Storage string `json:"storage,omitempty"`
-	Icon    string `json:"icon"`
-	Color   string `json:"color"`
-	Enabled bool   `json:"enabled"`
+	Node      string `json:"node,omitempty"`
+	Storage   string `json:"storage,omitempty"`
+	Icon      string `json:"icon"`
+	Color     string `json:"color"`
+	Enabled   bool   `json:"enabled"`
+	EnableEFI bool   `json:"enable_efi,omitempty"`
 }
 
 // DefaultVMProfiles returns the built-in profiles used as fallback when none are configured.
