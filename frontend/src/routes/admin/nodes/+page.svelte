@@ -6,9 +6,10 @@
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { getNodes } from '$lib/api/admin/nodes';
+	import { getNodes, toggleNode } from '$lib/api/admin/nodes';
 	import { formatBytes, formatCpu, formatUptime, formatPercent } from '$lib/utils/format';
-	import { HardDrives, ArrowsClockwise, Database, Cpu, Memory } from 'phosphor-svelte';
+	import { HardDrives, ArrowsClockwise, Database, Cpu, Memory, Eye, EyeSlash } from 'phosphor-svelte';
+	import { toast } from 'svelte-sonner';
 	import type { Node } from '$lib/types/admin';
 
 	const AUTO_REFRESH_INTERVAL = 30_000;
@@ -22,6 +23,7 @@
 	let nodes = $state<Node[]>([]);
 	let lastUpdatedAgo = $state(0);
 	let emptyRetryCount = $state(0);
+	let toggling = $state<string | null>(null);
 
 	let runningCount = $derived(nodes.filter((n) => n.status === 'online').length);
 	let offlineCount = $derived(nodes.filter((n) => n.status !== 'online').length);
@@ -47,6 +49,20 @@
 			error = e as Error;
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function handleToggleNode(node: Node) {
+		toggling = node.name;
+		try {
+			await toggleNode(node.name);
+			const key = node.userEnabled ? 'disabled' : 'enabled';
+			toast.success($t(`admin.nodes.toast.${key}`, { values: { name: node.name } }));
+			await refresh();
+		} catch (e) {
+			toast.error((e as Error).message);
+		} finally {
+			toggling = null;
 		}
 	}
 
@@ -171,11 +187,30 @@
 						</div>
 						<div>
 							<div class="pv-resource-name">{node.name}</div>
+							<div class="text-xs {node.userEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60'}">
+								{node.userEnabled ? $t('admin.nodes.userEnabled') : $t('admin.nodes.userDisabled')}
+							</div>
 						</div>
 					</div>
-					<span class="pv-badge {node.status === 'online' ? 'pv-badge--online' : 'pv-badge--offline'} mt-0.5">
-						{$t(`common.statusMap.${node.status}`, { default: node.status })}
-					</span>
+					<div class="flex items-center gap-1.5 mt-0.5">
+						<span class="pv-badge {node.status === 'online' ? 'pv-badge--online' : 'pv-badge--offline'}">
+							{$t(`common.statusMap.${node.status}`, { default: node.status })}
+						</span>
+						<Button
+							size="sm"
+							variant="ghost"
+							class="h-7 w-7 p-0 {node.userEnabled ? 'text-emerald-600 hover:text-emerald-700' : 'text-muted-foreground hover:text-foreground'}"
+							title={node.userEnabled ? $t('admin.nodes.disableForUsers') : $t('admin.nodes.enableForUsers')}
+							disabled={toggling === node.name}
+							onclick={() => handleToggleNode(node)}
+						>
+							{#if node.userEnabled}
+								<Eye class="h-4 w-4" />
+							{:else}
+								<EyeSlash class="h-4 w-4" />
+							{/if}
+						</Button>
+					</div>
 				</div>
 
 				<div class="border-t border-border"></div>

@@ -2,6 +2,7 @@ package apiv1
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"runtime"
@@ -38,22 +39,88 @@ func (h *AdminHandler) Nodes(w http.ResponseWriter, r *http.Request) {
 		h.state.RefreshNodeCache(r.Context())
 		cached, _ = h.state.GetNodeCache()
 	}
+	settings := h.state.GetSettings()
+	enabledNodes := settings.EnabledNodes
+	// Empty list means all nodes are accessible.
+	allEnabled := len(enabledNodes) == 0
+	enabledSet := make(map[string]bool, len(enabledNodes))
+	for _, n := range enabledNodes {
+		enabledSet[n] = true
+	}
 	result := make([]AdminNodeResponse, 0, len(cached))
 	for _, details := range cached {
+		userEnabled := allEnabled || enabledSet[details.Node]
 		result = append(result, AdminNodeResponse{
-			Name:       details.Node,
-			Status:     details.Status,
-			CPU:        details.CPU,
-			MaxCPU:     details.MaxCPU,
-			CpuSockets: details.Sockets,
-			Memory:     details.Memory,
-			MaxMemory:  details.MaxMemory,
-			Disk:       details.Disk,
-			MaxDisk:    details.MaxDisk,
-			Uptime:     details.Uptime,
+			Name:        details.Node,
+			Status:      details.Status,
+			CPU:         details.CPU,
+			MaxCPU:      details.MaxCPU,
+			CpuSockets:  details.Sockets,
+			Memory:      details.Memory,
+			MaxMemory:   details.MaxMemory,
+			Disk:        details.Disk,
+			MaxDisk:     details.MaxDisk,
+			Uptime:      details.Uptime,
+			UserEnabled: userEnabled,
 		})
 	}
 	writeJSON(w, result)
+}
+
+// ToggleNode handles POST /api/v1/admin/nodes/toggle.
+// It adds or removes a node from the EnabledNodes allowlist.
+// When EnabledNodes is empty, all nodes are accessible; toggling one off
+// switches to allowlist mode and enables all other nodes.
+func (h *AdminHandler) ToggleNode(w http.ResponseWriter, r *http.Request) {
+	var req ToggleNodeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON body")
+		return
+	}
+	if req.Name == "" {
+		errBadRequest(w, "name is required")
+		return
+	}
+
+	settings := h.state.GetSettings()
+	currentEnabled := settings.EnabledNodes
+
+	var newEnabled []string
+	if len(currentEnabled) == 0 {
+		// All-allowed mode: switching to allowlist — enable all known nodes except this one.
+		cached, _ := h.state.GetNodeCache()
+		newEnabled = make([]string, 0, len(cached))
+		for _, n := range cached {
+			if n.Node != req.Name {
+				newEnabled = append(newEnabled, n.Node)
+			}
+		}
+	} else {
+		// Allowlist mode: toggle the node in/out.
+		found := false
+		filtered := make([]string, 0, len(currentEnabled))
+		for _, n := range currentEnabled {
+			if n == req.Name {
+				found = true
+			} else {
+				filtered = append(filtered, n)
+			}
+		}
+		if found {
+			// Remove (disable) the node.
+			newEnabled = filtered
+		} else {
+			// Add (enable) the node.
+			newEnabled = append(currentEnabled, req.Name)
+		}
+	}
+
+	changedBy := usernameFromCtx(r)
+	if err := h.state.SetEnabledNodes(newEnabled, changedBy); err != nil {
+		errInternal(w)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Storage handles GET /api/v1/admin/storage.

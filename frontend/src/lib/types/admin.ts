@@ -9,6 +9,7 @@ export interface Node {
   disk: number;
   maxDisk: number;
   uptime: number;
+  userEnabled: boolean;
 }
 
 export interface Storage {
