@@ -53,31 +53,23 @@ export function buildWebSocketURL(
     throw new Error("Node name cannot be empty");
   }
 
-  const backendHost = import.meta.env.VITE_BACKEND_HOST;
-  const backendProtocol = import.meta.env.VITE_BACKEND_PROTOCOL;
-
-  // In production, require explicit backend host configuration
-  if (!import.meta.env.DEV && !backendHost) {
-    throw new Error(
-      "VITE_BACKEND_HOST environment variable is required in production. " +
-      "Please configure it to point to your backend server."
-    );
-  }
-
-  // Use configured values or sensible defaults for development
-  const host = backendHost ||
-    (import.meta.env.DEV ? "localhost:50000" : (typeof window !== "undefined" ? window.location.host : ""));
+  // Use the page's own host so the WebSocket routes through the same origin.
+  // In dev, this goes through the Vite proxy (ws: true on /api).
+  // In production, the SPA is served by the PVMSS backend at the same origin.
+  // VITE_BACKEND_HOST / VITE_BACKEND_PROTOCOL are optional overrides for unusual deployments.
+  const host = import.meta.env.VITE_BACKEND_HOST ||
+    (typeof window !== "undefined" ? window.location.host : "");
 
   if (!host || host.trim().length === 0) {
-    throw new Error("Unable to determine backend host. Please set VITE_BACKEND_HOST environment variable.");
+    throw new Error("Unable to determine backend host.");
   }
 
-  const protocol = backendProtocol ||
+  const overrideProtocol = import.meta.env.VITE_BACKEND_PROTOCOL as string | undefined;
+  if (overrideProtocol !== undefined && overrideProtocol !== "ws:" && overrideProtocol !== "wss:") {
+    throw new Error(`Invalid WebSocket protocol: ${overrideProtocol}. Must be "ws:" or "wss:"`);
+  }
+  const protocol = overrideProtocol ||
     (typeof window !== "undefined" && window.location.protocol === "https:" ? "wss:" : "ws:");
-
-  if (protocol !== "ws:" && protocol !== "wss:") {
-    throw new Error(`Invalid WebSocket protocol: ${protocol}. Must be "ws:" or "wss:"`);
-  }
 
   return (
     `${protocol}//${host}/api/v1/vms/${vmid}/console/websocket` +
