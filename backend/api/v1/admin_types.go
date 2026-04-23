@@ -59,7 +59,7 @@ type AdminVMListPaginatedResponse struct {
 // --- User Pool ---
 
 type AdminPoolResponse struct {
-	PoolID  string   `json:"poolid"`
+	PoolID  string   `json:"pool_id"`
 	Comment string   `json:"comment"`
 	Members []string `json:"members"`
 	VMCount int      `json:"vm_count"`

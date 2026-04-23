@@ -10,13 +10,13 @@ import (
 // VMProfileConfigBlob represents the JSON blob stored in VMProfile.Config.
 // This is the serialized form of state.VMProfileConfig.
 type VMProfileConfigBlob struct {
-	Sockets int    `json:"sockets"`
-	Cores   int    `json:"cores"`
-	RAMGB   int    `json:"ram_gb"`
-	DiskGB  int    `json:"disk_gb"`
-	DiskBus string `json:"disk_bus"`
-	Node    string `json:"node,omitempty"`
-	Storage string `json:"storage,omitempty"`
+	Sockets   int    `json:"sockets"`
+	Cores     int    `json:"cores"`
+	RAMGB     int    `json:"ram_gb"`
+	DiskGB    int    `json:"disk_gb"`
+	DiskBus   string `json:"disk_bus"`
+	Node      string `json:"node,omitempty"`
+	Storage   string `json:"storage,omitempty"`
 	Icon      string `json:"icon"`
 	Color     string `json:"color"`
 	EnableEFI bool   `json:"enable_efi,omitempty"`
