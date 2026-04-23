@@ -5,6 +5,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import { Switch } from '$lib/components/ui/switch';
 	import { Button } from '$lib/components/ui/button';
 	import { getStorages, toggleStorage } from '$lib/api/admin/storage';
@@ -41,6 +43,16 @@
 	const sortedStorages = $derived(sortStorages(filteredStorages, sortKey, sortDir));
 
 	const enabledCount = $derived(filteredStorages.filter((s) => s.enabled).length);
+
+	let page = $state(1);
+	let perPage = $state(25);
+	const pagedStorages = $derived(paginate(sortedStorages, page, perPage));
+
+	$effect(() => {
+		selectedNode;
+		selectedType;
+		page = 1;
+	});
 
 	function usageBarClass(used: number, total: number): string {
 		const pct = Number(formatPercent(used, total));
@@ -264,7 +276,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each sortedStorages as s}
+				{#each pagedStorages as s (storageKey(s.storage, s.node))}
 					{@const pct = Number(formatPercent(s.used, s.total))}
 					{@const key = storageKey(s.storage, s.node)}
 					<tr class="pv-row">
@@ -350,11 +362,8 @@
 			</tbody>
 		</table>
 	</div>
-	<div class="mt-3 text-sm text-muted-foreground">
-		{filteredStorages.length}
-		{$t('admin.storage.title', { default: 'stockages' }).toLowerCase()}
-		{#if selectedNode}· {selectedNode}{/if}
-	</div>
+
+	<Paginator total={filteredStorages.length} bind:page bind:perPage />
 {/if}
 
 </div>

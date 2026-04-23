@@ -6,6 +6,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -63,6 +65,10 @@
 	let deleteTarget = $state<string | null>(null);
 	let toggling = $state<string | null>(null);
 	let saving = $state(false);
+
+	let page = $state(1);
+	let perPage = $state(12);
+	const pagedProfiles = $derived(paginate(profiles, page, perPage));
 
 	const emptyForm = (): Omit<VMProfileConfig, 'id'> & { id: string } => ({
 		id: '',
@@ -242,7 +248,7 @@
 {:else}
 	<!-- Profile grid -->
 	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-		{#each profiles as profile (profile.id)}
+		{#each pagedProfiles as profile (profile.id)}
 			{@const ProfileIcon = ICON_COMPONENTS[profile.icon] ?? Globe}
 			{@const colors = PROFILE_COLOR_CLASSES[profile.color] ?? PROFILE_COLOR_CLASSES['gray']}
 			<div
@@ -318,6 +324,13 @@
 			</div>
 		{/each}
 	</div>
+
+	<Paginator
+		total={profiles.length}
+		bind:page
+		bind:perPage
+		perPageOptions={[12, 24, 48, 96]}
+	/>
 {/if}
 
 <!-- Edit / Create dialog -->
