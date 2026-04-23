@@ -26,6 +26,8 @@
     "error": "Une erreur est survenue",
     "previous": "Précédent",
     "next": "Suivant",
+    "expandAll": "Tout déplier",
+    "collapseAll": "Tout replier",
     "total": "Total",
     "admin": "Admin",
     "logout": "Déconnexion",
