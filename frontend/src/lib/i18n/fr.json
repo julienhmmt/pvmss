@@ -207,7 +207,9 @@
       "cpuSockets": "Sockets CPU",
       "cpuCores": "Cœurs CPU",
       "ramGb": "RAM (Go)",
-      "diskGb": "Disque (Go)"
+      "diskGb": "Disque (Go)",
+      "applyToAllNodes": "Appliquer à tous les nœuds",
+      "applyToAllNodesTooltip": "Copie les plages de ressources VM ci-dessus dans toutes les limites spécifiques aux nœuds"
     },
     "cloudinit": {
       "title": "Modèles Cloud-Init",

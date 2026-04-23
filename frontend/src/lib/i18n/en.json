@@ -210,7 +210,9 @@
       "cpuSockets": "CPU sockets",
       "cpuCores": "CPU cores",
       "ramGb": "RAM (GB)",
-      "diskGb": "Disk (GB)"
+      "diskGb": "Disk (GB)",
+      "applyToAllNodes": "Apply to all nodes",
+      "applyToAllNodesTooltip": "Copy the VM resource ranges above to all node-specific limits"
     },
     "cloudinit": {
       "title": "Cloud-init templates",
