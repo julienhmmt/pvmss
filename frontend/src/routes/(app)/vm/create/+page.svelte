@@ -750,7 +750,7 @@
 							<Select.Root
 								type="single"
 								value={vmISO}
-								onValueChange={(v) => (vmISO = v)}
+								onValueChange={(v) => (vmISO = v ?? '')}
 							>
 								<Select.Trigger class="w-full">
 									{#if vmISO}
@@ -1002,7 +1002,7 @@
 							<Select.Root
 								type="single"
 								value={vmISO}
-								onValueChange={(v) => (vmISO = v)}
+								onValueChange={(v) => (vmISO = v ?? '')}
 							>
 								<Select.Trigger class="w-full">
 									{#if vmISO}

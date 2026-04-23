@@ -924,8 +924,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	}
 	params.Set("tags", strings.Join(cleanedTags, ";"))
 
-	// ISO
+	// ISO — validate volid format (must be storage:path) before setting ide2
 	if req.ISO != "" {
+		if !strings.Contains(req.ISO, ":") {
+			errBadRequest(w, "Invalid ISO volume ID: expected format storage:path/to/file.iso")
+			return
+		}
 		params.Set("ide2", req.ISO+",media=cdrom")
 		params.Set("boot", "order=ide2;"+diskBus+"0")
 	} else {
@@ -941,16 +945,24 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	// Primary disk
 	params.Set(diskBus+"0", fmt.Sprintf("%s:%d", req.Storage, req.Disks[0].SizeGB))
 
-	// Additional disks
+	// Additional disks — when using IDE bus with an ISO, ide2 is reserved for CD-ROM
+	// so additional disks must skip that slot.
 	maxDisks := settings.MaxDiskPerVM
 	if maxDisks <= 0 {
 		maxDisks = 1
 	}
+	isoReservesIDE2 := diskBus == state.DiskBusIDE && req.ISO != ""
+	slotOffset := 0
 	for i := 1; i < len(req.Disks) && i < maxDisks; i++ {
 		if req.Disks[i].SizeGB <= 0 {
 			continue
 		}
-		params.Set(fmt.Sprintf("%s%d", diskBus, i), fmt.Sprintf("%s:%d", req.Storage, req.Disks[i].SizeGB))
+		slot := i + slotOffset
+		if isoReservesIDE2 && slot == 2 {
+			slotOffset++
+			slot++
+		}
+		params.Set(fmt.Sprintf("%s%d", diskBus, slot), fmt.Sprintf("%s:%d", req.Storage, req.Disks[i].SizeGB))
 	}
 
 	// TPM
@@ -1023,7 +1035,14 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	var createResp proxmox.Response[string]
 	if err := client.Post(ctx, path, params, &createResp); err != nil {
 		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Msg("api/v1: VM creation failed")
-		writeError(w, http.StatusInternalServerError, "creation_failed", "Failed to create VM")
+		// Propagate 4xx errors from Proxmox so the frontend sees the actual error message
+		// (e.g. "parameter verification failed: ide2 invalid format").
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "error status 4") {
+			errBadRequest(w, errMsg)
+		} else {
+			writeError(w, http.StatusInternalServerError, "creation_failed", "Failed to create VM")
+		}
 		return
 	}
 	upid := createResp.Data
