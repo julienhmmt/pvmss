@@ -42,11 +42,11 @@
 }
 
 .pv-row:hover {
-  background: oklch(0.985 0.01 45);
+  background: oklch(98.5% 0.01 45deg);
 }
 
 .dark .pv-row:hover {
-  background: oklch(0.22 0.01 45);
+  background: oklch(22% 0.01 45deg);
 }
 
 .pv-table td {
@@ -65,7 +65,7 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(135deg, oklch(0.72 0.19 45), oklch(0.58 0.19 45));
+  background: linear-gradient(135deg, oklch(72% 0.19 45deg), oklch(58% 0.19 45deg));
   color: white;
   font-size: 0.72rem;
   font-weight: 700;
@@ -135,16 +135,16 @@
 .pv-usage-bar-fill {
   height: 100%;
   border-radius: 3px;
-  background: oklch(0.68 0.19 45);
+  background: oklch(68% 0.19 45deg);
   transition: width 0.3s ease;
 }
 
 .pv-usage-bar-fill--warn {
-  background: oklch(0.75 0.18 80);
+  background: oklch(75% 0.18 80deg);
 }
 
 .pv-usage-bar-fill--danger {
-  background: oklch(0.577 0.245 27.325);
+  background: oklch(57.7% 0.245 27.325deg);
 }
 
 .pv-usage-label {
