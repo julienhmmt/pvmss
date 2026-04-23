@@ -35,6 +35,11 @@
     "size": "Taille",
     "page": "Page",
     "pageOf": "Page {page} sur {total}",
+    "pagination": {
+      "showing": "Affichage de {start} à {end} sur {total}",
+      "perPage": "{count} / page",
+      "itemsPerPage": "Éléments par page"
+    },
     "addTag": "Ajouter un tag...",
     "value": "Valeur",
     "statusMap": {

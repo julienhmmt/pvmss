@@ -5,6 +5,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import { Switch } from '$lib/components/ui/switch';
 	import * as Select from '$lib/components/ui/select';
 	import { getVMBRs, toggleVMBR } from '$lib/api/admin/vmbr';
@@ -28,6 +30,15 @@
 	const filteredVmbrs = $derived(selectedNode ? vmbrs.filter((v) => v.node === selectedNode) : vmbrs);
 	const sortedVmbrs = $derived(sortVmbrs(filteredVmbrs, sortKey, sortDir));
 	const enabledCount = $derived(vmbrs.filter((v) => v.enabled).length);
+
+	let page = $state(1);
+	let perPage = $state(25);
+	const pagedVmbrs = $derived(paginate(sortedVmbrs, page, perPage));
+
+	$effect(() => {
+		selectedNode;
+		page = 1;
+	});
 
 	async function load() {
 		if (vmbrs.length > 0) {
@@ -185,7 +196,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each sortedVmbrs as v}
+				{#each pagedVmbrs as v (v.node + ':' + v.iface)}
 					{@const key = v.node + ':' + v.iface}
 					<tr class="pv-row" class:opacity-50={toggling === key}>
 						<td>
@@ -211,6 +222,8 @@
 			</tbody>
 		</table>
 	</div>
+
+	<Paginator total={filteredVmbrs.length} bind:page bind:perPage />
 {/if}
 
 </div>

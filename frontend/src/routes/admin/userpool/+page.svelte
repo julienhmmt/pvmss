@@ -5,6 +5,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -22,6 +24,10 @@
 	let createOpen = $state(false);
 	let deleteTarget = $state<string | null>(null);
 	let form = $state({ poolName: '', password: '' });
+
+	let page = $state(1);
+	let perPage = $state(25);
+	const pagedPools = $derived(paginate(pools, page, perPage));
 
 	async function load() {
 		if (pools.length > 0) {
@@ -133,7 +139,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each pools as pool}
+				{#each pagedPools as pool (pool.poolId)}
 					<tr class="pv-row">
 						<td>
 							<div class="pv-resource-cell">
@@ -162,6 +168,8 @@
 			</tbody>
 		</table>
 	</div>
+
+	<Paginator total={pools.length} bind:page bind:perPage />
 {/if}
 
 <!-- Create pool dialog -->

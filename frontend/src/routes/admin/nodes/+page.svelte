@@ -5,6 +5,8 @@
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
+	import Paginator from '$lib/components/data/Paginator.svelte';
+	import { paginate } from '$lib/utils/paginate';
 	import { Button } from '$lib/components/ui/button';
 	import { getNodes, toggleNode } from '$lib/api/admin/nodes';
 	import { formatBytes, formatCpu, formatUptime, formatPercent } from '$lib/utils/format';
@@ -27,6 +29,10 @@
 
 	let runningCount = $derived(nodes.filter((n) => n.status === 'online').length);
 	let offlineCount = $derived(nodes.filter((n) => n.status !== 'online').length);
+
+	let page = $state(1);
+	let perPage = $state(12);
+	const pagedNodes = $derived(paginate(nodes, page, perPage));
 
 	function usageBarClass(percent: number): string {
 		if (percent >= 80) return 'pv-usage-bar-fill--danger';
@@ -173,7 +179,7 @@
 	{/if}
 {:else}
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-		{#each nodes as node}
+		{#each pagedNodes as node (node.name)}
 			{@const cpuPercent = Math.round(node.cpu * 100)}
 			{@const ramPercent = formatPercent(node.memory, node.maxMemory)}
 			{@const diskPercent = hasDisk(node) ? formatPercent(node.disk, node.maxDisk) : 0}
@@ -294,6 +300,13 @@
 			</div>
 		{/each}
 	</div>
+
+	<Paginator
+		total={nodes.length}
+		bind:page
+		bind:perPage
+		perPageOptions={[12, 24, 48, 96]}
+	/>
 {/if}
 
 </div>
