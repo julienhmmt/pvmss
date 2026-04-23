@@ -2,7 +2,7 @@
 
 ## Todo
 
-- [ ] frontend : avoir un squelette mais sans les donner, pour afficher ce qui va arriver une fois les données récupérées
+- [x] **TO CHECK** frontend : avoir un squelette mais sans les donner, pour afficher ce qui va arriver une fois les données récupérées
 - [ ] admin/nodes : il faut un bouton à côté de chaque node pour activer/désactiver le node qu'on laisse à l'utilisateur. On peut déjà le faire dans les paramètres avancés en tant qu'administrateur mais il faut un bouton plus facile d'accès pour les admin dans la page admin/nodes
 - [x] **TO CHECK** admin/limites : avoir un bouton à chaque node pour 'appliquer ces limites à tous les nodes'
 - [x] **TO CHECK** admin/iso : permettre de filtrer par node

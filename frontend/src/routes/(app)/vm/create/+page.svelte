@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
+	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import { getVMCreateSettings, createVM } from '$lib/api/vm-create';
 	import { tasks } from '$lib/stores/tasks.svelte';
 	import { auth } from '$lib/stores/auth.svelte';
@@ -501,9 +502,7 @@
 	</div>
 
 	{#if loading}
-		<div class="flex items-center justify-center py-20">
-			<SpinnerGap class="text-muted-foreground h-8 w-8 animate-spin" />
-		</div>
+		<LoadingSkeleton variant="form" rows={6} />
 	{:else if !settings}
 		<Card>
 			<CardContent class="py-10 text-center">
