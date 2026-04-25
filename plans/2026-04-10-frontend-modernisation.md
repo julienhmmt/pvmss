@@ -175,7 +175,7 @@ Remplacer `$page.url.searchParams.get(...)` par l'accès via `page` rune de Svel
 import { page } from "$app/state"; // Svelte 5 / SvelteKit 2
 ```
 
-**3.5 Transitions**
+3.5 Transitions
 
 - `transition:fade` sur la table de résultats
 - `animate:flip` sur les lignes lors du rechargement
@@ -186,9 +186,9 @@ import { page } from "$app/state"; // Svelte 5 / SvelteKit 2
 
 ---
 
-## Phase 4 — VM Details (`/vm/[id]`)
+## Phase 4 — VM Details (`/vm/[id]`) - DONE
 
-### Problèmes actuels
+Problèmes actuels
 
 - 807 lignes, tous les onglets dans un seul fichier
 - `setInterval` dans `onMount` / `onDestroy`
@@ -198,7 +198,7 @@ import { page } from "$app/state"; // Svelte 5 / SvelteKit 2
 
 ### Plan de découpage
 
-```
+```bash
 routes/(app)/vm/[id]/
   +page.svelte                  ← orchestrateur (< 150 lignes)
   _tabs/
@@ -245,7 +245,7 @@ routes/(app)/vm/[id]/
 
 ## Phase 5 — VM Create (`/vm/create`)
 
-### Problèmes actuels
+Problèmes actuels
 
 - 1 093 lignes, impossible à maintenir
 - ~25 `$state` variables pour le formulaire
@@ -253,11 +253,11 @@ routes/(app)/vm/[id]/
 - Pas de feedback visuel entre les steps
 - Pas de persistance draft
 
-### Plan
+Plan
 
-**5.1 Découpage en composants**
+5.1 Découpage en composants
 
-```
+```bash
 routes/(app)/vm/create/
   +page.svelte                  ← orchestrateur wizard (< 200 lignes)
   _steps/
@@ -273,7 +273,7 @@ routes/(app)/vm/create/
     NetworkCard.svelte          ← carte réseau individuelle
 ```
 
-**5.2 State management : store dédié**
+5.2 State management : store dédié
 Extraire l'état du formulaire dans un store Svelte réactif :
 
 ```typescript
@@ -289,7 +289,7 @@ export function createVMFormStore() {
 }
 ```
 
-**5.3 Validation par step**
+5.3 Validation par step
 Chaque step a sa propre fonction de validation appelée avant `next()` :
 
 | Step      | Règles validées                                                        |
@@ -300,7 +300,8 @@ Chaque step a sa propre fonction de validation appelée avant `next()` :
 | Network   | Au moins 1 réseau, bridge sélectionné                                  |
 | CloudInit | Si activé : user requis                                                |
 
-**5.4 Transitions entre steps**
+5.4 Transitions entre steps
+
 Utiliser `transition:fly` pour simuler une navigation forward/backward :
 
 ```svelte
@@ -316,10 +317,10 @@ Utiliser `transition:fly` pour simuler une navigation forward/backward :
 
 Variable `direction = +1` (forward) ou `-1` (backward).
 
-**5.5 WizardProgress.svelte**
+5.5 WizardProgress.svelte
 Barre de progression visuelle avec icônes par step, étape courante mise en valeur, étapes complètes cochées.
 
-**5.6 Draft localStorage**
+5.6 Draft localStorage
 `$effect` qui persiste le formulaire :
 
 ```typescript
@@ -336,16 +337,17 @@ $effect(() => {
 
 ## Phase 6 — Documentation (`/docs/[type]`)
 
-### Problèmes actuels
+Problèmes actuels
 
 - `{@html html}` directement sans DOMPurify (risque XSS si backend compromis)
 - TOC extrait par regex depuis le HTML rendu (fragile)
 - Section active dans le TOC non trackée
 - Pas de scroll indicator
 
-### Plan
+Plan
 
-**6.1 DOMPurify**
+6.1 DOMPurify
+
 Ajouter `dompurify` et wrapper le rendu HTML :
 
 ```typescript
@@ -355,7 +357,8 @@ const safeHtml = $derived(DOMPurify.sanitize(html));
 // template : {@html safeHtml}
 ```
 
-**6.2 TOC actif avec IntersectionObserver**
+6.2 TOC actif avec IntersectionObserver
+
 Action `use:intersect` créée en Phase 1 :
 
 ```svelte
@@ -365,7 +368,7 @@ Action `use:intersect` créée en Phase 1 :
 
 Ou post-rendu, observer les headings générés et mettre à jour `activeSection`.
 
-**6.3 Section active dans le TOC**
+6.3 Section active dans le TOC
 
 ```svelte
 <button class="pv-doc-toc-entry {entry.id === activeSection ? 'active' : ''}">
@@ -373,16 +376,17 @@ Ou post-rendu, observer les headings générés et mettre à jour `activeSection
 
 Transition `transition:fade` sur l'indicateur actif.
 
-**6.4 Bouton copy-code**
+6.4 Bouton copy-code
+
 Post-rendu : scanner les `<pre><code>` dans l'article et injecter un bouton copier via une action `use:addCopyButtons`.
 
 ---
 
 ## Résumé des fichiers
 
-### Nouveaux fichiers
+Nouveaux fichiers
 
-```
+```bash
 frontend/src/lib/actions/index.ts
 frontend/src/lib/styles/pv-components.css
 frontend/src/lib/stores/vm-create.svelte.ts
@@ -406,9 +410,9 @@ frontend/src/routes/(app)/vm/create/_components/DiskCard.svelte
 frontend/src/routes/(app)/vm/create/_components/NetworkCard.svelte
 ```
 
-### Fichiers modifiés
+Fichiers modifiés
 
-```
+```bash
 frontend/tsconfig.json                          ← strict: true
 frontend/src/routes/+layout.svelte              ← import pv-components.css
 frontend/src/routes/(app)/+layout.svelte        ← transition:fade sur navigation
@@ -423,7 +427,7 @@ frontend/src/routes/docs/[type]/+page.svelte    ← DOMPurify, TOC actif
 
 ## Ordre d'exécution recommandé
 
-```
+```bash
 Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
 ```
 
