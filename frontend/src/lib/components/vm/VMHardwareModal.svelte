@@ -307,7 +307,7 @@
 										id={`hw-model-${i}`}
 										class="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
 										value={card.model}
-										onchange={(e) => updateCard(i, 'model', e.currentTarget.value)}
+										onchange={(e: Event) => updateCard(i, 'model', (e.currentTarget as HTMLSelectElement).value)}
 									>
 										{#each NET_MODELS as m (m)}
 											<option value={m}>{m}</option>
@@ -322,7 +322,7 @@
 											id={`hw-bridge-${i}`}
 											class="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
 											value={card.bridge}
-											onchange={(e) => updateCard(i, 'bridge', e.currentTarget.value)}
+											onchange={(e: Event) => updateCard(i, 'bridge', (e.currentTarget as HTMLSelectElement).value)}
 										>
 											{#each availableBridges as br (br)}
 												<option value={br}>{br}</option>
@@ -334,7 +334,7 @@
 											type="text"
 											class="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
 											value={card.bridge}
-											oninput={(e) => updateCard(i, 'bridge', e.currentTarget.value)}
+											oninput={(e: Event) => updateCard(i, 'bridge', (e.currentTarget as HTMLInputElement).value)}
 										/>
 									{/if}
 								</div>
@@ -348,7 +348,7 @@
 										max="4094"
 										class="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
 										value={card.vlan}
-										oninput={(e) => updateCard(i, 'vlan', parseInt(e.currentTarget.value) || 0)}
+										oninput={(e: Event) => updateCard(i, 'vlan', parseInt((e.currentTarget as HTMLInputElement).value) || 0)}
 									/>
 									<p class="text-xs text-muted-foreground">{$t('vm.network.vlanHint')}</p>
 								</div>
@@ -360,7 +360,7 @@
 										type="text"
 										class="w-full rounded border border-border bg-background px-2 py-1.5 text-sm"
 										value={card.rate}
-										oninput={(e) => updateCard(i, 'rate', e.currentTarget.value)}
+										oninput={(e: Event) => updateCard(i, 'rate', (e.currentTarget as HTMLInputElement).value)}
 										placeholder="e.g. 10"
 									/>
 									<p class="text-xs text-muted-foreground">{$t('vm.network.rateHint')}</p>
@@ -371,7 +371,7 @@
 										id={`hw-fw-${i}`}
 										type="checkbox"
 										checked={card.firewall}
-										onchange={(e) => updateCard(i, 'firewall', e.currentTarget.checked)}
+										onchange={(e: Event) => updateCard(i, 'firewall', (e.currentTarget as HTMLInputElement).checked)}
 									/>
 									<label class="text-sm" for={`hw-fw-${i}`}>{$t('vm.network.firewall')}</label>
 								</div>

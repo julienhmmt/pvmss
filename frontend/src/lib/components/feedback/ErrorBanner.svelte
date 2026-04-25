@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { fly } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button';
 	import { WarningCircle, X } from 'phosphor-svelte';
 	import { ApiRequestError } from '$lib/types/api';
@@ -22,7 +23,7 @@
 </script>
 
 {#if error && !dismissed}
-	<div class="flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+	<div transition:fly={{ y: -8, duration: 200 }} class="flex items-center gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4">
 		<WarningCircle class="h-5 w-5 shrink-0 text-destructive" />
 		<p class="flex-1 text-sm text-destructive">{message}</p>
 		{#if onRetry}

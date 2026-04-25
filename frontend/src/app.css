@@ -5,6 +5,7 @@
 @import "./styles/pvmss-tables.css";
 @import "./styles/pvmss-overview.css";
 @import "./styles/pvmss-modals.css";
+@import "./styles/pvmss-components.css";
 
 @custom-variant dark (&:is(.dark *));
 

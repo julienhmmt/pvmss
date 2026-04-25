@@ -305,15 +305,15 @@
 										title={$t('admin.tags.editColor')}
 										class:is-saving={savingColor === tag.name}
 										disabled={savingColor !== null}
-										onclick={(e) => {
-											const input = e.currentTarget.querySelector('input[type="color"]');
-											if (input) input.click();
+										onclick={(e: MouseEvent) => {
+											const input = (e.currentTarget as HTMLElement).querySelector('input[type="color"]');
+											if (input) (input as HTMLElement).click();
 										}}
-										onkeydown={(e) => {
+										onkeydown={(e: KeyboardEvent) => {
 											if (e.key === 'Enter' || e.key === ' ') {
 												e.preventDefault();
-												const input = e.currentTarget.querySelector('input[type="color"]');
-												if (input) input.click();
+												const input = (e.currentTarget as HTMLElement).querySelector('input[type="color"]');
+												if (input) (input as HTMLElement).click();
 											}
 										}}
 									>
@@ -322,7 +322,7 @@
 											class="pv-tag-color-input"
 											value={colors.bg}
 											disabled={savingColor !== null}
-											onchange={(e) =>
+											onchange={(e: Event) =>
 												handleColorChange(tag.name, (e.target as HTMLInputElement).value)}
 											aria-hidden="true"
 											tabindex="-1"

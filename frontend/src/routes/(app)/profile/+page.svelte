@@ -250,7 +250,7 @@
 					{:else}
 						<form
 							class="flex flex-col gap-3"
-							onsubmit={(e) => {
+							onsubmit={(e: SubmitEvent) => {
 								e.preventDefault();
 								handlePasswordChange();
 							}}
@@ -404,7 +404,7 @@
 										</td>
 										<td class="pv-td-muted text-sm">{vm.node}</td>
 										<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
-										<td onclick={(e) => e.stopPropagation()}>
+										<td onclick={(e: MouseEvent) => e.stopPropagation()}>
 											<div class="flex items-center gap-1">
 												{#if vm.status === 'stopped'}
 													<button

@@ -173,7 +173,7 @@
 		];
 	}
 
-	onMount(() => load());
+	onMount(() => { void load(); });
 </script>
 
 <svelte:head>
@@ -334,7 +334,7 @@
 								>
 									<td
 										class="w-10"
-										onclick={(e) => {
+										onclick={(e: MouseEvent) => {
 											e.stopPropagation();
 											toggleSelect(vm.vmid);
 										}}
@@ -382,7 +382,7 @@
 										{/if}
 									</td>
 									<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
-									<td onclick={(e) => e.stopPropagation()}>
+									<td onclick={(e: MouseEvent) => e.stopPropagation()}>
 										<div class="flex items-center gap-1">
 											{#if vm.status === 'stopped'}
 												<button
@@ -475,86 +475,6 @@
 </div>
 
 <style>
-	/* ── Clickable rows ─────────────────────────────────────────────── */
-	:global(.pv-row--clickable) {
-		cursor: pointer;
-	}
-	:global(.pv-row--clickable:hover td) {
-		background: var(--accent);
-	}
-	:global(.pv-row--selected td) {
-		background: hsl(var(--primary) / 0.06);
-	}
-	:global(.pv-row--selected:hover td) {
-		background: hsl(var(--primary) / 0.1);
-	}
-
-	/* ── Action buttons ─────────────────────────────────────────────── */
-	:global(.pv-action-btn) {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 6px;
-		border: 1px solid var(--border);
-		background: transparent;
-		color: var(--muted-foreground);
-		cursor: pointer;
-		transition: background 0.12s, color 0.12s, border-color 0.12s;
-	}
-	:global(.pv-action-btn:disabled) {
-		opacity: 0.4;
-		cursor: not-allowed;
-	}
-	:global(.pv-action-btn:hover:not(:disabled)) {
-		background: var(--accent);
-		color: var(--accent-foreground);
-	}
-	:global(.pv-action-btn--start:hover:not(:disabled)) {
-		background: hsl(142 71% 45% / 0.15);
-		border-color: hsl(142 71% 45% / 0.4);
-		color: hsl(142 71% 35%);
-	}
-	:global(.pv-action-btn--stop:hover:not(:disabled)) {
-		background: hsl(0 84% 60% / 0.15);
-		border-color: hsl(0 84% 60% / 0.4);
-		color: hsl(0 84% 50%);
-	}
-
-	/* ── Checkbox button ────────────────────────────────────────────── */
-	:global(.pv-check-btn) {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		background: none;
-		border: none;
-		cursor: pointer;
-		padding: 2px;
-		border-radius: 4px;
-	}
-	:global(.pv-check-btn:hover) {
-		background: var(--accent);
-	}
-
-	/* ── Sortable header buttons ────────────────────────────────────── */
-	:global(.pv-sort-btn) {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
-		background: none;
-		border: none;
-		cursor: pointer;
-		font-size: inherit;
-		font-weight: inherit;
-		color: inherit;
-		padding: 0;
-		white-space: nowrap;
-	}
-	:global(.pv-sort-btn:hover) {
-		color: var(--foreground);
-	}
-
 	/* ── Stats cards ────────────────────────────────────────────────── */
 	:global(.pv-stat-card) {
 		display: flex;
