@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t, locale } from 'svelte-i18n';
@@ -115,13 +114,11 @@
 		scrollProgress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
 	}
 
-	onMount(() => {
+	$effect(() => {
 		window.addEventListener('scroll', handleScroll, { passive: true });
 		return () => {
 			window.removeEventListener('scroll', handleScroll);
-			if (observer) {
-				observer.disconnect();
-			}
+			observer?.disconnect();
 		};
 	});
 

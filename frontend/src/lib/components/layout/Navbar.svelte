@@ -177,7 +177,7 @@
 		class:pv-skip-link--focused={skipLinkFocused}
 		onfocus={() => (skipLinkFocused = true)}
 		onblur={() => (skipLinkFocused = false)}
-		onclick={(e) => {
+		onclick={(e: MouseEvent) => {
 			e.preventDefault();
 			handleSkipToContent();
 		}}
@@ -301,9 +301,9 @@
 									role="button"
 									tabindex="0"
 									onclick={() => notifications.markAsRead(notification.id)}
-									onkeydown={(e) => {
+									onkeydown={(e: KeyboardEvent) => {
 										if (e.key.toLowerCase() === 'b' && !auth.isAdmin) {
-											event.preventDefault();
+											e.preventDefault();
 											navigate('/vm/create');
 											return;
 										}
