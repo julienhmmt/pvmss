@@ -66,7 +66,7 @@
 		<input
 			type="text"
 			bind:value={newItem}
-			onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
+			onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
 			placeholder={$t('admin.settings.overview.list.addItem')}
 			disabled={saving}
 			class="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"

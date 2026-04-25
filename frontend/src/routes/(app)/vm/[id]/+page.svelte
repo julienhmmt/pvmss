@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { fade, slide } from 'svelte/transition';
+	import { flip } from 'svelte/animate';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
@@ -69,6 +70,7 @@
 	let retryCount = $state(0);
 	let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isLoading = $state(false);
+	let lastVmid = $state(0);
 
 	// Edit states
 	let editingDescription = $state(false);
@@ -324,14 +326,34 @@
 		return new Date(ts * 1000).toLocaleString();
 	}
 
-	onMount(() => {
-		load();
-		metricsInterval = setInterval(refreshMetrics, 5000);
-	});
+	$effect(() => {
+		// Only run when vmid changes
+		if (vmid === lastVmid) return;
+		lastVmid = vmid;
 
-	onDestroy(() => {
-		if (metricsInterval) clearInterval(metricsInterval);
-		if (retryTimeout) clearTimeout(retryTimeout);
+		isLoading = false;
+		if (retryTimeout) {
+			clearTimeout(retryTimeout);
+			retryTimeout = null;
+		}
+		retryCount = 0;
+		provisioning = false;
+		void load();
+		// Clear existing interval before creating new one
+		if (metricsInterval) {
+			clearInterval(metricsInterval);
+		}
+		metricsInterval = setInterval(refreshMetrics, 5000);
+		return () => {
+			if (metricsInterval) {
+				clearInterval(metricsInterval);
+				metricsInterval = null;
+			}
+			if (retryTimeout) {
+				clearTimeout(retryTimeout);
+				retryTimeout = null;
+			}
+		};
 	});
 </script>
 
@@ -512,30 +534,34 @@
 					>
 				{/if}
 			</div>
-			{#if editingDescription}
-				<textarea
-					class="w-full rounded border border-border bg-background p-2 text-sm"
-					rows="3"
-					bind:value={descriptionDraft}
-				></textarea>
-				<div class="mt-2 flex gap-2">
-					<button
-						class="pv-btn-primary text-xs"
-						onclick={saveDescription}
-						disabled={savingDescription}
-					>
-						{savingDescription ? $t('common.saving') : $t('common.save')}
-					</button>
-					<button
-						class="text-xs text-muted-foreground hover:text-foreground"
-						onclick={() => (editingDescription = false)}>{$t('common.cancel')}</button
-					>
-				</div>
-			{:else}
-				<p class="text-sm text-muted-foreground">
-					{config.description || $t('vm.noDescription')}
-				</p>
+			{#key editingDescription}
+				{#if editingDescription}
+					<div transition:slide={{ duration: 200 }}>
+						<textarea
+							class="w-full rounded border border-border bg-background p-2 text-sm"
+							rows="3"
+							bind:value={descriptionDraft}
+						></textarea>
+						<div class="mt-2 flex gap-2">
+							<button
+								class="pv-btn-primary text-xs"
+								onclick={saveDescription}
+								disabled={savingDescription}
+							>
+								{savingDescription ? $t('common.saving') : $t('common.save')}
+							</button>
+							<button
+								class="text-xs text-muted-foreground hover:text-foreground"
+								onclick={() => (editingDescription = false)}>{$t('common.cancel')}</button
+							>
+						</div>
+					</div>
+				{:else}
+					<p class="text-sm text-muted-foreground">
+						{config.description || $t('vm.noDescription')}
+					</p>
 			{/if}
+			{/key}
 		</div>
 
 		<!-- Tabs -->
@@ -557,6 +583,8 @@
 		</div>
 
 		<!-- Tab content -->
+		{#key activeTab}
+		<div in:fade={{ duration: 150 }}>
 		{#if activeTab === 'overview'}
 			<div class="pv-table-wrap">
 				<table class="pv-table">
@@ -765,7 +793,7 @@
 				</div>
 
 				{#if showSnapshotForm}
-					<div class="border-b border-border px-4 py-3">
+					<div transition:slide={{ duration: 200 }} class="border-b border-border px-4 py-3">
 						<div class="mb-2 flex gap-2">
 							<input
 								class="flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
@@ -808,7 +836,7 @@
 						</thead>
 						<tbody>
 							{#each snapshotData.snapshots.filter((s) => !s.current) as snap (snap.name)}
-								<tr class="pv-row">
+								<tr animate:flip={{ duration: 200 }} class="pv-row">
 									<td class="pv-td-mono">{snap.name}</td>
 									<td class="text-sm text-muted-foreground">{snap.description || '—'}</td>
 									<td class="pv-td-mono text-xs">{snapshotDate(snap.snaptime)}</td>
@@ -880,6 +908,8 @@
 				{/if}
 			</div>
 		{/if}
+		</div>
+		{/key}
 	{/if}
 </div>
 
@@ -982,6 +1012,7 @@
 </AlertDialog.Root>
 
 <style>
+	/* VM stat cards use icon+text row layout (distinct from home's column layout) */
 	:global(.pv-stat-card) {
 		display: flex;
 		align-items: center;
@@ -1006,89 +1037,5 @@
 		font-size: 0.9rem;
 		font-weight: 600;
 		line-height: 1.4;
-	}
-	:global(.pv-tab) {
-		padding: 0.5rem 0.875rem;
-		font-size: 0.875rem;
-		color: var(--muted-foreground);
-		border-bottom: 2px solid transparent;
-		cursor: pointer;
-		background: none;
-		border-top: none;
-		border-left: none;
-		border-right: none;
-		transition: color 0.12s, border-color 0.12s;
-	}
-	:global(.pv-tab:hover) {
-		color: var(--foreground);
-	}
-	:global(.pv-tab--active) {
-		color: var(--foreground);
-		border-bottom-color: var(--primary);
-		font-weight: 500;
-	}
-	:global(.pv-td-label) {
-		width: 10rem;
-		font-size: 0.8rem;
-		color: var(--muted-foreground);
-		white-space: nowrap;
-	}
-	:global(.pv-console-banner) {
-		display: flex;
-		align-items: center;
-		gap: 0.625rem;
-		width: 100%;
-		padding: 0.875rem 1.25rem;
-		background: hsl(217 91% 60% / 0.08);
-		border: 1px solid hsl(217 91% 60% / 0.25);
-		border-radius: 0.5rem;
-		color: hsl(217 91% 55%);
-		font-size: 0.9375rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.15s, border-color 0.15s;
-		text-align: left;
-	}
-	:global(.pv-console-banner:hover) {
-		background: hsl(217 91% 60% / 0.15);
-		border-color: hsl(217 91% 60% / 0.5);
-	}
-	:global(.pv-console-banner-arrow) {
-		margin-left: auto;
-		opacity: 0.6;
-	}
-	:global(.pv-provisioning-spinner) {
-		width: 2.5rem;
-		height: 2.5rem;
-		border: 3px solid var(--border);
-		border-top-color: var(--primary);
-		border-radius: 50%;
-		animation: pv-spin 0.8s linear infinite;
-	}
-	@keyframes pv-spin {
-		to { transform: rotate(360deg); }
-	}
-	:global(.pv-btn-primary) {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.375rem;
-		padding: 0.375rem 0.75rem;
-		background: var(--primary);
-		color: var(--primary-foreground);
-		border-radius: 0.375rem;
-		font-size: 0.8125rem;
-		font-weight: 500;
-		border: none;
-		cursor: pointer;
-		transition: opacity 0.12s;
-	}
-	:global(.pv-btn-primary:disabled) {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-	:global(.pv-action-btn--halt:hover:not(:disabled)) {
-		background: hsl(0 84% 50% / 0.2);
-		border-color: hsl(0 84% 50% / 0.6);
-		color: hsl(0 84% 40%);
 	}
 </style>

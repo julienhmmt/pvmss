@@ -53,13 +53,6 @@
 
 	type Step = 'base' | 'hardware' | 'disk' | 'network' | 'cloudinit' | 'review';
 
-	// Cloud-init step is only shown when at least one template is enabled by an admin.
-	const STEPS = $derived<Step[]>(
-		settings?.cloudInitAvailable
-			? ['base', 'hardware', 'disk', 'network', 'cloudinit', 'review']
-			: ['base', 'hardware', 'disk', 'network', 'review']
-	);
-
 	const SIMPLE_STEPS = ['profile', 'details', 'confirm'] as const;
 
 	const STEP_ICONS: Record<Step, typeof Monitor> = {
@@ -88,6 +81,13 @@
 	// ── State ─────────────────────────────────────────────────────────────────
 
 	let settings: VMCreateSettings | null = $state(null);
+
+	// Cloud-init step is only shown when at least one template is enabled by an admin.
+	const STEPS = $derived.by<Step[]>(() =>
+		settings?.cloudInitAvailable
+			? ['base', 'hardware', 'disk', 'network', 'cloudinit', 'review']
+			: ['base', 'hardware', 'disk', 'network', 'review']
+	);
 	let loading: boolean = $state(true);
 	let creating: boolean = $state(false);
 
@@ -133,33 +133,38 @@
 
 	// ── Derived ───────────────────────────────────────────────────────────────
 
-	const currentStepName = $derived(() => STEPS[currentStep]);
-	const isFirstStep = $derived(() => currentStep === 0);
-	const isLastStep = $derived(() => currentStep === STEPS.length - 1);
-	const totalVCPUs = $derived(() => vmSockets * vmCores);
-	const totalDiskGB = $derived(() => vmDisks.reduce((acc, d) => acc + d.sizeGb, 0));
-	const maxTotalDiskGB = $derived(() =>
+	$effect(() => {
+		const max = STEPS.length - 1;
+		if (currentStep > max) currentStep = max;
+	});
+
+	const currentStepName = $derived(STEPS[currentStep]);
+	const isFirstStep = $derived(currentStep === 0);
+	const isLastStep = $derived(currentStep === STEPS.length - 1);
+	const totalVCPUs = $derived(vmSockets * vmCores);
+	const totalDiskGB = $derived(vmDisks.reduce((acc, d) => acc + d.sizeGb, 0));
+	const maxTotalDiskGB = $derived.by(() =>
 		settings ? settings.maxDiskPerVm * settings.limits.disk.max : 0
 	);
-	const selectedProfile = $derived(() =>
+	const selectedProfile = $derived.by(() =>
 		(settings?.vmProfiles ?? []).find((p) => p.id === selectedProfileId) ?? null
 	);
 
 	let quotaBlocked = $state(false);
 
-	const currentVMCount = $derived(() =>
+	const currentVMCount = $derived.by(() =>
 		settings !== null ? settings.maxVmPerUser - settings.remainingVms : 0
 	);
 
-	const simpleDetailsValid = $derived(() => vmName.trim().length > 0 && vmNode !== '' && vmStorage !== '');
+	const simpleDetailsValid = $derived(vmName.trim().length > 0 && vmNode !== '' && vmStorage !== '');
 
 	// Track what was auto-selected so we can display the hint
 	let autoNode: string = $state('');
 	let autoStorage: string = $state('');
 
-	const nodeIsAuto = $derived(() => vmNode !== '' && vmNode === autoNode);
-	const storageIsAuto = $derived(() => vmStorage !== '' && vmStorage === autoStorage);
-	const autoStorageIsShared = $derived(() =>
+	const nodeIsAuto = $derived(vmNode !== '' && vmNode === autoNode);
+	const storageIsAuto = $derived(vmStorage !== '' && vmStorage === autoStorage);
+	const autoStorageIsShared = $derived.by(() =>
 		settings?.storages.find((s) => s.name === autoStorage)?.node === ''
 	);
 
@@ -797,9 +802,9 @@
 					</div>
 					<Separator />
 
-					{#if selectedProfile()}
-						{@const ProfileIcon = PROFILE_ICONS[selectedProfile().icon] ?? Globe}
-						{@const confirmColors = PROFILE_COLOR_CLASSES[selectedProfile().color] ?? PROFILE_COLOR_CLASSES['gray']}
+					{#if selectedProfile}
+						{@const ProfileIcon = PROFILE_ICONS[selectedProfile.icon] ?? Globe}
+						{@const confirmColors = PROFILE_COLOR_CLASSES[selectedProfile.color] ?? PROFILE_COLOR_CLASSES['gray']}
 						<!-- Profile + VM summary -->
 						<div class="rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
 							<div class="mb-4 flex items-center gap-3">
@@ -808,10 +813,10 @@
 								</div>
 								<div>
 									<p class="text-sm font-semibold">
-										{selectedProfile().name}
+										{selectedProfile.name}
 									</p>
 									<p class="text-muted-foreground text-xs">
-										{selectedProfile().description}
+										{selectedProfile.description}
 									</p>
 								</div>
 							</div>
@@ -933,7 +938,7 @@
 		<!-- Step content -->
 		<Card>
 			<CardContent class="space-y-5 p-6">
-				{#if currentStepName() === 'base'}
+				{#if currentStepName === 'base'}
 					<!-- STEP 1: BASE -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.base.title')}</h2>
 					<Separator />
@@ -1053,7 +1058,7 @@
 							</div>
 						{/if}
 					</div>
-				{:else if currentStepName() === 'hardware'}
+				{:else if currentStepName === 'hardware'}
 					<!-- STEP 2: HARDWARE -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.hardware.title')}</h2>
 					<Separator />
@@ -1099,7 +1104,7 @@
 						</div>
 						<div class="flex items-end pb-6">
 							<Badge variant="secondary" class="text-sm">
-								{$t('vmCreate.hardware.totalVCPUs', { values: { count: String(totalVCPUs()) } })}
+								{$t('vmCreate.hardware.totalVCPUs', { values: { count: String(totalVCPUs) } })}
 							</Badge>
 						</div>
 						<div class="space-y-2 sm:col-span-2">
@@ -1138,7 +1143,7 @@
 							</div>
 						</div>
 					</div>
-				{:else if currentStepName() === 'disk'}
+				{:else if currentStepName === 'disk'}
 					<!-- STEP 3: DISK -->
 					<div class="flex items-center justify-between">
 						<h2 class="text-lg font-semibold">{$t('vmCreate.disk.title')}</h2>
@@ -1151,8 +1156,8 @@
 					<p class="text-muted-foreground text-xs">
 						{$t('vmCreate.disk.capacityInfo', {
 							values: {
-								total: String(totalDiskGB()),
-								max: String(maxTotalDiskGB()),
+								total: String(totalDiskGB),
+								max: String(maxTotalDiskGB),
 								maxDisks: String(settings.maxDiskPerVm),
 								maxSize: String(settings.limits.disk.max)
 							}
@@ -1207,7 +1212,7 @@
 							</p>
 						{/if}
 					</div>
-				{:else if currentStepName() === 'network'}
+				{:else if currentStepName === 'network'}
 					<!-- STEP 4: NETWORK -->
 					<div class="flex items-center justify-between">
 						<h2 class="text-lg font-semibold">{$t('vmCreate.network.title')}</h2>
@@ -1347,7 +1352,7 @@
 							</p>
 						{/if}
 					</div>
-				{:else if currentStepName() === 'cloudinit'}
+				{:else if currentStepName === 'cloudinit'}
 					<!-- STEP 5: CLOUD-INIT -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.cloudinit.title')}</h2>
 					<Separator />
@@ -1470,7 +1475,7 @@
 							</div>
 						</div>
 					{/if}
-				{:else if currentStepName() === 'review'}
+				{:else if currentStepName === 'review'}
 					<!-- STEP 6: REVIEW -->
 					<h2 class="text-lg font-semibold">{$t('vmCreate.review.title')}</h2>
 					<p class="text-muted-foreground text-sm">{$t('vmCreate.review.subtitle')}</p>
@@ -1551,7 +1556,7 @@
 							<span class="text-muted-foreground">{$t('vmCreate.review.sockets')}</span>
 							<span>{vmSockets}</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.cores')}</span>
-							<span>{vmCores} ({totalVCPUs()} vCPUs)</span>
+							<span>{vmCores} ({totalVCPUs} vCPUs)</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.memory')}</span>
 							<span>{vmMemoryGB} GB</span>
 							<span class="text-muted-foreground">{$t('vmCreate.review.diskBus')}</span>
@@ -1581,7 +1586,7 @@
 							<span class="text-muted-foreground font-medium"
 								>{$t('vmCreate.review.totalDisk')}</span
 							>
-							<span class="font-medium">{totalDiskGB()} GB</span>
+							<span class="font-medium">{totalDiskGB} GB</span>
 						</div>
 					</div>
 
@@ -1666,11 +1671,11 @@
 
 		<!-- Navigation buttons -->
 		<div class="flex items-center justify-between">
-			<Button variant="outline" onclick={goPrev} disabled={isFirstStep()}>
+			<Button variant="outline" onclick={goPrev} disabled={isFirstStep}>
 				<CaretLeft class="mr-1 h-4 w-4" />
 				{$t('common.previous')}
 			</Button>
-			{#if isLastStep()}
+			{#if isLastStep}
 				<Button
 					onclick={handleCreate}
 					disabled={creating || !isStepValid('base') || !isStepValid('hardware')}
@@ -1684,7 +1689,7 @@
 					{/if}
 				</Button>
 			{:else}
-				<Button onclick={goNext} disabled={!isStepValid(currentStepName())}>
+				<Button onclick={goNext} disabled={!isStepValid(currentStepName)}>
 					{$t('common.next')}
 					<CaretRight class="ml-1 h-4 w-4" />
 				</Button>

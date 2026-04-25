@@ -32,7 +32,7 @@
 
 ---
 
-## Phase 1 — Fondations transversales (prerequis aux phases suivantes)
+## Phase 1 — Fondations transversales (prerequis aux phases suivantes) - DONE
 
 ### 1.1 Actions Svelte réutilisables
 
@@ -92,7 +92,7 @@ Activer `"strict": true` dans `tsconfig.json` et corriger les types implicites.
 
 ---
 
-## Phase 2 — Animations & transitions
+## Phase 2 — Animations & transitions - DONE
 
 ### 2.1 Transitions de page (layout)
 
@@ -128,7 +128,7 @@ Sur les listes qui changent (résultats search, snapshots) :
 
 ---
 
-## Phase 3 — Search (`/search`)
+## Phase 3 — Search (`/search`) - DONE
 
 ### Problèmes actuels
 

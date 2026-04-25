@@ -62,7 +62,7 @@
 		</div>
 	</div>
 
-	<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-3">
+	<form onsubmit={(e: SubmitEvent) => { e.preventDefault(); handleSave(); }} class="space-y-3">
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div class="space-y-1">
 				<label for="maxVms" class="block text-xs font-medium text-muted-foreground">

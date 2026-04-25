@@ -77,14 +77,31 @@
 
 			const wsUrl = buildWebSocketURL(vmid, ticket, port, node);
 
+			const oldRfb = rfb;
+			if (oldRfb) {
+				if (connectHandler) {
+					oldRfb.removeEventListener('connect', connectHandler);
+				}
+				if (disconnectHandler) {
+					oldRfb.removeEventListener('disconnect', disconnectHandler);
+				}
+				if (securityFailureHandler) {
+					oldRfb.removeEventListener('securityfailure', securityFailureHandler);
+				}
+				oldRfb.disconnect();
+			}
+
 			rfb = new RFBModule(container, wsUrl, {
 				credentials: { username: '', password: ticket }
 			});
 
 			if (!mounted) return;
 
-			rfb.scaleViewport = scaleViewport;
-			rfb.resizeSession = false;
+			const currentRfb = rfb;
+			if (!currentRfb) return;
+
+			currentRfb.scaleViewport = scaleViewport;
+			currentRfb.resizeSession = false;
 
 			connectHandler = () => {
 				if (!mounted) return;
@@ -93,7 +110,7 @@
 				retryCount = 0;
 			};
 			disconnectHandler = (detail: unknown) => {
-				rfb = null;
+				if (rfb === currentRfb) rfb = null;
 				if (!mounted) return;
 				status = 'disconnected';
 				const reason = detail && typeof detail === 'object' && 'reason' in detail
@@ -102,15 +119,15 @@
 				statusMessage = `Disconnected${reason}`;
 			};
 			securityFailureHandler = () => {
+				if (rfb === currentRfb) rfb = null;
 				if (!mounted) return;
 				status = 'error';
 				statusMessage = 'Authentication failed';
-				rfb = null;
 			};
 
-			rfb.addEventListener('connect', connectHandler);
-			rfb.addEventListener('disconnect', disconnectHandler);
-			rfb.addEventListener('securityfailure', securityFailureHandler);
+			currentRfb.addEventListener('connect', connectHandler);
+			currentRfb.addEventListener('disconnect', disconnectHandler);
+			currentRfb.addEventListener('securityfailure', securityFailureHandler);
 		} catch (e) {
 			if (!mounted) return;
 			const err = e as Error;

@@ -60,7 +60,7 @@
 		{/if}
 	</div>
 
-	<form onsubmit={(e) => { e.preventDefault(); handleSave(); }} class="space-y-3">
+	<form onsubmit={(e: SubmitEvent) => { e.preventDefault(); handleSave(); }} class="space-y-3">
 		<div class="flex items-center gap-2">
 			<input id="sftp_enabled" type="checkbox" bind:checked={formState.enabled}
 				class="h-4 w-4 rounded border-input" />

@@ -50,7 +50,7 @@
 	<td class="pv-td-muted text-sm">{vm.node || '—'}</td>
 	<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
 	{#if onAction}
-		<td onclick={(e) => e.stopPropagation()}>
+		<td onclick={(e: MouseEvent) => e.stopPropagation()}>
 			<VmActionButtons
 				status={vm.status}
 				{busy}
