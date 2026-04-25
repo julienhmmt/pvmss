@@ -757,6 +757,76 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 	writeJSON(w, map[string]string{"status": "ok"})
 }
 
+// UpdateVMCDROM handles PATCH /api/v1/vms/:id/cdrom
+// Allows setting or removing the CD-ROM ISO.
+func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request) {
+	ps := httprouter.ParamsFromContext(r.Context())
+	vmid, err := strconv.Atoi(ps.ByName("id"))
+	if err != nil || vmid <= 0 {
+		errBadRequest(w, "invalid vm id")
+		return
+	}
+
+	var req struct {
+		ISO        *string `json:"iso"`        // ISO volid (e.g., "local:iso/debian.iso") or empty to remove
+		Disconnect bool    `json:"disconnect"` // If true, disconnect CD-ROM (keep drive but no ISO)
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errBadRequest(w, "invalid JSON")
+		return
+	}
+
+	username := usernameFromCtx(r)
+	isAdmin := isAdminFromCtx(r)
+
+	client, err := restyClient()
+	if err != nil {
+		errInternal(w)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	if !ownsVM(ctx, client, username, isAdmin, vmid) {
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		return
+	}
+
+	node, err := resolveNode(ctx, client, vmid)
+	if err != nil || node == "" {
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		return
+	}
+
+	params := map[string]string{}
+	if req.Disconnect {
+		// Disconnect CD-ROM (remove current ISO)
+		params["ide2"] = "none"
+	} else if req.ISO != nil {
+		if *req.ISO == "" {
+			// Remove CD-ROM
+			params["ide2"] = "none"
+		} else {
+			// Set CD-ROM ISO
+			if !strings.Contains(*req.ISO, ":") {
+				errBadRequest(w, "invalid ISO format: expected storage:path")
+				return
+			}
+			params["ide2"] = *req.ISO + ",media=cdrom"
+		}
+	} else {
+		errBadRequest(w, "iso field is required")
+		return
+	}
+
+	if err := proxmox.UpdateVMConfigResty(ctx, client, node, vmid, params); err != nil {
+		errInternal(w)
+		return
+	}
+	writeJSON(w, map[string]string{"status": "ok"})
+}
+
 // GetVMSettings handles GET /api/v1/vms/:id/settings
 // Returns allowed ISOs, VMBRs, tags and resource limits for the VM edit form.
 func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request) {

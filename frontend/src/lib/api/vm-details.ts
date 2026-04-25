@@ -166,6 +166,19 @@ export async function updateVMConfig(
   await api.patch(`/api/v1/vms/${vmid}/config`, payload);
 }
 
+export async function updateVMCDROM(
+  vmid: number,
+  iso: string,
+): Promise<void> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ iso });
+  await api.patch(`/api/v1/vms/${vmid}/cdrom`, payload);
+}
+
+export async function disconnectVMCDROM(vmid: number): Promise<void> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ disconnect: true });
+  await api.patch(`/api/v1/vms/${vmid}/cdrom`, payload);
+}
+
 export async function getVMSettings(vmid: number): Promise<VMSettings> {
   const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/settings`);
   return transformKeysToCamelCase<VMSettings>(res);
@@ -221,16 +234,20 @@ export async function resizeDisk(
   vmid: number,
   diskId: string,
   addGB: number,
-): Promise<void> {
-  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ addGb: addGB });
-  await api.put(`/api/v1/vms/${vmid}/disks/${encodeURIComponent(diskId)}/resize`, payload);
+): Promise<VMHardwareUpdateResponse> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({
+    disk_id: diskId,
+    add_gb: addGB,
+  });
+  const res = await api.patch<Record<string, unknown>>(
+    `/api/v1/vms/${vmid}/disks/${diskId}/resize`,
+    payload,
+  );
+  return transformKeysToCamelCase<VMHardwareUpdateResponse>(res);
 }
 
-export async function deleteDisk(
-  vmid: number,
-  diskId: string,
-): Promise<void> {
-  await api.delete(`/api/v1/vms/${vmid}/disks/${encodeURIComponent(diskId)}`);
+export async function deleteDisk(vmid: number, diskId: string): Promise<void> {
+  await api.delete(`/api/v1/vms/${vmid}/disks/${diskId}`);
 }
 
 export async function updateVMHardware(
