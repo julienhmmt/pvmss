@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { fade, slide } from 'svelte/transition';
-	import { flip } from 'svelte/animate';
+	import { fade } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
@@ -20,7 +19,6 @@
 		type VMConfig,
 		type VMMetrics,
 		type VMSettings,
-		type Snapshot,
 		type SnapshotList
 	} from '$lib/api/vm-details';
 	import VMHardwareModal from '$lib/components/vm/VMHardwareModal.svelte';
@@ -31,24 +29,18 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
-	import {
-		Play,
-		Stop,
-		ArrowCounterClockwise,
-		ArrowsClockwise,
-		CaretLeft,
-		Camera,
-		Trash,
-		ClockCounterClockwise,
-		HardDrive,
-		Cpu,
-		Desktop,
-		Network,
-		Lock,
-		CloudArrowUp,
-		Monitor,
-		ArrowSquareOut
-	} from 'phosphor-svelte';
+	import { CaretLeft } from 'phosphor-svelte';
+
+	// Extracted components
+	import VMActionBar from './_components/VMActionBar.svelte';
+	import VMStatCards from './_components/VMStatCards.svelte';
+	import ConsoleBanner from './_components/ConsoleBanner.svelte';
+	import EditableDescription from './_components/EditableDescription.svelte';
+	import TabOverview from './_tabs/TabOverview.svelte';
+	import TabDisks from './_tabs/TabDisks.svelte';
+	import TabNetwork from './_tabs/TabNetwork.svelte';
+	import TabSnapshots from './_tabs/TabSnapshots.svelte';
+	import TabCloudInit from './_tabs/TabCloudInit.svelte';
 
 	const vmid = $derived(parseInt($page.params.id, 10));
 
@@ -60,10 +52,8 @@
 
 	let activeTab = $state<'overview' | 'disks' | 'network' | 'snapshots' | 'cloudinit'>('overview');
 	let actionLoading = $state(false);
-	let metricsInterval: ReturnType<typeof setInterval> | null = null;
 
-	// Provisioning retry state: when the VM was just created it may not yet be
-	// visible in the backend cache. We retry silently up to MAX_RETRIES times.
+	// Provisioning retry state
 	const MAX_RETRIES = 6;
 	const RETRY_DELAY_MS = 2000;
 	let provisioning = $state(false);
@@ -72,9 +62,7 @@
 	let isLoading = $state(false);
 	let lastVmid = $state(0);
 
-	// Edit states
-	let editingDescription = $state(false);
-	let descriptionDraft = $state('');
+	// Description editing
 	let savingDescription = $state(false);
 
 	// Hardware update
@@ -109,12 +97,11 @@
 	let creatingSnapshot = $state(false);
 
 	async function load() {
-		if (isLoading) return; // Prevent concurrent calls
+		if (isLoading) return;
 		isLoading = true;
 		loading = true;
 		error = null;
 
-		// Clear any existing retry timeout
 		if (retryTimeout) {
 			clearTimeout(retryTimeout);
 			retryTimeout = null;
@@ -141,15 +128,6 @@
 		} finally {
 			isLoading = false;
 			loading = false;
-		}
-	}
-
-	async function refreshMetrics() {
-		if (!config) return;
-		try {
-			metrics = await getVMMetrics(vmid);
-		} catch {
-			// best-effort
 		}
 	}
 
@@ -199,13 +177,12 @@
 		showDiskDeleteModal = true;
 	}
 
-	async function saveDescription() {
+	async function saveDescription(value: string) {
 		if (!config) return;
 		savingDescription = true;
 		try {
-			await updateVMConfig(vmid, { description: descriptionDraft });
-			config = { ...config, description: descriptionDraft };
-			editingDescription = false;
+			await updateVMConfig(vmid, { description: value });
+			config = { ...config, description: value };
 			toast.success($t('vm.descriptionSaved'));
 		} catch {
 			toast.error($t('common.error'));
@@ -249,14 +226,12 @@
 		deleteProgress = '';
 
 		try {
-			// If VM is running, shutdown first
 			if (isRunning) {
 				deleteProgress = $t('vm.shuttingDown');
 				await api.post(`/api/v1/vms/${vmid}/action`, { action: 'shutdown', node: config?.node });
 
-				// Poll for stopped state
-				const MAX_POLL_ATTEMPTS = 30; // 30 seconds max
-				const POLL_INTERVAL = 1000; // 1 second
+				const MAX_POLL_ATTEMPTS = 30;
+				const POLL_INTERVAL = 1000;
 				let attempts = 0;
 
 				while (attempts < MAX_POLL_ATTEMPTS) {
@@ -276,8 +251,6 @@
 					}
 				}
 
-
-				// Verify it's stopped before proceeding
 				const finalConfig = await getVMConfig(vmid);
 				if (finalConfig.status !== 'stopped') {
 					throw new Error($t('vm.deleteFailed'));
@@ -306,28 +279,12 @@
 		}
 	}
 
-	function statusClass(status: string) {
-		if (status === 'running') return 'pv-badge--online';
-		if (status === 'stopped') return 'pv-badge--offline';
-		return 'pv-badge--warn';
+	function openConsole() {
+		window.open(`/vm/${config?.vmid ?? vmid}/console?name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes');
 	}
 
-	function uptimeLabel(seconds: number): string {
-		if (!seconds) return '—';
-		const d = Math.floor(seconds / 86400);
-		const h = Math.floor((seconds % 86400) / 3600);
-		if (d > 0) return `${d}d ${h}h`;
-		const m = Math.floor((seconds % 3600) / 60);
-		return h > 0 ? `${h}h ${m}m` : `${m}m`;
-	}
-
-	function snapshotDate(ts: number): string {
-		if (!ts) return '—';
-		return new Date(ts * 1000).toLocaleString();
-	}
-
+	// Polling metrics with $effect
 	$effect(() => {
-		// Only run when vmid changes
 		if (vmid === lastVmid) return;
 		lastVmid = vmid;
 
@@ -339,16 +296,18 @@
 		retryCount = 0;
 		provisioning = false;
 		void load();
-		// Clear existing interval before creating new one
-		if (metricsInterval) {
-			clearInterval(metricsInterval);
-		}
-		metricsInterval = setInterval(refreshMetrics, 5000);
-		return () => {
-			if (metricsInterval) {
-				clearInterval(metricsInterval);
-				metricsInterval = null;
+
+		const interval = setInterval(async () => {
+			if (!config) return;
+			try {
+				metrics = await getVMMetrics(vmid);
+			} catch {
+				// best-effort
 			}
+		}, 5000);
+
+		return () => {
+			clearInterval(interval);
 			if (retryTimeout) {
 				clearTimeout(retryTimeout);
 				retryTimeout = null;
@@ -375,7 +334,7 @@
 			{#if config}
 				<span class="text-muted-foreground">/</span>
 				<span class="font-semibold">{config.name || `VM ${config.vmid}`}</span>
-				<span class="pv-badge {statusClass(metrics?.status ?? config.status)}">
+				<span class="pv-badge {(metrics?.status ?? config.status) === 'running' ? 'pv-badge--online' : (metrics?.status ?? config.status) === 'stopped' ? 'pv-badge--offline' : 'pv-badge--warn'}">
 					{$t(`common.statusMap.${metrics?.status ?? config.status}`, {
 						default: metrics?.status ?? config.status
 					})}
@@ -383,68 +342,17 @@
 			{/if}
 		</div>
 		{#if config}
-			<div class="flex items-center gap-2">
-				<button
-					class="pv-action-btn"
-					onclick={() => load()}
-					disabled={actionLoading}
-					title={$t('common.refresh')}
-				>
-					<ArrowsClockwise class="h-4 w-4" />
-				</button>
-				{#if (metrics?.status ?? config.status) === 'stopped'}
-					<button
-						class="pv-action-btn pv-action-btn--start"
-						onclick={() => doAction('start')}
-						disabled={actionLoading}
-						title={$t('vms.actions.start')}
-					>
-						<Play class="h-4 w-4" weight="fill" />
-					</button>
-				{:else if (metrics?.status ?? config.status) === 'running'}
-					<button
-						class="pv-action-btn pv-action-btn--stop"
-						onclick={() => doAction('shutdown')}
-						disabled={actionLoading}
-						title={$t('vms.actions.shutdown')}
-					>
-						<Stop class="h-4 w-4" weight="fill" />
-					</button>
-					<button
-						class="pv-action-btn pv-action-btn--halt"
-						onclick={() => doAction('stop')}
-						disabled={actionLoading}
-						title={$t('vms.actions.forceStop')}
-					>
-						<Stop class="h-4 w-4" />
-					</button>
-					<button
-						class="pv-action-btn"
-						onclick={() => doAction('reboot')}
-						disabled={actionLoading}
-						title={$t('vms.actions.reboot')}
-					>
-						<ArrowCounterClockwise class="h-4 w-4" />
-					</button>
-				{/if}
-			{#if (metrics?.status ?? config.status) === 'running'}
-				<button
-					class="pv-action-btn"
-					onclick={() => window.open(`/vm/${config?.vmid ?? vmid}/console?name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
-					title={$t('vm.openConsole')}
-				>
-					<Monitor class="h-4 w-4" />
-				</button>
-			{/if}
-			<button
-				class="pv-action-btn pv-action-btn--stop"
-				onclick={() => (showDeleteDialog = true)}
-				disabled={actionLoading}
-				title={$t('vm.delete')}
-			>
-				<Trash class="h-4 w-4" />
-			</button>
-			</div>
+			<VMActionBar
+				{vmid}
+				name={config.name}
+				node={config.node}
+				status={metrics?.status ?? config.status}
+				{actionLoading}
+				onAction={doAction}
+				onRefresh={load}
+				onConsole={openConsole}
+				onDelete={() => (showDeleteDialog = true)}
+			/>
 		{/if}
 	</div>
 
@@ -459,110 +367,17 @@
 	{:else if loading}
 		<LoadingSkeleton variant="card" rows={6} />
 	{:else if config}
-		<!-- Stat cards -->
-		<div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-			<div class="pv-stat-card">
-				<Cpu class="pv-stat-icon" />
-				<div>
-					<div class="pv-stat-label">{$t('vms.cpu')}</div>
-					<div class="pv-stat-value">
-						{#if (metrics?.status ?? config.status) === 'running' && metrics}
-							{Math.round(metrics.cpu * 100)}%
-						{:else}
-							{config.cpus} {$t('vm.cores')}
-						{/if}
-					</div>
-				</div>
-			</div>
-			<div class="pv-stat-card">
-				<Desktop class="pv-stat-icon" />
-				<div>
-					<div class="pv-stat-label">{$t('vms.ram')}</div>
-					<div class="pv-stat-value">
-						{#if (metrics?.status ?? config.status) === 'running' && metrics}
-							{Math.round(metrics.memMb / 1024)} / {Math.round(metrics.maxMemMb / 1024)} GB
-						{:else}
-							{Math.round(config.maxMemMb / 1024)} GB
-						{/if}
-					</div>
-				</div>
-			</div>
-			<div class="pv-stat-card">
-				<HardDrive class="pv-stat-icon" />
-				<div>
-					<div class="pv-stat-label">{$t('common.storage')}</div>
-					<div class="pv-stat-value">
-						{config.disks.reduce((s, d) => s + d.sizeGb, 0)} GB
-					</div>
-				</div>
-			</div>
-			<div class="pv-stat-card">
-				<Network class="pv-stat-icon" />
-				<div>
-					<div class="pv-stat-label">{$t('admin.vmbr.iface')}</div>
-					<div class="pv-stat-value">
-						{config.networks.length}
-						{$t('vm.interfaces')}
-					</div>
-				</div>
-			</div>
-		</div>
+		<VMStatCards {config} {metrics} />
 
-		<!-- Console banner (running VMs only) -->
 		{#if (metrics?.status ?? config.status) === 'running'}
-			<button
-				class="pv-console-banner mb-4"
-				onclick={() => window.open(`/vm/${config?.vmid ?? vmid}/console?name=${encodeURIComponent(config?.name ?? String(vmid))}`, '_blank', 'width=1024,height=640,resizable=yes')}
-			>
-				<Monitor class="h-5 w-5" />
-				<span>{$t('vm.openConsole')}</span>
-				<ArrowSquareOut class="pv-console-banner-arrow h-4 w-4" />
-			</button>
+			<ConsoleBanner {vmid} name={config.name} onConsole={openConsole} />
 		{/if}
 
-		<!-- Description -->
-		<div class="pv-table-wrap mb-4 p-4">
-			<div class="mb-1 flex items-center justify-between">
-				<span class="text-sm font-medium">{$t('common.description')}</span>
-				{#if !editingDescription}
-					<button
-						class="text-xs text-muted-foreground hover:text-foreground"
-						onclick={() => {
-							descriptionDraft = config?.description ?? '';
-							editingDescription = true;
-						}}>{$t('common.edit')}</button
-					>
-				{/if}
-			</div>
-			{#key editingDescription}
-				{#if editingDescription}
-					<div transition:slide={{ duration: 200 }}>
-						<textarea
-							class="w-full rounded border border-border bg-background p-2 text-sm"
-							rows="3"
-							bind:value={descriptionDraft}
-						></textarea>
-						<div class="mt-2 flex gap-2">
-							<button
-								class="pv-btn-primary text-xs"
-								onclick={saveDescription}
-								disabled={savingDescription}
-							>
-								{savingDescription ? $t('common.saving') : $t('common.save')}
-							</button>
-							<button
-								class="text-xs text-muted-foreground hover:text-foreground"
-								onclick={() => (editingDescription = false)}>{$t('common.cancel')}</button
-							>
-						</div>
-					</div>
-				{:else}
-					<p class="text-sm text-muted-foreground">
-						{config.description || $t('vm.noDescription')}
-					</p>
-			{/if}
-			{/key}
-		</div>
+		<EditableDescription
+			value={config.description ?? ''}
+			loading={savingDescription}
+			onSave={saveDescription}
+		/>
 
 		<!-- Tabs -->
 		<div class="mb-4 flex gap-1 border-b border-border">
@@ -586,327 +401,43 @@
 		{#key activeTab}
 		<div in:fade={{ duration: 150 }}>
 		{#if activeTab === 'overview'}
-			<div class="pv-table-wrap">
-				<table class="pv-table">
-					<tbody>
-						<tr class="pv-row">
-							<td class="pv-td-label">VMID</td>
-							<td class="pv-td-mono">{config.vmid}</td>
-						</tr>
-						<tr class="pv-row">
-							<td class="pv-td-label">{$t('common.name')}</td>
-							<td>{config.name || '—'}</td>
-						</tr>
-						<tr class="pv-row">
-							<td class="pv-td-label">{$t('common.node')}</td>
-							<td class="pv-td-mono">{config.node}</td>
-						</tr>
-						<tr class="pv-row">
-							<td class="pv-td-label">{$t('common.status')}</td>
-							<td>
-								<span class="pv-badge {statusClass(metrics?.status ?? config.status)}">
-									{$t(`common.statusMap.${metrics?.status ?? config.status}`, {
-										default: metrics?.status ?? config.status
-									})}
-								</span>
-							</td>
-						</tr>
-						<tr class="pv-row">
-							<td class="pv-td-label">{$t('vms.uptime')}</td>
-							<td class="pv-td-mono">{uptimeLabel(config.uptime)}</td>
-						</tr>
-						<tr class="pv-row">
-							<td class="pv-td-label">{$t('admin.vms.cpus')}</td>
-							<td class="pv-td-mono">{config.cpus}</td>
-						</tr>
-						<tr class="pv-row">
-							<td class="pv-td-label">{$t('vms.ram')}</td>
-							<td class="pv-td-mono">{Math.round(config.maxMemMb / 1024)} GB</td>
-						</tr>
-						<tr class="pv-row">
-							<td class="pv-td-label">{$t('admin.vms.tags')}</td>
-							<td>
-								{#if config.tags}
-									<div class="flex flex-wrap gap-1">
-										{#each config.tags.split(';').filter(Boolean) as tag (tag)}
-											<span class="pv-badge">{tag.trim()}</span>
-										{/each}
-									</div>
-								{:else}
-									<span class="text-muted-foreground">—</span>
-								{/if}
-							</td>
-						</tr>
-						{#if config.efiEnabled}
-							<tr class="pv-row">
-								<td class="pv-td-label">{$t('vm.efi')}</td>
-								<td>
-									<Lock class="inline h-4 w-4 text-green-600" />
-									{$t('common.enabled')}
-								</td>
-							</tr>
-						{/if}
-						{#if config.tpmEnabled}
-							<tr class="pv-row">
-								<td class="pv-td-label">{$t('vm.tpm')}</td>
-								<td>
-									<Lock class="inline h-4 w-4 text-green-600" />
-									{$t('common.enabled')}
-								</td>
-							</tr>
-						{/if}
-					</tbody>
-				</table>
-				<div class="border-t border-border px-4 py-3">
-					<button
-						class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-						onclick={openHardwareModal}
-					>
-						{$t('vm.hardware.modifyHardware')}
-					</button>
-				</div>
-			</div>
+			<TabOverview {config} {metrics} onOpenHardware={openHardwareModal} />
 		{/if}
 
 		{#if activeTab === 'disks'}
-			{@const isRunning = (metrics?.status ?? config.status) === 'running'}
-			<div class="pv-table-wrap">
-				<div class="flex items-center justify-between border-b border-border px-4 py-3">
-					<span class="text-sm font-medium">{$t('vm.tabDisks')}</span>
-					<button
-						class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-						onclick={openDiskAddModal}
-						disabled={isRunning}
-						title={isRunning ? $t('vm.disk.vmRunningWarning') : ''}
-					>
-						+ {$t('vm.disk.add')}
-					</button>
-				</div>
-				{#if config.disks.length === 0}
-					<p class="py-8 text-center text-sm text-muted-foreground">{$t('vm.noDisks')}</p>
-				{:else}
-					<table class="pv-table">
-						<thead>
-							<tr>
-								<th>{$t('common.name')}</th>
-								<th>{$t('common.storage')}</th>
-								<th>{$t('common.size')}</th>
-								<th>{$t('common.actions')}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each config.disks as disk (disk.index)}
-								<tr class="pv-row">
-									<td class="pv-td-mono">
-										{disk.index}
-										{#if disk.isBoot}
-											<span class="ml-1 text-[10px] font-medium text-amber-600">({$t('vm.disk.boot')})</span>
-										{/if}
-									</td>
-									<td>{disk.storage || '—'}</td>
-									<td class="pv-td-mono">{disk.sizeGb} GB</td>
-									<td>
-										<div class="flex items-center gap-2">
-											<button
-												class="text-xs text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-												onclick={() => openDiskResizeModal(disk)}
-											>
-												{$t('vm.disk.resize')}
-											</button>
-											<button
-												class="text-xs text-destructive hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-												onclick={() => openDiskDeleteModal(disk)}
-												disabled={isRunning || disk.isBoot}
-												title={isRunning ? $t('vm.disk.vmRunningWarning') : disk.isBoot ? $t('vm.disk.bootDiskWarning') : ''}
-											>
-												{$t('vm.disk.detach')}
-											</button>
-										</div>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				{/if}
-				{#if config.hasCdrom}
-					<div class="border-t border-border px-4 py-2 text-sm text-muted-foreground">
-						CD-ROM: {config.currentIso || $t('vm.noISO')}
-					</div>
-				{/if}
-			</div>
+			<TabDisks
+				{config}
+				{metrics}
+				availableIsos={vmSettings?.availableIsos ?? []}
+				onOpenAdd={openDiskAddModal}
+				onOpenResize={openDiskResizeModal}
+				onOpenDelete={openDiskDeleteModal}
+				onRefresh={load}
+			/>
 		{/if}
 
 		{#if activeTab === 'network'}
-			<div class="pv-table-wrap">
-				{#if config.networks.length === 0}
-					<p class="py-8 text-center text-sm text-muted-foreground">{$t('vm.noNetworks')}</p>
-				{:else}
-					<table class="pv-table">
-						<thead>
-							<tr>
-								<th>{$t('vm.interface')}</th>
-								<th>{$t('vm.model')}</th>
-								<th>{$t('admin.vmbr.iface')}</th>
-								<th>MAC</th>
-								<th>IP</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each config.networks as net, i (i)}
-								<tr class="pv-row">
-									<td class="pv-td-mono">{net.index || `net${i}`}</td>
-									<td>{net.model || '—'}</td>
-									<td class="pv-td-mono">{net.bridge || '—'}</td>
-									<td class="pv-td-mono text-xs">{net.mac || '—'}</td>
-									<td class="pv-td-mono text-xs">
-										{#if net.ips && net.ips.length > 0}
-											{net.ips.join(', ')}
-										{:else}
-											<span class="text-muted-foreground">—</span>
-										{/if}
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				{/if}
-			</div>
+			<TabNetwork {config} />
 		{/if}
 
 		{#if activeTab === 'snapshots'}
-			<div class="pv-table-wrap">
-				<div class="flex items-center justify-between border-b border-border px-4 py-3">
-					<span class="text-sm font-medium">
-						{snapshotData
-							? `${snapshotData.snapshots.filter((s) => !s.current).length} / ${snapshotData.maxAllowed} ${$t('vm.snapshots')}`
-							: $t('vm.snapshots')}
-					</span>
-					{#if !showSnapshotForm && snapshotData && snapshotData.snapshots.filter((s) => !s.current).length < snapshotData.maxAllowed}
-						<button
-							class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-							onclick={() => (showSnapshotForm = true)}
-						>
-							<Camera class="h-4 w-4" />
-							{$t('vm.createSnapshot')}
-						</button>
-					{/if}
-				</div>
-
-				{#if showSnapshotForm}
-					<div transition:slide={{ duration: 200 }} class="border-b border-border px-4 py-3">
-						<div class="mb-2 flex gap-2">
-							<input
-								class="flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
-								placeholder={$t('vm.snapshotNamePlaceholder')}
-								bind:value={snapName}
-							/>
-							<input
-								class="flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
-								placeholder={$t('common.description')}
-								bind:value={snapDesc}
-							/>
-						</div>
-						<div class="flex gap-2">
-							<button
-								class="pv-btn-primary text-xs"
-								onclick={doCreateSnapshot}
-								disabled={creatingSnapshot || !snapName.trim()}
-							>
-								{creatingSnapshot ? $t('common.saving') : $t('common.create')}
-							</button>
-							<button
-								class="text-xs text-muted-foreground hover:text-foreground"
-								onclick={() => (showSnapshotForm = false)}>{$t('common.cancel')}</button
-							>
-						</div>
-					</div>
-				{/if}
-
-				{#if !snapshotData || snapshotData.snapshots.filter((s) => !s.current).length === 0}
-					<p class="py-8 text-center text-sm text-muted-foreground">{$t('vm.noSnapshots')}</p>
-				{:else}
-					<table class="pv-table">
-						<thead>
-							<tr>
-								<th>{$t('common.name')}</th>
-								<th>{$t('common.description')}</th>
-								<th>{$t('vm.snapshotDate')}</th>
-								<th></th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each snapshotData.snapshots.filter((s) => !s.current) as snap (snap.name)}
-								<tr animate:flip={{ duration: 200 }} class="pv-row">
-									<td class="pv-td-mono">{snap.name}</td>
-									<td class="text-sm text-muted-foreground">{snap.description || '—'}</td>
-									<td class="pv-td-mono text-xs">{snapshotDate(snap.snaptime)}</td>
-									<td>
-										<div class="flex items-center gap-1">
-											<button
-												class="pv-action-btn"
-												onclick={() => doRollback(snap.name)}
-												title={$t('vm.rollback')}
-											>
-												<ClockCounterClockwise class="h-3.5 w-3.5" />
-											</button>
-											<button
-												class="pv-action-btn pv-action-btn--stop"
-												onclick={() => doDeleteSnapshot(snap.name)}
-												title={$t('common.delete')}
-											>
-												<Trash class="h-3.5 w-3.5" />
-											</button>
-										</div>
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				{/if}
-			</div>
+			<TabSnapshots
+				{snapshotData}
+				{creatingSnapshot}
+				showSnapshotForm={showSnapshotForm}
+				snapName={snapName}
+				snapDesc={snapDesc}
+				onToggleForm={() => (showSnapshotForm = !showSnapshotForm)}
+				onCreateSnapshot={doCreateSnapshot}
+				onDeleteSnapshot={doDeleteSnapshot}
+				onRollback={doRollback}
+				onSnapNameChange={(v) => (snapName = v)}
+				onSnapDescChange={(v) => (snapDesc = v)}
+			/>
 		{/if}
 
 		{#if activeTab === 'cloudinit'}
-			<div class="pv-table-wrap">
-				{#if !config.cloudInit}
-					<div class="flex flex-col items-center py-12 text-muted-foreground">
-						<CloudArrowUp class="mb-3 h-10 w-10 opacity-30" />
-						<p class="text-sm">{$t('vm.noCloudInit')}</p>
-					</div>
-				{:else}
-					<table class="pv-table">
-						<tbody>
-							{#if config.cloudInit.user}
-								<tr class="pv-row">
-									<td class="pv-td-label">{$t('admin.cloudinit.username')}</td>
-									<td class="pv-td-mono">{config.cloudInit.user}</td>
-								</tr>
-							{/if}
-							{#if config.cloudInit.ipConfig}
-								<tr class="pv-row">
-									<td class="pv-td-label">{$t('vm.ipConfig')}</td>
-									<td class="pv-td-mono text-xs">{config.cloudInit.ipConfig}</td>
-								</tr>
-							{/if}
-							{#if config.cloudInit.nameserver}
-								<tr class="pv-row">
-									<td class="pv-td-label">{$t('vm.nameserver')}</td>
-									<td class="pv-td-mono">{config.cloudInit.nameserver}</td>
-								</tr>
-							{/if}
-							{#if config.cloudInit.sshKeys}
-								<tr class="pv-row">
-									<td class="pv-td-label">{$t('vm.sshKeys')}</td>
-									<td>
-										<pre class="max-h-40 overflow-auto rounded bg-muted p-2 text-xs">{config
-												.cloudInit.sshKeys}</pre>
-									</td>
-								</tr>
-							{/if}
-						</tbody>
-					</table>
-				{/if}
-			</div>
+			<TabCloudInit {config} />
 		{/if}
 		</div>
 		{/key}
@@ -1010,32 +541,3 @@
 		</AlertDialog.Footer>
 	</AlertDialog.Content>
 </AlertDialog.Root>
-
-<style>
-	/* VM stat cards use icon+text row layout (distinct from home's column layout) */
-	:global(.pv-stat-card) {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.875rem 1rem;
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: 0.5rem;
-	}
-	:global(.pv-stat-icon) {
-		width: 1.25rem;
-		height: 1.25rem;
-		flex-shrink: 0;
-		color: var(--muted-foreground);
-	}
-	:global(.pv-stat-label) {
-		font-size: 0.75rem;
-		color: var(--muted-foreground);
-		line-height: 1.2;
-	}
-	:global(.pv-stat-value) {
-		font-size: 0.9rem;
-		font-weight: 600;
-		line-height: 1.4;
-	}
-</style>

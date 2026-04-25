@@ -56,6 +56,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/vms/:id/config", jwtWrap(jwtSecret, vmDetailsHandler.GetVMConfig))
 	router.GET("/api/v1/vms/:id/metrics", jwtWrap(jwtSecret, vmDetailsHandler.GetVMMetrics))
 	router.PATCH("/api/v1/vms/:id/config", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMConfig))
+	router.PATCH("/api/v1/vms/:id/cdrom", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMCDROM))
 	router.GET("/api/v1/vms/:id/snapshots", jwtWrap(jwtSecret, vmDetailsHandler.GetVMSnapshots))
 	router.POST("/api/v1/vms/:id/snapshots", jwtWrap(jwtSecret, vmDetailsHandler.CreateSnapshot))
 	router.DELETE("/api/v1/vms/:id/snapshots/:name", jwtWrap(jwtSecret, vmDetailsHandler.DeleteSnapshot))
