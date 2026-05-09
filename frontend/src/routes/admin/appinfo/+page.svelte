@@ -4,6 +4,8 @@
 	import ResourceCard from '$lib/components/data/ResourceCard.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { getAppInfo } from '$lib/api/admin/appinfo';
 	import { Info, CheckCircle, XCircle, HardDrives, Desktop } from 'phosphor-svelte';
@@ -42,47 +44,24 @@
 	<title>PVMSS — {$t('admin.appinfo.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.appinfo.title')}</h1>
-			{#if info}
-				<p class="pv-subtitle">v{info.version} · {info.environment}</p>
-			{/if}
-		</div>
-
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.appinfo.title')}
+	subtitle={info ? `v${info.version} · ${info.environment}` : undefined}
+>
+	{#snippet stats()}
 		{#if info}
-			<div class="pv-header-stats">
-				<div class="pv-header-stat">
-					<div class="pv-header-stat-label">{$t('admin.appinfo.version')}</div>
-					<div class="pv-header-stat-value">{info.version}</div>
-				</div>
-				<div class="pv-header-stat">
-					<div class="pv-header-stat-label">{$t('admin.appinfo.totalNodes')}</div>
-					<div class="pv-header-stat-value">{info.totalNodes}</div>
-				</div>
-				<div class="pv-header-stat">
-					<div class="pv-header-stat-label">{$t('admin.appinfo.totalVms')}</div>
-					<div class="pv-header-stat-value">{info.totalVms}</div>
-				</div>
-				<div
-					class="pv-header-stat {!info.proxmoxConnected
-						? 'pv-header-stat--danger'
-						: ''}"
-				>
-					<div class="pv-header-stat-label">Proxmox</div>
-					<div class="pv-header-stat-value text-base">
-						{info.proxmoxConnected
-							? $t('admin.appinfo.connected')
-							: $t('admin.appinfo.disconnected')}
-					</div>
-				</div>
-			</div>
+			<PvHeaderStat label={$t('admin.appinfo.version')} value={info.version} />
+			<PvHeaderStat label={$t('admin.appinfo.totalNodes')} value={info.totalNodes} />
+			<PvHeaderStat label={$t('admin.appinfo.totalVms')} value={info.totalVms} />
+			<PvHeaderStat
+				label="Proxmox"
+				value={info.proxmoxConnected ? $t('admin.appinfo.connected') : $t('admin.appinfo.disconnected')}
+				tone={info.proxmoxConnected ? 'default' : 'danger'}
+			/>
 		{/if}
-	</div>
-</div>
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 

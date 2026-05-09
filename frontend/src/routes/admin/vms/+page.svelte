@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
@@ -191,47 +193,33 @@
 	<title>PVMSS — {$t('admin.vms.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<h1 class="pv-title">{$t('admin.vms.title')}</h1>
-		</div>
-
+<PvHeader title={$t('admin.vms.title')}>
+	{#snippet stats()}
 		{#if !loading}
-			<div class="flex items-center gap-3 flex-wrap">
-				<div class="pv-header-stats">
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('admin.vms.title')}</div>
-						<div class="pv-header-stat-value">{totalVMs}</div>
-					</div>
-					{#if runningCount > 0}
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.statusMap.running')}</div>
-							<div class="pv-header-stat-value">{runningCount}</div>
-						</div>
-					{/if}
-					{#if stoppedCount > 0}
-						<div class="pv-header-stat pv-header-stat--danger">
-							<div class="pv-header-stat-label">{$t('common.statusMap.stopped')}</div>
-							<div class="pv-header-stat-value">{stoppedCount}</div>
-						</div>
-					{/if}
-				</div>
-				<Button
-					class="pv-header-btn"
-					variant="outline"
-					size="sm"
-					onclick={() => load(true)}
-					disabled={loading || refreshing}
-				>
-					<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
-					{$t('common.refresh')}
-				</Button>
-			</div>
+			<PvHeaderStat label={$t('admin.vms.title')} value={totalVMs} />
+			{#if runningCount > 0}
+				<PvHeaderStat label={$t('common.statusMap.running')} value={runningCount} />
+			{/if}
+			{#if stoppedCount > 0}
+				<PvHeaderStat label={$t('common.statusMap.stopped')} value={stoppedCount} tone="danger" />
+			{/if}
 		{/if}
-	</div>
-</div>
+	{/snippet}
+	{#snippet actions()}
+		{#if !loading}
+			<Button
+				class="pv-header-btn"
+				variant="outline"
+				size="sm"
+				onclick={() => load(true)}
+				disabled={loading || refreshing}
+			>
+				<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
+				{$t('common.refresh')}
+			</Button>
+		{/if}
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 

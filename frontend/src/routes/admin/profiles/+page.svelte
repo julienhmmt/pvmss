@@ -3,6 +3,8 @@
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
@@ -192,38 +194,29 @@
 	<title>PVMSS — {$t('admin.profiles.title')}</title>
 </svelte:head>
 
-<!-- Page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.profiles.title')}</h1>
-			{#if !loading}
-				<p class="pv-subtitle">{$t('admin.profiles.subtitle')}</p>
-			{/if}
-		</div>
-		{#if !loading}
-			<div class="flex items-center gap-3">
-				{#if profiles.length > 0}
-					<div class="pv-header-stats">
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.total')}</div>
-							<div class="pv-header-stat-value">{profiles.length}</div>
-						</div>
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.enabled')}</div>
-							<div class="pv-header-stat-value">{profiles.filter((p) => p.enabled).length}</div>
-						</div>
-					</div>
-				{/if}
-				<Button class="pv-header-btn" variant="outline" onclick={openCreate}>
-					<Plus class="mr-1.5 h-4 w-4" />
-					{$t('admin.profiles.createProfile')}
-				</Button>
-			</div>
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.profiles.title')}
+	subtitle={!loading ? $t('admin.profiles.subtitle') : undefined}
+>
+	{#snippet stats()}
+		{#if !loading && profiles.length > 0}
+			<PvHeaderStat label={$t('common.total')} value={profiles.length} />
+			<PvHeaderStat
+				label={$t('common.enabled')}
+				value={profiles.filter((p) => p.enabled).length}
+			/>
 		{/if}
-	</div>
-</div>
+	{/snippet}
+	{#snippet actions()}
+		{#if !loading}
+			<Button class="pv-header-btn" variant="outline" onclick={openCreate}>
+				<Plus class="mr-1.5 h-4 w-4" />
+				{$t('admin.profiles.createProfile')}
+			</Button>
+		{/if}
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 

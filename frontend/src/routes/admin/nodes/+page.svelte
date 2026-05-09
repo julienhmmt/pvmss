@@ -3,6 +3,8 @@
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import Paginator from '$lib/components/data/Paginator.svelte';
@@ -117,51 +119,37 @@
 	<title>PVMSS — {$t('admin.nodes.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.nodes.title')}</h1>
-			<p class="pv-subtitle">
-				{$t('admin.nodes.updatedAgo', { values: { seconds: lastUpdatedAgo } })}
-			</p>
-		</div>
-
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.nodes.title')}
+	subtitle={$t('admin.nodes.updatedAgo', { values: { seconds: lastUpdatedAgo } })}
+>
+	{#snippet stats()}
 		{#if !loading}
-			<div class="flex items-center gap-3 flex-wrap">
-				<div class="pv-header-stats">
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('admin.nodes.title')}</div>
-						<div class="pv-header-stat-value">{nodes.length}</div>
-					</div>
-					{#if runningCount > 0}
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.statusMap.online')}</div>
-							<div class="pv-header-stat-value">{runningCount}</div>
-						</div>
-					{/if}
-					{#if offlineCount > 0}
-						<div class="pv-header-stat pv-header-stat--danger">
-							<div class="pv-header-stat-label">{$t('common.statusMap.offline')}</div>
-							<div class="pv-header-stat-value">{offlineCount}</div>
-						</div>
-					{/if}
-				</div>
-				<Button
-					class="pv-header-btn"
-					variant="outline"
-					size="sm"
-					onclick={refresh}
-					disabled={refreshing || loading}
-				>
-					<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
-					{$t('common.refresh')}
-				</Button>
-			</div>
+			<PvHeaderStat label={$t('admin.nodes.title')} value={nodes.length} />
+			{#if runningCount > 0}
+				<PvHeaderStat label={$t('common.statusMap.online')} value={runningCount} />
+			{/if}
+			{#if offlineCount > 0}
+				<PvHeaderStat label={$t('common.statusMap.offline')} value={offlineCount} tone="danger" />
+			{/if}
 		{/if}
-	</div>
-</div>
+	{/snippet}
+	{#snippet actions()}
+		{#if !loading}
+			<Button
+				class="pv-header-btn"
+				variant="outline"
+				size="sm"
+				onclick={refresh}
+				disabled={refreshing || loading}
+			>
+				<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
+				{$t('common.refresh')}
+			</Button>
+		{/if}
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 

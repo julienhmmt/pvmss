@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
@@ -81,37 +83,24 @@
 	<title>PVMSS — {$t('admin.userpool.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.userpool.title')}</h1>
-			{#if !loading}
-				<p class="pv-subtitle">
-					{pools.length}
-					{$t('admin.userpool.title').toLowerCase()}
-				</p>
-			{/if}
-		</div>
-
-		{#if !loading}
-			<div class="flex items-center gap-3">
-				{#if pools.length > 0}
-					<div class="pv-header-stats">
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('admin.userpool.title')}</div>
-							<div class="pv-header-stat-value">{pools.length}</div>
-						</div>
-					</div>
-				{/if}
-				<Button class="pv-header-btn" variant="outline" onclick={() => (createOpen = true)}>
-					{$t('admin.userpool.createPool')}
-				</Button>
-			</div>
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.userpool.title')}
+	subtitle={!loading ? `${pools.length} ${$t('admin.userpool.title').toLowerCase()}` : undefined}
+>
+	{#snippet stats()}
+		{#if !loading && pools.length > 0}
+			<PvHeaderStat label={$t('admin.userpool.title')} value={pools.length} />
 		{/if}
-	</div>
-</div>
+	{/snippet}
+	{#snippet actions()}
+		{#if !loading}
+			<Button class="pv-header-btn" variant="outline" onclick={() => (createOpen = true)}>
+				{$t('admin.userpool.createPool')}
+			</Button>
+		{/if}
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 
