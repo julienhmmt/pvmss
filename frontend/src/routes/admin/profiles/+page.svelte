@@ -301,13 +301,14 @@
 						onCheckedChange={() => handleToggle(profile)}
 					/>
 					<div class="flex gap-1.5">
-						<Button size="sm" variant="ghost" onclick={() => openEdit(profile)}>
+						<Button size="sm" variant="ghost" aria-label={$t('common.edit')} onclick={() => openEdit(profile)}>
 							<PencilSimple class="h-4 w-4" />
 						</Button>
 						<Button
 							size="sm"
 							variant="ghost"
 							class="text-destructive hover:text-destructive"
+							aria-label={$t('common.delete')}
 							onclick={() => (deleteTarget = profile.id)}
 						>
 							<Trash class="h-4 w-4" />

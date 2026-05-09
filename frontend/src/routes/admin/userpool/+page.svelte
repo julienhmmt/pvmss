@@ -147,6 +147,7 @@
 								variant="ghost"
 								size="sm"
 								class="text-destructive hover:text-destructive hover:bg-destructive/10"
+								aria-label={$t('common.delete')}
 								onclick={() => (deleteTarget = pool.poolId)}
 							>
 								<TrashIcon class="h-4 w-4" />
