@@ -45,10 +45,10 @@
 					<br /><br />
 				{/if}
 				{#if disk?.isBoot}
-					<span class="font-medium text-amber-600">{$t('vm.disk.bootDiskWarning')}</span>
+					<span class="font-medium text-warning-soft-foreground">{$t('vm.disk.bootDiskWarning')}</span>
 					<br /><br />
 				{/if}
-				<span class="font-medium text-amber-600">{$t('vm.disk.deleteWarning')}</span>
+				<span class="font-medium text-warning-soft-foreground">{$t('vm.disk.deleteWarning')}</span>
 			</AlertDialog.Description>
 		</AlertDialog.Header>
 		<AlertDialog.Footer>

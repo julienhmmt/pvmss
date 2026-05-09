@@ -229,7 +229,7 @@
 								<span class="text-muted-foreground">{$t('user.profile.vmCount')}</span>
 								<span>{totalVMs}
 									{#if runningCount > 0}
-										<span class="text-green-600 dark:text-green-400 text-xs">({runningCount} running)</span>
+										<span class="text-success text-xs">({runningCount} running)</span>
 									{/if}
 								</span>
 							</div>

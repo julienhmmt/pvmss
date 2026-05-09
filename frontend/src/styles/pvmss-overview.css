@@ -1,11 +1,11 @@
 /* PVMSS page headers and overview sections */
 :root {
-  --pv-header-from: oklch(35% 0.12 45deg);
-  --pv-header-to: oklch(60% 0.19 45deg);
-  --pv-header-from-danger: #7f1d1d;
-  --pv-header-to-danger: #dc2626;
-  --pv-header-from-warn: #78350f;
-  --pv-header-to-warn: #d97706;
+  --pv-header-from: var(--primary);
+  --pv-header-to: var(--accent);
+  --pv-header-from-danger: oklch(35% 0.13 27.325deg);
+  --pv-header-to-danger: var(--destructive);
+  --pv-header-from-warn: oklch(35% 0.1 70deg);
+  --pv-header-to-warn: var(--warning);
   --pv-header-stat-bg: rgb(255 255 255 / 12%);
   --pv-header-stat-border: rgb(255 255 255 / 18%);
   --pv-header-stat-label: rgb(255 255 255 / 70%);
@@ -109,7 +109,7 @@
 }
 
 .pv-header-btn:hover {
-  background: #f1f5f9 !important;
+  background: var(--muted) !important;
 }
 
 /* Section titles inside content areas */
