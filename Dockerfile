@@ -26,11 +26,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
 
 # Build SvelteKit SPA
-FROM node:lts-alpine AS svelte-builder
+FROM oven/bun:1-alpine AS svelte-builder
 WORKDIR /app/frontend
-
-# Install bun
-RUN npm install -g bun
 
 COPY frontend/package.json ./
 
