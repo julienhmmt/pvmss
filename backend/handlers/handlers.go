@@ -189,7 +189,7 @@ func setupStaticFiles(router *httprouter.Router, stateManager state.StateManager
 
 	// noVNC library for the Svelte console component
 	registerStaticHandler(router, "/components/*filepath", http.StripPrefix("/components/", createCachedFileServer(basePath, "components")))
-	registerStaticHandler(router, "/noVNC-1.6.0/*filepath", http.StripPrefix("/noVNC-1.6.0/", createCachedFileServer(basePath, "static/noVNC-1.6.0")))
+	registerStaticHandler(router, "/noVNC-1.6.0/*filepath", http.StripPrefix("/noVNC-1.6.0/", createCachedFileServer(basePath, "build/noVNC-1.6.0")))
 	registerStaticHandler(router, "/favicon.ico", http.HandlerFunc(serveFavicon))
 
 	logger.Get().Info().Str("path", basePath).Msg("Static file serving configured")
