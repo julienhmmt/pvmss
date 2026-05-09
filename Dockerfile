@@ -29,13 +29,16 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM node:lts-alpine AS svelte-builder
 WORKDIR /app/frontend
 
-COPY frontend/package.json frontend/package-lock.json ./
+# Install bun
+RUN npm install -g bun
 
-RUN npm install
+COPY frontend/package.json ./
+
+RUN bun install
 
 COPY frontend/ ./
 
-RUN npm run build
+RUN bun run build
 
 # Final stage - using distroless for minimal attack surface and size
 FROM gcr.io/distroless/static-debian13:nonroot
