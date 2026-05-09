@@ -94,6 +94,7 @@
 	let showSnapshotForm = $state(false);
 	let snapName = $state('');
 	let snapDesc = $state('');
+	let snapVmstate = $state(false);
 	let creatingSnapshot = $state(false);
 
 	async function load() {
@@ -195,14 +196,19 @@
 		if (!snapName.trim()) return;
 		creatingSnapshot = true;
 		try {
-			await createSnapshot(vmid, snapName.trim(), snapDesc.trim());
+			await createSnapshot(vmid, snapName.trim(), snapDesc.trim(), snapVmstate);
 			toast.success($t('vm.snapshotCreated', { values: { name: snapName } }));
 			snapName = '';
 			snapDesc = '';
+			snapVmstate = false;
 			showSnapshotForm = false;
 			snapshotData = await getVMSnapshots(vmid);
-		} catch {
-			toast.error($t('common.error'));
+		} catch (e) {
+			if (e instanceof ApiRequestError && e.error.message) {
+				toast.error(e.error.message);
+			} else {
+				toast.error($t('common.error'));
+			}
 		} finally {
 			creatingSnapshot = false;
 		}
@@ -424,15 +430,18 @@
 			<TabSnapshots
 				{snapshotData}
 				{creatingSnapshot}
+				vmStatus={config?.status ?? 'stopped'}
 				showSnapshotForm={showSnapshotForm}
 				snapName={snapName}
 				snapDesc={snapDesc}
+				snapVmstate={snapVmstate}
 				onToggleForm={() => (showSnapshotForm = !showSnapshotForm)}
 				onCreateSnapshot={doCreateSnapshot}
 				onDeleteSnapshot={doDeleteSnapshot}
 				onRollback={doRollback}
 				onSnapNameChange={(v) => (snapName = v)}
 				onSnapDescChange={(v) => (snapDesc = v)}
+				onSnapVmstateChange={(v) => (snapVmstate = v)}
 			/>
 		{/if}
 
