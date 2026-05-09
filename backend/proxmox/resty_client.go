@@ -2,7 +2,6 @@ package proxmox
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -33,20 +32,15 @@ func MakeRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVeri
 		return nil, fmt.Errorf("invalid Proxmox API URL: %w", err)
 	}
 
-	// Create resty client
+	// Create resty client backed by the shared, connection-pooled transport
 	client := resty.New()
+	client.SetTransport(getSharedTransport(insecureSkipVerify))
 
 	// Set base URL
 	client.SetBaseURL(normalizedURL)
 
 	// Set timeout
 	client.SetTimeout(timeout)
-
-	// Configure TLS
-	if insecureSkipVerify {
-		// Used only for development/testing with self-signed certificates
-		client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}) // #nosec G402 - Controlled by PROXMOX_VERIFY_SSL; allowed for dev/test
-	}
 
 	// Set authentication header for API token
 	authHeader := fmt.Sprintf("PVEAPIToken=%s=%s", apiTokenID, apiTokenSecret)
@@ -101,12 +95,9 @@ func MakeRestyClientCookieAuth(apiURL string, insecureSkipVerify bool, timeout t
 	}
 
 	client := resty.New()
+	client.SetTransport(getSharedTransport(insecureSkipVerify))
 	client.SetBaseURL(normalizedURL)
 	client.SetTimeout(timeout)
-
-	if insecureSkipVerify {
-		client.SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}) // #nosec G402 - Controlled by PROXMOX_VERIFY_SSL; allowed for dev/test
-	}
 
 	client.SetHeader("Accept", "application/json")
 	client.SetHeader("Content-Type", "application/json")
