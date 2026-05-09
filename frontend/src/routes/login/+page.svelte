@@ -181,7 +181,7 @@
 									disabled={loading}
 								/>
 							</div>
-							<Button type="submit" class="w-full" disabled={loading || !userUsername || !userPassword}>
+							<Button type="submit" class="w-full" loading={loading} disabled={!userUsername || !userPassword}>
 								{loading ? $t('login.signingIn') : $t('login.signIn')}
 							</Button>
 						</form>
@@ -224,7 +224,7 @@
 											disabled={loading}
 										/>
 									</div>
-									<Button type="submit" class="w-full" disabled={loading || !localPassword}>
+									<Button type="submit" class="w-full" loading={loading} disabled={!localPassword}>
 										{loading ? $t('login.signingIn') : $t('login.signIn')}
 									</Button>
 								</form>
@@ -266,7 +266,8 @@
 									<Button
 										type="submit"
 										class="w-full"
-										disabled={loading || !pveUsername || !pvePassword}
+										loading={loading}
+										disabled={!pveUsername || !pvePassword}
 									>
 										{loading ? $t('login.signingIn') : $t('login.signIn')}
 									</Button>

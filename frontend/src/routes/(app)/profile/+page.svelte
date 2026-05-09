@@ -7,6 +7,7 @@
 	import { changePassword } from '$lib/api/auth';
 	import { getVMsPaginated, type VMSummary } from '$lib/api/vms';
 	import { Button } from '$lib/components/ui/button';
+	import { FieldError } from '$lib/components/ui/field-error';
 	import * as Select from '$lib/components/ui/select';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -296,11 +297,9 @@
 									required
 								/>
 							</div>
-							{#if passwordError}
-								<p class="text-sm text-destructive">{passwordError}</p>
-							{/if}
+							<FieldError message={passwordError} />
 							<div>
-								<Button type="submit" size="sm" disabled={passwordLoading}>
+								<Button type="submit" size="sm" loading={passwordLoading}>
 									{passwordLoading ? $t('user.profile.saving') : $t('user.profile.savePassword')}
 								</Button>
 							</div>

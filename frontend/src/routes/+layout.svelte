@@ -46,4 +46,4 @@
 {:else}
 	{@render children()}
 {/if}
-<Toaster />
+<Toaster richColors closeButton position="top-right" />
