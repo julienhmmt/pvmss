@@ -571,6 +571,26 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 	}
 
 	vmidStr := strconv.Itoa(vmid)
+	if req.Vmstate {
+		current, err := proxmox.GetVMCurrentResty(ctx, client, node, vmid)
+		if err != nil {
+			errInternal(w)
+			return
+		}
+		if current.Status != "running" {
+			writeError(w, http.StatusBadRequest, "vm_not_running", "RAM state snapshots can only be created while the VM is running")
+			return
+		}
+		cfg, err := proxmox.GetVMConfigResty(ctx, client, node, vmid)
+		if err != nil {
+			errInternal(w)
+			return
+		}
+		if !supportsSnapshotVMState(cfg) {
+			writeError(w, http.StatusBadRequest, "storage_not_supported", "The underlying storage does not support saving RAM state. Try again without this option.")
+			return
+		}
+	}
 
 	// Enforce snapshot limit
 	snaps, err := proxmox.GetVMSnapshotsResty(ctx, client, node, vmidStr)
@@ -606,6 +626,48 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+func supportsSnapshotVMState(cfg map[string]interface{}) bool {
+	hasDisks := false
+	for key, rawValue := range cfg {
+		if !strings.HasPrefix(key, "scsi") && !strings.HasPrefix(key, "virtio") && !strings.HasPrefix(key, "sata") && !strings.HasPrefix(key, "ide") {
+			continue
+		}
+		value, ok := rawValue.(string)
+		if !ok || strings.Contains(value, "media=cdrom") {
+			continue
+		}
+		hasDisks = true
+		if !diskSupportsVMState(value) {
+			return false
+		}
+	}
+	return hasDisks
+}
+
+func diskSupportsVMState(disk string) bool {
+	normalizedDisk := strings.ToLower(disk)
+	if strings.Contains(normalizedDisk, ".qcow2") {
+		return true
+	}
+	storageName := normalizedDisk
+	if colonIndex := strings.Index(storageName, ":"); colonIndex >= 0 {
+		storageName = storageName[:colonIndex]
+	}
+	// Check for storage types: match if storage name contains the type as a word component
+	// This matches "local-zfs", "ceph-vms", "rbd-storage" but not "cephfs" or "zfs-local"
+	storageTypes := []string{"ceph", "rbd", "zfs"}
+	for _, storageType := range storageTypes {
+		// Check if storage name starts with type, ends with type, or has type surrounded by delimiters
+		if strings.HasPrefix(storageName, storageType+"-") ||
+			strings.HasSuffix(storageName, "-"+storageType) ||
+			strings.Contains(storageName, "-"+storageType+"-") ||
+			storageName == storageType {
+			return true
+		}
+	}
+	return false
 }
 
 // DeleteSnapshot handles DELETE /api/v1/vms/:id/snapshots/:name
