@@ -12,6 +12,8 @@ export async function getSettings(): Promise<AppSettings> {
   return transformKeysToCamelCase<AppSettings>(response);
 }
 
+export const getAdminSettings = getSettings;
+
 /**
  * Saves the application settings to the admin API.
  * Transforms camelCase frontend data to snake_case for backend.

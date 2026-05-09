@@ -1,85 +1,28 @@
 import { api } from "./client";
-import type { VMStatus } from "$lib/types/vm";
+import type {
+  CloudInitInfo,
+  DiskInfo,
+  NetworkInterface,
+  SnapshotList,
+  VMConfig,
+  VMStatus,
+} from "$lib/types/vm";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
-export interface DiskInfo {
-  index: string;
-  bus: string;
-  storage: string;
-  sizeGb: number;
-  raw: string;
-  isBoot: boolean;
-}
-
-export interface CloudInitInfo {
-  user?: string;
-  sshKeys?: string;
-  ipConfig?: string;
-  nameserver?: string;
-}
-
-/**
- * Network interface configuration from API response.
- * Field names match Proxmox config format (e.g., "tag" for VLAN).
- */
-export interface NetworkInterface {
-  index: string; // e.g., "net0", "net1"
-  mac: string;
-  model: string;
-  bridge: string;
-  tag?: number; // VLAN tag from Proxmox config (0 = none)
-  firewall?: boolean;
-  rate?: string;
-  ips?: string[];
-  linkDown?: boolean;
-  modelLabel?: string;
-  modelTranslationSuffix?: string;
-  mtu?: string;
-}
-
-export interface VMConfig {
-  vmid: number;
-  name: string;
-  node: string;
-  status: VMStatus;
-  cpu: number;
-  cpus: number;
-  sockets: number;
-  cores: number;
-  memMb: number;
-  maxMemMb: number;
-  diskMb: number;
-  uptime: number;
-  tags: string;
-  description: string;
-  networks: NetworkInterface[];
-  disks: DiskInfo[];
-  hasCdrom: boolean;
-  currentIso: string;
-  efiEnabled: boolean;
-  tpmEnabled: boolean;
-  cloudInit?: CloudInitInfo;
-}
+export type {
+  CloudInitInfo,
+  DiskInfo,
+  NetworkInterface,
+  Snapshot,
+  SnapshotList,
+  VMConfig,
+} from "$lib/types/vm";
 
 export interface VMMetrics {
   status: VMStatus;
   cpu: number;
   memMb: number;
   maxMemMb: number;
-}
-
-export interface Snapshot {
-  name: string;
-  description: string;
-  snaptime: number;
-  vmstate: number;
-  parent: string;
-  current: boolean;
-}
-
-export interface SnapshotList {
-  snapshots: Snapshot[];
-  maxAllowed: number;
 }
 
 export interface ISOOption {

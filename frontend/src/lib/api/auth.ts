@@ -1,10 +1,8 @@
 import { api } from "./client";
+import type { User } from "$lib/types/auth";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
-export interface AuthUser {
-  username: string;
-  isAdmin: boolean;
-}
+export type AuthUser = User;
 
 // Use raw fetch so a 401 (unauthenticated) doesn't trigger the client's
 // redirect-to-login logic. Failing exchange is normal for logged-out users.
@@ -65,6 +63,6 @@ export async function changePassword(
 ): Promise<void> {
   await api.put<void>(
     "/api/v1/auth/me/password",
-    transformKeysToSnakeCase({ current, new: newPassword }),
+    transformKeysToSnakeCase({ currentPassword: current, newPassword }),
   );
 }
