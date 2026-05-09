@@ -282,6 +282,7 @@
 									<Button
 										variant="ghost"
 										size="sm"
+										aria-label={$t('common.edit')}
 										onclick={() => openEdit(tmpl)}
 									>
 										<PencilIcon class="h-4 w-4" />
@@ -290,6 +291,7 @@
 										variant="ghost"
 										size="sm"
 										class="text-destructive hover:text-destructive hover:bg-destructive/10"
+										aria-label={$t('common.delete')}
 										onclick={() => (deleteTarget = tmpl.id)}
 									>
 										<TrashIcon class="h-4 w-4" />
