@@ -2,10 +2,13 @@ package proxmox
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -14,49 +17,78 @@ import (
 )
 
 // RestyClient is a resty-based Proxmox API client for modern API interactions.
+//
+// For token-authenticated callers the underlying *resty.Client is a process-wide
+// singleton keyed by (baseURL, tokenID, tokenSecret, insecureSkipVerify) so that
+// the TCP and TLS pool maintained by the shared http.Transport is reused across
+// every handler. The wrapper retains a per-caller timeout that is enforced via
+// context.WithTimeout on each request, so different callsites can keep their
+// own deadlines without mutating the shared client.
 type RestyClient struct {
 	client  *resty.Client
 	baseURL string
 	timeout time.Duration
 }
 
-// MakeRestyClient creates a new resty-based Proxmox API client
+var (
+	tokenClientMu sync.Mutex
+	tokenClients  = make(map[string]*resty.Client)
+)
+
+func tokenClientCacheKey(baseURL, tokenID, tokenSecret string, insecureSkipVerify bool) string {
+	sum := sha256.Sum256([]byte(baseURL + "\x00" + tokenID + "\x00" + tokenSecret))
+	return fmt.Sprintf("%t|%s", insecureSkipVerify, hex.EncodeToString(sum[:]))
+}
+
+// MakeRestyClient returns a *RestyClient backed by the process-wide singleton
+// *resty.Client for the given Proxmox API token configuration. The first call
+// for a given (baseURL, token, skipVerify) tuple builds the client; subsequent
+// calls reuse it. The timeout argument is stored on the wrapper and applied
+// per-request via context.WithTimeout — it does not mutate the shared client.
 func MakeRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool, timeout time.Duration) (*RestyClient, error) {
 	if apiURL == "" || apiTokenID == "" || apiTokenSecret == "" {
 		return nil, fmt.Errorf("apiURL, apiTokenID, and apiTokenSecret are required")
 	}
 
-	// Normalize base URL
 	normalizedURL, err := normalizeBaseURL(apiURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid Proxmox API URL: %w", err)
 	}
 
-	// Create resty client backed by the shared, connection-pooled transport
+	key := tokenClientCacheKey(normalizedURL, apiTokenID, apiTokenSecret, insecureSkipVerify)
+
+	tokenClientMu.Lock()
+	defer tokenClientMu.Unlock()
+
+	client, ok := tokenClients[key]
+	if !ok {
+		client = buildTokenClient(normalizedURL, apiTokenID, apiTokenSecret, insecureSkipVerify)
+		tokenClients[key] = client
+	}
+
+	return &RestyClient{
+		client:  client,
+		baseURL: normalizedURL,
+		timeout: timeout,
+	}, nil
+}
+
+func buildTokenClient(normalizedURL, apiTokenID, apiTokenSecret string, insecureSkipVerify bool) *resty.Client {
 	client := resty.New()
 	client.SetTransport(getSharedTransport(insecureSkipVerify))
-
-	// Set base URL
 	client.SetBaseURL(normalizedURL)
-
-	// Set timeout
-	client.SetTimeout(timeout)
-
-	// Set authentication header for API token
-	authHeader := fmt.Sprintf("PVEAPIToken=%s=%s", apiTokenID, apiTokenSecret)
-	client.SetHeader("Authorization", authHeader)
-
-	// Set common headers
+	// Client-level timeout is intentionally left at 0; per-request deadlines
+	// are enforced via context so that one shared client can serve callers
+	// with different deadline requirements.
+	client.SetHeader("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", apiTokenID, apiTokenSecret))
 	client.SetHeader("Accept", "application/json")
 	client.SetHeader("Content-Type", "application/json")
 
-	// Enable retry
 	client.SetRetryCount(3).
 		SetRetryWaitTime(1 * time.Second).
 		SetRetryMaxWaitTime(5 * time.Second)
 
-	// Log requests in debug mode
-	client.OnBeforeRequest(func(c *resty.Client, req *resty.Request) error {
+	client.OnBeforeRequest(func(_ *resty.Client, req *resty.Request) error {
 		logger.Get().Debug().
 			Str("method", req.Method).
 			Str("url", req.URL).
@@ -64,7 +96,7 @@ func MakeRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVeri
 		return nil
 	})
 
-	client.OnAfterResponse(func(c *resty.Client, resp *resty.Response) error {
+	client.OnAfterResponse(func(_ *resty.Client, resp *resty.Response) error {
 		logger.Get().Debug().
 			Str("method", resp.Request.Method).
 			Str("url", resp.Request.URL).
@@ -74,16 +106,16 @@ func MakeRestyClient(apiURL, apiTokenID, apiTokenSecret string, insecureSkipVeri
 		return nil
 	})
 
-	return &RestyClient{
-		client:  client,
-		baseURL: normalizedURL,
-		timeout: timeout,
-	}, nil
+	return client
 }
 
 // MakeRestyClientCookieAuth creates a new resty-based Proxmox API client without API token auth.
 // This is used for operations that require cookie-based authentication (PVEAuthCookie + CSRFPreventionToken),
 // such as ticket creation, password updates, and VNC proxy.
+//
+// Each call returns a fresh *resty.Client because authentication cookies are
+// per-user and must not be shared. Connection-pool reuse is still achieved via
+// the shared http.Transport.
 func MakeRestyClientCookieAuth(apiURL string, insecureSkipVerify bool, timeout time.Duration) (*RestyClient, error) {
 	if apiURL == "" {
 		return nil, fmt.Errorf("apiURL is required")
@@ -106,7 +138,7 @@ func MakeRestyClientCookieAuth(apiURL string, insecureSkipVerify bool, timeout t
 		SetRetryWaitTime(1 * time.Second).
 		SetRetryMaxWaitTime(5 * time.Second)
 
-	client.OnBeforeRequest(func(c *resty.Client, req *resty.Request) error {
+	client.OnBeforeRequest(func(_ *resty.Client, req *resty.Request) error {
 		logger.Get().Debug().
 			Str("method", req.Method).
 			Str("url", req.URL).
@@ -114,7 +146,7 @@ func MakeRestyClientCookieAuth(apiURL string, insecureSkipVerify bool, timeout t
 		return nil
 	})
 
-	client.OnAfterResponse(func(c *resty.Client, resp *resty.Response) error {
+	client.OnAfterResponse(func(_ *resty.Client, resp *resty.Response) error {
 		logger.Get().Debug().
 			Str("method", resp.Request.Method).
 			Str("url", resp.Request.URL).
@@ -141,8 +173,24 @@ func (rc *RestyClient) SetCookieAuth(ticket, csrfToken string) {
 	rc.client.SetHeader("CSRFPreventionToken", csrfToken)
 }
 
+// withRequestTimeout returns a derived context honoring the wrapper's per-caller
+// timeout. If the caller already supplied a tighter deadline the original
+// context is returned unchanged. Cancel must always be invoked.
+func (rc *RestyClient) withRequestTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if rc.timeout <= 0 {
+		return ctx, func() {}
+	}
+	if dl, ok := ctx.Deadline(); ok && time.Until(dl) < rc.timeout {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, rc.timeout)
+}
+
 // Get performs a GET request and unmarshals the response into target
-func (rc *RestyClient) Get(ctx context.Context, path string, target interface{}) error {
+func (rc *RestyClient) Get(ctx context.Context, path string, target any) error {
+	ctx, cancel := rc.withRequestTimeout(ctx)
+	defer cancel()
+
 	resp, err := rc.client.R().
 		SetContext(ctx).
 		SetResult(target).
@@ -160,7 +208,10 @@ func (rc *RestyClient) Get(ctx context.Context, path string, target interface{})
 }
 
 // Post performs a POST request with form data
-func (rc *RestyClient) Post(ctx context.Context, path string, data url.Values, target interface{}) error {
+func (rc *RestyClient) Post(ctx context.Context, path string, data url.Values, target any) error {
+	ctx, cancel := rc.withRequestTimeout(ctx)
+	defer cancel()
+
 	resp, err := rc.client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
@@ -182,7 +233,10 @@ func (rc *RestyClient) Post(ctx context.Context, path string, data url.Values, t
 // PostEmpty performs a POST request with empty form data
 // Used for Proxmox API endpoints that require POST but don't need parameters
 // Sends empty url.Values to ensure proper Content-Type header
-func (rc *RestyClient) PostEmpty(ctx context.Context, path string, target interface{}) error {
+func (rc *RestyClient) PostEmpty(ctx context.Context, path string, target any) error {
+	ctx, cancel := rc.withRequestTimeout(ctx)
+	defer cancel()
+
 	resp, err := rc.client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
@@ -195,10 +249,8 @@ func (rc *RestyClient) PostEmpty(ctx context.Context, path string, target interf
 	}
 
 	if resp.IsError() {
-		// Check if response body is empty or just whitespace
 		respBody := strings.TrimSpace(resp.String())
 		if respBody == "" {
-			// Empty response is acceptable for some Proxmox endpoints
 			return nil
 		}
 		return fmt.Errorf("POST request returned error status %d for %s: %s", resp.StatusCode(), path, resp.String())
@@ -208,7 +260,10 @@ func (rc *RestyClient) PostEmpty(ctx context.Context, path string, target interf
 }
 
 // Put performs a PUT request with form data
-func (rc *RestyClient) Put(ctx context.Context, path string, data url.Values, target interface{}) error {
+func (rc *RestyClient) Put(ctx context.Context, path string, data url.Values, target any) error {
+	ctx, cancel := rc.withRequestTimeout(ctx)
+	defer cancel()
+
 	resp, err := rc.client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
@@ -228,7 +283,10 @@ func (rc *RestyClient) Put(ctx context.Context, path string, data url.Values, ta
 }
 
 // Delete performs a DELETE request
-func (rc *RestyClient) Delete(ctx context.Context, path string, target interface{}) error {
+func (rc *RestyClient) Delete(ctx context.Context, path string, target any) error {
+	ctx, cancel := rc.withRequestTimeout(ctx)
+	defer cancel()
+
 	resp, err := rc.client.R().
 		SetContext(ctx).
 		SetResult(target).
@@ -253,4 +311,12 @@ func (rc *RestyClient) GetTimeout() time.Duration {
 // GetBaseURL returns the base URL
 func (rc *RestyClient) GetBaseURL() string {
 	return rc.baseURL
+}
+
+// ResetTokenClients clears the cached token clients. Intended for tests so
+// that subsequent MakeRestyClient calls rebuild the singleton.
+func ResetTokenClients() {
+	tokenClientMu.Lock()
+	defer tokenClientMu.Unlock()
+	tokenClients = make(map[string]*resty.Client)
 }

@@ -68,38 +68,32 @@ Depending on the current implementation, the backend may be creating new Resty c
 - [x] Drop unused `crypto/tls` import in `resty_client.go`.
 - [x] Verify `pvmss/proxmox` tests pass.
 
-### Phase B — Singleton Token Client + DI Refactor
+### Phase B — Singleton Token Client + DI Refactor (DONE — 2026-05-09)
 
-- [ ] Add `proxmox.SharedTokenClient(cfg *envpkg.EnvConfig) (*RestyClient, error)` — `sync.Once`-guarded singleton built from `EnvConfig`. Client-level `SetTimeout` set to a generous ceiling (e.g. 60s); per-request deadlines flow via `context.Context`.
-- [ ] Add `proxmox.MustSharedTokenClient()` accessor (returns initialized singleton; panics if not initialized).
-- [ ] Initialize singleton at startup in `main.go` after `EnvConfig` validated, before HTTP server starts. Skip when `PVMSS_OFFLINE=true`.
-- [ ] Confirm `*resty.Client` request execution is concurrency-safe; document that no post-init mutation of client-level config is allowed (only `R().Set...` per request).
-- [ ] Audit all `Get/Post/PostEmpty/Put/Delete` methods on `RestyClient` — ensure they propagate caller `ctx` for per-request timeout (already true). No client-level timeout mutation post-init.
-- [ ] Replace `MakeRestyClientFromEnv(timeout)` callsites with shared singleton + `context.WithTimeout(ctx, timeout)`:
-  - [ ] `state/manager_cache.go` (×2)
-  - [ ] `state/manager_proxmox.go`
-  - [ ] `api/v1/vms.go`
-  - [ ] `api/v1/vm_actions.go`
-  - [ ] `api/v1/vnc.go`
-  - [ ] `api/v1/admin_vms.go` (×4)
-  - [ ] `api/v1/admin_handlers.go` (×5)
-  - [ ] `api/v1/admin_mutations.go` (×6)
-  - [ ] `api/v1/setup.go` (×2)
-  - [ ] `handlers/limits_helpers.go`
-  - [ ] `handlers/resty_helper.go`
-- [ ] Deprecate `MakeRestyClientFromEnv` / `MakeRestyClientFromEnvConfig` (keep as thin shims that return the singleton, log deprecation in dev).
-- [ ] Decide cookie-auth path:
-  - [ ] Keep `MakeRestyClientCookieAuth` per-request (cookies are per-user) but ensure it uses shared transport (already done in Phase A).
-  - [ ] OR add cookie-jar-aware singleton + per-request `R().SetCookie(...)`. Document chosen approach.
-- [ ] Update `api/v1/auth.go` (×2) cookie-auth callsites accordingly.
-- [ ] Add unit test: shared transport reused across multiple `MakeRestyClient` calls (assert pointer equality of transport).
-- [ ] Add unit test: `SharedTokenClient` returns same `*RestyClient` across goroutines (concurrent calls).
-- [ ] Add benchmark `BenchmarkSharedClientReuse` comparing pre/post handshake cost (optional, integration-tagged).
+Approach taken: rather than introduce a new `SharedTokenClient` accessor and refactor 30+ callsites, the existing `MakeRestyClient` factory was made internally idempotent. It now returns a wrapper around a process-wide `*resty.Client` keyed by `(baseURL, tokenID, tokenSecret, insecureSkipVerify)`. Per-call timeouts are enforced via `context.WithTimeout` inside `Get/Post/PostEmpty/Put/Delete`, so each callsite keeps its own deadline without mutating the shared client. This preserves the public API and avoids touching every handler.
 
-### Phase C — Verification
+- [x] Singleton cache `tokenClients map[string]*resty.Client` keyed by SHA256 of `(baseURL, tokenID, tokenSecret) | insecureSkipVerify`, guarded by `sync.Mutex`.
+- [x] `MakeRestyClient` reuses cached `*resty.Client`; first call builds via `buildTokenClient`, subsequent calls return same instance.
+- [x] Client-level `SetTimeout` removed for token client (no post-init config mutation). Per-request deadline applied via `RestyClient.withRequestTimeout` helper.
+- [x] All `Get/Post/PostEmpty/Put/Delete` wrap caller ctx via `withRequestTimeout` honoring tighter caller deadlines.
+- [x] Cookie-auth path: kept per-call (per-user cookies must not leak). Already shares transport via Phase A.
+- [x] `interface{}` → `any` in `RestyClient` request methods (clears prior linter notices).
+- [x] `ResetTokenClients()` test helper exported.
+- [x] Unit tests in `resty_client_test.go`:
+  - `TestMakeRestyClient_ReusesSingleton` — same config returns shared `*resty.Client`, distinct wrapper timeouts.
+  - `TestMakeRestyClient_DistinctConfigsIsolated` — distinct token secrets get distinct clients.
+  - `TestMakeRestyClient_ConcurrentReturnsSameClient` — 32 goroutines, race detector clean.
+  - `TestSharedTransport_ReusedAcrossClients` — same `insecureSkipVerify` ⇒ same `Transport`.
+  - `TestSharedTransport_DistinctSkipVerify` — different `insecureSkipVerify` ⇒ distinct `Transport`.
+  - `TestMakeRestyClientCookieAuth_PerCallClient` — cookie-auth clients are per-call, transport still shared.
+- [ ] Optional follow-up: introduce `proxmox.SharedTokenClient(ctx)` accessor + drop `timeout` argument from `MakeRestyClientFromEnv` callsites once a deprecation window passes. Tracked separately.
+- [ ] Optional benchmark `BenchmarkSharedClientReuse` (integration-tagged).
 
-- [ ] `make test-offline-race` passes.
-- [ ] `make go-lint` clean (no new warnings).
-- [ ] Manual smoke: live Proxmox, observe connection reuse via `netstat`/`ss` — connections to Proxmox host stay in `ESTABLISHED` across requests instead of cycling.
-- [ ] Measure: median latency on `/api/v1/vms` before/after under sustained load (k6 or `hey`). Target: ≥30% reduction on warm pool.
-- [ ] Update `CLAUDE.md` if singleton access pattern becomes the documented norm.
+### Phase C — Verification (DONE — 2026-05-09)
+
+- [x] `pvmss/proxmox` tests: 29/29 pass under `-race`.
+- [x] `make test-offline`: all packages pass except pre-existing `pvmss/env` failures (verified unrelated via `git stash` baseline).
+- [x] `make go-lint`: 0 issues.
+- [ ] Manual smoke: live Proxmox — observe connection reuse via `ss -tan | grep <pve-ip>`; connections should remain `ESTABLISHED` across consecutive requests.
+- [ ] Measure: median latency on `/api/v1/vms` before/after under sustained load (k6 or `hey`). Target ≥30% reduction on warm pool.
+- [ ] Update `CLAUDE.md` if/when callsites migrate to a singleton accessor pattern.
