@@ -352,9 +352,9 @@
 							<div class="flex items-start gap-3 px-3 py-2">
 								<div class="mt-0.5 flex-shrink-0">
 									{#if task.status === 'running'}
-										<ClockIcon class="h-4 w-4 animate-spin text-blue-500" />
+										<ClockIcon class="h-4 w-4 animate-spin text-info" />
 									{:else if task.status === 'stopped'}
-										<CheckCircleIcon class="h-4 w-4 text-green-500" weight="fill" />
+										<CheckCircleIcon class="h-4 w-4 text-success" weight="fill" />
 									{:else}
 										<WarningCircleIcon class="h-4 w-4 text-destructive" weight="fill" />
 									{/if}

@@ -181,9 +181,9 @@
 	// Static class maps — Tailwind JIT can't resolve dynamic class names,
 	// so we map each tint to the full class string.
 	const TINT_CLASSES: Record<string, string> = {
-		sky: 'bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400',
-		violet: 'bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-400',
-		emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
+		sky: 'bg-info-soft text-info-soft-foreground',
+		violet: 'bg-primary/10 text-primary',
+		emerald: 'bg-success-soft text-success-soft-foreground'
 	};
 
 	function tintClasses(tint: string): string {

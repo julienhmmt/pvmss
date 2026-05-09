@@ -46,8 +46,8 @@
 }
 
 .pv-modal-header--danger {
-  background: linear-gradient(135deg, #7f1d1d, #dc2626);
-  color: white;
+  background: linear-gradient(135deg, oklch(35% 0.13 27.325deg), var(--destructive));
+  color: var(--destructive-foreground);
   border-bottom: none;
 }
 

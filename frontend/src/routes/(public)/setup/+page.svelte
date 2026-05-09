@@ -172,7 +172,7 @@
 		{:else if currentStep === 'done'}
 			<Card.Root>
 				<Card.Content class="flex flex-col items-center gap-4 py-12">
-					<CheckCircle class="h-16 w-16 text-green-500" />
+					<CheckCircle class="h-16 w-16 text-success" />
 					<h1 class="text-2xl font-bold">{$t('setup.done.title')}</h1>
 					<p class="text-muted-foreground text-center">{$t('setup.done.description')}</p>
 					<Button href="/login" class="mt-4">{$t('setup.done.login')}</Button>
@@ -217,9 +217,9 @@
 					<!-- Step 1: Connection -->
 					{#if currentStep === 'connection'}
 						{#if status?.offline}
-							<div class="rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-4 space-y-1">
-								<p class="font-medium text-yellow-800 dark:text-yellow-200">{$t('setup.connection.offlineTitle')}</p>
-								<p class="text-sm text-yellow-700 dark:text-yellow-300">{$t('setup.connection.offlineDesc')}</p>
+							<div class="rounded-lg bg-warning-soft border border-warning-soft-border p-4 space-y-1">
+								<p class="font-medium text-warning-soft-foreground">{$t('setup.connection.offlineTitle')}</p>
+								<p class="text-sm text-warning-soft-foreground/80">{$t('setup.connection.offlineDesc')}</p>
 							</div>
 						{:else}
 							<div class="space-y-2">
@@ -244,14 +244,14 @@
 							{#if connectionResult}
 								<div class="flex items-center gap-2 rounded-lg p-3
 									{connectionResult.ok
-										? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800'
-										: 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800'}">
+										? 'bg-success-soft border border-success-soft-border'
+										: 'bg-destructive-soft border border-destructive-soft-border'}">
 									{#if connectionResult.ok}
-										<CheckCircle class="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
-										<span class="text-sm text-green-700 dark:text-green-300">{$t('setup.connection.success')}</span>
+										<CheckCircle class="h-5 w-5 text-success shrink-0" />
+										<span class="text-sm text-success">{$t('setup.connection.success')}</span>
 									{:else}
-										<XCircle class="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" />
-										<span class="text-sm text-red-700 dark:text-red-300">
+										<XCircle class="h-5 w-5 text-destructive shrink-0" />
+										<span class="text-sm text-destructive-soft-foreground">
 											{$t('setup.connection.failure')}
 											{#if connectionResult.error && connectionResult.error !== 'offline'}
 												— {connectionResult.error}
@@ -450,8 +450,8 @@
 							</div>
 						</div>
 						{#if error}
-							<div class="rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3">
-								<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
+							<div class="rounded-lg bg-destructive-soft border border-destructive-soft-border p-3">
+								<p class="text-sm text-destructive-soft-foreground">{error}</p>
 							</div>
 						{/if}
 					{/if}

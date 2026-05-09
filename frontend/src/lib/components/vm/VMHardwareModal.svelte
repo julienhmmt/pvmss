@@ -206,7 +206,7 @@
 			<Dialog.Description>
 				{$t('vm.hardware.description', { values: { vmid } })}
 				{#if isRunning}
-					<span class="mt-1 flex items-center gap-1 font-medium text-amber-600">
+					<span class="mt-1 flex items-center gap-1 font-medium text-warning-soft-foreground">
 						<WarningCircle class="h-4 w-4" />
 						{$t('vm.hardware.warningRunning')}
 					</span>

@@ -86,15 +86,15 @@
 		<div class="border-t border-border px-5 pb-5 pt-4 space-y-6">
 			<!-- Manual override notice -->
 			{#if !noticeDismissed}
-				<div class="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-950/30 px-4 py-3">
-					<WarningCircle class="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-					<p class="text-sm text-amber-800 dark:text-amber-300 flex-1">
+				<div class="flex items-start gap-3 rounded-lg border border-warning-soft-border bg-warning-soft px-4 py-3">
+					<WarningCircle class="h-4 w-4 text-warning-soft-foreground flex-shrink-0 mt-0.5" />
+					<p class="text-sm text-warning-soft-foreground flex-1">
 						{$t('admin.settings.overview.manualOverrideNotice')}
 					</p>
 					<button
 						type="button"
 						onclick={() => (noticeDismissed = true)}
-						class="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 flex-shrink-0"
+						class="text-warning-soft-foreground/70 hover:text-warning-soft-foreground flex-shrink-0"
 						aria-label={$t('common.cancel')}
 					>
 						<X class="h-4 w-4" />

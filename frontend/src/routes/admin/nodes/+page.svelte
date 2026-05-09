@@ -193,7 +193,7 @@
 						</div>
 						<div>
 							<div class="pv-resource-name">{node.name}</div>
-							<div class="text-xs {node.userEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60'}">
+							<div class="text-xs {node.userEnabled ? 'text-success' : 'text-muted-foreground/60'}">
 								{node.userEnabled ? $t('admin.nodes.userEnabled') : $t('admin.nodes.userDisabled')}
 							</div>
 						</div>

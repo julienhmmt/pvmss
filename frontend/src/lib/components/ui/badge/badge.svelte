@@ -8,7 +8,7 @@
 				default:
 					"bg-primary text-primary-foreground [a&]:hover:bg-primary/90 border-transparent",
 				success:
-					"bg-green-500 text-white [a&]:hover:bg-green-600 border-transparent",
+					"bg-success text-success-foreground [a&]:hover:bg-success/90 border-transparent",
 				secondary:
 					"bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 border-transparent",
 				destructive:

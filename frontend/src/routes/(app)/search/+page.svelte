@@ -258,7 +258,7 @@
 	</div>
 	{#if slowLoadingVisible}
 		<div
-			class="mb-3 flex items-center gap-2 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300"
+			class="mb-3 flex items-center gap-2 rounded-md border border-warning-soft-border bg-warning-soft px-3 py-2 text-sm text-warning-soft-foreground"
 		>
 			<SpinnerGap class="h-4 w-4 animate-spin" />
 			{$t('search.slowLoading')}
