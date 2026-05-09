@@ -26,8 +26,31 @@ func validBase() map[string]string {
 // returns a cleanup function that restores the previous state.
 func setEnv(t *testing.T, vars map[string]string) {
 	t.Helper()
+	for _, key := range envKeys() {
+		t.Setenv(key, "")
+	}
 	for k, v := range vars {
 		t.Setenv(k, v)
+	}
+}
+
+func envKeys() []string {
+	return []string{
+		"JWT_SECRET",
+		"SESSION_SECRET",
+		"ADMIN_PASSWORD_HASH",
+		"PROXMOX_URL",
+		"PROXMOX_API_TOKEN_NAME",
+		"PROXMOX_API_TOKEN_VALUE",
+		"PROXMOX_VERIFY_SSL",
+		"PVMSS_DB_PATH",
+		"PVMSS_ENV",
+		"PVMSS_OFFLINE",
+		"LOG_LEVEL",
+		"LOG_OUTPUT",
+		"LOG_FORMAT",
+		"TZ",
+		"PORT",
 	}
 }
 
