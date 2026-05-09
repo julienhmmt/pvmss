@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
+	import { Spinner } from '$lib/components/ui/spinner';
 
 	interface Props {
 		visible: boolean;
@@ -11,7 +12,7 @@
 
 {#if visible}
 	<div class="pv-loading-toast">
-		<span class="pv-loading-spinner"></span>
+		<Spinner size="sm" />
 		{label ?? $t('common.loading', { default: 'Chargement…' })}
 	</div>
 {/if}
