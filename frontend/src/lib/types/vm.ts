@@ -4,6 +4,11 @@
 export type VMStatus = "running" | "stopped" | "paused";
 
 /**
+ * VM lifecycle actions accepted by the user VM API.
+ */
+export type VMAction = "start" | "stop" | "shutdown" | "reboot" | "suspend" | "resume";
+
+/**
  * Disk configuration.
  */
 export interface Disk {
@@ -17,7 +22,14 @@ export interface Disk {
   sizeGb: number;
   /** Raw Proxmox config string */
   raw: string;
+  /** Whether this disk is configured as boot disk */
+  isBoot?: boolean;
 }
+
+/**
+ * API disk configuration alias.
+ */
+export type DiskInfo = Disk;
 
 /**
  * Network card configuration.
@@ -41,7 +53,18 @@ export interface NetworkCard {
   ips?: string[];
   /** Optional: Link down flag */
   linkDown?: boolean;
+  /** Optional: Display label for model */
+  modelLabel?: string;
+  /** Optional: i18n suffix for model */
+  modelTranslationSuffix?: string;
+  /** Optional: MTU value */
+  mtu?: string;
 }
+
+/**
+ * API network interface alias.
+ */
+export type NetworkInterface = NetworkCard;
 
 /**
  * Cloud-Init configuration.
@@ -56,6 +79,11 @@ export interface CloudInitConfig {
   /** Optional: DNS nameserver */
   nameserver?: string;
 }
+
+/**
+ * API cloud-init configuration alias.
+ */
+export type CloudInitInfo = CloudInitConfig;
 
 /**
  * Complete VM information.
@@ -103,4 +131,37 @@ export interface VM {
   efiEnabled: boolean;
   /** Whether TPM is enabled */
   tpmEnabled: boolean;
+}
+
+/**
+ * Detailed VM configuration returned by the VM details API.
+ */
+export type VMConfig = VM;
+
+/**
+ * VM snapshot metadata.
+ */
+export interface Snapshot {
+  /** Snapshot name */
+  name: string;
+  /** Snapshot description */
+  description: string;
+  /** Snapshot creation time as Unix timestamp */
+  snaptime: number;
+  /** Whether snapshot includes RAM state */
+  vmstate: number;
+  /** Parent snapshot name */
+  parent: string;
+  /** Whether this entry is the current VM state */
+  current: boolean;
+}
+
+/**
+ * Snapshot list response with configured limit.
+ */
+export interface SnapshotList {
+  /** Snapshot entries */
+  snapshots: Snapshot[];
+  /** Maximum allowed non-current snapshots */
+  maxAllowed: number;
 }

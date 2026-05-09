@@ -284,18 +284,28 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Current string `json:"current"`
-		New     string `json:"new"`
+		Current         string `json:"current"`
+		New             string `json:"new"`
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errBadRequest(w, "invalid JSON body")
 		return
 	}
-	if req.Current == "" || req.New == "" {
-		errBadRequest(w, "current and new passwords are required")
+	currentPassword := req.CurrentPassword
+	if currentPassword == "" {
+		currentPassword = req.Current
+	}
+	newPassword := req.NewPassword
+	if newPassword == "" {
+		newPassword = req.New
+	}
+	if currentPassword == "" || newPassword == "" {
+		errBadRequest(w, "current_password (or current) and new_password (or new) are required")
 		return
 	}
-	if len(req.New) < 8 {
+	if len(newPassword) < 8 {
 		errBadRequest(w, "new password must be at least 8 characters")
 		return
 	}
@@ -304,7 +314,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Verify the current password against Proxmox.
-	if err := verifyProxmoxCredentials(ctx, username, req.Current); err != nil {
+	if err := verifyProxmoxCredentials(ctx, username, currentPassword); err != nil {
 		logger.SecurityEvent("api_password_change_fail").Str("username", username).Msg("Invalid current password for password change")
 		errUnauthorized(w)
 		return
@@ -318,7 +328,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := proxmox.UpdateUserPasswordResty(ctx, client, username, req.New, req.New, "pve"); err != nil {
+	if err := proxmox.UpdateUserPasswordResty(ctx, client, username, newPassword, newPassword, "pve"); err != nil {
 		logger.Get().Error().Err(err).Str("username", username).Msg("api/v1: failed to update password")
 		writeError(w, http.StatusBadGateway, "proxmox_error", "Failed to update password")
 		return
