@@ -139,8 +139,9 @@ export async function createSnapshot(
   vmid: number,
   name: string,
   description = "",
+  vmstate = false,
 ): Promise<void> {
-  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ name, description });
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ name, description, vmstate });
   await api.post(`/api/v1/vms/${vmid}/snapshots`, payload);
 }
 

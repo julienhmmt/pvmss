@@ -4,33 +4,40 @@
 	import { t } from 'svelte-i18n';
 	import { Camera, ClockCounterClockwise, Trash } from 'phosphor-svelte';
 	import type { SnapshotList } from '$lib/api/vm-details';
+	import type { VMStatus } from '$lib/types/vm';
 
 	interface Props {
 		snapshotData: SnapshotList | null;
 		creatingSnapshot: boolean;
+		vmStatus: VMStatus;
 		showSnapshotForm: boolean;
 		snapName: string;
 		snapDesc: string;
+		snapVmstate: boolean;
 		onToggleForm: () => void;
 		onCreateSnapshot: () => void;
 		onDeleteSnapshot: (name: string) => void;
 		onRollback: (name: string) => void;
 		onSnapNameChange: (value: string) => void;
 		onSnapDescChange: (value: string) => void;
+		onSnapVmstateChange: (value: boolean) => void;
 	}
 
 	let {
 		snapshotData,
 		creatingSnapshot,
+		vmStatus,
 		showSnapshotForm,
 		snapName,
 		snapDesc,
+		snapVmstate,
 		onToggleForm,
 		onCreateSnapshot,
 		onDeleteSnapshot,
 		onRollback,
 		onSnapNameChange,
-		onSnapDescChange
+		onSnapDescChange,
+		onSnapVmstateChange
 	}: Props = $props();
 
 	function snapshotDate(ts: number): string {
@@ -44,6 +51,7 @@
 	const canCreate = $derived(
 		snapshotData && nonCurrentSnapshots.length < snapshotData.maxAllowed
 	);
+	const isVMRunning = $derived(vmStatus === 'running');
 </script>
 
 <div class="pv-table-wrap">
@@ -80,6 +88,24 @@
 					oninput={(e: Event) => onSnapDescChange((e.currentTarget as HTMLInputElement).value)}
 				/>
 			</div>
+			<label
+				class="mb-2 flex items-start gap-2 rounded border border-border bg-muted/30 px-3 py-2 text-sm"
+				title={isVMRunning ? $t('vm.ramStateHelp') : $t('vm.ramStateDisabled')}
+			>
+				<input
+					class="mt-1 h-4 w-4 rounded border-border"
+					type="checkbox"
+					checked={snapVmstate}
+					disabled={!isVMRunning || creatingSnapshot}
+					onchange={(e: Event) => onSnapVmstateChange((e.currentTarget as HTMLInputElement).checked)}
+				/>
+				<span>
+					<span class="block font-medium text-foreground">{$t('vm.includeRamState')}</span>
+					<span class="block text-xs text-muted-foreground">
+						{isVMRunning ? $t('vm.ramStateHelp') : $t('vm.ramStateDisabled')}
+					</span>
+				</span>
+			</label>
 			<div class="flex gap-2">
 				<button
 					class="pv-btn-primary text-xs"
