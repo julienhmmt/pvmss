@@ -38,19 +38,6 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Colored modal header (gradient) */
-.pv-modal-header--primary {
-  background: linear-gradient(135deg, oklch(35% 0.12 45deg), oklch(60% 0.19 45deg));
-  color: white;
-  border-bottom: none;
-}
-
-.pv-modal-header--danger {
-  background: linear-gradient(135deg, oklch(35% 0.13 27.325deg), var(--destructive));
-  color: var(--destructive-foreground);
-  border-bottom: none;
-}
-
 .pv-modal-title {
   font-size: 1rem;
   font-weight: 700;
@@ -92,19 +79,6 @@
 
 .pv-modal-close:hover {
   background: var(--muted);
-}
-
-/* Close button on colored header */
-.pv-modal-header--primary .pv-modal-close,
-.pv-modal-header--danger .pv-modal-close {
-  background: rgb(255 255 255 / 15%);
-  border-color: rgb(255 255 255 / 25%);
-  color: white;
-}
-
-.pv-modal-header--primary .pv-modal-close:hover,
-.pv-modal-header--danger .pv-modal-close:hover {
-  background: rgb(255 255 255 / 25%);
 }
 
 /* Form field inside modal */

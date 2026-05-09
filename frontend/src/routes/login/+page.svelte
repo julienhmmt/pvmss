@@ -5,10 +5,11 @@
 	import { ApiRequestError } from '$lib/types/api';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { PasswordInput } from '$lib/components/ui/password-input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Card from '$lib/components/ui/card';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import { UserIcon, ShieldCheckIcon, DesktopIcon, EyeIcon, EyeSlashIcon, EyeSlash, Eye, Desktop } from 'phosphor-svelte';
+	import { UserIcon, ShieldCheckIcon, DesktopIcon } from 'phosphor-svelte';
 
 	type AdminTab = 'local' | 'pve';
 
@@ -18,16 +19,13 @@
 	// User login
 	let userUsername = $state('');
 	let userPassword = $state('');
-	let userShowPassword = $state(false);
 
 	// Local admin login
 	let localPassword = $state('');
-	let localShowPassword = $state(false);
 
 	// PVE admin login
 	let pveUsername = $state('');
 	let pvePassword = $state('');
-	let pveShowPassword = $state(false);
 
 	let loading = $state(false);
 	let error = $state<string | null>(null);
@@ -172,32 +170,16 @@
 							</div>
 							<div class="space-y-1.5">
 								<Label for="user-password">{$t('login.password')}</Label>
-								<div class="relative">
-									<Input
-										id="user-password"
-										type={userShowPassword ? 'text' : 'password'}
-										bind:value={userPassword}
-										placeholder={$t('login.passwordPlaceholder')}
-										autocomplete="current-password"
-										required
-										minlength={6}
-										maxlength={128}
-										disabled={loading}
-										class="pr-10"
-									/>
-									<button
-										type="button"
-										class="pv-login-EyeIcon"
-										onclick={() => (userShowPassword = !userShowPassword)}
-										aria-label="Toggle password visibility"
-									>
-										{#if userShowPassword}
-											<EyeSlashIcon class="h-4 w-4" />
-										{:else}
-											<EyeIcon class="h-4 w-4" />
-										{/if}
-									</button>
-								</div>
+								<PasswordInput
+									id="user-password"
+									bind:value={userPassword}
+									placeholder={$t('login.passwordPlaceholder')}
+									autocomplete="current-password"
+									required
+									minlength={6}
+									maxlength={128}
+									disabled={loading}
+								/>
 							</div>
 							<Button type="submit" class="w-full" disabled={loading || !userUsername || !userPassword}>
 								{loading ? $t('login.signingIn') : $t('login.signIn')}
@@ -231,32 +213,16 @@
 								<form onsubmit={handleLocalAdminLogin} novalidate class="space-y-4">
 									<div class="space-y-1.5">
 										<Label for="local-password">{$t('login.password')}</Label>
-										<div class="relative">
-											<Input
-												id="local-password"
-												type={localShowPassword ? 'text' : 'password'}
-												bind:value={localPassword}
-												placeholder={$t('login.adminPasswordPlaceholder')}
-												autocomplete="current-password"
-												required
-												minlength={6}
-												maxlength={128}
-												disabled={loading}
-												class="pr-10"
-											/>
-											<button
-												type="button"
-												class="pv-login-EyeIcon"
-												onclick={() => (localShowPassword = !localShowPassword)}
-												aria-label="Toggle password visibility"
-											>
-												{#if localShowPassword}
-													<EyeSlash class="h-4 w-4" />
-												{:else}
-													<Eye class="h-4 w-4" />
-												{/if}
-											</button>
-										</div>
+										<PasswordInput
+											id="local-password"
+											bind:value={localPassword}
+											placeholder={$t('login.adminPasswordPlaceholder')}
+											autocomplete="current-password"
+											required
+											minlength={6}
+											maxlength={128}
+											disabled={loading}
+										/>
 									</div>
 									<Button type="submit" class="w-full" disabled={loading || !localPassword}>
 										{loading ? $t('login.signingIn') : $t('login.signIn')}
@@ -286,32 +252,16 @@
 									</div>
 									<div class="space-y-1.5">
 										<Label for="pve-password">{$t('login.password')}</Label>
-										<div class="relative">
-											<Input
-												id="pve-password"
-												type={pveShowPassword ? 'text' : 'password'}
-												bind:value={pvePassword}
-												placeholder={$t('login.passwordPlaceholder')}
-												autocomplete="current-password"
-												required
-												minlength={6}
-												maxlength={128}
-												disabled={loading}
-												class="pr-10"
-											/>
-											<button
-												type="button"
-												class="pv-login-EyeIcon"
-												onclick={() => (pveShowPassword = !pveShowPassword)}
-												aria-label="Toggle password visibility"
-											>
-												{#if pveShowPassword}
-													<EyeSlash class="h-4 w-4" />
-												{:else}
-													<Eye class="h-4 w-4" />
-												{/if}
-											</button>
-										</div>
+										<PasswordInput
+											id="pve-password"
+											bind:value={pvePassword}
+											placeholder={$t('login.passwordPlaceholder')}
+											autocomplete="current-password"
+											required
+											minlength={6}
+											maxlength={128}
+											disabled={loading}
+										/>
 									</div>
 									<Button
 										type="submit"
@@ -473,21 +423,4 @@
 		margin-top: 0.25rem;
 	}
 
-	.pv-login-EyeIcon {
-		position: absolute;
-		right: 0.625rem;
-		top: 50%;
-		transform: translateY(-50%);
-		background: none;
-		border: none;
-		cursor: pointer;
-		color: var(--muted-foreground);
-		padding: 0;
-		display: flex;
-		align-items: center;
-	}
-
-	.pv-login-EyeIcon:hover {
-		color: var(--foreground);
-	}
 </style>
