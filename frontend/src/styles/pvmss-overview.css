@@ -191,20 +191,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.pv-loading-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--border);
-  border-top-color: hsl(var(--blaze-orange-600));
-  border-radius: 50%;
-  animation: pv-spin 0.7s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes pv-spin {
-  to { transform: rotate(360deg); }
-}
-
 /* Empty state */
 .pv-empty {
   color: var(--muted-foreground);
