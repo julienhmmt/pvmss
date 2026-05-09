@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { VM, VMStatus } from "$lib/types/vm";
+import type { VM, VMAction, VMStatus } from "$lib/types/vm";
 import { transformKeysToCamelCase } from "$lib/utils/transform";
 import { validateSearchParams, type VMSearchParams as SearchParams, type SearchFilter } from "$lib/api/search";
 
@@ -37,6 +37,14 @@ export async function getVMs(): Promise<VMSummary[]> {
   const res = await api.get<Record<string, unknown>>("/api/v1/vms");
   const transformed = transformKeysToCamelCase<PaginatedVMListResponse>(res);
   return transformed.vms;
+}
+
+export async function vmAction(
+  vmid: number,
+  node: string,
+  action: VMAction,
+): Promise<void> {
+  await api.post(`/api/v1/vms/${vmid}/action`, { action, node });
 }
 
 export async function getVMsPaginated(params: VMPaginationParams = {}): Promise<PaginatedVMListResponse> {
