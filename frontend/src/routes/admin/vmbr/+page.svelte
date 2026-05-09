@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
@@ -113,39 +115,21 @@
 	<title>PVMSS — {$t('admin.vmbr.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.vmbr.title')}</h1>
-			{#if !loading}
-				<p class="pv-subtitle">
-					{$t('admin.vmbr.enabledCount', { values: { count: enabledCount } })} / {vmbrs.length}
-				</p>
-			{/if}
-		</div>
-
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.vmbr.title')}
+	subtitle={!loading
+		? `${$t('admin.vmbr.enabledCount', { values: { count: enabledCount } })} / ${vmbrs.length}`
+		: undefined}
+>
+	{#snippet stats()}
 		{#if !loading && vmbrs.length > 0}
-			<div class="flex items-center gap-3">
-				<div class="pv-header-stats">
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('common.total')}</div>
-						<div class="pv-header-stat-value">{vmbrs.length}</div>
-					</div>
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('admin.vmbr.active')}</div>
-						<div class="pv-header-stat-value">{activeCount}</div>
-					</div>
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('admin.vmbr.enabled')}</div>
-						<div class="pv-header-stat-value">{enabledCount}</div>
-					</div>
-				</div>
-			</div>
+			<PvHeaderStat label={$t('common.total')} value={vmbrs.length} />
+			<PvHeaderStat label={$t('admin.vmbr.active')} value={activeCount} />
+			<PvHeaderStat label={$t('admin.vmbr.enabled')} value={enabledCount} />
 		{/if}
-	</div>
-</div>
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 

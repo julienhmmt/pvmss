@@ -3,6 +3,8 @@
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import Paginator from '$lib/components/data/Paginator.svelte';
@@ -125,47 +127,27 @@
 	<title>PVMSS — {$t('admin.storage.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<h1 class="pv-title">{$t('admin.storage.title')}</h1>
-		</div>
-
+<PvHeader title={$t('admin.storage.title')}>
+	{#snippet stats()}
 		{#if !loading}
-			<div class="flex items-center gap-3 flex-wrap">
-				<div class="pv-header-stats">
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('admin.storage.title')}</div>
-						<div class="pv-header-stat-value">{filteredStorages.length}</div>
-					</div>
-					{#if enabledCount > 0}
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.enabled')}</div>
-							<div class="pv-header-stat-value">{enabledCount}</div>
-						</div>
-					{/if}
-					{#if nodes.length > 1}
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('nav.nodes')}</div>
-							<div class="pv-header-stat-value">{nodes.length}</div>
-						</div>
-					{/if}
-				</div>
-				<Button
-					class="pv-header-btn"
-					variant="outline"
-					size="sm"
-					onclick={load}
-					disabled={loading}
-				>
-					<ArrowsClockwise class="mr-1 h-4 w-4 {loading ? 'animate-spin' : ''}" />
-					{$t('common.refresh')}
-				</Button>
-			</div>
+			<PvHeaderStat label={$t('admin.storage.title')} value={filteredStorages.length} />
+			{#if enabledCount > 0}
+				<PvHeaderStat label={$t('common.enabled')} value={enabledCount} />
+			{/if}
+			{#if nodes.length > 1}
+				<PvHeaderStat label={$t('nav.nodes')} value={nodes.length} />
+			{/if}
 		{/if}
-	</div>
-</div>
+	{/snippet}
+	{#snippet actions()}
+		{#if !loading}
+			<Button class="pv-header-btn" variant="outline" size="sm" onclick={load} disabled={loading}>
+				<ArrowsClockwise class="mr-1 h-4 w-4 {loading ? 'animate-spin' : ''}" />
+				{$t('common.refresh')}
+			</Button>
+		{/if}
+	{/snippet}
+</PvHeader>
 
 {#snippet sortIcon(key: SortKey)}
 	{#if sortKey === key}

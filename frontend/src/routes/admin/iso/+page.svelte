@@ -3,6 +3,8 @@
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
 	import Paginator from '$lib/components/data/Paginator.svelte';
@@ -93,35 +95,20 @@
 	<title>PVMSS — {$t('admin.iso.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.iso.title')}</h1>
-			{#if !loading}
-				<p class="pv-subtitle">
-					{$t('admin.iso.enabledCount', { values: { count: enabledCount } })} / {isos.length}
-				</p>
-			{/if}
-		</div>
-
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.iso.title')}
+	subtitle={!loading
+		? `${$t('admin.iso.enabledCount', { values: { count: enabledCount } })} / ${isos.length}`
+		: undefined}
+>
+	{#snippet stats()}
 		{#if !loading && isos.length > 0}
-			<div class="flex items-center gap-3">
-				<div class="pv-header-stats">
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('common.total')}</div>
-						<div class="pv-header-stat-value">{isos.length}</div>
-					</div>
-					<div class="pv-header-stat">
-						<div class="pv-header-stat-label">{$t('common.enabled')}</div>
-						<div class="pv-header-stat-value">{enabledCount}</div>
-					</div>
-				</div>
-			</div>
+			<PvHeaderStat label={$t('common.total')} value={isos.length} />
+			<PvHeaderStat label={$t('common.enabled')} value={enabledCount} />
 		{/if}
-	</div>
-</div>
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 
