@@ -47,4 +47,10 @@ const (
 
 	// HTTPResponseHeaderTimeout is the amount of time to wait for a server's response headers
 	HTTPResponseHeaderTimeout = 15 * time.Second
+
+	// HTTPDialTimeout is the maximum amount of time to wait for a dial to complete
+	HTTPDialTimeout = 30 * time.Second
+
+	// HTTPDialKeepAlive is the keep-alive period for active connections
+	HTTPDialKeepAlive = 30 * time.Second
 )
