@@ -9,6 +9,7 @@ coverage.out
 docker-compose.dev.yml
 node_modules/
 .pnpm-store/
+bun.lockb
 proxmox_host_key.pub
 pvmss_snippets_ed25519
 settings.dev.json
