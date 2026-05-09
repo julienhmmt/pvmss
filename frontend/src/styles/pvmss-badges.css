@@ -1,4 +1,4 @@
-/* PVMSS status badges */
+/* PVMSS status badges — uses semantic tokens from app.css */
 .pv-badge,
 .pv-status-badge,
 .pv-action-badge {
@@ -15,40 +15,40 @@
 
 /* VM / resource status */
 .pv-status-badge--running {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #86efac;
+  background: var(--success-soft);
+  color: var(--success-soft-foreground);
+  border: 1px solid var(--success-soft-border);
 }
 
 .pv-status-badge--stopped {
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #cbd5e1;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
 }
 
 .pv-status-badge--paused {
-  background: #fffbeb;
-  color: #d97706;
-  border: 1px solid #fcd34d;
+  background: var(--warning-soft);
+  color: var(--warning-soft-foreground);
+  border: 1px solid var(--warning-soft-border);
 }
 
 .pv-status-badge--error {
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  background: var(--destructive-soft);
+  color: var(--destructive-soft-foreground);
+  border: 1px solid var(--destructive-soft-border);
 }
 
 .pv-status-badge--unknown {
-  background: #f8fafc;
-  color: #94a3b8;
-  border: 1px solid #e2e8f0;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
 }
 
 /* Node health badges */
 .pv-badge--online {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #86efac;
+  background: var(--success-soft);
+  color: var(--success-soft-foreground);
+  border: 1px solid var(--success-soft-border);
 }
 
 .pv-badge--online::before {
@@ -57,14 +57,14 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #16a34a;
+  background: var(--success);
   flex-shrink: 0;
 }
 
 .pv-badge--offline {
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  background: var(--destructive-soft);
+  color: var(--destructive-soft-foreground);
+  border: 1px solid var(--destructive-soft-border);
 }
 
 .pv-badge--offline::before {
@@ -73,43 +73,14 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #dc2626;
+  background: var(--destructive);
   flex-shrink: 0;
 }
 
 .pv-badge--warn {
-  background: #fffbeb;
-  color: #d97706;
-  border: 1px solid #fcd34d;
-}
-
-/* Dark mode overrides */
-.dark .pv-badge--online {
-  background: #052e16;
-  color: #4ade80;
-  border-color: #166534;
-}
-
-.dark .pv-badge--online::before {
-  background: #4ade80;
-}
-
-.dark .pv-status-badge--running {
-  background: #052e16;
-  color: #4ade80;
-  border-color: #166534;
-}
-
-.dark .pv-status-badge--stopped {
-  background: #1e293b;
-  color: #94a3b8;
-  border-color: #334155;
-}
-
-.dark .pv-badge--offline {
-  background: #450a0a;
-  color: #f87171;
-  border-color: #7f1d1d;
+  background: var(--warning-soft);
+  color: var(--warning-soft-foreground);
+  border: 1px solid var(--warning-soft-border);
 }
 
 /* Action / type badges (uppercase, spaced) */
@@ -126,27 +97,27 @@
 }
 
 .pv-action-badge--template {
-  background: #f5f3ff;
-  color: #7c3aed;
-  border: 1px solid #ddd6fe;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: 1px solid var(--border);
 }
 
 .pv-action-badge--lxc {
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+  background: var(--info-soft);
+  color: var(--info-soft-foreground);
+  border: 1px solid var(--info-soft-border);
 }
 
 .pv-action-badge--success {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: var(--success-soft);
+  color: var(--success-soft-foreground);
+  border: 1px solid var(--success-soft-border);
 }
 
 .pv-action-badge--danger {
-  background: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
+  background: var(--destructive-soft);
+  color: var(--destructive-soft-foreground);
+  border: 1px solid var(--destructive-soft-border);
 }
 
 /* Feedback banners */
@@ -160,28 +131,28 @@
 }
 
 .pv-error-banner {
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #dc2626;
+  background: var(--destructive-soft);
+  border: 1px solid var(--destructive-soft-border);
+  color: var(--destructive-soft-foreground);
 }
 
 .pv-warn-banner {
-  background: #fffbeb;
-  border: 1px solid #fcd34d;
-  color: #92400e;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-soft-border);
+  color: var(--warning-soft-foreground);
 }
 
 .pv-success-banner {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #15803d;
+  background: var(--success-soft);
+  border: 1px solid var(--success-soft-border);
+  color: var(--success-soft-foreground);
 }
 
 /* Danger box (destructive confirmations) */
 .pv-danger-box {
-  background: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #7f1d1d;
+  background: var(--destructive-soft);
+  border: 1px solid var(--destructive-soft-border);
+  color: var(--destructive-soft-foreground);
   padding: 12px 14px;
   font-size: 0.85rem;
   line-height: 1.5;

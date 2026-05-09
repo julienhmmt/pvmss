@@ -218,7 +218,7 @@
 						<p class="text-xs text-muted-foreground">
 							{item.sockets}s · {item.cores}c · {item.ramGb}GB RAM · {item.diskGb}GB {item.diskBus}
 						</p>
-						<span class="inline-block text-xs font-medium {item.enabled ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}">
+						<span class="inline-block text-xs font-medium {item.enabled ? 'text-success' : 'text-muted-foreground'}">
 							{item.enabled ? $t('admin.settings.overview.enabled') : $t('admin.settings.overview.disabled')}
 						</span>
 					</div>

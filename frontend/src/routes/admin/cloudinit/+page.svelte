@@ -204,20 +204,20 @@
 	{#if sftpStatus}
 		{@const isSuccess = sftpStatus.statusType === 'success'}
 		{@const isWarning = sftpStatus.statusType === 'warning'}
-		<div class="mb-6 rounded-lg border p-4 {isSuccess ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30' : isWarning ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'}">
+		<div class="mb-6 rounded-lg border p-4 {isSuccess ? 'border-success-soft-border bg-success-soft dark:border-green-900 dark:bg-green-950/30' : isWarning ? 'border-warning-soft-border bg-warning-soft dark:border-yellow-900 dark:bg-yellow-950/30' : 'border-destructive-soft-border bg-destructive-soft dark:border-red-900 dark:bg-red-950/30'}">
 			<div class="flex items-start gap-3">
 				<div class="mt-0.5 shrink-0">
 					{#if isSuccess}
-						<CheckCircleIcon class="h-5 w-5 text-green-600 dark:text-green-400" />
+						<CheckCircleIcon class="h-5 w-5 text-success" />
 					{:else if isWarning}
-						<WarningCircleIcon class="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+						<WarningCircleIcon class="h-5 w-5 text-warning-soft-foreground" />
 					{:else}
-						<XCircleIcon class="h-5 w-5 text-red-600 dark:text-red-400" />
+						<XCircleIcon class="h-5 w-5 text-destructive" />
 					{/if}
 				</div>
 				<div class="flex-1 min-w-0">
 					<div class="flex items-center justify-between gap-3 flex-wrap">
-						<p class="text-sm font-medium {isSuccess ? 'text-green-800 dark:text-green-300' : isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-red-800 dark:text-red-300'}">
+						<p class="text-sm font-medium {isSuccess ? 'text-success-soft-foreground' : isWarning ? 'text-yellow-800 dark:text-yellow-300' : 'text-destructive-soft-foreground'}">
 							{$t('admin.cloudinit.sftpStatus')} — {$t('admin.cloudinit.sftpStatusText.' + sftpStatus.statusText)}
 						</p>
 						{#if sftpStatus.isConfigured}

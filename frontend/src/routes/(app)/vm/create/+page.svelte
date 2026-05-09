@@ -533,14 +533,14 @@
 	{:else if !settings.proxmoxConnected}
 		<Card>
 			<CardContent class="py-10 text-center">
-				<Warning class="mx-auto mb-3 h-10 w-10 text-amber-500" />
+				<Warning class="mx-auto mb-3 h-10 w-10 text-warning" />
 				<p class="text-muted-foreground">{$t('vmCreate.offlineWarning')}</p>
 			</CardContent>
 		</Card>
 	{:else if quotaBlocked}
 		<Card>
 			<CardContent class="py-10 text-center">
-				<Warning class="mx-auto mb-3 h-10 w-10 text-amber-500" />
+				<Warning class="mx-auto mb-3 h-10 w-10 text-warning" />
 				<p class="text-muted-foreground">
 					{$t('vmCreate.quotaReached', {
 						values: {
@@ -841,22 +841,22 @@
 
 					<!-- Admin escalation notice -->
 					<div
-						class="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30"
+						class="flex gap-3 rounded-lg border border-warning-soft-border bg-warning-soft p-4"
 					>
 						<Info
-							class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400"
+							class="mt-0.5 h-5 w-5 flex-shrink-0 text-warning-soft-foreground"
 						/>
 						<div class="space-y-1">
-							<p class="text-sm font-medium text-amber-800 dark:text-amber-200">
+							<p class="text-sm font-medium text-warning-soft-foreground">
 								{$t('vmCreate.simple.adminNotice')}
 							</p>
-							<p class="text-xs text-amber-700 dark:text-amber-300">
+							<p class="text-xs text-warning-soft-foreground/80">
 								{$t('vmCreate.simple.adminNoticeBody')}
 							</p>
 							<button
 								type="button"
 								onclick={() => { creationMode = 'advanced'; currentStep = 0; }}
-								class="text-xs font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
+								class="text-xs font-medium text-warning-soft-foreground underline hover:opacity-80"
 							>
 								{$t('vmCreate.simple.switchToAdvanced')}
 							</button>
@@ -974,9 +974,9 @@
 								</Select.Content>
 							</Select.Root>
 							{#if settings.nodes.every((n) => n.disabled)}
-								<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
-									<p class="text-amber-800 font-medium">{$t('vmCreate.base.allNodesDisabled')}</p>
-									<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.allNodesDisabledHint')}</p>
+								<div class="border-warning-soft-border bg-warning-soft rounded-lg border p-3 text-sm">
+									<p class="text-warning-soft-foreground font-medium">{$t('vmCreate.base.allNodesDisabled')}</p>
+									<p class="text-warning-soft-foreground/80 mt-1 text-xs">{$t('vmCreate.base.allNodesDisabledHint')}</p>
 								</div>
 							{/if}
 						</div>
@@ -1002,9 +1002,9 @@
 								</Select.Content>
 							</Select.Root>
 							{#if settings.storages.length === 0}
-								<div class="border-amber-200 bg-amber-50 rounded-lg border p-3 text-sm">
-									<p class="text-amber-800 font-medium">{$t('vmCreate.base.noStorages')}</p>
-									<p class="text-amber-700 mt-1 text-xs">{$t('vmCreate.base.noStoragesHint')}</p>
+								<div class="border-warning-soft-border bg-warning-soft rounded-lg border p-3 text-sm">
+									<p class="text-warning-soft-foreground font-medium">{$t('vmCreate.base.noStorages')}</p>
+									<p class="text-warning-soft-foreground/80 mt-1 text-xs">{$t('vmCreate.base.noStoragesHint')}</p>
 								</div>
 							{/if}
 						</div>

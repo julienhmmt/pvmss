@@ -264,7 +264,7 @@
 						<div class="flex items-center gap-2">
 							<p class="text-sm font-semibold leading-tight">{profile.name}</p>
 							{#if profile.enabled}
-								<CheckCircle class="text-emerald-500 h-3.5 w-3.5 flex-shrink-0" />
+								<CheckCircle class="text-success h-3.5 w-3.5 flex-shrink-0" />
 							{:else}
 								<XCircle class="text-muted-foreground h-3.5 w-3.5 flex-shrink-0" />
 							{/if}
@@ -284,7 +284,7 @@
 								{profile.diskBus}
 							</span>
 							{#if profile.enableEfi}
-								<span class="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded px-1.5 py-0.5 text-xs font-medium">
+								<span class="bg-info-soft text-info-soft-foreground rounded px-1.5 py-0.5 text-xs font-medium">
 									EFI
 								</span>
 							{/if}

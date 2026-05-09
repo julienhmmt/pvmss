@@ -23,18 +23,18 @@
   color: var(--accent-foreground);
 }
 .pv-action-btn--start:hover:not(:disabled) {
-  background: hsl(142 71% 45% / 0.15);
-  border-color: hsl(142 71% 45% / 0.4);
+  background: hsl(142 71% 45% / 15%);
+  border-color: hsl(142 71% 45% / 40%);
   color: hsl(142 71% 35%);
 }
 .pv-action-btn--stop:hover:not(:disabled) {
-  background: hsl(0 84% 60% / 0.15);
-  border-color: hsl(0 84% 60% / 0.4);
+  background: hsl(0 84% 60% / 15%);
+  border-color: hsl(0 84% 60% / 40%);
   color: hsl(0 84% 50%);
 }
 .pv-action-btn--halt:hover:not(:disabled) {
-  background: hsl(0 84% 50% / 0.2);
-  border-color: hsl(0 84% 50% / 0.6);
+  background: hsl(0 84% 50% / 20%);
+  border-color: hsl(0 84% 50% / 60%);
   color: hsl(0 84% 40%);
 }
 
@@ -46,10 +46,10 @@
   background: var(--accent);
 }
 .pv-row--selected td {
-  background: hsl(var(--primary) / 0.06);
+  background: hsl(var(--primary) / 6%);
 }
 .pv-row--selected:hover td {
-  background: hsl(var(--primary) / 0.1);
+  background: hsl(var(--primary) / 10%);
 }
 
 /* ── Checkbox button ────────────────────────────────────────────── */
@@ -134,8 +134,8 @@
   gap: 0.625rem;
   width: 100%;
   padding: 0.875rem 1.25rem;
-  background: hsl(217 91% 60% / 0.08);
-  border: 1px solid hsl(217 91% 60% / 0.25);
+  background: hsl(217 91% 60% / 8%);
+  border: 1px solid hsl(217 91% 60% / 25%);
   border-radius: 0.5rem;
   color: hsl(217 91% 55%);
   font-size: 0.9375rem;
@@ -145,8 +145,8 @@
   text-align: left;
 }
 .pv-console-banner:hover {
-  background: hsl(217 91% 60% / 0.15);
-  border-color: hsl(217 91% 60% / 0.5);
+  background: hsl(217 91% 60% / 15%);
+  border-color: hsl(217 91% 60% / 50%);
 }
 .pv-console-banner-arrow {
   margin-left: auto;
