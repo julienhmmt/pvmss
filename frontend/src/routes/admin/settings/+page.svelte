@@ -6,6 +6,7 @@
 	import ConfirmDialog from '$lib/components/forms/ConfirmDialog.svelte';
 	import AuditLog from '$lib/components/admin/AuditLog.svelte';
 	import SettingsOverview from '$lib/components/admin/SettingsOverview.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
 	import { exportDB, importDB } from '$lib/api/admin/db';
 
 	let exportLoading = $state(false);
@@ -54,15 +55,11 @@
 	<title>PVMSS — {$t('admin.settings.title')}</title>
 </svelte:head>
 
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.settings.title')}</h1>
-			<p class="pv-subtitle">{$t('admin.settings.subtitle')}</p>
-		</div>
-	</div>
-</div>
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.settings.title')}
+	subtitle={$t('admin.settings.subtitle')}
+/>
 
 <div class="pv-content-width space-y-8">
 

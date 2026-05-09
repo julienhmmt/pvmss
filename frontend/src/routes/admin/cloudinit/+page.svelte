@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import EmptyState from '$lib/components/data/EmptyState.svelte';
@@ -155,41 +157,30 @@
 	<title>PVMSS — {$t('admin.cloudinit.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.cloudinit.title')}</h1>
-			{#if !loading}
-				<p class="pv-subtitle">
-					{templates.length}
-					{$t('admin.cloudinit.templateCount', { values: { count: templates.length } })}
-				</p>
-			{/if}
-		</div>
-
-		{#if !loading}
-			<div class="flex items-center gap-3">
-				{#if templates.length > 0}
-					<div class="pv-header-stats">
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.total')}</div>
-							<div class="pv-header-stat-value">{templates.length}</div>
-						</div>
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('common.enabled')}</div>
-							<div class="pv-header-stat-value">{templates.filter((t) => t.enabled).length}</div>
-						</div>
-					</div>
-				{/if}
-				<Button class="pv-header-btn" variant="outline" onclick={openCreate}>
-					{$t('admin.cloudinit.createTemplate')}
-				</Button>
-			</div>
+<PvHeader
+	eyebrow={$t('nav.administration')}
+	title={$t('admin.cloudinit.title')}
+	subtitle={!loading
+		? `${templates.length} ${$t('admin.cloudinit.templateCount', { values: { count: templates.length } })}`
+		: undefined}
+>
+	{#snippet stats()}
+		{#if !loading && templates.length > 0}
+			<PvHeaderStat label={$t('common.total')} value={templates.length} />
+			<PvHeaderStat
+				label={$t('common.enabled')}
+				value={templates.filter((tpl) => tpl.enabled).length}
+			/>
 		{/if}
-	</div>
-</div>
+	{/snippet}
+	{#snippet actions()}
+		{#if !loading}
+			<Button class="pv-header-btn" variant="outline" onclick={openCreate}>
+				{$t('admin.cloudinit.createTemplate')}
+			</Button>
+		{/if}
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 

@@ -3,6 +3,8 @@
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { getNodes } from '$lib/api/admin/nodes';
@@ -82,43 +84,31 @@
 	<title>PVMSS — {$t('admin.dashboard.title')}</title>
 </svelte:head>
 
-<!-- Header -->
-<div class="pv-header -mx-6 -mt-6 mb-6 {info && !info.proxmoxConnected ? 'pv-header--danger' : ''}">
-	<div class="pv-header-flex">
-		<div>
-			<h1 class="pv-title">{$t('admin.dashboard.title')}</h1>
-			{#if info}
-				<p class="pv-subtitle">PVMSS v{info.version} · {info.environment}</p>
-			{/if}
-		</div>
-		{#if !loading}
-			<div class="flex items-center gap-3 flex-wrap">
-				{#if info}
-					<div class="pv-header-stats">
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('nav.nodes')}</div>
-							<div class="pv-header-stat-value">{nodes.length}</div>
-						</div>
-						<div class="pv-header-stat">
-							<div class="pv-header-stat-label">{$t('nav.vms')}</div>
-							<div class="pv-header-stat-value">{vmCount}</div>
-						</div>
-						<div class="pv-header-stat {!info.proxmoxConnected ? 'pv-header-stat--danger' : ''}">
-							<div class="pv-header-stat-label">Proxmox</div>
-							<div class="pv-header-stat-value text-base">
-								{info.proxmoxConnected ? $t('admin.appinfo.connected') : $t('admin.appinfo.disconnected')}
-							</div>
-						</div>
-					</div>
-				{/if}
-				<Button class="pv-header-btn" variant="outline" size="sm" onclick={load} disabled={refreshing}>
-					<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
-					{$t('common.refresh')}
-				</Button>
-			</div>
+<PvHeader
+	title={$t('admin.dashboard.title')}
+	subtitle={info ? `PVMSS v${info.version} · ${info.environment}` : undefined}
+	variant={info && !info.proxmoxConnected ? 'danger' : 'default'}
+>
+	{#snippet stats()}
+		{#if !loading && info}
+			<PvHeaderStat label={$t('nav.nodes')} value={nodes.length} />
+			<PvHeaderStat label={$t('nav.vms')} value={vmCount} />
+			<PvHeaderStat
+				label="Proxmox"
+				value={info.proxmoxConnected ? $t('admin.appinfo.connected') : $t('admin.appinfo.disconnected')}
+				tone={info.proxmoxConnected ? 'default' : 'danger'}
+			/>
 		{/if}
-	</div>
-</div>
+	{/snippet}
+	{#snippet actions()}
+		{#if !loading}
+			<Button class="pv-header-btn" variant="outline" size="sm" onclick={load} disabled={refreshing}>
+				<ArrowsClockwise class="mr-1 h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
+				{$t('common.refresh')}
+			</Button>
+		{/if}
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 

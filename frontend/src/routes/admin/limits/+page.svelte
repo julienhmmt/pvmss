@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
+	import PvHeader from '$lib/components/layout/PvHeader.svelte';
+	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -197,27 +199,14 @@
 	<title>PVMSS — {$t('admin.limits.title')}</title>
 </svelte:head>
 
-<!-- Gradient page header -->
-<div class="pv-header -mx-6 -mt-6 mb-6">
-	<div class="pv-header-flex">
-		<div>
-			<p class="pv-eyebrow">{$t('nav.administration')}</p>
-			<h1 class="pv-title">{$t('admin.limits.title')}</h1>
-		</div>
+<PvHeader eyebrow={$t('nav.administration')} title={$t('admin.limits.title')}>
+	{#snippet stats()}
 		{#if !loading && limits}
-			<div class="pv-header-stats">
-				<div class="pv-header-stat">
-					<div class="pv-header-stat-label">{$t('common.node')}</div>
-					<div class="pv-header-stat-value">{allNodes.length}</div>
-				</div>
-				<div class="pv-header-stat">
-					<div class="pv-header-stat-label">{$t('admin.limits.maxVmsPerUser')}</div>
-					<div class="pv-header-stat-value">{limits.maxVmPerUser}</div>
-				</div>
-			</div>
+			<PvHeaderStat label={$t('common.node')} value={allNodes.length} />
+			<PvHeaderStat label={$t('admin.limits.maxVmsPerUser')} value={limits.maxVmPerUser} />
 		{/if}
-	</div>
-</div>
+	{/snippet}
+</PvHeader>
 
 <div class="pv-content-width">
 
