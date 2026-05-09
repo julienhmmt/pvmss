@@ -22,6 +22,10 @@
   background: var(--accent);
   color: var(--accent-foreground);
 }
+.pv-action-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ring);
+}
 .pv-action-btn--start:hover:not(:disabled) {
   background: hsl(142 71% 45% / 15%);
   border-color: hsl(142 71% 45% / 40%);

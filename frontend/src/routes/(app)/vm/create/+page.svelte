@@ -1191,6 +1191,7 @@
 									<Button
 										variant="ghost"
 										size="sm"
+										aria-label={$t('common.remove')}
 										onclick={() => removeDisk(i)}
 										class="text-destructive"
 									>
@@ -1234,6 +1235,7 @@
 										<Button
 											variant="ghost"
 											size="sm"
+											aria-label={$t('common.remove')}
 											onclick={() => removeNetworkCard(i)}
 											class="text-destructive"
 										>
