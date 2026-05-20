@@ -1,38 +1,82 @@
 package apiv1
 
 import (
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
 
+const (
+	vncConsoleTokenBytes = 32
+	// vncConsoleTokenMaxEntries caps the in-memory token store to bound memory
+	// usage if a client spams the ticket endpoint. When the cap is reached,
+	// the oldest-expiring entry is evicted before inserting a new one.
+	vncConsoleTokenMaxEntries = 1024
+	// vncConsoleTokenMinTTL is the minimum TTL applied if the configured
+	// VNCTicketValidityDuration - VNCTicketSafetyMargin would be <= 0.
+	vncConsoleTokenMinTTL = time.Minute
+)
+
 // VNCHandler handles VNC console ticket and WebSocket proxy endpoints.
 type VNCHandler struct {
-	state state.StateManager
+	state      state.StateManager
+	vncTickets *vncTicketStore
+}
+
+type vncConsoleTicket struct {
+	ticket    string
+	port      int
+	node      string
+	vmid      string
+	expiresAt time.Time
+}
+
+type vncTicketStore struct {
+	mu         sync.Mutex
+	tickets    map[string]vncConsoleTicket
+	ttl        time.Duration
+	maxEntries int
 }
 
 // MakeVNCHandler creates a new VNCHandler.
 func MakeVNCHandler(s state.StateManager) *VNCHandler {
-	return &VNCHandler{state: s}
+	ttl := constants.VNCTicketValidityDuration - constants.VNCTicketSafetyMargin
+	if ttl <= 0 {
+		logger.Get().Warn().
+			Dur("validity", constants.VNCTicketValidityDuration).
+			Dur("margin", constants.VNCTicketSafetyMargin).
+			Dur("fallback_ttl", vncConsoleTokenMinTTL).
+			Msg("api/v1: VNCTicketSafetyMargin >= VNCTicketValidityDuration; using fallback TTL")
+		ttl = vncConsoleTokenMinTTL
+	}
+	return &VNCHandler{
+		state:      s,
+		vncTickets: makeVNCTicketStore(ttl),
+	}
 }
 
 // VNCTicketResponse is the JSON response for the VNC ticket endpoint.
 type VNCTicketResponse struct {
-	Ticket string `json:"ticket"`
-	Port   int    `json:"port"`
-	Node   string `json:"node"`
+	Ticket       string `json:"ticket"`
+	Port         int    `json:"port"`
+	Node         string `json:"node"`
+	ConsoleToken string `json:"consoleToken,omitempty"`
 }
 
 // GetVNCTicket handles POST /api/v1/vms/:id/vnc-ticket.
@@ -86,32 +130,39 @@ func (h *VNCHandler) GetVNCTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	consoleToken, err := h.vncTickets.create(strconv.Itoa(vmid), port, node, vncProxy.Ticket)
+	if err != nil {
+		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", node).Msg("api/v1: failed to create VNC console token")
+		errInternal(w)
+		return
+	}
+
 	writeJSON(w, VNCTicketResponse{
-		Ticket: vncProxy.Ticket,
-		Port:   port,
-		Node:   node,
+		Ticket:       vncProxy.Ticket,
+		Port:         port,
+		Node:         node,
+		ConsoleToken: consoleToken,
 	})
 }
 
 // ConsoleWebSocket handles GET /api/v1/vms/:id/console/websocket.
 // Proxies the browser WebSocket to the Proxmox VNC WebSocket endpoint.
-// Query params: port=<int>, vncticket=<url-encoded-ticket>, node=<string>
+// Query params: token=<opaque-console-token>.
+// Legacy clients may still send port=<int>, vncticket=<url-encoded-ticket>, node=<string>.
 func (h *VNCHandler) ConsoleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ps := httprouter.ParamsFromContext(r.Context())
 	vmidStr := ps.ByName("id")
 
-	portStr := r.URL.Query().Get("port")
-	vncticket := r.URL.Query().Get("vncticket") // already decoded once by Query().Get()
-	node := r.URL.Query().Get("node")
-
-	if vmidStr == "" || portStr == "" || vncticket == "" || node == "" {
-		http.Error(w, "missing required parameters: vmid, port, vncticket, node", http.StatusBadRequest)
+	if vmidStr == "" {
+		http.Error(w, "missing required parameter: vmid", http.StatusBadRequest)
 		return
 	}
-
-	port, err := strconv.Atoi(portStr)
-	if err != nil || port < 5900 || port > 5999 {
-		http.Error(w, "invalid port", http.StatusBadRequest)
+	if _, err := strconv.Atoi(vmidStr); err != nil {
+		http.Error(w, "invalid vm id", http.StatusBadRequest)
+		return
+	}
+	port, node, vncticket, ok := h.resolveVNCConsoleParams(w, r, vmidStr)
+	if !ok {
 		return
 	}
 
@@ -136,6 +187,114 @@ func (h *VNCHandler) ConsoleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if err := proxyVNCWebSocketWithToken(w, r, proxmoxWSURL, authHeader, !envCfg.ProxmoxSSLVerify); err != nil {
 		logger.Get().Warn().Err(err).Str("vmid", vmidStr).Msg("api/v1: VNC WebSocket proxy closed with error")
 	}
+}
+
+func (h *VNCHandler) resolveVNCConsoleParams(w http.ResponseWriter, r *http.Request, vmid string) (int, string, string, bool) {
+	q := r.URL.Query()
+	if token := q.Get("token"); token != "" {
+		consoleTicket, ok := h.vncTickets.consume(token, vmid)
+		if !ok {
+			logger.Get().Warn().Str("vmid", vmid).Msg("api/v1: invalid or expired console token")
+			http.Error(w, "invalid or expired console token", http.StatusUnauthorized)
+			return 0, "", "", false
+		}
+		return consoleTicket.port, consoleTicket.node, consoleTicket.ticket, true
+	}
+	portStr := q.Get("port")
+	vncticket := q.Get("vncticket") // already decoded once by Query().Get()
+	node := q.Get("node")
+	if portStr == "" || vncticket == "" || node == "" {
+		http.Error(w, "missing required parameters: token or port, vncticket, node", http.StatusBadRequest)
+		return 0, "", "", false
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port < 5900 || port > 5999 {
+		http.Error(w, "invalid port", http.StatusBadRequest)
+		return 0, "", "", false
+	}
+	return port, node, vncticket, true
+}
+
+func makeVNCTicketStore(ttl time.Duration) *vncTicketStore {
+	return &vncTicketStore{
+		tickets:    make(map[string]vncConsoleTicket),
+		ttl:        ttl,
+		maxEntries: vncConsoleTokenMaxEntries,
+	}
+}
+
+func (s *vncTicketStore) create(vmid string, port int, node string, ticket string) (string, error) {
+	token, err := generateVNCConsoleToken()
+	if err != nil {
+		return "", err
+	}
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.cleanupExpiredLocked(now)
+	if s.maxEntries > 0 && len(s.tickets) >= s.maxEntries {
+		s.evictOldestLocked()
+	}
+	s.tickets[token] = vncConsoleTicket{
+		ticket:    ticket,
+		port:      port,
+		node:      node,
+		vmid:      vmid,
+		expiresAt: now.Add(s.ttl),
+	}
+	return token, nil
+}
+
+func (s *vncTicketStore) consume(token string, vmid string) (vncConsoleTicket, bool) {
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	consoleTicket, ok := s.tickets[token]
+	if !ok {
+		return vncConsoleTicket{}, false
+	}
+	if now.After(consoleTicket.expiresAt) {
+		delete(s.tickets, token)
+		return vncConsoleTicket{}, false
+	}
+	if consoleTicket.vmid != vmid {
+		return vncConsoleTicket{}, false
+	}
+	delete(s.tickets, token)
+	return consoleTicket, true
+}
+
+func (s *vncTicketStore) evictOldestLocked() {
+	var oldestToken string
+	var oldestExpiresAt time.Time
+	first := true
+	for token, consoleTicket := range s.tickets {
+		if first || consoleTicket.expiresAt.Before(oldestExpiresAt) {
+			oldestToken = token
+			oldestExpiresAt = consoleTicket.expiresAt
+			first = false
+		}
+	}
+	if oldestToken != "" {
+		delete(s.tickets, oldestToken)
+	}
+}
+
+func (s *vncTicketStore) cleanupExpiredLocked(now time.Time) {
+	for token, consoleTicket := range s.tickets {
+		if now.After(consoleTicket.expiresAt) {
+			delete(s.tickets, token)
+		}
+	}
+}
+
+func generateVNCConsoleToken() (string, error) {
+	b := make([]byte, vncConsoleTokenBytes)
+	if _, err := rand.Read(b); err != nil {
+		logger.Get().Error().Err(err).Msg("api/v1: crypto/rand.Read failed while generating VNC console token")
+		return "", fmt.Errorf("generate VNC console token: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // buildVNCWebSocketURL converts a Proxmox HTTP(S) base URL to the VNC websocket URL.
