@@ -104,7 +104,7 @@ export async function rollbackSnapshot(
 
 export async function updateVMConfig(
   vmid: number,
-  data: { description?: string; tags?: string },
+  data: { description?: string; tags?: string; name?: string },
 ): Promise<void> {
   const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
   await api.patch(`/api/v1/vms/${vmid}/config`, payload);
