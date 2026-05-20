@@ -118,9 +118,9 @@
 			hasNext = res.pagination.hasNext;
 			hasPrev = res.pagination.hasPrev;
 			runningTotal = res.pagination.runningCount;
-		} catch (e) {
+		} catch (err: unknown) {
 			if (abort.signal.aborted) return;
-			vmsError = e as Error;
+			vmsError = err instanceof Error ? err : new Error(String(err));
 		} finally {
 			if (!abort.signal.aborted) {
 				vmsLoading = false;
@@ -139,7 +139,8 @@
 			toast.success(`${action} sent to ${vm.name || vm.vmid}`);
 			clearTimeout(reloadTimeout);
 			reloadTimeout = setTimeout(() => loadVMs(), 2000);
-		} catch {
+		} catch (err: unknown) {
+			console.error(`VM action ${action} failed:`, err instanceof Error ? err.message : String(err));
 			toast.error(`Failed to ${action} ${vm.name || vm.vmid}`);
 		} finally {
 			actionLoading = { ...actionLoading, [vm.vmid]: false };
@@ -164,9 +165,8 @@
 			currentPassword = '';
 			newPassword = '';
 			confirmPassword = '';
-		} catch (e) {
-			const err = e instanceof Error ? e.message : String(e);
-			passwordError = err;
+		} catch (err: unknown) {
+			passwordError = err instanceof Error ? err.message : String(err);
 			toast.error($t('user.profile.passwordChangeFailed'));
 		} finally {
 			passwordLoading = false;
