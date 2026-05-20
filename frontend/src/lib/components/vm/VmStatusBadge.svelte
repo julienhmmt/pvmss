@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
+	import type { VMStatus } from '$lib/types/vm';
 
 	interface Props {
-		status: string;
+		status: VMStatus;
 	}
 
 	let { status }: Props = $props();
 
-	function badgeClass(s: string): string {
+	function badgeClass(s: VMStatus): string {
 		if (s === 'running') return 'pv-badge--online';
 		if (s === 'stopped') return 'pv-badge--offline';
-		if (s === 'paused') return 'pv-badge--warn';
 		return 'pv-badge--warn';
 	}
 </script>
