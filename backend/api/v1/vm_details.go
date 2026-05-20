@@ -759,7 +759,7 @@ func (h *VMDetailsHandler) RollbackSnapshot(w http.ResponseWriter, r *http.Reque
 }
 
 // UpdateVMConfig handles PATCH /api/v1/vms/:id/config
-// Supports updating description and tags.
+// Supports updating description, tags, and name.
 func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request) {
 	ps := httprouter.ParamsFromContext(r.Context())
 	vmid, err := strconv.Atoi(ps.ByName("id"))
@@ -771,10 +771,25 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 	var req struct {
 		Description *string `json:"description"`
 		Tags        *string `json:"tags"`
+		Name        *string `json:"name"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		errBadRequest(w, "invalid JSON")
 		return
+	}
+
+	if req.Name != nil {
+		name := *req.Name
+		if len(name) == 0 || len(name) > 64 {
+			errBadRequest(w, "name must be between 1 and 64 characters")
+			return
+		}
+		for _, ch := range name {
+			if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == '.') {
+				errBadRequest(w, "name may only contain letters, digits, hyphens, underscores, and dots")
+				return
+			}
+		}
 	}
 
 	username := usernameFromCtx(r)
@@ -807,6 +822,9 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 	if req.Tags != nil {
 		params["tags"] = *req.Tags
 	}
+	if req.Name != nil {
+		params["name"] = *req.Name
+	}
 	if len(params) == 0 {
 		errBadRequest(w, "nothing to update")
 		return
@@ -816,6 +834,7 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 		errInternal(w)
 		return
 	}
+	proxmox.InvalidateVMCache(node)
 	writeJSON(w, map[string]string{"status": "ok"})
 }
 

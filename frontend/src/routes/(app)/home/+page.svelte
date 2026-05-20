@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
 	import { Button } from '$lib/components/ui/button';
@@ -8,9 +8,11 @@
 	import { getVMs, type VMSummary } from '$lib/api/vms';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
+	import { settingsStore } from '$lib/stores/settings.svelte';
 	import {
 		ArrowsClockwise, PlusSquare, Desktop, Play, Stop, ArrowCounterClockwise,
-		CaretUp, CaretDown, ArrowsDownUp, CheckSquare, Square, ClockCounterClockwise
+		CaretUp, CaretDown, ArrowsDownUp, CheckSquare, Square, ClockCounterClockwise,
+		MagnifyingGlass, X
 	} from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 
@@ -25,6 +27,10 @@
 		readonly timestamp: Date;
 	}
 
+	// ── Constants ──────────────────────────────────────────────────────────
+	const PER_PAGE = 10;
+	const AUTO_REFRESH_INTERVAL_MS = 30_000;
+
 	// ── State ──────────────────────────────────────────────────────────────
 	let loading = $state(true);
 	let refreshing = $state(false);
@@ -38,11 +44,16 @@
 	let selected = $state<Set<number>>(new Set());
 	let page = $state(1);
 	let activityLog = $state<ActivityEntry[]>([]);
+	let filterQuery = $state('');
+	let nextRefreshIn = $state(AUTO_REFRESH_INTERVAL_MS / 1000);
 
-	const PER_PAGE = 10;
+	// Quota state (non-admin users only)
+	let maxVmPerUser = $state(0);
+	let remainingVms = $state(0);
 
 	// ── Derived ────────────────────────────────────────────────────────────
-	const sortedVms = $derived(sortVms(vms, sortKey, sortDir));
+	const filteredVms = $derived(filterVms(vms, filterQuery));
+	const sortedVms = $derived(sortVms(filteredVms, sortKey, sortDir));
 	const totalPages = $derived(Math.max(1, Math.ceil(sortedVms.length / PER_PAGE)));
 	const paginatedVms = $derived(sortedVms.slice((page - 1) * PER_PAGE, page * PER_PAGE));
 	const stats = $derived(computeStats(vms));
@@ -50,8 +61,21 @@
 		paginatedVms.length > 0 && paginatedVms.every((v) => selected.has(v.vmid))
 	);
 	const someSelected = $derived(selected.size > 0);
+	const quotaUsed = $derived(maxVmPerUser > 0 ? vms.length : 0);
+	const quotaPct = $derived(maxVmPerUser > 0 ? Math.round((quotaUsed / maxVmPerUser) * 100) : 0);
 
 	// ── Pure helpers ───────────────────────────────────────────────────────
+	function filterVms(list: VMSummary[], query: string): VMSummary[] {
+		const q = query.trim().toLowerCase();
+		if (!q) return list;
+		return list.filter((v) =>
+			(v.name || '').toLowerCase().includes(q) ||
+			String(v.vmid).includes(q) ||
+			(v.tags || '').toLowerCase().includes(q) ||
+			(v.node || '').toLowerCase().includes(q)
+		);
+	}
+
 	function sortVms(list: VMSummary[], key: SortKey, dir: SortDir): VMSummary[] {
 		return [...list].sort((a, b) => {
 			let cmp = 0;
@@ -98,6 +122,27 @@
 		return `${Math.floor(s / 3600)}h ago`;
 	}
 
+	// ── Auto-refresh ───────────────────────────────────────────────────────
+	let autoRefreshTimer: ReturnType<typeof setInterval> | null = null;
+	let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+	function startAutoRefresh(): void {
+		stopAutoRefresh();
+		nextRefreshIn = AUTO_REFRESH_INTERVAL_MS / 1000;
+		autoRefreshTimer = setInterval(() => {
+			void load(true);
+			nextRefreshIn = AUTO_REFRESH_INTERVAL_MS / 1000;
+		}, AUTO_REFRESH_INTERVAL_MS);
+		countdownTimer = setInterval(() => {
+			nextRefreshIn = Math.max(0, nextRefreshIn - 1);
+		}, 1000);
+	}
+
+	function stopAutoRefresh(): void {
+		if (autoRefreshTimer !== null) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+		if (countdownTimer !== null) { clearInterval(countdownTimer); countdownTimer = null; }
+	}
+
 	// ── Actions ────────────────────────────────────────────────────────────
 	async function load(isRefresh = false): Promise<void> {
 		if (isRefresh) refreshing = true;
@@ -106,11 +151,23 @@
 		try {
 			vms = await getVMs();
 			if (page > Math.max(1, Math.ceil(vms.length / PER_PAGE))) page = 1;
+			if (isRefresh) nextRefreshIn = AUTO_REFRESH_INTERVAL_MS / 1000;
 		} catch (err: unknown) {
 			error = err instanceof Error ? err : new Error(String(err));
 		} finally {
 			loading = false;
 			refreshing = false;
+		}
+	}
+
+	async function loadQuota(): Promise<void> {
+		if (auth.isAdmin) return;
+		try {
+			const s = await settingsStore.fetchSettings();
+			maxVmPerUser = s.maxVmPerUser;
+			remainingVms = s.remainingVms;
+		} catch {
+			// quota display is non-critical
 		}
 	}
 
@@ -147,6 +204,11 @@
 		setTimeout(() => load(true), 2000);
 	}
 
+	function manualRefresh(): void {
+		void load(true);
+		startAutoRefresh();
+	}
+
 	function toggleSort(key: SortKey): void {
 		if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
 		else { sortKey = key; sortDir = 'asc'; }
@@ -174,7 +236,15 @@
 		];
 	}
 
-	onMount(() => { void load(); });
+	onMount(() => {
+		void load();
+		void loadQuota();
+		startAutoRefresh();
+	});
+
+	onDestroy(() => {
+		stopAutoRefresh();
+	});
 </script>
 
 <svelte:head>
@@ -212,9 +282,15 @@
 				{$t('nav.createVm')}
 			</Button>
 		{/if}
-			<Button variant="outline" size="sm" onclick={() => load(true)} disabled={refreshing}>
-				<ArrowsClockwise class="h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
-			</Button>
+			<!-- Auto-refresh indicator + manual refresh button -->
+			<div class="flex items-center gap-1.5">
+				{#if !loading && !refreshing}
+					<span class="pv-refresh-countdown" title="Auto-refresh in {nextRefreshIn}s">{nextRefreshIn}s</span>
+				{/if}
+				<Button variant="outline" size="sm" onclick={manualRefresh} disabled={refreshing}>
+					<ArrowsClockwise class="h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
+				</Button>
+			</div>
 		</div>
 	</div>
 
@@ -239,7 +315,7 @@
 		</div>
 	{:else}
 		<!-- Stats row -->
-		<div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<div class="mb-4 grid grid-cols-2 gap-3 {maxVmPerUser > 0 && !auth.isAdmin ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}">
 			<div class="pv-stat-card">
 				<span class="pv-stat-label">{$t('user.home.stats.total')}</span>
 				<span class="pv-stat-value">{stats.total}</span>
@@ -256,6 +332,39 @@
 				<span class="pv-stat-label">{$t('user.home.stats.avgCpu')}</span>
 				<span class="pv-stat-value">{stats.avgCpu}%</span>
 			</div>
+			{#if maxVmPerUser > 0 && !auth.isAdmin}
+				<div class="pv-stat-card pv-stat-card--quota">
+					<span class="pv-stat-label">{$t('user.home.stats.quota')}</span>
+					<span class="pv-stat-value">{quotaUsed}/{maxVmPerUser}</span>
+					<div class="pv-quota-bar">
+						<div
+							class="pv-quota-bar-fill {quotaPct >= 90 ? 'pv-quota-bar-fill--danger' : quotaPct >= 70 ? 'pv-quota-bar-fill--warn' : ''}"
+							style="width:{quotaPct}%"
+						></div>
+					</div>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Inline filter -->
+		<div class="mb-3 relative">
+			<MagnifyingGlass class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+			<input
+				type="text"
+				class="pv-filter-input"
+				placeholder={$t('user.home.filterPlaceholder')}
+				bind:value={filterQuery}
+				oninput={() => { page = 1; }}
+			/>
+			{#if filterQuery}
+				<button
+					class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+					onclick={() => { filterQuery = ''; page = 1; }}
+					aria-label="Clear filter"
+				>
+					<X class="h-3.5 w-3.5" />
+				</button>
+			{/if}
 		</div>
 
 		<!-- Content grid: table + activity -->
@@ -326,6 +435,13 @@
 							</tr>
 						</thead>
 						<tbody>
+							{#if filteredVms.length === 0 && filterQuery}
+								<tr>
+									<td colspan="8" class="py-8 text-center text-sm text-muted-foreground">
+										{$t('user.home.noFilterResults', { values: { query: filterQuery } })}
+									</td>
+								</tr>
+							{/if}
 							{#each paginatedVms as vm (vm.vmid)}
 								{@const busy = actionLoading[vm.vmid] ?? false}
 								{@const isSelected = selected.has(vm.vmid)}
@@ -476,6 +592,63 @@
 </div>
 
 <style>
+	/* ── Auto-refresh countdown ─────────────────────────────────────── */
+	:global(.pv-refresh-countdown) {
+		font-size: 0.7rem;
+		color: var(--muted-foreground);
+		opacity: 0.6;
+		min-width: 2rem;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* ── Quota stat card ─────────────────────────────────────────────── */
+	:global(.pv-stat-card--quota) {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	:global(.pv-quota-bar) {
+		height: 3px;
+		border-radius: 2px;
+		background: var(--border);
+		margin-top: 4px;
+		overflow: hidden;
+	}
+	:global(.pv-quota-bar-fill) {
+		height: 100%;
+		border-radius: 2px;
+		background: var(--primary);
+		transition: width 0.3s ease;
+	}
+	:global(.pv-quota-bar-fill--warn) {
+		background: var(--warning, oklch(75% 0.18 75));
+	}
+	:global(.pv-quota-bar-fill--danger) {
+		background: var(--destructive);
+	}
+
+	/* ── Inline filter ───────────────────────────────────────────────── */
+	:global(.pv-filter-input) {
+		width: 100%;
+		height: 2rem;
+		padding: 0 2rem 0 2.25rem;
+		font-size: 0.8125rem;
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		background: var(--background);
+		color: var(--foreground);
+		outline: none;
+		transition: border-color 0.15s;
+	}
+	:global(.pv-filter-input:focus) {
+		border-color: var(--primary);
+	}
+	:global(.pv-filter-input::placeholder) {
+		color: var(--muted-foreground);
+		opacity: 0.6;
+	}
+
 	/* ── Activity panel ─────────────────────────────────────────────── */
 	:global(.pv-activity-panel) {
 		border: 1px solid var(--border);

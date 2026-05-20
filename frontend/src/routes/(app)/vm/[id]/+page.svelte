@@ -36,6 +36,7 @@
 	import VMStatCards from './_components/VMStatCards.svelte';
 	import ConsoleBanner from './_components/ConsoleBanner.svelte';
 	import EditableDescription from './_components/EditableDescription.svelte';
+	import EditableName from './_components/EditableName.svelte';
 	import TabOverview from './_tabs/TabOverview.svelte';
 	import TabDisks from './_tabs/TabDisks.svelte';
 	import TabNetwork from './_tabs/TabNetwork.svelte';
@@ -196,6 +197,23 @@
 		}
 	}
 
+	let savingName = $state(false);
+
+	async function saveName(value: string) {
+		if (!config || value === config.name) return;
+		savingName = true;
+		try {
+			await updateVMConfig(vmid, { name: value });
+			config = { ...config, name: value };
+			toast.success($t('vm.nameSaved'));
+		} catch (err: unknown) {
+			console.error('saveName failed:', err instanceof Error ? err.message : String(err));
+			toast.error($t('common.error'));
+		} finally {
+			savingName = false;
+		}
+	}
+
 	async function doCreateSnapshot() {
 		if (!snapName.trim()) return;
 		creatingSnapshot = true;
@@ -347,7 +365,11 @@
 			</button>
 			{#if config}
 				<span class="text-muted-foreground">/</span>
-				<span class="font-semibold">{config.name || `VM ${config.vmid}`}</span>
+				<EditableName
+					value={config.name || `VM ${config.vmid}`}
+					loading={savingName}
+					onSave={saveName}
+				/>
 				<span class="pv-badge {(metrics?.status ?? config.status) === 'running' ? 'pv-badge--online' : (metrics?.status ?? config.status) === 'stopped' ? 'pv-badge--offline' : 'pv-badge--warn'}">
 					{$t(`common.statusMap.${metrics?.status ?? config.status}`, {
 						default: metrics?.status ?? config.status
