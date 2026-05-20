@@ -16,7 +16,7 @@
 
 <div class="grid gap-4 md:grid-cols-2">
 	<div class="pv-card">
-		<div class="pv-card-header">{$t('vm.overview')}</div>
+		<div class="pv-card-header">{$t('vm.sectionOverview')}</div>
 		<div class="pv-card-body space-y-2 text-sm">
 			<p><span class="text-muted-foreground">VMID:</span> {config.vmid}</p>
 			<p><span class="text-muted-foreground">Node:</span> {config.node}</p>
@@ -25,7 +25,7 @@
 		</div>
 	</div>
 	<div class="pv-card">
-		<div class="pv-card-header">{$t('vm.hardware')}</div>
+		<div class="pv-card-header">{$t('vm.sectionHardware')}</div>
 		<div class="pv-card-body space-y-2 text-sm">
 			<p><span class="text-muted-foreground">CPU:</span> {config.cpus} vCPU</p>
 			<p><span class="text-muted-foreground">Memory:</span> {Math.round(config.maxMemMb / 1024)} GiB</p>

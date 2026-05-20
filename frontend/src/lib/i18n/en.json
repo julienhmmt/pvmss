@@ -615,7 +615,8 @@
     "actions": {
       "start": "Start",
       "shutdown": "Shutdown",
-      "reboot": "Reboot"
+      "reboot": "Reboot",
+      "forceStop": "Force stop"
     }
   },
   "docs": {
@@ -656,6 +657,8 @@
     "tabNetwork": "Network",
     "tabSnapshots": "Snapshots",
     "tabCloudInit": "Cloud-init",
+    "sectionOverview": "Overview",
+    "sectionHardware": "Hardware",
     "noDescription": "No description",
     "provisioning": "VM is being provisioned…",
     "provisioningHint": "This usually takes a few seconds. The page will update automatically.",

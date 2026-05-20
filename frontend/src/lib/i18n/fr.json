@@ -612,7 +612,8 @@
     "actions": {
       "start": "Démarrer",
       "shutdown": "Arrêter",
-      "reboot": "Redémarrer"
+      "reboot": "Redémarrer",
+      "forceStop": "Arrêt forcé"
     }
   },
   "docs": {
@@ -653,6 +654,8 @@
     "tabNetwork": "Réseau",
     "tabSnapshots": "Snapshots",
     "tabCloudInit": "Cloud-init",
+    "sectionOverview": "Aperçu",
+    "sectionHardware": "Matériel",
     "noDescription": "Aucune description",
     "provisioning": "La VM est en cours de provisionnement…",
     "provisioningHint": "Cela prend généralement quelques secondes. La page se mettra à jour automatiquement.",
