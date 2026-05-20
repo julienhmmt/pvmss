@@ -19,7 +19,7 @@ The real bridge is the **VNC ticket flow** documented below.
 
 ## Full Data Flow
 
-```
+```bash
 VmConsole.svelte                          Frontend (Svelte 5)
   │
   ├─ onMount() → connect()
@@ -66,7 +66,7 @@ the WebSocket proxy phase — not during ticket issuance.
 Fields consumed:
 
 | Field | Source env var | Used for |
-|---|---|---|
+| ----- | -------------- | -------- |
 | `ProxmoxURL` | `PROXMOX_URL` | Build target WebSocket URL |
 | `ProxmoxAPITokenName` | `PROXMOX_API_TOKEN_NAME` | Auth header to Proxmox |
 | `ProxmoxAPITokenValue` | `PROXMOX_API_TOKEN_VALUE` | Auth header to Proxmox |
@@ -99,7 +99,7 @@ using the WebSocket proxy as an arbitrary TCP relay.
 ## Files
 
 | File | Role |
-|---|---|
+| ----- | ----- |
 | `frontend/src/lib/components/vm/VmConsole.svelte` | RFB instantiation, ticket fetch, lifecycle |
 | `frontend/src/lib/api/console.ts` | `getVNCTicket()`, `buildWebSocketURL()` |
 | `backend/api/v1/vnc.go` | `VNCHandler`, ticket endpoint, WS proxy |
