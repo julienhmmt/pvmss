@@ -5,7 +5,10 @@
 	import OctagonXIcon from "@lucide/svelte/icons/octagon-x";
 	import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
 
-	import { Toaster as Sonner, type ToasterProps as SonnerProps } from "svelte-sonner";
+	import { Toaster as Sonner } from "svelte-sonner";
+	import type { ComponentProps } from "svelte";
+
+	type SonnerProps = ComponentProps<typeof Sonner>;
 	import { mode } from "mode-watcher";
 
 	let { ...restProps }: SonnerProps = $props();
