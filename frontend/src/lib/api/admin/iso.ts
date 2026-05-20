@@ -3,7 +3,7 @@ import type { ISO } from "$lib/types/admin";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export async function getISOs(): Promise<ISO[]> {
-  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/iso");
+  const response = await api.get<ISO[]>("/api/v1/admin/iso");
   return transformKeysToCamelCase<ISO[]>(response);
 }
 

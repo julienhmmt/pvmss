@@ -34,7 +34,7 @@ export interface VMPaginationParams {
 }
 
 export async function getVMs(): Promise<VMSummary[]> {
-  const res = await api.get<Record<string, unknown>>("/api/v1/vms");
+  const res = await api.get<PaginatedVMListResponse>("/api/v1/vms");
   const transformed = transformKeysToCamelCase<PaginatedVMListResponse>(res);
   return transformed.vms;
 }
@@ -55,7 +55,7 @@ export async function getVMsPaginated(params: VMPaginationParams = {}): Promise<
   if (params.sortBy) qs.set("sort_by", params.sortBy);
   if (params.sortOrder) qs.set("sort_order", params.sortOrder);
   const query = qs.toString();
-  const res = await api.get<Record<string, unknown>>(
+  const res = await api.get<PaginatedVMListResponse>(
     `/api/v1/vms${query ? "?" + query : ""}`,
   );
   return transformKeysToCamelCase<PaginatedVMListResponse>(res);
@@ -73,7 +73,7 @@ export async function searchVMs(params: VMSearchParams): Promise<VMSummary[]> {
   if (params.status) qs.set("status", params.status);
   if (params.node) qs.set("node", params.node);
   const query = qs.toString();
-  const res = await api.get<Record<string, unknown>>(
+  const res = await api.get<PaginatedVMListResponse>(
     `/api/v1/vms${query ? "?" + query : ""}`,
   );
   const transformed = transformKeysToCamelCase<PaginatedVMListResponse>(res);

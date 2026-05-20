@@ -39,17 +39,17 @@ export interface SetupCompleteRequest {
 }
 
 export async function getSetupStatus(): Promise<SetupStatus> {
-  const res = await api.get<Record<string, unknown>>("/api/v1/setup/status");
+  const res = await api.get<SetupStatus>("/api/v1/setup/status");
   return transformKeysToCamelCase<SetupStatus>(res);
 }
 
 export async function testConnection(): Promise<SetupConnectionTestResult> {
-  const res = await api.post<Record<string, unknown>>("/api/v1/setup/test-connection");
+  const res = await api.post<SetupConnectionTestResult>("/api/v1/setup/test-connection");
   return transformKeysToCamelCase<SetupConnectionTestResult>(res);
 }
 
 export async function getProxmoxData(): Promise<SetupProxmoxData> {
-  const res = await api.get<Record<string, unknown>>("/api/v1/setup/proxmox-data");
+  const res = await api.get<SetupProxmoxData>("/api/v1/setup/proxmox-data");
   return transformKeysToCamelCase<SetupProxmoxData>(res);
 }
 

@@ -3,7 +3,7 @@ import type { VMBR } from "$lib/types/admin";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export async function getVMBRs(): Promise<VMBR[]> {
-  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/vmbr");
+  const response = await api.get<VMBR[]>("/api/v1/admin/vmbr");
   return transformKeysToCamelCase<VMBR[]>(response);
 }
 

@@ -3,7 +3,7 @@ import type { Pool } from "$lib/types/admin";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export async function getPools(): Promise<Pool[]> {
-  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/userpool");
+  const response = await api.get<Pool[]>("/api/v1/admin/userpool");
   return transformKeysToCamelCase<Pool[]>(response);
 }
 
