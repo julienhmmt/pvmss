@@ -34,6 +34,9 @@
     "admin": "Admin",
     "logout": "Logout",
     "saving": "Saving...",
+    "copy": "Copy",
+    "copied": "{value} copied",
+    "copyFailed": "Copy failed",
     "size": "Size",
     "page": "Page",
     "pageOf": "Page {page} of {total}",
@@ -572,8 +575,11 @@
         "total": "Total VMs",
         "running": "Running",
         "stopped": "Stopped",
-        "avgCpu": "Avg CPU"
-      }
+        "avgCpu": "Avg CPU",
+        "quota": "VM Quota"
+      },
+      "filterPlaceholder": "Filter by name, ID, tag or node…",
+      "noFilterResults": "No VMs match \"{query}\""
     }
   },
   "landing": {
@@ -687,6 +693,8 @@
     "snapshotDate": "Date",
     "rollback": "Rollback to this snapshot",
     "descriptionSaved": "Description saved",
+    "nameSaved": "VM name updated",
+    "editName": "Edit VM name",
     "ipConfig": "IP config",
     "nameserver": "Nameserver",
     "sshKeys": "SSH keys",

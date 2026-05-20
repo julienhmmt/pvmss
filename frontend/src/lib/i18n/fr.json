@@ -34,6 +34,9 @@
     "admin": "Admin",
     "logout": "Déconnexion",
     "saving": "Enregistrement…",
+    "copy": "Copier",
+    "copied": "{value} copié",
+    "copyFailed": "Échec de la copie",
     "size": "Taille",
     "page": "Page",
     "pageOf": "Page {page} sur {total}",
@@ -569,8 +572,11 @@
         "total": "VMs totales",
         "running": "En cours",
         "stopped": "Arrêtées",
-        "avgCpu": "CPU moy."
-      }
+        "avgCpu": "CPU moy.",
+        "quota": "Quota VM"
+      },
+      "filterPlaceholder": "Filtrer par nom, ID, tag ou nœud…",
+      "noFilterResults": "Aucune VM ne correspond à \"{query}\""
     }
   },
   "landing": {
@@ -684,6 +690,8 @@
     "snapshotDate": "Date",
     "rollback": "Revenir à ce snapshot",
     "descriptionSaved": "Description enregistrée",
+    "nameSaved": "Nom de la VM mis à jour",
+    "editName": "Modifier le nom de la VM",
     "ipConfig": "Config IP",
     "nameserver": "Serveur DNS",
     "sshKeys": "Clés SSH",
