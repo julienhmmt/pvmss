@@ -72,7 +72,8 @@
 			if (status.offline) {
 				connectionResult = { ok: false, proxmoxUrl: '', error: 'offline' };
 			}
-		} catch {
+		} catch (err: unknown) {
+			console.error('getSetupStatus failed:', err instanceof Error ? err.message : String(err));
 			error = 'Failed to load setup status.';
 		} finally {
 			loading = false;
@@ -84,7 +85,8 @@
 		connectionResult = null;
 		try {
 			connectionResult = await testConnection();
-		} catch {
+		} catch (err: unknown) {
+			console.error('testConnection failed:', err instanceof Error ? err.message : String(err));
 			connectionResult = { ok: false, proxmoxUrl: '', error: 'Network error' };
 		} finally {
 			connectionTesting = false;
@@ -100,7 +102,8 @@
 			selectedStorages = new Set(proxmoxData.storages);
 			selectedISOs = new Set(proxmoxData.isos);
 			selectedVMBRs = new Set(proxmoxData.vmbrs);
-		} catch {
+		} catch (err: unknown) {
+			console.error('getProxmoxData failed:', err instanceof Error ? err.message : String(err));
 			proxmoxData = { nodes: [], storages: [], isos: [], vmbrs: [] };
 		} finally {
 			dataLoading = false;
@@ -149,7 +152,8 @@
 				limits,
 			});
 			currentStep = 'done';
-		} catch {
+		} catch (err: unknown) {
+			console.error('completeSetup failed:', err instanceof Error ? err.message : String(err));
 			error = 'Failed to complete setup. Please try again.';
 		} finally {
 			completing = false;
