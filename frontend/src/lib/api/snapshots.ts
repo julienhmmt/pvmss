@@ -39,7 +39,7 @@ export async function listSnapshots(vmid: number): Promise<SnapshotList> {
   if (vmid <= 0) {
     throw new Error("Invalid VM ID: must be a positive integer");
   }
-  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/snapshots`);
+  const res = await api.get<SnapshotList>(`/api/v1/vms/${vmid}/snapshots`);
   return transformKeysToCamelCase<SnapshotList>(res);
 }
 

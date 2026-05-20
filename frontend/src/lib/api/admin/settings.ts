@@ -8,7 +8,7 @@ import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/t
  * @returns Promise<AppSettings> - The application settings object
  */
 export async function getSettings(): Promise<AppSettings> {
-  const response = await api.get<Record<string, unknown>>("/api/v1/admin/settings");
+  const response = await api.get<AppSettings>("/api/v1/admin/settings");
   return transformKeysToCamelCase<AppSettings>(response);
 }
 

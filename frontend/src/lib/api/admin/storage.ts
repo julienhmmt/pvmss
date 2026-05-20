@@ -3,7 +3,7 @@ import type { Storage } from "$lib/types/admin";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export async function getStorages(): Promise<Storage[]> {
-  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/storage");
+  const response = await api.get<Storage[]>("/api/v1/admin/storage");
   return transformKeysToCamelCase<Storage[]>(response);
 }
 

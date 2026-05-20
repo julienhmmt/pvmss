@@ -64,17 +64,17 @@ export interface VMSettings {
 }
 
 export async function getVMConfig(vmid: number): Promise<VMConfig> {
-  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/config`);
+  const res = await api.get<VMConfig>(`/api/v1/vms/${vmid}/config`);
   return transformKeysToCamelCase<VMConfig>(res);
 }
 
 export async function getVMMetrics(vmid: number): Promise<VMMetrics> {
-  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/metrics`);
+  const res = await api.get<VMMetrics>(`/api/v1/vms/${vmid}/metrics`);
   return transformKeysToCamelCase<VMMetrics>(res);
 }
 
 export async function getVMSnapshots(vmid: number): Promise<SnapshotList> {
-  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/snapshots`);
+  const res = await api.get<SnapshotList>(`/api/v1/vms/${vmid}/snapshots`);
   return transformKeysToCamelCase<SnapshotList>(res);
 }
 
@@ -124,7 +124,7 @@ export async function disconnectVMCDROM(vmid: number): Promise<void> {
 }
 
 export async function getVMSettings(vmid: number): Promise<VMSettings> {
-  const res = await api.get<Record<string, unknown>>(`/api/v1/vms/${vmid}/settings`);
+  const res = await api.get<VMSettings>(`/api/v1/vms/${vmid}/settings`);
   return transformKeysToCamelCase<VMSettings>(res);
 }
 
@@ -162,16 +162,21 @@ export interface VMHardwareUpdateResponse {
   message: string;
 }
 
+export interface AddDiskResponse {
+  status: string;
+  disk: string;
+}
+
 export async function addDisk(
   vmid: number,
   data: { storage: string; sizeGb: number; bus: string },
-): Promise<{ status: string; disk: string }> {
+): Promise<AddDiskResponse> {
   const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
-  const res = await api.post<Record<string, unknown>>(
+  const res = await api.post<AddDiskResponse>(
     `/api/v1/vms/${vmid}/disks`,
     payload,
   );
-  return transformKeysToCamelCase<{ status: string; disk: string }>(res);
+  return transformKeysToCamelCase<AddDiskResponse>(res);
 }
 
 export async function resizeDisk(
@@ -183,7 +188,7 @@ export async function resizeDisk(
     disk_id: diskId,
     add_gb: addGB,
   });
-  const res = await api.patch<Record<string, unknown>>(
+  const res = await api.patch<VMHardwareUpdateResponse>(
     `/api/v1/vms/${vmid}/disks/${diskId}/resize`,
     payload,
   );
@@ -199,7 +204,7 @@ export async function updateVMHardware(
   data: VMHardwareUpdate,
 ): Promise<VMHardwareUpdateResponse> {
   const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
-  const res = await api.put<Record<string, unknown>>(
+  const res = await api.put<VMHardwareUpdateResponse>(
     `/api/v1/vms/${vmid}/hardware`,
     payload,
   );

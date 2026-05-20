@@ -3,7 +3,7 @@ import type { Limits } from "$lib/types/admin";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export async function getLimits(): Promise<Limits> {
-  const response = await api.get<Record<string, unknown>>("/api/v1/admin/limits");
+  const response = await api.get<Limits>("/api/v1/admin/limits");
   return transformKeysToCamelCase<Limits>(response);
 }
 

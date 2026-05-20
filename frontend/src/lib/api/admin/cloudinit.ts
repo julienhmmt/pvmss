@@ -8,7 +8,7 @@ interface CloudInitListResponse {
 }
 
 export async function getCloudInits(): Promise<CloudInitListResponse> {
-  const response = await api.get<Record<string, unknown>>("/api/v1/admin/cloudinit");
+  const response = await api.get<CloudInitListResponse>("/api/v1/admin/cloudinit");
   return transformKeysToCamelCase<CloudInitListResponse>(response);
 }
 

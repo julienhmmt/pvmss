@@ -3,7 +3,7 @@ import type { Tag } from "$lib/types/admin";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export async function getTags(): Promise<Tag[]> {
-  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/tags");
+  const response = await api.get<Tag[]>("/api/v1/admin/tags");
   return transformKeysToCamelCase<Tag[]>(response);
 }
 
