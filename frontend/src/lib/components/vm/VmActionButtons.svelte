@@ -1,20 +1,21 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { Play, Stop, ArrowCounterClockwise } from 'phosphor-svelte';
+	import type { VMAction, VMStatus } from '$lib/types/vm';
 
 	interface Props {
-		status: string;
+		status: VMStatus;
 		busy?: boolean;
-		onAction: (action: string) => void;
+		onAction: (action: VMAction) => void;
 	}
 
 	let { status, busy = false, onAction }: Props = $props();
 
-	function canStart(s: string): boolean {
+	function canStart(s: VMStatus): boolean {
 		return s === 'stopped' || s === 'paused';
 	}
 
-	function canStop(s: string): boolean {
+	function canStop(s: VMStatus): boolean {
 		return s === 'running';
 	}
 </script>
