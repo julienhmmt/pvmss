@@ -1,17 +1,6 @@
 /// <reference types="svelte" />
 /// <reference types="vite/client" />
 
-declare module "*.svelte" {
-  import { SvelteComponentTyped } from "svelte";
-
-  interface ComponentType extends SvelteComponentTyped {
-    [key: string]: any;
-  }
-
-  const component: ComponentType;
-  export default component;
-}
-
 declare module "$app/environment" {
   export const dev: boolean;
   export const building: boolean;
