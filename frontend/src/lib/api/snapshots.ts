@@ -1,33 +1,8 @@
 import { api } from "./client";
+import type { Snapshot, SnapshotList } from "$lib/types/vm";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
-/**
- * VM snapshot information.
- */
-export interface Snapshot {
-  /** Snapshot name */
-  name: string;
-  /** Snapshot description */
-  description: string;
-  /** Snapshot creation timestamp */
-  snaptime: number;
-  /** VM state included flag */
-  vmstate: number;
-  /** Parent snapshot name */
-  parent: string;
-  /** Whether this is the current snapshot */
-  current: boolean;
-}
-
-/**
- * Snapshot list response with limit information.
- */
-export interface SnapshotList {
-  /** Array of snapshots */
-  snapshots: Snapshot[];
-  /** Maximum number of snapshots allowed */
-  maxAllowed: number;
-}
+export type { Snapshot, SnapshotList };
 
 /**
  * Lists all snapshots for a VM.

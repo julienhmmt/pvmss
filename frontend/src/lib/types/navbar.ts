@@ -1,9 +1,11 @@
+import type { Component } from "svelte";
+
 /**
  * Navigation link interface
  */
 export interface NavLink {
   href: string;
-  icon: any;
+  icon: Component;
   label: string;
   authRequired: boolean;
   adminOnly: boolean;
