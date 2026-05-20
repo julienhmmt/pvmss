@@ -2,13 +2,14 @@
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
 	import type { VMSummary } from '$lib/api/vms';
+	import type { VMAction } from '$lib/types/vm';
 	import VmStatusBadge from './VmStatusBadge.svelte';
 	import VmActionButtons from './VmActionButtons.svelte';
 
 	interface Props {
 		vm: VMSummary;
 		busy?: boolean;
-		onAction?: (vm: VMSummary, action: string) => void;
+		onAction?: (vm: VMSummary, action: VMAction) => void;
 	}
 
 	let { vm, busy = false, onAction }: Props = $props();
