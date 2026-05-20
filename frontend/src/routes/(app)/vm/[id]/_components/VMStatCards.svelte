@@ -16,7 +16,7 @@
 </script>
 
 <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-	<div class="pv-stat-card">
+	<div class="pv-stat-card pv-stat-card--icon">
 		<Cpu class="pv-stat-icon" />
 		<div>
 			<div class="pv-stat-label">{$t('vms.cpu')}</div>
@@ -29,7 +29,7 @@
 			</div>
 		</div>
 	</div>
-	<div class="pv-stat-card">
+	<div class="pv-stat-card pv-stat-card--icon">
 		<Desktop class="pv-stat-icon" />
 		<div>
 			<div class="pv-stat-label">{$t('vms.ram')}</div>
@@ -42,7 +42,7 @@
 			</div>
 		</div>
 	</div>
-	<div class="pv-stat-card">
+	<div class="pv-stat-card pv-stat-card--icon">
 		<HardDrive class="pv-stat-icon" />
 		<div>
 			<div class="pv-stat-label">{$t('common.storage')}</div>
@@ -51,10 +51,10 @@
 			</div>
 		</div>
 	</div>
-	<div class="pv-stat-card">
+	<div class="pv-stat-card pv-stat-card--icon">
 		<Network class="pv-stat-icon" />
 		<div>
-			<div class="pv-stat-label">{$t('admin.vmbr.iface')}</div>
+			<div class="pv-stat-label">{$t('vm.interface')}</div>
 			<div class="pv-stat-value" transition:fade={{ duration: 150 }}>
 				{config?.networks.length ?? 0}
 				{$t('vm.interfaces')}
@@ -62,25 +62,3 @@
 		</div>
 	</div>
 </div>
-
-<style>
-	.pv-stat-card {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.875rem 1rem;
-		background: var(--card);
-		border: 1px solid var(--border);
-		border-radius: 0.5rem;
-	}
-	.pv-stat-label {
-		font-size: 0.75rem;
-		color: var(--muted-foreground);
-		line-height: 1.2;
-	}
-	.pv-stat-value {
-		font-size: 0.9rem;
-		font-weight: 600;
-		line-height: 1.4;
-	}
-</style>
