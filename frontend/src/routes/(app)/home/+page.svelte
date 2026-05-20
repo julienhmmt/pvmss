@@ -106,8 +106,8 @@
 		try {
 			vms = await getVMs();
 			if (page > Math.max(1, Math.ceil(vms.length / PER_PAGE))) page = 1;
-		} catch (e) {
-			error = e as Error;
+		} catch (err: unknown) {
+			error = err instanceof Error ? err : new Error(String(err));
 		} finally {
 			loading = false;
 			refreshing = false;
@@ -121,7 +121,8 @@
 			toast.success(`${action} sent to ${vm.name || vm.vmid}`);
 			addActivity(action, vm.name || String(vm.vmid));
 			setTimeout(() => load(true), 2000);
-		} catch {
+		} catch (err: unknown) {
+			console.error(`VM action ${action} failed:`, err instanceof Error ? err.message : String(err));
 			toast.error(`Failed to ${action} ${vm.name || vm.vmid}`);
 		} finally {
 			actionLoading = { ...actionLoading, [vm.vmid]: false };

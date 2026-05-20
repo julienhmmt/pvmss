@@ -113,8 +113,8 @@
 			metrics = await getVMMetrics(vmid);
 			provisioning = false;
 			retryCount = 0;
-		} catch (e) {
-			const isNotFound = e instanceof ApiRequestError && e.status === 404;
+		} catch (err: unknown) {
+			const isNotFound = err instanceof ApiRequestError && err.status === 404;
 			if (isNotFound && retryCount < MAX_RETRIES) {
 				provisioning = true;
 				retryCount += 1;
@@ -124,7 +124,7 @@
 				}, RETRY_DELAY_MS);
 			} else {
 				provisioning = false;
-				error = e as Error;
+				error = err instanceof Error ? err : new Error(String(err));
 			}
 		} finally {
 			isLoading = false;
@@ -139,7 +139,8 @@
 			await api.post(`/api/v1/vms/${vmid}/action`, { action, node: config.node });
 			toast.success(`${action} sent to ${config.name || vmid}`);
 			setTimeout(() => load(), 2000);
-		} catch {
+		} catch (err: unknown) {
+			console.error(`VM action ${action} failed:`, err instanceof Error ? err.message : String(err));
 			toast.error(`Failed to ${action} VM ${vmid}`);
 		} finally {
 			actionLoading = false;
@@ -149,7 +150,8 @@
 	async function openHardwareModal() {
 		try {
 			vmSettings = await getVMSettings(vmid);
-		} catch {
+		} catch (err: unknown) {
+			console.error('getVMSettings failed:', err instanceof Error ? err.message : String(err));
 			toast.error($t('common.error'));
 			return;
 		}
@@ -160,7 +162,8 @@
 		if (!vmSettings) {
 			try {
 				vmSettings = await getVMSettings(vmid);
-			} catch {
+			} catch (err: unknown) {
+				console.error('getVMSettings failed:', err instanceof Error ? err.message : String(err));
 				toast.error($t('common.error'));
 				return;
 			}
@@ -185,7 +188,8 @@
 			await updateVMConfig(vmid, { description: value });
 			config = { ...config, description: value };
 			toast.success($t('vm.descriptionSaved'));
-		} catch {
+		} catch (err: unknown) {
+			console.error('updateVMConfig failed:', err instanceof Error ? err.message : String(err));
 			toast.error($t('common.error'));
 		} finally {
 			savingDescription = false;
@@ -203,10 +207,11 @@
 			snapVmstate = false;
 			showSnapshotForm = false;
 			snapshotData = await getVMSnapshots(vmid);
-		} catch (e) {
-			if (e instanceof ApiRequestError && e.error.message) {
-				toast.error(e.error.message);
+		} catch (err: unknown) {
+			if (err instanceof ApiRequestError && err.error.message) {
+				toast.error(err.error.message);
 			} else {
+				console.error('createSnapshot failed:', err instanceof Error ? err.message : String(err));
 				toast.error($t('common.error'));
 			}
 		} finally {
@@ -219,7 +224,8 @@
 			await deleteSnapshot(vmid, name);
 			toast.success($t('vm.snapshotDeleted', { values: { name } }));
 			snapshotData = await getVMSnapshots(vmid);
-		} catch {
+		} catch (err: unknown) {
+			console.error('deleteSnapshot failed:', err instanceof Error ? err.message : String(err));
 			toast.error($t('common.error'));
 		}
 	}
@@ -252,8 +258,8 @@
 							break;
 						}
 						deleteProgress = $t('vm.shuttingDownProgress', { values: { attempts, max: MAX_POLL_ATTEMPTS } });
-					} catch {
-						// Continue polling on error
+					} catch (err: unknown) {
+						console.error('getVMConfig poll failed:', err instanceof Error ? err.message : String(err));
 					}
 				}
 
@@ -267,7 +273,8 @@
 			await deleteVM(vmid);
 			toast.success($t('vm.deleteSuccess', { values: { name: config?.name ?? String(vmid) } }));
 			goto('/home');
-		} catch {
+		} catch (err: unknown) {
+			console.error('deleteVM failed:', err instanceof Error ? err.message : String(err));
 			toast.error($t('vm.deleteFailed'));
 			deleting = false;
 			deleteProgress = '';
@@ -280,7 +287,8 @@
 			await rollbackSnapshot(vmid, name);
 			toast.success($t('vm.snapshotRolledBack', { values: { name } }));
 			await load();
-		} catch {
+		} catch (err: unknown) {
+			console.error('rollbackSnapshot failed:', err instanceof Error ? err.message : String(err));
 			toast.error($t('common.error'));
 		}
 	}
@@ -307,8 +315,8 @@
 			if (!config) return;
 			try {
 				metrics = await getVMMetrics(vmid);
-			} catch {
-				// best-effort
+			} catch (err: unknown) {
+				console.error('getVMMetrics poll failed:', err instanceof Error ? err.message : String(err));
 			}
 		}, 5000);
 
