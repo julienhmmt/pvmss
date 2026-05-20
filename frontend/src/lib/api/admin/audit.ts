@@ -14,6 +14,6 @@ export async function getAuditLog(params: AuditLogParams = {}): Promise<AuditLog
   if (params.limit != null) qs.set("limit", String(params.limit));
   if (params.offset != null) qs.set("offset", String(params.offset));
   const query = qs.toString();
-  const response = await api.get<Record<string, unknown>>(`/api/v1/admin/audit${query ? "?" + query : ""}`);
+  const response = await api.get<AuditLogResponse>(`/api/v1/admin/audit${query ? "?" + query : ""}`);
   return transformKeysToCamelCase<AuditLogResponse>(response);
 }

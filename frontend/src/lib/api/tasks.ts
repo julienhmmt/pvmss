@@ -21,7 +21,7 @@ export async function getTaskStatus(
   upid: string,
 ): Promise<TaskStatus> {
   const params = new URLSearchParams({ node, upid });
-  const response = await api.get<Record<string, unknown>>(`/api/v1/tasks/status?${params.toString()}`);
+  const response = await api.get<TaskStatus>(`/api/v1/tasks/status?${params.toString()}`);
   return transformKeysToCamelCase<TaskStatus>(response);
 }
 
@@ -31,6 +31,6 @@ export async function getTaskLog(
   upid: string,
 ): Promise<TaskLogEntry[]> {
   const params = new URLSearchParams({ node, upid });
-  const response = await api.get<Record<string, unknown>[]>(`/api/v1/tasks/log?${params.toString()}`);
+  const response = await api.get<TaskLogEntry[]>(`/api/v1/tasks/log?${params.toString()}`);
   return transformKeysToCamelCase<TaskLogEntry[]>(response);
 }

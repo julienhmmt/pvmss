@@ -18,7 +18,7 @@ export interface AdminVMListPaginatedResponse {
 }
 
 export async function getAllVMs(): Promise<VM[]> {
-  const response = await api.get<Record<string, unknown>[]>("/api/v1/admin/vms");
+  const response = await api.get<VM[]>("/api/v1/admin/vms");
   return transformKeysToCamelCase<VM[]>(response);
 }
 
@@ -31,7 +31,7 @@ export async function getAllVMsPaginated(params: AdminVMPaginationParams = {}): 
   if (params.sortOrder) qs.set("sort_order", params.sortOrder);
   if (params.node) qs.set("node", params.node);
   const query = qs.toString();
-  const response = await api.get<Record<string, unknown>>(
+  const response = await api.get<AdminVMListPaginatedResponse>(
     `/api/v1/admin/vms/paginated${query ? "?" + query : ""}`,
   );
   return transformKeysToCamelCase<AdminVMListPaginatedResponse>(response);

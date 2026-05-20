@@ -8,19 +8,19 @@ interface ProfileListResponse {
 }
 
 export async function getProfiles(): Promise<ProfileListResponse> {
-  const response = await api.get<Record<string, unknown>>("/api/v1/admin/vm-profiles");
+  const response = await api.get<ProfileListResponse>("/api/v1/admin/vm-profiles");
   return transformKeysToCamelCase<ProfileListResponse>(response);
 }
 
 export async function createProfile(data: Omit<VMProfileConfig, "id"> & { id?: string }): Promise<VMProfileConfig> {
   const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
-  const response = await api.post<Record<string, unknown>>("/api/v1/admin/vm-profiles", payload);
+  const response = await api.post<VMProfileConfig>("/api/v1/admin/vm-profiles", payload);
   return transformKeysToCamelCase<VMProfileConfig>(response);
 }
 
 export async function updateProfile(id: string, data: Omit<VMProfileConfig, "id">): Promise<VMProfileConfig> {
   const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
-  const response = await api.put<Record<string, unknown>>(`/api/v1/admin/vm-profiles/${encodeURIComponent(id)}`, payload);
+  const response = await api.put<VMProfileConfig>(`/api/v1/admin/vm-profiles/${encodeURIComponent(id)}`, payload);
   return transformKeysToCamelCase<VMProfileConfig>(response);
 }
 

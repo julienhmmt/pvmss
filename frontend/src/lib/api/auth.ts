@@ -19,7 +19,7 @@ export async function exchange(): Promise<AuthUser> {
 }
 
 export async function me(): Promise<AuthUser> {
-  const data = await api.get<Record<string, unknown>>("/api/v1/auth/me");
+  const data = await api.get<AuthUser>("/api/v1/auth/me");
   return transformKeysToCamelCase<AuthUser>(data);
 }
 
@@ -31,7 +31,7 @@ export async function login(
   username: string,
   password: string,
 ): Promise<AuthUser> {
-  const data = await api.post<Record<string, unknown>>(
+  const data = await api.post<AuthUser>(
     "/api/v1/auth/login",
     transformKeysToSnakeCase({ username, password, admin: false }),
   );
@@ -39,7 +39,7 @@ export async function login(
 }
 
 export async function adminLogin(password: string): Promise<AuthUser> {
-  const data = await api.post<Record<string, unknown>>(
+  const data = await api.post<AuthUser>(
     "/api/v1/auth/login",
     transformKeysToSnakeCase({ username: "admin", password, admin: true }),
   );
@@ -50,7 +50,7 @@ export async function proxmoxAdminLogin(
   username: string,
   password: string,
 ): Promise<AuthUser> {
-  const data = await api.post<Record<string, unknown>>(
+  const data = await api.post<AuthUser>(
     "/api/v1/auth/proxmox-admin-login",
     transformKeysToSnakeCase({ username, password }),
   );
