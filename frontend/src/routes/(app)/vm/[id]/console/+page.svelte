@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
-	import { api } from '$lib/api/client';
+	import { buildWebSocketURL, getVNCTicket } from '$lib/api/console';
 
 	const vmid = $derived(parseInt($page.params.id, 10));
 	const vmName = $derived($page.url.searchParams.get('name') ?? `VM ${vmid}`);
@@ -23,14 +23,14 @@
 		let ticket: string;
 		let port: number;
 		let node: string;
+		let consoleToken: string | undefined;
 
 		try {
-			const res = await api.post<{ ticket: string; port: number; node: string }>(
-				`/api/v1/vms/${vmid}/vnc-ticket`
-			);
+			const res = await getVNCTicket(vmid);
 			ticket = res.ticket;
 			port = res.port;
 			node = res.node;
+			consoleToken = res.consoleToken;
 		} catch (e) {
 			status = 'error';
 			statusMessage = `Failed to get VNC ticket: ${(e as Error).message}`;
@@ -50,10 +50,7 @@
 				throw new Error('noVNC RFB module failed to load');
 			}
 
-			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-			const wsUrl =
-				`${protocol}//${window.location.host}/api/v1/vms/${vmid}/console/websocket` +
-				`?port=${port}&node=${encodeURIComponent(node)}&vncticket=${encodeURIComponent(ticket)}`;
+			const wsUrl = buildWebSocketURL(vmid, ticket, port, node, consoleToken);
 
 			rfb = new (RFB as { new (...args: unknown[]): unknown })(container, wsUrl, {
 				credentials: { username: '', password: ticket }

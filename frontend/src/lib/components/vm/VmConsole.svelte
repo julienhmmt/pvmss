@@ -51,6 +51,7 @@
 		let ticket: string;
 		let port: number;
 		let node: string;
+		let consoleToken: string | undefined;
 
 		try {
 			const res = await getVNCTicket(vmid);
@@ -59,6 +60,7 @@
 			ticket = res.ticket;
 			port = res.port;
 			node = res.node;
+			consoleToken = res.consoleToken;
 		} catch (e) {
 			if (!mounted) return;
 			status = 'error';
@@ -75,7 +77,7 @@
 
 			if (!RFBModule) throw new Error('noVNC RFB module failed to load');
 
-			const wsUrl = buildWebSocketURL(vmid, ticket, port, node);
+			const wsUrl = buildWebSocketURL(vmid, ticket, port, node, consoleToken);
 
 			const oldRfb = rfb;
 			if (oldRfb) {
