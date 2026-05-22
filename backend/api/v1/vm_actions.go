@@ -63,8 +63,7 @@ func (h *VMActionHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 
 	client, err := proxmox.MakeRestyClientFromEnv(60 * time.Second)
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("api/v1: failed to create resty client for VMAction")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 

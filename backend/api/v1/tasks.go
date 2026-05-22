@@ -49,7 +49,7 @@ func (h *TaskHandler) GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *TaskHandler) GetTaskLog(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 

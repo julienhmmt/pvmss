@@ -81,8 +81,7 @@ func requireSetupIncomplete(db database.DB, next http.HandlerFunc) http.HandlerF
 	return func(w http.ResponseWriter, r *http.Request) {
 		complete, err := db.IsBootstrapComplete()
 		if err != nil {
-			logger.Get().Error().Err(err).Msg("setup: failed to check bootstrap status")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		if complete {
@@ -98,8 +97,7 @@ func requireSetupIncomplete(db database.DB, next http.HandlerFunc) http.HandlerF
 func (h *SetupHandler) Status(w http.ResponseWriter, _ *http.Request) {
 	complete, err := h.db.IsBootstrapComplete()
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("setup: failed to check bootstrap status")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	proxmoxOK, _ := h.state.GetProxmoxStatus()
@@ -270,28 +268,28 @@ func (h *SetupHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	if len(req.EnabledNodes) > 0 {
 		if err := h.state.SetEnabledNodes(req.EnabledNodes, "setup"); err != nil {
 			log.Error().Err(err).Msg("setup: failed to save enabled nodes")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
 	if len(req.EnabledStorages) > 0 {
 		if err := h.state.SetEnabledStorages(req.EnabledStorages, "setup"); err != nil {
 			log.Error().Err(err).Msg("setup: failed to save enabled storages")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
 	if len(req.EnabledISOs) > 0 {
 		if err := h.state.SetEnabledISOs(req.EnabledISOs, "setup"); err != nil {
 			log.Error().Err(err).Msg("setup: failed to save enabled ISOs")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
 	if len(req.EnabledVMBRs) > 0 {
 		if err := h.state.SetEnabledVMBRs(req.EnabledVMBRs, "setup"); err != nil {
 			log.Error().Err(err).Msg("setup: failed to save enabled VMBRs")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -305,12 +303,12 @@ func (h *SetupHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.state.SetVMLimits(limits, "setup"); err != nil {
 		log.Error().Err(err).Msg("setup: failed to save VM limits")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	if err := h.db.CompleteBootstrap(constants.AppVersion); err != nil {
 		log.Error().Err(err).Msg("setup: failed to complete bootstrap")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	log.Info().Msg("First-run setup wizard completed")

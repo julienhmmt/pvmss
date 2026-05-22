@@ -34,12 +34,12 @@ func (h *AdminVMsAPIHandler) ListAllVMs(w http.ResponseWriter, r *http.Request) 
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	result := make([]AdminVMResponse, 0, len(vms))
@@ -80,12 +80,12 @@ func (h *AdminVMsAPIHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	var node string
@@ -133,7 +133,7 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	node := req.Node
@@ -141,7 +141,7 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 		// node not provided by client: look it up from the VM list
 		vms, err := proxmox.GetVMsResty(r.Context(), restyClient)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		vmidInt, _ := strconv.Atoi(vmid)
@@ -207,12 +207,12 @@ func (h *AdminVMsAPIHandler) ListAllVMsPaginated(w http.ResponseWriter, r *http.
 	} else {
 		rc, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		vms, err := proxmox.GetVMsResty(r.Context(), rc)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		for _, vm := range vms {

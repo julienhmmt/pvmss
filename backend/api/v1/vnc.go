@@ -95,14 +95,14 @@ func (h *VNCHandler) GetVNCTicket(w http.ResponseWriter, r *http.Request) {
 
 	client, err := proxmox.MakeRestyClientFromEnv(15 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
 	// Resolve the node for this VM.
 	vms, err := proxmox.GetVMsResty(r.Context(), client)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	var node string
@@ -132,8 +132,7 @@ func (h *VNCHandler) GetVNCTicket(w http.ResponseWriter, r *http.Request) {
 
 	consoleToken, err := h.vncTickets.create(strconv.Itoa(vmid), port, node, vncProxy.Ticket)
 	if err != nil {
-		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", node).Msg("api/v1: failed to create VNC console token")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
