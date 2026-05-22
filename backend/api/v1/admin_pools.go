@@ -11,6 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
@@ -60,7 +61,7 @@ func (h *AdminMutationsHandler) ListPools(w http.ResponseWriter, r *http.Request
 
 	result := make([]AdminPoolResponse, 0, len(listResp.Data))
 	for _, p := range listResp.Data {
-		if !strings.HasPrefix(p.PoolID, "pvmss_") {
+		if !strings.HasPrefix(p.PoolID, constants.PoolPrefix) {
 			continue
 		}
 		var detail detailResp
@@ -127,14 +128,14 @@ func (h *AdminMutationsHandler) CreatePool(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	username := req.Pool + "@pve"
+	username := req.Pool + constants.UserSuffix
 	if err := proxmox.EnsureUserResty(ctx, restyClient, username, req.Password, "", fmt.Sprintf("PVMSS user for pool %s", req.Pool), "pve", true); err != nil {
 		logger.Get().Error().Err(err).Str("username", username).Str("pool", req.Pool).Msg("api/v1: failed to ensure user")
 		writeError(w, http.StatusInternalServerError, "user_creation_failed", "Failed to create user")
 		return
 	}
 
-	poolID := "pvmss_" + req.Pool
+	poolID := constants.PoolPrefix + req.Pool
 	if err := proxmox.EnsurePoolResty(ctx, restyClient, poolID, fmt.Sprintf("PVMSS managed pool for %s", req.Pool)); err != nil {
 		logger.Get().Error().Err(err).Str("poolid", poolID).Msg("api/v1: failed to ensure pool")
 		writeError(w, http.StatusInternalServerError, "pool_creation_failed", "Failed to create pool")
@@ -170,8 +171,8 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 	}
 	ctx := r.Context()
 	poolID := name
-	if !strings.HasPrefix(poolID, "pvmss_") {
-		poolID = "pvmss_" + poolID
+	if !strings.HasPrefix(poolID, constants.PoolPrefix) {
+		poolID = constants.PoolPrefix + poolID
 	}
 
 	// Step 1: get pool members
@@ -263,9 +264,9 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Step 6: delete user (best-effort)
-	username := strings.TrimPrefix(poolID, "pvmss_")
+	username := strings.TrimPrefix(poolID, constants.PoolPrefix)
 	if !strings.Contains(username, "@") {
-		username = username + "@pve"
+		username = username + constants.UserSuffix
 	}
 	_ = restyClient.Delete(ctx, fmt.Sprintf("/access/users/%s", username), nil)
 

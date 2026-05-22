@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -342,7 +343,7 @@ func verifyProxmoxCredentials(ctx context.Context, username, password string) er
 		return fmt.Errorf("no proxmox client: %w", err)
 	}
 	if !strings.Contains(username, "@") {
-		username = username + "@pve"
+		username = username + constants.UserSuffix
 	}
 	values := url.Values{}
 	values.Set("username", username)

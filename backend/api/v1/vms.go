@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -39,8 +40,8 @@ func restyClient() (*proxmox.RestyClient, error) {
 }
 
 // ListVMs handles GET /api/v1/vms.
-// Admin users see all VMs tagged "pvmss". Regular users see only VMs in their
-// pool (pvmss_<username>) that are also tagged "pvmss".
+// Admin users see all VMs tagged constants.RequiredTag. Regular users see only VMs in their
+// pool (pvmss_<username>) that are also tagged constants.RequiredTag.
 func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	if h.isOffline() {
 		writeJSON(w, VMListPaginatedResponse{
@@ -118,7 +119,7 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 
 		var poolVMIDs map[int]bool
 		if !isAdmin && username != "" {
-			poolVMIDs = fetchPoolVMIDs(ctx, client, "pvmss_"+username)
+			poolVMIDs = fetchPoolVMIDs(ctx, client, constants.PoolPrefix+username)
 		}
 
 		for _, vm := range allVMs {
@@ -166,7 +167,7 @@ func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
 
 	var poolVMIDs map[int]bool
 	if !isAdmin && username != "" {
-		poolVMIDs = fetchPoolVMIDs(ctx, client, "pvmss_"+username)
+		poolVMIDs = fetchPoolVMIDs(ctx, client, constants.PoolPrefix+username)
 	}
 
 	allVMs, err := proxmox.GetVMsResty(ctx, client)
@@ -181,7 +182,7 @@ func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
 		if poolVMIDs != nil && !poolVMIDs[vm.VMID] {
 			break // VM exists but not in user's pool
 		}
-		if !hasTag(vm.Tags, "pvmss") {
+		if !hasTag(vm.Tags, constants.RequiredTag) {
 			break
 		}
 		writeJSON(w, vmToSummary(vm))
@@ -220,7 +221,7 @@ func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 
 	var targetNode string
 	for _, vm := range allVMs {
-		if vm.VMID == vmid && hasTag(vm.Tags, "pvmss") {
+		if vm.VMID == vmid && hasTag(vm.Tags, constants.RequiredTag) {
 			targetNode = vm.Node
 			break
 		}
@@ -232,7 +233,7 @@ func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 
 	// Non-admin: verify VM is in the user's pool.
 	if !isAdmin {
-		poolVMIDs := fetchPoolVMIDs(ctx, client, "pvmss_"+username)
+		poolVMIDs := fetchPoolVMIDs(ctx, client, constants.PoolPrefix+username)
 		if !poolVMIDs[vmid] {
 			errForbidden(w)
 			return
@@ -290,7 +291,7 @@ func hasTag(tags, target string) bool {
 func containsTagSubstring(tags, sub string) bool {
 	for _, t := range strings.Split(tags, ";") {
 		trimmed := strings.TrimSpace(t)
-		if strings.EqualFold(trimmed, "pvmss") {
+		if strings.EqualFold(trimmed, constants.RequiredTag) {
 			continue
 		}
 		if strings.Contains(strings.ToLower(trimmed), sub) {
@@ -303,7 +304,7 @@ func containsTagSubstring(tags, sub string) bool {
 // filterUserVM returns true if the VM passes tag, node, and search filters.
 // filterType controls the search scope: "name", "tag", "vmid", or "" for all.
 func filterUserVM(tags, node string, vmid int, name, filterPool, filterNode, search, filterType string) bool {
-	if !hasTag(tags, "pvmss") {
+	if !hasTag(tags, constants.RequiredTag) {
 		return false
 	}
 	if filterNode != "" && !strings.EqualFold(node, filterNode) {

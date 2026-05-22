@@ -8,6 +8,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/constants"
 	"pvmss/proxmox"
 )
 
@@ -164,7 +165,7 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 		errBadRequest(w, "missing tag name")
 		return
 	}
-	if strings.EqualFold(name, "pvmss") {
+	if strings.EqualFold(name, constants.RequiredTag) {
 		errBadRequest(w, "cannot delete the default 'pvmss' tag")
 		return
 	}
