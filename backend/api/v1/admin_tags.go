@@ -66,12 +66,8 @@ func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request
 	if !decodeBody(w, r, &req) {
 		return
 	}
-	if req.Name == "" {
-		errBadRequest(w, "name is required")
-		return
-	}
-	if !tagNameRegex.MatchString(req.Name) {
-		errBadRequest(w, "invalid tag name: use only letters, digits, hyphens, underscores (max 50 chars)")
+	if err := validateTagName(req.Name); err != nil {
+		writeAppError(w, err)
 		return
 	}
 
