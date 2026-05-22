@@ -2,14 +2,11 @@ package apiv1
 
 import (
 	"cmp"
-	"encoding/json"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/julienschmidt/httprouter"
 
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -72,10 +69,8 @@ func (h *AdminVMsAPIHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 		errOffline(w)
 		return
 	}
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid VM ID")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
@@ -113,15 +108,12 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 		errOffline(w)
 		return
 	}
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
-	vmid := ps.ByName("id")
-	if vmid == "" {
-		errBadRequest(w, "missing VM ID")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 	var req AdminVMActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	validActions := map[string]bool{
@@ -144,9 +136,8 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 			writeAppError(w, err)
 			return
 		}
-		vmidInt, _ := strconv.Atoi(vmid)
 		for _, vm := range vms {
-			if vm.VMID == vmidInt {
+			if vm.VMID == vmid {
 				node = vm.Node
 				break
 			}
@@ -156,9 +147,9 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, vmid, req.Action)
+	taskID, err := proxmox.VMActionResty(r.Context(), restyClient, node, strconv.Itoa(vmid), req.Action)
 	if err != nil {
-		logger.Get().Error().Err(err).Str("vmid", vmid).Str("node", node).Str("action", req.Action).Msg("api/v1: VM action failed")
+		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", node).Str("action", req.Action).Msg("api/v1: VM action failed")
 		writeError(w, http.StatusInternalServerError, "vm_action_failed", "Failed to perform VM action")
 		return
 	}

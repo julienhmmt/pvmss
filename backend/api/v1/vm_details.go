@@ -2,7 +2,6 @@ package apiv1
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -267,10 +266,8 @@ func parseCloudInit(cfg map[string]interface{}) *CloudInitInfo {
 // GetVMConfig handles GET /api/v1/vms/:id/config
 // Returns full VM configuration including disks, networks, cloud-init.
 func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 	if h.isOffline() {
@@ -410,10 +407,8 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 
 // GetVMMetrics handles GET /api/v1/vms/:id/metrics — lightweight live poll.
 func (h *VMDetailsHandler) GetVMMetrics(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 	if h.isOffline() {
@@ -461,10 +456,8 @@ func (h *VMDetailsHandler) GetVMMetrics(w http.ResponseWriter, r *http.Request) 
 
 // GetVMSnapshots handles GET /api/v1/vms/:id/snapshots
 func (h *VMDetailsHandler) GetVMSnapshots(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 	if h.isOffline() {
@@ -525,10 +518,8 @@ func (h *VMDetailsHandler) GetVMSnapshots(w http.ResponseWriter, r *http.Request
 
 // CreateSnapshot handles POST /api/v1/vms/:id/snapshots
 func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
@@ -537,8 +528,7 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 		Description string `json:"description"`
 		Vmstate     bool   `json:"vmstate"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if !proxmox.IsValidSnapshotName(req.Name) {
@@ -670,12 +660,11 @@ func diskSupportsVMState(disk string) bool {
 
 // DeleteSnapshot handles DELETE /api/v1/vms/:id/snapshots/:name
 func (h *VMDetailsHandler) DeleteSnapshot(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
+	ps := httprouter.ParamsFromContext(r.Context())
 	snapName := ps.ByName("name")
 	if snapName == "" || snapName == "current" {
 		errBadRequest(w, "invalid snapshot name")
@@ -714,12 +703,11 @@ func (h *VMDetailsHandler) DeleteSnapshot(w http.ResponseWriter, r *http.Request
 
 // RollbackSnapshot handles POST /api/v1/vms/:id/snapshots/:name/rollback
 func (h *VMDetailsHandler) RollbackSnapshot(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
+	ps := httprouter.ParamsFromContext(r.Context())
 	snapName := ps.ByName("name")
 	if snapName == "" || snapName == "current" {
 		errBadRequest(w, "invalid snapshot name")
@@ -759,10 +747,8 @@ func (h *VMDetailsHandler) RollbackSnapshot(w http.ResponseWriter, r *http.Reque
 // UpdateVMConfig handles PATCH /api/v1/vms/:id/config
 // Supports updating description, tags, and name.
 func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
@@ -771,8 +757,7 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 		Tags        *string `json:"tags"`
 		Name        *string `json:"name"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -839,10 +824,8 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 // UpdateVMCDROM handles PATCH /api/v1/vms/:id/cdrom
 // Allows setting or removing the CD-ROM ISO.
 func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
@@ -850,8 +833,7 @@ func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request)
 		ISO        *string `json:"iso"`        // ISO volid (e.g., "local:iso/debian.iso") or empty to remove
 		Disconnect bool    `json:"disconnect"` // If true, disconnect CD-ROM (keep drive but no ISO)
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -909,10 +891,8 @@ func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request)
 // GetVMSettings handles GET /api/v1/vms/:id/settings
 // Returns allowed ISOs, VMBRs, tags and resource limits for the VM edit form.
 func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, atoiErr := strconv.Atoi(ps.ByName("id"))
-	if atoiErr != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 

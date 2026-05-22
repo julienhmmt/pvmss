@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
-
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -144,10 +142,8 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 
 // GetVM handles GET /api/v1/vms/:id.
 func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
@@ -201,10 +197,8 @@ func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 		errOffline(w)
 		return
 	}
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 	username := usernameFromCtx(r)

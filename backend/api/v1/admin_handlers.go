@@ -2,7 +2,6 @@ package apiv1
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"os"
 	"runtime"
@@ -73,8 +72,7 @@ func (h *AdminHandler) Nodes(w http.ResponseWriter, r *http.Request) {
 // switches to allowlist mode and enables all other nodes.
 func (h *AdminHandler) ToggleNode(w http.ResponseWriter, r *http.Request) {
 	var req ToggleNodeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {

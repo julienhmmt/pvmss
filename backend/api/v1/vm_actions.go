@@ -2,12 +2,9 @@ package apiv1
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/julienschmidt/httprouter"
 
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -35,16 +32,13 @@ func MakeVMActionHandler(s state.StateManager) *VMActionHandler {
 // VMAction handles POST /api/v1/vms/:id/action.
 // Body: {"action":"start|stop|shutdown|reboot|reset", "node":"nodename"}
 func (h *VMActionHandler) VMAction(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
 	var req VMActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if !allowedActions[req.Action] {
