@@ -105,8 +105,7 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	} else {
 		client, err := restyClient()
 		if err != nil {
-			logger.Get().Error().Err(err).Msg("api/v1: failed to create resty client for ListVMs")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 
@@ -115,8 +114,7 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 
 		allVMs, err := proxmox.GetVMsResty(ctx, client)
 		if err != nil {
-			logger.Get().Error().Err(err).Msg("api/v1: GetVMsResty failed")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 
@@ -163,7 +161,7 @@ func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -177,7 +175,7 @@ func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
 
 	allVMs, err := proxmox.GetVMsResty(ctx, client)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	for _, vm := range allVMs {
@@ -214,7 +212,7 @@ func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
@@ -222,7 +220,7 @@ func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 
 	allVMs, err := proxmox.GetVMsResty(ctx, client)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 

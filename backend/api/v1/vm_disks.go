@@ -252,7 +252,7 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -273,7 +273,7 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 	// Check VM status - disk operations require VM to be stopped
 	current, err := proxmox.GetVMCurrentResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	if current.Status == "running" {
@@ -302,7 +302,7 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 
 	cfg, err := proxmox.GetVMConfigResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -362,8 +362,7 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 					// Re-fetch config and try next slot
 					cfg, err = proxmox.GetVMConfigResty(ctx, client, node, vmid)
 					if err != nil {
-						logger.Get().Error().Err(err).Int("vmid", vmid).Msg("api/v1: AddDisk failed to re-fetch config")
-						errInternal(w)
+						writeAppError(w, err)
 						return
 					}
 					slot, err = nextDiskSlot(cfg, req.Bus)
@@ -375,8 +374,7 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 			}
-			logger.Get().Error().Err(err).Int("vmid", vmid).Str("disk", diskKey).Msg("api/v1: AddDisk failed")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		// Success
@@ -439,7 +437,7 @@ func (h *VMDiskHandler) ResizeDisk(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -462,7 +460,7 @@ func (h *VMDiskHandler) ResizeDisk(w http.ResponseWriter, r *http.Request) {
 	// Get current disk size to validate final size
 	cfg, err := proxmox.GetVMConfigResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -560,8 +558,7 @@ func (h *VMDiskHandler) ResizeDisk(w http.ResponseWriter, r *http.Request) {
 
 	sizeIncrement := fmt.Sprintf("+%dG", req.AddGB)
 	if err := proxmox.ResizeVMDiskResty(ctx, client, node, vmid, diskID, sizeIncrement); err != nil {
-		logger.Get().Error().Err(err).Int("vmid", vmid).Str("disk", diskID).Msg("api/v1: ResizeDisk failed")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -599,7 +596,7 @@ func (h *VMDiskHandler) DeleteDisk(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -620,7 +617,7 @@ func (h *VMDiskHandler) DeleteDisk(w http.ResponseWriter, r *http.Request) {
 	// Check VM status - disk operations require VM to be stopped
 	current, err := proxmox.GetVMCurrentResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	if current.Status == "running" {
@@ -631,7 +628,7 @@ func (h *VMDiskHandler) DeleteDisk(w http.ResponseWriter, r *http.Request) {
 	// Get VM config to verify disk exists and check if it's the boot disk
 	cfg, err := proxmox.GetVMConfigResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -655,8 +652,7 @@ func (h *VMDiskHandler) DeleteDisk(w http.ResponseWriter, r *http.Request) {
 	if err := proxmox.UpdateVMConfigResty(ctx, client, node, vmid, map[string]string{
 		"delete": diskID,
 	}); err != nil {
-		logger.Get().Error().Err(err).Int("vmid", vmid).Str("disk", diskID).Msg("api/v1: DeleteDisk failed")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	// UpdateVMConfigResty already invalidates the VM cache

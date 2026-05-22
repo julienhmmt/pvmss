@@ -852,8 +852,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	// Get Proxmox client
 	client, err := restyClient()
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("api/v1: failed to create resty client for VM creation")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
