@@ -2,14 +2,11 @@ package apiv1
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/julienschmidt/httprouter"
 
 	apperrors "pvmss/errors"
 	"pvmss/logger"
@@ -91,10 +88,8 @@ func buildNetLine(n NetworkUpdateRequest) string {
 // The VM is stopped only when hardware or network changes require it;
 // tags are always updated live (Proxmox accepts tag changes while running).
 func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
@@ -104,8 +99,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req VMHardwareUpdateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Node == "" {

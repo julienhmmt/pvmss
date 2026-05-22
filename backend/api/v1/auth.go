@@ -2,7 +2,6 @@ package apiv1
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -49,8 +48,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Username == "" || req.Password == "" {
@@ -184,8 +182,7 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Username == "" || req.Password == "" {
@@ -288,8 +285,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		CurrentPassword string `json:"current_password"`
 		NewPassword     string `json:"new_password"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	currentPassword := req.CurrentPassword

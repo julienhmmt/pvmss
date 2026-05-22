@@ -2,7 +2,6 @@ package apiv1
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -260,8 +259,7 @@ func collectVMBRNames(ctx context.Context, client *proxmox.RestyClient, nodeName
 // complete so the app becomes fully operational (T127).
 func (h *SetupHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	var req SetupCompleteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid request body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	log := logger.Get()

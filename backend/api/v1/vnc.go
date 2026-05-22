@@ -86,10 +86,8 @@ func (h *VNCHandler) GetVNCTicket(w http.ResponseWriter, r *http.Request) {
 		errOffline(w)
 		return
 	}
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 

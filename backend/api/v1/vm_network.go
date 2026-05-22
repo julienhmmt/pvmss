@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,12 +18,11 @@ import (
 // Toggles the link_down flag on the specified network interface (net0..net31),
 // effectively enabling or disabling the NIC without removing it from the config.
 func (h *VMDetailsHandler) ToggleNIC(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
+	ps := httprouter.ParamsFromContext(r.Context())
 	iface := strings.ToLower(strings.TrimSpace(ps.ByName("iface")))
 	if matched, _ := regexp.MatchString(`^net\d+$`, iface); !matched {
 		errBadRequest(w, "invalid network interface name; expected net0..net31")
