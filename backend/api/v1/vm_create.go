@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +15,11 @@ import (
 	"pvmss/utils"
 )
 
-// VMCreateHandler handles VM creation API endpoints.
+// VMCreateHandler handles VM creation API endpoints. The per-concern
+// implementations live in sibling files:
+//
+//   - vm_create_resolve.go    — node / storage / bridge resolution
+//   - vm_create_cloudinit.go  — cloud-init wiring + TPM compat check
 type VMCreateHandler struct {
 	state state.StateManager
 }
@@ -147,7 +150,7 @@ type VMCreateResponse struct {
 	VMID          int    `json:"vmid"`
 	Name          string `json:"name"`
 	Node          string `json:"node"`
-	UPID          string `json:"upid,omitempty"` // Proxmox task UPID for polling creation progress
+	UPID          string `json:"upid,omitempty"`
 	CloudInitWarn string `json:"cloud_init_warning,omitempty"`
 }
 
@@ -192,7 +195,6 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		resp.Tags = []string{}
 	}
 
-	// ISOs from settings
 	isos := make([]VMCreateISOOption, 0, len(settings.ISOs))
 	for _, volid := range settings.ISOs {
 		name := volid
@@ -203,7 +205,6 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.ISOs = isos
 
-	// Cloud-init templates (enabled only)
 	ciTemplates := make([]VMCreateCITemplate, 0)
 	for _, t := range settings.CloudInitTemplates {
 		if t.Enabled {
@@ -215,11 +216,9 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	resp.CloudInitTemplate = ciTemplates
-	// Cloud-init is available when at least one template is configured by the admin
 	resp.CloudInitAvailable = len(ciTemplates) > 0
 
-	// Compute remaining VMs for the user
-	resp.RemainingVMs = -1 // -1 = unlimited
+	resp.RemainingVMs = -1
 	if settings.MaxVMPerUser > 0 && !isAdmin {
 		poolName := "pvmss_" + username
 		remaining := settings.MaxVMPerUser
@@ -238,7 +237,6 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		resp.RemainingVMs = remaining
 	}
 
-	// Fetch nodes, storages, bridges from Proxmox snapshot or live
 	if connected {
 		snapshot := h.state.GetProxmoxSnapshot()
 		nodes, disabledNodes := h.resolveNodes(r.Context(), snapshot, settings)
@@ -273,359 +271,6 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, resp)
 }
 
-// resolveNodes returns node options from snapshot or live data.
-// A node is disabled when its current pvmss aggregate usage leaves no room
-// for even a minimum-sized VM, according to the limits defined in settings.
-func (h *VMCreateHandler) resolveNodes(ctx context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings) ([]VMCreateNodeOption, map[string]bool) {
-	disabledNodes := make(map[string]bool)
-	var nodeNames []string
-
-	if snapshot != nil && len(snapshot.OnlineNodes) > 0 {
-		nodeNames = append(nodeNames, snapshot.OnlineNodes...)
-	}
-
-	if len(nodeNames) == 0 {
-		client, err := restyClient()
-		if err == nil {
-			names, _ := proxmox.GetNodeNamesResty(ctx, client)
-			nodeNames = names
-		}
-	}
-
-	// Compute per-node aggregate usage from pvmss-tagged VMs in the snapshot,
-	// then disable any node whose remaining capacity (per settings limits) cannot
-	// accommodate the smallest possible VM.
-	if snapshot != nil && settings != nil && len(settings.Limits.Nodes) > 0 {
-		// Validate VM limits are properly initialized before capacity check
-		if settings.Limits.VM.Sockets.Min > 0 && settings.Limits.VM.Cores.Min > 0 && settings.Limits.VM.RAM.Min > 0 {
-			nodeUsage := computeNodeUsageFromSnapshot(snapshot)
-			minCores := settings.Limits.VM.Sockets.Min * settings.Limits.VM.Cores.Min
-			minRAMGB := settings.Limits.VM.RAM.Min
-			// Ensure minimum values are at least 1 to prevent zero-value issues
-			if minCores <= 0 {
-				minCores = 1
-			}
-			if minRAMGB <= 0 {
-				minRAMGB = 1
-			}
-			for nodeName, nodeLimits := range settings.Limits.Nodes {
-				usage := nodeUsage[nodeName]
-				if nodeLimits.MaxVMs > 0 && usage.totalVMs >= nodeLimits.MaxVMs {
-					disabledNodes[nodeName] = true
-				}
-				if nodeLimits.Cores.Max > 0 && usage.cores+minCores > nodeLimits.Cores.Max {
-					disabledNodes[nodeName] = true
-				}
-				if nodeLimits.RAM.Max > 0 && usage.ramGB+minRAMGB > nodeLimits.RAM.Max {
-					disabledNodes[nodeName] = true
-				}
-			}
-		}
-	}
-
-	sort.Strings(nodeNames)
-	options := make([]VMCreateNodeOption, 0, len(nodeNames))
-	for _, name := range nodeNames {
-		opt := VMCreateNodeOption{Name: name, Disabled: disabledNodes[name]}
-		if disabledNodes[name] {
-			opt.Reason = "Node limit reached"
-		}
-		options = append(options, opt)
-	}
-	return options, disabledNodes
-}
-
-// nodeAggregateUsage holds the aggregate resource usage for pvmss VMs on a node.
-type nodeAggregateUsage struct {
-	totalVMs int
-	cores    int
-	ramGB    int
-}
-
-// computeNodeUsageFromSnapshot sums cores and RAM for pvmss-tagged VMs per node.
-func computeNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) map[string]nodeAggregateUsage {
-	usage := make(map[string]nodeAggregateUsage)
-	for _, vm := range snapshot.VMs {
-		if vm.Node == "" || vm.Tags == "" {
-			continue
-		}
-		hasPvmss := false
-		// Try semicolon delimiter first (Proxmox standard)
-		tagParts := strings.Split(vm.Tags, ";")
-		// If only one part, try space delimiter (alternative format)
-		if len(tagParts) == 1 {
-			tagParts = strings.Fields(vm.Tags)
-		}
-		for _, tag := range tagParts {
-			if strings.EqualFold(strings.TrimSpace(tag), "pvmss") {
-				hasPvmss = true
-				break
-			}
-		}
-		if !hasPvmss {
-			continue
-		}
-		sockets := vm.Sockets
-		if sockets <= 0 {
-			sockets = 1
-		}
-		cores := vm.Cores
-		if cores <= 0 {
-			cores = 1
-		}
-		u := usage[vm.Node]
-		u.totalVMs++
-		u.cores += sockets * cores
-		// Round to nearest GB to avoid truncation errors
-		u.ramGB += int((vm.MemoryMB + 512) / 1024) //nolint:gosec
-		usage[vm.Node] = u
-	}
-	return usage
-}
-
-// vmDiskCompatibleStorageTypes defines storage types that support VM disk images.
-var vmDiskCompatibleStorageTypes = map[string]bool{
-	"cifs":    true,
-	"dir":     true,
-	"iscsi":   true,
-	"lvm":     true,
-	"lvmthin": true,
-	"nfs":     true,
-	"rbd":     true,
-	"zfs":     true,
-}
-
-// resolveStorages returns storage options from snapshot or live data.
-func (h *VMCreateHandler) resolveStorages(_ context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings, disabledNodes map[string]bool) []VMCreateStorageOption {
-	enabledSet := make(map[string]bool, len(settings.EnabledStorages))
-	for _, s := range settings.EnabledStorages {
-		enabledSet[s] = true
-	}
-	allowAll := len(settings.EnabledStorages) == 0
-
-	// Log what storages are configured in settings
-	for i, s := range settings.EnabledStorages {
-		logger.Get().Debug().Int("index", i).Str("enabled_storage", s).Msg("resolveStorages: configured in settings")
-	}
-
-	nodeStoragesCount := 0
-	globalStoragesCount := 0
-	if snapshot != nil {
-		nodeStoragesCount = len(snapshot.NodeStorages)
-		globalStoragesCount = len(snapshot.GlobalStorages)
-	}
-	logger.Get().Debug().
-		Int("enabled_storages_count", len(settings.EnabledStorages)).
-		Bool("allow_all", allowAll).
-		Int("node_storages_count", nodeStoragesCount).
-		Int("global_storages_count", globalStoragesCount).
-		Msg("resolveStorages: starting storage resolution")
-
-	// Build global storage info map for content/type enrichment
-	globalInfo := make(map[string]proxmox.Storage)
-	if snapshot != nil {
-		for _, st := range snapshot.GlobalStorages {
-			globalInfo[st.Storage] = st
-		}
-	}
-
-	storageMap := make(map[string]string) // storage name -> node
-
-	if snapshot != nil && len(snapshot.NodeStorages) > 0 {
-		for nodeName, nodeStorages := range snapshot.NodeStorages {
-			if disabledNodes[nodeName] {
-				logger.Get().Debug().Str("node", nodeName).Msg("resolveStorages: skipping disabled node")
-				continue
-			}
-			for _, storage := range nodeStorages {
-				// Enrich with global info if available
-				info := storage
-				if global, exists := globalInfo[storage.Storage]; exists {
-					if info.Content == "" && global.Content != "" {
-						info.Content = global.Content
-					}
-					if info.Type == "" && global.Type != "" {
-						info.Type = global.Type
-					}
-				}
-
-				// Check if storage is enabled (node:storage format)
-				uniqueID := nodeName + ":" + storage.Storage
-				isEnabled := allowAll || enabledSet[uniqueID]
-
-				logger.Get().Debug().
-					Str("node", nodeName).
-					Str("storage", storage.Storage).
-					Str("unique_id", uniqueID).
-					Bool("is_enabled", isEnabled).
-					Int("storage_enabled", storage.Enabled).
-					Str("content", info.Content).
-					Str("type", info.Type).
-					Msg("resolveStorages: evaluating storage")
-
-				if !isEnabled {
-					continue
-				}
-				if storage.Enabled != 1 {
-					continue
-				}
-
-				// Check if storage supports VM disk images
-				storageType := strings.ToLower(info.Type)
-				storageContent := strings.ToLower(info.Content)
-				supportsVMDisk := strings.Contains(storageContent, "images")
-				if !supportsVMDisk {
-					_, supportsVMDisk = vmDiskCompatibleStorageTypes[storageType]
-				}
-				if !supportsVMDisk {
-					logger.Get().Debug().
-						Str("storage", storage.Storage).
-						Str("content", storageContent).
-						Str("type", storageType).
-						Msg("resolveStorages: storage rejected - does not support VM disk")
-					continue
-				}
-
-				if _, exists := storageMap[storage.Storage]; !exists {
-					if storageType == "rbd" || info.Shared == 1 {
-						storageMap[storage.Storage] = ""
-					} else {
-						storageMap[storage.Storage] = nodeName
-					}
-					logger.Get().Debug().
-						Str("storage", storage.Storage).
-						Str("node", storageMap[storage.Storage]).
-						Msg("resolveStorages: storage added")
-				}
-			}
-		}
-	} else {
-		// Fallback: use enabled_storages from settings
-		logger.Get().Debug().Msg("resolveStorages: using fallback from settings.EnabledStorages")
-		for _, s := range settings.EnabledStorages {
-			parts := strings.SplitN(s, ":", 2)
-			if len(parts) == 2 {
-				storageMap[parts[1]] = parts[0]
-				logger.Get().Debug().Str("storage", parts[1]).Str("node", parts[0]).Msg("resolveStorages: added from settings")
-			} else {
-				storageMap[s] = ""
-				logger.Get().Debug().Str("storage", s).Msg("resolveStorages: added shared from settings")
-			}
-		}
-	}
-
-	result := make([]VMCreateStorageOption, 0, len(storageMap))
-	for name, node := range storageMap {
-		result = append(result, VMCreateStorageOption{Name: name, Node: node})
-	}
-	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
-
-	logger.Get().Info().
-		Int("result_count", len(result)).
-		Int("source_enabled_count", len(settings.EnabledStorages)).
-		Int("source_node_storage_count", len(snapshot.NodeStorages)).
-		Msg("resolveStorages: completed storage resolution")
-
-	return result
-}
-
-// resolveBridges returns bridge options from snapshot or settings.
-func (h *VMCreateHandler) resolveBridges(_ context.Context, snapshot *state.ProxmoxClusterSnapshot, settings *state.AppSettings, disabledNodes map[string]bool) []VMCreateBridgeOption {
-	bridgeNodes := make(map[string]string)
-	bridgeDescs := make(map[string]string)
-
-	if snapshot != nil && len(snapshot.NetworkBridges) > 0 {
-		for nodeName, vmbrs := range snapshot.NetworkBridges {
-			if disabledNodes[nodeName] {
-				continue
-			}
-			for _, vmbr := range vmbrs {
-				name := extractVMBRIface(vmbr)
-				if name == "" {
-					continue
-				}
-				if _, exists := bridgeNodes[name]; !exists {
-					bridgeNodes[name] = nodeName
-				}
-				if bridgeDescs[name] == "" {
-					bridgeDescs[name] = strings.TrimSpace(vmbr.Comments)
-				}
-			}
-		}
-	}
-
-	result := make([]VMCreateBridgeOption, 0, len(settings.VMBRs))
-	for _, bridgeID := range settings.VMBRs {
-		bridgeName := bridgeID
-		if idx := strings.Index(bridgeID, ":"); idx != -1 {
-			bridgeName = bridgeID[idx+1:]
-		}
-		result = append(result, VMCreateBridgeOption{
-			Name:        bridgeName,
-			Node:        bridgeNodes[bridgeName],
-			Description: bridgeDescs[bridgeName],
-		})
-	}
-	return result
-}
-
-// extractVMBRIface extracts the interface name from a VMBR struct.
-func extractVMBRIface(vmbr proxmox.VMBR) string {
-	return vmbr.Iface
-}
-
-// nodesFromSettings derives node list from settings when offline.
-func (h *VMCreateHandler) nodesFromSettings(settings *state.AppSettings) []VMCreateNodeOption {
-	nodeSet := make(map[string]bool)
-	for _, s := range settings.EnabledStorages {
-		parts := strings.SplitN(s, ":", 2)
-		if len(parts) == 2 {
-			nodeSet[parts[0]] = true
-		}
-	}
-	for _, v := range settings.VMBRs {
-		parts := strings.SplitN(v, ":", 2)
-		if len(parts) == 2 {
-			nodeSet[parts[0]] = true
-		}
-	}
-	result := make([]VMCreateNodeOption, 0, len(nodeSet))
-	for name := range nodeSet {
-		result = append(result, VMCreateNodeOption{Name: name})
-	}
-	sort.Slice(result, func(i, j int) bool { return result[i].Name < result[j].Name })
-	return result
-}
-
-// storagesFromSettings derives storages from settings when offline.
-func (h *VMCreateHandler) storagesFromSettings(settings *state.AppSettings) []VMCreateStorageOption {
-	result := make([]VMCreateStorageOption, 0, len(settings.EnabledStorages))
-	for _, s := range settings.EnabledStorages {
-		parts := strings.SplitN(s, ":", 2)
-		if len(parts) == 2 {
-			result = append(result, VMCreateStorageOption{Name: parts[1], Node: parts[0]})
-		} else {
-			result = append(result, VMCreateStorageOption{Name: s})
-		}
-	}
-	return result
-}
-
-// bridgesFromSettings derives bridges from settings when offline.
-func (h *VMCreateHandler) bridgesFromSettings(settings *state.AppSettings) []VMCreateBridgeOption {
-	result := make([]VMCreateBridgeOption, 0, len(settings.VMBRs))
-	for _, v := range settings.VMBRs {
-		bridgeName := v
-		node := ""
-		if idx := strings.Index(v, ":"); idx != -1 {
-			node = v[:idx]
-			bridgeName = v[idx+1:]
-		}
-		result = append(result, VMCreateBridgeOption{Name: bridgeName, Node: node})
-	}
-	return result
-}
-
 // ── POST /api/v1/vms ─────────────────────────────────────────────────────────
 
 // CreateVM handles POST /api/v1/vms.
@@ -645,7 +290,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate required fields
 	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" {
 		errBadRequest(w, "VM name is required")
@@ -670,13 +314,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Security: Validate inputs against settings allowlists
-	// This prevents users from creating VMs with unauthorized nodes, storages, ISOs, or bridges.
-	// Validation applies in both online and offline modes.
-
-	// Validate node is in enabled nodes list (if configured).
-	// Note: Node names are simple strings (no "node:resource" format like storage/bridges).
-	// Empty EnabledNodes list means any node is allowed (no restriction).
 	if len(settings.EnabledNodes) > 0 {
 		nodeAllowed := false
 		for _, enabledNode := range settings.EnabledNodes {
@@ -692,13 +329,9 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validate storage is in enabled storages list (if configured).
-	// Handles both "node:storage" and "storage" formats.
-	// Empty EnabledStorages list means any storage is allowed (no restriction).
 	if len(settings.EnabledStorages) > 0 {
 		storageAllowed := false
 		for _, enabledStorage := range settings.EnabledStorages {
-			// Handle both "node:storage" and "storage" formats
 			parts := strings.SplitN(enabledStorage, ":", 2)
 			storageName := enabledStorage
 			if len(parts) == 2 {
@@ -716,8 +349,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validate ISO is in allowed ISOs list (if ISO is provided and ISOs are configured).
-	// Empty ISOs list means any ISO is allowed (no restriction).
 	if req.ISO != "" && len(settings.ISOs) > 0 {
 		isoAllowed := false
 		for _, allowedISO := range settings.ISOs {
@@ -733,17 +364,13 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validate network bridges are in allowed VMBRs list (if configured).
-	// Handles both "node:bridge" and "bridge" formats.
-	// Empty VMBRs list means any bridge is allowed (no restriction).
 	if len(settings.VMBRs) > 0 {
 		for i, net := range req.Networks {
 			if net.Bridge == "" {
-				continue // Skip validation if bridge is empty (will be caught by required field check)
+				continue
 			}
 			bridgeAllowed := false
 			for _, allowedVMBR := range settings.VMBRs {
-				// Handle both "node:bridge" and "bridge" formats
 				parts := strings.SplitN(allowedVMBR, ":", 2)
 				bridgeName := allowedVMBR
 				if len(parts) == 2 {
@@ -762,7 +389,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validate resource limits
 	limits := settings.Limits.VM
 	if limits.Sockets.Min == 0 {
 		writeError(w, http.StatusInternalServerError, "limits_unavailable", "Resource limits not configured")
@@ -777,13 +403,11 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, fmt.Sprintf("Cores must be between %d and %d", limits.Cores.Min, limits.Cores.Max))
 		return
 	}
-	// Round to nearest GB to avoid truncation errors
 	ramGB := (req.MemoryMB + 512) / 1024
 	if ramGB < limits.RAM.Min || ramGB > limits.RAM.Max {
 		errBadRequest(w, fmt.Sprintf("RAM must be between %d and %d GB", limits.RAM.Min, limits.RAM.Max))
 		return
 	}
-	// Validate all disk sizes against limits
 	for i, disk := range req.Disks {
 		if disk.SizeGB < limits.Disk.Min || disk.SizeGB > limits.Disk.Max {
 			errBadRequest(w, fmt.Sprintf("Disk %d must be between %d and %d GB", i+1, limits.Disk.Min, limits.Disk.Max))
@@ -791,7 +415,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Enforce per-node aggregate resource caps (pvmss-tagged VMs only).
 	if err := validateNodeAggregateLimits(h.state, req.Node, req.Sockets, req.Cores, req.MemoryMB); err != nil {
 		writeError(w, http.StatusConflict, nodeLimitCode(err), err.Error())
 		return
@@ -803,7 +426,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// Check VM quota
 	if settings.MaxVMPerUser > 0 && !isAdmin {
 		poolName := "pvmss_" + username
 		client, err := restyClient()
@@ -819,7 +441,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Validate network cards
 	for i, net := range req.Networks {
 		if net.Bridge == "" {
 			errBadRequest(w, fmt.Sprintf("Bridge is required for network card %d", i))
@@ -847,14 +468,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get Proxmox client
 	client, err := restyClient()
 	if err != nil {
 		writeAppError(w, err)
 		return
 	}
 
-	// Get next VMID
 	vmid := 0
 	if snapshot := h.state.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.VMs) > 0 {
 		highest := 0
@@ -877,7 +496,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		vmid = nextID
 	}
 
-	// Disk bus type
 	diskBus := req.DiskBus
 	if diskBus == "" {
 		diskBus = "virtio"
@@ -887,7 +505,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		diskBus = "virtio"
 	}
 
-	// Enforce disk-per-bus-type limits
 	var maxDisksForBus int
 	switch diskBus {
 	case state.DiskBusIDE:
@@ -899,14 +516,13 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	case state.DiskBusSCSI:
 		maxDisksForBus = state.MaxDisksSCSI
 	default:
-		maxDisksForBus = state.MaxDisksVirtIO // Default to VirtIO limit
+		maxDisksForBus = state.MaxDisksVirtIO
 	}
 	if len(req.Disks) > maxDisksForBus {
 		errBadRequest(w, fmt.Sprintf("Too many disks for %s bus: maximum %d disks allowed", diskBus, maxDisksForBus))
 		return
 	}
 
-	// Build Proxmox API params
 	params := url.Values{}
 	params.Set("vmid", strconv.Itoa(vmid))
 	params.Set("name", req.Name)
@@ -920,14 +536,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		params.Set("description", req.Description)
 	}
 
-	// Pool assignment for non-admin users
 	pool := ""
 	if !isAdmin && username != "" {
 		pool = "pvmss_" + username
 		params.Set("pool", pool)
 	}
 
-	// Tags — always include the "pvmss" tag so ListVMs/GetVM can find the VM.
 	cleanedTags := []string{"pvmss"}
 	for _, tag := range req.Tags {
 		if cleaned := strings.TrimSpace(tag); cleaned != "" && !strings.EqualFold(cleaned, "pvmss") {
@@ -936,7 +550,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	}
 	params.Set("tags", strings.Join(cleanedTags, ";"))
 
-	// ISO — validate volid format (must be storage:path) before setting ide2
 	if req.ISO != "" {
 		if !strings.Contains(req.ISO, ":") {
 			errBadRequest(w, "Invalid ISO volume ID: expected format storage:path/to/file.iso")
@@ -948,17 +561,13 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		params.Set("boot", "order="+diskBus+"0")
 	}
 
-	// EFI
 	if req.EnableEFI {
 		params.Set("bios", "ovmf")
 		params.Set("efidisk0", req.Storage+":1,format=raw,efitype=4m")
 	}
 
-	// Primary disk
 	params.Set(diskBus+"0", fmt.Sprintf("%s:%d", req.Storage, req.Disks[0].SizeGB))
 
-	// Additional disks — when using IDE bus with an ISO, ide2 is reserved for CD-ROM
-	// so additional disks must skip that slot.
 	maxDisks := settings.MaxDiskPerVM
 	if maxDisks <= 0 {
 		maxDisks = 1
@@ -977,7 +586,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		params.Set(fmt.Sprintf("%s%d", diskBus, slot), fmt.Sprintf("%s:%d", req.Storage, req.Disks[i].SizeGB))
 	}
 
-	// TPM
 	if req.EnableTPM {
 		tpmCompatible := false
 		if snapshot := h.state.GetProxmoxSnapshot(); snapshot != nil {
@@ -993,7 +601,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Network cards
 	maxNetCards := settings.MaxNetworkCards
 	if maxNetCards <= 0 {
 		maxNetCards = 1
@@ -1040,15 +647,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		params.Set(fmt.Sprintf("net%d", i), netConfig)
 	}
 
-	// Send creation request to Proxmox — returns a UPID immediately (async task)
 	path := "/nodes/" + url.PathEscape(req.Node) + "/qemu"
 	logger.Get().Info().Str("path", path).Int("vmid", vmid).Str("name", req.Name).Msg("api/v1: sending VM creation request")
 
 	var createResp proxmox.Response[string]
 	if err := client.Post(ctx, path, params, &createResp); err != nil {
 		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Msg("api/v1: VM creation failed")
-		// Propagate 4xx errors from Proxmox so the frontend sees the actual error message
-		// (e.g. "parameter verification failed: ide2 invalid format").
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "error status 4") {
 			errBadRequest(w, errMsg)
@@ -1074,19 +678,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		Str("storage", req.Storage).
 		Msg("api/v1: VM creation task dispatched")
 
-	// Invalidate VM cache immediately so the VM config shows up in listings.
 	proxmox.InvalidateVMCache(req.Node)
 	h.state.RequestSnapshotRefresh()
 
-	// ── Async path (UPID returned) ──────────────────────────────────────────
-	// Cloud-init and VM start must wait for the creation task to complete
-	// because Proxmox holds a VM lock during creation — any config update
-	// (including cloud-init) or start action would be rejected with
-	// "VM is locked (create)".
 	if upid != "" {
 		go h.finalizeAfterTask(client, req.Node, vmid, upid, req.StartVM, req.CloudInit, req.Storage, settings, req.Sockets, req.Cores, req.MemoryMB)
 
-		// Return 202 Accepted immediately with the UPID so the frontend can poll.
 		w.WriteHeader(http.StatusAccepted)
 		writeJSON(w, VMCreateResponse{
 			VMID:          vmid,
@@ -1098,8 +695,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ── Synchronous fallback (no UPID) ───────────────────────────────────────
-	// Proxmox returned no UPID — apply cloud-init and start VM immediately.
 	cloudInitWarning := ""
 	if req.CloudInit != nil {
 		cloudInitWarning = h.applyCloudInit(ctx, client, req.Node, vmid, req.Storage, req.CloudInit, settings)
@@ -1129,7 +724,6 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 // optionally starts the VM.
 //
 // It runs in a goroutine and does not affect the HTTP response.
-// The ctx parameter allows cancellation on server shutdown.
 func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node string, vmid int, upid string, startVM bool, ci *VMCreateCloudInit, storage string, settings *state.AppSettings, sockets, cores, memoryMB int) {
 	defer releaseNodeAggregateReservation(node, sockets, cores, memoryMB)
 
@@ -1147,8 +741,6 @@ func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node st
 		maxWait      = 10 * time.Minute
 	)
 
-	// Derive a context that cancels after maxWait so the goroutine cannot
-	// run indefinitely even if the server stays up.
 	ctx, cancelAll := context.WithTimeout(context.Background(), maxWait)
 	defer cancelAll()
 
@@ -1176,7 +768,6 @@ func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node st
 			continue
 		}
 
-		// Final cache refresh once disks are fully created
 		proxmox.InvalidateVMCache(node)
 		h.state.RequestSnapshotRefresh()
 
@@ -1185,7 +776,6 @@ func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node st
 			return
 		}
 
-		// Apply cloud-init config now that the VM lock is released.
 		if ci != nil {
 			ciCtx, ciCancel := context.WithTimeout(ctx, 30*time.Second)
 			if warn := h.applyCloudInit(ciCtx, client, node, vmid, storage, ci, settings); warn != "" {
@@ -1206,113 +796,4 @@ func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node st
 		}
 		return
 	}
-}
-
-// applyCloudInit applies cloud-init configuration to a newly created VM.
-func (h *VMCreateHandler) applyCloudInit(ctx context.Context, client *proxmox.RestyClient, node string, vmid int, storage string, ci *VMCreateCloudInit, settings *state.AppSettings) string {
-	warning := ""
-
-	ciParams := proxmox.CloudInitParams{CIUser: ci.User}
-	if ci.Password != "" {
-		ciParams.CIPassword = ci.Password
-	}
-	if ci.SSHKeys != "" {
-		ciParams.SSHKeys = ci.SSHKeys
-	}
-	if ci.IPConfig == "static" && ci.IP != "" {
-		ipConfig := "ip=" + ci.IP
-		if ci.Gateway != "" {
-			ipConfig += ",gw=" + ci.Gateway
-		}
-		ciParams.IPConfig0 = ipConfig
-	} else {
-		ciParams.IPConfig0 = "ip=dhcp"
-	}
-	if ci.DNS != "" {
-		ciParams.Nameserver = ci.DNS
-	}
-
-	// Apply template if specified
-	if ci.TemplateID != "" {
-		template := settings.GetCloudInitTemplateByID(ci.TemplateID)
-		if template != nil && strings.TrimSpace(template.YAMLContent) != "" {
-			snippetStorage, err := h.selectSnippetStorage(ctx, client, node, template.Storage)
-			if err == nil {
-				filename := fmt.Sprintf("%s%d.yml", state.CloudInitTemplatePrefix, vmid)
-				uploaded := false
-				if settings.CloudInitSFTP.Enabled {
-					if err := proxmox.UploadSnippetFileSFTP(ctx, settings.CloudInitSFTP, filename, template.YAMLContent); err == nil {
-						uploaded = true
-					}
-				}
-				if !uploaded {
-					if err := proxmox.UploadSnippetFileResty(ctx, client, node, snippetStorage, filename, template.YAMLContent); err == nil {
-						uploaded = true
-					}
-				}
-				if uploaded {
-					ciParams.CICustom = fmt.Sprintf("user=%s:snippets/%s", snippetStorage, filename)
-				} else {
-					warning = "upload-failed"
-				}
-			} else {
-				warning = "no-snippets-storage"
-			}
-		}
-	}
-
-	// Ensure cloud-init drive
-	if err := proxmox.EnsureCloudInitDriveResty(ctx, client, node, vmid, storage); err != nil {
-		logger.Get().Error().Err(err).Int("vmid", vmid).Msg("api/v1: failed to ensure cloud-init drive")
-	}
-
-	// Apply cloud-init config
-	if err := proxmox.UpdateVMCloudInitConfigResty(ctx, client, node, vmid, ciParams); err != nil {
-		logger.Get().Error().Err(err).Int("vmid", vmid).Msg("api/v1: failed to apply cloud-init config")
-		return "cloud-init-config-failed"
-	}
-
-	return warning
-}
-
-// selectSnippetStorage picks a snippets storage for the given node.
-func (h *VMCreateHandler) selectSnippetStorage(ctx context.Context, client *proxmox.RestyClient, node string, preferred string) (string, error) {
-	storages, err := proxmox.GetSnippetsStoragesResty(ctx, client)
-	if err != nil {
-		return "", err
-	}
-	var fallback string
-	for _, s := range storages {
-		if s.Nodes != "" {
-			found := false
-			for _, n := range strings.Split(s.Nodes, ",") {
-				if strings.TrimSpace(n) == node {
-					found = true
-					break
-				}
-			}
-			if !found {
-				continue
-			}
-		}
-		if preferred != "" && s.Storage == preferred {
-			return s.Storage, nil
-		}
-		if fallback == "" {
-			fallback = s.Storage
-		}
-	}
-	if fallback == "" {
-		return "", fmt.Errorf("no snippets storage available for node %s", node)
-	}
-	return fallback, nil
-}
-
-// isTPMCompatibleStorage checks if the storage type supports TPM.
-func isTPMCompatibleStorage(storageType string) bool {
-	compatible := map[string]bool{
-		"iscsi": true, "lvm": true, "lvmthin": true, "rbd": true, "zfs": true,
-		"cephfs": true, "cifs": true, "dir": true, "nfs": true,
-	}
-	return compatible[storageType]
 }
