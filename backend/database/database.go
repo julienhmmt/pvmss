@@ -2,18 +2,21 @@ package database
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
 
 	_ "modernc.org/sqlite"
+
+	pverrors "pvmss/errors"
 )
 
 // ErrNotFound is returned by update/delete operations when the target record
-// does not exist in the database.
-var ErrNotFound = errors.New("record not found")
+// does not exist in the database. It is aliased to the cross-package domain
+// sentinel so callers can use either `errors.Is(err, database.ErrNotFound)`
+// or `errors.Is(err, errors.ErrNotFound)` interchangeably.
+var ErrNotFound = pverrors.ErrNotFound
 
 // defaultMaxOpenConns is 1 to keep WAL pragma settings on the same connection
 // and to serialise all writes (SQLite supports only one writer at a time).

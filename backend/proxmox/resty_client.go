@@ -197,11 +197,11 @@ func (rc *RestyClient) Get(ctx context.Context, path string, target any) error {
 		Get(path)
 
 	if err != nil {
-		return fmt.Errorf("GET request failed for %s: %w", path, err)
+		return translateTransportErr("GET", path, err)
 	}
 
 	if resp.IsError() {
-		return fmt.Errorf("GET request returned error status %d for %s: %s", resp.StatusCode(), path, resp.String())
+		return translateStatusErr("GET", path, resp.StatusCode(), resp.String())
 	}
 
 	return nil
@@ -220,11 +220,11 @@ func (rc *RestyClient) Post(ctx context.Context, path string, data url.Values, t
 		Post(path)
 
 	if err != nil {
-		return fmt.Errorf("POST request failed for %s: %w", path, err)
+		return translateTransportErr("POST", path, err)
 	}
 
 	if resp.IsError() {
-		return fmt.Errorf("POST request returned error status %d for %s: %s", resp.StatusCode(), path, resp.String())
+		return translateStatusErr("POST", path, resp.StatusCode(), resp.String())
 	}
 
 	return nil
@@ -245,7 +245,7 @@ func (rc *RestyClient) PostEmpty(ctx context.Context, path string, target any) e
 		Post(path)
 
 	if err != nil {
-		return fmt.Errorf("POST request failed for %s: %w", path, err)
+		return translateTransportErr("POST", path, err)
 	}
 
 	if resp.IsError() {
@@ -253,7 +253,7 @@ func (rc *RestyClient) PostEmpty(ctx context.Context, path string, target any) e
 		if respBody == "" {
 			return nil
 		}
-		return fmt.Errorf("POST request returned error status %d for %s: %s", resp.StatusCode(), path, resp.String())
+		return translateStatusErr("POST", path, resp.StatusCode(), resp.String())
 	}
 
 	return nil
@@ -272,11 +272,11 @@ func (rc *RestyClient) Put(ctx context.Context, path string, data url.Values, ta
 		Put(path)
 
 	if err != nil {
-		return fmt.Errorf("PUT request failed for %s: %w", path, err)
+		return translateTransportErr("PUT", path, err)
 	}
 
 	if resp.IsError() {
-		return fmt.Errorf("PUT request returned error status %d for %s: %s", resp.StatusCode(), path, resp.String())
+		return translateStatusErr("PUT", path, resp.StatusCode(), resp.String())
 	}
 
 	return nil
@@ -293,11 +293,11 @@ func (rc *RestyClient) Delete(ctx context.Context, path string, target any) erro
 		Delete(path)
 
 	if err != nil {
-		return fmt.Errorf("DELETE request failed for %s: %w", path, err)
+		return translateTransportErr("DELETE", path, err)
 	}
 
 	if resp.IsError() {
-		return fmt.Errorf("DELETE request returned error status %d for %s: %s", resp.StatusCode(), path, resp.String())
+		return translateStatusErr("DELETE", path, resp.StatusCode(), resp.String())
 	}
 
 	return nil
