@@ -10,8 +10,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
-
 	"pvmss/database"
 	envpkg "pvmss/env"
 	"pvmss/proxmox"
@@ -19,10 +17,6 @@ import (
 
 // StateManager defines the interface for managing application state
 type StateManager interface {
-	// Session management
-	GetSessionManager() *scs.SessionManager
-	SetSessionManager(sm *scs.SessionManager) error
-
 	// Proxmox connection management
 	StartOnlineMode() error
 	SetOfflineMode() // Enable offline mode (no Proxmox client)
@@ -43,11 +37,6 @@ type StateManager interface {
 	GetVMBRs() []string
 	GetLimits() map[string]interface{}
 	GetStorages() []string
-
-	// Security management
-	AddCSRFToken(token string, expiry time.Time) error
-	ValidateAndRemoveCSRFToken(token string) bool
-	CleanExpiredCSRFTokens()
 
 	// Environment configuration
 	GetEnvConfig() *envpkg.EnvConfig

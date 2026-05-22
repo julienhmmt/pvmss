@@ -8,19 +8,18 @@ import (
 	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/middleware"
+	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 
 	"github.com/julienschmidt/httprouter"
 )
 
-// InitHandlers initializes all handlers and configures routes
-// InitHandlers returns the HTTP handler and the underlying httprouter.Router.
-// The router is exposed so that additional route groups (e.g. api/v1) can be
-// registered before the server starts.
+// InitHandlers initializes all handlers and configures routes.
+// Returns the HTTP handler and the underlying httprouter.Router so additional
+// route groups (e.g. api/v1) can be registered before the server starts.
 func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Router) {
 	log := logger.Get().With().Str("component", "handlers").Logger()
 
-	// Create a new router
 	router := httprouter.New()
 
 	// Configure rate limiter (disabled in automated test environment to avoid
@@ -47,22 +46,11 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		log.Fatal().Msg("State manager not initialized")
 	}
 
-	// Initialize all handlers
-	authHandler := MakeAuthHandler(stateManager)
+	// Initialize handlers
 	healthHandler := MakeHealthHandler(stateManager)
-	settingsHandler := MakeSettingsHandler(stateManager)
-	tagsHandler := MakeTagsHandler(stateManager)
 
-	// Configure routes
-	setupRoutes(
-		authHandler,
-		healthHandler,
-		router,
-		settingsHandler,
-		tagsHandler,
-	)
+	healthHandler.RegisterRoutes(router)
 
-	// Friendly NotFound and MethodNotAllowed handlers (when state is available)
 	router.NotFound = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if getStateManager(r) != nil {
 			RenderErrorPage(w, r, http.StatusNotFound, "Page not found")
@@ -79,24 +67,17 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 		_, _ = w.Write([]byte("Method not allowed"))
 	})
 
-	// Configure static files handler
 	setupStaticFiles(router, stateManager)
 
-	// Create a new ServeMux to route requests to different middleware stacks.
-	// This allows us to have separate middleware for public/static routes vs. the main application.
 	mux := http.NewServeMux()
 
-	// Public/Static Middleware Chain (no session)
+	// Public/Static middleware chain (no session, no rate limit).
 	publicHandler := buildPublicMiddleware()(router)
 
-	// API Middleware Chain: session loading (needed by /api/v1/auth/exchange),
-	// but NO CSRF validation (JSON APIs use JWT, not CSRF tokens).
+	// API middleware chain for /api/v1/ (JWT-authenticated; no session/CSRF).
 	apiHandler := buildAPIMiddleware(stateManager, rateLimiter, isTestEnv)(router)
 
-	// Main App Middleware Chain (with session, CSRF, etc.)
-	appHandler := buildAppMiddleware(stateManager, rateLimiter, isTestEnv)(router)
-
-	// SvelteKit SPA serving — try both 'build' (new) and 'admin' (old) for backward compatibility
+	// SvelteKit SPA serving — try 'build' (new) then 'admin' (old) for backward compatibility.
 	spaDirs := []string{"build", "admin"}
 	spaDir := ""
 	spaAvailable := false
@@ -117,66 +98,37 @@ func InitHandlers(stateManager state.StateManager) (http.Handler, *httprouter.Ro
 	if spaAvailable {
 		spaIndexPath = filepath.Join(spaDir, "index.html")
 	}
+	var spaHandler http.Handler
+	if spaAvailable {
+		spaHandler = securityMiddleware.Headers(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			serveSPA(w, r, spaDir, spaIndexPath)
+		}))
+	}
 
-	// Route requests to the appropriate middleware chain.
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case isStaticPath(r.URL.Path) || r.URL.Path == "/health":
 			publicHandler.ServeHTTP(w, r)
 		case isAPIPath(r.URL.Path):
 			apiHandler.ServeHTTP(w, r)
-		case isLegacyAPIPath(r.URL.Path):
-			// Session-authenticated API routes (/api/health) must go through
-			// the app middleware even when the SPA is available.
-			appHandler.ServeHTTP(w, r)
 		case spaAvailable:
-			// Serve SvelteKit SPA for all other paths when available
-			serveSPA(w, r, spaDir, spaIndexPath)
+			spaHandler.ServeHTTP(w, r)
 		default:
-			// Fallback to legacy app handler only if SPA not available
-			appHandler.ServeHTTP(w, r)
+			publicHandler.ServeHTTP(w, r)
 		}
 	})
 
-	var handler http.Handler = mux
-
 	log.Info().Msg("HTTP handlers and middleware initialized")
-	return handler, router
+	return mux, router
 }
 
-// handlerRegistrar interface for handlers that can register routes
-type handlerRegistrar interface {
-	RegisterRoutes(router *httprouter.Router)
-}
-
-// setupRoutes configures all application routes
-func setupRoutes(
-	authHandler *AuthHandler,
-	healthHandler *HealthHandler,
-	router *httprouter.Router,
-	settingsHandler *SettingsHandler,
-	tagsHandler *TagsHandler,
-) {
-	handlers := []handlerRegistrar{
-		authHandler,
-		healthHandler,
-		settingsHandler,
-		tagsHandler,
-	}
-
-	for _, h := range handlers {
-		h.RegisterRoutes(router)
-	}
-}
-
-// setupStaticFiles configures the static file server
-// registerStaticHandler registers both GET and HEAD handlers for a static route
+// registerStaticHandler registers both GET and HEAD handlers for a static route.
 func registerStaticHandler(router *httprouter.Router, path string, handler http.Handler) {
 	router.Handler(http.MethodGet, path, handler)
 	router.Handler(http.MethodHead, path, handler)
 }
 
-// createCachedFileServer creates a file server with caching for a subdirectory
+// createCachedFileServer creates a file server with caching for a subdirectory.
 func createCachedFileServer(basePath, subdir string) http.Handler {
 	return withStaticCaching(http.FileServer(http.Dir(filepath.Join(basePath, subdir))))
 }
