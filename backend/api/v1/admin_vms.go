@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -41,7 +42,7 @@ func (h *AdminVMsAPIHandler) ListAllVMs(w http.ResponseWriter, r *http.Request) 
 	}
 	result := make([]AdminVMResponse, 0, len(vms))
 	for _, vm := range vms {
-		if !hasTag(vm.Tags, "pvmss") {
+		if !hasTag(vm.Tags, constants.RequiredTag) {
 			continue
 		}
 		result = append(result, AdminVMResponse{
@@ -85,7 +86,7 @@ func (h *AdminVMsAPIHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 	}
 	var node string
 	for _, vm := range vms {
-		if vm.VMID == vmid && hasTag(vm.Tags, "pvmss") {
+		if vm.VMID == vmid && hasTag(vm.Tags, constants.RequiredTag) {
 			node = vm.Node
 			break
 		}
@@ -233,7 +234,7 @@ func (h *AdminVMsAPIHandler) ListAllVMsPaginated(w http.ResponseWriter, r *http.
 
 // filterAdminVM returns true if the VM passes tag, node, and search filters.
 func filterAdminVM(tags, node string, vmid int, name, filterNode, search string) bool {
-	if !hasTag(tags, "pvmss") {
+	if !hasTag(tags, constants.RequiredTag) {
 		return false
 	}
 	if filterNode != "" && !strings.EqualFold(node, filterNode) {

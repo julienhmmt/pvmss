@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -135,7 +136,7 @@ func ownsVM(ctx context.Context, client *proxmox.RestyClient, username string, i
 	if isAdmin {
 		return true
 	}
-	pool := fetchPoolVMIDs(ctx, client, "pvmss_"+username)
+	pool := fetchPoolVMIDs(ctx, client, constants.PoolPrefix+username)
 	return pool[vmid]
 }
 

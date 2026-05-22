@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -87,7 +88,7 @@ func computeNodeUsageFromSnapshot(snapshot *state.ProxmoxClusterSnapshot) map[st
 			tagParts = strings.Fields(vm.Tags)
 		}
 		for _, tag := range tagParts {
-			if strings.EqualFold(strings.TrimSpace(tag), "pvmss") {
+			if strings.EqualFold(strings.TrimSpace(tag), constants.RequiredTag) {
 				hasPvmss = true
 				break
 			}
