@@ -3,21 +3,10 @@ package handlers
 import (
 	"strings"
 
-	"github.com/julienschmidt/httprouter"
-
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/state"
 )
-
-// TagsHandler handles tag-related operations.
-type TagsHandler struct {
-	stateManager state.StateManager
-}
-
-// MakeTagsHandler creates a new instance of TagsHandler.
-func MakeTagsHandler(sm state.StateManager) *TagsHandler {
-	return &TagsHandler{stateManager: sm}
-}
 
 // tagExists checks if a tag exists in the tags list (case-insensitive).
 func tagExists(tags []string, tagName string) bool {
@@ -29,11 +18,8 @@ func tagExists(tags []string, tagName string) bool {
 	return false
 }
 
-// RegisterRoutes registers tag management routes.
-// Legacy session-based tag form routes have been removed; tag CRUD is handled by api/v1.
-func (h *TagsHandler) RegisterRoutes(_ *httprouter.Router) {}
-
-// EnsureDefaultTag ensures that the default tag "pvmss" exists.
+// EnsureDefaultTag ensures that the mandatory `pvmss` tag exists in app
+// settings on startup. Called once from InitHandlers.
 func EnsureDefaultTag(sm state.StateManager) error {
 	settings := sm.GetSettings()
 	if settings == nil {
@@ -44,12 +30,11 @@ func EnsureDefaultTag(sm state.StateManager) error {
 		settings.Tags = []string{}
 	}
 
-	defaultTag := "pvmss"
-	if tagExists(settings.Tags, defaultTag) {
+	if tagExists(settings.Tags, constants.RequiredTag) {
 		return nil
 	}
 
-	settings.Tags = append(settings.Tags, defaultTag)
-	logger.Get().Info().Msg("Default tag 'pvmss' added to settings.")
+	settings.Tags = append(settings.Tags, constants.RequiredTag)
+	logger.Get().Info().Str("tag", constants.RequiredTag).Msg("default tag added to settings")
 	return sm.SetSettings(settings)
 }
