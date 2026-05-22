@@ -652,13 +652,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 
 	var createResp proxmox.Response[string]
 	if err := client.Post(ctx, path, params, &createResp); err != nil {
-		logger.Get().Error().Err(err).Int("vmid", vmid).Str("node", req.Node).Msg("api/v1: VM creation failed")
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "error status 4") {
-			errBadRequest(w, errMsg)
-		} else {
-			writeError(w, http.StatusInternalServerError, "creation_failed", "Failed to create VM")
-		}
+		writeAppError(w, err)
 		return
 	}
 	nodeLimitReservationCommitted = true
