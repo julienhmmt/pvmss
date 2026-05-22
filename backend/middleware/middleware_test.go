@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alexedwards/scs/v2"
-
 	"pvmss/database"
 	envpkg "pvmss/env"
 	"pvmss/proxmox"
@@ -20,8 +18,6 @@ type mockStateManager struct {
 	message   string
 }
 
-func (m *mockStateManager) GetSessionManager() *scs.SessionManager         { return nil }
-func (m *mockStateManager) SetSessionManager(sm *scs.SessionManager) error { return nil }
 func (m *mockStateManager) StartOnlineMode() error                         { return nil }
 func (m *mockStateManager) SetOfflineMode()                                {}
 func (m *mockStateManager) IsOfflineMode() bool                            { return false }
@@ -41,9 +37,6 @@ func (m *mockStateManager) GetISOs() []string                                   
 func (m *mockStateManager) GetVMBRs() []string                                            { return nil }
 func (m *mockStateManager) GetLimits() map[string]interface{}                             { return nil }
 func (m *mockStateManager) GetStorages() []string                                         { return nil }
-func (m *mockStateManager) AddCSRFToken(token string, expiry time.Time) error             { return nil }
-func (m *mockStateManager) ValidateAndRemoveCSRFToken(token string) bool                  { return false }
-func (m *mockStateManager) CleanExpiredCSRFTokens()                                       {}
 func (m *mockStateManager) GetFrontendPath() string                                       { return "" }
 func (m *mockStateManager) SetFrontendPath(path string)                                   {}
 func (m *mockStateManager) SetGuestAgentCleanupFunc(cleanupFunc func())                   {}

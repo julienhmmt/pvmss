@@ -793,6 +793,18 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Enforce per-node aggregate resource caps (pvmss-tagged VMs only).
+	if err := validateNodeAggregateLimits(h.state, req.Node, req.Sockets, req.Cores, req.MemoryMB); err != nil {
+		writeError(w, http.StatusConflict, nodeLimitCode(err), err.Error())
+		return
+	}
+	nodeLimitReservationCommitted := false
+	defer func() {
+		if !nodeLimitReservationCommitted {
+			releaseNodeAggregateReservation(req.Node, req.Sockets, req.Cores, req.MemoryMB)
+		}
+	}()
+
 	// Check VM quota
 	if settings.MaxVMPerUser > 0 && !isAdmin {
 		poolName := "pvmss_" + username
@@ -1048,6 +1060,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	nodeLimitReservationCommitted = true
 	upid := createResp.Data
 
 	logger.Get().Info().
@@ -1074,7 +1087,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	// (including cloud-init) or start action would be rejected with
 	// "VM is locked (create)".
 	if upid != "" {
-		go h.finalizeAfterTask(client, req.Node, vmid, upid, req.StartVM, req.CloudInit, req.Storage, settings)
+		go h.finalizeAfterTask(client, req.Node, vmid, upid, req.StartVM, req.CloudInit, req.Storage, settings, req.Sockets, req.Cores, req.MemoryMB)
 
 		// Return 202 Accepted immediately with the UPID so the frontend can poll.
 		w.WriteHeader(http.StatusAccepted)
@@ -1102,6 +1115,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.state.RequestSnapshotRefresh()
+	releaseNodeAggregateReservation(req.Node, req.Sockets, req.Cores, req.MemoryMB)
 
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, VMCreateResponse{
@@ -1119,7 +1133,9 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 //
 // It runs in a goroutine and does not affect the HTTP response.
 // The ctx parameter allows cancellation on server shutdown.
-func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node string, vmid int, upid string, startVM bool, ci *VMCreateCloudInit, storage string, settings *state.AppSettings) {
+func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node string, vmid int, upid string, startVM bool, ci *VMCreateCloudInit, storage string, settings *state.AppSettings, sockets, cores, memoryMB int) {
+	defer releaseNodeAggregateReservation(node, sockets, cores, memoryMB)
+
 	if client == nil {
 		logger.Get().Error().Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: resty client is nil")
 		return

@@ -1,12 +1,9 @@
 package handlers
 
 import (
-	"bufio"
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,7 +13,6 @@ import (
 	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/middleware"
-	"pvmss/security"
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 )
@@ -37,7 +33,7 @@ func recoverMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if rec := recover(); rec != nil {
 				logger.Get().Error().Interface("panic", rec).Str("path", r.URL.Path).Msg("Unhandled panic recovered")
-				RenderErrorPageWithI18n(w, r, http.StatusInternalServerError, "Error.InternalServer", "Internal server error")
+				RenderErrorPage(w, r, http.StatusInternalServerError, "Internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -76,141 +72,12 @@ func stateManagerContextMiddleware(sm state.StateManager) func(http.Handler) htt
 	}
 }
 
-// snapshotRefreshMiddleware triggers an asynchronous Proxmox snapshot refresh on page navigation.
-func snapshotRefreshMiddleware(sm state.StateManager) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if sm != nil && r.Method == http.MethodGet {
-				sm.RequestSnapshotRefresh()
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-// sessionDebugMiddleware is a debug middleware for sessions (enabled via DEBUG_SESSIONS=true).
-func sessionDebugMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if os.Getenv("DEBUG_SESSIONS") != "true" {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		log := CreateHandlerLogger("sessionDebugMiddleware", r).With().
-			Str("remote_addr", r.RemoteAddr).
-			Logger()
-
-		sensitiveHeaders := map[string]bool{
-			"authorization": true,
-			"cookie":        true,
-			"x-csrf-token":  true,
-		}
-
-		headers := make(map[string]string)
-		for name, values := range r.Header {
-			nameLower := strings.ToLower(name)
-			if sensitiveHeaders[nameLower] {
-				headers[name] = maskSensitiveValue(values[0])
-			} else {
-				headers[name] = values[0]
-			}
-		}
-
-		cookieCount := len(r.Cookies())
-		for _, cookie := range r.Cookies() {
-			log.Debug().
-				Str("cookie_name", cookie.Name).
-				Str("value_preview", maskSensitiveValue(cookie.Value)).
-				Str("path", cookie.Path).
-				Str("domain", cookie.Domain).
-				Bool("secure", cookie.Secure).
-				Bool("http_only", cookie.HttpOnly).
-				Msg("Cookie received in request")
-		}
-
-		log.Debug().
-			Int("header_count", len(headers)).
-			Int("cookie_count", cookieCount).
-			Msg("Request received - before processing")
-
-		isWebSocket := strings.ToLower(r.Header.Get("Upgrade")) == "websocket" ||
-			strings.ToLower(r.Header.Get("Connection")) == "upgrade"
-		if isWebSocket {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		ww := &responseWriterWrapper{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(ww, r)
-
-		log.Debug().
-			Int("status_code", ww.status).
-			Interface("response_headers", ww.Header()).
-			Msg("Response sent")
-
-		for _, cookie := range ww.Header()["Set-Cookie"] {
-			log.Debug().Str("set_cookie", cookie).Msg("Cookie set in response")
-		}
-	})
-}
-
-// responseWriterWrapper captures status code for logging.
-type responseWriterWrapper struct {
-	http.ResponseWriter
-	status int
-}
-
-func (w *responseWriterWrapper) WriteHeader(code int) {
-	w.status = code
-	w.ResponseWriter.WriteHeader(code)
-}
-
-// Hijack implements http.Hijacker interface for WebSocket support.
-func (w *responseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
-		return hijacker.Hijack()
-	}
-	return nil, nil, fmt.Errorf("underlying ResponseWriter does not support hijacking")
-}
-
-// maskSensitiveValue masks sensitive data for logging (shows only first 8 chars).
-func maskSensitiveValue(value string) string {
-	if len(value) <= 8 {
-		return "***"
-	}
-	return value[:8] + "..." + fmt.Sprintf("[%d chars]", len(value))
-}
-
-// buildAppMiddleware assembles the middleware stack for the main app.
-func buildAppMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, isTestEnv bool) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		handler := next
-		handler = stateManagerContextMiddleware(sm)(handler)
-		handler = snapshotRefreshMiddleware(sm)(handler)
-
-		sessionManager := sm.GetSessionManager()
-		if sessionManager != nil {
-			handler = security.CSRF(handler)
-			handler = securityMiddleware.Headers(handler)
-			handler = securityMiddleware.SessionMiddleware(sessionManager)(handler)
-			handler = sessionDebugMiddleware(handler)
-			handler = sessionManager.LoadAndSave(handler)
-		}
-		handler = middleware.ProxmoxStatusMiddlewareWithState(sm)(handler)
-		if !isTestEnv {
-			handler = middleware.RateLimitMiddleware(rateLimiter)(handler)
-		}
-		handler = trailingSlashRedirectMiddleware(handler)
-		handler = maxBodySizeMiddleware(handler, int64(constants.MaxFormSize))
-		handler = recoverMiddleware(handler)
-		return handler
-	}
-}
-
 // buildPublicMiddleware assembles the middleware stack for public/static routes.
 func buildPublicMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		handler := recoverMiddleware(next)
+		handler := next
+		handler = securityMiddleware.Headers(handler)
+		handler = recoverMiddleware(handler)
 		return handler
 	}
 }
@@ -224,6 +91,7 @@ func buildAPIMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, 
 		if !isTestEnv {
 			handler = middleware.RateLimitMiddleware(rateLimiter)(handler)
 		}
+		handler = securityMiddleware.Headers(handler)
 		handler = maxBodySizeMiddleware(handler, int64(constants.MaxFormSize))
 		handler = recoverMiddleware(handler)
 		return handler
@@ -233,13 +101,6 @@ func buildAPIMiddleware(sm state.StateManager, rateLimiter *middleware.Limiter, 
 // isAPIPath returns true when the request path is a JWT-authenticated API route (/api/v1/).
 func isAPIPath(p string) bool {
 	return strings.HasPrefix(p, "/api/v1/")
-}
-
-// isLegacyAPIPath returns true for session-authenticated API routes that live
-// outside /api/v1/ (e.g. /api/health). These must be routed through appHandler
-// even when the SvelteKit SPA is available.
-func isLegacyAPIPath(p string) bool {
-	return strings.HasPrefix(p, "/api/") && !strings.HasPrefix(p, "/api/v1/")
 }
 
 // withStaticCaching wraps a static file handler to add strong caching headers.
@@ -253,8 +114,6 @@ func withStaticCaching(next http.Handler) http.Handler {
 }
 
 // isStaticPath returns true when the request is for a static asset we serve directly.
-// /_app/ contains SvelteKit's immutable hashed assets (JS/CSS) and can bypass session middleware.
-// /noVNC-1.6.0/ contains the noVNC console library and should also bypass session middleware.
 func isStaticPath(p string) bool {
 	if p == "/favicon.ico" {
 		return true
@@ -297,14 +156,12 @@ func getFrontendPath(sm state.StateManager) string {
 // path stays within baseDir. It returns the absolute path and true on success, or
 // an empty string and false if the path escapes baseDir or cannot be resolved.
 func resolveWithinBase(baseDir, relPath string) (string, bool) {
-	// Normalize the base directory and ensure it is absolute.
 	baseClean := filepath.Clean(baseDir)
 	baseAbs, err := filepath.Abs(baseClean)
 	if err != nil {
 		return "", false
 	}
 
-	// Normalize the relative path and ensure it is not absolute or volume-rooted.
 	cleanRel := filepath.Clean(relPath)
 	if cleanRel == "." {
 		cleanRel = ""
@@ -318,7 +175,6 @@ func resolveWithinBase(baseDir, relPath string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	// Ensure the resolved path stays within the base directory to prevent path traversal.
 	baseWithSep := baseAbs
 	if !strings.HasSuffix(baseWithSep, string(os.PathSeparator)) {
 		baseWithSep += string(os.PathSeparator)
@@ -331,8 +187,6 @@ func resolveWithinBase(baseDir, relPath string) (string, bool) {
 
 // serveSPA serves the SvelteKit SPA. Static assets (files with extensions) are served
 // directly from the build directory; all other paths get the fallback index.html.
-// It includes panic recovery and basic security headers since it bypasses the
-// normal middleware stack.
 func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath string) {
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -346,32 +200,25 @@ func serveSPA(w http.ResponseWriter, r *http.Request, spaDir, spaIndexPath strin
 		}
 	}()
 
-	// Set security headers for SPA responses.
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
 
-	// Decode and validate URL path first so encoded traversal payloads cannot bypass checks.
 	decodedPath, err := url.PathUnescape(r.URL.Path)
 	if err != nil || strings.Contains(decodedPath, "\x00") || strings.Contains(decodedPath, "..") || strings.Contains(decodedPath, "\\") {
 		http.NotFound(w, r)
 		return
 	}
 
-	// Strip leading slash to get a relative path within the build directory.
-	// e.g. "/login" → "login", "/_app/x.js" → "_app/x.js", "/admin/nodes" → "admin/nodes"
 	relPath := strings.TrimPrefix(decodedPath, "/")
-	// Resolve the requested path within the SPA directory and ensure it cannot escape.
 	filePathAbs, ok := resolveWithinBase(spaDir, relPath)
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
 
-	// Try to serve the file directly (JS, CSS, images, etc.)
 	if info, err := os.Stat(filePathAbs); err == nil && !info.IsDir() {
 		http.ServeFile(w, r, filePathAbs)
 		return
 	}
-	// SPA fallback: serve index.html for all routes
 	http.ServeFile(w, r, spaIndexPath)
 }

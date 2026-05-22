@@ -18,7 +18,6 @@ import (
 	"pvmss/handlers"
 	"pvmss/logger"
 	"pvmss/proxmox"
-	"pvmss/security"
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 
@@ -133,14 +132,6 @@ func main() {
 }
 
 func initializeApp(stateManager state.StateManager, db database.DB, envCfg *envpkg.EnvConfig) error {
-	sessionManager, err := security.NewSessionManager(envCfg.SessionSecret, envCfg.Environment)
-	if err != nil {
-		return fmt.Errorf("failed to create session manager: %w", err)
-	}
-	if err := stateManager.SetSessionManager(sessionManager); err != nil {
-		return fmt.Errorf("failed to set session manager: %w", err)
-	}
-
 	// T113: load settings from the database into the in-memory cache.
 	if err := stateManager.LoadSettingsFromDB(); err != nil {
 		return fmt.Errorf("load settings from database: %w", err)

@@ -3,19 +3,10 @@ package constants
 
 import "time"
 
-// Security Configuration
+// Background cleanup
 const (
-	// CSRFTokenLength is the byte length of CSRF tokens
-	CSRFTokenLength = 32
-
-	// CSRFTokenTTL is the default lifetime for CSRF tokens
-	CSRFTokenTTL = 30 * time.Minute
-
-	// CSRFCleanupInterval is how often to clean expired CSRF tokens
-	CSRFCleanupInterval = 30 * time.Minute
-
-	// SessionCleanupInterval is how often to clean expired sessions
-	SessionCleanupInterval = 30 * time.Minute
+	// GuestAgentCacheCleanupInterval is how often to clean expired guest agent cache entries.
+	GuestAgentCacheCleanupInterval = 30 * time.Minute
 )
 
 // Rate Limiting

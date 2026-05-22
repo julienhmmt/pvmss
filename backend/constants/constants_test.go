@@ -85,10 +85,7 @@ func TestProxmoxConfiguration(t *testing.T) {
 }
 
 func TestSecurityConfiguration(t *testing.T) {
-	assertEqualInt(t, "CSRFTokenLength", CSRFTokenLength, 32)
-	assertEqualDuration(t, "CSRFTokenTTL", CSRFTokenTTL, 30*time.Minute)
-	assertEqualDuration(t, "CSRFCleanupInterval", CSRFCleanupInterval, 30*time.Minute)
-	assertEqualDuration(t, "SessionCleanupInterval", SessionCleanupInterval, 30*time.Minute)
+	assertEqualDuration(t, "GuestAgentCacheCleanupInterval", GuestAgentCacheCleanupInterval, 30*time.Minute)
 	assertEqualDuration(t, "RateLimitWindow", RateLimitWindow, 5*time.Minute)
 	assertEqualDuration(t, "RateLimitCleanup", RateLimitCleanup, 15*time.Minute)
 	assertEqualInt(t, "LoginRateLimitCapacity", LoginRateLimitCapacity, 5)

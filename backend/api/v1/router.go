@@ -10,8 +10,8 @@ import (
 )
 
 // RegisterRoutes mounts all /api/v1/ routes onto the provided router.
-// JWT-protected routes are wrapped with JWTMiddleware; the auth exchange
-// endpoint only needs a session (session is loaded by the API middleware chain).
+// JWT-protected routes are wrapped with JWTMiddleware; auth exchange validates
+// the existing access_token cookie directly and does not require legacy sessions.
 func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	jwtSecret := s.GetEnvConfig().JWTSecret
 	authHandler := MakeAuthHandler(s, jwtSecret)
