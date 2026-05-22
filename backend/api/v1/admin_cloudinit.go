@@ -3,7 +3,6 @@ package apiv1
 import (
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
@@ -121,8 +120,7 @@ func generateCloudInitID(name string) string {
 	id := strings.ToLower(name)
 	id = strings.ReplaceAll(id, " ", "-")
 	id = strings.ReplaceAll(id, "_", "-")
-	safeRe := regexp.MustCompile(`[^a-z0-9-]`)
-	id = safeRe.ReplaceAllString(id, "")
+	id = cloudInitIDUnsafeRegex.ReplaceAllString(id, "")
 	for strings.Contains(id, "--") {
 		id = strings.ReplaceAll(id, "--", "-")
 	}
