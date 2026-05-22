@@ -117,7 +117,7 @@ func (h *AdminHandler) ToggleNode(w http.ResponseWriter, r *http.Request) {
 
 	changedBy := usernameFromCtx(r)
 	if err := h.state.SetEnabledNodes(newEnabled, changedBy); err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -133,12 +133,12 @@ func (h *AdminHandler) Storage(w http.ResponseWriter, r *http.Request) {
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	nodeNames, err := proxmox.GetNodeNamesResty(r.Context(), restyClient)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	enabled := h.state.GetStorages()
@@ -209,12 +209,12 @@ func (h *AdminHandler) VMBR(w http.ResponseWriter, r *http.Request) {
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	nodeNames, err := proxmox.GetNodeNamesResty(r.Context(), restyClient)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	enabledVMBRs := h.state.GetVMBRs()
@@ -305,12 +305,12 @@ func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	nodeNames, err := proxmox.GetNodeNamesResty(r.Context(), restyClient)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	enabledISOs := h.state.GetISOs()
@@ -320,7 +320,7 @@ func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 	}
 	storages, err := proxmox.GetStoragesResty(r.Context(), restyClient)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	seen := make(map[string]bool)
@@ -371,7 +371,7 @@ func (h *AdminHandler) CloudInitStorages(w http.ResponseWriter, r *http.Request)
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	storages, err := proxmox.GetSnippetsStoragesResty(r.Context(), restyClient)

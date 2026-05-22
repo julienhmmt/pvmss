@@ -10,7 +10,6 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
 )
@@ -284,7 +283,7 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -321,14 +320,14 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 	// Get runtime status
 	current, err := proxmox.GetVMCurrentResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
 	// Get full config
 	cfg, err := proxmox.GetVMConfigResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -427,7 +426,7 @@ func (h *VMDetailsHandler) GetVMMetrics(w http.ResponseWriter, r *http.Request) 
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -447,7 +446,7 @@ func (h *VMDetailsHandler) GetVMMetrics(w http.ResponseWriter, r *http.Request) 
 
 	current, err := proxmox.GetVMCurrentResty(ctx, client, node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -478,7 +477,7 @@ func (h *VMDetailsHandler) GetVMSnapshots(w http.ResponseWriter, r *http.Request
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -499,7 +498,7 @@ func (h *VMDetailsHandler) GetVMSnapshots(w http.ResponseWriter, r *http.Request
 	vmidStr := strconv.Itoa(vmid)
 	snaps, err := proxmox.GetVMSnapshotsResty(ctx, client, node, vmidStr)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -552,7 +551,7 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -574,7 +573,7 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 	if req.Vmstate {
 		current, err := proxmox.GetVMCurrentResty(ctx, client, node, vmid)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		if current.Status != "running" {
@@ -583,7 +582,7 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 		}
 		cfg, err := proxmox.GetVMConfigResty(ctx, client, node, vmid)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		if !supportsSnapshotVMState(cfg) {
@@ -595,7 +594,7 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 	// Enforce snapshot limit
 	snaps, err := proxmox.GetVMSnapshotsResty(ctx, client, node, vmidStr)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	settings := h.state.GetSettings()
@@ -619,8 +618,7 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 		Description: req.Description,
 		Vmstate:     req.Vmstate,
 	}); err != nil {
-		logger.Get().Error().Err(err).Int("vmid", vmid).Msg("api/v1: CreateSnapshot failed")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -689,7 +687,7 @@ func (h *VMDetailsHandler) DeleteSnapshot(w http.ResponseWriter, r *http.Request
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -708,7 +706,7 @@ func (h *VMDetailsHandler) DeleteSnapshot(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := proxmox.DeleteVMSnapshotResty(ctx, client, node, strconv.Itoa(vmid), snapName); err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -733,7 +731,7 @@ func (h *VMDetailsHandler) RollbackSnapshot(w http.ResponseWriter, r *http.Reque
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -752,7 +750,7 @@ func (h *VMDetailsHandler) RollbackSnapshot(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := proxmox.RollbackVMSnapshotResty(ctx, client, node, strconv.Itoa(vmid), snapName); err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})
@@ -797,7 +795,7 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -831,7 +829,7 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := proxmox.UpdateVMConfigResty(ctx, client, node, vmid, params); err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	proxmox.InvalidateVMCache(node)
@@ -862,7 +860,7 @@ func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request)
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -902,7 +900,7 @@ func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := proxmox.UpdateVMConfigResty(ctx, client, node, vmid, params); err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	writeJSON(w, map[string]string{"status": "ok"})
@@ -928,7 +926,7 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 

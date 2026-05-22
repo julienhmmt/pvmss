@@ -83,8 +83,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	env := h.state.GetEnvConfig().Environment
 	if err := issueTokens(w, secret, req.Username, isAdmin, env); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to issue JWT tokens")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -196,7 +195,7 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 
 	pxClient, err := proxmox.MakeRestyClientCookieAuthFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -217,7 +216,7 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := issueTokens(w, secret, ticketResp.Username, true, h.state.GetEnvConfig().Environment); err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -324,7 +323,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	// Requires the PVMSS service account to have User.Modify permission.
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 

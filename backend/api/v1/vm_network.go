@@ -41,7 +41,7 @@ func (h *VMDetailsHandler) ToggleNIC(w http.ResponseWriter, r *http.Request) {
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -51,7 +51,7 @@ func (h *VMDetailsHandler) ToggleNIC(w http.ResponseWriter, r *http.Request) {
 	// Resolve node from VM list and verify pvmss tag.
 	allVMs, err := proxmox.GetVMsResty(ctx, client)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *VMDetailsHandler) ToggleNIC(w http.ResponseWriter, r *http.Request) {
 
 	cfg, err := proxmox.GetVMConfigResty(ctx, client, targetNode, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 

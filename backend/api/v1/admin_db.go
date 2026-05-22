@@ -1,6 +1,7 @@
 package apiv1
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -67,8 +68,7 @@ func (h *AdminDBHandler) ListAuditLog(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, err := h.db.ListAuditLog(tableFilter, limit, offset)
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to list audit log")
-		errInternal(w)
+		writeAppError(w, fmt.Errorf("listing audit log: %w", err))
 		return
 	}
 	writeJSON(w, AuditLogResponse{Entries: entries, Limit: limit, Offset: offset})
@@ -81,8 +81,7 @@ func (h *AdminDBHandler) ListAuditLog(w http.ResponseWriter, r *http.Request) {
 func (h *AdminDBHandler) ExportDB(w http.ResponseWriter, r *http.Request) {
 	tmpFile, err := os.CreateTemp("", "pvmss-backup-*.db")
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to create temp file for DB export")
-		errInternal(w)
+		writeAppError(w, fmt.Errorf("creating temp file for db export: %w", err))
 		return
 	}
 	tmpPath := tmpFile.Name()
@@ -90,15 +89,13 @@ func (h *AdminDBHandler) ExportDB(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	if err := h.db.Backup(tmpPath); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to backup database for export")
-		errInternal(w)
+		writeAppError(w, fmt.Errorf("backing up database for export: %w", err))
 		return
 	}
 
 	f, err := os.Open(tmpPath)
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to open backup file for streaming")
-		errInternal(w)
+		writeAppError(w, fmt.Errorf("opening backup file for streaming: %w", err))
 		return
 	}
 	defer func() { _ = f.Close() }()
@@ -142,8 +139,7 @@ func (h *AdminDBHandler) ImportDB(w http.ResponseWriter, r *http.Request) {
 
 	tmpFile, err := os.CreateTemp("", "pvmss-import-*.db")
 	if err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to create temp file for DB import")
-		errInternal(w)
+		writeAppError(w, fmt.Errorf("creating temp file for db import: %w", err))
 		return
 	}
 	tmpPath := tmpFile.Name()
@@ -152,8 +148,7 @@ func (h *AdminDBHandler) ImportDB(w http.ResponseWriter, r *http.Request) {
 	bytesWritten, err := io.Copy(tmpFile, file)
 	if err != nil {
 		_ = tmpFile.Close()
-		logger.Get().Error().Err(err).Msg("Failed to write uploaded DB to temp file")
-		errInternal(w)
+		writeAppError(w, fmt.Errorf("writing uploaded db to temp file: %w", err))
 		return
 	}
 	_ = tmpFile.Close()
@@ -174,8 +169,7 @@ func (h *AdminDBHandler) ImportDB(w http.ResponseWriter, r *http.Request) {
 
 	// T157: reload settings cache from the newly imported data.
 	if err := h.state.LoadSettingsFromDB(); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to reload settings cache after DB import")
-		errInternal(w)
+		writeAppError(w, fmt.Errorf("reloading settings cache after db import: %w", err))
 		return
 	}
 

@@ -51,7 +51,7 @@ func (h *AdminMutationsHandler) ListPools(w http.ResponseWriter, r *http.Request
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *AdminMutationsHandler) ListPools(w http.ResponseWriter, r *http.Request
 		} `json:"data"`
 	}
 	if err := restyClient.Get(r.Context(), "/pools", &listResp); err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -130,7 +130,7 @@ func (h *AdminMutationsHandler) CreatePool(w http.ResponseWriter, r *http.Reques
 
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	ctx := r.Context()
@@ -144,8 +144,7 @@ func (h *AdminMutationsHandler) CreatePool(w http.ResponseWriter, r *http.Reques
 		"Datastore.AllocateSpace", "Datastore.Audit",
 		"SDN.Use",
 	}); err != nil {
-		logger.Get().Error().Err(err).Msg("Failed to ensure PVMSSUser role")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -190,7 +189,7 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 	}
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	ctx := r.Context()
@@ -374,7 +373,7 @@ func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request
 	newTags = append(newTags, req.Name)
 	if h.state.HasDB() {
 		if err := h.state.SetTags(newTags, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -382,7 +381,7 @@ func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request
 		newSettings.Tags = newTags
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -443,12 +442,11 @@ func (h *AdminMutationsHandler) SetTagColor(w http.ResponseWriter, r *http.Reque
 
 	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	if err := proxmox.SetTagColorResty(r.Context(), restyClient, name, req.Color, req.TextColor); err != nil {
-		logger.Get().Error().Err(err).Str("tag", name).Msg("Failed to set tag color")
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -483,7 +481,7 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 	}
 	if h.state.HasDB() {
 		if err := h.state.SetTags(newTags, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -491,7 +489,7 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 		newSettings.Tags = newTags
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -551,7 +549,7 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 			MaxSnapshots:    req.MaxSnapshots,
 		}
 		if err := h.state.SetVMLimits(limits, changedBy); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		// Upsert per-node limits from the request's Nodes map.
@@ -562,8 +560,7 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 				// Read existing limits directly from DB to avoid cache staleness.
 				existing, found, err := h.state.GetNodeLimitFromDB(nodeName)
 				if err != nil {
-					logger.Get().Error().Err(err).Str("node", nodeName).Msg("UpdateLimits: failed to read existing node limits")
-					errInternal(w)
+					writeAppError(w, err)
 					return
 				}
 				if !found {
@@ -576,7 +573,7 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 					MaxRAMGB:  existing.MaxRAMGB,
 					MaxDiskGB: existing.MaxDiskGB,
 				}, changedBy); err != nil {
-					errInternal(w)
+					writeAppError(w, err)
 					return
 				}
 			} else {
@@ -584,8 +581,7 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 				// Read existing to preserve capacity limits that may have been set via Settings Overview.
 				existing, found, err := h.state.GetNodeLimitFromDB(nodeName)
 				if err != nil {
-					logger.Get().Error().Err(err).Str("node", nodeName).Msg("UpdateLimits: failed to read existing node limits for delete")
-					errInternal(w)
+					writeAppError(w, err)
 					return
 				}
 				if found && (existing.MaxVCPUs > 0 || existing.MaxRAMGB > 0 || existing.MaxDiskGB > 0) {
@@ -597,7 +593,7 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 						MaxRAMGB:  existing.MaxRAMGB,
 						MaxDiskGB: existing.MaxDiskGB,
 					}, changedBy); err != nil {
-						errInternal(w)
+						writeAppError(w, err)
 						return
 					}
 				} else {
@@ -632,7 +628,7 @@ func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Requ
 		newSettings.MaxDiskPerVM = req.MaxDiskPerVM
 		newSettings.MaxVMPerUser = req.MaxVMPerUser
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -728,8 +724,7 @@ func (h *AdminMutationsHandler) ToggleSFTP(w http.ResponseWriter, r *http.Reques
 			RemotePath:     cfg.SnippetBaseDir,
 		}
 		if err := h.state.SetSFTPConfig(dbCfg, usernameFromCtx(r)); err != nil {
-			logger.Get().Error().Err(err).Msg("api/v1: ToggleSFTP failed")
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -738,7 +733,7 @@ func (h *AdminMutationsHandler) ToggleSFTP(w http.ResponseWriter, r *http.Reques
 		newSettings.CloudInitSFTP.Enabled = newEnabled
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -806,7 +801,7 @@ func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.R
 			YAMLContent: template.YAMLContent, Enabled: template.Enabled,
 		}
 		if err := h.state.CreateCloudInitTemplate(dbTemplate, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -817,7 +812,7 @@ func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.R
 		newSettings.CloudInitTemplates = newTemplates
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -878,7 +873,7 @@ func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.R
 			YAMLContent: existing.YAMLContent, Enabled: existing.Enabled,
 		}
 		if err := h.state.UpdateCloudInitTemplate(dbTemplate, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -894,7 +889,7 @@ func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.R
 		newSettings.CloudInitTemplates = newTemplates
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -924,7 +919,7 @@ func (h *AdminMutationsHandler) DeleteCloudInit(w http.ResponseWriter, r *http.R
 	}
 	if h.state.HasDB() {
 		if err := h.state.DeleteCloudInitTemplate(id, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -939,7 +934,7 @@ func (h *AdminMutationsHandler) DeleteCloudInit(w http.ResponseWriter, r *http.R
 		newSettings.CloudInitTemplates = newTemplates
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -977,7 +972,7 @@ func (h *AdminMutationsHandler) ToggleCloudInit(w http.ResponseWriter, r *http.R
 			YAMLContent: toggled.YAMLContent, Enabled: toggled.Enabled,
 		}
 		if err := h.state.UpdateCloudInitTemplate(dbTemplate, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -993,7 +988,7 @@ func (h *AdminMutationsHandler) ToggleCloudInit(w http.ResponseWriter, r *http.R
 		newSettings.CloudInitTemplates = newTemplates
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -1042,7 +1037,7 @@ func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Req
 
 	if h.state.HasDB() {
 		if err := h.state.SetEnabledStorages(newStorages, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -1050,7 +1045,7 @@ func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Req
 		newSettings.EnabledStorages = newStorages
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -1099,7 +1094,7 @@ func (h *AdminMutationsHandler) ToggleVMBR(w http.ResponseWriter, r *http.Reques
 
 	if h.state.HasDB() {
 		if err := h.state.SetEnabledVMBRs(newVMBRs, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -1107,7 +1102,7 @@ func (h *AdminMutationsHandler) ToggleVMBR(w http.ResponseWriter, r *http.Reques
 		newSettings.VMBRs = newVMBRs
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -1154,7 +1149,7 @@ func (h *AdminMutationsHandler) ToggleISO(w http.ResponseWriter, r *http.Request
 
 	if h.state.HasDB() {
 		if err := h.state.SetEnabledISOs(newISOs, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -1162,7 +1157,7 @@ func (h *AdminMutationsHandler) ToggleISO(w http.ResponseWriter, r *http.Request
 		newSettings.ISOs = newISOs
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -1285,11 +1280,11 @@ func (h *AdminMutationsHandler) CreateVMProfile(w http.ResponseWriter, r *http.R
 	if h.state.HasDB() {
 		dbProfile, err := vmProfileConfigToDB(req)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		if err := h.state.CreateVMProfile(dbProfile, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -1301,7 +1296,7 @@ func (h *AdminMutationsHandler) CreateVMProfile(w http.ResponseWriter, r *http.R
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		newSettings.VMProfiles = append(newSettings.VMProfiles, req)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -1344,11 +1339,11 @@ func (h *AdminMutationsHandler) UpdateVMProfile(w http.ResponseWriter, r *http.R
 	if h.state.HasDB() {
 		dbProfile, err := vmProfileConfigToDB(req)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		if err := h.state.UpdateVMProfile(dbProfile, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -1360,7 +1355,7 @@ func (h *AdminMutationsHandler) UpdateVMProfile(w http.ResponseWriter, r *http.R
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		newSettings.AddOrUpdateVMProfile(req)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -1389,7 +1384,7 @@ func (h *AdminMutationsHandler) DeleteVMProfile(w http.ResponseWriter, r *http.R
 	}
 	if h.state.HasDB() {
 		if err := h.state.DeleteVMProfile(id, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -1401,7 +1396,7 @@ func (h *AdminMutationsHandler) DeleteVMProfile(w http.ResponseWriter, r *http.R
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		newSettings.RemoveVMProfile(id)
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}
@@ -1434,11 +1429,11 @@ func (h *AdminMutationsHandler) ToggleVMProfile(w http.ResponseWriter, r *http.R
 	if h.state.HasDB() {
 		dbProfile, err := vmProfileConfigToDB(toggled)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		if err := h.state.UpdateVMProfile(dbProfile, usernameFromCtx(r)); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	} else {
@@ -1455,7 +1450,7 @@ func (h *AdminMutationsHandler) ToggleVMProfile(w http.ResponseWriter, r *http.R
 			}
 		}
 		if err := h.state.SetSettings(&newSettings); err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 	}

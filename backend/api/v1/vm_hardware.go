@@ -11,6 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	apperrors "pvmss/errors"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/utils"
@@ -114,7 +115,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 
 	settings := h.state.GetSettings()
 	if settings == nil {
-		errInternal(w)
+		writeAppError(w, apperrors.ConfigErr("settings", "settings are unavailable"))
 		return
 	}
 	limits := settings.Limits.VM
@@ -184,7 +185,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 
 	client, err := restyClient()
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 
@@ -196,7 +197,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	if len(req.Networks)+len(req.DeleteNetworks) > 0 {
 		existingCfg, cfgErr := proxmox.GetVMConfigResty(ctx, client, req.Node, vmid)
 		if cfgErr != nil {
-			errInternal(w)
+			writeAppError(w, cfgErr)
 			return
 		}
 		// Count existing NICs (net0, net1, etc.)
@@ -230,7 +231,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	if !isAdmin {
 		allVMs, listErr := proxmox.GetVMsResty(ctx, client)
 		if listErr != nil {
-			errInternal(w)
+			writeAppError(w, listErr)
 			return
 		}
 		tagged := false
@@ -284,7 +285,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 		// Re-check to avoid race condition
 		current, err = proxmox.GetVMCurrentResty(ctx, client, req.Node, vmid)
 		if err != nil {
-			errInternal(w)
+			writeAppError(w, err)
 			return
 		}
 		if current.Status != "running" {
@@ -366,7 +367,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	// Fetch current config once for new-NIC index allocation.
 	existingCfg, err := proxmox.GetVMConfigResty(ctx, client, req.Node, vmid)
 	if err != nil {
-		errInternal(w)
+		writeAppError(w, err)
 		return
 	}
 	assignedIdxs := make(map[string]bool) // track indexes assigned in this request
