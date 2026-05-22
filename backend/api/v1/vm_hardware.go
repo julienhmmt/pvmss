@@ -9,6 +9,7 @@ import (
 	"time"
 
 	apperrors "pvmss/errors"
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/utils"
@@ -163,7 +164,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 		tags := *req.Tags
 		hasPvmss := false
 		for _, t := range strings.Split(tags, ";") {
-			if strings.TrimSpace(strings.ToLower(t)) == "pvmss" {
+			if strings.TrimSpace(strings.ToLower(t)) == constants.RequiredTag {
 				hasPvmss = true
 				break
 			}
@@ -231,7 +232,7 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 		tagged := false
 		for _, vm := range allVMs {
 			if vm.VMID == vmid {
-				tagged = hasTag(vm.Tags, "pvmss")
+				tagged = hasTag(vm.Tags, constants.RequiredTag)
 				break
 			}
 		}

@@ -3,6 +3,20 @@ package constants
 
 import "time"
 
+// Proxmox naming conventions used by PVMSS. These three values define the
+// namespace PVMSS owns inside a shared Proxmox cluster:
+//
+//   - PoolPrefix is the prefix attached to every PVMSS-managed pool. A pool
+//     named `pvmss_alice` belongs to user `alice@pve`.
+//   - UserSuffix is the Proxmox realm suffix used for PVMSS-provisioned users.
+//   - RequiredTag is the mandatory tag every PVMSS-managed VM carries; the
+//     API filters out VMs that do not have it.
+const (
+	PoolPrefix  = "pvmss_"
+	UserSuffix  = "@pve"
+	RequiredTag = "pvmss"
+)
+
 // Proxmox API Configuration
 const (
 	// ProxmoxDefaultTimeout is the default timeout for Proxmox API calls

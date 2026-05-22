@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -220,7 +221,7 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 
 	resp.RemainingVMs = -1
 	if settings.MaxVMPerUser > 0 && !isAdmin {
-		poolName := "pvmss_" + username
+		poolName := constants.PoolPrefix + username
 		remaining := settings.MaxVMPerUser
 		if connected {
 			client, err := restyClient()
@@ -427,7 +428,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if settings.MaxVMPerUser > 0 && !isAdmin {
-		poolName := "pvmss_" + username
+		poolName := constants.PoolPrefix + username
 		client, err := restyClient()
 		if err == nil {
 			poolCtx, poolCancel := context.WithTimeout(ctx, 10*time.Second)
@@ -538,13 +539,13 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 
 	pool := ""
 	if !isAdmin && username != "" {
-		pool = "pvmss_" + username
+		pool = constants.PoolPrefix + username
 		params.Set("pool", pool)
 	}
 
-	cleanedTags := []string{"pvmss"}
+	cleanedTags := []string{constants.RequiredTag}
 	for _, tag := range req.Tags {
-		if cleaned := strings.TrimSpace(tag); cleaned != "" && !strings.EqualFold(cleaned, "pvmss") {
+		if cleaned := strings.TrimSpace(tag); cleaned != "" && !strings.EqualFold(cleaned, constants.RequiredTag) {
 			cleanedTags = append(cleanedTags, cleaned)
 		}
 	}

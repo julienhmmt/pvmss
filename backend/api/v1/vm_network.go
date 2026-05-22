@@ -10,6 +10,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 )
@@ -55,7 +56,7 @@ func (h *VMDetailsHandler) ToggleNIC(w http.ResponseWriter, r *http.Request) {
 
 	var targetNode string
 	for _, vm := range allVMs {
-		if vm.VMID == vmid && hasTag(vm.Tags, "pvmss") {
+		if vm.VMID == vmid && hasTag(vm.Tags, constants.RequiredTag) {
 			targetNode = vm.Node
 			break
 		}

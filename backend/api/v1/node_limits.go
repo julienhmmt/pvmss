@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -16,7 +17,6 @@ import (
 const (
 	liveNodeUsageTimeout = 10 * time.Second
 	nodeReservationTTL   = 10 * time.Minute
-	pvmssTag             = "pvmss"
 )
 
 // nodeResourceUsage is the aggregate footprint of pvmss-tagged VMs on a node.
@@ -238,7 +238,7 @@ func hasPvmssTag(tagsStr string) bool {
 	}
 	for _, part := range strings.Split(tagsStr, ";") {
 		for _, t := range strings.Split(part, ",") {
-			if strings.EqualFold(strings.TrimSpace(t), pvmssTag) {
+			if strings.EqualFold(strings.TrimSpace(t), constants.RequiredTag) {
 				return true
 			}
 		}
