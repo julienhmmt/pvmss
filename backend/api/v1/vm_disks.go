@@ -2,7 +2,6 @@ package apiv1
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -174,10 +173,8 @@ func isCDROMEntry(diskConfig string) bool {
 // AddDisk handles POST /api/v1/vms/:id/disks
 // Creates a new disk on the VM by allocating the next available slot for the chosen bus.
 func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
@@ -191,8 +188,7 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 		SizeGB  int    `json:"size_gb"`
 		Bus     string `json:"bus"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -390,13 +386,12 @@ func (h *VMDiskHandler) AddDisk(w http.ResponseWriter, r *http.Request) {
 // ResizeDisk handles PUT /api/v1/vms/:id/disks/:diskId/resize
 // Increases a disk's size by the specified amount in GB (only increases are supported by Proxmox).
 func (h *VMDiskHandler) ResizeDisk(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
+	ps := httprouter.ParamsFromContext(r.Context())
 	diskID := strings.ToLower(strings.TrimSpace(ps.ByName("diskId")))
 	if !isDiskIDValid(diskID) {
 		errBadRequest(w, "invalid disk id")
@@ -411,8 +406,7 @@ func (h *VMDiskHandler) ResizeDisk(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		AddGB int `json:"add_gb"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -573,13 +567,12 @@ func (h *VMDiskHandler) ResizeDisk(w http.ResponseWriter, r *http.Request) {
 // Detaches (and marks unused) the specified disk from the VM config.
 // Note: this does not immediately destroy the underlying storage volume.
 func (h *VMDiskHandler) DeleteDisk(w http.ResponseWriter, r *http.Request) {
-	ps := httprouter.ParamsFromContext(r.Context())
-	vmid, err := strconv.Atoi(ps.ByName("id"))
-	if err != nil || vmid <= 0 {
-		errBadRequest(w, "invalid vm id")
+	vmid, ok := requireVMID(w, r)
+	if !ok {
 		return
 	}
 
+	ps := httprouter.ParamsFromContext(r.Context())
 	diskID := strings.ToLower(strings.TrimSpace(ps.ByName("diskId")))
 	if !isDiskIDValid(diskID) {
 		errBadRequest(w, "invalid disk id")

@@ -402,8 +402,7 @@ func (h *AdminSettingsOverviewHandler) UpsertSettings(w http.ResponseWriter, r *
 	}
 
 	var req UpsertRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Action == "delete" {

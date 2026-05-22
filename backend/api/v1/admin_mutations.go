@@ -119,8 +119,7 @@ func (h *AdminMutationsHandler) CreatePool(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	var req CreatePoolRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Pool == "" || req.Password == "" {
@@ -181,7 +180,7 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 		errOffline(w)
 		return
 	}
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	name := ps.ByName("name")
 	if name == "" {
 		errBadRequest(w, "missing pool name")
@@ -346,8 +345,7 @@ func (h *AdminMutationsHandler) ListTags(w http.ResponseWriter, r *http.Request)
 // CreateTag handles POST /api/v1/admin/tags.
 func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request) {
 	var req CreateTagRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" {
@@ -400,7 +398,7 @@ func (h *AdminMutationsHandler) SetTagColor(w http.ResponseWriter, r *http.Reque
 		errBadRequest(w, "tag colors require an online Proxmox connection")
 		return
 	}
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	name := ps.ByName("name")
 	if name == "" {
 		errBadRequest(w, "missing tag name")
@@ -422,8 +420,7 @@ func (h *AdminMutationsHandler) SetTagColor(w http.ResponseWriter, r *http.Reque
 	}
 
 	var req SetTagColorRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Color != "" && !hexColorRegex.MatchString(req.Color) {
@@ -454,7 +451,7 @@ func (h *AdminMutationsHandler) SetTagColor(w http.ResponseWriter, r *http.Reque
 
 // DeleteTag handles DELETE /api/v1/admin/tags/:name.
 func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request) {
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	name := ps.ByName("name")
 	if name == "" {
 		errBadRequest(w, "missing tag name")
@@ -529,8 +526,7 @@ func (h *AdminMutationsHandler) GetLimits(w http.ResponseWriter, _ *http.Request
 // UpdateLimits handles PUT /api/v1/admin/limits.
 func (h *AdminMutationsHandler) UpdateLimits(w http.ResponseWriter, r *http.Request) {
 	var req AdminLimitsResponse
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -760,8 +756,7 @@ func generateCloudInitID(name string) string {
 // CreateCloudInit handles POST /api/v1/admin/cloudinit.
 func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.Request) {
 	var req CreateCloudInitRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Name == "" || req.YAMLContent == "" {
@@ -825,15 +820,14 @@ func (h *AdminMutationsHandler) CreateCloudInit(w http.ResponseWriter, r *http.R
 
 // UpdateCloudInit handles PUT /api/v1/admin/cloudinit/:id.
 func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.Request) {
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	id := ps.ByName("id")
 	if id == "" {
 		errBadRequest(w, "missing cloud-init ID")
 		return
 	}
 	var req UpdateCloudInitRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 
@@ -898,7 +892,7 @@ func (h *AdminMutationsHandler) UpdateCloudInit(w http.ResponseWriter, r *http.R
 
 // DeleteCloudInit handles DELETE /api/v1/admin/cloudinit/:id.
 func (h *AdminMutationsHandler) DeleteCloudInit(w http.ResponseWriter, r *http.Request) {
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	id := ps.ByName("id")
 	if id == "" {
 		errBadRequest(w, "missing cloud-init ID")
@@ -943,7 +937,7 @@ func (h *AdminMutationsHandler) DeleteCloudInit(w http.ResponseWriter, r *http.R
 
 // ToggleCloudInit handles POST /api/v1/admin/cloudinit/:id/toggle.
 func (h *AdminMutationsHandler) ToggleCloudInit(w http.ResponseWriter, r *http.Request) {
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	id := ps.ByName("id")
 	if id == "" {
 		errBadRequest(w, "missing cloud-init ID")
@@ -1000,8 +994,7 @@ func (h *AdminMutationsHandler) ToggleCloudInit(w http.ResponseWriter, r *http.R
 // ToggleStorage handles POST /api/v1/admin/storage/toggle.
 func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Request) {
 	var req ToggleStorageRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.Storage == "" || req.Node == "" {
@@ -1057,8 +1050,7 @@ func (h *AdminMutationsHandler) ToggleStorage(w http.ResponseWriter, r *http.Req
 // ToggleVMBR handles POST /api/v1/admin/vmbr/toggle.
 func (h *AdminMutationsHandler) ToggleVMBR(w http.ResponseWriter, r *http.Request) {
 	var req ToggleVMBRRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.VMBR == "" || req.Node == "" {
@@ -1114,8 +1106,7 @@ func (h *AdminMutationsHandler) ToggleVMBR(w http.ResponseWriter, r *http.Reques
 // ToggleISO handles POST /api/v1/admin/iso/toggle.
 func (h *AdminMutationsHandler) ToggleISO(w http.ResponseWriter, r *http.Request) {
 	var req ToggleISORequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	if req.VolID == "" {
@@ -1256,8 +1247,7 @@ func vmProfileConfigToDB(p state.VMProfileConfig) (*database.VMProfile, error) {
 // CreateVMProfile handles POST /api/v1/admin/vm-profiles.
 func (h *AdminMutationsHandler) CreateVMProfile(w http.ResponseWriter, r *http.Request) {
 	var req state.VMProfileConfig
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	req.ID = strings.TrimSpace(req.ID)
@@ -1306,15 +1296,14 @@ func (h *AdminMutationsHandler) CreateVMProfile(w http.ResponseWriter, r *http.R
 
 // UpdateVMProfile handles PUT /api/v1/admin/vm-profiles/:id.
 func (h *AdminMutationsHandler) UpdateVMProfile(w http.ResponseWriter, r *http.Request) {
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	id := ps.ByName("id")
 	if id == "" {
 		errBadRequest(w, "missing profile id")
 		return
 	}
 	var req state.VMProfileConfig
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		errBadRequest(w, "invalid JSON body")
+	if !decodeBody(w, r, &req) {
 		return
 	}
 	req.ID = strings.TrimSpace(id)
@@ -1364,7 +1353,7 @@ func (h *AdminMutationsHandler) UpdateVMProfile(w http.ResponseWriter, r *http.R
 
 // DeleteVMProfile handles DELETE /api/v1/admin/vm-profiles/:id.
 func (h *AdminMutationsHandler) DeleteVMProfile(w http.ResponseWriter, r *http.Request) {
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	id := ps.ByName("id")
 	if id == "" {
 		errBadRequest(w, "missing profile id")
@@ -1405,7 +1394,7 @@ func (h *AdminMutationsHandler) DeleteVMProfile(w http.ResponseWriter, r *http.R
 
 // ToggleVMProfile handles POST /api/v1/admin/vm-profiles/:id/toggle.
 func (h *AdminMutationsHandler) ToggleVMProfile(w http.ResponseWriter, r *http.Request) {
-	ps := r.Context().Value(httprouter.ParamsKey).(httprouter.Params)
+	ps := httprouter.ParamsFromContext(r.Context())
 	id := ps.ByName("id")
 	if id == "" {
 		errBadRequest(w, "missing profile id")
