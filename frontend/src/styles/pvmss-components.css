@@ -18,13 +18,13 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
-.pv-action-btn:hover:not(:disabled) {
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
 .pv-action-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--ring);
+}
+.pv-action-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 .pv-action-btn--start:hover:not(:disabled) {
   background: hsl(142 71% 45% / 15%);
@@ -46,11 +46,11 @@
 .pv-row--clickable {
   cursor: pointer;
 }
-.pv-row--clickable:hover td {
-  background: var(--accent);
-}
 .pv-row--selected td {
   background: hsl(var(--primary) / 6%);
+}
+.pv-row--clickable:hover td {
+  background: var(--accent);
 }
 .pv-row--selected:hover td {
   background: hsl(var(--primary) / 10%);
@@ -211,6 +211,7 @@
 .pv-stat-card--cpu .pv-stat-value {
   color: hsl(221 83% 53%);
 }
+
 /* Icon variant: horizontal layout with icon on the left */
 .pv-stat-card--icon {
   flex-direction: row;
@@ -282,14 +283,16 @@
   transition: opacity 0.15s, background 0.15s;
   flex-shrink: 0;
 }
-tr:hover .pv-copy-btn,
-.pv-card:hover .pv-copy-btn,
 .pv-copy-btn:focus-visible {
   opacity: 1;
 }
 .pv-copy-btn:hover {
   background: var(--muted);
   color: var(--foreground);
+  opacity: 1;
+}
+tr:hover .pv-copy-btn,
+.pv-card:hover .pv-copy-btn {
   opacity: 1;
 }
 
