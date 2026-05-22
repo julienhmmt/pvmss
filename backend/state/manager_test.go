@@ -3,9 +3,6 @@ package state
 import (
 	"pvmss/database"
 	"testing"
-	"time"
-
-	"github.com/alexedwards/scs/v2"
 )
 
 func TestMakeAppState(t *testing.T) {
@@ -26,41 +23,6 @@ func TestMakeAppState(t *testing.T) {
 
 	if state.IsOfflineMode() {
 		t.Error("MakeAppState() should not start in offline mode")
-	}
-}
-
-func TestAppState_GetSessionManager(t *testing.T) {
-	state := MakeAppState()
-
-	sm := state.GetSessionManager()
-	if sm != nil {
-		t.Error("GetSessionManager() should return nil initially")
-	}
-}
-
-func TestAppState_SetSessionManager(t *testing.T) {
-	state := MakeAppState()
-
-	// Create a simple session manager
-	sm := scs.New()
-	err := state.SetSessionManager(sm)
-
-	if err != nil {
-		t.Errorf("SetSessionManager() returned error: %v", err)
-	}
-
-	retrieved := state.GetSessionManager()
-	if retrieved != sm {
-		t.Error("GetSessionManager() should return the same session manager that was set")
-	}
-}
-
-func TestAppState_SetSessionManagerNil(t *testing.T) {
-	state := MakeAppState()
-
-	err := state.SetSessionManager(nil)
-	if err == nil {
-		t.Error("SetSessionManager(nil) should return error")
 	}
 }
 
@@ -87,124 +49,6 @@ func TestAppState_SetFrontendPath(t *testing.T) {
 	path := state.GetFrontendPath()
 	if path != testPath {
 		t.Errorf("GetFrontendPath() = %q, want %q", path, testPath)
-	}
-}
-
-func TestAppState_AddCSRFToken(t *testing.T) {
-	state := MakeAppState()
-
-	token := "test-token-123"
-	expiry := time.Now().Add(1 * time.Hour)
-
-	err := state.AddCSRFToken(token, expiry)
-	if err != nil {
-		t.Errorf("AddCSRFToken() returned error: %v", err)
-	}
-
-	// Verify token was added
-	valid := state.ValidateAndRemoveCSRFToken(token)
-	if !valid {
-		t.Error("ValidateAndRemoveCSRFToken() should return true for newly added token")
-	}
-
-	// Token should be removed after validation
-	valid = state.ValidateAndRemoveCSRFToken(token)
-	if valid {
-		t.Error("ValidateAndRemoveCSRFToken() should return false for already used token")
-	}
-}
-
-func TestAppState_ValidateAndRemoveCSRFToken(t *testing.T) {
-	state := MakeAppState()
-
-	// Test non-existent token
-	valid := state.ValidateAndRemoveCSRFToken("non-existent")
-	if valid {
-		t.Error("ValidateAndRemoveCSRFToken() should return false for non-existent token")
-	}
-
-	// Add token and validate
-	token := "test-token-456"
-	expiry := time.Now().Add(1 * time.Hour)
-	err := state.AddCSRFToken(token, expiry)
-	if err != nil {
-		t.Fatalf("AddCSRFToken() failed: %v", err)
-	}
-
-	valid = state.ValidateAndRemoveCSRFToken(token)
-	if !valid {
-		t.Error("ValidateAndRemoveCSRFToken() should return true for valid token")
-	}
-}
-
-func TestAppState_CleanExpiredCSRFTokens(t *testing.T) {
-	state := MakeAppState()
-
-	now := time.Now()
-
-	// Add expired token
-	expiredToken := "expired-token"
-	err := state.AddCSRFToken(expiredToken, now.Add(-1*time.Hour))
-	if err != nil {
-		t.Fatalf("AddCSRFToken() failed for expired token: %v", err)
-	}
-
-	// Add valid token
-	validToken := "valid-token"
-	err = state.AddCSRFToken(validToken, now.Add(1*time.Hour))
-	if err != nil {
-		t.Fatalf("AddCSRFToken() failed for valid token: %v", err)
-	}
-
-	// Clean expired tokens
-	state.CleanExpiredCSRFTokens()
-
-	// Expired token should not validate
-	valid := state.ValidateAndRemoveCSRFToken(expiredToken)
-	if valid {
-		t.Error("Expired token should not validate after cleanup")
-	}
-
-	// Valid token should still validate
-	valid = state.ValidateAndRemoveCSRFToken(validToken)
-	if !valid {
-		t.Error("Valid token should still validate after cleanup")
-	}
-}
-
-func TestAppState_CSRFTokenConcurrency(t *testing.T) {
-	state := MakeAppState()
-	token := "concurrent-token"
-	expiry := time.Now().Add(1 * time.Hour)
-
-	// Add token concurrently from multiple goroutines
-	done := make(chan bool)
-	for i := 0; i < 10; i++ {
-		go func() {
-			err := state.AddCSRFToken(token, expiry)
-			if err != nil {
-				done <- false
-				return
-			}
-			done <- true
-		}()
-	}
-	for i := 0; i < 10; i++ {
-		if !<-done {
-			t.Fatal("AddCSRFToken() failed in concurrent goroutine")
-		}
-	}
-
-	// Should validate once and only once
-	valid := state.ValidateAndRemoveCSRFToken(token)
-	if !valid {
-		t.Error("Token should be valid after concurrent adds")
-	}
-
-	// Second validation should fail (single-use token)
-	valid = state.ValidateAndRemoveCSRFToken(token)
-	if valid {
-		t.Error("Token should be invalid after first validation (single-use)")
 	}
 }
 

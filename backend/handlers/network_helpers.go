@@ -71,7 +71,7 @@ func collectAllVMBRs(ctx context.Context, sm state.StateManager) ([]map[string]s
 	}
 
 	// Create resty client
-	restyClient, err := getDefaultRestyClient()
+	restyClient, err := proxmox.MakeRestyClientFromEnv(60 * time.Second)
 	if err != nil {
 		log.Warn().
 			Err(err).

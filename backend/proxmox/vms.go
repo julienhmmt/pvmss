@@ -272,6 +272,14 @@ const (
 // It first fetches the list of online nodes only and then queries them in parallel using goroutines
 // with a semaphore to limit concurrency (same pattern as FetchAllNodeDetailsResty).
 func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
+	return getVMsResty(ctx, restyClient, true)
+}
+
+func GetVMsRestyFresh(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
+	return getVMsResty(ctx, restyClient, false)
+}
+
+func getVMsResty(ctx context.Context, restyClient *RestyClient, useCache bool) ([]VM, error) {
 	// Get online nodes only to avoid errors with down nodes
 	nodes, err := GetOnlineNodeNamesResty(ctx, restyClient)
 	if err != nil {
@@ -308,7 +316,7 @@ func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
 			nodeCtx, cancel := context.WithTimeout(ctx, nodeQueryTimeout)
 			defer cancel()
 
-			nodeVMs, nodeErr := GetVMsForNodeResty(nodeCtx, restyClient, name)
+			nodeVMs, nodeErr := getVMsForNodeResty(nodeCtx, restyClient, name, useCache)
 			if nodeErr != nil {
 				logger.Get().Warn().Err(nodeErr).Str("node", name).Msg("Failed to get VMs for node (resty)")
 				mu.Lock()
@@ -357,17 +365,28 @@ func GetVMsResty(ctx context.Context, restyClient *RestyClient) ([]VM, error) {
 // It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
 // Results are cached for 10 seconds to avoid hammering Proxmox on rapid successive requests.
 func GetVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName string) ([]VM, error) {
+	return getVMsForNodeResty(ctx, restyClient, nodeName, true)
+}
+
+// GetVMsForNodeRestyFresh fetches all VMs located on a node without using the VM cache.
+func GetVMsForNodeRestyFresh(ctx context.Context, restyClient *RestyClient, nodeName string) ([]VM, error) {
+	return getVMsForNodeResty(ctx, restyClient, nodeName, false)
+}
+
+func getVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName string, useCache bool) ([]VM, error) {
 	// Check cache first
 	cacheKey := fmt.Sprintf("vms:%s", nodeName)
-	cachedData := vmCache.Get(cacheKey)
-	if cachedData != nil {
-		var cachedVMs []VM
-		unmarshalErr := json.Unmarshal(cachedData, &cachedVMs)
-		if unmarshalErr == nil {
-			logger.Get().Debug().Str("node", nodeName).Int("count", len(cachedVMs)).Msg("VMs retrieved from cache")
-			return cachedVMs, nil
+	if useCache {
+		cachedData := vmCache.Get(cacheKey)
+		if cachedData != nil {
+			var cachedVMs []VM
+			unmarshalErr := json.Unmarshal(cachedData, &cachedVMs)
+			if unmarshalErr == nil {
+				logger.Get().Debug().Str("node", nodeName).Int("count", len(cachedVMs)).Msg("VMs retrieved from cache")
+				return cachedVMs, nil
+			}
+			logger.Get().Warn().Err(unmarshalErr).Str("node", nodeName).Msg("Failed to unmarshal cached VM data, fetching fresh")
 		}
-		logger.Get().Warn().Err(unmarshalErr).Str("node", nodeName).Msg("Failed to unmarshal cached VM data, fetching fresh")
 	}
 
 	// Cache miss or invalid data - fetch from Proxmox
@@ -385,10 +404,12 @@ func GetVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName 
 	}
 
 	// Cache the result
-	if data, err := json.Marshal(response.Data); err == nil {
-		vmCache.Set(cacheKey, data)
-	} else {
-		logger.Get().Warn().Err(err).Str("node", nodeName).Msg("Failed to marshal VM data for caching")
+	if useCache {
+		if data, err := json.Marshal(response.Data); err == nil {
+			vmCache.Set(cacheKey, data)
+		} else {
+			logger.Get().Warn().Err(err).Str("node", nodeName).Msg("Failed to marshal VM data for caching")
+		}
 	}
 
 	logger.Get().Debug().Str("node", nodeName).Int("count", len(response.Data)).Msg("Fetched VMs for node (resty)")

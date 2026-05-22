@@ -30,16 +30,9 @@ func TestPublicRoutes(t *testing.T) {
 		path string
 	}{
 		{"Health check", "/health"},
-		{"API health", "/api/health"},
-		{"Proxmox health", "/api/health/proxmox"},
-		{"Login page", "/login"},
-		{"Admin login", "/admin/login"},
-		{"Docs root", "/docs"},
-		{"User docs", "/docs/user"},
-		{"Admin docs", "/docs/admin"},
+		{"API v1 health", "/api/v1/health"},
+		{"API v1 proxmox health", "/api/v1/health/proxmox"},
 		{"Favicon", "/favicon.ico"},
-		{"Base CSS", "/css/base.css"},
-		{"Accessibility JS", "/js/accessibility.js"},
 	}
 
 	for _, route := range publicRoutes {

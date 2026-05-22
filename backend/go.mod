@@ -3,7 +3,6 @@ module pvmss
 go 1.25.0
 
 require (
-	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/go-resty/resty/v2 v2.17.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df

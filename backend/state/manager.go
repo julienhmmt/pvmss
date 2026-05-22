@@ -1,11 +1,8 @@
 package state
 
 import (
-	"errors"
 	"sync"
 	"time"
-
-	"github.com/alexedwards/scs/v2"
 
 	"pvmss/constants"
 	"pvmss/database"
@@ -19,8 +16,6 @@ import (
 
 // appState is the concrete implementation of StateManager
 type appState struct {
-	sessionManager *scs.SessionManager
-
 	// settings cache – protected by settingsMu (separate from mu so settings
 	// writes never block session/env/frontend reads and vice-versa).
 	settings   *AppSettings
@@ -47,10 +42,6 @@ type appState struct {
 	// Connection failure tracking for automatic offline mode
 	proxmoxConnectionLostTime     time.Time
 	proxmoxConnectionFailureCount int
-
-	// Security-related fields
-	csrfTokens map[string]time.Time
-	securityMu sync.RWMutex // Mutex for CSRF token operations
 
 	// Environment configuration (loaded once at startup)
 	envConfig *envpkg.EnvConfig
@@ -91,28 +82,16 @@ func MakeAppStateWithDB(db database.DB) StateManager {
 // newAppState is the shared constructor used by both public constructors.
 func newAppState(db database.DB) *appState {
 	s := &appState{
-		settings:   &AppSettings{},
-		db:         db,
-		csrfTokens: make(map[string]time.Time),
+		settings: &AppSettings{},
+		db:       db,
 	}
-	go s.cleanupSecurityData()
 	go s.cleanupGuestAgentCache()
 	return s
 }
 
-// cleanupSecurityData runs periodic cleanup of expired security data
-func (s *appState) cleanupSecurityData() {
-	ticker := time.NewTicker(constants.CSRFCleanupInterval)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		s.CleanExpiredCSRFTokens()
-	}
-}
-
 // cleanupGuestAgentCache runs periodic cleanup of expired guest agent cache entries
 func (s *appState) cleanupGuestAgentCache() {
-	ticker := time.NewTicker(constants.CSRFCleanupInterval)
+	ticker := time.NewTicker(constants.GuestAgentCacheCleanupInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -133,24 +112,6 @@ func (s *appState) SetGuestAgentCleanupFunc(cleanupFunc func()) {
 	defer s.cleanupMu.Unlock()
 	s.guestAgentCleanupFunc = cleanupFunc
 	logger.Get().Debug().Msg("Guest agent cleanup function registered")
-}
-
-// GetSessionManager returns the session manager
-func (s *appState) GetSessionManager() *scs.SessionManager {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.sessionManager
-}
-
-// SetSessionManager sets the session manager
-func (s *appState) SetSessionManager(sm *scs.SessionManager) error {
-	if sm == nil {
-		return errors.New("session manager cannot be nil")
-	}
-	s.mu.Lock()
-	s.sessionManager = sm
-	s.mu.Unlock()
-	return nil
 }
 
 // SetEnvConfig stores the validated environment configuration.
