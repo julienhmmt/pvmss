@@ -301,4 +301,3 @@ func (h *VMDetailsHandler) RollbackSnapshot(w http.ResponseWriter, r *http.Reque
 	}
 	writeJSON(w, map[string]string{"status": "ok"})
 }
-
