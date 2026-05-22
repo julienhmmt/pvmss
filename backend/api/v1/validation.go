@@ -32,4 +32,3 @@ func validateTagName(name string) error {
 	}
 	return nil
 }
-
