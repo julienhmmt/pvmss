@@ -40,24 +40,6 @@ func recoverMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// trailingSlashRedirectMiddleware redirects "/path/" to "/path" (excluding root and static assets).
-func trailingSlashRedirectMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p := r.URL.Path
-		if len(p) > 1 && p[len(p)-1] == '/' {
-			if isStaticPath(p) {
-				next.ServeHTTP(w, r)
-				return
-			}
-			if r.Method == http.MethodGet || r.Method == http.MethodHead {
-				http.Redirect(w, r, p[:len(p)-1], http.StatusSeeOther)
-				return
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 // stateManagerContextMiddleware adds the provided state manager to each request context.
 func stateManagerContextMiddleware(sm state.StateManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
