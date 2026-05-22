@@ -768,7 +768,7 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 			return
 		}
 		for _, ch := range name {
-			if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == '.') {
+			if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_' || ch == '.') { //nolint:staticcheck // clearer as positive character check
 				errBadRequest(w, "name may only contain letters, digits, hyphens, underscores, and dots")
 				return
 			}
