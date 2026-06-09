@@ -71,6 +71,11 @@
 	);
 	const someSelected = $derived(selected.size > 0);
 
+	// For bulk action UX: know how many of the current-page selection are running vs stopped.
+	// This lets us show only relevant bulk buttons and give better feedback.
+	const selectedStopped = $derived(vms.filter((v) => selected.has(v.vmid) && v.status === 'stopped'));
+	const selectedRunning = $derived(vms.filter((v) => selected.has(v.vmid) && v.status === 'running'));
+
 	// Quota uses the full owned VM count (from pagination.total for non-admins)
 	const quotaUsed = $derived(maxVmPerUser > 0 ? userTotalVMs : 0);
 	const quotaPct = $derived(
@@ -274,18 +279,38 @@
 
 	async function doBulkAction(action: string): Promise<void> {
 		bulkLoading = true;
-		const targets = vms.filter((v) => selected.has(v.vmid));
+
+		// Stage 3 UX: only target VMs for which the action makes sense on the current page selection.
+		let targets: VMSummary[] = [];
+		if (action === 'start') {
+			targets = vms.filter((v) => selected.has(v.vmid) && v.status === 'stopped');
+		} else if (action === 'shutdown' || action === 'reboot') {
+			targets = vms.filter((v) => selected.has(v.vmid) && v.status === 'running');
+		} else {
+			targets = vms.filter((v) => selected.has(v.vmid));
+		}
+
+		if (targets.length === 0) {
+			bulkLoading = false;
+			return;
+		}
+
 		const results = await Promise.allSettled(
 			targets.map((vm) => api.post(`/api/v1/vms/${vm.vmid}/action`, { action, node: vm.node }))
 		);
 		const ok = results.filter((r) => r.status === 'fulfilled').length;
 		const fail = results.length - ok;
+
 		if (ok > 0) {
 			toast.success(`${action} sent to ${ok} VM(s)`);
 			targets.forEach((vm) => addActivity(action, vm.name || String(vm.vmid)));
 		}
 		if (fail > 0) toast.error(`Failed for ${fail} VM(s)`);
-		selected = new Set();
+
+		// Clear only the VMs we actually acted on (keep other selections if mixed state).
+		const acted = new Set(targets.map((v) => v.vmid));
+		selected = new Set([...selected].filter((id) => !acted.has(id)));
+
 		bulkLoading = false;
 		setTimeout(() => loadVMs(true), 2000);
 	}
@@ -444,25 +469,34 @@
 		<!-- Content grid: table + activity -->
 		<div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_264px]">
 			<div class="min-w-0">
-				<!-- Bulk action toolbar -->
+				<!-- Bulk action toolbar (context-aware) -->
 				{#if someSelected}
 					<div class="pv-bulk-toolbar mb-2">
 						<span class="text-sm text-muted-foreground">
 							{$t('vms.selected', { values: { count: selected.size } })}
+							{#if selectedRunning.length > 0 || selectedStopped.length > 0}
+								<span class="text-muted-foreground/70">
+									({selectedRunning.length} running, {selectedStopped.length} stopped)
+								</span>
+							{/if}
 						</span>
 						<div class="flex gap-1.5">
-							<Button size="sm" variant="outline" onclick={() => doBulkAction('start')} disabled={bulkLoading}>
-								<Play class="mr-1 h-3.5 w-3.5" weight="fill" />
-								{$t('vms.actions.start')}
-							</Button>
-							<Button size="sm" variant="outline" onclick={() => doBulkAction('shutdown')} disabled={bulkLoading}>
-								<Stop class="mr-1 h-3.5 w-3.5" weight="fill" />
-								{$t('vms.actions.shutdown')}
-							</Button>
-							<Button size="sm" variant="outline" onclick={() => doBulkAction('reboot')} disabled={bulkLoading}>
-								<ArrowCounterClockwise class="mr-1 h-3.5 w-3.5" />
-								{$t('vms.actions.reboot')}
-							</Button>
+							{#if selectedStopped.length > 0}
+								<Button size="sm" variant="outline" onclick={() => doBulkAction('start')} disabled={bulkLoading}>
+									<Play class="mr-1 h-3.5 w-3.5" weight="fill" />
+									{$t('vms.actions.start')}
+								</Button>
+							{/if}
+							{#if selectedRunning.length > 0}
+								<Button size="sm" variant="outline" onclick={() => doBulkAction('shutdown')} disabled={bulkLoading}>
+									<Stop class="mr-1 h-3.5 w-3.5" weight="fill" />
+									{$t('vms.actions.shutdown')}
+								</Button>
+								<Button size="sm" variant="outline" onclick={() => doBulkAction('reboot')} disabled={bulkLoading}>
+									<ArrowCounterClockwise class="mr-1 h-3.5 w-3.5" />
+									{$t('vms.actions.reboot')}
+								</Button>
+							{/if}
 							<Button size="sm" variant="ghost" onclick={() => (selected = new Set())}>
 								{$t('vms.clearSelection')}
 							</Button>
