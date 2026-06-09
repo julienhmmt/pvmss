@@ -5,8 +5,8 @@
 .specify/
 .vscode/
 .devin/
+.claude/
 coverage.out
-docker-compose.dev.yml
 node_modules/
 .pnpm-store/
 package-lock.json
@@ -49,3 +49,7 @@ graphify-out/cost.json
 # docker build
 *.tgz
 
+.code-review-graph/
+.mcp.json
+.windsurfrules
+.opencode.json
