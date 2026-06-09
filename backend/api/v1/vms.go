@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -382,7 +383,7 @@ func parseIntParam(s string, defaultValue int) int {
 }
 
 // validVMSortKeys lists accepted sort_by values for the user VMs endpoint.
-var validVMSortKeys = map[string]bool{"vmid": true, "name": true, "status": true, "cpu": true, "memory": true}
+var validVMSortKeys = map[string]bool{"vmid": true, "name": true, "status": true, "cpu": true, "memory": true, "node": true}
 
 // validateVMSortBy logs a warning for unrecognised sort keys.
 func validateVMSortBy(sortBy string) {
@@ -392,10 +393,12 @@ func validateVMSortBy(sortBy string) {
 }
 
 // paginateVMs slices summaries based on page/limit and builds the paginated response.
+// It also computes a Nodes facet (distinct nodes in the filtered set) for filter UIs.
 func paginateVMs(summaries []VMSummary, page, limit int) VMListPaginatedResponse {
 	total := len(summaries)
 	running := 0
 	stopped := 0
+	nodeSet := make(map[string]struct{}, 8)
 	for _, s := range summaries {
 		switch s.Status {
 		case "running":
@@ -403,7 +406,16 @@ func paginateVMs(summaries []VMSummary, page, limit int) VMListPaginatedResponse
 		case "stopped":
 			stopped++
 		}
+		if s.Node != "" {
+			nodeSet[s.Node] = struct{}{}
+		}
 	}
+	nodes := make([]string, 0, len(nodeSet))
+	for n := range nodeSet {
+		nodes = append(nodes, n)
+	}
+	sort.Strings(nodes)
+
 	totalPages := (total + limit - 1) / limit
 	if totalPages == 0 {
 		totalPages = 1
@@ -436,6 +448,7 @@ func paginateVMs(summaries []VMSummary, page, limit int) VMListPaginatedResponse
 			HasPrev:      page > 1,
 			RunningCount: running,
 			StoppedCount: stopped,
+			Nodes:        nodes,
 		},
 	}
 }
@@ -491,6 +504,14 @@ func sortVMs(vms []VMSummary, sortBy, sortOrder string) {
 				return -1
 			}
 			return 0
+		})
+	case "node":
+		slices.SortFunc(vms, func(a, b VMSummary) int {
+			cmp := strings.Compare(strings.ToLower(a.Node), strings.ToLower(b.Node))
+			if ascending {
+				return cmp
+			}
+			return -cmp
 		})
 	default: // "vmid" and fallback
 		slices.SortFunc(vms, func(a, b VMSummary) int {
