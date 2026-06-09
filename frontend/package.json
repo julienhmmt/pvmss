@@ -18,8 +18,6 @@
 		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
-		"eslint": "^10.4.1",
-		"eslint-plugin-svelte": "^3.19.0",
 		"@internationalized/date": "^3.12.2",
 		"@lucide/svelte": "^1.17.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
@@ -31,6 +29,8 @@
 		"@vitest/coverage-v8": "^4.1.8",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
+		"eslint": "^10.4.1",
+		"eslint-plugin-svelte": "^3.19.0",
 		"happy-dom": "^20.10.2",
 		"mode-watcher": "^1.1.0",
 		"prettier": "^3.8.3",
@@ -51,6 +51,7 @@
 		"@fontsource-variable/noto-sans": "^5.2.10",
 		"@fontsource/geist-mono": "^5.2.8",
 		"@fontsource/geist-sans": "^5.2.5",
+		"dompurify": "^3.4.8",
 		"marked": "^18.0.5",
 		"phosphor-svelte": "^3.1.0"
 	}
