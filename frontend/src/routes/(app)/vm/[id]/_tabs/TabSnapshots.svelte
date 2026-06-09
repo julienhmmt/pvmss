@@ -61,12 +61,14 @@
 				? `${nonCurrentSnapshots.length} / ${snapshotData.maxAllowed} ${$t('vm.snapshots')}`
 				: $t('vm.snapshots')}
 		</span>
-		{#if !showSnapshotForm && canCreate}
+		{#if !showSnapshotForm}
 			<button
-				class="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+				class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
 				onclick={onToggleForm}
+				disabled={!canCreate}
+				title={!canCreate ? $t('vm.snapshotLimitReached', { default: 'Snapshot limit reached' }) : ''}
 			>
-				<Camera class="h-4 w-4" />
+				<Camera class="h-3.5 w-3.5" />
 				{$t('vm.createSnapshot')}
 			</button>
 		{/if}

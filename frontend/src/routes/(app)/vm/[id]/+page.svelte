@@ -6,6 +6,8 @@
 	import { toast } from 'svelte-sonner';
 	import { api } from '$lib/api/client';
 	import { ApiRequestError } from '$lib/types/api';
+	import type { Component } from 'svelte';
+	import { Info, HardDrive, Network, Camera, CloudArrowUp } from 'phosphor-svelte';
 	import {
 		getVMConfig,
 		getVMMetrics,
@@ -49,6 +51,71 @@
 	let config = $state<VMConfig | null>(null);
 	let metrics = $state<VMMetrics | null>(null);
 	let snapshotData = $state<SnapshotList | null>(null);
+
+	// Derived counts for tab badges (disks, networks, snapshots)
+	let diskCount = $derived(config?.disks.length ?? 0);
+	let networkCount = $derived(config?.networks.length ?? 0);
+	let snapshotCount = $derived(
+		snapshotData ? snapshotData.snapshots.filter((s) => !s.current).length : undefined
+	);
+
+	// Tab selection with lazy snapshot loading for better tab UX
+	let tablist: HTMLDivElement | undefined = $state();
+
+	// Static base definition for the accessible tab bar (labels/icons are stable).
+	// Counts are derived inline in the template for full reactivity.
+	type TabKey = 'overview' | 'disks' | 'network' | 'snapshots' | 'cloudinit';
+	interface BaseTab {
+		key: TabKey;
+		labelKey: string;
+		icon: Component;
+	}
+	const baseTabs: BaseTab[] = [
+		{ key: 'overview', labelKey: 'vm.tabOverview', icon: Info },
+		{ key: 'disks', labelKey: 'vm.tabDisks', icon: HardDrive },
+		{ key: 'network', labelKey: 'vm.tabNetwork', icon: Network },
+		{ key: 'snapshots', labelKey: 'vm.tabSnapshots', icon: Camera },
+		{ key: 'cloudinit', labelKey: 'vm.tabCloudInit', icon: CloudArrowUp }
+	];
+
+	function selectTab(key: TabKey) {
+		activeTab = key;
+		if (key === 'snapshots' && !snapshotData && vmid) {
+			getVMSnapshots(vmid)
+				.then((d) => {
+					snapshotData = d;
+				})
+				.catch(() => {
+					/* ignore; tab will show empty state */
+				});
+		}
+	}
+
+	function handleTabKeydown(e: KeyboardEvent, currentKey: TabKey) {
+		const keys = ['overview', 'disks', 'network', 'snapshots', 'cloudinit'] as const;
+		const idx = keys.indexOf(currentKey as (typeof keys)[number]);
+		if (idx === -1) return;
+		let next = idx;
+		if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+			next = (idx + 1) % keys.length;
+		} else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+			next = (idx - 1 + keys.length) % keys.length;
+		} else if (e.key === 'Home') {
+			next = 0;
+		} else if (e.key === 'End') {
+			next = keys.length - 1;
+		} else {
+			return;
+		}
+		e.preventDefault();
+		const nextKey = keys[next];
+		selectTab(nextKey);
+		// Focus the newly active tab button
+		if (tablist) {
+			const buttons = tablist.querySelectorAll<HTMLButtonElement>('button[role="tab"]');
+			buttons[next]?.focus();
+		}
+	}
 
 	let activeTab = $state<'overview' | 'disks' | 'network' | 'snapshots' | 'cloudinit'>('overview');
 	let actionLoading = $state(false);
@@ -401,19 +468,31 @@
 		/>
 
 		<!-- Tabs -->
-		<div class="mb-4 flex items-center gap-1 border-b border-border">
-			{#each [
-				{ key: 'overview', label: $t('vm.tabOverview') },
-				{ key: 'disks', label: $t('vm.tabDisks') },
-				{ key: 'network', label: $t('vm.tabNetwork') },
-				{ key: 'snapshots', label: $t('vm.tabSnapshots') },
-				{ key: 'cloudinit', label: $t('vm.tabCloudInit') }
-			] as tab (tab.key)}
+		<div
+			bind:this={tablist}
+			class="mb-4 flex items-center gap-1 border-b border-border overflow-x-auto"
+			role="tablist"
+			aria-label={$t('vm.tabsLabel')}
+		>
+			{#each baseTabs as tab (tab.key)}
+				{@const count = tab.key === 'disks' ? diskCount : tab.key === 'network' ? networkCount : tab.key === 'snapshots' ? (snapshotCount ?? null) : null}
 				<button
-					class="pv-tab {activeTab === tab.key ? 'pv-tab--active' : ''}"
-					onclick={() => (activeTab = tab.key as typeof activeTab)}
+					id={`tab-${tab.key}`}
+					role="tab"
+					aria-selected={activeTab === tab.key}
+					aria-controls={`tabpanel-${tab.key}`}
+					tabindex={activeTab === tab.key ? 0 : -1}
+					class="pv-tab {activeTab === tab.key ? 'pv-tab--active' : ''} inline-flex items-center gap-1.5"
+					onclick={() => selectTab(tab.key)}
+					onkeydown={(e: KeyboardEvent) => handleTabKeydown(e, tab.key)}
 				>
-					{tab.label}
+					<tab.icon class="h-3.5 w-3.5" />
+					<span>{$t(tab.labelKey)}</span>
+					{#if count !== null}
+						<span class="ml-0.5 rounded bg-muted px-1 text-[10px] font-mono tabular-nums text-muted-foreground">
+							{count}
+						</span>
+					{/if}
 				</button>
 			{/each}
 		</div>
@@ -421,48 +500,58 @@
 		<!-- Tab content -->
 		{#key activeTab}
 		<div in:fade={{ duration: 150 }}>
-		{#if activeTab === 'overview'}
-			<TabOverview {config} {metrics} onOpenHardware={openHardwareModal} />
-		{/if}
+			{#if activeTab === 'overview'}
+				<div role="tabpanel" id="tabpanel-overview" aria-labelledby="tab-overview">
+					<TabOverview {config} {metrics} onOpenHardware={openHardwareModal} />
+				</div>
+			{/if}
 
-		{#if activeTab === 'disks'}
-			<TabDisks
-				{config}
-				{metrics}
-				availableIsos={vmSettings?.availableIsos ?? []}
-				onOpenAdd={openDiskAddModal}
-				onOpenResize={openDiskResizeModal}
-				onOpenDelete={openDiskDeleteModal}
-				onRefresh={load}
-			/>
-		{/if}
+			{#if activeTab === 'disks'}
+				<div role="tabpanel" id="tabpanel-disks" aria-labelledby="tab-disks">
+					<TabDisks
+						{config}
+						{metrics}
+						availableIsos={vmSettings?.availableIsos ?? []}
+						onOpenAdd={openDiskAddModal}
+						onOpenResize={openDiskResizeModal}
+						onOpenDelete={openDiskDeleteModal}
+						onRefresh={load}
+					/>
+				</div>
+			{/if}
 
-		{#if activeTab === 'network'}
-			<TabNetwork {config} />
-		{/if}
+			{#if activeTab === 'network'}
+				<div role="tabpanel" id="tabpanel-network" aria-labelledby="tab-network">
+					<TabNetwork {config} />
+				</div>
+			{/if}
 
-		{#if activeTab === 'snapshots'}
-			<TabSnapshots
-				{snapshotData}
-				{creatingSnapshot}
-				vmStatus={config?.status ?? 'stopped'}
-				showSnapshotForm={showSnapshotForm}
-				snapName={snapName}
-				snapDesc={snapDesc}
-				snapVmstate={snapVmstate}
-				onToggleForm={() => (showSnapshotForm = !showSnapshotForm)}
-				onCreateSnapshot={doCreateSnapshot}
-				onDeleteSnapshot={doDeleteSnapshot}
-				onRollback={doRollback}
-				onSnapNameChange={(v) => (snapName = v)}
-				onSnapDescChange={(v) => (snapDesc = v)}
-				onSnapVmstateChange={(v) => (snapVmstate = v)}
-			/>
-		{/if}
+			{#if activeTab === 'snapshots'}
+				<div role="tabpanel" id="tabpanel-snapshots" aria-labelledby="tab-snapshots">
+					<TabSnapshots
+						{snapshotData}
+						{creatingSnapshot}
+						vmStatus={config?.status ?? 'stopped'}
+						showSnapshotForm={showSnapshotForm}
+						snapName={snapName}
+						snapDesc={snapDesc}
+						snapVmstate={snapVmstate}
+						onToggleForm={() => (showSnapshotForm = !showSnapshotForm)}
+						onCreateSnapshot={doCreateSnapshot}
+						onDeleteSnapshot={doDeleteSnapshot}
+						onRollback={doRollback}
+						onSnapNameChange={(v) => (snapName = v)}
+						onSnapDescChange={(v) => (snapDesc = v)}
+						onSnapVmstateChange={(v) => (snapVmstate = v)}
+					/>
+				</div>
+			{/if}
 
-		{#if activeTab === 'cloudinit'}
-			<TabCloudInit {config} />
-		{/if}
+			{#if activeTab === 'cloudinit'}
+				<div role="tabpanel" id="tabpanel-cloudinit" aria-labelledby="tab-cloudinit">
+					<TabCloudInit {config} />
+				</div>
+			{/if}
 		</div>
 		{/key}
 	{/if}

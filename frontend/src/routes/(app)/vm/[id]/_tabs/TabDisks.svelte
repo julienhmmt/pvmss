@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { HardDrive } from 'phosphor-svelte';
-	import { X } from 'phosphor-svelte';
-	import { LinkBreak } from 'phosphor-svelte';
+	import { HardDrive, PencilSimple, Trash, X, LinkBreak } from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 	import { updateVMCDROM, disconnectVMCDROM } from '$lib/api/vm-details';
 	import type { VMConfig, VMMetrics, DiskInfo, ISOOption } from '$lib/api/vm-details';
@@ -115,20 +113,22 @@
 						<td class="text-sm">{disk.storage}</td>
 						<td class="text-sm">{disk.sizeGb} GB</td>
 						<td>
-							<div class="flex gap-2">
+							<div class="flex items-center gap-1">
 								<button
-									class="text-xs text-primary hover:underline"
+									class="pv-action-btn"
 									onclick={() => onOpenResize(disk)}
 									disabled={isRunning}
+									title={$t('vm.disk.resize')}
 								>
-									{$t('vm.disk.resize')}
+									<PencilSimple class="h-3.5 w-3.5" />
 								</button>
 								<button
-									class="text-xs text-destructive hover:underline"
+									class="pv-action-btn pv-action-btn--stop"
 									onclick={() => onOpenDelete(disk)}
 									disabled={isRunning}
+									title={$t('vm.disk.detach')}
 								>
-									{$t('vm.disk.detach')}
+									<Trash class="h-3.5 w-3.5" />
 								</button>
 							</div>
 						</td>

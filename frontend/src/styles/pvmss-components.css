@@ -111,6 +111,11 @@
   font-weight: 600;
   background: var(--accent);
 }
+.pv-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
 
 /* ── Primary button (small, inline) ────────────────────────────── */
 .pv-btn-primary {
