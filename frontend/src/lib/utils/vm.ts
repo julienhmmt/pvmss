@@ -20,9 +20,50 @@ const uptimeLabel = (seconds: number): string => {
 };
 
 /**
- * VM list utilities (status badges, uptime formatting).
+ * formatMem converts memory in MB to a compact human string (e.g. "4 GB", "512 MB").
+ * Returns "—" for zero/undefined.
+ */
+const formatMem = (mb: number | undefined): string => {
+	if (!mb || mb <= 0) return '—';
+	const gb = mb / 1024;
+	if (gb >= 1) {
+		return `${gb.toFixed(gb >= 10 ? 0 : 1)} GB`;
+	}
+	return `${Math.round(mb)} MB`;
+};
+
+/**
+ * formatDisk converts disk in MB to a compact human string.
+ * Returns "—" for zero/undefined.
+ */
+const formatDisk = (mb: number | undefined): string => {
+	if (!mb || mb <= 0) return '—';
+	const gb = mb / 1024;
+	if (gb >= 1) {
+		return `${gb.toFixed(gb >= 10 ? 0 : 1)} GB`;
+	}
+	return `${Math.round(mb)} MB`;
+};
+
+/**
+ * splitTags splits a semicolon-separated Proxmox tags string and removes
+ * the internal "pvmss" tag and empties. Case-insensitive removal of pvmss.
+ */
+const splitTags = (tags: string | undefined): readonly string[] => {
+	if (!tags) return [];
+	return tags
+		.split(';')
+		.map((t) => t.trim())
+		.filter((t) => t.length > 0 && t.toLowerCase() !== 'pvmss');
+};
+
+/**
+ * VM list utilities (status badges, uptime formatting, resource formatting, tag utils).
  */
 export const vmList = {
 	statusClass,
 	uptimeLabel,
+	formatMem,
+	formatDisk,
+	splitTags,
 } as const;

@@ -50,6 +50,9 @@ type PaginationMetadata struct {
 	HasPrev      bool `json:"has_prev"`
 	RunningCount int  `json:"running_count"`
 	StoppedCount int  `json:"stopped_count"`
+	// Nodes is the distinct list of nodes present in the filtered result set
+	// (before pagination). Useful for populating node filter dropdowns.
+	Nodes []string `json:"nodes,omitempty"`
 }
 
 // VMListPaginatedResponse wraps a paginated slice of VMSummary.

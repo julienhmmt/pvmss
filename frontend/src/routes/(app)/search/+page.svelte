@@ -1,23 +1,34 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { flip } from 'svelte/animate';
 	import { t } from 'svelte-i18n';
-	import { debounce } from '$lib/actions';
-	import { searchVMs, type SearchType, type VMSummary } from '$lib/api/vms';
+	import { debounce, autofocus } from '$lib/actions';
+	import { getVMsPaginated, type VMPaginationParams, type VMSummary, type SearchType } from '$lib/api/vms';
 	import type { VMStatus } from '$lib/types/vm';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { vmList } from '$lib/utils/vm';
-	import { ArrowDown, ArrowUp, Desktop, MagnifyingGlass, SpinnerGap, X } from 'phosphor-svelte';
+	import {
+		ArrowDown,
+		ArrowUp,
+		Desktop,
+		MagnifyingGlass,
+		SpinnerGap,
+		X,
+		Cpu,
+		Memory,
+		HardDrive,
+		Clock
+	} from 'phosphor-svelte';
 
-	const PAGE_SIZE = 10;
-	const DEBOUNCE_DELAY_MS = 400;
+	const PAGE_SIZE = 25;
+	const DEBOUNCE_DELAY_MS = 350;
 	const SLOW_LOADING_DELAY_MS = 2500;
 	const STATUS_FILTERS: readonly VMStatus[] = ['running', 'stopped', 'paused'];
 
-	type SortColumn = 'name' | 'vmid';
+	type SortColumn = 'vmid' | 'name' | 'node' | 'status' | 'cpu' | 'memory';
 	type SortDirection = 'asc' | 'desc';
 
 	function detectSearchType(query: string): SearchType {
@@ -39,110 +50,208 @@
 		return STATUS_FILTERS.includes(value as VMStatus);
 	}
 
-	function getInitialStatus(): VMStatus | '' {
-		const status = page.url.searchParams.get('status') ?? '';
-		return isVMStatus(status) ? status : '';
+	function isSortColumn(v: string): v is SortColumn {
+		return ['vmid', 'name', 'node', 'status', 'cpu', 'memory'].includes(v);
+	}
+
+	function isSortDir(v: string): v is SortDirection {
+		return v === 'asc' || v === 'desc';
+	}
+
+	function parsePage(p: string | null): number {
+		const n = p ? parseInt(p, 10) : 1;
+		return Number.isFinite(n) && n > 0 ? n : 1;
 	}
 
 	let q = $state(page.url.searchParams.get('q') ?? '');
-	let filterStatus = $state<VMStatus | ''>(getInitialStatus());
+	let filterStatus = $state<VMStatus | ''>(
+		isVMStatus(page.url.searchParams.get('status') ?? '') ? (page.url.searchParams.get('status') as VMStatus) : ''
+	);
 	let filterNode = $state(page.url.searchParams.get('node') ?? '');
+	let sortCol = $state<SortColumn>(
+		isSortColumn(page.url.searchParams.get('sortBy') ?? '') ? (page.url.searchParams.get('sortBy') as SortColumn) : 'vmid'
+	);
+	let sortDir = $state<SortDirection>(
+		isSortDir(page.url.searchParams.get('sortOrder') ?? '') ? (page.url.searchParams.get('sortOrder') as SortDirection) : 'asc'
+	);
+	let currentPage = $state(parsePage(page.url.searchParams.get('page')));
+
 	let loading = $state(false);
 	let searched = $state(false);
 	let error = $state<Error | null>(null);
-	let results = $state<VMSummary[]>([]);
-	let sortCol = $state<SortColumn>('vmid');
-	let sortDir = $state<SortDirection>('asc');
-	let currentPage = $state(1);
+	let vms = $state<VMSummary[]>([]);
+	let total = $state(0);
+	let totalPages = $state(1);
+	let hasNext = $state(false);
+	let hasPrev = $state(false);
+	let nodesFacet = $state<string[]>([]);
+
 	let slowLoadingVisible = $state(false);
 	let hasMounted = $state(false);
-	let requestSeq = 0;
+	let loadAbort: AbortController | null = null;
 	let slowTimer: ReturnType<typeof setTimeout> | null = null;
-	let isTriggeringSearch = $state(false);
 
 	const extractedQuery = $derived(extractSearchQuery(q));
 	const detectedType = $derived(detectSearchType(q));
-	const knownNodes = $derived([...new Set(results.map((vm) => vm.node).filter(Boolean))].sort());
-	const sortedResults = $derived.by(() => {
-		const copy = [...results];
-		copy.sort((left, right) => {
-			const cmp = sortCol === 'name'
-				? (left.name || '').localeCompare(right.name || '')
-				: left.vmid - right.vmid;
-			return sortDir === 'asc' ? cmp : -cmp;
-		});
-		return copy;
-	});
-	const totalPages = $derived(Math.max(1, Math.ceil(sortedResults.length / PAGE_SIZE)));
-	const pagedResults = $derived(
-		sortedResults.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-	);
 	const shouldSearch = $derived(Boolean(extractedQuery || filterStatus || filterNode));
 
-	$effect(() => {
-		sortedResults;
-		currentPage = 1;
+	// Accumulate nodes from facets across searches so the dropdown stays useful.
+	const knownNodes = $derived.by(() => {
+		const set = new Set<string>(nodesFacet);
+		return Array.from(set).sort();
 	});
 
+	// Keep local pagination state in sync when URL changes externally (back/forward/share).
+	// Guarded assignments prevent clobbering local state (especially the search input's bind:value)
+	// on our own replaceState calls during typing, which was causing focus loss after the first character.
+	$effect(() => {
+		const sp = page.url.searchParams;
+
+		const urlQ = sp.get('q') ?? '';
+		if (urlQ !== q) q = urlQ;
+
+		const st = sp.get('status') ?? '';
+		const urlStatus = isVMStatus(st) ? (st as VMStatus) : '';
+		if (urlStatus !== filterStatus) filterStatus = urlStatus;
+
+		const urlNode = sp.get('node') ?? '';
+		if (urlNode !== filterNode) filterNode = urlNode;
+
+		const sb = sp.get('sortBy') ?? '';
+		const urlSortCol = isSortColumn(sb) ? (sb as SortColumn) : 'vmid';
+		if (urlSortCol !== sortCol) sortCol = urlSortCol;
+
+		const so = sp.get('sortOrder') ?? '';
+		const urlSortDir = isSortDir(so) ? (so as SortDirection) : 'asc';
+		if (urlSortDir !== sortDir) sortDir = urlSortDir;
+
+		const urlPage = parsePage(sp.get('page'));
+		if (urlPage !== currentPage) currentPage = urlPage;
+	});
+
+	// When filters or sort change (except page), reset to page 1 and push URL.
+	// NOTE: q (search text) is deliberately omitted here. It is handled exclusively by the
+	// debounced handler on the input (use:debounce) and explicit forceSearch/clear paths.
+	// Reacting to q in this effect caused an immediate URL push on every keystroke, stealing
+	// focus from the input after the first character.
+	$effect(() => {
+		// Touch dependencies (q excluded on purpose for debounce)
+		filterStatus;
+		filterNode;
+		sortCol;
+		sortDir;
+		if (!browser || !hasMounted) return;
+		// Defer to next tick to batch with input debounce.
+		queueMicrotask(() => {
+			if (currentPage !== 1) currentPage = 1;
+			pushUrlState();
+			if (shouldSearch) void load();
+			else resetResults();
+		});
+	});
+
+	// Initial mount: hydrate from URL, optionally seed node dropdown, then search if needed.
 	$effect(() => {
 		if (!browser || hasMounted) return;
 		hasMounted = true;
-		if (!isTriggeringSearch) void triggerSearch();
+		// Seed available nodes for the filter dropdown even before first search (cheap, respects visibility).
+		void seedNodesIfNeeded();
+		if (shouldSearch) void load();
 	});
 
-	// Cleanup slow timer on unmount
+	// Cleanup timers/aborts on unmount.
 	$effect(() => {
 		return () => {
 			clearSlowTimer();
+			if (loadAbort) loadAbort.abort();
 		};
 	});
 
-	function triggerSearch(): void {
-		if (isTriggeringSearch) return;
-		isTriggeringSearch = true;
-
+	function pushUrlState(): void {
 		const params = new URLSearchParams();
 		if (q.trim()) params.set('q', q.trim());
 		if (filterStatus) params.set('status', filterStatus);
 		if (filterNode) params.set('node', filterNode);
+		if (sortCol !== 'vmid') params.set('sortBy', sortCol);
+		if (sortDir !== 'asc') params.set('sortOrder', sortDir);
+		if (currentPage > 1) params.set('page', String(currentPage));
 		const url = `/search${params.size ? `?${params.toString()}` : ''}`;
 		if (browser && page.url.pathname + page.url.search !== url) {
-			goto(url, { replaceState: true, noScroll: true });
+			replaceState(url, {});
 		}
-		if (!shouldSearch) {
-			results = [];
-			error = null;
-			searched = false;
-			isTriggeringSearch = false;
-			return;
-		}
-		void doSearch();
 	}
 
-	async function doSearch(): Promise<void> {
-		const seq = ++requestSeq;
+	function resetResults(): void {
+		vms = [];
+		total = 0;
+		totalPages = 1;
+		hasNext = false;
+		hasPrev = false;
+		error = null;
+		searched = false;
+	}
+
+	async function seedNodesIfNeeded(): Promise<void> {
+		// Only seed if we have no nodes yet. This populates the node filter for first-time visitors.
+		if (knownNodes.length > 0) return;
+		try {
+			const res = await getVMsPaginated({ page: 1, limit: 1 });
+			if (res.pagination?.nodes && res.pagination.nodes.length > 0) {
+				nodesFacet = res.pagination.nodes;
+			}
+		} catch {
+			// Non-fatal; nodes will populate on first real search.
+		}
+	}
+
+	async function load(): Promise<void> {
+		// Cancel any in-flight request.
+		if (loadAbort) loadAbort.abort();
+		const abort = new AbortController();
+		loadAbort = abort;
+
 		loading = true;
 		searched = true;
 		error = null;
 		slowLoadingVisible = false;
 		startSlowTimer();
+
 		try {
-			const found = await searchVMs({
-				q: extractedQuery || undefined,
+			const params: VMPaginationParams = {
+				page: currentPage,
+				limit: PAGE_SIZE,
+				search: extractedQuery || undefined,
 				type: detectedType,
 				status: filterStatus || undefined,
-				node: filterNode || undefined
-			});
-			if (seq === requestSeq) results = found;
+				node: filterNode || undefined,
+				sortBy: sortCol,
+				sortOrder: sortDir
+			};
+			const res = await getVMsPaginated(params);
+			if (abort.signal.aborted) return;
+
+			vms = res.vms ?? [];
+			total = res.pagination?.total ?? 0;
+			totalPages = res.pagination?.totalPages ?? 1;
+			hasNext = res.pagination?.hasNext ?? false;
+			hasPrev = res.pagination?.hasPrev ?? false;
+
+			// Update nodes facet for the filter dropdown from server (preferred over client derivation).
+			if (res.pagination?.nodes && res.pagination.nodes.length > 0) {
+				// Union with any previously known to keep options stable across narrow searches.
+				const union = new Set<string>([...nodesFacet, ...res.pagination.nodes]);
+				nodesFacet = Array.from(union).sort();
+			}
 		} catch (caught: unknown) {
+			if (abort.signal.aborted) return;
 			const err = caught instanceof Error ? caught : new Error(String(caught));
-			if (seq === requestSeq) error = normalizeSearchError(err);
+			error = normalizeSearchError(err);
 		} finally {
-			if (seq === requestSeq) {
+			if (!abort.signal.aborted) {
 				loading = false;
 				slowLoadingVisible = false;
 				clearSlowTimer();
-				isTriggeringSearch = false;
+				if (loadAbort === abort) loadAbort = null;
 			}
 		}
 	}
@@ -170,17 +279,67 @@
 	function toggleSort(col: SortColumn): void {
 		if (sortCol === col) {
 			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-			return;
+		} else {
+			sortCol = col;
+			sortDir = col === 'vmid' ? 'asc' : 'asc';
 		}
-		sortCol = col;
-		sortDir = 'asc';
+		pushUrlState();
+		void load();
 	}
 
-	function clearSearch(): void {
+	function goToPage(p: number): void {
+		if (p < 1 || p > totalPages || p === currentPage) return;
+		currentPage = p;
+		pushUrlState();
+		void load();
+	}
+
+	function onStatusChange(): void {
+		currentPage = 1;
+		pushUrlState();
+		if (shouldSearch) void load();
+		else resetResults();
+	}
+
+	function onNodeChange(): void {
+		currentPage = 1;
+		pushUrlState();
+		if (shouldSearch) void load();
+		else resetResults();
+	}
+
+	function clearAll(): void {
 		q = '';
 		filterStatus = '';
 		filterNode = '';
-		void triggerSearch();
+		sortCol = 'vmid';
+		sortDir = 'asc';
+		currentPage = 1;
+		pushUrlState();
+		resetResults();
+	}
+
+	// Explicit search button (immediate).
+	function forceSearch(): void {
+		currentPage = 1;
+		pushUrlState();
+		if (shouldSearch) void load();
+		else resetResults();
+	}
+
+	// Allow pressing Enter in the input to force immediate search (in addition to debounce).
+	function onSearchKeydown(e: KeyboardEvent): void {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			forceSearch();
+		}
+		if (e.key === 'Escape' && q) {
+			q = '';
+			currentPage = 1;
+			pushUrlState();
+			if (shouldSearch) void load();
+			else resetResults();
+		}
 	}
 </script>
 
@@ -190,6 +349,8 @@
 
 <div class="mx-auto px-4 py-6 pv-content-width">
 	<h1 class="mb-5 text-2xl font-bold">{$t('nav.searchVm')}</h1>
+
+	<!-- Filters -->
 	<div class="mb-4 grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
 		<div class="flex flex-col gap-1">
 			<div class="relative">
@@ -198,15 +359,17 @@
 					class="w-full rounded-md border border-border bg-background py-2 pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
 					placeholder={$t('search.placeholderUnified')}
 					bind:value={q}
-					use:debounce={{ handler: triggerSearch, delay: DEBOUNCE_DELAY_MS }}
+					use:debounce={{ handler: () => { currentPage = 1; pushUrlState(); if (shouldSearch) void load(); else resetResults(); }, delay: DEBOUNCE_DELAY_MS }}
+					onkeydown={onSearchKeydown}
 					autocomplete="off"
 					spellcheck="false"
+					use:autofocus
 				/>
 				{#if q}
 					<button
 						type="button"
 						class="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 rounded-md p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-						onclick={clearSearch}
+						onclick={() => { q = ''; currentPage = 1; pushUrlState(); if (shouldSearch) void load(); else resetResults(); }}
 						aria-label="Clear search"
 					>
 						<X class="h-4 w-4" />
@@ -215,67 +378,85 @@
 			</div>
 			<p class="text-xs text-muted-foreground">{$t('search.hintUnified')}</p>
 		</div>
+
 		<select
 			class="rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
 			bind:value={filterStatus}
 			aria-label={$t('common.status')}
-			onchange={triggerSearch}
+			onchange={onStatusChange}
 		>
 			<option value="">{$t('common.status')}</option>
 			{#each STATUS_FILTERS as status (status)}
 				<option value={status}>{$t(`common.statusMap.${status}`, { default: status })}</option>
 			{/each}
 		</select>
+
 		<select
 			class="rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
 			bind:value={filterNode}
 			aria-label={$t('common.node')}
-			onchange={triggerSearch}
+			onchange={onNodeChange}
 		>
 			<option value="">{$t('common.node')}</option>
 			{#each knownNodes as node (node)}
 				<option value={node}>{node}</option>
 			{/each}
 		</select>
-		<button
-			class="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-			onclick={doSearch}
-			disabled={loading}
-		>
-			{#if loading}
-				<SpinnerGap class="h-4 w-4 animate-spin" />
-				{$t('common.loading')}
-			{:else}
-				<MagnifyingGlass class="h-4 w-4" />
-				{$t('search.search')}
-			{/if}
-		</button>
+
+		<div class="flex gap-2">
+			<button
+				class="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+				onclick={forceSearch}
+				disabled={loading}
+			>
+				{#if loading}
+					<SpinnerGap class="h-4 w-4 animate-spin" />
+					{$t('common.loading')}
+				{:else}
+					<MagnifyingGlass class="h-4 w-4" />
+					{$t('search.search')}
+				{/if}
+			</button>
+			<button
+				class="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm hover:bg-accent"
+				onclick={clearAll}
+				disabled={loading}
+			>
+				{$t('common.clearFilters')}
+			</button>
+		</div>
 	</div>
+
+	<!-- Slow loading notice -->
 	{#if slowLoadingVisible}
-		<div
-			class="mb-3 flex items-center gap-2 rounded-md border border-warning-soft-border bg-warning-soft px-3 py-2 text-sm text-warning-soft-foreground"
-		>
+		<div class="mb-3 flex items-center gap-2 rounded-md border border-warning-soft-border bg-warning-soft px-3 py-2 text-sm text-warning-soft-foreground">
 			<SpinnerGap class="h-4 w-4 animate-spin" />
 			{$t('search.slowLoading')}
 		</div>
 	{/if}
+
+	<!-- States -->
 	{#if error}
-		<ErrorBanner {error} onRetry={doSearch} />
+		<ErrorBanner {error} onRetry={() => void load()} />
 	{:else if loading && !searched}
-		<LoadingSkeleton variant="card" rows={4} />
+		<LoadingSkeleton variant="card" rows={6} />
 	{:else if !searched}
 		<div class="py-16 text-center text-muted-foreground">
 			<MagnifyingGlass class="mx-auto mb-3 h-10 w-10 opacity-30" />
 			<p class="text-sm">{$t('search.hint')}</p>
 		</div>
-	{:else if results.length === 0 && !loading}
+	{:else if vms.length === 0 && !loading}
 		<div class="pv-table-wrap py-16 text-center text-muted-foreground">
 			<Desktop class="mx-auto mb-3 h-10 w-10 opacity-30" />
 			<p class="text-sm">{$t('search.noResults')}</p>
 		</div>
 	{:else}
+		<!-- Results header -->
 		<div class="mb-2 flex items-center justify-between gap-3 text-sm text-muted-foreground">
-			<span>{$t('search.resultsCount', { values: { count: results.length } })}</span>
+			<span>
+				{$t('search.resultsCount', { values: { count: total } })}
+				{#if total > PAGE_SIZE}· {$t('common.pagination.showing', { values: { start: (currentPage - 1) * PAGE_SIZE + 1, end: Math.min(currentPage * PAGE_SIZE, total), total } })}{/if}
+			</span>
 			{#if loading}
 				<span class="inline-flex items-center gap-2">
 					<SpinnerGap class="h-4 w-4 animate-spin" />
@@ -283,6 +464,8 @@
 				</span>
 			{/if}
 		</div>
+
+		<!-- Results table -->
 		<div class="pv-table-wrap">
 			<table class="pv-table">
 				<thead>
@@ -303,13 +486,45 @@
 								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
 							</button>
 						</th>
-						<th>{$t('common.node')}</th>
-						<th>{$t('common.status')}</th>
+						<th>
+							<button class="sort-btn" onclick={() => toggleSort('node')}>
+								{$t('common.node')}
+								{#if sortCol === 'node'}
+									{#if sortDir === 'asc'}<ArrowUp class="sort-icon" />{:else}<ArrowDown class="sort-icon" />{/if}
+								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
+							</button>
+						</th>
+						<th>
+							<button class="sort-btn" onclick={() => toggleSort('status')}>
+								{$t('common.status')}
+								{#if sortCol === 'status'}
+									{#if sortDir === 'asc'}<ArrowUp class="sort-icon" />{:else}<ArrowDown class="sort-icon" />{/if}
+								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
+							</button>
+						</th>
+						<th>
+							<button class="sort-btn" onclick={() => toggleSort('cpu')}>
+								{$t('vms.cpu')}
+								{#if sortCol === 'cpu'}
+									{#if sortDir === 'asc'}<ArrowUp class="sort-icon" />{:else}<ArrowDown class="sort-icon" />{/if}
+								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
+							</button>
+						</th>
+						<th>
+							<button class="sort-btn" onclick={() => toggleSort('memory')}>
+								{$t('vms.ram')}
+								{#if sortCol === 'memory'}
+									{#if sortDir === 'asc'}<ArrowUp class="sort-icon" />{:else}<ArrowDown class="sort-icon" />{/if}
+								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
+							</button>
+						</th>
+						<th>{$t('vm.disk')}</th>
+						<th>{$t('vms.uptime')}</th>
 						<th>{$t('admin.vms.tags')}</th>
 					</tr>
 				</thead>
 				<tbody>
-					{#each pagedResults as vm (vm.vmid)}
+					{#each vms as vm (vm.vmid)}
 						<tr animate:flip class="pv-row pv-row--clickable" onclick={() => goto(`/vm/${vm.vmid}`)}>
 							<td class="pv-td-mono text-sm">{vm.vmid}</td>
 							<td>
@@ -324,11 +539,47 @@
 									{$t(`common.statusMap.${vm.status}`, { default: vm.status })}
 								</span>
 							</td>
+							<td class="text-sm">
+								{#if vm.cpu != null}
+									<span class="inline-flex items-center gap-1">
+										<Cpu class="h-3.5 w-3.5 opacity-60" />
+										{(vm.cpu * 100).toFixed(1)}%
+									</span>
+								{:else}
+									<span class="text-muted-foreground">—</span>
+								{/if}
+							</td>
+							<td class="text-sm">
+								{#if vm.maxMemMb}
+									<span class="inline-flex items-center gap-1">
+										<Memory class="h-3.5 w-3.5 opacity-60" />
+										{vmList.formatMem(vm.memMb)} / {vmList.formatMem(vm.maxMemMb)}
+									</span>
+								{:else}
+									<span class="text-muted-foreground">—</span>
+								{/if}
+							</td>
+							<td class="text-sm">
+								{#if vm.maxDiskMb}
+									<span class="inline-flex items-center gap-1">
+										<HardDrive class="h-3.5 w-3.5 opacity-60" />
+										{vmList.formatDisk(vm.diskMb)} / {vmList.formatDisk(vm.maxDiskMb)}
+									</span>
+								{:else}
+									<span class="text-muted-foreground">—</span>
+								{/if}
+							</td>
+							<td class="text-sm">
+								<span class="inline-flex items-center gap-1">
+									<Clock class="h-3.5 w-3.5 opacity-60" />
+									{vmList.uptimeLabel(vm.uptime || 0)}
+								</span>
+							</td>
 							<td>
 								{#if vm.tags}
 									<div class="flex flex-wrap gap-1">
-										{#each vm.tags.split(';').filter((tag) => tag.trim() && tag.trim() !== 'pvmss') as tag (tag)}
-											<span class="pv-badge text-xs">{tag.trim()}</span>
+										{#each vmList.splitTags(vm.tags) as tag (tag)}
+											<span class="pv-badge text-xs">{tag}</span>
 										{/each}
 									</div>
 								{:else}
@@ -340,16 +591,18 @@
 				</tbody>
 			</table>
 		</div>
+
+		<!-- Server-driven pagination -->
 		{#if totalPages > 1}
-			<div class="mt-4 flex items-center justify-center gap-1">
-				<button class="pagination-btn" onclick={() => (currentPage = Math.max(1, currentPage - 1))} disabled={currentPage === 1}>&lsaquo;</button>
+			<div class="mt-4 flex flex-wrap items-center justify-center gap-1">
+				<button class="pagination-btn" onclick={() => goToPage(currentPage - 1)} disabled={!hasPrev}>&lsaquo;</button>
 				{#each Array.from({ length: totalPages }, (_, i) => i + 1) as p (p)}
-					<button class="pagination-btn {p === currentPage ? 'pagination-btn--active' : ''}" onclick={() => (currentPage = p)}>{p}</button>
+					<button class="pagination-btn {p === currentPage ? 'pagination-btn--active' : ''}" onclick={() => goToPage(p)}>{p}</button>
 				{/each}
-				<button class="pagination-btn" onclick={() => (currentPage = Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}>&rsaquo;</button>
+				<button class="pagination-btn" onclick={() => goToPage(currentPage + 1)} disabled={!hasNext}>&rsaquo;</button>
 			</div>
 			<p class="mt-1 text-center text-xs text-muted-foreground">
-				{currentPage} / {totalPages}
+				{$t('common.pageOf', { values: { page: currentPage, total: totalPages } })} · {total} total
 			</p>
 		{/if}
 	{/if}

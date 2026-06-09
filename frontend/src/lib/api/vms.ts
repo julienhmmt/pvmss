@@ -18,6 +18,10 @@ export interface PaginationMetadata {
   hasPrev: boolean;
   runningCount: number;
   stoppedCount: number;
+  /** Distinct nodes present in the (filtered) result set, before pagination.
+   * Populated by the server for list/search UIs that need a node filter dropdown.
+   * Optional because not all responses include it (omitempty on backend). */
+  nodes?: string[];
 }
 
 export interface PaginatedVMListResponse {
@@ -33,6 +37,8 @@ export interface VMPaginationParams {
   sortOrder?: string;
   status?: string;
   node?: string;
+  /** Optional search scope for legacy q+type behavior (vmid|name|tag). When provided with search, emits q+type instead of search for backend scoping. */
+  type?: SearchType;
 }
 
 export async function getVMs(): Promise<VMSummary[]> {
@@ -53,9 +59,23 @@ export async function getVMsPaginated(params: VMPaginationParams = {}): Promise<
   const qs = new URLSearchParams();
   if (params.page) qs.set("page", String(params.page));
   if (params.limit) qs.set("limit", String(params.limit));
-  if (params.search) qs.set("search", params.search);
   if (params.sortBy) qs.set("sort_by", params.sortBy);
   if (params.sortOrder) qs.set("sort_order", params.sortOrder);
+  if (params.status) qs.set("status", params.status);
+  if (params.node) qs.set("node", params.node);
+
+  // Scoped search: when a type (vmid|name|tag) is provided with a query,
+  // emit the legacy q+type so backend applies the correct filterUserVM branch.
+  // Otherwise fall back to the modern 'search' param (broad match).
+  if (params.search) {
+    if (params.type) {
+      qs.set("q", params.search);
+      qs.set("type", params.type);
+    } else {
+      qs.set("search", params.search);
+    }
+  }
+
   const query = qs.toString();
   const res = await api.get<PaginatedVMListResponse>(
     `/api/v1/vms${query ? "?" + query : ""}`,
