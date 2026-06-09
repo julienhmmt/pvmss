@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { flip } from 'svelte/animate';
 	import { t } from 'svelte-i18n';
+	import { untrack } from 'svelte';
 	import { debounce, autofocus } from '$lib/actions';
 	import { getVMsPaginated, type VMPaginationParams, type VMSummary, type SearchType } from '$lib/api/vms';
 	import type { VMStatus } from '$lib/types/vm';
@@ -102,31 +103,33 @@
 	});
 
 	// Keep local pagination state in sync when URL changes externally (back/forward/share).
-	// Guarded assignments prevent clobbering local state (especially the search input's bind:value)
-	// on our own replaceState calls during typing, which was causing focus loss after the first character.
+	// Use untrack when reading local state so this effect does not subscribe to q/filter/etc.
+	// Subscribing caused the effect to re-run on every keystroke; the comparison against a
+	// (transitional) urlQ would then assign back, clobbering the input bind:value and
+	// preventing typing. Untrack ensures we only react to real external page changes.
 	$effect(() => {
 		const sp = page.url.searchParams;
 
 		const urlQ = sp.get('q') ?? '';
-		if (urlQ !== q) q = urlQ;
+		if (urlQ !== untrack(() => q)) q = urlQ;
 
 		const st = sp.get('status') ?? '';
 		const urlStatus = isVMStatus(st) ? (st as VMStatus) : '';
-		if (urlStatus !== filterStatus) filterStatus = urlStatus;
+		if (urlStatus !== untrack(() => filterStatus)) filterStatus = urlStatus;
 
 		const urlNode = sp.get('node') ?? '';
-		if (urlNode !== filterNode) filterNode = urlNode;
+		if (urlNode !== untrack(() => filterNode)) filterNode = urlNode;
 
 		const sb = sp.get('sortBy') ?? '';
 		const urlSortCol = isSortColumn(sb) ? (sb as SortColumn) : 'vmid';
-		if (urlSortCol !== sortCol) sortCol = urlSortCol;
+		if (urlSortCol !== untrack(() => sortCol)) sortCol = urlSortCol;
 
 		const so = sp.get('sortOrder') ?? '';
 		const urlSortDir = isSortDir(so) ? (so as SortDirection) : 'asc';
-		if (urlSortDir !== sortDir) sortDir = urlSortDir;
+		if (urlSortDir !== untrack(() => sortDir)) sortDir = urlSortDir;
 
 		const urlPage = parsePage(sp.get('page'));
-		if (urlPage !== currentPage) currentPage = urlPage;
+		if (urlPage !== untrack(() => currentPage)) currentPage = urlPage;
 	});
 
 	// When filters or sort change (except page), reset to page 1 and push URL.
