@@ -3,27 +3,21 @@
 	import { fade } from 'svelte/transition';
 
 	let { children } = $props();
-	let firstRender = $state(true);
 
 	$effect(() => {
 		if (auth.initialized && !auth.username) {
 			window.location.href = '/';
 		}
 	});
-
-	$effect(() => {
-		if (auth.initialized && auth.username) {
-			firstRender = false;
-		}
-	});
 </script>
 
 {#if auth.initialized && auth.username}
-	{#if firstRender}
-		<div transition:fade={{ duration: 150 }}>
-			{@render children()}
-		</div>
-	{:else}
+	<!-- Single stable render branch: `in:fade` animates only on mount and keeps
+	     `children` in one fragment. Branching on a `firstRender` flag (the old
+	     approach) moved children between {#if}/{:else} fragments, which destroys
+	     and recreates the page component — remounting it and firing onMount twice
+	     (e.g. opening two VNC sessions for the console). -->
+	<div in:fade={{ duration: 150 }}>
 		{@render children()}
-	{/if}
+	</div>
 {/if}
