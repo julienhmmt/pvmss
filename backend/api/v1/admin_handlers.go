@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	envpkg "pvmss/env"
 	"pvmss/constants"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -129,7 +130,8 @@ func (h *AdminHandler) Storage(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, []AdminStorageResponse{})
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -205,7 +207,8 @@ func (h *AdminHandler) VMBR(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, []AdminVMBRResponse{})
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -301,7 +304,8 @@ func (h *AdminHandler) ISO(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, []AdminISOResponse{})
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -367,7 +371,8 @@ func (h *AdminHandler) CloudInitStorages(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, []string{})
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -420,7 +425,7 @@ func (h *AdminHandler) AppInfo(w http.ResponseWriter, r *http.Request) {
 		OfflineMode:      h.state.IsOfflineMode(),
 		TotalNodes:       len(nodes),
 		TotalVMs:         totalVMs,
-		ClusterInfo:      fetchClusterInfo(r, h.state.IsOfflineMode()),
+		ClusterInfo:      fetchClusterInfo(r, h.state.IsOfflineMode(), envCfg),
 		EnvVars:          collectSafeEnvVars(),
 	}
 
@@ -429,11 +434,11 @@ func (h *AdminHandler) AppInfo(w http.ResponseWriter, r *http.Request) {
 
 // fetchClusterInfo retrieves cluster information from Proxmox.
 // Returns nil if in offline mode or on error.
-func fetchClusterInfo(r *http.Request, offlineMode bool) *AdminClusterInfoResponse {
+func fetchClusterInfo(r *http.Request, offlineMode bool, cfg *envpkg.EnvConfig) *AdminClusterInfoResponse {
 	if offlineMode {
 		return nil
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		return nil
 	}

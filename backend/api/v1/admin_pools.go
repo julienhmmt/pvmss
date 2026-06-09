@@ -32,7 +32,8 @@ func (h *AdminMutationsHandler) ListPools(w http.ResponseWriter, r *http.Request
 		writeJSON(w, []AdminPoolResponse{})
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -109,7 +110,8 @@ func (h *AdminMutationsHandler) CreatePool(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -164,7 +166,8 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 		errBadRequest(w, "missing pool name")
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -202,7 +205,7 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				c, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+				c, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 				if err != nil {
 					return
 				}

@@ -55,7 +55,8 @@ func (h *VMActionHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := proxmox.MakeRestyClientFromEnv(60 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 60*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return

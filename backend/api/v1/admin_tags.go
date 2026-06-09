@@ -38,7 +38,8 @@ func (h *AdminMutationsHandler) ListTags(w http.ResponseWriter, r *http.Request)
 				}
 			}
 		}
-		if restyClient, err := proxmox.MakeRestyClientFromEnv(5 * time.Second); err == nil {
+		cfg := h.state.GetEnvConfig()
+		if restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 5*time.Second); err == nil {
 			if colors, cErr := proxmox.GetTagColorsResty(r.Context(), restyClient); cErr == nil {
 				tagColors = colors
 			}
@@ -145,7 +146,8 @@ func (h *AdminMutationsHandler) SetTagColor(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
