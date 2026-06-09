@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { t, locale } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
+	import DOMPurify from 'dompurify';
 	import { api } from '$lib/api/client';
 	import { auth as authStore } from '$lib/stores/auth.svelte';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
@@ -97,7 +98,8 @@
 		try {
 			const lang = ($locale ?? 'en').startsWith('fr') ? 'fr' : 'en';
 			const res = await api.get<{ html: string }>(`/api/v1/docs/${type}?lang=${lang}`);
-			html = res.html;
+			// Sanitize backend-rendered HTML before {@html} injection (XSS defense-in-depth)
+			html = DOMPurify.sanitize(res.html);
 			toc = extractTOC(html);
 			readingTime = computeReadingTime(html);
 			// Wait for DOM update then enhance + cache
