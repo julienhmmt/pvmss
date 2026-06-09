@@ -31,6 +31,8 @@ export interface VMPaginationParams {
   search?: string;
   sortBy?: string;
   sortOrder?: string;
+  status?: string;
+  node?: string;
 }
 
 export async function getVMs(): Promise<VMSummary[]> {

@@ -6,6 +6,7 @@
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { getVMsPaginated, type VMSummary } from '$lib/api/vms';
+	import type { VMStatus } from '$lib/types/vm';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { settingsStore } from '$lib/stores/settings.svelte';
@@ -27,6 +28,8 @@
 	// ── Constants ──────────────────────────────────────────────────────────
 	const DEFAULT_PAGE_SIZE = 10;
 	const AUTO_REFRESH_INTERVAL_MS = 30_000;
+
+	const STATUS_FILTERS: readonly ('' | VMStatus)[] = ['', 'running', 'stopped', 'paused'];
 
 	// ── State ──────────────────────────────────────────────────────────────
 	let loading = $state(true);
@@ -50,6 +53,11 @@
 	let searchQuery = $state('');
 	let sortBy = $state<string>('vmid');
 	let sortOrder = $state<string>('asc');
+
+	// Stage 4: server-side status + node filters (passed to the paginated endpoint)
+	let filterStatus = $state<'' | 'running' | 'stopped' | 'paused'>('');
+	let filterNode = $state('');
+	let knownNodes = $state<string[]>([]);
 
 	// Quota state (non-admin users only) – always reflects full owned count
 	let maxVmPerUser = $state(0);
@@ -161,6 +169,8 @@
 				search: searchQuery || undefined,
 				sortBy: sortBy,
 				sortOrder: sortOrder,
+				status: filterStatus || undefined,
+				node: filterNode || undefined,
 			});
 			if (abort.signal.aborted) return;
 
@@ -171,6 +181,11 @@
 			hasPrev = res.pagination.hasPrev;
 			runningTotal = res.pagination.runningCount ?? 0;
 			stoppedTotal = res.pagination.stoppedCount ?? 0;
+
+			// Stage 4: accumulate nodes seen so far for the node filter dropdown.
+			// We union across loads so the dropdown stays useful even as the user pages/filters.
+			const pageNodes = res.vms.map((v) => v.node).filter(Boolean);
+			knownNodes = [...new Set([...knownNodes, ...pageNodes])].sort();
 
 			// For non-admins the backend returns the user's full owned count via pool filtering.
 			if (!auth.isAdmin) {
@@ -240,6 +255,29 @@
 	function goToPage(page: number): void {
 		if (page < 1 || page > totalPages) return;
 		currentPage = page;
+		void loadVMs();
+	}
+
+	// ── Stage 4: status / node filter handlers ─────────────────────────────
+	function setFilterStatus(value: '' | VMStatus): void {
+		if (filterStatus === value) return;
+		filterStatus = value;
+		currentPage = 1;
+		void loadVMs();
+	}
+
+	function setFilterNode(value: string): void {
+		if (filterNode === value) return;
+		filterNode = value;
+		currentPage = 1;
+		void loadVMs();
+	}
+
+	function clearAllFilters(): void {
+		searchQuery = '';
+		filterStatus = '';
+		filterNode = '';
+		currentPage = 1;
 		void loadVMs();
 	}
 
@@ -462,6 +500,42 @@
 					aria-label="Clear search"
 				>
 					<X class="h-3.5 w-3.5" />
+				</button>
+			{/if}
+		</div>
+
+		<!-- Stage 4: status + node filters (server-side, page resets on change) -->
+		<div class="mb-3 flex flex-wrap items-center gap-2">
+			<select
+				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+				value={filterStatus}
+				onchange={(e: Event) => setFilterStatus((e.currentTarget as HTMLSelectElement).value as '' | VMStatus)}
+			>
+				<option value="">All statuses</option>
+				{#each STATUS_FILTERS as s (s)}
+					{#if s}
+						<option value={s}>{$t(`common.statusMap.${s}`, { default: s })}</option>
+					{/if}
+				{/each}
+			</select>
+
+			<select
+				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+				value={filterNode}
+				onchange={(e: Event) => setFilterNode((e.currentTarget as HTMLSelectElement).value)}
+			>
+				<option value="">All nodes</option>
+				{#each knownNodes as n (n)}
+					<option value={n}>{n}</option>
+				{/each}
+			</select>
+
+			{#if searchQuery || filterStatus || filterNode}
+				<button
+					class="rounded-md border border-border bg-background px-3 py-1.5 text-sm hover:bg-accent"
+					onclick={clearAllFilters}
+				>
+					Clear filters
 				</button>
 			{/if}
 		</div>
