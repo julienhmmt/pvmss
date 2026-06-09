@@ -5,21 +5,18 @@
 	import { Button } from '$lib/components/ui/button';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
-	import { getVMs, type VMSummary } from '$lib/api/vms';
+	import { getVMsPaginated, type VMSummary } from '$lib/api/vms';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { settingsStore } from '$lib/stores/settings.svelte';
 	import {
 		ArrowsClockwise, PlusSquare, Desktop, Play, Stop, ArrowCounterClockwise,
 		CaretUp, CaretDown, ArrowsDownUp, CheckSquare, Square, ClockCounterClockwise,
-		MagnifyingGlass, X
+		MagnifyingGlass, X, Monitor
 	} from 'phosphor-svelte';
 	import { toast } from 'svelte-sonner';
 
 	// ── Types ──────────────────────────────────────────────────────────────
-	type SortKey = 'vmid' | 'name' | 'status';
-	type SortDir = 'asc' | 'desc';
-
 	interface ActivityEntry {
 		readonly id: string;
 		readonly action: string;
@@ -28,7 +25,7 @@
 	}
 
 	// ── Constants ──────────────────────────────────────────────────────────
-	const PER_PAGE = 10;
+	const DEFAULT_PAGE_SIZE = 10;
 	const AUTO_REFRESH_INTERVAL_MS = 30_000;
 
 	// ── State ──────────────────────────────────────────────────────────────
@@ -39,52 +36,51 @@
 	let actionLoading = $state<Record<number, boolean>>({});
 	let bulkLoading = $state(false);
 
-	let sortKey = $state<SortKey>('vmid');
-	let sortDir = $state<SortDir>('asc');
 	let selected = $state<Set<number>>(new Set());
-	let page = $state(1);
 	let activityLog = $state<ActivityEntry[]>([]);
-	let filterQuery = $state('');
 	let nextRefreshIn = $state(AUTO_REFRESH_INTERVAL_MS / 1000);
 
-	// Quota state (non-admin users only)
+	// Server-driven pagination / search / sort (replaces client-side filter+slice)
+	let currentPage = $state(1);
+	let pageSize = $state(DEFAULT_PAGE_SIZE);
+	let totalVMs = $state(0);
+	let totalPages = $state(1);
+	let hasNext = $state(false);
+	let hasPrev = $state(false);
+	let searchQuery = $state('');
+	let sortBy = $state<string>('vmid');
+	let sortOrder = $state<string>('asc');
+
+	// Quota state (non-admin users only) – always reflects full owned count
 	let maxVmPerUser = $state(0);
 	let remainingVms = $state(0);
+	let userTotalVMs = $state(0);
 
-	// ── Derived ────────────────────────────────────────────────────────────
-	const filteredVms = $derived(filterVms(vms, filterQuery));
-	const sortedVms = $derived(sortVms(filteredVms, sortKey, sortDir));
-	const totalPages = $derived(Math.max(1, Math.ceil(sortedVms.length / PER_PAGE)));
-	const paginatedVms = $derived(sortedVms.slice((page - 1) * PER_PAGE, page * PER_PAGE));
+	// Server pagination aggregates for accurate stat cards (total/running/stopped across all pages for the current filter)
+	let runningTotal = $state(0);
+	let stoppedTotal = $state(0);
+
+	// Abort + debounce helpers for loads
+	let loadAbort: AbortController | null = null;
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// ── Derived (server-driven) ────────────────────────────────────────────
 	const stats = $derived(computeStats(vms));
 	const allPageSelected = $derived(
-		paginatedVms.length > 0 && paginatedVms.every((v) => selected.has(v.vmid))
+		vms.length > 0 && vms.every((v) => selected.has(v.vmid))
 	);
 	const someSelected = $derived(selected.size > 0);
-	const quotaUsed = $derived(maxVmPerUser > 0 ? vms.length : 0);
-	const quotaPct = $derived(maxVmPerUser > 0 ? Math.round((quotaUsed / maxVmPerUser) * 100) : 0);
+
+	// Quota uses the full owned VM count (from pagination.total for non-admins)
+	const quotaUsed = $derived(maxVmPerUser > 0 ? userTotalVMs : 0);
+	const quotaPct = $derived(
+		maxVmPerUser > 0 ? Math.round((quotaUsed / maxVmPerUser) * 100) : 0
+	);
 
 	// ── Pure helpers ───────────────────────────────────────────────────────
-	function filterVms(list: VMSummary[], query: string): VMSummary[] {
-		const q = query.trim().toLowerCase();
-		if (!q) return list;
-		return list.filter((v) =>
-			(v.name || '').toLowerCase().includes(q) ||
-			String(v.vmid).includes(q) ||
-			(v.tags || '').toLowerCase().includes(q) ||
-			(v.node || '').toLowerCase().includes(q)
-		);
-	}
-
-	function sortVms(list: VMSummary[], key: SortKey, dir: SortDir): VMSummary[] {
-		return [...list].sort((a, b) => {
-			let cmp = 0;
-			if (key === 'vmid') cmp = a.vmid - b.vmid;
-			else if (key === 'name') cmp = (a.name || '').localeCompare(b.name || '');
-			else if (key === 'status') cmp = a.status.localeCompare(b.status);
-			return dir === 'asc' ? cmp : -cmp;
-		});
-	}
+	// computeStats works on the current page slice (server already applied filters/sort).
+	// running/stopped counts in the stats header come from server pagination metadata for accuracy.
+	type SortColumn = 'vmid' | 'name' | 'status';
 
 	function computeStats(list: VMSummary[]) {
 		const running = list.filter((v) => v.status === 'running');
@@ -130,7 +126,7 @@
 		stopAutoRefresh();
 		nextRefreshIn = AUTO_REFRESH_INTERVAL_MS / 1000;
 		autoRefreshTimer = setInterval(() => {
-			void load(true);
+			void loadVMs(true);
 			nextRefreshIn = AUTO_REFRESH_INTERVAL_MS / 1000;
 		}, AUTO_REFRESH_INTERVAL_MS);
 		countdownTimer = setInterval(() => {
@@ -143,20 +139,58 @@
 		if (countdownTimer !== null) { clearInterval(countdownTimer); countdownTimer = null; }
 	}
 
-	// ── Actions ────────────────────────────────────────────────────────────
-	async function load(isRefresh = false): Promise<void> {
+	// ── Data loading (server pagination / search / sort) ───────────────────
+	async function loadVMs(isRefresh = false): Promise<void> {
+		if (loadAbort) loadAbort.abort();
+		const abort = new AbortController();
+		loadAbort = abort;
+
 		if (isRefresh) refreshing = true;
 		else loading = true;
 		error = null;
+
 		try {
-			vms = await getVMs();
-			if (page > Math.max(1, Math.ceil(vms.length / PER_PAGE))) page = 1;
+			const res = await getVMsPaginated({
+				page: currentPage,
+				limit: pageSize,
+				search: searchQuery || undefined,
+				sortBy: sortBy,
+				sortOrder: sortOrder,
+			});
+			if (abort.signal.aborted) return;
+
+			vms = res.vms;
+			totalVMs = res.pagination.total;
+			totalPages = res.pagination.totalPages;
+			hasNext = res.pagination.hasNext;
+			hasPrev = res.pagination.hasPrev;
+			runningTotal = res.pagination.runningCount ?? 0;
+			stoppedTotal = res.pagination.stoppedCount ?? 0;
+
+			// For non-admins the backend returns the user's full owned count via pool filtering.
+			if (!auth.isAdmin) {
+				userTotalVMs = totalVMs;
+			}
+
+			// Clamp page if it went out of range (e.g. after deletes or search)
+			if (currentPage > totalPages) {
+				currentPage = Math.max(1, totalPages);
+			}
+
+			// Drop any selections that are no longer visible on this page
+			const visible = new Set(vms.map((v) => v.vmid));
+			selected = new Set([...selected].filter((id) => visible.has(id)));
+
 			if (isRefresh) nextRefreshIn = AUTO_REFRESH_INTERVAL_MS / 1000;
 		} catch (err: unknown) {
+			if (abort.signal.aborted) return;
 			error = err instanceof Error ? err : new Error(String(err));
 		} finally {
-			loading = false;
-			refreshing = false;
+			if (!abort.signal.aborted) {
+				loading = false;
+				refreshing = false;
+			}
+			if (loadAbort === abort) loadAbort = null;
 		}
 	}
 
@@ -171,13 +205,65 @@
 		}
 	}
 
+	// ── Search / sort / pagination controls ────────────────────────────────
+	function onSearchInput(e: Event): void {
+		if (searchTimeout) clearTimeout(searchTimeout);
+		searchQuery = (e.target as HTMLInputElement).value;
+		searchTimeout = setTimeout(() => {
+			currentPage = 1;
+			void loadVMs();
+		}, 300);
+	}
+
+	function clearSearch(): void {
+		searchQuery = '';
+		currentPage = 1;
+		void loadVMs();
+	}
+
+	function toggleSort(column: SortColumn): void {
+		if (sortBy === column) {
+			sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortBy = column;
+			sortOrder = 'asc';
+		}
+		currentPage = 1;
+		void loadVMs();
+	}
+
+	function goToPage(page: number): void {
+		if (page < 1 || page > totalPages) return;
+		currentPage = page;
+		void loadVMs();
+	}
+
+	// ── Selection ──────────────────────────────────────────────────────────
+	function toggleSelect(vmid: number): void {
+		const next = new Set(selected);
+		if (next.has(vmid)) next.delete(vmid);
+		else next.add(vmid);
+		selected = next;
+	}
+
+	function toggleSelectAll(): void {
+		const next = new Set(selected);
+		if (allPageSelected) {
+			vms.forEach((v) => next.delete(v.vmid));
+		} else {
+			vms.forEach((v) => next.add(v.vmid));
+		}
+		selected = next;
+	}
+
+	// ── Actions ────────────────────────────────────────────────────────────
 	async function doAction(vm: VMSummary, action: string): Promise<void> {
 		actionLoading = { ...actionLoading, [vm.vmid]: true };
 		try {
 			await api.post(`/api/v1/vms/${vm.vmid}/action`, { action, node: vm.node });
 			toast.success(`${action} sent to ${vm.name || vm.vmid}`);
 			addActivity(action, vm.name || String(vm.vmid));
-			setTimeout(() => load(true), 2000);
+			setTimeout(() => loadVMs(true), 2000);
 		} catch (err: unknown) {
 			console.error(`VM action ${action} failed:`, err instanceof Error ? err.message : String(err));
 			toast.error(`Failed to ${action} ${vm.name || vm.vmid}`);
@@ -201,32 +287,18 @@
 		if (fail > 0) toast.error(`Failed for ${fail} VM(s)`);
 		selected = new Set();
 		bulkLoading = false;
-		setTimeout(() => load(true), 2000);
+		setTimeout(() => loadVMs(true), 2000);
+	}
+
+	function openConsole(vm: VMSummary): void {
+		if (vm.status !== 'running') return;
+		const url = `/vm/${vm.vmid}/console`;
+		window.open(url, '_blank', 'width=1024,height=768,resizable=yes,scrollbars=yes');
 	}
 
 	function manualRefresh(): void {
-		void load(true);
+		void loadVMs(true);
 		startAutoRefresh();
-	}
-
-	function toggleSort(key: SortKey): void {
-		if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-		else { sortKey = key; sortDir = 'asc'; }
-		page = 1;
-	}
-
-	function toggleSelect(vmid: number): void {
-		const next = new Set(selected);
-		if (next.has(vmid)) next.delete(vmid);
-		else next.add(vmid);
-		selected = next;
-	}
-
-	function toggleSelectAll(): void {
-		const next = new Set(selected);
-		if (allPageSelected) paginatedVms.forEach((v) => next.delete(v.vmid));
-		else paginatedVms.forEach((v) => next.add(v.vmid));
-		selected = next;
 	}
 
 	function addActivity(action: string, vmName: string): void {
@@ -237,13 +309,15 @@
 	}
 
 	onMount(() => {
-		void load();
+		void loadVMs();
 		void loadQuota();
 		startAutoRefresh();
 	});
 
 	onDestroy(() => {
 		stopAutoRefresh();
+		if (searchTimeout) clearTimeout(searchTimeout);
+		if (loadAbort) loadAbort.abort();
 	});
 </script>
 
@@ -251,9 +325,9 @@
 	<title>PVMSS — {$t('user.home.title')}</title>
 </svelte:head>
 
-{#snippet sortIcon(key: SortKey)}
-	{#if sortKey === key}
-		{#if sortDir === 'asc'}
+{#snippet sortIcon(col: SortColumn)}
+	{#if sortBy === col}
+		{#if sortOrder === 'asc'}
 			<CaretUp class="h-3 w-3" weight="bold" />
 		{:else}
 			<CaretDown class="h-3 w-3" weight="bold" />
@@ -268,10 +342,10 @@
 	<div class="mb-5 flex items-start justify-between">
 		<div>
 			<h1 class="text-2xl font-bold">{$t('user.home.title')}</h1>
-			{#if !loading && vms.length > 0}
+			{#if !loading}
 				<p class="mt-0.5 text-sm text-muted-foreground">
-					{vms.length}
-					{vms.length === 1 ? 'virtual machine' : 'virtual machines'}
+					{totalVMs}
+					{totalVMs === 1 ? 'virtual machine' : 'virtual machines'}
 				</p>
 			{/if}
 		</div>
@@ -295,11 +369,11 @@
 	</div>
 
 	{#if error}
-		<ErrorBanner {error} onRetry={() => load()} />
+		<ErrorBanner {error} onRetry={() => loadVMs()} />
 	{:else if loading}
 		<LoadingSkeleton variant="card" rows={4} />
-	{:else if vms.length === 0}
-		<!-- Better empty state -->
+	{:else if totalVMs === 0}
+		<!-- Better empty state (user truly owns zero VMs) -->
 		<div class="pv-empty-state">
 			<div class="pv-empty-icon">
 				<Desktop class="h-14 w-14" />
@@ -314,19 +388,19 @@
 		{/if}
 		</div>
 	{:else}
-		<!-- Stats row -->
+		<!-- Stats row (authoritative fleet counts from server pagination metadata) -->
 		<div class="mb-4 grid grid-cols-2 gap-3 {maxVmPerUser > 0 && !auth.isAdmin ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}">
 			<div class="pv-stat-card">
 				<span class="pv-stat-label">{$t('user.home.stats.total')}</span>
-				<span class="pv-stat-value">{stats.total}</span>
+				<span class="pv-stat-value">{totalVMs}</span>
 			</div>
 			<div class="pv-stat-card pv-stat-card--running">
 				<span class="pv-stat-label">{$t('user.home.stats.running')}</span>
-				<span class="pv-stat-value">{stats.running}</span>
+				<span class="pv-stat-value">{runningTotal}</span>
 			</div>
 			<div class="pv-stat-card">
 				<span class="pv-stat-label">{$t('user.home.stats.stopped')}</span>
-				<span class="pv-stat-value">{stats.stopped}</span>
+				<span class="pv-stat-value">{stoppedTotal}</span>
 			</div>
 			<div class="pv-stat-card pv-stat-card--cpu">
 				<span class="pv-stat-label">{$t('user.home.stats.avgCpu')}</span>
@@ -346,21 +420,21 @@
 			{/if}
 		</div>
 
-		<!-- Inline filter -->
+		<!-- Inline search (server-driven) -->
 		<div class="mb-3 relative">
 			<MagnifyingGlass class="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
 			<input
 				type="text"
 				class="pv-filter-input"
 				placeholder={$t('user.home.filterPlaceholder')}
-				bind:value={filterQuery}
-				oninput={() => { page = 1; }}
+				bind:value={searchQuery}
+				oninput={onSearchInput}
 			/>
-			{#if filterQuery}
+			{#if searchQuery}
 				<button
 					class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-					onclick={() => { filterQuery = ''; page = 1; }}
-					aria-label="Clear filter"
+					onclick={clearSearch}
+					aria-label="Clear search"
 				>
 					<X class="h-3.5 w-3.5" />
 				</button>
@@ -435,14 +509,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#if filteredVms.length === 0 && filterQuery}
-								<tr>
-									<td colspan="8" class="py-8 text-center text-sm text-muted-foreground">
-										{$t('user.home.noFilterResults', { values: { query: filterQuery } })}
-									</td>
-								</tr>
-							{/if}
-							{#each paginatedVms as vm (vm.vmid)}
+							{#each vms as vm (vm.vmid)}
 								{@const busy = actionLoading[vm.vmid] ?? false}
 								{@const isSelected = selected.has(vm.vmid)}
 								<tr
@@ -511,6 +578,15 @@
 													<Play class="h-3.5 w-3.5" weight="fill" />
 												</button>
 											{:else if vm.status === 'running'}
+												<!-- Console before stop/shutdown (per request) -->
+												<button
+													class="pv-action-btn"
+													onclick={() => openConsole(vm)}
+													title={$t('vms.actions.console', { default: 'Console' })}
+													aria-label={$t('vms.actions.console', { default: 'Console' })}
+												>
+													<Monitor class="h-3.5 w-3.5" weight="fill" />
+												</button>
 												<button
 													class="pv-action-btn pv-action-btn--stop"
 													onclick={() => doAction(vm, 'shutdown')}
@@ -536,26 +612,26 @@
 					</table>
 				</div>
 
-				<!-- Pagination -->
+				<!-- Pagination (server-driven) -->
 				{#if totalPages > 1}
 					<div class="mt-3 flex items-center justify-between">
 						<span class="text-xs text-muted-foreground">
-							{$t('common.pageOf', { values: { page, total: totalPages } })}
+							{$t('common.pageOf', { values: { page: currentPage, total: totalPages } })}
 						</span>
 						<div class="flex gap-1.5">
 							<Button
 								size="sm"
 								variant="outline"
-								onclick={() => (page -= 1)}
-								disabled={page <= 1}
+								onclick={() => goToPage(currentPage - 1)}
+								disabled={!hasPrev}
 							>
 								{$t('common.previous')}
 							</Button>
 							<Button
 								size="sm"
 								variant="outline"
-								onclick={() => (page += 1)}
-								disabled={page >= totalPages}
+								onclick={() => goToPage(currentPage + 1)}
+								disabled={!hasNext}
 							>
 								{$t('common.next')}
 							</Button>
