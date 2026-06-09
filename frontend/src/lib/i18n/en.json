@@ -605,7 +605,8 @@
       "autoRefreshIn": "Auto-refresh in {seconds}s",
       "selectionSummary": "({running} running, {stopped} stopped)",
       "clearActivity": "Clear activity",
-      "toggleActivity": "Toggle recent activity"
+      "toggleActivity": "Toggle recent activity",
+      "vmCount": "{count, plural, one {{count} virtual machine} other {{count} virtual machines}}"
     }
   },
   "landing": {

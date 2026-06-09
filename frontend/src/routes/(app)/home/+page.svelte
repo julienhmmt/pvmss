@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
 	import { get } from 'svelte/store';
+	import { flip } from 'svelte/animate';
+	import { fade } from 'svelte/transition';
 	import { Button } from '$lib/components/ui/button';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -399,16 +401,21 @@
 		}
 	}
 
-	onMount(() => {
-		void loadVMs();
-		void loadQuota();
-		startAutoRefresh();
-	});
+	// Svelte 5 idiomatic lifecycle (Phase 1.3 of the modernisation plan).
+	// $effect replaces onMount/onDestroy for side-effects that need cleanup.
+	$effect(() => {
+		untrack(() => {
+			void loadVMs();
+			void loadQuota();
+			startAutoRefresh();
+		});
 
-	onDestroy(() => {
-		stopAutoRefresh();
-		if (searchTimeout) clearTimeout(searchTimeout);
-		if (loadAbort) loadAbort.abort();
+		// Cleanup returned from the effect runs on component destroy or before re-running.
+		return () => {
+			stopAutoRefresh();
+			if (searchTimeout) clearTimeout(searchTimeout);
+			if (loadAbort) loadAbort.abort();
+		};
 	});
 </script>
 
@@ -435,8 +442,7 @@
 			<h1 class="text-2xl font-bold">{$t('user.home.title')}</h1>
 			{#if !loading}
 				<p class="mt-0.5 text-sm text-muted-foreground">
-					{totalVMs}
-					{totalVMs === 1 ? 'virtual machine' : 'virtual machines'}
+					{$t('user.home.vmCount', { values: { count: totalVMs } })}
 				</p>
 			{/if}
 		</div>
@@ -460,12 +466,16 @@
 	</div>
 
 	{#if error}
-		<ErrorBanner {error} onRetry={() => loadVMs()} />
+		<div transition:fade={{ duration: 120 }}>
+			<ErrorBanner {error} onRetry={() => loadVMs()} />
+		</div>
 	{:else if loading}
-		<LoadingSkeleton variant="card" rows={4} />
+		<div transition:fade={{ duration: 120 }}>
+			<LoadingSkeleton variant="card" rows={4} />
+		</div>
 	{:else if totalVMs === 0}
 		<!-- Better empty state (user truly owns zero VMs) -->
-		<div class="pv-empty-state">
+		<div class="pv-empty-state" transition:fade={{ duration: 120 }}>
 			<div class="pv-empty-icon">
 				<Desktop class="h-14 w-14" />
 			</div>
@@ -479,8 +489,10 @@
 		{/if}
 		</div>
 	{:else}
-		<!-- Stats row (authoritative fleet counts from server pagination metadata) -->
-		<div class="mb-4 grid grid-cols-2 gap-3 {maxVmPerUser > 0 && !auth.isAdmin ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}">
+		<!-- Main results block (filters + table + activity). Fade the loaded state in. -->
+		<div transition:fade={{ duration: 120 }}>
+			<!-- Stats row (authoritative fleet counts from server pagination metadata) -->
+			<div class="mb-4 grid grid-cols-2 gap-3 {maxVmPerUser > 0 && !auth.isAdmin ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}" transition:fade={{ duration: 120 }}>
 			<div class="pv-stat-card">
 				<span class="pv-stat-label">{$t('user.home.stats.total')}</span>
 				<span class="pv-stat-value">{totalVMs}</span>
@@ -533,7 +545,7 @@
 		</div>
 
 		<!-- Stage 4: status + node filters (server-side, page resets on change) -->
-		<div class="mb-3 flex flex-wrap items-center gap-2">
+		<div class="mb-3 flex flex-wrap items-center gap-2" transition:fade={{ duration: 120 }}>
 			<select
 				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
 				value={filterStatus}
@@ -573,7 +585,7 @@
 			<div class="min-w-0">
 				<!-- Bulk action toolbar (context-aware) -->
 				{#if someSelected}
-					<div class="pv-bulk-toolbar mb-2">
+					<div class="pv-bulk-toolbar mb-2" transition:fade={{ duration: 120 }}>
 						<span class="text-sm text-muted-foreground">
 							{$t('vms.selected', { values: { count: selected.size } })}
 							{#if selectedRunning.length > 0 || selectedStopped.length > 0}
@@ -656,6 +668,7 @@
 									onclick={() => goto(`/vm/${vm.vmid}`)}
 									tabindex="0"
 									onkeydown={(e: KeyboardEvent) => onRowKeydown(e, vm)}
+									animate:flip={{ duration: 180 }}
 								>
 									<td
 										class="w-10"
@@ -831,6 +844,7 @@
 				{/if}
 			</div>
 		</div>
+		</div>
 	{/if}
 </div>
 
@@ -958,5 +972,32 @@
 		font-size: 0.6875rem;
 		color: var(--muted-foreground);
 		opacity: 0.7;
+	}
+
+	/* ── Row affordance (keyboard + mouse) ──────────────────────────── */
+	:global(.pv-row--clickable:focus-visible) {
+		outline: 2px solid var(--ring, var(--primary));
+		outline-offset: -2px;
+		background: color-mix(in oklab, var(--primary) 6%, transparent);
+	}
+	:global(.pv-row--clickable:hover) {
+		background: color-mix(in oklab, var(--primary) 4%, var(--card));
+	}
+
+	/* Stronger selected state for bulk UX (left accent + boosted tint) */
+	:global(.pv-row--selected) {
+		box-shadow: inset 3px 0 0 var(--primary);
+	}
+	:global(.pv-row--selected td) {
+		background: color-mix(in oklab, var(--primary) 10%, var(--card));
+	}
+	:global(.pv-row--selected:hover td) {
+		background: color-mix(in oklab, var(--primary) 14%, var(--card));
+	}
+
+	/* ── Action button micro-feedback ───────────────────────────────── */
+	:global(.pv-action-btn:active) {
+		transform: scale(0.94);
+		transition: transform 60ms ease;
 	}
 </style>
