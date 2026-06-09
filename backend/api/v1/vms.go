@@ -35,7 +35,6 @@ func (h *VMHandler) isOffline() bool {
 	return (cfg != nil && cfg.Offline) || h.state.IsOfflineMode()
 }
 
-
 // ListVMs handles GET /api/v1/vms.
 // Admin users see all VMs tagged constants.RequiredTag. Regular users see only VMs in their
 // pool (pvmss_<username>) that are also tagged constants.RequiredTag.
@@ -100,7 +99,7 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		cfg := h.state.GetEnvConfig()
-	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
+		client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 		if err != nil {
 			writeAppError(w, err)
 			return
