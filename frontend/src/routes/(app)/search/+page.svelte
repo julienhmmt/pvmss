@@ -518,9 +518,9 @@
 								{:else}<span class="sort-icon sort-icon--inactive">↕</span>{/if}
 							</button>
 						</th>
-						<th>{$t('vm.disk')}</th>
+						<th>{$t('vms.disk')}</th>
 						<th>{$t('vms.uptime')}</th>
-						<th>{$t('admin.vms.tags')}</th>
+						<th>{$t('vms.tags')}</th>
 					</tr>
 				</thead>
 				<tbody>
