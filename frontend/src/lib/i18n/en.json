@@ -603,7 +603,9 @@
         "reboot": "Rebooted"
       },
       "autoRefreshIn": "Auto-refresh in {seconds}s",
-      "selectionSummary": "({running} running, {stopped} stopped)"
+      "selectionSummary": "({running} running, {stopped} stopped)",
+      "clearActivity": "Clear activity",
+      "toggleActivity": "Toggle recent activity"
     }
   },
   "landing": {
