@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
+	envpkg "pvmss/env"
 	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -72,7 +73,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 			errOffline(w)
 			return
 		}
-		if err := verifyProxmoxCredentials(r.Context(), req.Username, req.Password); err != nil {
+		if err := verifyProxmoxCredentials(r.Context(), h.state.GetEnvConfig(), req.Username, req.Password); err != nil {
 			logger.SecurityEvent("api_auth_user_fail").Str("username", req.Username).Err(err).Msg("Invalid Proxmox credentials")
 			errUnauthorized(w)
 			return
@@ -191,7 +192,8 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	pxClient, err := proxmox.MakeRestyClientCookieAuthFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	pxClient, err := proxmox.MakeRestyClientCookieAuthFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -310,7 +312,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Verify the current password against Proxmox.
-	if err := verifyProxmoxCredentials(ctx, username, currentPassword); err != nil {
+	if err := verifyProxmoxCredentials(ctx, h.state.GetEnvConfig(), username, currentPassword); err != nil {
 		logger.SecurityEvent("api_password_change_fail").Str("username", username).Msg("Invalid current password for password change")
 		errUnauthorized(w)
 		return
@@ -337,8 +339,8 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 // verifyProxmoxCredentials POSTs to /access/ticket to confirm user credentials.
 // Uses a cookie-auth client (no API token headers) because /access/ticket is a
 // public endpoint that rejects requests with conflicting Authorization headers.
-func verifyProxmoxCredentials(ctx context.Context, username, password string) error {
-	restyClient, err := proxmox.MakeRestyClientCookieAuthFromEnv(10 * time.Second)
+func verifyProxmoxCredentials(ctx context.Context, cfg *envpkg.EnvConfig, username, password string) error {
+	restyClient, err := proxmox.MakeRestyClientCookieAuthFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("no proxmox client: %w", err)
 	}

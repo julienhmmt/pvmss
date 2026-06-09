@@ -30,7 +30,8 @@ func (h *AdminVMsAPIHandler) ListAllVMs(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, []AdminVMResponse{})
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -74,7 +75,8 @@ func (h *AdminVMsAPIHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(30 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -124,7 +126,8 @@ func (h *AdminVMsAPIHandler) VMAction(w http.ResponseWriter, r *http.Request) {
 		errBadRequest(w, "invalid action: must be start, stop, shutdown, reboot, or reset")
 		return
 	}
-	restyClient, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -188,6 +191,7 @@ func (h *AdminVMsAPIHandler) ListAllVMsPaginated(w http.ResponseWriter, r *http.
 
 	var result []AdminVMResponse
 
+	cfg := h.state.GetEnvConfig()
 	snapshot := h.state.GetProxmoxSnapshot()
 	if snapshot != nil {
 		for _, vm := range snapshot.VMs {
@@ -197,7 +201,7 @@ func (h *AdminVMsAPIHandler) ListAllVMsPaginated(w http.ResponseWriter, r *http.
 			result = append(result, snapshotVMToAdminResponse(vm))
 		}
 	} else {
-		rc, err := proxmox.MakeRestyClientFromEnv(10 * time.Second)
+		rc, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
 		if err != nil {
 			writeAppError(w, err)
 			return

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	envpkg "pvmss/env"
 	"pvmss/constants"
 	"pvmss/logger"
 	"pvmss/proxmox"
@@ -69,7 +70,7 @@ func validateNodeAggregateLimits(sm state.StateManager, node string, sockets, co
 		return nil
 	}
 
-	usage, err := fetchLiveNodeUsage(settings)
+	usage, err := fetchLiveNodeUsage(settings, sm.GetEnvConfig())
 	if err != nil {
 		logger.Get().Warn().Err(err).Str("node", node).Msg("Live node usage unavailable; falling back to cached snapshot for degraded validation")
 		snapshot := sm.GetProxmoxSnapshot()
@@ -142,8 +143,8 @@ func addActiveNodeReservations(usage nodeResourceUsage, node string) nodeResourc
 	return usage
 }
 
-func fetchLiveNodeUsage(settings *state.AppSettings) (map[string]nodeResourceUsage, error) {
-	client, err := proxmox.MakeRestyClientFromEnv(liveNodeUsageTimeout)
+func fetchLiveNodeUsage(settings *state.AppSettings, cfg *envpkg.EnvConfig) (map[string]nodeResourceUsage, error) {
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, liveNodeUsageTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("create Proxmox client: %w", err)
 	}
