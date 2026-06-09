@@ -178,7 +178,8 @@ func (h *VMDetailsHandler) UpdateVMHardware(w http.ResponseWriter, r *http.Reque
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
