@@ -28,6 +28,12 @@
 					<Desktop class="mr-2 h-5 w-5" />
 					{$t('landing.goToMyVms')}
 				</Button>
+				{#if !auth.isAdmin}
+					<Button href="/vm/create" size="lg">
+						<PlusSquare class="mr-2 h-5 w-5" />
+						{$t('nav.createVm')}
+					</Button>
+				{/if}
 				<Button href="/docs/user" variant="outline" size="lg">
 					<BookOpen class="mr-2 h-5 w-5" />
 					{$t('landing.documentation')}
