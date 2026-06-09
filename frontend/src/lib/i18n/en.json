@@ -547,8 +547,11 @@
     "error": {
       "invalidCredentials": "Invalid credentials",
       "serviceUnavailable": "Service unavailable, please try again",
+      "proxmoxOffline": "Proxmox is currently unavailable. Please try again later.",
+      "rateLimited": "Too many login attempts. Please wait a moment and try again.",
       "unknown": "An error occurred, please try again"
-    }
+    },
+    "capsLock": "Caps Lock is on"
   },
   "user": {
     "profile": {
