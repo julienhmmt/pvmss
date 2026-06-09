@@ -249,6 +249,9 @@
       "maxSnapshots": "Snapshots max par VM",
       "maxNetworkCards": "Cartes réseau max",
       "maxDisksPerVm": "Disques max par VM",
+      "maxDisksLabel": "Max {max} disques par VM",
+      "currentMaxDisks": "Actuel : {current}/{max}",
+      "maxDisksReached": "Nombre maximum de disques ({max}) atteint pour cette VM",
       "saveSuccess": "Limites mises à jour",
       "min": "Min",
       "max": "Max",
@@ -656,7 +659,16 @@
     "admin": "Guide administrateur",
     "cloudInit": "Cloud-init",
     "proxmoxPerms": "Permissions Proxmox",
-    "onThisPage": "Sur cette page"
+    "onThisPage": "Sur cette page",
+    "documentation": "Documentation",
+    "searchInPage": "Rechercher dans la page…",
+    "copyCode": "Copier le code",
+    "copiedCode": "Code copié",
+    "backToTop": "Retour en haut",
+    "toc": "Table des matières",
+    "readingTime": "{count} min de lecture",
+    "openToc": "Ouvrir la table des matières",
+    "close": "Fermer"
   },
   "search": {
     "placeholder": "Rechercher…",

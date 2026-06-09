@@ -659,7 +659,16 @@
     "admin": "Administrator guide",
     "cloudInit": "Cloud-init",
     "proxmoxPerms": "Proxmox permissions",
-    "onThisPage": "On this page"
+    "onThisPage": "On this page",
+    "documentation": "Documentation",
+    "searchInPage": "Search this page…",
+    "copyCode": "Copy code",
+    "copiedCode": "Code copied",
+    "backToTop": "Back to top",
+    "toc": "Table of contents",
+    "readingTime": "{count} min read",
+    "openToc": "Open table of contents",
+    "close": "Close"
   },
   "search": {
     "placeholder": "Search…",
@@ -804,7 +813,8 @@
       "boot": "Boot",
       "bootDiskWarning": "Cannot detach the boot disk",
       "maxDisksReached": "Maximum number of disks ({max}) reached",
-      "maxDisksLabel": "{max} disks max"
+      "maxDisksLabel": "{max} disks max",
+      "currentMaxDisks": "Current: {current}/{max}"
     }
   },
   "vmCreate": {
