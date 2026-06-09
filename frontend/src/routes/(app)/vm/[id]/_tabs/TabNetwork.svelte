@@ -1,14 +1,18 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
-	import { CopySimple } from 'phosphor-svelte';
-	import type { VMConfig } from '$lib/api/vm-details';
+	import { CopySimple, Network } from 'phosphor-svelte';
+	import type { VMConfig, VMMetrics } from '$lib/api/vm-details';
 
 	interface Props {
 		config: VMConfig;
+		metrics?: VMMetrics | null;
+		onOpenHardware?: () => void;
 	}
 
-	let { config }: Props = $props();
+	let { config, metrics, onOpenHardware }: Props = $props();
+
+	const isRunning = $derived((metrics?.status ?? config.status) === 'running');
 
 	async function copyToClipboard(text: string, label: string): Promise<void> {
 		try {
@@ -23,12 +27,27 @@
 <div class="pv-table-wrap">
 	<div class="flex items-center justify-between border-b border-border px-4 py-3">
 		<span class="text-sm font-medium">{$t('vm.tabNetwork')}</span>
-		<span class="text-xs text-muted-foreground">
-			{config.networks.length} {$t('vm.interfaces')}
-		</span>
+		<div class="flex items-center gap-2">
+			<span class="text-xs text-muted-foreground">
+				{config.networks.length} {$t('vm.interfaces')}
+			</span>
+			{#if onOpenHardware}
+				<button
+					class="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+					onclick={onOpenHardware}
+					disabled={isRunning}
+					title={isRunning ? $t('vm.disk.vmRunningWarning') : ''}
+				>
+					+ {$t('vm.network.addCard')}
+				</button>
+			{/if}
+		</div>
 	</div>
 	{#if config.networks.length === 0}
-		<p class="py-8 text-center text-sm text-muted-foreground">{$t('vm.noNetworks')}</p>
+		<div class="flex flex-col items-center py-10 text-center text-muted-foreground">
+			<Network class="mb-3 h-10 w-10 opacity-30" />
+			<p class="text-sm">{$t('vm.noNetworks')}</p>
+		</div>
 	{:else}
 		<table class="pv-table">
 			<thead>
@@ -43,7 +62,12 @@
 			<tbody>
 				{#each config.networks as net, i (i)}
 					<tr class="pv-row">
-						<td class="pv-td-mono">{net.index || `net${i}`}</td>
+						<td>
+							<div class="flex items-center gap-2">
+								<Network class="h-4 w-4 text-muted-foreground" />
+								<span class="text-sm pv-td-mono">{net.index || `net${i}`}</span>
+							</div>
+						</td>
 						<td>{net.model || '—'}</td>
 						<td class="pv-td-mono">{net.bridge || '—'}</td>
 						<td class="pv-td-mono text-xs">

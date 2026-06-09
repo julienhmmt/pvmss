@@ -522,7 +522,7 @@
 
 			{#if activeTab === 'network'}
 				<div role="tabpanel" id="tabpanel-network" aria-labelledby="tab-network">
-					<TabNetwork {config} />
+					<TabNetwork {config} {metrics} onOpenHardware={openHardwareModal} />
 				</div>
 			{/if}
 
