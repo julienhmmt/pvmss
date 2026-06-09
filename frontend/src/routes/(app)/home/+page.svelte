@@ -6,6 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
+	import VMUsageBar from '$lib/components/data/VMUsageBar.svelte';
 	import { getVMsPaginated, type VMSummary } from '$lib/api/vms';
 	import type { VMStatus } from '$lib/types/vm';
 	import { api } from '$lib/api/client';
@@ -42,6 +43,7 @@
 
 	let selected = $state<Set<number>>(new Set());
 	let activityLog = $state<ActivityEntry[]>([]);
+	let activityCollapsed = $state(false);
 	let nextRefreshIn = $state(AUTO_REFRESH_INTERVAL_MS / 1000);
 
 	// Server-driven pagination / search / sort (replaces client-side filter+slice)
@@ -314,6 +316,18 @@
 		const name = vm.name || String(vm.vmid);
 		try {
 			await api.post(`/api/v1/vms/${vm.vmid}/action`, { action, node: vm.node });
+
+			// Optimistic feedback: flip status immediately for snappy UI.
+			// Background refresh will reconcile with real server state.
+			const idx = vms.findIndex((v) => v.vmid === vm.vmid);
+			if (idx !== -1) {
+				const next = (action === 'start' || action === 'reboot') ? 'running' : 'stopped';
+				if (vms[idx].status !== next) {
+					// direct mutation on $state object is reactive
+					(vms[idx] as any).status = next;
+				}
+			}
+
 			toast.success($t('user.home.toast.actionSent', { values: { action, name } }));
 			addActivity(action, name);
 			setTimeout(() => loadVMs(true), 2000);
@@ -379,6 +393,24 @@
 			{ id: crypto.randomUUID(), action, vmName, timestamp: new Date() },
 			...activityLog.slice(0, 19)
 		];
+	}
+
+	function clearActivity(): void {
+		activityLog = [];
+	}
+
+	function toggleActivity(): void {
+		activityCollapsed = !activityCollapsed;
+	}
+
+	function onRowKeydown(e: KeyboardEvent, vm: VMSummary): void {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			goto(`/vm/${vm.vmid}`);
+		} else if (e.key === ' ') {
+			e.preventDefault();
+			toggleSelect(vm.vmid);
+		}
 	}
 
 	onMount(() => {
@@ -636,6 +668,8 @@
 								<tr
 									class="pv-row pv-row--clickable {isSelected ? 'pv-row--selected' : ''}"
 									onclick={() => goto(`/vm/${vm.vmid}`)}
+									tabindex="0"
+									onkeydown={(e: KeyboardEvent) => onRowKeydown(e, vm)}
 								>
 									<td
 										class="w-10"
@@ -671,40 +705,28 @@
 										</span>
 									</td>
 									<td class="tabular-nums text-sm">
-										{#if vm.status === 'running'}
-											<div class="pv-usage-bar w-24">
-												<div class="pv-usage-bar-track" style="flex:1">
-													<div class="pv-usage-bar-fill" style="width:{Math.round(vm.cpu * 100)}%"></div>
-												</div>
-												<span class="pv-usage-label">{Math.round(vm.cpu * 100)}%</span>
-											</div>
-										{:else}
-											<span class="text-muted-foreground">—</span>
-										{/if}
+										<VMUsageBar
+											current={vm.cpu * 100}
+											max={100}
+											label="{Math.round(vm.cpu * 100)}%"
+											widthClass="w-24"
+										/>
 									</td>
 									<td class="tabular-nums text-sm">
-										{#if vm.maxMemMb > 0}
-											<div class="pv-usage-bar w-24">
-												<div class="pv-usage-bar-track" style="flex:1">
-													<div class="pv-usage-bar-fill" style="width:{Math.round((vm.memMb / vm.maxMemMb) * 100)}%"></div>
-												</div>
-												<span class="pv-usage-label">{Math.round(vm.maxMemMb / 1024)} GB</span>
-											</div>
-										{:else}
-											<span class="text-muted-foreground">—</span>
-										{/if}
+										<VMUsageBar
+											current={vm.memMb}
+											max={vm.maxMemMb}
+											label="{Math.round(vm.maxMemMb / 1024)} GB"
+											widthClass="w-24"
+										/>
 									</td>
 									<td class="tabular-nums text-sm hidden lg:table-cell">
-										{#if vm.maxDiskMb && vm.maxDiskMb > 0}
-											<div class="pv-usage-bar w-24">
-												<div class="pv-usage-bar-track" style="flex:1">
-													<div class="pv-usage-bar-fill" style="width:{Math.round((vm.diskMb / vm.maxDiskMb) * 100)}%"></div>
-												</div>
-												<span class="pv-usage-label">{Math.round(vm.maxDiskMb / 1024)} GB</span>
-											</div>
-										{:else}
-											<span class="text-muted-foreground">—</span>
-										{/if}
+										<VMUsageBar
+											current={vm.diskMb}
+											max={vm.maxDiskMb ?? 0}
+											label="{Math.round((vm.maxDiskMb ?? 0) / 1024)} GB"
+											widthClass="w-24"
+										/>
 									</td>
 									<td class="pv-td-muted tabular-nums text-sm hidden lg:table-cell">{uptimeLabel(vm.uptime)}</td>
 									<td onclick={(e: MouseEvent) => e.stopPropagation()}>
@@ -783,25 +805,43 @@
 
 			<!-- Activity feed -->
 			<div class="pv-activity-panel">
-				<div class="pv-activity-header">
+				<div
+					class="pv-activity-header cursor-pointer select-none"
+					onclick={toggleActivity}
+					title={$t('user.home.toggleActivity')}
+					role="button"
+					tabindex="0"
+					onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleActivity(); } }}
+				>
 					<ClockCounterClockwise class="h-4 w-4 shrink-0" />
 					<span>{$t('user.home.activity')}</span>
+					{#if activityLog.length > 0}
+						<button
+							class="ml-auto text-[10px] text-muted-foreground hover:text-foreground"
+							onclick={(e: MouseEvent) => { e.stopPropagation(); clearActivity(); }}
+							title={$t('user.home.clearActivity')}
+						>
+							{$t('user.home.clearActivity')}
+						</button>
+					{/if}
 				</div>
-				{#if activityLog.length === 0}
-					<p class="pv-activity-empty">{$t('user.home.noActivity')}</p>
-				{:else}
-					<ul class="pv-activity-list">
-						{#each activityLog as entry (entry.id)}
-							<li class="pv-activity-item">
-								<div class="pv-activity-dot"></div>
-								<div class="pv-activity-body">
-									<span class="pv-activity-action">{actionLabel(entry.action)}</span>
-									<span class="pv-activity-vm">{entry.vmName}</span>
-									<span class="pv-activity-time">{timeAgo(entry.timestamp)}</span>
-								</div>
-							</li>
-						{/each}
-					</ul>
+				{#if !activityCollapsed}
+					{#if activityLog.length === 0}
+						<p class="pv-activity-empty">{$t('user.home.noActivity')}</p>
+					{:else}
+						<ul class="pv-activity-list">
+							{#each activityLog as entry (entry.id)}
+								<li class="pv-activity-item">
+									<div class="pv-activity-dot"></div>
+									<div class="pv-activity-body">
+										<span class="pv-activity-action">{actionLabel(entry.action)}</span>
+										<span class="pv-activity-vm">{entry.vmName}</span>
+										<span class="pv-activity-time">{timeAgo(entry.timestamp)}</span>
+									</div>
+								</li>
+							{/each}
+						</ul>
+					{/if}
 				{/if}
 			</div>
 		</div>

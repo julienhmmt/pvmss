@@ -600,7 +600,9 @@
         "reboot": "Redémarré"
       },
       "autoRefreshIn": "Actualisation auto dans {seconds}s",
-      "selectionSummary": "({running} en cours, {stopped} arrêtées)"
+      "selectionSummary": "({running} en cours, {stopped} arrêtées)",
+      "clearActivity": "Effacer l'activité",
+      "toggleActivity": "Afficher/masquer l'activité récente"
     }
   },
   "landing": {
