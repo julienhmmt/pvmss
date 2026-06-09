@@ -29,9 +29,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM oven/bun:1-alpine AS svelte-builder
 WORKDIR /app/frontend
 
-COPY frontend/package.json ./
+# Copy lockfile first for better layer caching (bun equivalent of npm ci)
+COPY frontend/package.json frontend/bun.lock ./
 
-RUN bun install
+RUN bun install --frozen-lockfile
 
 COPY frontend/ ./
 
