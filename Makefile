@@ -143,7 +143,7 @@ quick-test: ## Lance les tests rapides en mode offline
 
 test-svelte: ## Lance les tests Svelte
 	@echo "$(BLUE)Lancement des tests Svelte...$(NC)"
-	cd frontend && npx svelte-check --tsconfig ./tsconfig.json
+	cd frontend && bun run check
 	@echo "$(GREEN)✓ Tests Svelte terminés$(NC)"
 
 # =============================================================================
@@ -200,24 +200,24 @@ buildkit-status: ## Vérifie le statut de buildkit
 
 FRONTEND_DIR := frontend
 
-frontend-install: ## Installe les dépendances npm du frontend SvelteKit
+frontend-install: ## Installe les dépendances bun du frontend SvelteKit
 	@echo "$(BLUE)Installation des dépendances frontend...$(NC)"
-	cd $(FRONTEND_DIR) && npm ci
+	cd $(FRONTEND_DIR) && bun install --frozen-lockfile
 	@echo "$(GREEN)✓ Dépendances installées$(NC)"
 
 frontend-build: ## Construit le frontend SvelteKit (output: frontend/build/)
 	@echo "$(BLUE)Construction du frontend SvelteKit...$(NC)"
-	cd $(FRONTEND_DIR) && npm run build
+	cd $(FRONTEND_DIR) && bun run build
 	@echo "$(GREEN)✓ Frontend construit dans $(FRONTEND_DIR)/build/$(NC)"
 
 frontend-dev: ## Démarre le serveur de développement SvelteKit (port 5173, proxy vers :50000)
 	@echo "$(BLUE)Démarrage du serveur de développement frontend (port 5173)...$(NC)"
 	@echo "$(BLUE)Proxy API → http://localhost:50000$(NC)"
-	cd $(FRONTEND_DIR) && npm run dev
+	cd $(FRONTEND_DIR) && bun run dev
 
 frontend-test: ## Lance les tests unitaires frontend (vitest)
 	@echo "$(BLUE)Lancement des tests unitaires frontend...$(NC)"
-	cd $(FRONTEND_DIR) && npm run test
+	cd $(FRONTEND_DIR) && bun run test
 	@echo "$(GREEN)✓ Tests frontend terminés$(NC)"
 
 # =============================================================================
