@@ -16,6 +16,16 @@
 
 	async function connect() {
 		if (!container || !vmid) return;
+		// Guard against concurrent/duplicate connects (e.g. a remount firing
+		// onMount again, or a Reconnect click while still connecting). Each VNC
+		// ticket spawns a distinct Proxmox VNC session; opening two for the same
+		// VM makes them collide and both drop with a 1006 abnormal closure.
+		if (status === 'connecting' || status === 'connected') return;
+		// Tear down any leftover session before starting a fresh one.
+		if (rfb) {
+			(rfb as { disconnect(): void }).disconnect();
+			rfb = null;
+		}
 
 		status = 'connecting';
 		statusMessage = 'Requesting VNC ticket…';

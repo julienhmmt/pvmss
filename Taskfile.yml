@@ -22,7 +22,7 @@ tasks:
         cmd: cd {{.ITEM}} && go fmt ./... && go vet ./... && golangci-lint run -v --timeout=2m
 
   dev:
-    desc: Start the full stack
+    desc: Start the full stack. For OrbStack TLS dev (https://frontend-dev.pvmss.orb.local etc.), set ORIGIN=https://... (no port) in shell or .env so Vite HMR uses the external origin/port instead of :5173.
     cmds:
       - docker compose -f docker-compose.dev.yml up -d --build
       - docker compose -f docker-compose.dev.yml ps

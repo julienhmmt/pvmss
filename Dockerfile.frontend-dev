@@ -1,0 +1,13 @@
+# Dev-only frontend image.
+#
+# Bun installs dependencies fast and honors bun.lock, but the Vite dev server
+# must run under Node, not Bun. Vite's WebSocket dev-proxy (http-proxy) relies
+# on Node's http.ClientRequest emitting the 'upgrade' event for a 101 response.
+# Bun instead emits a plain 'response' event for 101, so the proxy takes the
+# non-WebSocket branch, fails to pipe the socket, and crashes on
+# socket.destroySoon(). That breaks proxied WebSockets (e.g. the VNC console).
+#
+# So: install with Bun, run the dev server with Node.
+FROM oven/bun:1-alpine
+RUN apk add --no-cache nodejs
+WORKDIR /app
