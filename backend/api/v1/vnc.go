@@ -91,7 +91,8 @@ func (h *VNCHandler) GetVNCTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := proxmox.MakeRestyClientFromEnv(15 * time.Second)
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 15*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
