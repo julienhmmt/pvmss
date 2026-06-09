@@ -225,7 +225,7 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 		remaining := settings.MaxVMPerUser
 		if connected {
 			cfg := h.state.GetEnvConfig()
-	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
+			client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 			if err == nil {
 				ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 				poolVMIDs := fetchPoolVMIDs(ctx, client, poolName)
@@ -431,7 +431,7 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	if settings.MaxVMPerUser > 0 && !isAdmin {
 		poolName := constants.PoolPrefix + username
 		cfg := h.state.GetEnvConfig()
-	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
+		client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 		if err == nil {
 			poolCtx, poolCancel := context.WithTimeout(ctx, 10*time.Second)
 			poolVMIDs := fetchPoolVMIDs(poolCtx, client, poolName)
