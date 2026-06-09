@@ -110,7 +110,7 @@ func (s *appState) CheckProxmoxConnection() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), constants.ProxmoxConnectionCheckTimeout)
 	defer cancel()
 
-	restyClient, err := proxmox.MakeRestyClientFromEnv(constants.ProxmoxConnectionCheckTimeout)
+	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(s.envConfig, constants.ProxmoxConnectionCheckTimeout)
 	if err != nil {
 		logger.ProxmoxFailure("connection_check", "client_error").
 			Err(err).
