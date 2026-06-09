@@ -7,7 +7,7 @@ import { validateSearchParams, type VMSearchParams as SearchParams, type SearchF
  * Summary view of a VM for list displays.
  * Derived from full VM type to ensure field consistency.
  */
-export type VMSummary = Pick<VM, "vmid" | "name" | "node" | "status" | "cpu" | "cpus" | "memMb" | "maxMemMb" | "diskMb" | "uptime" | "tags">;
+export type VMSummary = Pick<VM, "vmid" | "name" | "node" | "status" | "cpu" | "cpus" | "memMb" | "maxMemMb" | "diskMb" | "maxDiskMb" | "uptime" | "tags">;
 
 export interface PaginationMetadata {
   total: number;

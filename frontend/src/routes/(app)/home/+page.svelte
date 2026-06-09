@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
+	import { get } from 'svelte/store';
 	import { Button } from '$lib/components/ui/button';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
@@ -120,15 +121,23 @@
 	}
 
 	function actionLabel(action: string): string {
-		const labels: Record<string, string> = { start: 'Started', shutdown: 'Shutdown', stop: 'Stopped', reboot: 'Rebooted' };
-		return labels[action] ?? action;
+		const translate = get(t) as (key: string, options?: Record<string, unknown>) => string;
+		const keyMap: Record<string, string> = {
+			start: 'user.home.activityLabels.start',
+			shutdown: 'user.home.activityLabels.shutdown',
+			stop: 'user.home.activityLabels.stop',
+			reboot: 'user.home.activityLabels.reboot'
+		};
+		const key = keyMap[action];
+		return key ? translate(key) : action;
 	}
 
 	function timeAgo(date: Date): string {
+		const translate = get(t) as (key: string, options?: Record<string, unknown>) => string;
 		const s = Math.floor((Date.now() - date.getTime()) / 1000);
-		if (s < 60) return 'just now';
-		if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-		return `${Math.floor(s / 3600)}h ago`;
+		if (s < 60) return translate('common.time.justNow');
+		if (s < 3600) return translate('common.time.mAgo', { values: { count: Math.floor(s / 60) } });
+		return translate('common.time.hAgo', { values: { count: Math.floor(s / 3600) } });
 	}
 
 	// ── Auto-refresh ───────────────────────────────────────────────────────
@@ -302,14 +311,15 @@
 	// ── Actions ────────────────────────────────────────────────────────────
 	async function doAction(vm: VMSummary, action: string): Promise<void> {
 		actionLoading = { ...actionLoading, [vm.vmid]: true };
+		const name = vm.name || String(vm.vmid);
 		try {
 			await api.post(`/api/v1/vms/${vm.vmid}/action`, { action, node: vm.node });
-			toast.success(`${action} sent to ${vm.name || vm.vmid}`);
-			addActivity(action, vm.name || String(vm.vmid));
+			toast.success($t('user.home.toast.actionSent', { values: { action, name } }));
+			addActivity(action, name);
 			setTimeout(() => loadVMs(true), 2000);
 		} catch (err: unknown) {
 			console.error(`VM action ${action} failed:`, err instanceof Error ? err.message : String(err));
-			toast.error(`Failed to ${action} ${vm.name || vm.vmid}`);
+			toast.error($t('user.home.toast.actionFailed', { values: { action, name } }));
 		} finally {
 			actionLoading = { ...actionLoading, [vm.vmid]: false };
 		}
@@ -340,10 +350,10 @@
 		const fail = results.length - ok;
 
 		if (ok > 0) {
-			toast.success(`${action} sent to ${ok} VM(s)`);
+			toast.success($t('user.home.toast.bulkActionSent', { values: { action, count: ok } }));
 			targets.forEach((vm) => addActivity(action, vm.name || String(vm.vmid)));
 		}
-		if (fail > 0) toast.error(`Failed for ${fail} VM(s)`);
+		if (fail > 0) toast.error($t('user.home.toast.bulkActionFailed', { values: { count: fail } }));
 
 		// Clear only the VMs we actually acted on (keep other selections if mixed state).
 		const acted = new Set(targets.map((v) => v.vmid));
@@ -422,7 +432,7 @@
 			<!-- Auto-refresh indicator + manual refresh button -->
 			<div class="flex items-center gap-1.5">
 				{#if !loading && !refreshing}
-					<span class="pv-refresh-countdown" title="Auto-refresh in {nextRefreshIn}s">{nextRefreshIn}s</span>
+					<span class="pv-refresh-countdown" title={$t('user.home.autoRefreshIn', { values: { seconds: nextRefreshIn } })}>{nextRefreshIn}s</span>
 				{/if}
 				<Button variant="outline" size="sm" onclick={manualRefresh} disabled={refreshing}>
 					<ArrowsClockwise class="h-4 w-4 {refreshing ? 'animate-spin' : ''}" />
@@ -497,7 +507,7 @@
 				<button
 					class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
 					onclick={clearSearch}
-					aria-label="Clear search"
+					aria-label={$t('common.clearSearch')}
 				>
 					<X class="h-3.5 w-3.5" />
 				</button>
@@ -511,7 +521,7 @@
 				value={filterStatus}
 				onchange={(e: Event) => setFilterStatus((e.currentTarget as HTMLSelectElement).value as '' | VMStatus)}
 			>
-				<option value="">All statuses</option>
+				<option value="">{$t('common.allStatuses')}</option>
 				{#each STATUS_FILTERS as s (s)}
 					{#if s}
 						<option value={s}>{$t(`common.statusMap.${s}`, { default: s })}</option>
@@ -524,7 +534,7 @@
 				value={filterNode}
 				onchange={(e: Event) => setFilterNode((e.currentTarget as HTMLSelectElement).value)}
 			>
-				<option value="">All nodes</option>
+				<option value="">{$t('common.allNodes')}</option>
 				{#each knownNodes as n (n)}
 					<option value={n}>{n}</option>
 				{/each}
@@ -535,7 +545,7 @@
 					class="rounded-md border border-border bg-background px-3 py-1.5 text-sm hover:bg-accent"
 					onclick={clearAllFilters}
 				>
-					Clear filters
+					{$t('common.clearFilters')}
 				</button>
 			{/if}
 		</div>
@@ -550,7 +560,7 @@
 							{$t('vms.selected', { values: { count: selected.size } })}
 							{#if selectedRunning.length > 0 || selectedStopped.length > 0}
 								<span class="text-muted-foreground/70">
-									({selectedRunning.length} running, {selectedStopped.length} stopped)
+									{$t('user.home.selectionSummary', { values: { running: selectedRunning.length, stopped: selectedStopped.length } })}
 								</span>
 							{/if}
 						</span>
@@ -584,7 +594,7 @@
 						<thead>
 							<tr>
 								<th class="w-10">
-									<button class="pv-check-btn" onclick={toggleSelectAll} aria-label="Select all">
+									<button class="pv-check-btn" onclick={toggleSelectAll} aria-label={$t('common.selectAll')}>
 										{#if allPageSelected}
 											<CheckSquare class="h-4 w-4 text-primary" weight="fill" />
 										{:else}
@@ -604,8 +614,8 @@
 										{@render sortIcon('name')}
 									</button>
 								</th>
-								<th>{$t('common.node')}</th>
-								<th>{$t('common.tags', { default: 'Tags' })}</th>
+								<th class="hidden md:table-cell">{$t('common.node')}</th>
+								<th class="hidden lg:table-cell">{$t('common.tags', { default: 'Tags' })}</th>
 								<th>
 									<button class="pv-sort-btn" onclick={() => toggleSort('status')}>
 										{$t('common.status')}
@@ -614,7 +624,8 @@
 								</th>
 								<th>{$t('vms.cpu')}</th>
 								<th>{$t('vms.ram')}</th>
-								<th>{$t('vms.uptime')}</th>
+								<th class="hidden lg:table-cell">{$t('vms.disk', { default: 'Disk' })}</th>
+								<th class="hidden lg:table-cell">{$t('vms.uptime')}</th>
 								<th></th>
 							</tr>
 						</thead>
@@ -646,8 +657,8 @@
 											<span class="pv-resource-name">{vm.name || '—'}</span>
 										</div>
 									</td>
-									<td class="pv-td-muted text-sm">{vm.node || '—'}</td>
-									<td class="text-xs text-muted-foreground">
+									<td class="pv-td-muted text-sm hidden md:table-cell">{vm.node || '—'}</td>
+									<td class="text-xs text-muted-foreground hidden lg:table-cell">
 										{#if vm.tags}
 											{(vm.tags || '').split(';').filter(Boolean).join(', ')}
 										{:else}
@@ -683,7 +694,19 @@
 											<span class="text-muted-foreground">—</span>
 										{/if}
 									</td>
-									<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
+									<td class="tabular-nums text-sm hidden lg:table-cell">
+										{#if vm.maxDiskMb && vm.maxDiskMb > 0}
+											<div class="pv-usage-bar w-24">
+												<div class="pv-usage-bar-track" style="flex:1">
+													<div class="pv-usage-bar-fill" style="width:{Math.round((vm.diskMb / vm.maxDiskMb) * 100)}%"></div>
+												</div>
+												<span class="pv-usage-label">{Math.round(vm.maxDiskMb / 1024)} GB</span>
+											</div>
+										{:else}
+											<span class="text-muted-foreground">—</span>
+										{/if}
+									</td>
+									<td class="pv-td-muted tabular-nums text-sm hidden lg:table-cell">{uptimeLabel(vm.uptime)}</td>
 									<td onclick={(e: MouseEvent) => e.stopPropagation()}>
 										<div class="flex items-center gap-1">
 											{#if vm.status === 'stopped'}
