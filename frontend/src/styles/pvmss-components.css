@@ -89,7 +89,6 @@
   color: var(--foreground);
 }
 
-/* ── Tab bar ────────────────────────────────────────────────────── */
 .pv-tab {
   padding: 0.5rem 0.875rem;
   font-size: 0.875rem;
@@ -100,15 +99,17 @@
   border-top: none;
   border-left: none;
   border-right: none;
-  transition: color 0.12s, border-color 0.12s;
+  transition: color 0.12s, border-color 0.12s, background-color 0.12s;
 }
 .pv-tab:hover {
   color: var(--foreground);
+  background: var(--accent);
 }
 .pv-tab--active {
   color: var(--foreground);
   border-bottom-color: var(--primary);
-  font-weight: 500;
+  font-weight: 600;
+  background: var(--accent);
 }
 
 /* ── Primary button (small, inline) ────────────────────────────── */
@@ -131,30 +132,30 @@
   cursor: not-allowed;
 }
 
-/* ── Console banner (VM running) ────────────────────────────────── */
 .pv-console-banner {
   display: flex;
   align-items: center;
   gap: 0.625rem;
   width: 100%;
-  padding: 0.875rem 1.25rem;
-  background: hsl(217 91% 60% / 8%);
-  border: 1px solid hsl(217 91% 60% / 25%);
-  border-radius: 0.5rem;
-  color: hsl(217 91% 55%);
+  padding: 0.75rem 1rem;
+  background: var(--info-soft);
+  border: 1px solid var(--info-soft-border);
+  border-radius: 12px;
+  color: var(--info-foreground);
   font-size: 0.9375rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
   text-align: left;
 }
 .pv-console-banner:hover {
-  background: hsl(217 91% 60% / 15%);
-  border-color: hsl(217 91% 60% / 50%);
+  background: var(--info);
+  border-color: var(--info);
+  transform: translateY(-1px);
 }
 .pv-console-banner-arrow {
   margin-left: auto;
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 /* ── Provisioning spinner ───────────────────────────────────────── */
@@ -307,4 +308,30 @@ tr:hover .pv-copy-btn,
   border-radius: 8px;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* ── Content cards for overview / sections ────────────────────────── */
+.pv-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.pv-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.pv-card-body {
+  padding: 0.75rem 0.875rem;
 }

@@ -29,7 +29,7 @@
 	const isRunning = $derived(status === 'running');
 </script>
 
-<div class="flex items-center gap-2">
+<div class="inline-flex items-center gap-1 rounded-lg border border-border bg-card p-1 shadow-sm">
 	<button
 		class="pv-action-btn"
 		onclick={onRefresh}

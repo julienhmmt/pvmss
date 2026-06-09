@@ -17,6 +17,9 @@
 			<p class="text-sm">{$t('vm.noCloudInit')}</p>
 		</div>
 	{:else}
+		<div class="flex items-center justify-between border-b border-border px-4 py-3">
+			<span class="text-sm font-medium">{$t('vm.tabCloudInit')}</span>
+		</div>
 		<table class="pv-table">
 			<tbody>
 				{#if config.cloudInit.user}
