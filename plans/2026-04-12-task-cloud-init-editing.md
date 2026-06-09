@@ -1,9 +1,16 @@
 # Feature Plan: Cloud-Init Editing from Detail Page
 
+> **Status (verified 2026-06-09): NOT implemented.**
+> A read-only `TabCloudInit.svelte` now exists in `frontend/src/routes/(app)/vm/[id]/_tabs/` (displays user, network, DNS from config) — use it as the base for the edit form.
+> No `PUT /api/v1/vms/:id/cloudinit` route exists yet (only admin-side `/api/v1/admin/cloudinit/*` template CRUD).
+> When implementing the backend route, apply the security plan's requirements: validate all fields server-side, enforce pool-membership AuthZ (same pattern as `vms.go`), and respect the SFTP filename boundary check (finding S6 in `2026-05-22-backend-security-hardening.md`).
+
 ## Goal
+
 Allow post-creation editing of Cloud-Init configurations (Username, Password, Network, SSH keys) directly from the VM details page.
 
 ## Current State
+
 Cloud-Init can be configured during VM creation, but once the VM is created, changes to the Cloud-Init configuration must be done via the Proxmox UI.
 
 ## Backend Implementation
@@ -42,6 +49,7 @@ Cloud-Init can be configured during VM creation, but once the VM is created, cha
    - Provide clear UI feedback that changes require a VM reboot to take effect within the guest OS.
 
 ## Challenges & Considerations
+
 - **Password Readability**: Proxmox does not return the plaintext password in the config. The UI should reflect that the password is "Set" but cannot be viewed. Updating it overwrites the old one.
 - **Multiple Network Interfaces**: A VM might have multiple network interfaces (`ipconfig0`, `ipconfig1`). The UI and backend need to handle parsing and updating specific interfaces.
 - **OS Support**: Ensure users know Cloud-Init only works on VMs provisioned from Cloud-Init compatible templates.

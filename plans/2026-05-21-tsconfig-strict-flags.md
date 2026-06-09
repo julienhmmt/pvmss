@@ -4,6 +4,12 @@
 > Périmètre : `frontend/tsconfig.json` + fixes appel par appel
 > Stack : Svelte 5 + SvelteKit 2 + TypeScript strict
 > Prérequis : Phases 1-4 du plan `2026-05-20-typescript-type-safety.md` terminées
+>
+> **Statut (vérifié 2026-06-09) : NON commencé.** Aucun des deux flags n'est dans `frontend/tsconfig.json`.
+> ⚠️ Le décompte d'erreurs (79 sur 24 fichiers) date du 2026-05-21 — re-mesurer avant de commencer :
+> activer les deux flags temporairement puis `npx svelte-check` pour obtenir le profil à jour.
+> Note : si le découpage de `vm/create/+page.svelte` (plan frontend-modernisation Phase 5) est fait d'abord,
+> les ~4 erreurs d'accès indexé de cette page seront à corriger dans les nouveaux fichiers `_steps/`.
 
 ---
 

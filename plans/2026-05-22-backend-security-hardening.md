@@ -1,8 +1,35 @@
 # Backend Security Hardening Audit & Plan
 
-**Date:** 2026-05-22
+**Date:** 2026-05-22 — **status re-verified against code 2026-06-09**
 **Scope:** `backend/` Go code + deploy manifests (Dockerfile, helm/, pvmss-deployment.yaml)
 **Standards:** OWASP Top 10, CIS, baseline pentest checklist
+
+---
+
+## Status snapshot (verified 2026-06-09)
+
+| Finding | Status | Evidence |
+| --- | --- | --- |
+| S4 ISO allowlist | ✅ DONE | `vm_create.go:354-363` rejects unlisted ISO |
+| S5 Bridge allowlist | ✅ DONE | `vm_create.go:387` rejects unlisted bridge; node (`:328`) + storage (`:348`) also enforced |
+| S3 Tag regex | ⚠️ PARTIAL | `validateTagName` applied in `CreateTag` (`admin_tags.go:71`) only — **DeleteTag / SetTagColor still unvalidated** |
+| S1 `PROXMOX_VERIFY_SSL` | ❌ OPEN | Still `"false"` in `helm/values.yaml:52`, `pvmss-deployment.yaml:113`, `example.env:6` |
+| S2 Pool name regex | ❌ OPEN | `admin_pools.go:140` concatenates `constants.PoolPrefix + req.Pool` without validation |
+| S6 SFTP filename boundary check | ❌ OPEN | No `snippetFilenameRe` in `proxmox/cloudinit.go` |
+| S7 Admin mutation rate limits | ❌ OPEN | No rate-limit rules in `api/v1/router.go` |
+| S8 Cloud-init YAML semantics | ❌ OPEN | |
+| S9 `readOnlyRootFilesystem` | ❌ OPEN | Absent from `pvmss-deployment.yaml` and helm |
+| S10 `SignedString` error swallowed | ❌ OPEN | `auth.go:245` still `signed, _ :=` |
+| S11 Refresh TTL 7d | ❌ OPEN | `auth.go:26` still `7 * 24 * time.Hour` |
+| S12–S19 (Phase C polish) | ❌ OPEN | |
+| Phase D CI (gosec/govulncheck/gitleaks) | ❌ OPEN | Not in `Makefile` nor `.github/workflows/` |
+
+**Next action: ship Phase A as a standalone PR — these are production blockers.**
+
+### Carried over from the (completed & deleted) 2026-05-22 backend-refactor-audit plan
+
+- Test coverage follow-up (its Phase 7): table-driven `httptest` handler tests for `api/v1/` with `PVMSS_OFFLINE=true`, `security/` middleware unit tests, `proxmox/` client tests against `httptest.Server`. Target +30% coverage in a dedicated PR. Security-sensitive paths first (auth, CSRF, allowlist validation in `vm_create.go`).
+- `validatePoolName` was planned in `api/v1/validation.go` but only `validateTagName` exists — implement it as part of S2.
 
 ---
 
@@ -19,6 +46,7 @@ PVMSS backend handles VM provisioning against live Proxmox infra with admin-leve
 ## Verified findings
 
 ### False positives removed after verification
+
 - ❌ "CRITICAL: `.env` git-tracked" — `.env` is in `.gitignore`, never appeared in `git log --all --full-history`. Local-only file. **Not a finding.**
 - ❌ "CRITICAL: type assertion panic at middleware.go:55" — call site is internal to `JWTAdminMiddleware`, always reached via `JWTMiddleware` which sets the key on line 47. `recoverMiddleware` catches panics anyway. Downgrade to **LOW (style)** — use safe assertion pattern like `isAdminFromCtx()` for consistency.
 - ❌ "CRITICAL: path traversal in SFTP" — filename source is `state.CloudInitTemplatePrefix + generateCloudInitID(name) + ".yml"`, where `generateCloudInitID` already sanitizes via regex (admin_mutations.go:749). Real risk = defense-in-depth, not active vector. Downgrade to **MEDIUM**.
@@ -26,7 +54,7 @@ PVMSS backend handles VM provisioning against live Proxmox infra with admin-leve
 ### Real findings (prioritized)
 
 | # | Sev | Area | File:line | Issue |
-|---|-----|------|-----------|-------|
+| - | --- | ---- | --------- | ----- |
 | S1 | HIGH | Transport | `pvmss-deployment.yaml:113`, `helm/values.yaml:52`, `example.env:6` | `PROXMOX_VERIFY_SSL=false` shipped as default → MITM on Proxmox API |
 | S2 | HIGH | Validation | `api/v1/admin_mutations.go:161` | Pool name not validated before `"pvmss_" + req.Pool` concat → bad input bubbled to Proxmox API |
 | S3 | HIGH | Validation | `api/v1/admin_mutations.go:458` (`DeleteTag`, `SetTagColor`) | `tagNameRegex` exists at line 24 but not applied on delete/color mutators |
@@ -48,6 +76,7 @@ PVMSS backend handles VM provisioning against live Proxmox infra with admin-leve
 | S19 | INFO | DB perms | `database/database.go:105` | Dir perms `0o750` good. Document that PVMSS_DB_PATH parent must have restrictive umask for WAL/SHM siblings |
 
 ### Confirmed clean (no action)
+
 - SQL injection (all queries parameterized — `database/lists.go`, `database/auth.go`, etc.)
 - Command injection (no `os/exec` on user input)
 - Hardcoded production secrets (none in git)
@@ -68,6 +97,7 @@ PVMSS backend handles VM provisioning against live Proxmox infra with admin-leve
 ## Phased remediation
 
 ### Phase A — Production blockers (must ship before next deploy)
+
 1. **S1**: Flip `PROXMOX_VERIFY_SSL` default to `true` in `helm/values.yaml:52`, `pvmss-deployment.yaml:113`, `example.env:6`. Add Proxmox CA-cert mount path doc.
 2. **S4 + S5**: Add allowlist validation in `vm_create.go` before Proxmox call:
    - ISO must be in `settings.ISOs`
@@ -78,34 +108,39 @@ PVMSS backend handles VM provisioning against live Proxmox infra with admin-leve
 4. **S3**: Apply `tagNameRegex` to every tag mutator (DeleteTag, SetTagColor, any other).
 
 ### Phase B — Defense-in-depth (next sprint)
-5. **S6**: Add filename regex check inside `UploadSnippetFileSFTP` / `DeleteSnippetFileSFTP` regardless of caller:
+
+1. **S6**: Add filename regex check inside `UploadSnippetFileSFTP` / `DeleteSnippetFileSFTP` regardless of caller:
+
    ```go
    var snippetFilenameRe = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
    if !snippetFilenameRe.MatchString(filename) || strings.Contains(filename, "..") {
        return fmt.Errorf("invalid snippet filename")
    }
    ```
-6. **S8**: Either (a) refuse `runcmd`/`bootcmd`/`write_files` in user-supplied cloud-init YAML, or (b) document explicitly that cloud-init editing is an admin-only trusted operation. Pick one and enforce.
-7. **S10**: Handle `SignedString` error — fail login with 500, log error.
-8. **S7**: Add rate-limit rules in `handlers/handlers.go` for:
+
+2. **S8**: Either (a) refuse `runcmd`/`bootcmd`/`write_files` in user-supplied cloud-init YAML, or (b) document explicitly that cloud-init editing is an admin-only trusted operation. Pick one and enforce.
+3. **S10**: Handle `SignedString` error — fail login with 500, log error.
+4. **S7**: Add rate-limit rules in `handlers/handlers.go` for:
    - `POST /api/v1/admin/userpool` (1 req/10s)
    - `DELETE /api/v1/admin/userpool/:name` (1 req/10s)
    - `POST /api/v1/admin/db/import` (1 req/min)
    - `POST /api/v1/admin/cloudinit` (5 req/min)
-9. **S11**: Reduce refresh TTL to 48h. (Revocation list = bigger effort, defer.)
-10. **S9**: Add `readOnlyRootFilesystem: true` to deployment spec; verify `/data` rw volume mount sufficient.
+5. **S11**: Reduce refresh TTL to 48h. (Revocation list = bigger effort, defer.)
+6. **S9**: Add `readOnlyRootFilesystem: true` to deployment spec; verify `/data` rw volume mount sufficient.
 
 ### Phase C — Polish (backlog)
-11. **S12**: Generic message for DB import errors; log detail server-side only.
-12. **S13**: Parse Origin + X-Forwarded-Host as `url.URL`, compare `.Hostname()` only.
-13. **S14**: Helm `NOTES.txt` pre-flight: fail if placeholder secrets detected.
-14. **S15**: Add `NetworkPolicy` restricting egress to Proxmox endpoint + DNS only.
-15. **S16**: Optional — temporary lockout after N failures (in-memory map with TTL).
-16. **S17**: Replace direct `.(bool)` with `isAdminFromCtx(r)` for consistency.
-17. **S18**: Drop `unsafe-inline`/`unsafe-eval` from CSP after Go templates removed (SvelteKit-only).
-18. **S19**: Doc note in README-deploy on DB volume umask.
+
+1. **S12**: Generic message for DB import errors; log detail server-side only.
+2. **S13**: Parse Origin + X-Forwarded-Host as `url.URL`, compare `.Hostname()` only.
+3. **S14**: Helm `NOTES.txt` pre-flight: fail if placeholder secrets detected.
+4. **S15**: Add `NetworkPolicy` restricting egress to Proxmox endpoint + DNS only.
+5. **S16**: Optional — temporary lockout after N failures (in-memory map with TTL).
+6. **S17**: Replace direct `.(bool)` with `isAdminFromCtx(r)` for consistency.
+7. **S18**: Drop `unsafe-inline`/`unsafe-eval` from CSP after Go templates removed (SvelteKit-only).
+8. **S19**: Doc note in README-deploy on DB volume umask.
 
 ### Phase D — Continuous (CI/CD)
+
 - Add `gosec ./...` to `make qualif`.
 - Add `govulncheck ./...` to CI.
 - Add `trufflehog` or `gitleaks` pre-commit hook for secret scanning.
@@ -116,7 +151,7 @@ PVMSS backend handles VM provisioning against live Proxmox infra with admin-leve
 ## Critical files to modify
 
 | File | Phase | Change |
-|---|---|---|
+| --- | --- | --- |
 | `helm/values.yaml` | A | `PROXMOX_VERIFY_SSL: "true"` |
 | `pvmss-deployment.yaml` | A | `PROXMOX_VERIFY_SSL=true` + `readOnlyRootFilesystem: true` |
 | `example.env` | A | `PROXMOX_VERIFY_SSL=true` |
@@ -154,6 +189,7 @@ PVMSS backend handles VM provisioning against live Proxmox infra with admin-leve
 ## Verification
 
 After each phase:
+
 ```bash
 make go-fmt
 make go-lint
@@ -164,6 +200,7 @@ make dev                                     # smoke test
 ```
 
 ### Manual security regression
+
 1. **TLS**: `curl -v https://pvmss.local/api/v1/health` — confirm HSTS, X-Frame-Options, CSP headers.
 2. **AuthZ**: Login as non-admin, attempt `POST /api/v1/admin/userpool` → expect 403.
 3. **Allowlist**: Submit VM create with `iso: "../../etc/passwd"` or unlisted ISO → expect 400.
@@ -176,7 +213,9 @@ make dev                                     # smoke test
 10. **Cookies**: Inspect Set-Cookie — `HttpOnly`, `Secure` (in prod), `SameSite=Lax` (session) or `Strict` (JWT).
 
 ### CI gate
+
 Add to GitHub Actions:
+
 ```yaml
 - run: gosec -severity medium -confidence medium ./...
 - run: govulncheck ./...
