@@ -55,6 +55,16 @@
       "paused": "Paused",
       "unknown": "Unknown",
       "active": "Active"
+    },
+    "clearFilters": "Clear filters",
+    "clearSearch": "Clear search",
+    "allStatuses": "All statuses",
+    "allNodes": "All nodes",
+    "selectAll": "Select all",
+    "time": {
+      "justNow": "just now",
+      "mAgo": "{count}m ago",
+      "hAgo": "{count}h ago"
     }
   },
   "nav": {
@@ -579,7 +589,21 @@
         "quota": "VM Quota"
       },
       "filterPlaceholder": "Filter by name, ID, tag or node…",
-      "noFilterResults": "No VMs match \"{query}\""
+      "noFilterResults": "No VMs match \"{query}\"",
+      "toast": {
+        "actionSent": "{action} sent to {name}",
+        "actionFailed": "Failed to {action} {name}",
+        "bulkActionSent": "{action} sent to {count} VMs",
+        "bulkActionFailed": "Failed for {count} VMs"
+      },
+      "activityLabels": {
+        "start": "Started",
+        "shutdown": "Shutdown",
+        "stop": "Stopped",
+        "reboot": "Rebooted"
+      },
+      "autoRefreshIn": "Auto-refresh in {seconds}s",
+      "selectionSummary": "({running} running, {stopped} stopped)"
     }
   },
   "landing": {
