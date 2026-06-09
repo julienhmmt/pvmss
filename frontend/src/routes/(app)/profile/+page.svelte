@@ -13,6 +13,7 @@
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { Play, Stop, ArrowCounterClockwise, UserCircle, Lock, Desktop, SortAscending, SortDescending } from 'phosphor-svelte';
 	import { api } from '$lib/api/client';
+	import { vmList } from '$lib/utils/vm';
 
 	// ── VM list state ─────────────────────────────────────────────────────────
 	let vmsLoading = $state(true);
@@ -76,22 +77,6 @@
 		pageSize = Number(v);
 		currentPage = 1;
 		loadVMs();
-	}
-
-	// ── Helpers ───────────────────────────────────────────────────────────────
-	function statusClass(status: string): string {
-		if (status === 'running') return 'pv-badge--online';
-		if (status === 'stopped') return 'pv-badge--offline';
-		return 'pv-badge--warn';
-	}
-
-	function uptimeLabel(seconds: number): string {
-		if (!seconds) return '—';
-		const d = Math.floor(seconds / 86400);
-		const h = Math.floor((seconds % 86400) / 3600);
-		if (d > 0) return `${d}d ${h}h`;
-		const m = Math.floor((seconds % 3600) / 60);
-		return h > 0 ? `${h}h ${m}m` : `${m}m`;
 	}
 
 	// ── Data loading ──────────────────────────────────────────────────────────
@@ -397,12 +382,12 @@
 											</div>
 										</td>
 										<td>
-											<span class="pv-badge {statusClass(vm.status)}">
+											<span class="pv-badge {vmList.statusClass(vm.status)}">
 												{$t(`common.statusMap.${vm.status}`, { default: vm.status })}
 											</span>
 										</td>
 										<td class="pv-td-muted text-sm">{vm.node}</td>
-										<td class="pv-td-muted tabular-nums text-sm">{uptimeLabel(vm.uptime)}</td>
+										<td class="pv-td-muted tabular-nums text-sm">{vmList.uptimeLabel(vm.uptime)}</td>
 										<td onclick={(e: MouseEvent) => e.stopPropagation()}>
 											<div class="flex items-center gap-1">
 												{#if vm.status === 'stopped'}

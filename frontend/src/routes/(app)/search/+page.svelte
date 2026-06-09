@@ -9,6 +9,7 @@
 	import type { VMStatus } from '$lib/types/vm';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
+	import { vmList } from '$lib/utils/vm';
 	import { ArrowDown, ArrowUp, Desktop, MagnifyingGlass, SpinnerGap, X } from 'phosphor-svelte';
 
 	const PAGE_SIZE = 10;
@@ -166,12 +167,6 @@
 		slowTimer = null;
 	}
 
-	function statusClass(status: string): string {
-		if (status === 'running') return 'pv-badge--online';
-		if (status === 'stopped') return 'pv-badge--offline';
-		return 'pv-badge--warn';
-	}
-
 	function toggleSort(col: SortColumn): void {
 		if (sortCol === col) {
 			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
@@ -325,7 +320,7 @@
 							</td>
 							<td class="pv-td-mono text-sm">{vm.node}</td>
 							<td>
-								<span class="pv-badge {statusClass(vm.status)}">
+								<span class="pv-badge {vmList.statusClass(vm.status)}">
 									{$t(`common.statusMap.${vm.status}`, { default: vm.status })}
 								</span>
 							</td>
