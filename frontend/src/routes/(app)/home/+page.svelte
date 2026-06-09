@@ -9,6 +9,7 @@
 	import VMUsageBar from '$lib/components/data/VMUsageBar.svelte';
 	import { getVMsPaginated, type VMSummary } from '$lib/api/vms';
 	import type { VMStatus } from '$lib/types/vm';
+	import { vmList } from '$lib/utils/vm';
 	import { api } from '$lib/api/client';
 	import { auth } from '$lib/stores/auth.svelte';
 	import { settingsStore } from '$lib/stores/settings.svelte';
@@ -105,21 +106,6 @@
 				? Math.round(running.reduce((s, v) => s + v.cpu * 100, 0) / running.length)
 				: 0;
 		return { total: list.length, running: running.length, stopped: list.filter((v) => v.status === 'stopped').length, avgCpu };
-	}
-
-	function statusClass(status: string): string {
-		if (status === 'running') return 'pv-badge--online';
-		if (status === 'stopped') return 'pv-badge--offline';
-		return 'pv-badge--warn';
-	}
-
-	function uptimeLabel(seconds: number): string {
-		if (!seconds) return '—';
-		const d = Math.floor(seconds / 86400);
-		const h = Math.floor((seconds % 86400) / 3600);
-		if (d > 0) return `${d}d ${h}h`;
-		const m = Math.floor((seconds % 3600) / 60);
-		return h > 0 ? `${h}h ${m}m` : `${m}m`;
 	}
 
 	function actionLabel(action: string): string {
@@ -700,7 +686,7 @@
 										{/if}
 									</td>
 									<td>
-										<span class="pv-badge {statusClass(vm.status)}">
+										<span class="pv-badge {vmList.statusClass(vm.status)}">
 											{$t(`common.statusMap.${vm.status}`, { default: vm.status })}
 										</span>
 									</td>
@@ -728,7 +714,7 @@
 											widthClass="w-24"
 										/>
 									</td>
-									<td class="pv-td-muted tabular-nums text-sm hidden lg:table-cell">{uptimeLabel(vm.uptime)}</td>
+									<td class="pv-td-muted tabular-nums text-sm hidden lg:table-cell">{vmList.uptimeLabel(vm.uptime)}</td>
 									<td onclick={(e: MouseEvent) => e.stopPropagation()}>
 										<div class="flex items-center gap-1">
 											{#if vm.status === 'stopped'}
