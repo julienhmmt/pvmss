@@ -965,8 +965,11 @@
       "missingStorage": "A storage must be selected",
       "invalidHardware": "Hardware values are outside allowed limits",
       "invalidDisk": "At least one disk with a valid size is required",
-      "invalidNetwork": "Each network card must have a bridge selected"
+      "invalidNetwork": "Each network card must have a bridge selected",
+      "invalidName": "VM name may only contain letters, numbers, hyphens and underscores",
+      "invalidCloudInit": "Cloud-init requires a username when enabled"
     },
+    "draftRestored": "Draft restored from your previous session",
     "simple": {
       "modeSimple": "Simple",
       "modeAdvanced": "Advanced",
