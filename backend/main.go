@@ -17,7 +17,6 @@ import (
 	envpkg "pvmss/env"
 	"pvmss/handlers"
 	"pvmss/logger"
-	"pvmss/proxmox"
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 
@@ -54,9 +53,6 @@ func main() {
 
 	// Store EnvConfig on the state manager so all handlers can access it.
 	stateManager.SetEnvConfig(envCfg)
-
-	// Also store in proxmox package for FromEnv convenience functions.
-	proxmox.SetEnvConfig(envCfg)
 
 	// Configure security middleware with the validated environment.
 	securityMiddleware.SetProductionMode(envCfg.Environment)
