@@ -55,6 +55,16 @@
       "paused": "En pause",
       "unknown": "Inconnu",
       "active": "Actif"
+    },
+    "clearFilters": "Effacer les filtres",
+    "clearSearch": "Effacer la recherche",
+    "allStatuses": "Tous les statuts",
+    "allNodes": "Tous les nœuds",
+    "selectAll": "Tout sélectionner",
+    "time": {
+      "justNow": "à l'instant",
+      "mAgo": "il y a {count}m",
+      "hAgo": "il y a {count}h"
     }
   },
   "nav": {
@@ -576,7 +586,21 @@
         "quota": "Quota VM"
       },
       "filterPlaceholder": "Filtrer par nom, ID, tag ou nœud…",
-      "noFilterResults": "Aucune VM ne correspond à \"{query}\""
+      "noFilterResults": "Aucune VM ne correspond à \"{query}\"",
+      "toast": {
+        "actionSent": "{action} envoyé à {name}",
+        "actionFailed": "Échec de {action} sur {name}",
+        "bulkActionSent": "{action} envoyé à {count} VMs",
+        "bulkActionFailed": "Échec pour {count} VMs"
+      },
+      "activityLabels": {
+        "start": "Démarré",
+        "shutdown": "Arrêté",
+        "stop": "Arrêté",
+        "reboot": "Redémarré"
+      },
+      "autoRefreshIn": "Actualisation auto dans {seconds}s",
+      "selectionSummary": "({running} en cours, {stopped} arrêtées)"
     }
   },
   "landing": {

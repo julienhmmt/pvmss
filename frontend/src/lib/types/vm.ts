@@ -111,6 +111,8 @@ export interface VM {
   maxMemMb: number;
   /** Disk usage in MB */
   diskMb: number;
+  /** Maximum disk in MB (optional; used for list usage bars when provided) */
+  maxDiskMb?: number;
   /** VM uptime in seconds */
   uptime: number;
   /** Semicolon-separated tags */
