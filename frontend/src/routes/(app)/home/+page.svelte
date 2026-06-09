@@ -496,6 +496,8 @@
 										{@render sortIcon('name')}
 									</button>
 								</th>
+								<th>{$t('common.node')}</th>
+								<th>{$t('common.tags', { default: 'Tags' })}</th>
 								<th>
 									<button class="pv-sort-btn" onclick={() => toggleSort('status')}>
 										{$t('common.status')}
@@ -535,6 +537,14 @@
 											<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">VM</div>
 											<span class="pv-resource-name">{vm.name || '—'}</span>
 										</div>
+									</td>
+									<td class="pv-td-muted text-sm">{vm.node || '—'}</td>
+									<td class="text-xs text-muted-foreground">
+										{#if vm.tags}
+											{(vm.tags || '').split(';').filter(Boolean).join(', ')}
+										{:else}
+											—
+										{/if}
 									</td>
 									<td>
 										<span class="pv-badge {statusClass(vm.status)}">
