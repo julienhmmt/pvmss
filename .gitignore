@@ -4,7 +4,7 @@
 .idea/
 .specify/
 .vscode/
-.windsurf/
+.devin/
 coverage.out
 docker-compose.dev.yml
 node_modules/
