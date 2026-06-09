@@ -692,6 +692,8 @@
     "tabCloudInit": "Cloud-init",
     "sectionOverview": "Overview",
     "sectionHardware": "Hardware",
+    "sectionFeatures": "Features",
+    "uptime": "Uptime",
     "noDescription": "No description",
     "provisioning": "VM is being provisioned…",
     "provisioningHint": "This usually takes a few seconds. The page will update automatically.",

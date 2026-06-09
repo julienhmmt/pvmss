@@ -26,10 +26,8 @@
 	let cdromLoading = $state(false);
 
 	function startEdit() {
-		console.log('startEdit called, currentIso:', config.currentIso);
 		selectedIso = config.currentIso || '';
 		cdromEditing = true;
-		console.log('cdromEditing set to:', cdromEditing);
 	}
 
 	// Reset selectedIso when canceling edit
@@ -107,7 +105,7 @@
 			</thead>
 			<tbody>
 				{#each config.disks as disk (disk.index)}
-					<tr>
+					<tr class="pv-row">
 						<td>
 							<div class="flex items-center gap-2">
 								<HardDrive class="h-4 w-4 text-muted-foreground" />
@@ -144,73 +142,48 @@
 			<HardDrive class="h-4 w-4 text-muted-foreground" />
 			<span class="text-sm font-medium">CD-ROM</span>
 			{#if !cdromEditing}
-				<button
-					class="ml-auto rounded border border-border bg-background px-2 py-1 text-xs hover:bg-accent"
-					onclick={startEdit}
-				>
+				<button class="ml-auto rounded border border-border bg-background px-2 py-1 text-xs hover:bg-accent" onclick={startEdit}>
 					{$t('common.edit')}
 				</button>
 			{/if}
 		</div>
-			{#if cdromEditing}
-				<div class="flex flex-col gap-2">
-					{#if config.currentIso}
-						<div class="text-xs text-muted-foreground">
-							{$t('vm.currentISO')}: {config.currentIso}
-						</div>
+		{#if cdromEditing}
+			<div class="flex flex-col gap-2">
+				{#if config.currentIso}
+					<div class="text-xs text-muted-foreground">{$t('vm.currentISO')}: {config.currentIso}</div>
+				{/if}
+				<select class="rounded border border-border bg-background px-3 py-2 text-sm" bind:value={selectedIso}>
+					<option value="">-- {$t('vm.noISO')} --</option>
+					{#each availableIsos as iso (iso.volid)}
+						<option value={iso.volid}>{iso.name}</option>
+					{/each}
+					{#if config.currentIso && !availableIsos.find(iso => iso.volid === config.currentIso)}
+						<option value={config.currentIso}>{config.currentIso}</option>
 					{/if}
-					<select
-						class="rounded border border-border bg-background px-3 py-2 text-sm"
-						bind:value={selectedIso}
-					>
-						<option value="">-- {$t('vm.noISO')} --</option>
-						{#each availableIsos as iso (iso.volid)}
-							<option value={iso.volid}>{iso.name}</option>
-						{/each}
-						{#if config.currentIso && !availableIsos.find(iso => iso.volid === config.currentIso)}
-							<option value={config.currentIso}>{config.currentIso}</option>
-						{/if}
-					</select>
-					<div class="flex gap-2">
-						<button
-							class="pv-btn-primary text-xs"
-							onclick={saveCDROM}
-							disabled={cdromLoading}
-						>
-							{cdromLoading ? $t('common.saving') : $t('common.save')}
+				</select>
+				<div class="flex flex-wrap gap-2">
+					<button class="pv-btn-primary text-xs" onclick={saveCDROM} disabled={cdromLoading}>
+						{cdromLoading ? $t('common.saving') : $t('common.save')}
+					</button>
+					{#if config.currentIso}
+						<button class="rounded border border-border bg-background px-2 py-1 text-xs hover:bg-accent" onclick={disconnectCDROM} disabled={cdromLoading}>
+							<LinkBreak class="inline h-3 w-3" />
+							{$t('vm.disconnect')}
 						</button>
-						{#if config.currentIso}
-							<button
-								class="rounded border border-border bg-background px-2 py-1 text-xs hover:bg-accent"
-								onclick={disconnectCDROM}
-								disabled={cdromLoading}
-							>
-								<LinkBreak class="inline h-3 w-3" />
-								{$t('vm.disconnect')}
-							</button>
-						{/if}
-						{#if config.hasCdrom}
-							<button
-								class="rounded border border-destructive bg-background px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
-								onclick={removeCDROM}
-								disabled={cdromLoading}
-							>
-								<X class="inline h-3 w-3" />
-								{$t('common.clear')}
-							</button>
-						{/if}
-						<button
-							class="text-xs text-muted-foreground hover:text-foreground"
-							onclick={cancelEdit}
-						>
-							{$t('common.cancel')}
+					{/if}
+					{#if config.hasCdrom}
+						<button class="rounded border border-destructive bg-background px-2 py-1 text-xs text-destructive hover:bg-destructive/10" onclick={removeCDROM} disabled={cdromLoading}>
+							<X class="inline h-3 w-3" />
+							{$t('common.clear')}
 						</button>
-					</div>
+					{/if}
+					<button class="text-xs text-muted-foreground hover:text-foreground" onclick={cancelEdit}>
+						{$t('common.cancel')}
+					</button>
 				</div>
-			{:else}
-				<div class="text-sm text-muted-foreground">
-					{config.currentIso || $t('vm.noISO')}
-				</div>
-			{/if}
+			</div>
+		{:else}
+			<div class="text-sm text-muted-foreground">{config.currentIso || $t('vm.noISO')}</div>
+		{/if}
 	</div>
 </div>

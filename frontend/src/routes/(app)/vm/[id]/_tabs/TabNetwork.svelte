@@ -21,6 +21,12 @@
 </script>
 
 <div class="pv-table-wrap">
+	<div class="flex items-center justify-between border-b border-border px-4 py-3">
+		<span class="text-sm font-medium">{$t('vm.tabNetwork')}</span>
+		<span class="text-xs text-muted-foreground">
+			{config.networks.length} {$t('vm.interfaces')}
+		</span>
+	</div>
 	{#if config.networks.length === 0}
 		<p class="py-8 text-center text-sm text-muted-foreground">{$t('vm.noNetworks')}</p>
 	{:else}

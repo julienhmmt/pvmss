@@ -29,19 +29,18 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
-	import { CaretLeft } from 'phosphor-svelte';
 
 	// Extracted components
 	import VMActionBar from './_components/VMActionBar.svelte';
 	import VMStatCards from './_components/VMStatCards.svelte';
 	import ConsoleBanner from './_components/ConsoleBanner.svelte';
 	import EditableDescription from './_components/EditableDescription.svelte';
-	import EditableName from './_components/EditableName.svelte';
 	import TabOverview from './_tabs/TabOverview.svelte';
 	import TabDisks from './_tabs/TabDisks.svelte';
 	import TabNetwork from './_tabs/TabNetwork.svelte';
 	import TabSnapshots from './_tabs/TabSnapshots.svelte';
 	import TabCloudInit from './_tabs/TabCloudInit.svelte';
+	import VMIdentityHeader from './_components/VMIdentityHeader.svelte';
 
 	const vmid = $derived(parseInt($page.params.id, 10));
 
@@ -353,44 +352,30 @@
 </svelte:head>
 
 <div class="mx-auto px-4 py-6 pv-content-width">
-	<!-- Back + Header -->
-	<div class="mb-5 flex items-center justify-between">
-		<div class="flex items-center gap-3">
-			<button
-				class="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-				onclick={() => goto('/home')}
-			>
-				<CaretLeft class="h-4 w-4" />
-				{$t('nav.myVms')}
-			</button>
-			{#if config}
-				<span class="text-muted-foreground">/</span>
-				<EditableName
-					value={config.name || `VM ${config.vmid}`}
-					loading={savingName}
-					onSave={saveName}
-				/>
-				<span class="pv-badge {(metrics?.status ?? config.status) === 'running' ? 'pv-badge--online' : (metrics?.status ?? config.status) === 'stopped' ? 'pv-badge--offline' : 'pv-badge--warn'}">
-					{$t(`common.statusMap.${metrics?.status ?? config.status}`, {
-						default: metrics?.status ?? config.status
-					})}
-				</span>
-			{/if}
-		</div>
-		{#if config}
-			<VMActionBar
-				{vmid}
-				name={config.name}
-				node={config.node}
-				status={metrics?.status ?? config.status}
-				{actionLoading}
-				onAction={doAction}
-				onRefresh={load}
-				onConsole={openConsole}
-				onDelete={() => (showDeleteDialog = true)}
+	<!-- Identity + Actions -->
+	{#if config}
+		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+			<VMIdentityHeader
+				{config}
+				{metrics}
+				savingName={savingName}
+				onSaveName={saveName}
 			/>
-		{/if}
-	</div>
+			<div class="flex-shrink-0">
+				<VMActionBar
+					{vmid}
+					name={config.name}
+					node={config.node}
+					status={metrics?.status ?? config.status}
+					{actionLoading}
+					onAction={doAction}
+					onRefresh={load}
+					onConsole={openConsole}
+					onDelete={() => (showDeleteDialog = true)}
+				/>
+			</div>
+		</div>
+	{/if}
 
 	{#if provisioning || (loading && retryCount > 0)}
 		<div class="flex flex-col items-center gap-4 py-16 text-center">
@@ -416,7 +401,7 @@
 		/>
 
 		<!-- Tabs -->
-		<div class="mb-4 flex gap-1 border-b border-border">
+		<div class="mb-4 flex items-center gap-1 border-b border-border">
 			{#each [
 				{ key: 'overview', label: $t('vm.tabOverview') },
 				{ key: 'disks', label: $t('vm.tabDisks') },
