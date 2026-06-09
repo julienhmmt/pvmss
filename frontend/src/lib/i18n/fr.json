@@ -547,8 +547,11 @@
     "error": {
       "invalidCredentials": "Identifiants invalides",
       "serviceUnavailable": "Service indisponible, veuillez réessayer",
+      "proxmoxOffline": "Proxmox est actuellement indisponible. Veuillez réessayer plus tard.",
+      "rateLimited": "Trop de tentatives de connexion. Veuillez patienter un instant et réessayer.",
       "unknown": "Une erreur est survenue, veuillez réessayer"
-    }
+    },
+    "capsLock": "Verr. maj. activée"
   },
   "user": {
     "profile": {

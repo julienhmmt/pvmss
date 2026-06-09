@@ -16,6 +16,14 @@
 	let activeTab = $state<'user' | 'admin'>('user');
 	let activeAdminTab = $state<AdminTab>('local');
 
+	// Restore last tab choice (pure UX, no security impact)
+	if (typeof localStorage !== 'undefined') {
+		const last = localStorage.getItem('login:lastTab') as 'user' | 'admin' | null;
+		if (last === 'user' || last === 'admin') activeTab = last;
+		const lastAdmin = localStorage.getItem('login:lastAdminTab') as AdminTab | null;
+		if (lastAdmin === 'local' || lastAdmin === 'pve') activeAdminTab = lastAdmin;
+	}
+
 	// User login
 	let userUsername = $state('');
 	let userPassword = $state('');
@@ -30,9 +38,28 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
+	// Caps Lock state (global listener for simplicity and reliability)
+	let capsLockOn = $state(false);
+
+	function updateCapsLock(e: KeyboardEvent) {
+		if (typeof e.getModifierState === 'function') {
+			capsLockOn = e.getModifierState('CapsLock');
+		}
+	}
+
+	// Attach once (runs in browser)
+	if (typeof document !== 'undefined') {
+		document.addEventListener('keydown', updateCapsLock, true);
+		document.addEventListener('keyup', updateCapsLock, true);
+	}
+
 	function getErrorMessage(e: unknown): string {
 		if (e instanceof ApiRequestError) {
 			if (e.status === 401) return $t('login.error.invalidCredentials');
+			if (e.status === 429) return $t('login.error.rateLimited');
+			if (e.status === 503 || e.error?.code === 'proxmox_offline') {
+				return $t('login.error.proxmoxOffline');
+			}
 			if (e.status >= 500) return $t('login.error.serviceUnavailable');
 		}
 		return $t('login.error.unknown');
@@ -97,6 +124,47 @@
 	function clearError() {
 		error = null;
 	}
+
+	function focusFirstInput() {
+		// Focus the primary input for the currently visible form section.
+		let id = 'user-username';
+		if (activeTab === 'admin') {
+			id = activeAdminTab === 'local' ? 'local-password' : 'pve-username';
+		}
+		// Use rAF to ensure the tab content is visible
+		requestAnimationFrame(() => {
+			const el = document.getElementById(id) as HTMLInputElement | null;
+			el?.focus();
+		});
+	}
+
+	/**
+	 * Clear any partially entered credentials when the user switches identity type.
+	 * Small security hygiene: do not leave username/password fragments in the DOM.
+	 */
+	function clearAllCredentials() {
+		userUsername = '';
+		userPassword = '';
+		localPassword = '';
+		pveUsername = '';
+		pvePassword = '';
+	}
+
+	/**
+	 * Remember the last chosen login path (user vs admin, and which admin sub-tab).
+	 * Purely for convenience; no security tokens are stored here.
+	 */
+	function persistTab(tab: 'user' | 'admin', adminTab?: AdminTab) {
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('login:lastTab', tab);
+			if (adminTab) localStorage.setItem('login:lastAdminTab', adminTab);
+		}
+	}
+
+	// Initial focus for the default (or restored) visible form on page load.
+	if (typeof window !== 'undefined') {
+		requestAnimationFrame(() => focusFirstInput());
+	}
 </script>
 
 <svelte:head>
@@ -135,8 +203,12 @@
 				<Tabs.Root
 					value={activeTab}
 					onValueChange={(v) => {
-						activeTab = v as 'user' | 'admin';
+						const next = v as 'user' | 'admin';
+						activeTab = next;
+						clearAllCredentials();
 						clearError();
+						persistTab(next);
+						focusFirstInput();
 					}}
 				>
 					<Tabs.List class="pv-login-tabs-list">
@@ -180,6 +252,9 @@
 									maxlength={128}
 									disabled={loading}
 								/>
+								{#if capsLockOn}
+									<p class="pv-login-capslock" role="status">{$t('login.capsLock')}</p>
+								{/if}
 							</div>
 							<Button type="submit" class="w-full" loading={loading} disabled={!userUsername || !userPassword}>
 								{loading ? $t('login.signingIn') : $t('login.signIn')}
@@ -192,8 +267,12 @@
 						<Tabs.Root
 							value={activeAdminTab}
 							onValueChange={(v) => {
-								activeAdminTab = v as AdminTab;
+								const next = v as AdminTab;
+								activeAdminTab = next;
+								clearAllCredentials();
 								clearError();
+								persistTab('admin', next);
+								focusFirstInput();
 							}}
 						>
 							<Tabs.List class="pv-login-tabs-list pv-login-tabs-list--inner">
@@ -223,6 +302,9 @@
 											maxlength={128}
 											disabled={loading}
 										/>
+										{#if capsLockOn}
+											<p class="pv-login-capslock" role="status">{$t('login.capsLock')}</p>
+										{/if}
 									</div>
 									<Button type="submit" class="w-full" loading={loading} disabled={!localPassword}>
 										{loading ? $t('login.signingIn') : $t('login.signIn')}
@@ -262,6 +344,9 @@
 											maxlength={128}
 											disabled={loading}
 										/>
+										{#if capsLockOn}
+											<p class="pv-login-capslock" role="status">{$t('login.capsLock')}</p>
+										{/if}
 									</div>
 									<Button
 										type="submit"
@@ -421,6 +506,12 @@
 	.pv-login-realm-hint {
 		font-size: 0.75rem;
 		color: var(--muted-foreground);
+		margin-top: 0.25rem;
+	}
+
+	.pv-login-capslock {
+		font-size: 0.75rem;
+		color: var(--destructive);
 		margin-top: 0.25rem;
 	}
 
