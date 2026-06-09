@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"time"
 
 	"pvmss/constants"
 	"pvmss/logger"
@@ -23,7 +24,8 @@ func (h *VMCreateHandler) resolveNodes(ctx context.Context, snapshot *state.Prox
 	}
 
 	if len(nodeNames) == 0 {
-		client, err := restyClient()
+		cfg := h.state.GetEnvConfig()
+		client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 		if err == nil {
 			names, _ := proxmox.GetNodeNamesResty(ctx, client)
 			nodeNames = names

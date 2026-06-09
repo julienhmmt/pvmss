@@ -35,10 +35,6 @@ func (h *VMHandler) isOffline() bool {
 	return (cfg != nil && cfg.Offline) || h.state.IsOfflineMode()
 }
 
-// restyClient returns a fresh Resty client from env vars with a 30s timeout.
-func restyClient() (*proxmox.RestyClient, error) {
-	return proxmox.MakeRestyClientFromEnv(30 * time.Second)
-}
 
 // ListVMs handles GET /api/v1/vms.
 // Admin users see all VMs tagged constants.RequiredTag. Regular users see only VMs in their
@@ -103,7 +99,8 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 			summaries = append(summaries, snapshotVMToSummary(vm))
 		}
 	} else {
-		client, err := restyClient()
+		cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 		if err != nil {
 			writeAppError(w, err)
 			return
@@ -157,7 +154,8 @@ func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -206,7 +204,8 @@ func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return

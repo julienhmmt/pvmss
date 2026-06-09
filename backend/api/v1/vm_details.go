@@ -277,7 +277,8 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	envCfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(envCfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -418,7 +419,8 @@ func (h *VMDetailsHandler) GetVMMetrics(w http.ResponseWriter, r *http.Request) 
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	envCfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(envCfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -487,7 +489,8 @@ func (h *VMDetailsHandler) UpdateVMConfig(w http.ResponseWriter, r *http.Request
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	envCfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(envCfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -549,7 +552,8 @@ func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request)
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	envCfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(envCfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -613,7 +617,8 @@ func (h *VMDetailsHandler) GetVMSettings(w http.ResponseWriter, r *http.Request)
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	envCfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(envCfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return

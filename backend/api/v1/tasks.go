@@ -47,7 +47,8 @@ func (h *TaskHandler) GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -84,7 +85,8 @@ func (h *TaskHandler) GetTaskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return

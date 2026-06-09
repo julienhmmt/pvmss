@@ -26,7 +26,8 @@ func (h *VMDetailsHandler) GetVMSnapshots(w http.ResponseWriter, r *http.Request
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -97,7 +98,8 @@ func (h *VMDetailsHandler) CreateSnapshot(w http.ResponseWriter, r *http.Request
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -232,7 +234,8 @@ func (h *VMDetailsHandler) DeleteSnapshot(w http.ResponseWriter, r *http.Request
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
@@ -275,7 +278,8 @@ func (h *VMDetailsHandler) RollbackSnapshot(w http.ResponseWriter, r *http.Reque
 	username := usernameFromCtx(r)
 	isAdmin := isAdminFromCtx(r)
 
-	client, err := restyClient()
+	cfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
 	if err != nil {
 		writeAppError(w, err)
 		return
