@@ -165,11 +165,11 @@
 			const res = await getVMsPaginated({
 				page: currentPage,
 				limit: pageSize,
-				search: searchQuery || undefined,
 				sortBy: sortBy,
 				sortOrder: sortOrder,
-				status: filterStatus || undefined,
-				node: filterNode || undefined,
+				...(searchQuery && { search: searchQuery }),
+				...(filterStatus && { status: filterStatus }),
+				...(filterNode && { node: filterNode }),
 			});
 			if (abort.signal.aborted) return;
 

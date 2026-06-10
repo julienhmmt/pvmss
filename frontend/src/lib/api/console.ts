@@ -108,7 +108,7 @@ function buildConsoleQuery(params: {
   ticket: string;
   port: number;
   node: string;
-  consoleToken?: string;
+  consoleToken?: string | undefined;
 }): string {
   const { ticket, port, node, consoleToken } = params;
   if (consoleToken !== undefined) {

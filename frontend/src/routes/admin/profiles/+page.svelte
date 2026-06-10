@@ -72,7 +72,15 @@
 	let perPage = $state(12);
 	const pagedProfiles = $derived(paginate(profiles, page, perPage));
 
-	const emptyForm = (): Omit<VMProfileConfig, 'id'> & { id: string } => ({
+	// Form always carries concrete values for the optional profile fields so
+	// bindings (Select value, Switch checked) stay typed as non-undefined.
+	type ProfileForm = Omit<VMProfileConfig, 'id' | 'node' | 'storage' | 'enableEfi'> & {
+		id: string;
+		node: string;
+		storage: string;
+		enableEfi: boolean;
+	};
+	const emptyForm = (): ProfileForm => ({
 		id: '',
 		name: '',
 		description: '',
@@ -148,7 +156,7 @@
 				await updateProfile(editId, rest);
 				toast.success($t('admin.profiles.toast.updated', { values: { name: form.name } }));
 			} else {
-				await createProfile({ ...rest, id: id || undefined });
+				await createProfile({ ...rest, ...(id && { id }) });
 				toast.success($t('admin.profiles.toast.created', { values: { name: form.name } }));
 			}
 			editOpen = false;

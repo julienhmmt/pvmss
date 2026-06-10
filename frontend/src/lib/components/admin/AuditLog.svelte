@@ -38,7 +38,7 @@
 		error = null;
 		try {
 			// Request one extra entry to detect if there are more pages
-			const resp = await getAuditLog({ table: tableFilter || undefined, limit: PAGE_SIZE + 1, offset });
+			const resp = await getAuditLog({ ...(tableFilter && { table: tableFilter }), limit: PAGE_SIZE + 1, offset });
 			const allEntries = resp.entries ?? [];
 			hasMore = allEntries.length > PAGE_SIZE;
 			entries = hasMore ? allEntries.slice(0, PAGE_SIZE) : allEntries;
