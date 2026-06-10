@@ -179,3 +179,13 @@ export const PROFILE_COLOR_CLASSES: Record<string, { bg: string; icon: string }>
   orange:  { bg: "bg-orange-100 dark:bg-orange-900/30", icon: "text-orange-600 dark:text-orange-400" },
   gray:    { bg: "bg-gray-100 dark:bg-gray-900/30",    icon: "text-gray-600 dark:text-gray-400" },
 };
+
+const DEFAULT_PROFILE_COLOR: { bg: string; icon: string } = {
+  bg: "bg-gray-100 dark:bg-gray-900/30",
+  icon: "text-gray-600 dark:text-gray-400",
+};
+
+/** Returns the Tailwind classes for a profile color key, falling back to gray. */
+export function profileColorClasses(color: string): { bg: string; icon: string } {
+  return PROFILE_COLOR_CLASSES[color] ?? DEFAULT_PROFILE_COLOR;
+}

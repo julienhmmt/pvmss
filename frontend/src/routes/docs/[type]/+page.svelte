@@ -198,8 +198,9 @@
 	}
 
 	function handleTocSearchKey(e: KeyboardEvent) {
-		if (e.key === 'Enter' && filteredToc.length > 0) {
-			scrollTo(filteredToc[0].id);
+		const first = filteredToc[0];
+		if (e.key === 'Enter' && first) {
+			scrollTo(first.id);
 		}
 	}
 
@@ -208,8 +209,10 @@
 		const re = /<h([23])[^>]*id="([^"]+)"[^>]*>(.*?)<\/h[23]>/gi;
 		let m: RegExpExecArray | null;
 		while ((m = re.exec(rawHtml)) !== null) {
-			const plain = m[3].replace(/<[^>]+>/g, '');
-			entries.push({ level: parseInt(m[1]), id: m[2], text: decodeHtmlEntities(plain) });
+			const [, levelStr, id, inner] = m;
+			if (!levelStr || !id || inner === undefined) continue;
+			const plain = inner.replace(/<[^>]+>/g, '');
+			entries.push({ level: parseInt(levelStr), id, text: decodeHtmlEntities(plain) });
 		}
 		return entries;
 	}

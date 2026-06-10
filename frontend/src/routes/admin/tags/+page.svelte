@@ -82,7 +82,10 @@
 				fromProxmox: true
 			};
 		}
-		const palette = fallbackPalette[hashString(tag.name) % fallbackPalette.length];
+		const palette = fallbackPalette[hashString(tag.name) % fallbackPalette.length] ?? {
+			bg: '#e5e7eb',
+			fg: '#111827'
+		};
 		return { bg: palette.bg, fg: palette.fg, fromProxmox: false };
 	}
 

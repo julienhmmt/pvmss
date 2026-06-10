@@ -44,7 +44,7 @@
 	import TabCloudInit from './_tabs/TabCloudInit.svelte';
 	import VMIdentityHeader from './_components/VMIdentityHeader.svelte';
 
-	const vmid = $derived(parseInt($page.params.id, 10));
+	const vmid = $derived(parseInt($page.params.id ?? '', 10));
 
 	let loading = $state(true);
 	let error = $state<Error | null>(null);
@@ -109,6 +109,7 @@
 		}
 		e.preventDefault();
 		const nextKey = keys[next];
+		if (!nextKey) return;
 		selectTab(nextKey);
 		// Focus the newly active tab button
 		if (tablist) {
