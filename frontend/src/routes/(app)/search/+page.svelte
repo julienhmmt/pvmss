@@ -223,12 +223,12 @@
 			const params: VMPaginationParams = {
 				page: currentPage,
 				limit: PAGE_SIZE,
-				search: extractedQuery || undefined,
 				type: detectedType,
-				status: filterStatus || undefined,
-				node: filterNode || undefined,
 				sortBy: sortCol,
-				sortOrder: sortDir
+				sortOrder: sortDir,
+				...(extractedQuery && { search: extractedQuery }),
+				...(filterStatus && { status: filterStatus }),
+				...(filterNode && { node: filterNode })
 			};
 			const res = await getVMsPaginated(params);
 			if (abort.signal.aborted) return;

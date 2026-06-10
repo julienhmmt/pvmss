@@ -9,7 +9,7 @@
 	interface Props {
 		title: string;
 		eyebrow?: string;
-		subtitle?: string;
+		subtitle?: string | undefined;
 		variant?: PvHeaderVariant;
 		stats?: Snippet;
 		actions?: Snippet;

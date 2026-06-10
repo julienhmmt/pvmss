@@ -11,6 +11,7 @@
 		"sourceMap": true,
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
+		"exactOptionalPropertyTypes": true,
 		"moduleResolution": "bundler",
 		"types": ["svelte", "vite/client"],
 		"verbatimModuleSyntax": false

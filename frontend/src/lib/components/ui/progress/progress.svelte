@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Component } from "svelte";
 	import { Progress as ProgressPrimitive } from "bits-ui";
 	import { cn, type WithoutChildrenOrChild } from "$lib/utils.js";
 
@@ -9,9 +10,18 @@
 		value,
 		...restProps
 	}: WithoutChildrenOrChild<ProgressPrimitive.RootProps> = $props();
+
+	// bits-ui typings are not compatible with exactOptionalPropertyTypes
+	// (optional props reject explicit `undefined`); widen via a local cast
+	// until fixed upstream: https://github.com/huntabyte/bits-ui
+	const ProgressRoot = ProgressPrimitive.Root as unknown as Component<
+		Record<string, unknown>,
+		Record<string, never>,
+		"ref"
+	>;
 </script>
 
-<ProgressPrimitive.Root
+<ProgressRoot
 	bind:ref
 	data-slot="progress"
 	class={cn("bg-primary/20 relative h-2 w-full overflow-hidden rounded-full", className)}
@@ -24,4 +34,4 @@
 		class="bg-primary h-full w-full flex-1 transition-all"
 		style="transform: translateX(-{100 - (100 * (value ?? 0)) / (max ?? 1)}%)"
 	></div>
-</ProgressPrimitive.Root>
+</ProgressRoot>
