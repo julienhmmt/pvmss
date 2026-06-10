@@ -78,10 +78,10 @@
 			const res = await getAllVMsPaginated({
 				page,
 				limit: perPage,
-				search: searchQuery || undefined,
-				node: selectedNode || undefined,
 				sortBy: sortBy,
 				sortOrder: sortOrder,
+				...(searchQuery && { search: searchQuery }),
+				...(selectedNode && { node: selectedNode }),
 			});
 			if (abort.signal.aborted) return;
 			vms = res.vms;

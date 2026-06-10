@@ -92,9 +92,9 @@
 			const res = await getVMsPaginated({
 				page: currentPage,
 				limit: pageSize,
-				search: searchQuery || undefined,
 				sortBy: sortBy,
 				sortOrder: sortOrder,
+				...(searchQuery && { search: searchQuery }),
 			});
 			if (abort.signal.aborted) return;
 			vms = res.vms;
