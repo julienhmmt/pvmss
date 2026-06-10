@@ -26,7 +26,13 @@
 		<div class="flex items-center gap-2">
 			<Input
 				type="number"
-				bind:value={store.form.disks[index].sizeGb}
+				bind:value={
+					() => store.form.disks[index]?.sizeGb ?? settings.limits.disk.min,
+					(v) => {
+						const disk = store.form.disks[index];
+						if (disk) disk.sizeGb = v;
+					}
+				}
 				min={settings.limits.disk.min}
 				max={settings.limits.disk.max}
 				class="w-32"

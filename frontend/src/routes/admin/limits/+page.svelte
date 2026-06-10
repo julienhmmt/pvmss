@@ -189,7 +189,7 @@
 	};
 
 	function tintClasses(tint: string): string {
-		return TINT_CLASSES[tint] ?? TINT_CLASSES.sky;
+		return TINT_CLASSES[tint] ?? 'bg-info-soft text-info-soft-foreground';
 	}
 
 	onMount(load);
@@ -401,6 +401,7 @@
 						{@const status = nodeStatus(name)}
 						{@const nodeLimits = limits.nodes[name]}
 						{@const collapsed = isCollapsed(name)}
+						{#if nodeLimits}
 						<div>
 							<!-- Node header (clickable to toggle) -->
 							<button
@@ -461,6 +462,7 @@
 								</div>
 							{/if}
 						</div>
+						{/if}
 					{/each}
 				</div>
 

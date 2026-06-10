@@ -21,6 +21,7 @@
 	const net = $derived(store.form.networks[index]);
 </script>
 
+{#if net}
 <div class="bg-muted/50 space-y-3 rounded-lg p-4">
 	<div class="flex items-center justify-between">
 		<h3 class="text-sm font-medium">
@@ -111,3 +112,4 @@
 		<span class="text-sm">{$t('vmCreate.network.enabled')}</span>
 	</div>
 </div>
+{/if}

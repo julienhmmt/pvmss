@@ -92,7 +92,7 @@ function findBestStorage(storages: VMCreateStorageOption[]): string {
   const patterns = ["ceph", "rbd", "nfs", "gluster", "iscsi", "san", "shared"];
   const byName = storages.find((s) => patterns.some((p) => s.name.toLowerCase().includes(p)));
   if (byName) return byName.name;
-  return storages[0].name;
+  return storages[0]?.name ?? "";
 }
 
 /**
@@ -152,8 +152,9 @@ export function createVMFormStore() {
       form.storage = bestStorage;
       autoStorage = bestStorage;
     }
-    if (settings.bridges.length > 0) {
-      form.networks = [defaultNetwork(settings.bridges[0].name)];
+    const firstBridge = settings.bridges[0];
+    if (firstBridge) {
+      form.networks = [defaultNetwork(firstBridge.name)];
     }
   }
 
@@ -197,8 +198,8 @@ export function createVMFormStore() {
       }
     }
     // Ensure network bridge is set — profiles don't carry network config so fall back to defaults
-    if (form.networks.length === 0 || form.networks[0].bridge === "") {
-      const defaultBridge = settings.bridges.length > 0 ? settings.bridges[0].name : "";
+    if (form.networks.length === 0 || form.networks[0]?.bridge === "") {
+      const defaultBridge = settings.bridges[0]?.name ?? "";
       form.networks = [defaultNetwork(defaultBridge)];
     }
   }
@@ -222,7 +223,7 @@ export function createVMFormStore() {
   function addNetworkCard(): void {
     if (!settings) return;
     if (form.networks.length >= settings.maxNetworkCards) return;
-    const defaultBridge = settings.bridges.length > 0 ? settings.bridges[0].name : "";
+    const defaultBridge = settings.bridges[0]?.name ?? "";
     form.networks = [...form.networks, defaultNetwork(defaultBridge)];
   }
 
