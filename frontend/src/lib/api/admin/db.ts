@@ -4,7 +4,7 @@ export async function exportDB(): Promise<void> {
   const blob = await res.blob();
   const cd = res.headers.get("Content-Disposition") ?? "";
   const match = cd.match(/filename="([^"]+)"/);
-  const filename = match ? match[1] : "pvmss-backup.db";
+  const filename = match?.[1] ?? "pvmss-backup.db";
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

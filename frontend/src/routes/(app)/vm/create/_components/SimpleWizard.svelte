@@ -26,7 +26,7 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import * as Select from '$lib/components/ui/select';
 	import type { VMCreateSettings, VMProfileConfig } from '$lib/types/vm-create';
-	import { PROFILE_COLOR_CLASSES } from '$lib/types/vm-create';
+	import { profileColorClasses } from '$lib/types/vm-create';
 	import type { VMCreateFormStore } from '$lib/stores/vm-create.svelte';
 
 	const SIMPLE_STEPS = ['profile', 'details', 'confirm'] as const;
@@ -119,7 +119,7 @@
 		<div class="grid gap-3 sm:grid-cols-2">
 			{#each settings.vmProfiles ?? [] as profile}
 				{@const ProfileIcon = PROFILE_ICONS[profile.icon] ?? Globe}
-				{@const colors = PROFILE_COLOR_CLASSES[profile.color] ?? PROFILE_COLOR_CLASSES['gray']}
+				{@const colors = profileColorClasses(profile.color)}
 				{@const isSelected = store.selectedProfileId === profile.id}
 				<button
 					type="button"
@@ -322,8 +322,7 @@
 
 			{#if store.selectedProfile}
 				{@const ProfileIcon = PROFILE_ICONS[store.selectedProfile.icon] ?? Globe}
-				{@const confirmColors =
-					PROFILE_COLOR_CLASSES[store.selectedProfile.color] ?? PROFILE_COLOR_CLASSES['gray']}
+				{@const confirmColors = profileColorClasses(store.selectedProfile.color)}
 				<!-- Profile + VM summary -->
 				<div class="rounded-xl border-2 border-primary/20 bg-primary/5 p-4">
 					<div class="mb-4 flex items-center gap-3">
@@ -352,7 +351,7 @@
 						{/if}
 						<span class="text-muted-foreground">{$t('vmCreate.review.hardware')}</span>
 						<span>
-							{store.totalVCPUs} vCPUs · {store.form.memoryGB} GB RAM · {store.form.disks[0].sizeGb} GB
+							{store.totalVCPUs} vCPUs · {store.form.memoryGB} GB RAM · {store.form.disks[0]?.sizeGb ?? 0} GB
 						</span>
 					</div>
 				</div>

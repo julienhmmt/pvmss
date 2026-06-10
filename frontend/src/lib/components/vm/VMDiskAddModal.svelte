@@ -30,7 +30,7 @@
 
 	$effect(() => {
 		if (open) {
-			storage = storageNames.length > 0 ? storageNames[0] : '';
+			storage = storageNames[0] ?? '';
 			sizeGB = minDisk > 0 ? minDisk : 10;
 			bus = 'virtio';
 		}

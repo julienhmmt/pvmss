@@ -307,12 +307,12 @@
 
 			// Optimistic feedback: flip status immediately for snappy UI.
 			// Background refresh will reconcile with real server state.
-			const idx = vms.findIndex((v) => v.vmid === vm.vmid);
-			if (idx !== -1) {
+			const target = vms.find((v) => v.vmid === vm.vmid);
+			if (target) {
 				const next = (action === 'start' || action === 'reboot') ? 'running' : 'stopped';
-				if (vms[idx].status !== next) {
+				if (target.status !== next) {
 					// direct mutation on $state object is reactive
-					(vms[idx] as any).status = next;
+					(target as { status: string }).status = next;
 				}
 			}
 

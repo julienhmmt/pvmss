@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { buildWebSocketURL, getVNCTicket } from '$lib/api/console';
 
-	const vmid = $derived(parseInt($page.params.id, 10));
+	const vmid = $derived(parseInt($page.params.id ?? '', 10));
 	const vmName = $derived($page.url.searchParams.get('name') ?? `VM ${vmid}`);
 
 	type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';

@@ -25,7 +25,7 @@
 		toggleProfile
 	} from '$lib/api/admin/profiles';
 	import type { VMProfileConfig, VMCreateSettings } from "$lib/types/vm-create";
-	import { PROFILE_COLOR_CLASSES } from "$lib/types/vm-create";
+	import { PROFILE_COLOR_CLASSES, profileColorClasses } from "$lib/types/vm-create";
 	import { getVMCreateSettings } from '$lib/api/vm-create';
 	import {
 		Globe,
@@ -243,7 +243,7 @@
 	<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 		{#each pagedProfiles as profile (profile.id)}
 			{@const ProfileIcon = ICON_COMPONENTS[profile.icon] ?? Globe}
-			{@const colors = PROFILE_COLOR_CLASSES[profile.color] ?? PROFILE_COLOR_CLASSES['gray']}
+			{@const colors = profileColorClasses(profile.color)}
 			<div
 				class="rounded-xl border bg-card p-5 shadow-sm transition-opacity {profile.enabled
 					? ''
@@ -473,7 +473,7 @@
 			<!-- Preview -->
 			{#if form.name}
 				{@const PreviewIcon = ICON_COMPONENTS[form.icon] ?? Globe}
-				{@const previewColors = PROFILE_COLOR_CLASSES[form.color] ?? PROFILE_COLOR_CLASSES['gray']}
+				{@const previewColors = profileColorClasses(form.color)}
 				<div class="rounded-lg border bg-muted/30 p-3">
 					<p class="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">Preview</p>
 					<div class="flex items-center gap-3">

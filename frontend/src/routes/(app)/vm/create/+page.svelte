@@ -32,7 +32,7 @@
 	let direction: number = $state(1);
 
 	const settings = $derived(store.settings);
-	const currentStepName = $derived(store.steps[currentStep]);
+	const currentStepName = $derived(store.steps[currentStep] ?? 'base');
 	const isFirstStep = $derived(currentStep === 0);
 	const isLastStep = $derived(currentStep === store.steps.length - 1);
 	const allStepsValid = $derived(store.steps.every((step) => store.isStepValid(step)));

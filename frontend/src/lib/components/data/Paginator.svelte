@@ -48,7 +48,7 @@
 	}
 </script>
 
-{#if !hideIfSinglePage || total > perPageOptions[0] || totalPages > 1}
+{#if !hideIfSinglePage || total > (perPageOptions[0] ?? 0) || totalPages > 1}
 	<div class="flex flex-wrap items-center justify-between gap-3 pt-4">
 		<p class="text-sm text-muted-foreground">
 			{$t('common.pagination.showing', {
