@@ -9,18 +9,7 @@ GREEN=\033[0;32m
 RED=\033[0;31m
 NC=\033[0m # No Color
 
-# Detect git worktree root (works for both main worktree and linked worktrees)
-GIT_ROOT := $(shell git rev-parse --show-toplevel)
-# Get current directory relative to git root
-CURRENT_DIR := $(shell git rev-parse --show-prefix)
-# If we're in a worktree subdirectory, adjust paths accordingly
-ifeq ($(CURRENT_DIR),)
-    # We're in the main worktree
-    BACKEND_DIR := backend
-else
-    # We're in a worktree, backend is still at ./backend relative to current dir
-    BACKEND_DIR := backend
-endif
+BACKEND_DIR := backend
 
 # =============================================================================
 # Commandes de base
@@ -73,19 +62,18 @@ helm-upgrade: ## Met à jour l'application avec Helm
 	@helm upgrade --install pvmss ./helm
 	@echo ""
 
-up:
+up: ## Démarre les conteneurs dev en arrière-plan
 	@docker compose -f docker-compose.dev.yml up -d
 	@echo ""
 
-down:
+down: ## Arrête et supprime les conteneurs dev
 	@docker compose -f docker-compose.dev.yml down
 	@echo ""
 
-restart:
-	@down up
+restart: down up ## Redémarre les conteneurs dev (down puis up)
 	@echo ""
 
-logs:
+logs: ## Suit les logs du conteneur pvmss-dev
 	@docker logs -f pvmss-dev
 	@echo ""
 
@@ -94,7 +82,7 @@ logs:
 
 coverage: ## Génère un rapport de couverture de code
 	@echo "$(BLUE)Génération du rapport de couverture...$(NC)"
-	cd $(BACKEND_DIR) && GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./...
+	cd $(BACKEND_DIR) && GO_TEST_ENVIRONMENT=1 go test -v -race -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
 	@echo "$(GREEN)✓ Rapport généré: $(BACKEND_DIR)/coverage.out$(NC)"
 
 test-unit: ## Lance les tests unitaires Go (offline-compatible)
