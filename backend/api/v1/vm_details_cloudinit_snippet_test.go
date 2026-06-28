@@ -13,6 +13,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+<<<<<<< HEAD
+=======
+// --- redactCloudInitSecrets unit tests ---
+
+func TestRedactCloudInitSecrets(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "empty", in: "", want: ""},
+		{
+			name: "redacts password hash, keeps key and indentation",
+			in:   "user: jhmt\npassword: $5$abc$def\nchpasswd:\n  expire: False\n",
+			want: "user: jhmt\npassword: <redacted>\nchpasswd:\n  expire: False\n",
+		},
+		{
+			name: "redacts hashed_passwd and plain_text_passwd",
+			in:   "users:\n  - name: a\n    hashed_passwd: $6$xx\n    plain_text_passwd: secret\n",
+			want: "users:\n  - name: a\n    hashed_passwd: <redacted>\n    plain_text_passwd: <redacted>\n",
+		},
+		{
+			name: "leaves non-secret lines untouched",
+			in:   "#cloud-config\npackages:\n  - curl\nruncmd:\n  - echo password: not-a-key\n",
+			want: "#cloud-config\npackages:\n  - curl\nruncmd:\n  - echo password: not-a-key\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, redactCloudInitSecrets(tt.in))
+		})
+	}
+}
+
+>>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 // --- parseCICustomUser unit tests (table-driven) ---
 
 func TestParseCICustomUser(t *testing.T) {
