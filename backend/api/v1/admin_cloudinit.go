@@ -209,6 +209,8 @@ func (h *AdminMutationsHandler) TestSFTPConnection(w http.ResponseWriter, r *htt
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
+	// Allow testing before the feature is toggled on.
+	cfg.Enabled = true
 	if err := proxmox.TestSFTPConnection(ctx, cfg); err != nil {
 		writeJSON(w, map[string]any{"success": false, "message": err.Error()})
 		return

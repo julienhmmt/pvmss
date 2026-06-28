@@ -636,10 +636,18 @@ func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, file
 		}
 	}()
 
-	// Ensure target directory exists
+	// Ensure target directory exists. Only attempt MkdirAll when it is missing —
+	// the snippets directory usually already exists (created by Proxmox), and
+	// trying to create an existing root-owned path yields a misleading
+	// "permission denied". When creation is genuinely needed and fails, the
+	// SFTP user lacks write access to the parent directory.
 	targetDir := config.SnippetBaseDir
-	if err := sftpClient.MkdirAll(targetDir); err != nil {
-		return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
+	if fi, statErr := sftpClient.Stat(targetDir); statErr == nil {
+		if !fi.IsDir() {
+			return fmt.Errorf("snippet path %s exists but is not a directory", targetDir)
+		}
+	} else if err := sftpClient.MkdirAll(targetDir); err != nil {
+		return fmt.Errorf("failed to create directory %s: the SFTP user %q lacks permission to create it — create it on the node and grant the user write access: %w", targetDir, config.Username, err)
 	}
 
 	// Create target file path
@@ -648,7 +656,7 @@ func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, file
 	// Create file on remote server
 	remoteFile, err := sftpClient.Create(targetPath)
 	if err != nil {
-		return fmt.Errorf("failed to create remote file %s: %w", targetPath, err)
+		return fmt.Errorf("failed to write %s: the SFTP user %q lacks write permission on %s — grant it write access (chown/ACL): %w", targetPath, config.Username, targetDir, err)
 	}
 	defer func() {
 		if closeErr := remoteFile.Close(); closeErr != nil {
