@@ -207,16 +207,6 @@
     display: flex;
     flex-direction: column;
   }
-
-  /* Firefox (Gecko) rejects percentage values for `-webkit-text-size-adjust`
-     (only `none`/`auto` are accepted), so Tailwind preflight's `100%` emits a
-     "value parse error" in Firefox. `none` is semantically equivalent (both
-     disable the text-inflation algorithm) and accepted by every engine, so it
-     overrides preflight's `100%` cleanly. */
-  html,
-  :host {
-    -webkit-text-size-adjust: none;
-  }
 }
 
 .pv-content-width {
